@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "malariagen_data"
+version = "0.1.0"
+description = "A package for accessing MalariaGEN public data."
+authors = ["Alistair Miles <alimanfoo@googlemail.com>"]
+license = "MIT"
+
+[tool.poetry.dependencies]
+python = "^3.7.1"
+pandas = "^1.2.0"
+zarr = "^2.6.1"
+intake = "^0.6.0"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.1"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
