@@ -1,116 +1,89 @@
-from pathlib import Path
 import pandas as pd
-import intake
+from fsspec.core import url_to_fs
 
 
-RELEASES = 'ag3.0', 'ag3.1'
+class Ag3:
 
+    def __init__(self, url, **kwargs):
 
-class Base:
+        # special case Google Cloud Storage, use anonymous access, avoids a delay
+        if url.startswith('gs://') or url.startswith('gcs://'):
+            kwargs.setdefault('token', 'anon')
 
-    def _sample_sets(self, release: str):
-        raise NotImplementedError
+        # process the url using fsspec
+        fs, path = url_to_fs(url, **kwargs)
+        self.fs = fs
+        self.path = path
 
-    def _in_release(self, sample_set):
-        for release in RELEASES:
-            df = self._sample_sets(release)
-            if sample_set in df['sample_set'].values:
+        # check which releases are available
+        sub_dirs = [p.split('/')[-1] for p in self.fs.ls(self.path)]
+        releases = [d for d in sub_dirs if d.startswith('v')]
+        if len(releases) == 0:
+            raise ValueError(f'No releases found at location {url!r}')
+        self.releases = releases
+
+        # setup caches
+        self._cache_sample_sets = dict()
+        self._cache_sample_metadata = dict()
+
+    def sample_sets(self, release='v3'):
+        try:
+            return self._cache_sample_sets[release]
+        except KeyError:
+            path = f"{self.path}/{release}/manifest.tsv"
+            with self.fs.open(path) as f:
+                df = pd.read_csv(f, sep='\t')
+            df['release'] = release
+            self._cache_sample_sets[release] = df
+            return df
+
+    def _get_release(self, sample_set):
+        # find which release this sample set was included in
+        for release in self.releases:
+            df_sample_sets = self.sample_sets(release)
+            if sample_set in df_sample_sets['sample_set'].values:
                 return release
-        raise ValueError
+        raise ValueError(f'No release for sample set {sample_set!r}')
 
-    def sample_sets(self, release):
-        return self._sample_sets(release)
+    def _read_sample_metadata(self, sample_set, release=None):
+        """Read metadata for a single sample set."""
+        try:
+            return self._cache_sample_metadata[sample_set]
+        except KeyError:
+            if release is None:
+                release = self._get_release(sample_set)
+            path = f"{self.path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
+            with self.fs.open(path) as f:
+                df = pd.read_csv(f)
+            df['sample_set'] = sample_set
+            df['release'] = release
+            self._cache_sample_metadata[sample_set] = df
+            return df
 
-    def _samples(self, sample_set):
-        raise NotImplementedError
+    def sample_metadata(self, sample_sets):
+        """Read sample metadata for one or more sample sets.
 
-    def samples(self, sample_sets):
+        @@TODO parameters and returns
+        
+        """
 
-        if sample_sets in RELEASES:
-            # convenience to allow loading all sample sets in a release
+        if isinstance(sample_sets, str) and sample_sets.startswith('v'):
+            # convenience, can use a release identifier to denote all sample sets
+            # in a release
             release = sample_sets
-            sample_sets = self.sample_sets(release)['sample_set'].values.tolist()
+            sample_sets = self.sample_sets(release=release)['sample_set'].tolist()
 
         if isinstance(sample_sets, str):
-            df = self._samples(sample_sets)
+            # single sample set given
+            df = self._read_sample_metadata(sample_set=sample_sets)
+            return df
 
         elif isinstance(sample_sets, (list, tuple)):
-            dfs = [self._samples(s) for s in sample_sets]
-            df = (
-                pd.concat(dfs, axis=0, sort=False)
-                .reset_index(drop=True)
-            )
+            # multiple sample sets given
+            dfs = [self.sample_metadata(sample_sets=s)
+                   for s in sample_sets]
+            df = pd.concat(dfs, axis=0, sort=False).reset_index(drop=True)
+            return df
 
         else:
             raise TypeError
-
-        return df
-
-
-class Local(Base):
-
-    def __init__(self, path):
-        if not isinstance(path, Path):
-            path = Path(path).expanduser()
-        self.path = path
-
-    def _release_path(self, release):
-        # assume local paths mirror GCS paths under the vo_agam_release bucket
-        if release == RELEASES[0]:
-            return self.path / 'v3'
-        elif release in RELEASES:
-            return self.path / 'v' + release[2:]
-        else:
-            raise ValueError
-
-    def _sample_sets(self, release):
-        release_path = self._release_path(release)
-        path = release_path / "manifest.tsv"
-        df = pd.read_csv(path, sep="\t")
-        return df
-
-    def _samples(self, sample_set: str):
-
-        # find which release the sample set is in
-        release = self._in_release(sample_set)
-
-        # find base path for release
-        release_path = self._release_path(release)
-
-        # build file path
-        path = release_path / f"metadata/general/{sample_set}/samples.meta.csv"
-
-        # read dataframe
-        df = pd.read_csv(path)
-
-        # add sample set identifier for convenience
-        df["sample_set"] = sample_set
-
-        return df
-
-
-class Cloud(Base):
-
-    def __init__(self, catalog="https://malariagen.github.io/intake/gcs.yml"):
-        self.cat = intake.open_catalog(catalog)
-
-    def _release_cat(self, release):
-        if release == RELEASES[0]:
-            return self.cat['ag3']
-        elif release in RELEASES:
-            return self.cat[release]
-        else:
-            raise ValueError
-
-    def _sample_sets(self, release):
-        release_cat = self._release_cat(release)
-        df = release_cat["sample_sets"].read()
-        return df
-
-    def _samples(self, sample_set):
-
-        # find which release the sample set is in
-        release = self._in_
-        df = self.cat["ag3"]["samples"](sample_set=sample_set).read()
-        df["sample_set"] = sample_set
-        return df
