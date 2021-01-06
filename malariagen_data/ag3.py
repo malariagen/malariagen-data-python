@@ -2,6 +2,8 @@ import pandas
 from fsspec.core import url_to_fs
 import zarr
 import dask.array as da
+import numpy as np
+from .util import read_gff3
 
 
 class Ag3:
@@ -324,7 +326,7 @@ class Ag3:
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters : str, optional
             Site filters analysis version.
 
         Returns
@@ -359,3 +361,79 @@ class Ag3:
             d = da.compress(filter_pass, d, axis=0)
 
         return d
+
+    def genome_sequence(self, seq_id):
+        """Access the reference genome sequence.
+
+        Parameters
+        ----------
+        seq_id : str
+            Chromosome arm, e.g., "3R".
+
+        Returns
+        -------
+        d : dask.array.Array
+
+        """
+        path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
+        store = self.fs.get_mapper(path)
+        root = zarr.open_consolidated(store=store)
+        z = root[seq_id]
+        d = da.from_array(z)
+        return d
+
+    def genome_features(self, attributes=None):
+        """Access genome feature annotations (AgamP4.12).
+
+        Parameters
+        ----------
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. If not provided, all attributes will be unpacked.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+
+        path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+        with self.fs.open(path, mode="rb") as f:
+            df = read_gff3(f, attributes=attributes, compression="gzip")
+        return df
+
+    def is_accessible(self, seq_id, site_mask, site_filters="dt_20200416"):
+        """Compute genome accessibility array.
+
+        Parameters
+        ----------
+        seq_id : str
+            Chromosome arm, e.g., "3R".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str, optional
+            Site filters analysis version.
+
+        Returns
+        -------
+        a : numpy.ndarray
+
+        """
+
+        # determine contig sequence length
+        seq_length = self.genome_sequence(seq_id).shape[0]
+
+        # setup output
+        is_accessible = np.zeros(seq_length, dtype=bool)
+
+        # access positions
+        pos = self.snp_sites(seq_id, field="POS").compute()
+
+        # access site filters
+        filter_pass = self.site_filters(
+            seq_id, mask=site_mask, analysis=site_filters
+        ).compute()
+
+        # assign values from site filters
+        is_accessible[pos - 1] = filter_pass
+
+        return is_accessible
