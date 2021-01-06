@@ -51,8 +51,8 @@ class Ag3:
         self._cache_sample_metadata = dict()
         self._cache_species_calls = dict()
 
-    def sample_sets(self, *, release="v3"):
-        """Read the manifest of sample sets.
+    def sample_sets(self, release="v3"):
+        """Access the manifest of sample sets.
 
         Parameters
         ----------
@@ -92,7 +92,7 @@ class Ag3:
                 return release
         raise ValueError(f"No release found for sample set {sample_set!r}")
 
-    def _read_general_metadata(self, sample_set):
+    def _read_general_metadata(self, *, sample_set):
         """Read metadata for a single sample set."""
         try:
             return self._cache_sample_metadata[sample_set]
@@ -111,7 +111,7 @@ class Ag3:
             self._cache_sample_metadata[sample_set] = df
             return df
 
-    def _read_species_calls(self, sample_set, analysis, method):
+    def _read_species_calls(self, *, sample_set, analysis, method):
         """Read species calls for a single sample set."""
         key = (sample_set, analysis, method)
         try:
@@ -147,8 +147,23 @@ class Ag3:
             self._cache_species_calls[key] = df
             return df
 
-    def species_calls(self, *, cohort="v3", analysis="20200422", method="aim"):
-        """Read species calls for one or more sample sets.
+    def _prep_cohort(self, *, cohort):
+        if cohort == "v3_wild":
+            # convenience, special case to exclude crosses
+            cohort = self.v3_wild
+
+        elif isinstance(cohort, str) and cohort.startswith("v3"):
+            # convenience, can use a release identifier to denote all sample sets
+            # in a release
+            cohort = self.sample_sets(release=cohort)["sample_set"].tolist()
+
+        if not isinstance(cohort, (str, list, tuple)):
+            raise TypeError(f"Invalid cohort: {cohort!r}")
+
+        return cohort
+
+    def species_calls(self, cohort="v3_wild", analysis="20200422", method="aim"):
+        """Access species calls for one or more sample sets.
 
         Parameters
         ----------
@@ -157,7 +172,7 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         analysis : str
-            Identifier for species calling analysis.
+            Species calling analysis version.
         method : str
             Species calling method; "aim" is ancestry informative markers, "pca" is principal
             components analysis.
@@ -168,10 +183,7 @@ class Ag3:
 
         """
 
-        if isinstance(cohort, str) and cohort.startswith("v3"):
-            # convenience, can use a release identifier to denote all sample sets
-            # in a release
-            cohort = self.sample_sets(release=cohort)["sample_set"].tolist()
+        cohort = self._prep_cohort(cohort=cohort)
 
         if isinstance(cohort, str):
             # assume single sample set
@@ -179,7 +191,7 @@ class Ag3:
                 sample_set=cohort, analysis=analysis, method=method
             )
 
-        elif isinstance(cohort, (list, tuple)):
+        else:
             # concatenate multiple sample sets
             dfs = [
                 self.species_calls(cohort=c, analysis=analysis, method=method)
@@ -187,13 +199,10 @@ class Ag3:
             ]
             df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
 
-        else:
-            raise TypeError
-
         return df
 
-    def sample_metadata(self, *, cohort="v3", species_calls=("20200422", "aim")):
-        """Read sample metadata for one or more sample sets.
+    def sample_metadata(self, cohort="v3_wild", species_calls=("20200422", "aim")):
+        """Access sample metadata for one or more sample sets.
 
         Parameters
         ----------
@@ -210,10 +219,7 @@ class Ag3:
 
         """
 
-        if isinstance(cohort, str) and cohort.startswith("v3"):
-            # convenience, can use a release identifier to denote all sample sets
-            # in a release
-            cohort = self.sample_sets(release=cohort)["sample_set"].tolist()
+        cohort = self._prep_cohort(cohort=cohort)
 
         if isinstance(cohort, str):
             # assume single sample set
@@ -225,7 +231,7 @@ class Ag3:
                 )
                 df = df.merge(df_species, on="sample_id", sort=False)
 
-        elif isinstance(cohort, (list, tuple)):
+        else:
             # concatenate multiple sample sets
             dfs = [
                 self.sample_metadata(cohort=c, species_calls=species_calls)
@@ -233,25 +239,54 @@ class Ag3:
             ]
             df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
 
-        else:
-            raise TypeError
-
         return df
 
-    def site_filters(
-        self, *, seq_id, mask, field="filter_pass", release="v3", analysis="dt_20200416"
-    ):
-        """@@TODO"""
+    def site_filters(self, seq_id, mask, field="filter_pass", analysis="dt_20200416"):
+        """Access SNP site filters.
 
-        path = f"{self.path}/{release}/site_filters/{analysis}/{mask}/"
+        Parameters
+        ----------
+        seq_id : str
+            Chromosome arm, e.g., "3R".
+        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Mask to use.
+        field : str, optional
+            Array to access.
+        analysis : str, optional
+            Site filters analysis version.
+
+        Returns
+        -------
+        d : dask.array.Array
+
+        """
+
+        path = f"{self.path}/v3/site_filters/{analysis}/{mask}/"
         store = self.fs.get_mapper(path)
         callset = zarr.open_consolidated(store=store)
         z = callset[seq_id]["variants"][field]
         d = da.from_array(z)
         return d
 
-    def snp_sites(self, *, seq_id, field, mask=None, filters="dt_20200416"):
-        """@@TODO"""
+    def snp_sites(self, seq_id, field, mask=None, filters="dt_20200416"):
+        """Access SNP site data (positions and alleles).
+
+        Parameters
+        ----------
+        seq_id : str
+            Chromosome arm, e.g., "3R".
+        field : {"POS", "REF", "ALT"}
+            Array to access.
+        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Mask to apply.
+        filters : str
+            Site filters analysis version.
+
+        Returns
+        -------
+        d : dask.array.Array
+
+        """
 
         path = f"{self.path}/v3/snp_genotypes/all/sites/"
         store = self.fs.get_mapper(path)
@@ -268,14 +303,32 @@ class Ag3:
         return d
 
     def snp_genotypes(
-        self, *, seq_id, cohort="v3", field="GT", mask=None, filters="dt_20200416"
+        self, *, seq_id, cohort="v3_wild", field="GT", mask=None, filters="dt_20200416"
     ):
-        """@@TODO"""
+        """Access SNP genotypes and associated data.
 
-        if isinstance(cohort, str) and cohort.startswith("v3"):
-            # convenience, can use a release identifier to denote all sample sets
-            # in a release
-            cohort = self.sample_sets(release=cohort)["sample_set"].tolist()
+        Parameters
+        ----------
+        seq_id : str
+            Chromosome arm, e.g., "3R".
+        cohort : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        field : {"GT", "GQ", "AD", "MQ"}
+            Array to access.
+        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Mask to apply.
+        filters : str
+            Site filters analysis version.
+
+        Returns
+        -------
+        d : dask.array.Array
+
+        """
+
+        cohort = self._prep_cohort(cohort=cohort)
 
         if isinstance(cohort, str):
             # single sample set
@@ -287,15 +340,12 @@ class Ag3:
             z = callset[seq_id]["calldata"][field]
             d = da.from_array(z)
 
-        elif isinstance(cohort, (list, tuple)):
+        else:
             # concatenate multiple sample sets
             ds = [
                 self.snp_genotypes(seq_id=seq_id, cohort=c, field=field) for c in cohort
             ]
             d = da.concatenate(ds, axis=1)
-
-        else:
-            raise TypeError
 
         if mask is not None:
             filter_pass = self.site_filters(
