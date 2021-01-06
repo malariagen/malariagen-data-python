@@ -48,7 +48,7 @@ class Ag3:
 
         # setup caches
         self._cache_sample_sets = dict()
-        self._cache_sample_metadata = dict()
+        self._cache_general_metadata = dict()
         self._cache_species_calls = dict()
 
     def sample_sets(self, release="v3"):
@@ -95,7 +95,7 @@ class Ag3:
     def _read_general_metadata(self, *, sample_set):
         """Read metadata for a single sample set."""
         try:
-            return self._cache_sample_metadata[sample_set]
+            return self._cache_general_metadata[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = (
@@ -108,7 +108,7 @@ class Ag3:
             df["sample_set"] = sample_set
             df["release"] = release
 
-            self._cache_sample_metadata[sample_set] = df
+            self._cache_general_metadata[sample_set] = df
             return df
 
     def _read_species_calls(self, *, sample_set, analysis, method):
