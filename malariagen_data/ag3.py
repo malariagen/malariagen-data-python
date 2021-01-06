@@ -268,7 +268,7 @@ class Ag3:
         d = da.from_array(z)
         return d
 
-    def snp_sites(self, seq_id, field, mask=None, filters="dt_20200416"):
+    def snp_sites(self, seq_id, field, site_mask=None, site_filters="dt_20200416"):
         """Access SNP site data (positions and alleles).
 
         Parameters
@@ -277,9 +277,9 @@ class Ag3:
             Chromosome arm, e.g., "3R".
         field : {"POS", "REF", "ALT"}
             Array to access.
-        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Mask to apply.
-        filters : str
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str
             Site filters analysis version.
 
         Returns
@@ -294,16 +294,21 @@ class Ag3:
         z = callset[seq_id]["variants"][field]
         d = da.from_array(z)
 
-        if mask is not None:
+        if site_mask is not None:
             filter_pass = self.site_filters(
-                seq_id=seq_id, mask=mask, analysis=filters
+                seq_id=seq_id, mask=site_mask, analysis=site_filters
             ).compute()
             d = da.compress(filter_pass, d, axis=0)
 
         return d
 
     def snp_genotypes(
-        self, *, seq_id, cohort="v3_wild", field="GT", mask=None, filters="dt_20200416"
+        self,
+        seq_id,
+        cohort="v3_wild",
+        field="GT",
+        site_mask=None,
+        site_filters="dt_20200416",
     ):
         """Access SNP genotypes and associated data.
 
@@ -317,9 +322,9 @@ class Ag3:
             "v3") or a list of release identifiers.
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
-        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Mask to apply.
-        filters : str
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str
             Site filters analysis version.
 
         Returns
@@ -347,9 +352,9 @@ class Ag3:
             ]
             d = da.concatenate(ds, axis=1)
 
-        if mask is not None:
+        if site_mask is not None:
             filter_pass = self.site_filters(
-                seq_id=seq_id, mask=mask, analysis=filters
+                seq_id=seq_id, mask=site_mask, analysis=site_filters
             ).compute()
             d = da.compress(filter_pass, d, axis=0)
 
