@@ -79,6 +79,9 @@ class Ag3:
 
         """
 
+        if release not in self._releases:
+            raise ValueError(f"Release not available: {release!r}")
+
         try:
             return self._cache_sample_sets[release]
 
