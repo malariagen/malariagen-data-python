@@ -308,8 +308,8 @@ class Ag3:
         ----------
         seq_id : str
             Chromosome arm, e.g., "3R".
-        field : {"POS", "REF", "ALT"}
-            Array to access.
+        field : {"POS", "REF", "ALT"}, optional
+            Array to access. If not provided, all three arrays will be returned as a tuple.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str
@@ -317,7 +317,7 @@ class Ag3:
 
         Returns
         -------
-        d : dask.array.Array
+        d : dask.array.Array or tuple of dask.array.Array
 
         """
 
