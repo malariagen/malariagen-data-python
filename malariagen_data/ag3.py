@@ -3,7 +3,10 @@ from fsspec.core import url_to_fs
 import zarr
 import dask.array as da
 import numpy as np
-from .util import read_gff3, unpack_gff3_attributes
+from .util import read_gff3, unpack_gff3_attributes, SafeStore
+
+
+public_releases = ("v3",)
 
 
 class Ag3:
@@ -14,6 +17,8 @@ class Ag3:
     url : str
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud Storage,
         or a local path on your file system if data have been downloaded.
+    pre : bool
+        Include prereleases.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -30,7 +35,7 @@ class Ag3:
 
     """
 
-    def __init__(self, url, **kwargs):
+    def __init__(self, url, pre=False, **kwargs):
 
         # special case Google Cloud Storage, use anonymous access, avoids a delay
         if url.startswith("gs://") or url.startswith("gcs://"):
@@ -44,9 +49,11 @@ class Ag3:
         # discover which releases are available
         sub_dirs = [p.split("/")[-1] for p in self.fs.ls(self.path)]
         releases = [d for d in sub_dirs if d.startswith("v3")]
+        if not pre:
+            releases = [d for d in releases if d in public_releases]
         if len(releases) == 0:
             raise ValueError(f"No releases found at location {url!r}")
-        self.releases = releases
+        self._releases = releases
 
         # setup caches
         self._cache_sample_sets = dict()
@@ -55,7 +62,7 @@ class Ag3:
         self._cache_site_filters = dict()
         self._cache_snp_sites = None
         self._cache_snp_genotypes = dict()
-        self._genome = None
+        self._cache_genome = None
         self._cache_geneset = None
 
     def sample_sets(self, release="v3"):
@@ -93,7 +100,7 @@ class Ag3:
 
     def _lookup_release(self, *, sample_set):
         # find which release this sample set was included in
-        for release in self.releases:
+        for release in self._releases:
             df_sample_sets = self.sample_sets(release=release)
             if sample_set in df_sample_sets["sample_set"].values:
                 return release
@@ -254,7 +261,7 @@ class Ag3:
             return self._cache_site_filters[key]
         except KeyError:
             path = f"{self.path}/v3/site_filters/{analysis}/{mask}/"
-            store = self.fs.get_mapper(path)
+            store = SafeStore(self.fs.get_mapper(path))
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
             return root
@@ -287,7 +294,7 @@ class Ag3:
     def _open_snp_sites(self):
         if self._cache_snp_sites is None:
             path = f"{self.path}/v3/snp_genotypes/all/sites/"
-            store = self.fs.get_mapper(path)
+            store = SafeStore(self.fs.get_mapper(path))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
@@ -342,7 +349,7 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self.path}/{release}/snp_genotypes/all/{sample_set}/"
-            store = self.fs.get_mapper(path)
+            store = SafeStore(self.fs.get_mapper(path))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
             return root
@@ -404,7 +411,7 @@ class Ag3:
     def _open_genome(self):
         if self._cache_genome is None:
             path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-            store = self.fs.get_mapper(path)
+            store = SafeStore(self.fs.get_mapper(path))
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
