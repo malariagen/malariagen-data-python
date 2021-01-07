@@ -34,7 +34,7 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, attributes=None, compression="gzip"):
+def read_gff3(buf, compression="gzip"):
 
     # read as dataframe
     df = pandas.read_csv(
@@ -49,8 +49,15 @@ def read_gff3(buf, attributes=None, compression="gzip"):
     # parse attributes
     df["attributes"] = df["attributes"].apply(gff3_parse_attributes)
 
-    # discover all attribute keys
-    if attributes is None:
+    return df
+
+
+def unpack_gff3_attributes(df, attributes):
+
+    df = df.copy()
+
+    if attributes == "*":
+        # discover all attribute keys
         attributes = set()
         for a in df["attributes"]:
             attributes.update(a.keys())

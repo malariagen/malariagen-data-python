@@ -3,7 +3,7 @@ from fsspec.core import url_to_fs
 import zarr
 import dask.array as da
 import numpy as np
-from .util import read_gff3
+from .util import read_gff3, unpack_gff3_attributes
 
 
 class Ag3:
@@ -52,6 +52,11 @@ class Ag3:
         self._cache_sample_sets = dict()
         self._cache_general_metadata = dict()
         self._cache_species_calls = dict()
+        self._cache_site_filters = dict()
+        self._cache_snp_sites = None
+        self._cache_snp_genotypes = dict()
+        self._genome = None
+        self._cache_geneset = None
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -243,6 +248,17 @@ class Ag3:
 
         return df
 
+    def _open_site_filters(self, *, mask, analysis):
+        key = mask, analysis
+        try:
+            return self._cache_site_filters[key]
+        except KeyError:
+            path = f"{self.path}/v3/site_filters/{analysis}/{mask}/"
+            store = self.fs.get_mapper(path)
+            root = zarr.open_consolidated(store=store)
+            self._cache_site_filters[key] = root
+            return root
+
     def site_filters(self, seq_id, mask, field="filter_pass", analysis="dt_20200416"):
         """Access SNP site filters.
 
@@ -263,14 +279,20 @@ class Ag3:
 
         """
 
-        path = f"{self.path}/v3/site_filters/{analysis}/{mask}/"
-        store = self.fs.get_mapper(path)
-        callset = zarr.open_consolidated(store=store)
-        z = callset[seq_id]["variants"][field]
+        root = self._open_site_filters(mask=mask, analysis=analysis)
+        z = root[seq_id]["variants"][field]
         d = da.from_array(z)
         return d
 
-    def snp_sites(self, seq_id, field, site_mask=None, site_filters="dt_20200416"):
+    def _open_snp_sites(self):
+        if self._cache_snp_sites is None:
+            path = f"{self.path}/v3/snp_genotypes/all/sites/"
+            store = self.fs.get_mapper(path)
+            root = zarr.open_consolidated(store=store)
+            self._cache_snp_sites = root
+        return self._cache_snp_sites
+
+    def snp_sites(self, seq_id, field=None, site_mask=None, site_filters="dt_20200416"):
         """Access SNP site data (positions and alleles).
 
         Parameters
@@ -290,10 +312,20 @@ class Ag3:
 
         """
 
-        path = f"{self.path}/v3/snp_genotypes/all/sites/"
-        store = self.fs.get_mapper(path)
-        callset = zarr.open_consolidated(store=store)
-        z = callset[seq_id]["variants"][field]
+        if field is None:
+            # return POS, REF, ALT
+            return tuple(
+                self.snp_sites(
+                    seq_id=seq_id,
+                    field=f,
+                    site_mask=site_mask,
+                    site_filters=site_filters,
+                )
+                for f in ("POS", "REF", "ALT")
+            )
+
+        root = self._open_snp_sites()
+        z = root[seq_id]["variants"][field]
         d = da.from_array(z)
 
         if site_mask is not None:
@@ -303,6 +335,17 @@ class Ag3:
             d = da.compress(filter_pass, d, axis=0)
 
         return d
+
+    def _open_snp_genotypes(self, *, sample_set):
+        try:
+            return self._cache_snp_genotypes[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self.path}/{release}/snp_genotypes/all/{sample_set}/"
+            store = self.fs.get_mapper(path)
+            root = zarr.open_consolidated(store=store)
+            self._cache_snp_genotypes[sample_set] = root
+            return root
 
     def snp_genotypes(
         self,
@@ -339,12 +382,8 @@ class Ag3:
 
         if isinstance(cohort, str):
             # single sample set
-            sample_set = cohort
-            release = self._lookup_release(sample_set=sample_set)
-            path = f"{self.path}/{release}/snp_genotypes/all/{sample_set}/"
-            store = self.fs.get_mapper(path)
-            callset = zarr.open_consolidated(store=store)
-            z = callset[seq_id]["calldata"][field]
+            root = self._open_snp_genotypes(sample_set=cohort)
+            z = root[seq_id]["calldata"][field]
             d = da.from_array(z)
 
         else:
@@ -362,6 +401,13 @@ class Ag3:
 
         return d
 
+    def _open_genome(self):
+        if self._cache_genome is None:
+            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
+            store = self.fs.get_mapper(path)
+            self._cache_genome = zarr.open_consolidated(store=store)
+        return self._cache_genome
+
     def genome_sequence(self, seq_id):
         """Access the reference genome sequence.
 
@@ -375,14 +421,19 @@ class Ag3:
         d : dask.array.Array
 
         """
-        path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-        store = self.fs.get_mapper(path)
-        root = zarr.open_consolidated(store=store)
-        z = root[seq_id]
+        genome = self._open_genome()
+        z = genome[seq_id]
         d = da.from_array(z)
         return d
 
-    def genome_features(self, attributes=None):
+    def _read_geneset(self):
+        if self._cache_geneset is None:
+            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+            with self.fs.open(path, mode="rb") as f:
+                self._cache_geneset = read_gff3(f, compression="gzip")
+        return self._cache_geneset
+
+    def geneset(self, attributes=("ID", "Parent", "Name")):
         """Access genome feature annotations (AgamP4.12).
 
         Parameters
@@ -396,9 +447,10 @@ class Ag3:
 
         """
 
-        path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
-        with self.fs.open(path, mode="rb") as f:
-            df = read_gff3(f, attributes=attributes, compression="gzip")
+        df = self._read_geneset()
+        if attributes is not None:
+            df = unpack_gff3_attributes(df, attributes=attributes)
+
         return df
 
     def is_accessible(self, seq_id, site_mask, site_filters="dt_20200416"):
