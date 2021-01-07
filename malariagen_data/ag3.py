@@ -10,15 +10,13 @@ public_releases = ("v3",)
 
 
 class Ag3:
-    """Provides access to data from Ag 3.x releases.
+    """Provides access to data from Ag 3 releases.
 
     Parameters
     ----------
     url : str
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud Storage,
         or a local path on your file system if data have been downloaded.
-    pre : bool
-        Include prereleases.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -35,13 +33,14 @@ class Ag3:
 
     """
 
-    def __init__(self, url, pre=False, **kwargs):
+    def __init__(self, url, **kwargs):
 
         # special case Google Cloud Storage, use anonymous access, avoids a delay
         if url.startswith("gs://") or url.startswith("gcs://"):
             kwargs.setdefault("token", "anon")
 
         # process the url using fsspec
+        pre = kwargs.pop("pre", False)
         fs, path = url_to_fs(url, **kwargs)
         self.fs = fs
         self.path = path
@@ -225,7 +224,7 @@ class Ag3:
         ----------
         cohort : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         species_calls : (str, str), optional
             Include species calls in metadata.
@@ -373,7 +372,7 @@ class Ag3:
             Chromosome arm, e.g., "3R".
         cohort : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
