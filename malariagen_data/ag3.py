@@ -448,7 +448,7 @@ class Ag3:
         Parameters
         ----------
         attributes : list of str, optional
-            Attribute keys to unpack into columns. If not provided, all attributes will be unpacked.
+            Attribute keys to unpack into columns. Provide "*" to unpack all attributes.
 
         Returns
         -------
