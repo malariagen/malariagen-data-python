@@ -87,7 +87,7 @@ class Ag3:
         except KeyError:
             path = f"{self.path}/{release}/manifest.tsv"
             with self.fs.open(path) as f:
-                df = pandas.read_csv(f, sep="\t")
+                df = pandas.read_csv(f, sep="\t", na_values="")
             df["release"] = release
             self._cache_sample_sets[release] = df
             return df
@@ -96,7 +96,7 @@ class Ag3:
     def v3_wild(self):
         return [
             x
-            for x in self.sample_sets(release="v3")["sample_set"].values
+            for x in self.sample_sets(release="v3")["sample_set"].tolist()
             if x != "AG1000G-X"
         ]
 
@@ -104,7 +104,7 @@ class Ag3:
         # find which release this sample set was included in
         for release in self._releases:
             df_sample_sets = self.sample_sets(release=release)
-            if sample_set in df_sample_sets["sample_set"].values:
+            if sample_set in df_sample_sets["sample_set"].tolist():
                 return release
         raise ValueError(f"No release found for sample set {sample_set!r}")
 
@@ -118,7 +118,7 @@ class Ag3:
                 f"{self.path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
             )
             with self.fs.open(path) as f:
-                df = pandas.read_csv(f)
+                df = pandas.read_csv(f, na_values="")
 
             # add a couple of columns for convenience
             df["sample_set"] = sample_set
@@ -139,24 +139,32 @@ class Ag3:
                 f"/{sample_set}/samples.species_{method}.csv"
             )
             with self.fs.open(path) as f:
-                df = pandas.read_csv(f)
+                df = pandas.read_csv(
+                    f,
+                    na_values="",
+                    # ensure correct dtype even where all values are missing
+                    dtype={
+                        "species_gambcolu_arabiensis": object,
+                        "species_gambiae_coluzzii": object,
+                    },
+                )
 
             # add a single species call column, for convenience
-            df["species"] = ""
-            loc = df["species_gambcolu_arabiensis"] == "arabiensis"
+            df["species"] = np.array([np.nan] * len(df), dtype=object)
+            loc = df["species_gambcolu_arabiensis"].values == "arabiensis"
             df.loc[loc, "species"] = "arabiensis"
-            loc = df["species_gambcolu_arabiensis"] == "intermediate"
+            loc = df["species_gambcolu_arabiensis"].values == "intermediate"
             df.loc[loc, "species"] = "intermediate_arabiensis_gambiae"
-            loc = (df["species_gambcolu_arabiensis"] == "gamb_colu") & (
-                df["species_gambiae_coluzzii"] == "gambiae"
+            loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
+                df["species_gambiae_coluzzii"].values == "gambiae"
             )
             df.loc[loc, "species"] = "gambiae"
-            loc = (df["species_gambcolu_arabiensis"] == "gamb_colu") & (
-                df["species_gambiae_coluzzii"] == "coluzzii"
+            loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
+                df["species_gambiae_coluzzii"].values == "coluzzii"
             )
             df.loc[loc, "species"] = "coluzzii"
-            loc = (df["species_gambcolu_arabiensis"] == "gamb_colu") & (
-                df["species_gambiae_coluzzii"] == "intermediate"
+            loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
+                df["species_gambiae_coluzzii"].values == "intermediate"
             )
             df.loc[loc, "species"] = "intermediate_gambiae_coluzzii"
 
