@@ -8,6 +8,15 @@ import numpy as np
 gcs_url = "gs://vo_agam_release/"
 
 
+expected_species = {
+    "gambiae",
+    "coluzzii",
+    "arabiensis",
+    "intermediate_arabiensis_gambiae",
+    "intermediate_gambiae_coluzzii",
+}
+
+
 def test_sample_sets():
 
     ag3 = Ag3(gcs_url)
@@ -83,14 +92,6 @@ def test_sample_metadata():
         "species",
     )
 
-    expected_species = {
-        "gambiae",
-        "coluzzii",
-        "arabiensis",
-        "intermediate_arabiensis_gambiae",
-        "intermediate_gambiae_coluzzii",
-    }
-
     # AIM species calls, included by default
     df_samples_aim = ag3.sample_metadata()
     assert expected_cols + aim_cols == tuple(df_samples_aim.columns)
@@ -115,7 +116,25 @@ def test_sample_metadata():
     df_samples_pca = ag3.sample_metadata(species_calls=("20200422", "pca"))
     assert expected_cols + pca_cols == tuple(df_samples_pca.columns)
     assert len(df_samples_v3_wild) == len(df_samples_pca)
-    assert expected_species == set(df_samples_pca["species"])
+    assert set() == set(df_samples_pca["species"]).difference(expected_species)
+
+
+def test_species_calls():
+
+    ag3 = Ag3(gcs_url)
+    sample_sets = ag3.sample_sets(release="v3")["sample_set"].tolist()
+
+    for s in sample_sets:
+        for method in "aim", "pca":
+            df_samples = ag3.sample_metadata(cohort=s, species_calls=None)
+            df_species = ag3.species_calls(cohort=s, method=method)
+            assert len(df_samples) == len(df_species)
+            if s == "AG1000G-X":
+                # no species calls
+                assert df_species["species"].isna().all()
+            else:
+                assert not df_species["species"].isna().any()
+                assert set() == set(df_species["species"]).difference(expected_species)
 
 
 def test_site_filters():
