@@ -317,7 +317,7 @@ class Ag3:
         seq_id : str
             Chromosome arm, e.g., "3R".
         field : {"POS", "REF", "ALT"}, optional
-            Array to access. If not provided, all three arrays will be returned as a tuple.
+            Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a tuple.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str
@@ -331,27 +331,26 @@ class Ag3:
 
         if field is None:
             # return POS, REF, ALT
-            return tuple(
-                self.snp_sites(
-                    seq_id=seq_id,
-                    field=f,
-                    site_mask=site_mask,
-                    site_filters=site_filters,
-                )
+            ret = tuple(
+                self.snp_sites(seq_id=seq_id, field=f, site_mask=None)
                 for f in ("POS", "REF", "ALT")
             )
 
-        root = self._open_snp_sites()
-        z = root[seq_id]["variants"][field]
-        d = da.from_array(z, chunks=z.chunks)
+        else:
+            root = self._open_snp_sites()
+            z = root[seq_id]["variants"][field]
+            ret = da.from_array(z, chunks=z.chunks)
 
         if site_mask is not None:
             filter_pass = self.site_filters(
                 seq_id=seq_id, mask=site_mask, analysis=site_filters
             ).compute()
-            d = da.compress(filter_pass, d, axis=0)
+            if isinstance(ret, tuple):
+                ret = tuple(da.compress(filter_pass, d, axis=0) for d in ret)
+            else:
+                ret = da.compress(filter_pass, ret, axis=0)
 
-        return d
+        return ret
 
     def _open_snp_genotypes(self, *, sample_set):
         try:
