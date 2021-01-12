@@ -177,6 +177,10 @@ def test_snp_sites():
     assert 1 == pos_pass.ndim
     assert "i4" == pos_pass.dtype
     assert np.count_nonzero(filter_pass) == pos_pass.shape[0]
+    pos_pass, ref_pass, alt_pass = ag3.snp_sites(seq_id="X", site_mask="gamb_colu_arab")
+    for d in pos_pass, ref_pass, alt_pass:
+        assert isinstance(d, da.Array)
+        assert np.count_nonzero(filter_pass) == d.shape[0]
 
 
 def test_snp_genotypes():
