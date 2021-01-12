@@ -298,7 +298,7 @@ class Ag3:
 
         root = self._open_site_filters(mask=mask, analysis=analysis)
         z = root[seq_id]["variants"][field]
-        d = da.from_array(z)
+        d = da.from_array(z, chunks=z.chunks)
         return d
 
     def _open_snp_sites(self):
@@ -343,7 +343,7 @@ class Ag3:
 
         root = self._open_snp_sites()
         z = root[seq_id]["variants"][field]
-        d = da.from_array(z)
+        d = da.from_array(z, chunks=z.chunks)
 
         if site_mask is not None:
             filter_pass = self.site_filters(
@@ -401,7 +401,7 @@ class Ag3:
             # single sample set
             root = self._open_snp_genotypes(sample_set=cohort)
             z = root[seq_id]["calldata"][field]
-            d = da.from_array(z)
+            d = da.from_array(z, chunks=z.chunks)
 
         else:
             # concatenate multiple sample sets
@@ -440,7 +440,7 @@ class Ag3:
         """
         genome = self._open_genome()
         z = genome[seq_id]
-        d = da.from_array(z)
+        d = da.from_array(z, chunks=z.chunks)
         return d
 
     def _read_geneset(self):
