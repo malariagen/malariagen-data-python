@@ -73,7 +73,6 @@ def unpack_gff3_attributes(df, attributes):
 
 
 class SafeStore(Mapping):
-
     def __init__(self, store):
         self.store = store
 

@@ -51,13 +51,13 @@ def test_sample_metadata():
     )
 
     # all v3
-    df_samples_v3 = ag3.sample_metadata(cohort="v3", species_calls=None)
+    df_samples_v3 = ag3.sample_metadata(sample_sets="v3", species_calls=None)
     assert expected_cols == tuple(df_samples_v3.columns)
     expected_len = df_sample_sets_v3["sample_count"].sum()
     assert expected_len == len(df_samples_v3)
 
     # v3_wild
-    df_samples_v3_wild = ag3.sample_metadata(cohort="v3_wild", species_calls=None)
+    df_samples_v3_wild = ag3.sample_metadata(sample_sets="v3_wild", species_calls=None)
     assert expected_cols == tuple(df_samples_v3_wild.columns)
     expected_len = df_sample_sets_v3.query("sample_set != 'AG1000G-X'")[
         "sample_count"
@@ -65,7 +65,7 @@ def test_sample_metadata():
     assert expected_len == len(df_samples_v3_wild)
 
     # single sample set
-    df_samples_x = ag3.sample_metadata(cohort="AG1000G-X", species_calls=None)
+    df_samples_x = ag3.sample_metadata(sample_sets="AG1000G-X", species_calls=None)
     assert expected_cols == tuple(df_samples_x.columns)
     expected_len = df_sample_sets_v3.query("sample_set == 'AG1000G-X'")[
         "sample_count"
@@ -73,11 +73,11 @@ def test_sample_metadata():
     assert expected_len == len(df_samples_x)
 
     # multiple sample sets
-    cohort = ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"]
-    df_samples_bf = ag3.sample_metadata(cohort=cohort, species_calls=None)
+    sample_sets = ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"]
+    df_samples_bf = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
     assert expected_cols == tuple(df_samples_bf)
-    loc_cohort = df_sample_sets_v3["sample_set"].isin(cohort)
-    expected_len = df_sample_sets_v3.loc[loc_cohort]["sample_count"].sum()
+    loc_sample_sets = df_sample_sets_v3["sample_set"].isin(sample_sets)
+    expected_len = df_sample_sets_v3.loc[loc_sample_sets]["sample_count"].sum()
     assert expected_len == len(df_samples_bf)
 
     # default is v3_wild
@@ -126,8 +126,8 @@ def test_species_calls():
 
     for s in sample_sets:
         for method in "aim", "pca":
-            df_samples = ag3.sample_metadata(cohort=s, species_calls=None)
-            df_species = ag3.species_calls(cohort=s, method=method)
+            df_samples = ag3.sample_metadata(sample_sets=s, species_calls=None)
+            df_species = ag3.species_calls(sample_sets=s, method=method)
             assert len(df_samples) == len(df_species)
             if s == "AG1000G-X":
                 # no species calls
@@ -185,7 +185,7 @@ def test_snp_sites():
 
 def test_snp_genotypes():
 
-    cohorts = (
+    sample_setss = (
         "v3",
         "v3_wild",
         "AG1000G-X",
@@ -193,10 +193,10 @@ def test_snp_genotypes():
     )
 
     ag3 = Ag3(gcs_url)
-    for cohort in cohorts:
-        df_samples = ag3.sample_metadata(cohort=cohort, species_calls=None)
+    for sample_sets in sample_setss:
+        df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
         for seq_id in "2R", "2L", "3R", "3L", "X":
-            gt = ag3.snp_genotypes(seq_id=seq_id, cohort=cohort)
+            gt = ag3.snp_genotypes(seq_id=seq_id, sample_sets=sample_sets)
             assert isinstance(gt, da.Array)
             assert 3 == gt.ndim
             assert "i1" == gt.dtype
