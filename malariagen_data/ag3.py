@@ -171,27 +171,27 @@ class Ag3:
             self._cache_species_calls[key] = df
             return df
 
-    def _prep_cohort(self, *, cohort):
-        if cohort == "v3_wild":
+    def _prep_sample_sets_arg(self, *, sample_sets):
+        if sample_sets == "v3_wild":
             # convenience, special case to exclude crosses
-            cohort = self.v3_wild
+            sample_sets = self.v3_wild
 
-        elif isinstance(cohort, str) and cohort.startswith("v3"):
+        elif isinstance(sample_sets, str) and sample_sets.startswith("v3"):
             # convenience, can use a release identifier to denote all sample sets
             # in a release
-            cohort = self.sample_sets(release=cohort)["sample_set"].tolist()
+            sample_sets = self.sample_sets(release=sample_sets)["sample_set"].tolist()
 
-        if not isinstance(cohort, (str, list, tuple)):
-            raise TypeError(f"Invalid cohort: {cohort!r}")
+        if not isinstance(sample_sets, (str, list, tuple)):
+            raise TypeError(f"Invalid sample_sets: {sample_sets!r}")
 
-        return cohort
+        return sample_sets
 
-    def species_calls(self, cohort="v3_wild", analysis="20200422", method="aim"):
+    def species_calls(self, sample_sets="v3_wild", analysis="20200422", method="aim"):
         """Access species calls for one or more sample sets.
 
         Parameters
         ----------
-        cohort : str or list of str
+        sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -207,30 +207,30 @@ class Ag3:
 
         """
 
-        cohort = self._prep_cohort(cohort=cohort)
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(cohort, str):
+        if isinstance(sample_sets, str):
             # assume single sample set
             df = self._read_species_calls(
-                sample_set=cohort, analysis=analysis, method=method
+                sample_set=sample_sets, analysis=analysis, method=method
             )
 
         else:
             # concatenate multiple sample sets
             dfs = [
-                self.species_calls(cohort=c, analysis=analysis, method=method)
-                for c in cohort
+                self.species_calls(sample_sets=c, analysis=analysis, method=method)
+                for c in sample_sets
             ]
             df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
 
         return df
 
-    def sample_metadata(self, cohort="v3_wild", species_calls=("20200422", "aim")):
+    def sample_metadata(self, sample_sets="v3_wild", species_calls=("20200422", "aim")):
         """Access sample metadata for one or more sample sets.
 
         Parameters
         ----------
-        cohort : str or list of str
+        sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -243,23 +243,23 @@ class Ag3:
 
         """
 
-        cohort = self._prep_cohort(cohort=cohort)
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(cohort, str):
+        if isinstance(sample_sets, str):
             # assume single sample set
-            df = self._read_general_metadata(sample_set=cohort)
+            df = self._read_general_metadata(sample_set=sample_sets)
             if species_calls is not None:
                 analysis, method = species_calls
                 df_species = self._read_species_calls(
-                    sample_set=cohort, analysis=analysis, method=method
+                    sample_set=sample_sets, analysis=analysis, method=method
                 )
                 df = df.merge(df_species, on="sample_id", sort=False)
 
         else:
             # concatenate multiple sample sets
             dfs = [
-                self.sample_metadata(cohort=c, species_calls=species_calls)
-                for c in cohort
+                self.sample_metadata(sample_sets=c, species_calls=species_calls)
+                for c in sample_sets
             ]
             df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
 
@@ -366,7 +366,7 @@ class Ag3:
     def snp_genotypes(
         self,
         seq_id,
-        cohort="v3_wild",
+        sample_sets="v3_wild",
         field="GT",
         site_mask=None,
         site_filters="dt_20200416",
@@ -377,7 +377,7 @@ class Ag3:
         ----------
         seq_id : str
             Chromosome arm, e.g., "3R".
-        cohort : str or list of str
+        sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -394,18 +394,19 @@ class Ag3:
 
         """
 
-        cohort = self._prep_cohort(cohort=cohort)
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(cohort, str):
+        if isinstance(sample_sets, str):
             # single sample set
-            root = self._open_snp_genotypes(sample_set=cohort)
+            root = self._open_snp_genotypes(sample_set=sample_sets)
             z = root[seq_id]["calldata"][field]
             d = da.from_array(z, chunks=z.chunks)
 
         else:
             # concatenate multiple sample sets
             ds = [
-                self.snp_genotypes(seq_id=seq_id, cohort=c, field=field) for c in cohort
+                self.snp_genotypes(seq_id=seq_id, sample_sets=c, field=field)
+                for c in sample_sets
             ]
             d = da.concatenate(ds, axis=1)
 
