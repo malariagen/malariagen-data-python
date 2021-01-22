@@ -276,12 +276,12 @@ class Ag3:
             self._cache_site_filters[key] = root
             return root
 
-    def site_filters(self, seq_id, mask, field="filter_pass", analysis="dt_20200416"):
+    def site_filters(self, contig, mask, field="filter_pass", analysis="dt_20200416"):
         """Access SNP site filters.
 
         Parameters
         ----------
-        seq_id : str
+        contig : str
             Chromosome arm, e.g., "3R".
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
@@ -297,7 +297,7 @@ class Ag3:
         """
 
         root = self._open_site_filters(mask=mask, analysis=analysis)
-        z = root[seq_id]["variants"][field]
+        z = root[contig]["variants"][field]
         d = da.from_array(z, chunks=z.chunks)
         return d
 
@@ -309,12 +309,12 @@ class Ag3:
             self._cache_snp_sites = root
         return self._cache_snp_sites
 
-    def snp_sites(self, seq_id, field=None, site_mask=None, site_filters="dt_20200416"):
+    def snp_sites(self, contig, field=None, site_mask=None, site_filters="dt_20200416"):
         """Access SNP site data (positions and alleles).
 
         Parameters
         ----------
-        seq_id : str
+        contig : str
             Chromosome arm, e.g., "3R".
         field : {"POS", "REF", "ALT"}, optional
             Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a tuple.
@@ -332,18 +332,18 @@ class Ag3:
         if field is None:
             # return POS, REF, ALT
             ret = tuple(
-                self.snp_sites(seq_id=seq_id, field=f, site_mask=None)
+                self.snp_sites(contig=contig, field=f, site_mask=None)
                 for f in ("POS", "REF", "ALT")
             )
 
         else:
             root = self._open_snp_sites()
-            z = root[seq_id]["variants"][field]
+            z = root[contig]["variants"][field]
             ret = da.from_array(z, chunks=z.chunks)
 
         if site_mask is not None:
             filter_pass = self.site_filters(
-                seq_id=seq_id, mask=site_mask, analysis=site_filters
+                contig=contig, mask=site_mask, analysis=site_filters
             ).compute()
             if isinstance(ret, tuple):
                 ret = tuple(da.compress(filter_pass, d, axis=0) for d in ret)
@@ -365,7 +365,7 @@ class Ag3:
 
     def snp_genotypes(
         self,
-        seq_id,
+        contig,
         sample_sets="v3_wild",
         field="GT",
         site_mask=None,
@@ -375,7 +375,7 @@ class Ag3:
 
         Parameters
         ----------
-        seq_id : str
+        contig : str
             Chromosome arm, e.g., "3R".
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
@@ -399,20 +399,20 @@ class Ag3:
         if isinstance(sample_sets, str):
             # single sample set
             root = self._open_snp_genotypes(sample_set=sample_sets)
-            z = root[seq_id]["calldata"][field]
+            z = root[contig]["calldata"][field]
             d = da.from_array(z, chunks=z.chunks)
 
         else:
             # concatenate multiple sample sets
             ds = [
-                self.snp_genotypes(seq_id=seq_id, sample_sets=c, field=field)
+                self.snp_genotypes(contig=contig, sample_sets=c, field=field)
                 for c in sample_sets
             ]
             d = da.concatenate(ds, axis=1)
 
         if site_mask is not None:
             filter_pass = self.site_filters(
-                seq_id=seq_id, mask=site_mask, analysis=site_filters
+                contig=contig, mask=site_mask, analysis=site_filters
             ).compute()
             d = da.compress(filter_pass, d, axis=0)
 
@@ -425,12 +425,12 @@ class Ag3:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def genome_sequence(self, seq_id):
+    def genome_sequence(self, contig):
         """Access the reference genome sequence.
 
         Parameters
         ----------
-        seq_id : str
+        contig : str
             Chromosome arm, e.g., "3R".
 
         Returns
@@ -439,7 +439,7 @@ class Ag3:
 
         """
         genome = self._open_genome()
-        z = genome[seq_id]
+        z = genome[contig]
         d = da.from_array(z, chunks=z.chunks)
         return d
 
@@ -470,12 +470,12 @@ class Ag3:
 
         return df
 
-    def is_accessible(self, seq_id, site_mask, site_filters="dt_20200416"):
+    def is_accessible(self, contig, site_mask, site_filters="dt_20200416"):
         """Compute genome accessibility array.
 
         Parameters
         ----------
-        seq_id : str
+        contig : str
             Chromosome arm, e.g., "3R".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
@@ -489,17 +489,17 @@ class Ag3:
         """
 
         # determine contig sequence length
-        seq_length = self.genome_sequence(seq_id).shape[0]
+        seq_length = self.genome_sequence(contig).shape[0]
 
         # setup output
         is_accessible = np.zeros(seq_length, dtype=bool)
 
         # access positions
-        pos = self.snp_sites(seq_id, field="POS").compute()
+        pos = self.snp_sites(contig, field="POS").compute()
 
         # access site filters
         filter_pass = self.site_filters(
-            seq_id, mask=site_mask, analysis=site_filters
+            contig, mask=site_mask, analysis=site_filters
         ).compute()
 
         # assign values from site filters
