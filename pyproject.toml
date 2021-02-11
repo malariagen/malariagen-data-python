@@ -12,9 +12,15 @@ zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
+petl = "*"
+petlx = "*"
+BioPython = "*"
+pyfasta = "*"
+intervaltree = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
+notebook = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

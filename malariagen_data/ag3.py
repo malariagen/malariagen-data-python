@@ -506,3 +506,29 @@ class Ag3:
         is_accessible[pos - 1] = filter_pass
 
         return is_accessible
+
+    def snp_effects(self, transcript):
+        # TODO
+
+        # find contig, start, end of given transcript
+
+        # load the pos, ref, alt arrays for the region of the transcript,
+        # using the self.snp_sites(...), followed by some use of
+        # allel.SortedIndex to slice to the desired region
+        # contig  # str
+        # pos  # numpy array
+        # ref  # numpy array
+        # alt  # numpy array
+
+        # build an initial dataframe with contig, pos, ref, alt columns
+        # N.B., need to "melt" so that you have one row per position per alt
+        # allele
+        # df_effects # pandas dataframe
+
+        # then, iterate over rows of the dataframe, calling get_effects()
+        # for each row, and using that to build additional columns effect,
+        # impact, etc.
+        # df_effects # pandas dataframe with additional columns
+
+        # return df_effects
+        pass
