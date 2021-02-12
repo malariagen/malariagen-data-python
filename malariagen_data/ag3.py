@@ -43,6 +43,9 @@ class Ag3:
         pre = kwargs.pop("pre", False)
         fs, path = url_to_fs(url, **kwargs)
         self.fs = fs
+        # path compatibility, fsspec/gcsfs behaviour varies between version
+        while path.endswith("/"):
+            path = path[:-1]
         self.path = path
 
         # discover which releases are available
