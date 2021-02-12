@@ -510,6 +510,10 @@ class Ag3:
     def snp_effects(self, transcript):
         # TODO
 
+        #this is working at the gene level we want the specific transcript's start and end points
+        gff_df = self.geneset()
+        se = gff_df.loc[gff_df.ID == transcript, ["seqid", "start", "end", "Name"]]
+        print(f"length of gene: {se.end.item() - se.start.item()} bp")
         # find contig, start, end of given transcript
 
         # load the pos, ref, alt arrays for the region of the transcript,
@@ -531,4 +535,5 @@ class Ag3:
         # df_effects # pandas dataframe with additional columns
 
         # return df_effects
+        print('witty quips')
         pass
