@@ -29,6 +29,12 @@ def test_sample_sets():
     df_default = ag3.sample_sets()
     assert_frame_equal(df_sample_sets_v3, df_default)
 
+    # try without trailing slash
+    ag3 = Ag3(gcs_url[:-1])
+    df_sample_sets_v3 = ag3.sample_sets(release="v3")
+    assert isinstance(df_sample_sets_v3, pandas.DataFrame)
+    assert 28 == len(df_sample_sets_v3)
+
 
 def test_sample_metadata():
 
