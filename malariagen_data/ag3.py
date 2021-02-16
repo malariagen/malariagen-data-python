@@ -421,7 +421,14 @@ class Ag3:
 
         return d
 
-    def _open_genome(self):
+    def open_genome(self):
+        """Open the reference genome.
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         if self._cache_genome is None:
             path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
             store = SafeStore(self.fs.get_mapper(path))
@@ -441,7 +448,7 @@ class Ag3:
         d : dask.array.Array
 
         """
-        genome = self._open_genome()
+        genome = self.open_genome()
         z = genome[contig]
         d = da.from_array(z, chunks=z.chunks)
         return d
