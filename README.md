@@ -54,5 +54,5 @@ $ poetry publish
 
 ### Next release (TODO)
 
-* Make public the `Ag3.open_genome()` method; add tests for the `Ag3.genome_sequence()` method.
+* Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
 * Add the `Ag3.cross_metadata()` method.
