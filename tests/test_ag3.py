@@ -3,6 +3,7 @@ import pandas
 from pandas.testing import assert_frame_equal
 import dask.array as da
 import numpy as np
+import zarr
 
 
 gcs_url = "gs://vo_agam_release/"
@@ -236,3 +237,21 @@ def test_snp_genotypes():
     assert np.count_nonzero(filter_pass) == gt_pass.shape[0]
     assert len(df_samples) == gt_pass.shape[1]
     assert 2 == gt_pass.shape[2]
+
+
+def test_genome():
+
+    ag3 = Ag3(gcs_url)
+
+    # test the open_genome() method to access as zarr
+    genome = ag3.open_genome()
+    assert isinstance(genome, zarr.hierarchy.Group)
+    for contig in "2R", "2L", "3R", "3L", "X":
+        assert contig in genome
+        assert "S1" == genome[contig].dtype
+
+    # test the genome_sequence() method to access sequences
+    for contig in "2R", "2L", "3R", "3L", "X":
+        seq = ag3.genome_sequence(contig)
+        assert isinstance(seq, da.Array)
+        assert "S1" == seq.dtype

@@ -49,3 +49,9 @@ $ poetry version prerelease
 $ poetry build
 $ poetry publish
 ```
+
+## Release notes
+
+### Next release (TODO)
+
+* Make public the `Ag3.open_genome()` method; add tests for the `Ag3.genome_sequence()` method.
