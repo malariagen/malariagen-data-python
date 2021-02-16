@@ -66,6 +66,7 @@ class Ag3:
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
         self._cache_geneset = None
+        self._cache_cross_metadata = None
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -516,3 +517,41 @@ class Ag3:
         is_accessible[pos - 1] = filter_pass
 
         return is_accessible
+
+    def cross_metadata(self):
+        """TODO"""
+
+        if self._cache_cross_metadata is None:
+
+            path = f"{self.path}/v3/metadata/crosses/crosses.fam"
+            fam_names = [
+                "cross",
+                "sample_id",
+                "father_id",
+                "mother_id",
+                "sex",
+                "phenotype",
+            ]
+            with self.fs.open(path) as f:
+                df = pandas.read_csv(
+                    f,
+                    sep="\t",
+                    na_values=["", "0"],
+                    names=fam_names,
+                    dtype={"sex": str},
+                )
+
+            # convert "sex" column for consistency with sample metadata
+            df.loc[df["sex"] == "1", "sex"] = "M"
+            df.loc[df["sex"] == "2", "sex"] = "F"
+
+            # add a "role" column for convenience
+            df["role"] = "progeny"
+            df.loc[df["mother_id"].isna(), "role"] = "parent"
+
+            # drop "phenotype" column, not used
+            df.drop("phenotype", axis="columns", inplace=True)
+
+            self._cache_cross_metadata = df
+
+        return self._cache_cross_metadata

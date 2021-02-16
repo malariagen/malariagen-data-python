@@ -255,3 +255,22 @@ def test_genome():
         seq = ag3.genome_sequence(contig)
         assert isinstance(seq, da.Array)
         assert "S1" == seq.dtype
+
+
+def test_cross_metadata():
+
+    ag3 = Ag3(gcs_url)
+    df_crosses = ag3.cross_metadata()
+    assert isinstance(df_crosses, pandas.DataFrame)
+    expected_cols = ["cross", "sample_id", "father_id", "mother_id", "sex", "role"]
+    assert expected_cols == df_crosses.columns.tolist()
+
+    # check samples are in AG1000G-X
+    df_samples = ag3.sample_metadata(sample_sets="AG1000G-X", species_calls=None)
+    assert set(df_samples["sample_id"]) == set(df_crosses["sample_id"])
+
+    # check values
+    expected_role_values = ["parent", "progeny"]
+    assert expected_role_values == df_crosses["role"].unique().tolist()
+    expected_sex_values = ["F", "M"]
+    assert expected_sex_values == df_crosses["sex"].unique().tolist()
