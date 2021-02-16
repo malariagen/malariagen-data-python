@@ -18,6 +18,9 @@ expected_species = {
 }
 
 
+contigs = "2R", "2L", "3R", "3L", "X"
+
+
 def test_sample_sets():
 
     ag3 = Ag3(gcs_url)
@@ -147,8 +150,17 @@ def test_species_calls():
 def test_site_filters():
 
     ag3 = Ag3(gcs_url)
+
     for mask in "gamb_colu_arab", "gamb_colu", "arab":
-        for contig in "2R", "2L", "3R", "3L", "X":
+
+        # check can open the zarr directly
+        root = ag3.open_site_filters(mask=mask)
+        assert isinstance(root, zarr.hierarchy.Group)
+        for contig in contigs:
+            assert contig in root
+
+        # check access as dask array
+        for contig in contigs:
             filter_pass = ag3.site_filters(contig=contig, mask=mask)
             assert isinstance(filter_pass, da.Array)
             assert 1 == filter_pass.ndim
@@ -158,7 +170,15 @@ def test_site_filters():
 def test_snp_sites():
 
     ag3 = Ag3(gcs_url)
-    for contig in "2R", "2L", "3R", "3L", "X":
+
+    # check can open the zarr directly
+    root = ag3.open_snp_sites()
+    assert isinstance(root, zarr.hierarchy.Group)
+    for contig in contigs:
+        assert contig in root
+
+    # check access as dask arrays
+    for contig in contigs:
         pos, ref, alt = ag3.snp_sites(contig=contig)
         assert isinstance(pos, da.Array)
         assert 1 == pos.ndim
@@ -192,6 +212,15 @@ def test_snp_sites():
 
 def test_snp_genotypes():
 
+    ag3 = Ag3(gcs_url)
+
+    # check can open the zarr directly
+    root = ag3.open_snp_genotypes(sample_set="AG1000G-AO")
+    assert isinstance(root, zarr.hierarchy.Group)
+    for contig in contigs:
+        assert contig in root
+
+    # check access as dask arrays
     sample_setss = (
         "v3",
         "v3_wild",
@@ -199,10 +228,9 @@ def test_snp_genotypes():
         ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"],
     )
 
-    ag3 = Ag3(gcs_url)
     for sample_sets in sample_setss:
         df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
-        for contig in "2R", "2L", "3R", "3L", "X":
+        for contig in contigs:
             gt = ag3.snp_genotypes(contig=contig, sample_sets=sample_sets)
             assert isinstance(gt, da.Array)
             assert 3 == gt.ndim
@@ -246,12 +274,12 @@ def test_genome():
     # test the open_genome() method to access as zarr
     genome = ag3.open_genome()
     assert isinstance(genome, zarr.hierarchy.Group)
-    for contig in "2R", "2L", "3R", "3L", "X":
+    for contig in contigs:
         assert contig in genome
         assert "S1" == genome[contig].dtype
 
     # test the genome_sequence() method to access sequences
-    for contig in "2R", "2L", "3R", "3L", "X":
+    for contig in contigs:
         seq = ag3.genome_sequence(contig)
         assert isinstance(seq, da.Array)
         assert "S1" == seq.dtype

@@ -269,7 +269,21 @@ class Ag3:
 
         return df
 
-    def _open_site_filters(self, *, mask, analysis):
+    def open_site_filters(self, mask, analysis="dt_20200416"):
+        """Open site filters zarr.
+
+        Parameters
+        ----------
+        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Mask to use.
+        analysis : str, optional
+            Site filters analysis version.
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         key = mask, analysis
         try:
             return self._cache_site_filters[key]
@@ -300,12 +314,19 @@ class Ag3:
 
         """
 
-        root = self._open_site_filters(mask=mask, analysis=analysis)
+        root = self.open_site_filters(mask=mask, analysis=analysis)
         z = root[contig]["variants"][field]
         d = da.from_array(z, chunks=z.chunks)
         return d
 
-    def _open_snp_sites(self):
+    def open_snp_sites(self):
+        """Open SNP sites zarr.
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         if self._cache_snp_sites is None:
             path = f"{self.path}/v3/snp_genotypes/all/sites/"
             store = SafeStore(self.fs.get_mapper(path))
@@ -341,7 +362,7 @@ class Ag3:
             )
 
         else:
-            root = self._open_snp_sites()
+            root = self.open_snp_sites()
             z = root[contig]["variants"][field]
             ret = da.from_array(z, chunks=z.chunks)
 
@@ -356,7 +377,18 @@ class Ag3:
 
         return ret
 
-    def _open_snp_genotypes(self, *, sample_set):
+    def open_snp_genotypes(self, sample_set):
+        """Open SNP genotypes zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         try:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
@@ -402,7 +434,7 @@ class Ag3:
 
         if isinstance(sample_sets, str):
             # single sample set
-            root = self._open_snp_genotypes(sample_set=sample_sets)
+            root = self.open_snp_genotypes(sample_set=sample_sets)
             z = root[contig]["calldata"][field]
             d = da.from_array(z, chunks=z.chunks)
 
@@ -423,7 +455,7 @@ class Ag3:
         return d
 
     def open_genome(self):
-        """Open the reference genome.
+        """Open the reference genome zarr.
 
         Returns
         -------
