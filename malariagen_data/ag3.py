@@ -4,7 +4,7 @@ import zarr
 import dask.array as da
 import numpy as np
 from .util import read_gff3, unpack_gff3_attributes, SafeStore
-
+import veff
 
 public_releases = ("v3",)
 
@@ -507,13 +507,20 @@ class Ag3:
 
         return is_accessible
 
-    def snp_effects(self, transcript):
+    def snp_effects(self, transcript, contig):
         # TODO
+        ann = veff.Annotator(
+            #need to turn contig into string if we do this
+            genome = self.genome_sequence(contig),
+            gff3_path="gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz",
+        )
+        feat = ann.get_feature(transcript)
+        print(feat)
 
         #this is working at the gene level we want the specific transcript's start and end points
-        gff_df = self.geneset()
-        se = gff_df.loc[gff_df.ID == transcript, ["seqid", "start", "end", "Name"]]
-        print(f"length of gene: {se.end.item() - se.start.item()} bp")
+        #gff_df = self.geneset()
+        #se = gff_df.loc[gff_df.ID == transcript, ["seqid", "start", "end", "Name"]]
+        #print(f"length of gene: {se.end.item() - se.start.item()} bp")
         # find contig, start, end of given transcript
 
         # load the pos, ref, alt arrays for the region of the transcript,
@@ -535,5 +542,5 @@ class Ag3:
         # df_effects # pandas dataframe with additional columns
 
         # return df_effects
-        print('witty quips')
+        print('witty chips')
         pass
