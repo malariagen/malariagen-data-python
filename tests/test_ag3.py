@@ -4,6 +4,7 @@ from pandas.testing import assert_frame_equal
 import dask.array as da
 import numpy as np
 import zarr
+import xarray
 
 
 gcs_url = "gs://vo_agam_release/"
@@ -374,3 +375,21 @@ def test_site_annotations():
                 assert isinstance(d, da.Array)
                 assert 1 == d.ndim
                 assert pos.shape == d.shape
+
+
+def test_snp_dataset():
+
+    ag3 = Ag3(gcs_url)
+
+    ds = ag3.snp_dataset(contig="3L")
+    assert isinstance(ds, xarray.Dataset)
+    expected_fields = [
+        "variant_contig",
+        "variant_position",
+        "variant_allele",
+        "sample_id",
+        "call_genotype",
+        "call_genotype_mask",
+    ]
+    for f in expected_fields:
+        assert f in ds
