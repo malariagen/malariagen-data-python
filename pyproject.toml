@@ -17,6 +17,7 @@ petlx = "*"
 BioPython = "*"
 pyfasta = "*"
 intervaltree = "*"
+scikit-allel = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

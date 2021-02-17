@@ -6,6 +6,7 @@ import dask.array as da
 import numpy as np
 from .util import read_gff3, unpack_gff3_attributes, SafeStore
 from . import veff
+import allel
 
 
 public_releases = ("v3",)
@@ -522,31 +523,38 @@ class Ag3:
 
         return is_accessible
 
-    def snp_effects(self, transcript):
+    def snp_effects(self, transcript, site_mask):
         # TODO
 
+        #take an AGAP transcript ID and get meta data from the gff using veff
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self._open_genome(),
                 gff3_path=_path_to_url(self._fs, self._path, gff3_path),
             )
+
         ann = self._cache_annotator
-        feat = ann.get_feature(transcript)
-        print(feat)
+        feature = ann.get_feature(transcript)
+        contig = feature[0]
+        start = feature[3]
+        stop = feature[4]
+        strand = feature[6]
 
-        # this is working at the gene level we want the specific transcript's start and end points
-        # gff_df = self.geneset()
-        # se = gff_df.loc[gff_df.ID == transcript, ["seqid", "start", "end", "Name"]]
-        # print(f"length of gene: {se.end.item() - se.start.item()} bp")
-        # find contig, start, end of given transcript
+        print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
+              f'\nstrand : {strand}')
 
-        # load the pos, ref, alt arrays for the region of the transcript,
-        # using the self.snp_sites(...), followed by some use of
-        # allel.SortedIndex to slice to the desired region
-        # contig  # str
-        # pos  # numpy array
-        # ref  # numpy array
-        # alt  # numpy array
+        sites = self.snp_sites(contig=contig, site_mask=site_mask)
+
+        #sites are dask arrays, turn pos into sorted index
+        pos = allel.SortedIndex(sites[0].compute())
+        ref = sites[1].compute()
+        alt = sites[2].compute()
+
+        loc = pos.locate_range(start, stop)
+        npos = np.asarray(pos[loc])
+        nref = np.asarray(ref[loc])
+        nalt = np.asarray(alt[loc])
+
 
         # build an initial dataframe with contig, pos, ref, alt columns
         # N.B., need to "melt" so that you have one row per position per alt
@@ -559,5 +567,4 @@ class Ag3:
         # df_effects # pandas dataframe with additional columns
 
         # return df_effects
-        print("witty chips")
-        pass
+        return sites
