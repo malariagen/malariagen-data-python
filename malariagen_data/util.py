@@ -1,3 +1,4 @@
+from enum import Enum
 from urllib.parse import unquote_plus
 import pandas
 import numpy as np
@@ -91,3 +92,16 @@ class SafeStore(Mapping):
 
     def __len__(self):
         return len(self.store)
+
+
+class SiteClass(Enum):
+    UPSTREAM = 1
+    DOWNSTREAM = 2
+    UTR5 = 3
+    UTR3 = 4
+    CDS_FIRST = 5
+    CDS_MID = 6
+    CDS_LAST = 7
+    INTRON_FIRST = 8
+    INTRON_MID = 9
+    INTRON_LAST = 10
