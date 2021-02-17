@@ -67,6 +67,7 @@ class Ag3:
         self._cache_genome = None
         self._cache_geneset = dict()
         self._cache_cross_metadata = None
+        self._cache_site_annotations = None
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -597,3 +598,47 @@ class Ag3:
             self._cache_cross_metadata = df
 
         return self._cache_cross_metadata
+
+    def open_site_annotations(self):
+        if self._cache_site_annotations is None:
+            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
+            self._cache_site_annotations = zarr.open_consolidated(
+                self.fs.get_mapper(path)
+            )
+        return self._cache_site_annotations
+
+    def site_annotations(
+        self, contig, field, site_mask=None, site_filters="dt_20200416"
+    ):
+        """Load site annotations.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        field : str
+            One of "codon_degeneracy", "codon_nonsyn", "codon_position", "seq_cls",
+            "seq_flen", "seq_relpos_start", "seq_relpos_stop".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str
+            Site filters analysis version.
+
+        Returns
+        -------
+        d : dask.Array
+
+        """
+
+        # access the array of values for all genome positions
+        root = self.open_site_annotations()
+        z = root[field][contig]
+        d = da.from_array(z, chunks=z.chunks)
+
+        # access and subset to SNP positions
+        pos = self.snp_sites(
+            contig=contig, field="POS", site_mask=site_mask, site_filters=site_filters
+        ).compute()
+        d = da.take(d, pos - 1)
+
+        return d
