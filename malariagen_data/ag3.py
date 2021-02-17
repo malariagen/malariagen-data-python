@@ -3,10 +3,14 @@ from fsspec.core import url_to_fs
 import zarr
 import dask.array as da
 import numpy as np
+import xarray
 from .util import read_gff3, unpack_gff3_attributes, SafeStore
 
 
-public_releases = ("v3",)
+DIM_VARIANT = "variants"
+DIM_ALLELE = "alleles"
+DIM_SAMPLE = "samples"
+DIM_PLOIDY = "ploidy"
 
 
 class Ag3:
@@ -33,6 +37,9 @@ class Ag3:
 
     """
 
+    public_releases = ("v3",)
+    contigs = ("2R", "2L", "3R", "3L", "X")
+
     def __init__(self, url, **kwargs):
 
         # special case Google Cloud Storage, use anonymous access, avoids a delay
@@ -52,7 +59,7 @@ class Ag3:
         sub_dirs = [p.split("/")[-1] for p in self.fs.ls(self.path)]
         releases = [d for d in sub_dirs if d.startswith("v3")]
         if not pre:
-            releases = [d for d in releases if d in public_releases]
+            releases = [d for d in releases if d in self.public_releases]
         if len(releases) == 0:
             raise ValueError(f"No releases found at location {url!r}")
         self._releases = releases
@@ -642,3 +649,63 @@ class Ag3:
         d = da.take(d, pos - 1)
 
         return d
+
+    def snp_dataset(
+        self,
+        contig,
+        sample_sets="v3_wild",
+        species_calls=("20200422", "aim"),
+        site_mask=None,
+        site_filters="dt_20200416",
+    ):
+        """TODO doc me"""
+
+        # TODO support multiple contigs
+
+        # variant arrays
+        pos, ref, alt = self.snp_sites(
+            contig=contig, site_mask=site_mask, site_filters=site_filters
+        )
+        variant_position = pos
+        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        contig_index = self.contigs.index(contig)
+        variant_contig = da.full_like(
+            variant_position, fill_value=contig_index, dtype="u1"
+        )
+
+        # call arrays
+        gt = self.snp_genotypes(
+            contig=contig,
+            sample_sets=sample_sets,
+            field="GT",
+            site_mask=site_mask,
+            site_filters=site_filters,
+        )
+        call_genotype = gt
+
+        # sample arrays
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, species_calls=species_calls
+        )
+        sample_id = df_samples["sample_id"]
+
+        # setup data variables
+        data_vars = {
+            "variant_contig": ([DIM_VARIANT], variant_contig),
+            "variant_position": ([DIM_VARIANT], variant_position),
+            "variant_allele": ([DIM_VARIANT, DIM_ALLELE], variant_allele),
+            "sample_id": ([DIM_SAMPLE], sample_id),
+            "call_genotype": ([DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY], call_genotype),
+            "call_genotype_mask": (
+                [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+                call_genotype < 0,
+            ),
+        }
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
+
+        return ds
