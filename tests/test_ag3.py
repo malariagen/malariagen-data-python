@@ -285,6 +285,33 @@ def test_genome():
         assert "S1" == seq.dtype
 
 
+def test_geneset():
+
+    ag3 = Ag3(gcs_url)
+
+    # default
+    df = ag3.geneset()
+    assert isinstance(df, pandas.DataFrame)
+    gff3_cols = [
+        "seqid",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    expected_cols = gff3_cols + ["ID", "Parent", "Name"]
+    assert expected_cols == df.columns.tolist()
+
+    # don't unpack attributes
+    df = ag3.geneset(attributes=None)
+    assert isinstance(df, pandas.DataFrame)
+    expected_cols = gff3_cols + ["attributes"]
+    assert expected_cols == df.columns.tolist()
+
+
 def test_cross_metadata():
 
     ag3 = Ag3(gcs_url)
