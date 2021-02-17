@@ -52,19 +52,20 @@ $ poetry publish
 
 ## Release notes
 
-### Next release (TODO)
+### 0.4.0
 
 * Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
 * Add the `Ag3.cross_metadata()` method.
-* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods.  
+* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods. 
+* Add `Ag3.snp_dataset()` method.  
 * Improve unit tests.
 
 
-### v0.3.1
+### 0.3.1
 
 * Fix compatibility issue in recent fsspec/gcsfs release.
 
 
-### v0.3.0
+### 0.3.0
 
 First release with basic functionality in the `Ag3` class for accessing Ag1000G phase 3 data.
