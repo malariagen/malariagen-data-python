@@ -12,9 +12,11 @@ zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
+xarray = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
+notebook = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
