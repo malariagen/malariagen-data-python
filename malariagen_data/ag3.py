@@ -65,7 +65,7 @@ class Ag3:
         self._cache_snp_sites = None
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
-        self._cache_geneset = None
+        self._cache_geneset = dict()
         self._cache_cross_metadata = None
 
     def sample_sets(self, release="v3"):
@@ -486,13 +486,6 @@ class Ag3:
         d = da.from_array(z, chunks=z.chunks)
         return d
 
-    def _read_geneset(self):
-        if self._cache_geneset is None:
-            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
-            with self.fs.open(path, mode="rb") as f:
-                self._cache_geneset = read_gff3(f, compression="gzip")
-        return self._cache_geneset
-
     def geneset(self, attributes=("ID", "Parent", "Name")):
         """Access genome feature annotations (AgamP4.12).
 
@@ -507,9 +500,19 @@ class Ag3:
 
         """
 
-        df = self._read_geneset()
         if attributes is not None:
-            df = unpack_gff3_attributes(df, attributes=attributes)
+            attributes = tuple(attributes)
+
+        try:
+            df = self._cache_geneset[attributes]
+
+        except KeyError:
+            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+            with self.fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_geneset[attributes] = df
 
         return df
 
@@ -551,7 +554,14 @@ class Ag3:
         return is_accessible
 
     def cross_metadata(self):
-        """TODO"""
+        """Load a dataframe containing metadata about samples in colony crosses, including
+        which samples are parents or progeny in which crosses.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
 
         if self._cache_cross_metadata is None:
 
