@@ -312,6 +312,18 @@ def test_geneset():
     assert expected_cols == df.columns.tolist()
 
 
+def test_is_accessible():
+
+    ag3 = Ag3(gcs_url)
+    # run a couple of tests
+    tests = [("X", "gamb_colu_arab"), ("2R", "gamb_colu"), ("3L", "arab")]
+    for contig, mask in tests:
+        is_accessible = ag3.is_accessible(contig=contig, site_mask=mask)
+        assert isinstance(is_accessible, np.ndarray)
+        assert 1 == is_accessible.ndim
+        assert ag3.genome_sequence(contig).shape[0] == is_accessible.shape[0]
+
+
 def test_cross_metadata():
 
     ag3 = Ag3(gcs_url)
