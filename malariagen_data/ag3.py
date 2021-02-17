@@ -1,12 +1,26 @@
+import os
 import pandas
 from fsspec.core import url_to_fs
 import zarr
 import dask.array as da
 import numpy as np
 from .util import read_gff3, unpack_gff3_attributes, SafeStore
-import veff
+from . import veff
+
 
 public_releases = ("v3",)
+gff3_path = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+)
+
+
+def _path_to_url(fs, root_path, path):
+    protocol = fs.protocol
+    if isinstance(protocol, tuple):
+        protocol = protocol[0]
+    joined_path = os.path.join(root_path, path)
+    url = f"{protocol}://{joined_path}"
+    return url
 
 
 class Ag3:
@@ -42,11 +56,11 @@ class Ag3:
         # process the url using fsspec
         pre = kwargs.pop("pre", False)
         fs, path = url_to_fs(url, **kwargs)
-        self.fs = fs
-        self.path = path
+        self._fs = fs
+        self._path = path
 
         # discover which releases are available
-        sub_dirs = [p.split("/")[-1] for p in self.fs.ls(self.path)]
+        sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
         releases = [d for d in sub_dirs if d.startswith("v3")]
         if not pre:
             releases = [d for d in releases if d in public_releases]
@@ -63,6 +77,7 @@ class Ag3:
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
         self._cache_geneset = None
+        self._cache_annotator = None
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -85,8 +100,8 @@ class Ag3:
             return self._cache_sample_sets[release]
 
         except KeyError:
-            path = f"{self.path}/{release}/manifest.tsv"
-            with self.fs.open(path) as f:
+            path = f"{self._path}/{release}/manifest.tsv"
+            with self._fs.open(path) as f:
                 df = pandas.read_csv(f, sep="\t", na_values="")
             df["release"] = release
             self._cache_sample_sets[release] = df
@@ -115,9 +130,9 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = (
-                f"{self.path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
+                f"{self._path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
             )
-            with self.fs.open(path) as f:
+            with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
             # add a couple of columns for convenience
@@ -135,10 +150,10 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = (
-                f"{self.path}/{release}/metadata/species_calls_{analysis}"
+                f"{self._path}/{release}/metadata/species_calls_{analysis}"
                 f"/{sample_set}/samples.species_{method}.csv"
             )
-            with self.fs.open(path) as f:
+            with self._fs.open(path) as f:
                 df = pandas.read_csv(
                     f,
                     na_values="",
@@ -270,8 +285,8 @@ class Ag3:
         try:
             return self._cache_site_filters[key]
         except KeyError:
-            path = f"{self.path}/v3/site_filters/{analysis}/{mask}/"
-            store = SafeStore(self.fs.get_mapper(path))
+            path = f"{self._path}/v3/site_filters/{analysis}/{mask}/"
+            store = SafeStore(self._fs.get_mapper(path))
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
             return root
@@ -303,8 +318,8 @@ class Ag3:
 
     def _open_snp_sites(self):
         if self._cache_snp_sites is None:
-            path = f"{self.path}/v3/snp_genotypes/all/sites/"
-            store = SafeStore(self.fs.get_mapper(path))
+            path = f"{self._path}/v3/snp_genotypes/all/sites/"
+            store = SafeStore(self._fs.get_mapper(path))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
@@ -357,8 +372,8 @@ class Ag3:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self.path}/{release}/snp_genotypes/all/{sample_set}/"
-            store = SafeStore(self.fs.get_mapper(path))
+            path = f"{self._path}/{release}/snp_genotypes/all/{sample_set}/"
+            store = SafeStore(self._fs.get_mapper(path))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
             return root
@@ -420,8 +435,8 @@ class Ag3:
 
     def _open_genome(self):
         if self._cache_genome is None:
-            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-            store = SafeStore(self.fs.get_mapper(path))
+            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
+            store = SafeStore(self._fs.get_mapper(path))
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -445,8 +460,8 @@ class Ag3:
 
     def _read_geneset(self):
         if self._cache_geneset is None:
-            path = f"{self.path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
-            with self.fs.open(path, mode="rb") as f:
+            path = f"{self._path}/{gff3_path}"
+            with self._fs.open(path, mode="rb") as f:
                 self._cache_geneset = read_gff3(f, compression="gzip")
         return self._cache_geneset
 
@@ -507,20 +522,22 @@ class Ag3:
 
         return is_accessible
 
-    def snp_effects(self, transcript, contig):
+    def snp_effects(self, transcript):
         # TODO
-        ann = veff.Annotator(
-            #need to turn contig into string if we do this
-            genome = self.genome_sequence(contig),
-            gff3_path="gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz",
-        )
+
+        if self._cache_annotator is None:
+            self._cache_annotator = veff.Annotator(
+                genome=self._open_genome(),
+                gff3_path=_path_to_url(self._fs, self._path, gff3_path),
+            )
+        ann = self._cache_annotator
         feat = ann.get_feature(transcript)
         print(feat)
 
-        #this is working at the gene level we want the specific transcript's start and end points
-        #gff_df = self.geneset()
-        #se = gff_df.loc[gff_df.ID == transcript, ["seqid", "start", "end", "Name"]]
-        #print(f"length of gene: {se.end.item() - se.start.item()} bp")
+        # this is working at the gene level we want the specific transcript's start and end points
+        # gff_df = self.geneset()
+        # se = gff_df.loc[gff_df.ID == transcript, ["seqid", "start", "end", "Name"]]
+        # print(f"length of gene: {se.end.item() - se.start.item()} bp")
         # find contig, start, end of given transcript
 
         # load the pos, ref, alt arrays for the region of the transcript,
@@ -542,5 +559,5 @@ class Ag3:
         # df_effects # pandas dataframe with additional columns
 
         # return df_effects
-        print('witty chips')
+        print("witty chips")
         pass

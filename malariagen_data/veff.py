@@ -16,7 +16,7 @@ class Annotator(object):
         Parameters
         ----------
 
-        genome : string
+        genome : zarr hierarchy
             Reference genome.
         gff3_path : string
             Path to genome annotations GFF3 file.
@@ -26,7 +26,7 @@ class Annotator(object):
         # store initialisation parameters
         self._genome = genome
         self._gff3_path = gff3_path
-        #self._seqid = seqid
+        # self._seqid = seqid
 
         # setup access to GFF3 as a table
         tbl_features = etl.fromgff3(gff3_path)
