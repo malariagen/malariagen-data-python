@@ -12,6 +12,7 @@ zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
+xarray = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
