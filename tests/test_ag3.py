@@ -341,3 +341,36 @@ def test_cross_metadata():
     assert expected_role_values == df_crosses["role"].unique().tolist()
     expected_sex_values = ["F", "M"]
     assert expected_sex_values == df_crosses["sex"].unique().tolist()
+
+
+def test_site_annotations():
+
+    ag3 = Ag3(gcs_url)
+
+    # test access as zarr
+    root = ag3.open_site_annotations()
+    assert isinstance(root, zarr.hierarchy.Group)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        assert f in root
+        for contig in contigs:
+            assert contig in root[f]
+
+    # test access as dask arrays
+    for contig in "2R", "X", "3L":
+        for site_mask in None, "gamb_colu_arab":
+            pos = ag3.snp_sites(contig=contig, field="POS", site_mask=site_mask)
+            for field in "codon_degeneracy", "seq_cls":
+                d = ag3.site_annotations(
+                    contig=contig, field=field, site_mask=site_mask
+                )
+                assert isinstance(d, da.Array)
+                assert 1 == d.ndim
+                assert pos.shape == d.shape

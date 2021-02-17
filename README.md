@@ -56,10 +56,14 @@ $ poetry publish
 
 * Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
 * Add the `Ag3.cross_metadata()` method.
+* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods.  
+* Improve unit tests.
+
 
 ### v0.3.1
 
 * Fix compatibility issue in recent fsspec/gcsfs release.
+
 
 ### v0.3.0
 
