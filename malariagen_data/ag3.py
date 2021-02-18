@@ -542,7 +542,7 @@ class Ag3:
         print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
               f'\nstrand : {strand}')
 
-        # grap pos, ref and alt
+        # grab pos, ref and alt
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
 
         # sites are dask arrays, turn pos into sorted index
@@ -561,16 +561,15 @@ class Ag3:
         # explode the alt alleles into their own rows
         df_effects = df_in.explode('alt_alleles').reset_index(drop=True)
 
-        for row in df_effects.itertuples(index=True):
-            for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allelle, alt=row.alt_alleles,
-                                          transcript_ids=[transcript]):
-                print()
-
-        # veff.get_effects(annotator=ann, chrom=contig, pos)
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
         # impact, etc.
         # df_effects # pandas dataframe with additional columns
+
+        # for row in df_effects.itertuples(index=True):
+        #     for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
+        #                                   transcript_ids=[transcript]):
+        #         print(effect.effect)
 
         # return df_effects
         return df_effects

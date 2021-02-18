@@ -645,7 +645,7 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
         # obtain any subsequence nucleotides to complete the last codon
         if len(ref_codon) % 3:
             ref_stop_phase = len(ref_codon) % 3
-            suffix = annotator.get_ref_seq.sequence(
+            suffix = annotator.get_ref_seq(
                 chrom=chrom, start=ref_stop + 1, stop=ref_stop + 3 - ref_stop_phase
             )
             suffix = str(suffix).lower()
