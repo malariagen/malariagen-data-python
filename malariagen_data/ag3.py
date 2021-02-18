@@ -8,7 +8,6 @@ from .util import read_gff3, unpack_gff3_attributes, SafeStore
 from . import veff
 import allel
 
-
 public_releases = ("v3",)
 gff3_path = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
@@ -172,15 +171,15 @@ class Ag3:
             loc = df["species_gambcolu_arabiensis"].values == "intermediate"
             df.loc[loc, "species"] = "intermediate_arabiensis_gambiae"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                df["species_gambiae_coluzzii"].values == "gambiae"
+                    df["species_gambiae_coluzzii"].values == "gambiae"
             )
             df.loc[loc, "species"] = "gambiae"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                df["species_gambiae_coluzzii"].values == "coluzzii"
+                    df["species_gambiae_coluzzii"].values == "coluzzii"
             )
             df.loc[loc, "species"] = "coluzzii"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                df["species_gambiae_coluzzii"].values == "intermediate"
+                    df["species_gambiae_coluzzii"].values == "intermediate"
             )
             df.loc[loc, "species"] = "intermediate_gambiae_coluzzii"
 
@@ -380,12 +379,12 @@ class Ag3:
             return root
 
     def snp_genotypes(
-        self,
-        contig,
-        sample_sets="v3_wild",
-        field="GT",
-        site_mask=None,
-        site_filters="dt_20200416",
+            self,
+            contig,
+            sample_sets="v3_wild",
+            field="GT",
+            site_mask=None,
+            site_filters="dt_20200416",
     ):
         """Access SNP genotypes and associated data.
 
@@ -526,7 +525,7 @@ class Ag3:
     def snp_effects(self, transcript, site_mask):
         # TODO
 
-        #take an AGAP transcript ID and get meta data from the gff using veff
+        # take an AGAP transcript ID and get meta data from the gff using veff
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self._open_genome(),
@@ -543,28 +542,35 @@ class Ag3:
         print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
               f'\nstrand : {strand}')
 
+        # grap pos, ref and alt
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
 
-        #sites are dask arrays, turn pos into sorted index
+        # sites are dask arrays, turn pos into sorted index
         pos = allel.SortedIndex(sites[0].compute())
         ref = sites[1].compute()
         alt = sites[2].compute()
 
+        # locate transcript range
         loc = pos.locate_range(start, stop)
-        npos = np.asarray(pos[loc])
-        nref = np.asarray(ref[loc])
-        nalt = np.asarray(alt[loc])
-
-
         # build an initial dataframe with contig, pos, ref, alt columns
-        # N.B., need to "melt" so that you have one row per position per alt
-        # allele
-        # df_effects # pandas dataframe
+        df_in = pandas.DataFrame()
+        df_in['position'] = np.asarray(pos[loc])
+        df_in['ref_allele'] = [q.tobytes().decode() for q in np.asarray(ref[loc])]
+        # bytes within lists within lists...
+        df_in['alt_alleles'] = [list(q.tobytes().decode()) for q in list(alt[loc])]
+        # explode the alt alleles into their own rows
+        df_effects = df_in.explode('alt_alleles').reset_index(drop=True)
 
+        for row in df_effects.itertuples(index=True):
+            for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allelle, alt=row.alt_alleles,
+                                          transcript_ids=[transcript]):
+                print()
+
+        # veff.get_effects(annotator=ann, chrom=contig, pos)
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
         # impact, etc.
         # df_effects # pandas dataframe with additional columns
 
         # return df_effects
-        return sites
+        return df_effects
