@@ -522,8 +522,7 @@ class Ag3:
 
         return is_accessible
 
-    def snp_effects(self, transcript, site_mask):
-        # TODO
+    def snp_effects(self, transcript, site_mask, chop):
 
         # take an AGAP transcript ID and get meta data from the gff using veff
         if self._cache_annotator is None:
@@ -564,12 +563,15 @@ class Ag3:
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
         # impact, etc.
-        # df_effects # pandas dataframe with additional columns
-
+        #df_effects # pandas dataframe with additional columns
+        # df_effects = df_effects[:chop]
+        # leffect = []
         # for row in df_effects.itertuples(index=True):
         #     for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
         #                                   transcript_ids=[transcript]):
-        #         print(effect.effect)
+        #         leffect.append(effect.effect)
+        # df_effects['effect'] = leffect
+
 
         # return df_effects
-        return df_effects
+        return pos, loc
