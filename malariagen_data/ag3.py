@@ -564,14 +564,15 @@ class Ag3:
         # for each row, and using that to build additional columns effect,
         # impact, etc.
         #df_effects # pandas dataframe with additional columns
-        # df_effects = df_effects[:chop]
-        # leffect = []
-        # for row in df_effects.itertuples(index=True):
-        #     for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
-        #                                   transcript_ids=[transcript]):
-        #         leffect.append(effect.effect)
-        # df_effects['effect'] = leffect
+        df_effects = df_effects[:chop]
+        leffect = []
+        if chop > 0:
+            for row in df_effects.itertuples(index=True):
+                for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
+                                              transcript_ids=[transcript]):
+                    leffect.append(effect.effect)
+            df_effects['effect'] = leffect
+            
 
 
-        # return df_effects
-        return pos, loc
+        return df_effects
