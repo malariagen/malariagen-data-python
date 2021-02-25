@@ -546,17 +546,18 @@ class Ag3:
 
         # sites are dask arrays, turn pos into sorted index
         pos = allel.SortedIndex(sites[0].compute())
-        ref = sites[1].compute()
-        alt = sites[2].compute()
-
         # locate transcript range
         loc = pos.locate_range(start, stop)
+
+        ref = sites[1][loc].compute()
+        alt = sites[2][loc].compute()
+
         # build an initial dataframe with contig, pos, ref, alt columns
         df_in = pandas.DataFrame()
         df_in['position'] = np.asarray(pos[loc])
-        df_in['ref_allele'] = [q.tobytes().decode() for q in np.asarray(ref[loc])]
+        df_in['ref_allele'] = [q.tobytes().decode() for q in np.asarray(ref)]
         # bytes within lists within lists...
-        df_in['alt_alleles'] = [list(q.tobytes().decode()) for q in list(alt[loc])]
+        df_in['alt_alleles'] = [list(q.tobytes().decode()) for q in list(alt)]
         # explode the alt alleles into their own rows
         df_effects = df_in.explode('alt_alleles').reset_index(drop=True)
 
@@ -572,7 +573,7 @@ class Ag3:
                                               transcript_ids=[transcript]):
                     leffect.append(effect.effect)
             df_effects['effect'] = leffect
-            
+
 
 
         return df_effects
