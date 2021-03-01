@@ -171,15 +171,15 @@ class Ag3:
             loc = df["species_gambcolu_arabiensis"].values == "intermediate"
             df.loc[loc, "species"] = "intermediate_arabiensis_gambiae"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                    df["species_gambiae_coluzzii"].values == "gambiae"
+                df["species_gambiae_coluzzii"].values == "gambiae"
             )
             df.loc[loc, "species"] = "gambiae"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                    df["species_gambiae_coluzzii"].values == "coluzzii"
+                df["species_gambiae_coluzzii"].values == "coluzzii"
             )
             df.loc[loc, "species"] = "coluzzii"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                    df["species_gambiae_coluzzii"].values == "intermediate"
+                df["species_gambiae_coluzzii"].values == "intermediate"
             )
             df.loc[loc, "species"] = "intermediate_gambiae_coluzzii"
 
@@ -379,12 +379,12 @@ class Ag3:
             return root
 
     def snp_genotypes(
-            self,
-            contig,
-            sample_sets="v3_wild",
-            field="GT",
-            site_mask=None,
-            site_filters="dt_20200416",
+        self,
+        contig,
+        sample_sets="v3_wild",
+        field="GT",
+        site_mask=None,
+        site_filters="dt_20200416",
     ):
         """Access SNP genotypes and associated data.
 
@@ -538,8 +538,10 @@ class Ag3:
         stop = feature[4]
         strand = feature[6]
 
-        print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
-              f'\nstrand : {strand}')
+        print(
+            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
+            f"\nstrand : {strand}"
+        )
 
         # grab pos, ref and alt
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
@@ -554,26 +556,29 @@ class Ag3:
 
         # build an initial dataframe with contig, pos, ref, alt columns
         df_in = pandas.DataFrame()
-        df_in['position'] = np.asarray(pos[loc])
-        df_in['ref_allele'] = [q.tobytes().decode() for q in np.asarray(ref)]
+        df_in["position"] = np.asarray(pos[loc])
+        df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
         # bytes within lists within lists...
-        df_in['alt_alleles'] = [list(q.tobytes().decode()) for q in list(alt)]
+        df_in["alt_alleles"] = [list(q.tobytes().decode()) for q in list(alt)]
         # explode the alt alleles into their own rows
-        df_effects = df_in.explode('alt_alleles').reset_index(drop=True)
+        df_effects = df_in.explode("alt_alleles").reset_index(drop=True)
 
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
         # impact, etc.
-        #df_effects # pandas dataframe with additional columns
+        # df_effects # pandas dataframe with additional columns
         df_effects = df_effects[:chop]
         leffect = []
         if chop > 0:
             for row in df_effects.itertuples(index=True):
-                for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
-                                              transcript_ids=[transcript]):
+                for effect in ann.get_effects(
+                    chrom=contig,
+                    pos=row.position,
+                    ref=row.ref_allele,
+                    alt=row.alt_alleles,
+                    transcript_ids=[transcript],
+                ):
                     leffect.append(effect.effect)
-            df_effects['effect'] = leffect
-
-
+            df_effects["effect"] = leffect
 
         return df_effects

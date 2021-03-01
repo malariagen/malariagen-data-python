@@ -1,3 +1,4 @@
+# noqa: E203
 from __future__ import division, print_function
 import collections
 import operator
@@ -25,6 +26,7 @@ class Annotator(object):
 
         # store initialisation parameters
         self._genome = genome
+        self._genome_cache = dict()
         self._gff3_path = gff3_path
         # self._seqid = seqid
 
@@ -59,7 +61,14 @@ class Annotator(object):
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
-        ref_seq = self._genome[chrom][start - 1 : stop]
+        try:
+            # attempt to re-use cached sequence
+            seq = self._genome_cache[chrom]
+        except KeyError:
+            # load the whole sequence and cache it
+            seq = self._genome[chrom][:]
+            self._genome_cache[chrom] = seq
+        ref_seq = seq[start - 1 : stop]
         ref_seq = ref_seq.tobytes().decode()
         return ref_seq
 
