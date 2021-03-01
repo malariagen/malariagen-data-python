@@ -25,6 +25,7 @@ class Annotator(object):
 
         # store initialisation parameters
         self._genome = genome
+        self._genome_cache = dict()
         self._gff3_path = gff3_path
         # self._seqid = seqid
 
@@ -59,7 +60,12 @@ class Annotator(object):
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
-        ref_seq = self._genome[chrom][start - 1 : stop]
+        try:
+            seq = self._genome_cache[chrom]
+        except KeyError:
+            seq = self._genome[chrom][:]
+            self._genome_cache[chrom] = seq
+        ref_seq = seq[start - 1 : stop]
         ref_seq = ref_seq.tobytes().decode()
         return ref_seq
 
@@ -654,9 +660,7 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
         if len(alt_codon) % 3:
             alt_stop_phase = len(alt_codon) % 3
             suffix = annotator.get_ref_seq(
-                chrom=chrom,
-                start=ref_stop + 1,
-                stop=ref_stop + 3 - alt_stop_phase,
+                chrom=chrom, start=ref_stop + 1, stop=ref_stop + 3 - alt_stop_phase
             ).lower()
             alt_codon += suffix
 
@@ -683,18 +687,14 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
         if len(ref_codon) % 3:
             ref_stop_phase = len(ref_codon) % 3
             suffix = annotator.get_ref_seq(
-                chrom=chrom,
-                start=ref_start - 3 + ref_stop_phase,
-                stop=ref_start - 1,
+                chrom=chrom, start=ref_start - 3 + ref_stop_phase, stop=ref_start - 1
             ).lower()
             ref_codon = suffix + ref_codon
 
         if len(alt_codon) % 3:
             alt_stop_phase = len(alt_codon) % 3
             suffix = annotator.get_ref_seq(
-                chrom=chrom,
-                start=ref_start - 3 + alt_stop_phase,
-                stop=ref_start - 1,
+                chrom=chrom, start=ref_start - 3 + alt_stop_phase, stop=ref_start - 1
             ).lower()
             alt_codon = suffix + alt_codon
 
