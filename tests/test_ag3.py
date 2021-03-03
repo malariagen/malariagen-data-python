@@ -6,9 +6,11 @@ import numpy as np
 import zarr
 import xarray
 
-
 gcs_url = "gs://vo_agam_release/"
 
+# This is a hack until data can get copied to release!
+# REMOVE
+gcs_url_staging = "~/ag1k/"
 
 expected_species = {
     "gambiae",
@@ -393,3 +395,50 @@ def test_snp_dataset():
     ]
     for f in expected_fields:
         assert f in ds
+
+
+def test_cnv_hmm():
+
+    sample_sets = ["AG1000G-UG", "AG1000G-AO"]
+
+    # load sample metadata
+    ag3_staging = Ag3(gcs_url_staging)
+
+    # load some data directly from GCS
+    ag3 = Ag3(gcs_url)
+
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+
+    # access hmm data
+    wstart, wstop, cn, raw_cov, norm_cov = ag3_staging.cnv_hmm(contig="3R", sample_sets=sample_sets)
+
+    # window starts and stops - dask arrays
+    assert 1 == wstart.ndim == wstop.ndim
+    assert wstart.shape[0] == wstop.shape[0]
+
+    # copy number predicted by hmm - dask array
+    assert 2 == cn.ndim
+    assert wstart.shape[0] == cn.shape[0]
+    assert len(df_samples) == cn.shape[1]
+
+    # raw coverage - dask array
+    assert cn.shape == raw_cov.shape
+
+    # normalised coverage - dask array
+    assert cn.shape == norm_cov.shape
+
+
+def test_cnv_call():
+
+    ag3_staging = Ag3(gcs_url_staging)
+    sample_sets = ["AG1000G-UG", "AG1000G-AO"]
+
+    df_cnv_samples, cnv_start, cnv_stop, cnv_gt = ag3_staging.cnv_calls(
+        contig="3R", analysis="gamb_colu", sample_sets=sample_sets, species_calls=("20200422", "pca"))
+
+    print(df_cnv_samples.columns)
+
+    assert df_cnv_samples.shape[0] == cnv_gt.shape[1]
+    assert cnv_gt.shape[0] == cnv_start.shape[0]
+    assert (cnv_start < cnv_stop).compute().all()
+    assert "PC1" in df_cnv_samples.columns

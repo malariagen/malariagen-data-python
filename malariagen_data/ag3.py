@@ -71,6 +71,7 @@ class Ag3:
         self._cache_site_filters = dict()
         self._cache_snp_sites = None
         self._cache_snp_genotypes = dict()
+        self._cache_cnv_hmm = dict()
         self._cache_genome = None
         self._cache_geneset = dict()
         self._cache_cross_metadata = None
@@ -709,3 +710,189 @@ class Ag3:
         ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
 
         return ds
+
+    def open_cnv_hmm(self, sample_set):
+        """Open CNV HMM zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        cnv call root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_hmm[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self.path}/{release}/cnv/{sample_set}/hmm/zarr"
+            store = SafeStore(self.fs.get_mapper(path))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_hmm[sample_set] = root
+            return root
+
+    def cnv_hmm_load_variants(self, contig, sample_set):
+
+        root = self.open_cnv_hmm(sample_set=sample_set)
+
+        start_z = root[contig]["variants/window_start"]
+        window_starts = da.from_array(start_z, start_z.chunks)
+
+        stop_z = root[contig]["variants/window_stop"]
+        window_stops = da.from_array(stop_z, stop_z.chunks)
+
+        return window_starts, window_stops
+
+    def cnv_hmm_load_calldata(self, contig, sample_set):
+
+        root = self.open_cnv_hmm(sample_set=sample_set)
+        calldata_fields = ("calldata/hmm_state", "calldata/normalized_coverage", "calldata/raw_coverage")
+
+        hmm_z = root[contig]["calldata/hmm_state"]
+        hmm = da.from_array(hmm_z, hmm_z.chunks)
+
+        norm_z = root[contig]["calldata/normalized_coverage"]
+        norm_cov = da.from_array(norm_z, norm_z.chunks)
+
+        raw_z = root[contig]["calldata/raw_coverage"]
+        raw_cov = da.from_array(raw_z, raw_z.chunks)
+
+        return hmm, norm_cov, raw_cov
+
+    def cnv_hmm(self, contig, sample_sets="v3_wild"):
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+            # single sample set
+            start_pos, stop_pos = self.cnv_hmm_load_variants(contig=contig, sample_set=sample_sets)
+
+            copy_number, normalised_coverage, raw_coverage = self.cnv_hmm_load_calldata(
+                contig=contig, sample_set=sample_sets)
+
+        else:
+            # concatenate multiple sample sets using reciprocal function.
+
+            # variants are the same across sample_sets
+            start_pos, stop_pos = self.cnv_hmm_load_variants(contig=contig, sample_set=sample_sets[0])
+
+            r = [self.cnv_hmm_load_calldata(contig=contig, sample_set=c) for c in sample_sets]
+
+            # now unpack these
+            copy_number = da.concatenate([result[0] for result in r], axis=1)
+            normalised_coverage = da.concatenate([result[1] for result in r], axis=1)
+            raw_coverage = da.concatenate([result[2] for result in r], axis=1)
+
+        return start_pos, stop_pos, copy_number, raw_coverage, normalised_coverage
+
+    def open_cnv_calls(self, sample_set, analysis):
+        """Open CNV calls zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        cnv call root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_hmm[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self.path}/{release}/cnv/{sample_set}/calls/{analysis}/zarr"
+            store = SafeStore(self.fs.get_mapper(path))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_hmm[sample_set] = root
+            return root
+
+    def cnv_calls_load_variants(self, contig, sample_set, analysis):
+
+        root = self.open_cnv_calls(sample_set=sample_set, analysis=analysis)
+
+        # these are all variant bits
+        start_z = root[contig]["variants/cnv_start"]
+        cnv_start = da.from_array(start_z, chunks=start_z.chunks)
+
+        end_z = root[contig]["variants/cnv_end"]
+        cnv_end = da.from_array(end_z, chunks=end_z.chunks)
+
+        filter_z = root[contig]["variants/qMerge_FILTER_PASS"]
+        cnv_filter = da.from_array(filter_z, chunks=filter_z.chunks)
+
+        return cnv_start, cnv_end, cnv_filter
+
+    def cnv_calls_load_calldata_samples(self, contig, sample_set, analysis):
+
+        root = self.open_cnv_calls(sample_set=sample_set, analysis=analysis)
+
+        gt_z = root[contig]["calldata/GT"]
+        gt = da.from_array(gt_z, chunks=gt_z.chunks)
+
+        sample_names = root["samples"][:]
+
+        return sample_names, gt
+
+    def cnv_calls(self, contig, analysis, sample_sets="v3_wild", apply_quantile_filter=False, **kwargs):
+        """Load CNV alleles
+
+        Parameters
+        ----------
+
+        contig: str
+        analysis: str
+        sample_sets : str
+        apply_quantile_filter: bool
+        **kwargs: passed directly to self.sample_metadata eg. species_calls=("20200422", "pca"))
+
+        Returns
+        -------
+        df_cnv_samples: pd.DataFrame
+        nv_start: array
+        cnv_stop: array
+        cnv_gt: array (n alleles x s samples).
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        df_sample_metadata = self.sample_metadata(sample_sets=sample_sets, **kwargs)
+
+        # if single sample_set...
+
+        if isinstance(sample_sets, str):
+
+            # needs to be concatenated.
+            sample_names, genotypes = self.cnv_calls_load_calldata_samples(
+                contig=contig, sample_set=sample_sets, analysis=analysis)
+
+            start_pos, end_pos, qmerge_filter = self.cnv_calls_load_variants(
+                contig=contig, sample_set=sample_sets, analysis=analysis)
+
+        else:
+            # call reciprocal
+            # if we are returning multiple sample sets: only want to return one copy of variant data.
+            r = [self.cnv_calls_load_calldata_samples(
+                    contig=contig, sample_set=c, analysis=analysis) for c in sample_sets]
+
+            # concatenate the above
+            sample_names = np.concatenate([result[0] for result in r], axis=0)
+
+            genotypes = da.concatenate([result[1] for result in r], axis=1)
+
+            # this is the sample for all sample_sets
+            start_pos, end_pos, qmerge_filter = self.cnv_calls_load_variants(
+                contig=contig, sample_set=sample_sets[0], analysis=analysis)
+
+        df_sample_metadata_subset = df_sample_metadata.set_index("sample_id").loc[sample_names].reset_index()
+
+        if apply_quantile_filter:
+            genotypes = da.compress(qmerge_filter, genotypes, axis=0)
+            start_pos = da.compress(qmerge_filter, start_pos, axis=0)
+            end_pos = da.compress(qmerge_filter, end_pos, axis=0)
+
+        return df_sample_metadata_subset, start_pos, end_pos, genotypes
+
