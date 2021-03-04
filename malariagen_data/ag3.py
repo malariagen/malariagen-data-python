@@ -525,6 +525,7 @@ class Ag3:
     def snp_effects(self, transcript, site_mask):
 
         # take an AGAP transcript ID and get meta data from the gff using veff
+        # first time sets up and caches ann object
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self._open_genome(),
@@ -541,14 +542,14 @@ class Ag3:
         print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
               f'\nstrand : {strand}')
 
-        # grab pos, ref and alt
+        # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
 
         # sites are dask arrays, turn pos into sorted index
         pos = allel.SortedIndex(sites[0].compute())
         # locate transcript range
         loc = pos.locate_range(start, stop)
-
+        # dask compute on the sliced arrays to speed things up
         ref = sites[1][loc].compute()
         alt = sites[2][loc].compute()
 
@@ -564,16 +565,87 @@ class Ag3:
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
         # impact, etc.
-        #df_effects # pandas dataframe with additional columns
-        # df_effects = df_effects[:chop]
+
         leffect = []
+        limpact = []
+        lref_codon = []
+        lalt_codon = []
+        laa_pos = []
+        lref_aa = []
+        lalt_aa = []
+        laa_change = []
 
         for row in df_effects.itertuples(index=True):
             for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
                                           transcript_ids=[transcript]):
                 leffect.append(effect.effect)
+                limpact.append(effect.impact)
+                lref_codon.append(effect.ref_codon)
+                lalt_codon.append(effect.alt_codon)
+                laa_pos.append(effect.aa_pos)
+                lref_aa.append(effect.ref_aa)
+                lalt_aa.append(effect.alt_aa)
+                laa_change.append(effect.aa_change)
+
         df_effects['effect'] = leffect
-
-
+        df_effects['impact'] = limpact
+        df_effects['ref_codon'] = lref_codon
+        df_effects['alt_codon'] = lalt_codon
+        df_effects['aa_pos'] = laa_pos
+        df_effects['ref_aa'] = lref_aa
+        df_effects['alt_aa'] = lalt_aa
+        df_effects['aa_change'] = laa_change
 
         return df_effects
+
+    def snp_allele_frequencies(self, transcript, site_mask):
+
+        # get transcript idx - this is duplicated from snp_effects so should be broken out into it's own method/s
+        # take an AGAP transcript ID and get meta data from the gff using veff
+        # first time sets up and caches ann object
+        if self._cache_annotator is None:
+            self._cache_annotator = veff.Annotator(
+                genome=self._open_genome(),
+                gff3_path=_path_to_url(self._fs, self._path, gff3_path),
+            )
+
+        ann = self._cache_annotator
+        feature = ann.get_feature(transcript)
+        contig = feature[0]
+        start = feature[3]
+        stop = feature[4]
+        strand = feature[6]
+
+        print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
+              f'\nstrand : {strand}')
+
+        # grab pos, ref and alt for chrom arm from snp_sites
+        sites = self.snp_sites(contig=contig, site_mask=site_mask)
+
+        # sites are dask arrays, turn pos into sorted index
+        pos = allel.SortedIndex(sites[0].compute())
+        # locate transcript range
+        loc = pos.locate_range(start, stop)
+
+        # we want to grab all metadata then get idx for samples we want
+        # what granularity do we want here - country+site+year TODO
+        df_meta = self.sample_metadata(sample_sets='v3_wild', species_calls=("20200422", "aim"))
+
+
+
+
+
+        # get genotypes - chop to loc, chop to pop_idx TODO
+        gt = self.snp_genotypes(contig=contig, sample_sets="v3_wild", field="GT", site_mask=site_mask,
+                                site_filters="dt_20200416")
+        gt = gt[loc].compute()
+
+
+        # count alleles - should we calculate and add these to gcs like previous phases?
+
+        # counts to frequencies
+
+        # build and return dataframe
+
+        return df_meta, gt
+
