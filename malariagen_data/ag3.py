@@ -4,9 +4,11 @@ from fsspec.core import url_to_fs
 import zarr
 import dask.array as da
 import numpy as np
+import xarray
 from .util import read_gff3, unpack_gff3_attributes, SafeStore
 from . import veff
 import allel
+
 
 public_releases = ("v3",)
 gff3_path = (
@@ -21,6 +23,12 @@ def _path_to_url(fs, root_path, path):
     joined_path = os.path.join(root_path, path)
     url = f"{protocol}://{joined_path}"
     return url
+
+DIM_VARIANT = "variants"
+DIM_ALLELE = "alleles"
+DIM_SAMPLE = "samples"
+DIM_PLOIDY = "ploidy"
+
 
 
 class Ag3:
@@ -47,6 +55,9 @@ class Ag3:
 
     """
 
+    public_releases = ("v3",)
+    contigs = ("2R", "2L", "3R", "3L", "X")
+
     def __init__(self, url, **kwargs):
 
         # special case Google Cloud Storage, use anonymous access, avoids a delay
@@ -56,14 +67,18 @@ class Ag3:
         # process the url using fsspec
         pre = kwargs.pop("pre", False)
         fs, path = url_to_fs(url, **kwargs)
+
         self._fs = fs
+        # path compatibility, fsspec/gcsfs behaviour varies between version
+        while path.endswith("/"):
+            path = path[:-1]
         self._path = path
 
         # discover which releases are available
         sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
         releases = [d for d in sub_dirs if d.startswith("v3")]
         if not pre:
-            releases = [d for d in releases if d in public_releases]
+            releases = [d for d in releases if d in self.public_releases]
         if len(releases) == 0:
             raise ValueError(f"No releases found at location {url!r}")
         self._releases = releases
@@ -76,8 +91,12 @@ class Ag3:
         self._cache_snp_sites = None
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
-        self._cache_geneset = None
+
         self._cache_annotator = None
+        self._cache_geneset = dict()
+        self._cache_cross_metadata = None
+        self._cache_site_annotations = None
+
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -280,7 +299,21 @@ class Ag3:
 
         return df
 
-    def _open_site_filters(self, *, mask, analysis):
+    def open_site_filters(self, mask, analysis="dt_20200416"):
+        """Open site filters zarr.
+
+        Parameters
+        ----------
+        mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Mask to use.
+        analysis : str, optional
+            Site filters analysis version.
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         key = mask, analysis
         try:
             return self._cache_site_filters[key]
@@ -311,12 +344,19 @@ class Ag3:
 
         """
 
-        root = self._open_site_filters(mask=mask, analysis=analysis)
+        root = self.open_site_filters(mask=mask, analysis=analysis)
         z = root[contig]["variants"][field]
         d = da.from_array(z, chunks=z.chunks)
         return d
 
-    def _open_snp_sites(self):
+    def open_snp_sites(self):
+        """Open SNP sites zarr.
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         if self._cache_snp_sites is None:
             path = f"{self._path}/v3/snp_genotypes/all/sites/"
             store = SafeStore(self._fs.get_mapper(path))
@@ -352,7 +392,7 @@ class Ag3:
             )
 
         else:
-            root = self._open_snp_sites()
+            root = self.open_snp_sites()
             z = root[contig]["variants"][field]
             ret = da.from_array(z, chunks=z.chunks)
 
@@ -367,7 +407,18 @@ class Ag3:
 
         return ret
 
-    def _open_snp_genotypes(self, *, sample_set):
+    def open_snp_genotypes(self, sample_set):
+        """Open SNP genotypes zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         try:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
@@ -413,7 +464,7 @@ class Ag3:
 
         if isinstance(sample_sets, str):
             # single sample set
-            root = self._open_snp_genotypes(sample_set=sample_sets)
+            root = self.open_snp_genotypes(sample_set=sample_sets)
             z = root[contig]["calldata"][field]
             d = da.from_array(z, chunks=z.chunks)
 
@@ -433,7 +484,14 @@ class Ag3:
 
         return d
 
-    def _open_genome(self):
+    def open_genome(self):
+        """Open the reference genome zarr.
+
+        Returns
+        -------
+        genome : zarr.hierarchy.Group
+
+        """
         if self._cache_genome is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
             store = SafeStore(self._fs.get_mapper(path))
@@ -453,17 +511,11 @@ class Ag3:
         d : dask.array.Array
 
         """
-        genome = self._open_genome()
+        genome = self.open_genome()
         z = genome[contig]
         d = da.from_array(z, chunks=z.chunks)
         return d
 
-    def _read_geneset(self):
-        if self._cache_geneset is None:
-            path = f"{self._path}/{gff3_path}"
-            with self._fs.open(path, mode="rb") as f:
-                self._cache_geneset = read_gff3(f, compression="gzip")
-        return self._cache_geneset
 
     def geneset(self, attributes=("ID", "Parent", "Name")):
         """Access genome feature annotations (AgamP4.12).
@@ -479,9 +531,19 @@ class Ag3:
 
         """
 
-        df = self._read_geneset()
         if attributes is not None:
-            df = unpack_gff3_attributes(df, attributes=attributes)
+            attributes = tuple(attributes)
+
+        try:
+            df = self._cache_geneset[attributes]
+
+        except KeyError:
+            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+            with self._fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_geneset[attributes] = df
 
         return df
 
@@ -528,7 +590,7 @@ class Ag3:
         # first time sets up and caches ann object
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self._open_genome(),
+                genome=self.open_genome(),
                 gff3_path=_path_to_url(self._fs, self._path, gff3_path),
             )
 
@@ -605,7 +667,7 @@ class Ag3:
         # first time sets up and caches ann object
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self._open_genome(),
+                genome=self.open_genome(),
                 gff3_path=_path_to_url(self._fs, self._path, gff3_path),
             )
 
@@ -648,4 +710,154 @@ class Ag3:
         # build and return dataframe
 
         return df_meta, gt
+
+
+    def cross_metadata(self):
+        """Load a dataframe containing metadata about samples in colony crosses, including
+        which samples are parents or progeny in which crosses.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+
+        if self._cache_cross_metadata is None:
+
+            path = f"{self._path}/v3/metadata/crosses/crosses.fam"
+            fam_names = [
+                "cross",
+                "sample_id",
+                "father_id",
+                "mother_id",
+                "sex",
+                "phenotype",
+            ]
+            with self._fs.open(path) as f:
+                df = pandas.read_csv(
+                    f,
+                    sep="\t",
+                    na_values=["", "0"],
+                    names=fam_names,
+                    dtype={"sex": str},
+                )
+
+            # convert "sex" column for consistency with sample metadata
+            df.loc[df["sex"] == "1", "sex"] = "M"
+            df.loc[df["sex"] == "2", "sex"] = "F"
+
+            # add a "role" column for convenience
+            df["role"] = "progeny"
+            df.loc[df["mother_id"].isna(), "role"] = "parent"
+
+            # drop "phenotype" column, not used
+            df.drop("phenotype", axis="columns", inplace=True)
+
+            self._cache_cross_metadata = df
+
+        return self._cache_cross_metadata
+
+    def open_site_annotations(self):
+        if self._cache_site_annotations is None:
+            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
+            self._cache_site_annotations = zarr.open_consolidated(
+                self._fs.get_mapper(path)
+            )
+        return self._cache_site_annotations
+
+    def site_annotations(
+        self, contig, field, site_mask=None, site_filters="dt_20200416"
+    ):
+        """Load site annotations.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        field : str
+            One of "codon_degeneracy", "codon_nonsyn", "codon_position", "seq_cls",
+            "seq_flen", "seq_relpos_start", "seq_relpos_stop".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str
+            Site filters analysis version.
+
+        Returns
+        -------
+        d : dask.Array
+
+        """
+
+        # access the array of values for all genome positions
+        root = self.open_site_annotations()
+        z = root[field][contig]
+        d = da.from_array(z, chunks=z.chunks)
+
+        # access and subset to SNP positions
+        pos = self.snp_sites(
+            contig=contig, field="POS", site_mask=site_mask, site_filters=site_filters
+        ).compute()
+        d = da.take(d, pos - 1)
+
+        return d
+
+    def snp_dataset(
+        self,
+        contig,
+        sample_sets="v3_wild",
+        species_calls=("20200422", "aim"),
+        site_mask=None,
+        site_filters="dt_20200416",
+    ):
+        """TODO doc me"""
+
+        # TODO support multiple contigs
+
+        # variant arrays
+        pos, ref, alt = self.snp_sites(
+            contig=contig, site_mask=site_mask, site_filters=site_filters
+        )
+        variant_position = pos
+        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        contig_index = self.contigs.index(contig)
+        variant_contig = da.full_like(
+            variant_position, fill_value=contig_index, dtype="u1"
+        )
+
+        # call arrays
+        gt = self.snp_genotypes(
+            contig=contig,
+            sample_sets=sample_sets,
+            field="GT",
+            site_mask=site_mask,
+            site_filters=site_filters,
+        )
+        call_genotype = gt
+
+        # sample arrays
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, species_calls=species_calls
+        )
+        sample_id = df_samples["sample_id"]
+
+        # setup data variables
+        data_vars = {
+            "variant_contig": ([DIM_VARIANT], variant_contig),
+            "variant_position": ([DIM_VARIANT], variant_position),
+            "variant_allele": ([DIM_VARIANT, DIM_ALLELE], variant_allele),
+            "sample_id": ([DIM_SAMPLE], sample_id),
+            "call_genotype": ([DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY], call_genotype),
+            "call_genotype_mask": (
+                [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+                call_genotype < 0,
+            ),
+        }
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
+
+        return ds
 
