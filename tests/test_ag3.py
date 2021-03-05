@@ -5,9 +5,7 @@ import dask.array as da
 import numpy as np
 import zarr
 import xarray
-
-
-gcs_url = "gs://vo_agam_release/"
+import pytest
 
 
 expected_species = {
@@ -22,9 +20,24 @@ expected_species = {
 contigs = "2R", "2L", "3R", "3L", "X"
 
 
-def test_sample_sets():
+def _ag3(url="simplecache::gs://vo_agam_release/"):
+    return Ag3(url, simplecache=dict(cache_storage="fixture"))
 
-    ag3 = Ag3(gcs_url)
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "gs://vo_agam_release/",
+        "gcs://vo_agam_release/",
+        "gs://vo_agam_release",
+        "gcs://vo_agam_release",
+        "simplecache::gs://vo_agam_release/",
+        "simplecache::gcs://vo_agam_release/",
+    ],
+)
+def test_sample_sets(url):
+
+    ag3 = _ag3(url)
     df_sample_sets_v3 = ag3.sample_sets(release="v3")
     assert isinstance(df_sample_sets_v3, pandas.DataFrame)
     assert 28 == len(df_sample_sets_v3)
@@ -33,12 +46,6 @@ def test_sample_sets():
     # test default is v3
     df_default = ag3.sample_sets()
     assert_frame_equal(df_sample_sets_v3, df_default)
-
-    # try without trailing slash
-    ag3 = Ag3(gcs_url[:-1])
-    df_sample_sets_v3 = ag3.sample_sets(release="v3")
-    assert isinstance(df_sample_sets_v3, pandas.DataFrame)
-    assert 28 == len(df_sample_sets_v3)
 
 
 def test_sample_metadata():
