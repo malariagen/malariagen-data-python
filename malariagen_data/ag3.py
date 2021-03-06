@@ -17,15 +17,6 @@ gff3_path = (
 )
 
 
-def _path_to_url(fs, root_path, path):
-    protocol = fs.protocol
-    if isinstance(protocol, tuple):
-        protocol = protocol[0]
-    joined_path = os.path.join(root_path, path)
-    url = f"{protocol}://{joined_path}"
-    return url
-
-
 DIM_VARIANT = "variants"
 DIM_ALLELE = "alleles"
 DIM_SAMPLE = "samples"
@@ -73,6 +64,9 @@ class Ag3:
 
         # process the url using fsspec
         self._pre = kwargs.pop("pre", False)
+        # normalise url, remove trailing slash
+        while url.endswith("/"):
+            url = url[:-1]
         self._url = url
         fs, path = url_to_fs(url, **kwargs)
         self._fs = fs
@@ -548,7 +542,7 @@ class Ag3:
             df = self._cache_geneset[attributes]
 
         except KeyError:
-            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+            path = f"{self._path}/{gff3_path}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -601,7 +595,7 @@ class Ag3:
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(),
-                gff3_path=_path_to_url(self._fs, self._path, gff3_path),
+                gff3_path=f"{self._url}/{gff3_path}",
             )
 
         ann = self._cache_annotator
@@ -685,7 +679,7 @@ class Ag3:
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(),
-                gff3_path=_path_to_url(self._fs, self._path, gff3_path),
+                gff3_path=f"{self._url}/{gff3_path}",
             )
 
         ann = self._cache_annotator
