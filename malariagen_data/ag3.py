@@ -1,6 +1,7 @@
 import os
 import pandas
 from fsspec.core import url_to_fs
+from fsspec.mapping import FSMap
 import zarr
 import dask.array as da
 import numpy as np
@@ -329,7 +330,7 @@ class Ag3:
             return self._cache_site_filters[key]
         except KeyError:
             path = f"{self._path}/v3/site_filters/{analysis}/{mask}/"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
             return root
@@ -369,7 +370,7 @@ class Ag3:
         """
         if self._cache_snp_sites is None:
             path = f"{self._path}/v3/snp_genotypes/all/sites/"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
@@ -434,7 +435,7 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/snp_genotypes/all/{sample_set}/"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
             return root
@@ -504,7 +505,7 @@ class Ag3:
         """
         if self._cache_genome is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -779,9 +780,8 @@ class Ag3:
     def open_site_annotations(self):
         if self._cache_site_annotations is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
-            self._cache_site_annotations = zarr.open_consolidated(
-                self._fs.get_mapper(path)
-            )
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
     def site_annotations(

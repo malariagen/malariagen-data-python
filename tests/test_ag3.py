@@ -20,8 +20,10 @@ expected_species = {
 contigs = "2R", "2L", "3R", "3L", "X"
 
 
-def _ag3(url="simplecache::gs://vo_agam_release/"):
-    return Ag3(url, simplecache=dict(cache_storage="fixture"))
+def setup_ag3(url="simplecache::gs://vo_agam_release/", **storage_kwargs):
+    if url.startswith("simplecache::"):
+        storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
+    return Ag3(url, **storage_kwargs)
 
 
 @pytest.mark.parametrize(
@@ -37,7 +39,7 @@ def _ag3(url="simplecache::gs://vo_agam_release/"):
 )
 def test_sample_sets(url):
 
-    ag3 = _ag3(url)
+    ag3 = setup_ag3(url)
     df_sample_sets_v3 = ag3.sample_sets(release="v3")
     assert isinstance(df_sample_sets_v3, pandas.DataFrame)
     assert 28 == len(df_sample_sets_v3)
@@ -50,7 +52,7 @@ def test_sample_sets(url):
 
 def test_sample_metadata():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     df_sample_sets_v3 = ag3.sample_sets(release="v3")
 
     expected_cols = (
@@ -139,7 +141,7 @@ def test_sample_metadata():
 
 def test_species_calls():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     sample_sets = ag3.sample_sets(release="v3")["sample_set"].tolist()
 
     for s in sample_sets:
@@ -157,7 +159,7 @@ def test_species_calls():
 
 def test_site_filters():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     for mask in "gamb_colu_arab", "gamb_colu", "arab":
 
@@ -177,7 +179,7 @@ def test_site_filters():
 
 def test_snp_sites():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # check can open the zarr directly
     root = ag3.open_snp_sites()
@@ -220,7 +222,7 @@ def test_snp_sites():
 
 def test_snp_genotypes():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # check can open the zarr directly
     root = ag3.open_snp_genotypes(sample_set="AG1000G-AO")
@@ -277,7 +279,7 @@ def test_snp_genotypes():
 
 def test_genome():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # test the open_genome() method to access as zarr
     genome = ag3.open_genome()
@@ -295,7 +297,7 @@ def test_genome():
 
 def test_geneset():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # default
     df = ag3.geneset()
@@ -322,7 +324,7 @@ def test_geneset():
 
 def test_is_accessible():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     # run a couple of tests
     tests = [("X", "gamb_colu_arab"), ("2R", "gamb_colu"), ("3L", "arab")]
     for contig, mask in tests:
@@ -334,7 +336,7 @@ def test_is_accessible():
 
 def test_cross_metadata():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     df_crosses = ag3.cross_metadata()
     assert isinstance(df_crosses, pandas.DataFrame)
     expected_cols = ["cross", "sample_id", "father_id", "mother_id", "sex", "role"]
@@ -353,7 +355,7 @@ def test_cross_metadata():
 
 def test_site_annotations():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # test access as zarr
     root = ag3.open_site_annotations()
@@ -386,7 +388,7 @@ def test_site_annotations():
 
 def test_snp_dataset():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     ds = ag3.snp_dataset(contig="3L")
     assert isinstance(ds, xarray.Dataset)

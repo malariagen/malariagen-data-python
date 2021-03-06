@@ -4,6 +4,6 @@ __pycache__
 dist
 
 .ipynb_checkpoints/
-fixture
+gcs_cache
 
 
