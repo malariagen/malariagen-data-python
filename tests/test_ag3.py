@@ -374,7 +374,7 @@ def test_site_annotations():
             assert contig in root[f]
 
     # test access as dask arrays
-    for contig in "2R", "X", "3L":
+    for contig in "2R", "X":
         for site_mask in None, "gamb_colu_arab":
             pos = ag3.snp_sites(contig=contig, field="POS", site_mask=site_mask)
             for field in "codon_degeneracy", "seq_cls":

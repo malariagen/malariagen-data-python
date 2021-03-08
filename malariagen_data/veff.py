@@ -9,7 +9,7 @@ from Bio.Seq import Seq
 
 
 class Annotator(object):
-    def __init__(self, genome, gff3_path):
+    def __init__(self, genome, geneset):
         """
         An annotator.
 
@@ -18,21 +18,20 @@ class Annotator(object):
 
         genome : zarr hierarchy
             Reference genome.
-        gff3_path : string
-            Path to genome annotations GFF3 file.
+        geneset : pandas dataframe
+            Dataframe with genome annotations.
 
         """
 
         # store initialisation parameters
         self._genome = genome
         self._genome_cache = dict()
-        self._gff3_path = gff3_path
         # self._seqid = seqid
 
-        # setup access to GFF3 as a table
-        tbl_features = etl.fromgff3(gff3_path)
+        # setup access to GFF3 as a petl table
+        # TODO at some point we'd like to refactor this module to read directly from pandas
         tbl_features = (
-            tbl_features.unpackdict("attributes", ["ID", "Parent"])
+            etl.fromdataframe(geneset)
             .rename({"ID": "feature_id", "Parent": "parent_id", "end": "stop"})
             .select(lambda row: (row.stop - row.start) > 0)
         )

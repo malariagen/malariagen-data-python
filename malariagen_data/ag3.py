@@ -1,4 +1,3 @@
-import os
 import pandas
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
@@ -64,10 +63,6 @@ class Ag3:
 
         # process the url using fsspec
         self._pre = kwargs.pop("pre", False)
-        # normalise url, remove trailing slash
-        while url.endswith("/"):
-            url = url[:-1]
-        self._url = url
         fs, path = url_to_fs(url, **kwargs)
         self._fs = fs
         # path compatibility, fsspec/gcsfs behaviour varies between version
@@ -97,7 +92,7 @@ class Ag3:
                 sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
                 releases = sorted([d for d in sub_dirs if d.startswith("v3")])
                 if len(releases) == 0:
-                    raise ValueError(f"No releases found at location {self._url!r}")
+                    raise ValueError(f"No releases found.")
                 self._cache_releases = releases
             else:
                 self._cache_releases = public_releases
@@ -594,8 +589,7 @@ class Ag3:
         # first time sets up and caches ann object
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(),
-                gff3_path=f"{self._url}/{gff3_path}",
+                genome=self.open_genome(), geneset=self.geneset()
             )
 
         ann = self._cache_annotator
@@ -679,7 +673,7 @@ class Ag3:
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(),
-                gff3_path=f"{self._url}/{gff3_path}",
+                geneset=self.geneset(),
             )
 
         ann = self._cache_annotator
