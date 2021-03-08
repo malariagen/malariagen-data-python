@@ -1,6 +1,6 @@
-import os
 import pandas
 from fsspec.core import url_to_fs
+from fsspec.mapping import FSMap
 import zarr
 import dask.array as da
 import numpy as np
@@ -16,19 +16,10 @@ gff3_path = (
 )
 
 
-def _path_to_url(fs, root_path, path):
-    protocol = fs.protocol
-    if isinstance(protocol, tuple):
-        protocol = protocol[0]
-    joined_path = os.path.join(root_path, path)
-    url = f"{protocol}://{joined_path}"
-    return url
-
 DIM_VARIANT = "variants"
 DIM_ALLELE = "alleles"
 DIM_SAMPLE = "samples"
 DIM_PLOIDY = "ploidy"
-
 
 
 class Ag3:
@@ -62,28 +53,25 @@ class Ag3:
 
         # special case Google Cloud Storage, use anonymous access, avoids a delay
         if url.startswith("gs://") or url.startswith("gcs://"):
-            kwargs.setdefault("token", "anon")
+            kwargs["token"] = "anon"
+        elif "gs://" in url:
+            # chained URL
+            kwargs["gs"] = dict(token="anon")
+        elif "gcs://" in url:
+            # chained URL
+            kwargs["gcs"] = dict(token="anon")
 
         # process the url using fsspec
-        pre = kwargs.pop("pre", False)
+        self._pre = kwargs.pop("pre", False)
         fs, path = url_to_fs(url, **kwargs)
-
         self._fs = fs
         # path compatibility, fsspec/gcsfs behaviour varies between version
         while path.endswith("/"):
             path = path[:-1]
         self._path = path
 
-        # discover which releases are available
-        sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
-        releases = [d for d in sub_dirs if d.startswith("v3")]
-        if not pre:
-            releases = [d for d in releases if d in self.public_releases]
-        if len(releases) == 0:
-            raise ValueError(f"No releases found at location {url!r}")
-        self._releases = releases
-
         # setup caches
+        self._cache_releases = None
         self._cache_sample_sets = dict()
         self._cache_general_metadata = dict()
         self._cache_species_calls = dict()
@@ -91,12 +79,24 @@ class Ag3:
         self._cache_snp_sites = None
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
-
         self._cache_annotator = None
         self._cache_geneset = dict()
         self._cache_cross_metadata = None
         self._cache_site_annotations = None
 
+    @property
+    def releases(self):
+        if self._cache_releases is None:
+            if self._pre:
+                # discover which releases are available
+                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
+                releases = sorted([d for d in sub_dirs if d.startswith("v3")])
+                if len(releases) == 0:
+                    raise ValueError(f"No releases found.")
+                self._cache_releases = releases
+            else:
+                self._cache_releases = public_releases
+        return self._cache_releases
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -112,7 +112,7 @@ class Ag3:
 
         """
 
-        if release not in self._releases:
+        if release not in self.releases:
             raise ValueError(f"Release not available: {release!r}")
 
         try:
@@ -136,7 +136,7 @@ class Ag3:
 
     def _lookup_release(self, *, sample_set):
         # find which release this sample set was included in
-        for release in self._releases:
+        for release in self.releases:
             df_sample_sets = self.sample_sets(release=release)
             if sample_set in df_sample_sets["sample_set"].tolist():
                 return release
@@ -190,15 +190,15 @@ class Ag3:
             loc = df["species_gambcolu_arabiensis"].values == "intermediate"
             df.loc[loc, "species"] = "intermediate_arabiensis_gambiae"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                    df["species_gambiae_coluzzii"].values == "gambiae"
+                df["species_gambiae_coluzzii"].values == "gambiae"
             )
             df.loc[loc, "species"] = "gambiae"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                    df["species_gambiae_coluzzii"].values == "coluzzii"
+                df["species_gambiae_coluzzii"].values == "coluzzii"
             )
             df.loc[loc, "species"] = "coluzzii"
             loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                    df["species_gambiae_coluzzii"].values == "intermediate"
+                df["species_gambiae_coluzzii"].values == "intermediate"
             )
             df.loc[loc, "species"] = "intermediate_gambiae_coluzzii"
 
@@ -319,7 +319,7 @@ class Ag3:
             return self._cache_site_filters[key]
         except KeyError:
             path = f"{self._path}/v3/site_filters/{analysis}/{mask}/"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
             return root
@@ -359,7 +359,7 @@ class Ag3:
         """
         if self._cache_snp_sites is None:
             path = f"{self._path}/v3/snp_genotypes/all/sites/"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
@@ -424,18 +424,18 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/snp_genotypes/all/{sample_set}/"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
             return root
 
     def snp_genotypes(
-            self,
-            contig,
-            sample_sets="v3_wild",
-            field="GT",
-            site_mask=None,
-            site_filters="dt_20200416",
+        self,
+        contig,
+        sample_sets="v3_wild",
+        field="GT",
+        site_mask=None,
+        site_filters="dt_20200416",
     ):
         """Access SNP genotypes and associated data.
 
@@ -494,7 +494,7 @@ class Ag3:
         """
         if self._cache_genome is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-            store = SafeStore(self._fs.get_mapper(path))
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -515,7 +515,6 @@ class Ag3:
         z = genome[contig]
         d = da.from_array(z, chunks=z.chunks)
         return d
-
 
     def geneset(self, attributes=("ID", "Parent", "Name")):
         """Access genome feature annotations (AgamP4.12).
@@ -538,7 +537,7 @@ class Ag3:
             df = self._cache_geneset[attributes]
 
         except KeyError:
-            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+            path = f"{self._path}/{gff3_path}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -590,8 +589,7 @@ class Ag3:
         # first time sets up and caches ann object
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(),
-                gff3_path=_path_to_url(self._fs, self._path, gff3_path),
+                genome=self.open_genome(), geneset=self.geneset()
             )
 
         ann = self._cache_annotator
@@ -601,8 +599,10 @@ class Ag3:
         stop = feature[4]
         strand = feature[6]
 
-        print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
-              f'\nstrand : {strand}')
+        print(
+            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
+            f"\nstrand : {strand}"
+        )
 
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
@@ -617,12 +617,12 @@ class Ag3:
 
         # build an initial dataframe with contig, pos, ref, alt columns
         df_in = pandas.DataFrame()
-        df_in['position'] = np.asarray(pos[loc])
-        df_in['ref_allele'] = [q.tobytes().decode() for q in np.asarray(ref)]
+        df_in["position"] = np.asarray(pos[loc])
+        df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
         # bytes within lists within lists...
-        df_in['alt_alleles'] = [list(q.tobytes().decode()) for q in list(alt)]
+        df_in["alt_alleles"] = [list(q.tobytes().decode()) for q in list(alt)]
         # explode the alt alleles into their own rows
-        df_effects = df_in.explode('alt_alleles').reset_index(drop=True)
+        df_effects = df_in.explode("alt_alleles").reset_index(drop=True)
 
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
@@ -638,8 +638,13 @@ class Ag3:
         laa_change = []
 
         for row in df_effects.itertuples(index=True):
-            for effect in ann.get_effects(chrom=contig, pos=row.position, ref=row.ref_allele, alt=row.alt_alleles,
-                                          transcript_ids=[transcript]):
+            for effect in ann.get_effects(
+                chrom=contig,
+                pos=row.position,
+                ref=row.ref_allele,
+                alt=row.alt_alleles,
+                transcript_ids=[transcript],
+            ):
                 leffect.append(effect.effect)
                 limpact.append(effect.impact)
                 lref_codon.append(effect.ref_codon)
@@ -649,14 +654,14 @@ class Ag3:
                 lalt_aa.append(effect.alt_aa)
                 laa_change.append(effect.aa_change)
 
-        df_effects['effect'] = leffect
-        df_effects['impact'] = limpact
-        df_effects['ref_codon'] = lref_codon
-        df_effects['alt_codon'] = lalt_codon
-        df_effects['aa_pos'] = laa_pos
-        df_effects['ref_aa'] = lref_aa
-        df_effects['alt_aa'] = lalt_aa
-        df_effects['aa_change'] = laa_change
+        df_effects["effect"] = leffect
+        df_effects["impact"] = limpact
+        df_effects["ref_codon"] = lref_codon
+        df_effects["alt_codon"] = lalt_codon
+        df_effects["aa_pos"] = laa_pos
+        df_effects["ref_aa"] = lref_aa
+        df_effects["alt_aa"] = lalt_aa
+        df_effects["aa_change"] = laa_change
 
         return df_effects
 
@@ -668,7 +673,7 @@ class Ag3:
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(),
-                gff3_path=_path_to_url(self._fs, self._path, gff3_path),
+                geneset=self.geneset(),
             )
 
         ann = self._cache_annotator
@@ -678,8 +683,10 @@ class Ag3:
         stop = feature[4]
         strand = feature[6]
 
-        print(f'transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}'
-              f'\nstrand : {strand}')
+        print(
+            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
+            f"\nstrand : {strand}"
+        )
 
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
@@ -691,17 +698,19 @@ class Ag3:
 
         # we want to grab all metadata then get idx for samples we want
         # what granularity do we want here - country+site+year TODO
-        df_meta = self.sample_metadata(sample_sets='v3_wild', species_calls=("20200422", "aim"))
-
-
-
-
+        df_meta = self.sample_metadata(
+            sample_sets="v3_wild", species_calls=("20200422", "aim")
+        )
 
         # get genotypes - chop to loc, chop to pop_idx TODO
-        gt = self.snp_genotypes(contig=contig, sample_sets="v3_wild", field="GT", site_mask=site_mask,
-                                site_filters="dt_20200416")
+        gt = self.snp_genotypes(
+            contig=contig,
+            sample_sets="v3_wild",
+            field="GT",
+            site_mask=site_mask,
+            site_filters="dt_20200416",
+        )
         gt = gt[loc].compute()
-
 
         # count alleles - should we calculate and add these to gcs like previous phases?
 
@@ -710,7 +719,6 @@ class Ag3:
         # build and return dataframe
 
         return df_meta, gt
-
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
@@ -760,9 +768,8 @@ class Ag3:
     def open_site_annotations(self):
         if self._cache_site_annotations is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
-            self._cache_site_annotations = zarr.open_consolidated(
-                self._fs.get_mapper(path)
-            )
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
     def site_annotations(
@@ -860,4 +867,3 @@ class Ag3:
         ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
 
         return ds
-
