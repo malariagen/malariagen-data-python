@@ -1,3 +1,4 @@
+import malariagen_data
 from malariagen_data import Ag3
 import pandas
 from pandas.testing import assert_frame_equal
@@ -402,3 +403,13 @@ def test_snp_dataset():
     ]
     for f in expected_fields:
         assert f in ds
+
+
+def test_snp_single_effect():
+    ag3 = setup_ag3()
+    gste2 = 'AGAP009194-RA'
+    # no effect
+    e = ag3.snp_single_effect('3R', pos=28597652, ref='G', alt='A', transcript=[gste2])
+    # produces effect
+    # e = ag3.snp_single_effect('3R', pos = 28598166, ref = 'A', alt = 'G', transcript = [gste2])
+    assert isinstance(e, malariagen_data.veff.VariantEffect)

@@ -9,7 +9,7 @@ from Bio.Seq import Seq
 
 
 class Annotator(object):
-    def __init__(self, genome, geneset):
+    def __init__(self, genome, geneset, seqid):
         """
         An annotator.
 
@@ -26,6 +26,7 @@ class Annotator(object):
         # store initialisation parameters
         self._genome = genome
         self._genome_cache = dict()
+        # when debugging snp effects unhash seqid and add .eq("seqid", seqid) parameter to tbl_features
         # self._seqid = seqid
 
         # setup access to GFF3 as a petl table
@@ -401,6 +402,13 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
 
                 yield _get_intron_effect(annotator, base_effect, intron, cdss)
 
+        # untranslated regions - this is a hack for now that hopefully captures UTRs when present
+
+        if ((not overlapping_cdss) and (not overlapping_introns)) :
+        # TODO - detect whether upstream or downstream UTR
+            #yield _get_intron_effect(annotator, base_effect, intron, cdss)
+            effect = base_effect._replace(effect="UTR_VARIANT", impact="LOW")
+            yield effect
 
 def _get_cds_effect(annotator, base_effect, cds, cdss):
 
