@@ -748,6 +748,7 @@ class Ag3:
                 data_vars="minimal",
                 coords="minimal",
                 compat="override",
+                join="override",
             )
 
         # TODO apply site filters
