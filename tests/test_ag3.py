@@ -5,6 +5,7 @@ import dask.array as da
 import numpy as np
 import zarr
 import xarray
+import pytest
 
 
 gcs_url = "gs://vo_agam_release/"
@@ -377,19 +378,60 @@ def test_site_annotations():
                 assert pos.shape == d.shape
 
 
-def test_snp_dataset():
+@pytest.mark.parametrize("sample_sets", ["AG1000G-AO", "v3_wild"])
+@pytest.mark.parametrize("contig", ["3L", "X"])
+def test_snp_calls(sample_sets, contig):
 
     ag3 = Ag3(gcs_url)
 
-    ds = ag3.snp_dataset(contig="3L")
+    ds = ag3.snp_calls(contig=contig, sample_sets=sample_sets)
     assert isinstance(ds, xarray.Dataset)
+
+    # check fields
     expected_fields = [
         "variant_contig",
         "variant_position",
         "variant_allele",
+        "variant_filter_pass_gamb_colu_arab",
+        "variant_filter_pass_gamb_colu",
+        "variant_filter_pass_arab",
         "sample_id",
         "call_genotype",
         "call_genotype_mask",
+        "call_GQ",
+        "call_AD",
+        "call_MQ",
     ]
     for f in expected_fields:
         assert f in ds
+
+    # check dimensions
+    assert ["alleles", "ploidy", "samples", "variants"] == sorted(ds.dims)
+
+    # check dim lengths
+    pos = ag3.snp_sites(contig=contig, field="POS")
+    n_variants = len(pos)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    n_samples = len(df_samples)
+    assert n_variants == ds.dims["variants"]
+    assert n_samples == ds.dims["samples"]
+    assert 2 == ds.dims["ploidy"]
+    assert 4 == ds.dims["alleles"]
+
+    # check shapes
+    for f in expected_fields:
+        if f.startswith("variant_"):
+            x = ds[f]
+            assert isinstance(x, xarray.DataArray)
+            if f == "variant_allele":
+                assert 2 == x.ndim, f
+                assert (n_variants, 4) == x.shape
+                assert ["alleles", "variants"] == sorted(x.dims)
+            else:
+                assert 1 == x.ndim, f
+                assert (n_variants,) == x.shape
+                assert ["variants"] == sorted(x.dims)
+
+    # TODO check attributes
+
+    # TODO test apply site filters
