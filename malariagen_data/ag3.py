@@ -587,7 +587,7 @@ class Ag3:
         # TODO remove seqid here and from veff constructor
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), geneset=self.geneset(), seqid=chrom
+                genome=self.open_genome(), geneset=self.geneset()
             )
         ann = self._cache_annotator
 

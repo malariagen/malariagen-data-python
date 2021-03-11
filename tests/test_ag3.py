@@ -410,6 +410,35 @@ def test_snp_single_effect():
     gste2 = 'AGAP009194-RA'
     # no effect
     e = ag3.snp_single_effect('3R', pos=28597652, ref='G', alt='A', transcript=[gste2])
-    # produces effect
-    # e = ag3.snp_single_effect('3R', pos = 28598166, ref = 'A', alt = 'G', transcript = [gste2])
     assert isinstance(e, malariagen_data.veff.VariantEffect)
+    assert e.effect == 'UTR_VARIANT'
+
+def test_snp_effects():
+    ag3 = setup_ag3()
+    gste2 = "AGAP009194-RA"
+    site_mask = "gamb_colu"
+    expected_fields = ["position",
+                       "ref_allele",
+                       "alt_alleles",
+                       "effect",
+                       "impact",
+                       "ref_codon",
+                       "alt_codon",
+                       "aa_pos",
+                       "ref_aa",
+                       "alt_aa",
+                       "aa_change"
+    ]
+
+    df = ag3.snp_effects(gste2, site_mask)
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+
+
+    # for f in expected_fields:
+    #
+    #     assert f in df.columns
+
+    assert df.shape == (2838, 11)
+    assert df.iloc[1451].aa_change == 'I114T'
+

@@ -9,7 +9,7 @@ from Bio.Seq import Seq
 
 
 class Annotator(object):
-    def __init__(self, genome, geneset, seqid):
+    def __init__(self, genome, geneset):
         """
         An annotator.
 
@@ -27,6 +27,7 @@ class Annotator(object):
         self._genome = genome
         self._genome_cache = dict()
         # when debugging snp effects unhash seqid and add .eq("seqid", seqid) parameter to tbl_features
+        # and seqid to __init__
         # self._seqid = seqid
 
         # setup access to GFF3 as a petl table
@@ -338,77 +339,140 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
         key=lambda v: v.start,
     )
 
+    utr5 = sorted(
+        [
+            f
+            for f in annotator.get_children(transcript.feature_id)
+            if f.type == "five_prime_UTR"
+        ],
+        key=lambda v: v.start,
+    )
+
+    utr3 = sorted(
+        [
+            f
+            for f in annotator.get_children(transcript.feature_id)
+            if f.type == "three_prime_UTR"
+        ],
+        key=lambda v: v.start,
+    )
+
+    # TODO deal with introns in UTRS e.g. AGAP004679-RB
+
     # derive introns, assuming between CDSs
     introns = [(x.stop + 1, y.start - 1) for x, y in zip(cdss[:-1], cdss[1:])]
 
-    if not cdss:
+    # if not cdss:
+    #
+    #     # TODO
+    #     # the variant hits a transcript, but there are no CDSs within the
+    #     # transcript
+    #     effect = base_effect._replace(effect="TODO")
+    #     yield effect
 
-        # TODO
-        # the variant hits a transcript, but there are no CDSs within the
-        # transcript
-        effect = base_effect._replace(effect="TODO")
-        yield effect
+    # find coding sequence that overlaps the reference allele
+    overlapping_cdss = [
+        cds for cds in cdss if cds.start <= ref_stop and cds.stop >= ref_start
+    ]
 
-    else:
+    overlapping_introns = [
+        (start, stop)
+        for (start, stop) in introns
+        if start <= ref_stop and stop >= ref_start
+    ]
 
-        # find coding sequence that overlaps the reference allele
-        overlapping_cdss = [
-            cds for cds in cdss if cds.start <= ref_stop and cds.stop >= ref_start
-        ]
+    overlapping_utr5 = [
+        (start, stop)
+        for (start, stop) in utr5
+        if start <= ref_stop and stop >= ref_start
+    ]
 
-        overlapping_introns = [
-            (start, stop)
-            for (start, stop) in introns
-            if start <= ref_stop and stop >= ref_start
-        ]
+    overlapping_utr3 = [
+        (start, stop)
+        for (start, stop) in utr3
+        if start <= ref_stop and stop >= ref_start
+    ]
 
-        # TODO UTR effects
+    # CDS effects
 
-        # CDS effects
+    if overlapping_cdss:
 
-        if overlapping_cdss:
+        if len(overlapping_cdss) > 1:
 
-            if len(overlapping_cdss) > 1:
-
-                # TODO
-                # variant overlaps more than one exon
-                effect = base_effect._replace(effect="TODO")
-                yield effect
-
-            else:
-
-                # variant overlaps a single exon
-                assert len(overlapping_cdss) == 1
-                cds = overlapping_cdss[0]
-
-                yield _get_cds_effect(annotator, base_effect, cds, cdss)
-
-        # intron effects
-
-        if overlapping_introns:
-
-            if len(overlapping_introns) > 1:
-
-                # TODO
-                # variant overlaps more than one intron
-                effect = base_effect._replace(effect="TODO")
-                yield effect
-
-            else:
-
-                # variant overlaps a single intron
-                assert len(overlapping_introns) == 1
-                intron = overlapping_introns[0]
-
-                yield _get_intron_effect(annotator, base_effect, intron, cdss)
-
-        # untranslated regions - this is a hack for now that hopefully captures UTRs when present
-
-        if ((not overlapping_cdss) and (not overlapping_introns)) :
-        # TODO - detect whether upstream or downstream UTR
-            #yield _get_intron_effect(annotator, base_effect, intron, cdss)
-            effect = base_effect._replace(effect="UTR_VARIANT", impact="LOW")
+            # TODO
+            # variant overlaps more than one exon
+            effect = base_effect._replace(effect="TODO")
             yield effect
+
+        else:
+
+            # variant overlaps a single exon
+            assert len(overlapping_cdss) == 1
+            cds = overlapping_cdss[0]
+
+            yield _get_cds_effect(annotator, base_effect, cds, cdss)
+
+    # intron effects
+
+    if overlapping_introns:
+
+        if len(overlapping_introns) > 1:
+
+            # TODO
+            # variant overlaps more than one intron
+            effect = base_effect._replace(effect="TODO")
+            yield effect
+
+        else:
+
+            # variant overlaps a single intron
+            assert len(overlapping_introns) == 1
+            intron = overlapping_introns[0]
+
+            yield _get_intron_effect(annotator, base_effect, intron, cdss)
+
+    if overlapping_utr5:
+
+        if len(overlapping_utr5) > 1:
+
+            # TODO
+            # variant overlaps more than one 5'UTR
+            effect = base_effect._replace(effect="TODO")
+            yield effect
+
+        else:
+
+            # variant overlaps a single 5 prime UTR
+            assert len(overlapping_utr5) == 1
+            utr5 = overlapping_utr5[0]
+
+            effect = base_effect._replace(effect="FIVE_PRIME_UTR", impact="LOW")
+            yield effect
+
+    if overlapping_utr3:
+
+        if len(overlapping_utr3) > 1:
+
+            # TODO
+            # variant overlaps more than one 3'UTR
+            effect = base_effect._replace(effect="TODO")
+            yield effect
+
+        else:
+
+            # variant overlaps a single 3 prime UTR
+            assert len(overlapping_utr3) == 1
+            utr5 = overlapping_utr3[0]
+
+            effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
+            yield effect
+
+
+    # if none of the above
+    if (not overlapping_cdss) and (not overlapping_introns) and (not overlapping_utr5) and (not overlapping_utr3):
+
+        effect = base_effect._replace(effect="INTRAGENIC", impact="LOW")
+        yield effect
 
 def _get_cds_effect(annotator, base_effect, cds, cdss):
 
