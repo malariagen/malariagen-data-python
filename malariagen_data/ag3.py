@@ -650,7 +650,7 @@ class Ag3:
 
         return d
 
-    def _snp_calls_dataset(self, contig, sample_set):
+    def _snp_calls_dataset(self, contig, sample_set, site_filters):
 
         data_vars = dict()
 
@@ -679,20 +679,20 @@ class Ag3:
 
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
-            filters_root = self.open_site_filters(mask=mask)
+            filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
             z = filters_root[contig]["variants"]["filter_pass"]
             d = da.from_array(z, chunks=z.chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
-        root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = root[contig]["calldata"]["GT"]
+        calls_root = self.open_snp_genotypes(sample_set=sample_set)
+        gt_z = calls_root[contig]["calldata"]["GT"]
         call_genotype = da.from_array(gt_z, chunks=gt_z.chunks)
-        gq_z = root[contig]["calldata"]["GQ"]
+        gq_z = calls_root[contig]["calldata"]["GQ"]
         call_gq = da.from_array(gq_z, chunks=gq_z.chunks)
-        ad_z = root[contig]["calldata"]["AD"]
+        ad_z = calls_root[contig]["calldata"]["AD"]
         call_ad = da.from_array(ad_z, chunks=ad_z.chunks)
-        mq_z = root[contig]["calldata"]["MQ"]
+        mq_z = calls_root[contig]["calldata"]["MQ"]
         call_mq = da.from_array(mq_z, chunks=mq_z.chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
@@ -707,7 +707,7 @@ class Ag3:
         data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
 
         # sample arrays
-        z = root["samples"]
+        z = calls_root["samples"]
         sample_id = da.from_array(z, chunks=z.chunks)
         data_vars["sample_id"] = [DIM_SAMPLE], sample_id
 
@@ -726,20 +726,43 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
     ):
-        """TODO doc me"""
+        """Access SNP sites, site filters and genotype calls.
 
-        # TODO support multiple contigs
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str
+            Site filters analysis version.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         if isinstance(sample_sets, str):
 
-            ds = self._snp_calls_dataset(contig=contig, sample_set=sample_sets)
+            # single sample set requested
+            ds = self._snp_calls_dataset(
+                contig=contig, sample_set=sample_sets, site_filters=site_filters
+            )
 
         else:
 
+            # multiple sample sets requested, need to concatenate along samples dimension
             datasets = [
-                self._snp_calls_dataset(contig=contig, sample_set=sample_set)
+                self._snp_calls_dataset(
+                    contig=contig, sample_set=sample_set, site_filters=site_filters
+                )
                 for sample_set in sample_sets
             ]
             ds = xarray.concat(
@@ -751,10 +774,13 @@ class Ag3:
                 join="override",
             )
 
-        # TODO apply site filters
+        # apply site filters
+        if site_mask is not None:
+            loc_pass = ds[f"variant_filter_pass_{site_mask}"]
+            ds = ds.isel(variants=loc_pass)
 
         return ds
 
     def snp_dataset(self, *args, **kwargs):
-        # backwards compatibility
+        # backwards compatibility, this method has been renamed to snp_calls()
         return self.snp_calls(*args, **kwargs)

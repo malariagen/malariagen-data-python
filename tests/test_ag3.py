@@ -378,17 +378,18 @@ def test_site_annotations():
                 assert pos.shape == d.shape
 
 
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 @pytest.mark.parametrize("sample_sets", ["AG1000G-AO", "v3_wild"])
 @pytest.mark.parametrize("contig", ["3L", "X"])
-def test_snp_calls(sample_sets, contig):
+def test_snp_calls(sample_sets, contig, site_mask):
 
     ag3 = Ag3(gcs_url)
 
-    ds = ag3.snp_calls(contig=contig, sample_sets=sample_sets)
+    ds = ag3.snp_calls(contig=contig, sample_sets=sample_sets, site_mask=site_mask)
     assert isinstance(ds, xarray.Dataset)
 
     # check fields
-    expected_fields = [
+    expected_fields = {
         "variant_contig",
         "variant_position",
         "variant_allele",
@@ -401,15 +402,14 @@ def test_snp_calls(sample_sets, contig):
         "call_GQ",
         "call_AD",
         "call_MQ",
-    ]
-    for f in expected_fields:
-        assert f in ds
+    }
+    assert expected_fields == set(ds)
 
     # check dimensions
-    assert ["alleles", "ploidy", "samples", "variants"] == sorted(ds.dims)
+    assert {"alleles", "ploidy", "samples", "variants"} == set(ds.dims)
 
     # check dim lengths
-    pos = ag3.snp_sites(contig=contig, field="POS")
+    pos = ag3.snp_sites(contig=contig, field="POS", site_mask=site_mask)
     n_variants = len(pos)
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
     n_samples = len(df_samples)
@@ -420,18 +420,34 @@ def test_snp_calls(sample_sets, contig):
 
     # check shapes
     for f in expected_fields:
-        if f.startswith("variant_"):
-            x = ds[f]
-            assert isinstance(x, xarray.DataArray)
-            if f == "variant_allele":
-                assert 2 == x.ndim, f
-                assert (n_variants, 4) == x.shape
-                assert ["alleles", "variants"] == sorted(x.dims)
-            else:
-                assert 1 == x.ndim, f
-                assert (n_variants,) == x.shape
-                assert ["variants"] == sorted(x.dims)
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
 
-    # TODO check attributes
+        if f == "variant_allele":
+            assert 2 == x.ndim, f
+            assert (n_variants, 4) == x.shape
+            assert ("variants", "alleles") == x.dims
+        elif f.startswith("variant_"):
+            assert 1 == x.ndim, f
+            assert (n_variants,) == x.shape
+            assert ("variants",) == x.dims
+        elif f in {"call_genotype", "call_genotype_mask"}:
+            assert 3 == x.ndim
+            assert ("variants", "samples", "ploidy") == x.dims
+            assert (n_variants, n_samples, 2) == x.shape
+        elif f == "call_AD":
+            assert 3 == x.ndim
+            assert ("variants", "samples", "alleles") == x.dims
+            assert (n_variants, n_samples, 4) == x.shape
+        elif f.startswith("call_"):
+            assert 2 == x.ndim, f
+            assert ("variants", "samples") == x.dims
+            assert (n_variants, n_samples) == x.shape
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim
+            assert ("samples",) == x.dims
+            assert (n_samples,) == x.shape
 
-    # TODO test apply site filters
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
