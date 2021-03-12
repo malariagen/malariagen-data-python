@@ -382,15 +382,11 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
     ]
 
     overlapping_utr5 = [
-        (start, stop)
-        for (start, stop) in utr5
-        if start <= ref_stop and stop >= ref_start
+        x for x in utr5 if x.start <= ref_stop and x.stop >= ref_start
     ]
 
     overlapping_utr3 = [
-        (start, stop)
-        for (start, stop) in utr3
-        if start <= ref_stop and stop >= ref_start
+        x for x in utr3 if x.start <= ref_stop and x.stop >= ref_start
     ]
 
     # CDS effects

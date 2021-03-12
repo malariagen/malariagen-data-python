@@ -411,7 +411,7 @@ def test_snp_single_effect():
     # no effect
     e = ag3.snp_single_effect('3R', pos=28597652, ref='G', alt='A', transcript=[gste2])
     assert isinstance(e, malariagen_data.veff.VariantEffect)
-    assert e.effect == 'UTR_VARIANT'
+    assert e.effect == 'THREE_PRIME_UTR'
 
 def test_snp_effects():
     ag3 = setup_ag3()
@@ -440,5 +440,11 @@ def test_snp_effects():
     #     assert f in df.columns
 
     assert df.shape == (2838, 11)
+    # check first, second, third codon position non-syn
+    assert df.iloc[1454].aa_change == 'I114L'
     assert df.iloc[1451].aa_change == 'I114T'
-
+    assert df.iloc[1446].aa_change == 'I114M'
+    # check non-syn
+    assert df.iloc[1447].aa_change == 'I114I'
+    # check intronic
+    assert df.iloc[1197].effect == 'INTRONIC'
