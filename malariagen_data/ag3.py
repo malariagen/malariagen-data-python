@@ -650,57 +650,66 @@ class Ag3:
 
         return d
 
-    def snp_dataset(
-        self,
-        contig,
-        sample_sets="v3_wild",
-        species_calls=("20200422", "aim"),
-        site_mask=None,
-        site_filters="dt_20200416",
-    ):
-        """TODO doc me"""
+    def _snp_calls_dataset(self, contig, sample_set, site_filters):
 
-        # TODO support multiple contigs
+        data_vars = dict()
 
         # variant arrays
-        pos, ref, alt = self.snp_sites(
-            contig=contig, site_mask=site_mask, site_filters=site_filters
-        )
-        variant_position = pos
+        sites_root = self.open_snp_sites()
+
+        # variant_position
+        pos_z = sites_root[contig]["variants"]["POS"]
+        variant_position = da.from_array(pos_z, chunks=pos_z.chunks)
+        data_vars["variant_position"] = [DIM_VARIANT], variant_position
+
+        # variant_allele
+        ref_z = sites_root[contig]["variants"]["REF"]
+        ref = da.from_array(ref_z, chunks=ref_z.chunks)
+        alt_z = sites_root[contig]["variants"]["ALT"]
+        alt = da.from_array(alt_z, chunks=alt_z.chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
+
+        # variant_contig
         contig_index = self.contigs.index(contig)
         variant_contig = da.full_like(
             variant_position, fill_value=contig_index, dtype="u1"
         )
+        data_vars["variant_contig"] = [DIM_VARIANT], variant_contig
+
+        # site filters arrays
+        for mask in "gamb_colu_arab", "gamb_colu", "arab":
+            filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
+            z = filters_root[contig]["variants"]["filter_pass"]
+            d = da.from_array(z, chunks=z.chunks)
+            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
-        gt = self.snp_genotypes(
-            contig=contig,
-            sample_sets=sample_sets,
-            field="GT",
-            site_mask=site_mask,
-            site_filters=site_filters,
+        calls_root = self.open_snp_genotypes(sample_set=sample_set)
+        gt_z = calls_root[contig]["calldata"]["GT"]
+        call_genotype = da.from_array(gt_z, chunks=gt_z.chunks)
+        gq_z = calls_root[contig]["calldata"]["GQ"]
+        call_gq = da.from_array(gq_z, chunks=gq_z.chunks)
+        ad_z = calls_root[contig]["calldata"]["AD"]
+        call_ad = da.from_array(ad_z, chunks=ad_z.chunks)
+        mq_z = calls_root[contig]["calldata"]["MQ"]
+        call_mq = da.from_array(mq_z, chunks=mq_z.chunks)
+        data_vars["call_genotype"] = (
+            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+            call_genotype,
         )
-        call_genotype = gt
+        data_vars["call_genotype_mask"] = (
+            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+            call_genotype < 0,
+        )
+        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
+        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
+        data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
 
         # sample arrays
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, species_calls=species_calls
-        )
-        sample_id = df_samples["sample_id"]
-
-        # setup data variables
-        data_vars = {
-            "variant_contig": ([DIM_VARIANT], variant_contig),
-            "variant_position": ([DIM_VARIANT], variant_position),
-            "variant_allele": ([DIM_VARIANT, DIM_ALLELE], variant_allele),
-            "sample_id": ([DIM_SAMPLE], sample_id),
-            "call_genotype": ([DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY], call_genotype),
-            "call_genotype_mask": (
-                [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-                call_genotype < 0,
-            ),
-        }
+        z = calls_root["samples"]
+        sample_id = da.from_array(z, chunks=z.chunks)
+        data_vars["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
         attrs = {"contigs": self.contigs}
@@ -709,3 +718,69 @@ class Ag3:
         ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
 
         return ds
+
+    def snp_calls(
+        self,
+        contig,
+        sample_sets="v3_wild",
+        site_mask=None,
+        site_filters="dt_20200416",
+    ):
+        """Access SNP sites, site filters and genotype calls.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str
+            Site filters analysis version.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._snp_calls_dataset(
+                contig=contig, sample_set=sample_sets, site_filters=site_filters
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._snp_calls_dataset(
+                    contig=contig, sample_set=sample_set, site_filters=site_filters
+                )
+                for sample_set in sample_sets
+            ]
+            ds = xarray.concat(
+                datasets,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+        # apply site filters
+        if site_mask is not None:
+            loc_pass = ds[f"variant_filter_pass_{site_mask}"]
+            ds = ds.isel(variants=loc_pass)
+
+        return ds
+
+    def snp_dataset(self, *args, **kwargs):
+        # backwards compatibility, this method has been renamed to snp_calls()
+        return self.snp_calls(*args, **kwargs)
