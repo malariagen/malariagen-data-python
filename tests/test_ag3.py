@@ -451,3 +451,41 @@ def test_snp_calls(sample_sets, contig, site_mask):
     # check attributes
     assert "contigs" in ds.attrs
     assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+
+@pytest.mark.parametrize("sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG")])
+@pytest.mark.parametrize("contig", ["3L", "X"])
+@pytest.mark.parametrize("analysis", ["gamb_colu"])
+@pytest.mark.parametrize("apply_quantile_filter", [True, False])
+def test_cnv_calls(sample_sets, contig, analysis, apply_quantile_filter):
+
+    ag3 = Ag3("/home/njh/ag1k")
+
+    ds = ag3.cnv_calls(
+        contig=contig, sample_sets=sample_sets, analysis=analysis, apply_quantile_filter=apply_quantile_filter)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_fields = {
+        "cnv_start",
+        "cnv_end",
+        "qMerge_FILTER_PASS",
+        "call_genotype",
+        "sample_id"
+    }
+    assert expected_fields == set(ds)
+
+    # check dimensions
+    assert {"samples", "variants"} == set(ds.dims)
+
+    # check dim lengths
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+
+    assert np.in1d(ds["sample_id"], df_samples.sample_id).all()
+    subset_metadata = df_samples.set_index("sample_id").loc[ds["sample_id"]]
+    assert subset_metadata.shape[0] == ds["call_genotype"].shape[1]
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+

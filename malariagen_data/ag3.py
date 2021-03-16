@@ -75,6 +75,8 @@ class Ag3:
         self._cache_geneset = dict()
         self._cache_cross_metadata = None
         self._cache_site_annotations = None
+        self._cache_cnv_hmm = dict()
+        self._cache_cnv_calls = dict()
 
     def sample_sets(self, release="v3"):
         """Access the manifest of sample sets.
@@ -784,3 +786,221 @@ class Ag3:
     def snp_dataset(self, *args, **kwargs):
         # backwards compatibility, this method has been renamed to snp_calls()
         return self.snp_calls(*args, **kwargs)
+
+    def open_cnv_hmm(self, sample_set):
+        """Open CNV HMM zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        cnv call root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_hmm[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self.path}/{release}/cnv/{sample_set}/hmm/zarr"
+            store = SafeStore(self.fs.get_mapper(path))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_hmm[sample_set] = root
+            return root
+
+    def _cnv_hmm_dataset(self, contig, sample_set):
+        """
+        Returns an xr object containing HMM calls.
+
+        """
+
+        data_vars = dict()
+
+        # call arrays
+        calldata_fields = ("hmm_state", "normalized_coverage", "raw_coverage")
+        variant_fields = ("window_start", "window_stop")
+
+        # open root
+        root = self.open_cnv_hmm(sample_set=sample_set)
+
+        for field in variant_fields:
+            z = root[contig]["variants"][field]
+            d = da.from_array(z, z.chunks)
+            data_vars[field] = [DIM_VARIANT], d
+
+        for field in calldata_fields:
+            z = root[contig]["calldata"][field]
+            d = da.from_array(z, z.chunks)
+            data_vars[field] = [DIM_VARIANT, DIM_SAMPLE], d
+
+        # sample arrays
+        z = root["samples"]
+        sample_id = da.from_array(z, chunks=z.chunks)
+        data_vars["sample_id"] = [DIM_SAMPLE], sample_id
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
+
+        return ds
+
+    def cnv_hmm(self, contig, sample_sets="v3_wild"):
+
+        """Access CNV HMM output, represented as windows.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._cnv_hmm_dataset(
+                contig=contig, sample_set=sample_sets
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._cnv_hmm_dataset(
+                    contig=contig, sample_set=sample_set
+                )
+                for sample_set in sample_sets
+            ]
+            ds = xarray.concat(
+                datasets,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+        return ds
+
+    def open_cnv_calls(self, sample_set, analysis):
+        """Open CNV calls zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+        analysis: the analysis (ie set of CNV alleles to return)
+
+        Returns
+        -------
+        cnv call root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_calls[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self.path}/{release}/cnv/{sample_set}/calls/{analysis}/zarr"
+            store = SafeStore(self.fs.get_mapper(path))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_hmm[sample_set] = root
+            return root
+
+    def _cnv_calls_dataset(self, contig, sample_set, analysis):
+
+        data_vars = dict()
+
+        root = self.open_cnv_calls(sample_set=sample_set, analysis=analysis)
+
+        # these are all variant bits
+        variant_fields = "cnv_start", "cnv_end", "qMerge_FILTER_PASS"
+
+        for field in variant_fields:
+            z = root[contig]["variants"][field]
+            d = da.from_array(z, chunks=z.chunks)
+            data_vars[field] = [DIM_VARIANT], d
+
+        gt_z = root[contig]["calldata/GT"]
+        call_genotype = da.from_array(gt_z, chunks=gt_z.chunks)
+        data_vars["call_genotype"] = [DIM_VARIANT, DIM_SAMPLE], call_genotype
+
+        # sample arrays
+        z = root["samples"]
+        sample_id = da.from_array(z, chunks=z.chunks)
+        data_vars["sample_id"] = [DIM_SAMPLE], sample_id
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
+
+        return ds
+
+    def cnv_calls(self, contig, sample_sets="v3_wild", analysis="gamb_colu", apply_quantile_filter=False):
+
+        """ Access CNV alleles variant information and genotype calls.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        analysis: The CNV allele set required: either "gamb_colu" or "arab".
+        apply_quantile_filter : bool
+            Whether to filter alleles with high uncertainty around start/end points
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._cnv_calls_dataset(
+                contig=contig, sample_set=sample_sets, analysis=analysis
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._cnv_calls_dataset(
+                    contig=contig, sample_set=sample_set, analysis=analysis
+                )
+                for sample_set in sample_sets
+            ]
+            ds = xarray.concat(
+                datasets,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+        # apply site filters
+        if apply_quantile_filter:
+            loc_pass = ds["qMerge_FILTER_PASS"]
+            ds = ds.isel(variants=loc_pass)
+
+        return ds
