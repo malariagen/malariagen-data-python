@@ -434,17 +434,63 @@ def test_snp_effects():
     assert isinstance(df, pandas.DataFrame)
     assert expected_fields == df.columns.tolist()
 
-
-    # for f in expected_fields:
-    #
-    #     assert f in df.columns
-
+    # reverse strand gene
     assert df.shape == (2838, 11)
     # check first, second, third codon position non-syn
-    assert df.iloc[1454].aa_change == 'I114L'
-    assert df.iloc[1451].aa_change == 'I114T'
-    assert df.iloc[1446].aa_change == 'I114M'
-    # check non-syn
+    assert df.iloc[1454].aa_change == "I114L"
+    assert df.iloc[1446].aa_change == "I114M"
+    # while we are here, check all columns for a position
+    assert df.iloc[1451].position == 28598166
+    assert df.iloc[1451].ref_allele == "A"
+    assert df.iloc[1451].alt_alleles == "G"
+    assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
+    assert df.iloc[1451].impact == "MODERATE"
+    assert df.iloc[1451].ref_codon == "aTt"
+    assert df.iloc[1451].alt_codon == "aCt"
+    assert df.iloc[1451].aa_pos == 114
+    assert df.iloc[1451].ref_aa == "I"
+    assert df.iloc[1451].alt_aa == "T"
+    assert df.iloc[1451].aa_change == "I114T"
+    # check syn
     assert df.iloc[1447].aa_change == 'I114I'
     # check intronic
     assert df.iloc[1197].effect == 'INTRONIC'
+    # check 5' utr
+    assert df.iloc[2661].effect == 'FIVE_PRIME_UTR'
+    # check 3' utr
+    assert df.iloc[0].effect == 'THREE_PRIME_UTR'
+
+    # test forward strand gene gste6
+    gste6 = "AGAP009196-RA"
+    df = ag3.snp_effects(gste6, site_mask)
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (2829, 11)
+
+    # check first, second, third codon position non-syn
+    assert df.iloc[701].aa_change == "E35*"
+    assert df.iloc[703].aa_change == "E35V"
+    # while we are here, check all columns for a position
+    assert df.iloc[706].position == 28600605
+    assert df.iloc[706].ref_allele == "G"
+    assert df.iloc[706].alt_alleles == "C"
+    assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
+    assert df.iloc[706].impact == "MODERATE"
+    assert df.iloc[706].ref_codon == "gaG"
+    assert df.iloc[706].alt_codon == "gaC"
+    assert df.iloc[706].aa_pos == 35
+    assert df.iloc[706].ref_aa == "E"
+    assert df.iloc[706].alt_aa == "D"
+    assert df.iloc[706].aa_change == "E35D"
+    # check syn
+    assert df.iloc[705].aa_change == 'E35E'
+    # check intronic
+    assert df.iloc[900].effect == 'INTRONIC'
+    # check 5' utr
+    assert df.iloc[0].effect == 'FIVE_PRIME_UTR'
+    # check 3' utr
+    assert df.iloc[2828].effect == 'THREE_PRIME_UTR'
+
+
+
+    # introns in UTRS - write test first - two 5' utrs next to each other
