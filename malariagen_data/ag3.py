@@ -375,13 +375,16 @@ class Ag3:
             ret = da.from_array(z, chunks=z.chunks)
 
         if site_mask is not None:
-            filter_pass = self.site_filters(
+            loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
-            ).compute()
+            )
             if isinstance(ret, tuple):
-                ret = tuple(da.compress(filter_pass, d, axis=0) for d in ret)
+                ret = tuple(da.compress(loc_sites, d, axis=0) for d in ret)
+                for a in ret:
+                    a.compute_chunk_sizes()
             else:
-                ret = da.compress(filter_pass, ret, axis=0)
+                ret = da.compress(loc_sites, ret, axis=0)
+                ret.compute_chunk_sizes()
 
         return ret
 
@@ -455,10 +458,11 @@ class Ag3:
             d = da.concatenate(ds, axis=1)
 
         if site_mask is not None:
-            filter_pass = self.site_filters(
+            loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
-            ).compute()
-            d = da.compress(filter_pass, d, axis=0)
+            )
+            d = da.compress(loc_sites, d, axis=0)
+            d.compute_chunk_sizes()
 
         return d
 
@@ -645,7 +649,7 @@ class Ag3:
         # access and subset to SNP positions
         pos = self.snp_sites(
             contig=contig, field="POS", site_mask=site_mask, site_filters=site_filters
-        ).compute()
+        )
         d = da.take(d, pos - 1)
 
         return d
