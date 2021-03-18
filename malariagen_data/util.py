@@ -3,6 +3,7 @@ from urllib.parse import unquote_plus
 import pandas
 import numpy as np
 from collections.abc import Mapping
+import dask.array as da
 
 
 def gff3_parse_attributes(attributes_string):
@@ -105,3 +106,20 @@ class SiteClass(Enum):
     INTRON_FIRST = 8
     INTRON_MID = 9
     INTRON_LAST = 10
+
+
+def from_zarr(z, inline_array):
+    """Utility function for turning a zarr array into a dask array.
+
+    N.B., dask does have it's own from_zarr() function but we roll
+    our own here to get a little more control.
+
+    """
+    kwargs = dict(chunks=z.chunks, fancy=False, lock=False, inline_array=inline_array)
+    try:
+        d = da.from_array(z, **kwargs)
+    except TypeError:
+        # only later versions of dask support inline_array argument
+        del kwargs["inline_array"]
+        d = da.from_array(z, **kwargs)
+    return d
