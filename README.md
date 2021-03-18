@@ -52,6 +52,11 @@ $ poetry publish
 
 ## Release notes
 
+### 0.4.2
+
+* Bug fix and minor improvements to `Ag3.snp_calls()`.
+
+
 ### 0.4.1
 
 * Explore workarounds to xarray memory issues in the `Ag3.snp_calls()` method.
