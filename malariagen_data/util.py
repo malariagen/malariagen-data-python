@@ -143,7 +143,8 @@ def dask_compress_dataset(ds, indexer, dim):
     xarray.Dataset
 
     """
-    indexer = ds[indexer].data
+    if isinstance(indexer, str):
+        indexer = ds[indexer].data
 
     # sanity checks
     assert isinstance(indexer, da.Array)
