@@ -150,6 +150,7 @@ def dask_compress_dataset(ds, indexer, dim):
     assert isinstance(indexer, da.Array)
     assert indexer.ndim == 1
     assert indexer.dtype == bool
+    assert indexer.shape[0] == ds.dims[dim]
 
     coords = dict()
     for k in ds.coords:
