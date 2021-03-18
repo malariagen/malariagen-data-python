@@ -57,8 +57,9 @@ $ poetry publish
 * Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
 * Add the `Ag3.cross_metadata()` method.
 * Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods. 
-* Add `Ag3.snp_dataset()` method.  
+* Add the `Ag3.snp_calls()` method.
 * Improve unit tests.
+* Improve memory usage.
 
 
 ### 0.3.1
