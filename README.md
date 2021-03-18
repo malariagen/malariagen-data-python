@@ -52,6 +52,11 @@ $ poetry publish
 
 ## Release notes
 
+### 0.4.1
+
+* Explore workarounds to xarray memory issues in the `Ag3.snp_calls()` method.
+
+
 ### 0.4.0
 
 * Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
