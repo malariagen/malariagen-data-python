@@ -4,6 +4,7 @@ import pandas
 import numpy as np
 from collections.abc import Mapping
 import dask.array as da
+import xarray as xr
 
 
 def gff3_parse_attributes(attributes_string):
@@ -123,3 +124,86 @@ def from_zarr(z, inline_array):
         del kwargs["inline_array"]
         d = da.from_array(z, **kwargs)
     return d
+
+
+def dask_compress_dataset(ds, indexer, dim):
+    """Temporary workaround for memory issues when attempting to
+    index an xarray dataset with a Boolean array.
+
+    See also: https://github.com/pydata/xarray/issues/5054
+
+    Parameters
+    ----------
+    ds : xarray.Dataset
+    indexer : str
+    dim : str
+
+    Returns
+    -------
+    xarray.Dataset
+
+    """
+    indexer = ds[indexer].data
+
+    # sanity checks
+    assert isinstance(indexer, da.Array)
+    assert indexer.ndim == 1
+    assert indexer.dtype == bool
+
+    coords = dict()
+    for k in ds.coords:
+        a = ds[k]
+        v = _dask_compress_dataarray(a, indexer, dim)
+        coords[k] = (a.dims, v)
+
+    data_vars = dict()
+    for k in ds.data_vars:
+        a = ds[k]
+        v = _dask_compress_dataarray(a, indexer, dim)
+        data_vars[k] = (a.dims, v)
+
+    attrs = ds.attrs.copy()
+
+    return xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+
+def _dask_compress_dataarray(a, indexer, dim):
+    try:
+        # find the axis for the given dimension
+        axis = a.dims.index(dim)
+
+    except ValueError:
+        # array doesn't have the given dimension, return as-is
+        v = a.data
+
+    else:
+        data = a.data
+
+        # sanity checks
+        assert isinstance(data, da.Array)
+        assert indexer.shape[0] == data.shape[axis]
+
+        # apply the indexing operation
+        v = da.compress(indexer, data, axis=axis)
+
+        # need to compute chunks sizes in order to know dimension sizes;
+        # would normally do v.compute_chunk_sizes() but that is slow for
+        # multidimensional arrays, so hack something more efficient
+
+        old_chunks = data.chunks
+        axis_old_chunks = old_chunks[axis]
+        axis_n_chunks = len(axis_old_chunks)
+        axis_new_chunks = (
+            indexer.rechunk(axis_old_chunks)
+            .map_blocks(
+                lambda b: np.sum(b, keepdims=True),
+                chunks=((1,) * axis_n_chunks,),
+            )
+            .compute()
+        )
+        new_chunks = tuple(
+            [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
+        )
+        v._chunks = new_chunks
+
+    return v

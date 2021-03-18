@@ -4,7 +4,13 @@ import zarr
 import dask.array as da
 import numpy as np
 import xarray
-from .util import read_gff3, unpack_gff3_attributes, SafeStore, from_zarr
+from .util import (
+    read_gff3,
+    unpack_gff3_attributes,
+    SafeStore,
+    from_zarr,
+    dask_compress_dataset,
+)
 
 
 DIM_VARIANT = "variants"
@@ -818,8 +824,9 @@ class Ag3:
 
         # apply site filters
         if site_mask is not None:
-            loc_pass = ds[f"variant_filter_pass_{site_mask}"]
-            ds = ds.isel(variants=loc_pass)
+            ds = dask_compress_dataset(
+                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+            )
 
         return ds
 
