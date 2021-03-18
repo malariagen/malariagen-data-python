@@ -691,6 +691,7 @@ class Ag3:
 
     def _snp_calls_dataset(self, contig, sample_set, site_filters, inline_array):
 
+        coords = dict()
         data_vars = dict()
 
         # variant arrays
@@ -699,7 +700,7 @@ class Ag3:
         # variant_position
         pos_z = sites_root[contig]["variants"]["POS"]
         variant_position = from_zarr(pos_z, inline_array=inline_array)
-        data_vars["variant_position"] = [DIM_VARIANT], variant_position
+        coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
         ref_z = sites_root[contig]["variants"]["REF"]
@@ -714,7 +715,7 @@ class Ag3:
         variant_contig = da.full_like(
             variant_position, fill_value=contig_index, dtype="u1"
         )
-        data_vars["variant_contig"] = [DIM_VARIANT], variant_contig
+        coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
@@ -737,10 +738,6 @@ class Ag3:
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
         )
-        data_vars["call_genotype_mask"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            call_genotype < 0,
-        )
         data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
         data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
         data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
@@ -748,13 +745,13 @@ class Ag3:
         # sample arrays
         z = calls_root["samples"]
         sample_id = from_zarr(z, inline_array=inline_array)
-        data_vars["sample_id"] = [DIM_SAMPLE], sample_id
+        coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
         attrs = {"contigs": self.contigs}
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, attrs=attrs)
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
 
@@ -827,6 +824,9 @@ class Ag3:
             ds = dask_compress_dataset(
                 ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
             )
+
+        # add call_genotype_mask
+        ds["call_genotype_mask"] = ds["call_genotype"] < 0
 
         return ds
 
