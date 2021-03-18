@@ -4,7 +4,7 @@ import zarr
 import dask.array as da
 import numpy as np
 import xarray
-from .util import read_gff3, unpack_gff3_attributes, SafeStore
+from .util import read_gff3, unpack_gff3_attributes, SafeStore, from_zarr
 
 
 DIM_VARIANT = "variants"
@@ -302,7 +302,14 @@ class Ag3:
             self._cache_site_filters[key] = root
             return root
 
-    def site_filters(self, contig, mask, field="filter_pass", analysis="dt_20200416"):
+    def site_filters(
+        self,
+        contig,
+        mask,
+        field="filter_pass",
+        analysis="dt_20200416",
+        inline_array=True,
+    ):
         """Access SNP site filters.
 
         Parameters
@@ -315,6 +322,8 @@ class Ag3:
             Array to access.
         analysis : str, optional
             Site filters analysis version.
+        inline_array : bool, optional
+            Passed through to dask.from_array().
 
         Returns
         -------
@@ -324,7 +333,7 @@ class Ag3:
 
         root = self.open_site_filters(mask=mask, analysis=analysis)
         z = root[contig]["variants"][field]
-        d = da.from_array(z, chunks=z.chunks)
+        d = from_zarr(z, inline_array=inline_array)
         return d
 
     def open_snp_sites(self):
@@ -342,7 +351,14 @@ class Ag3:
             self._cache_snp_sites = root
         return self._cache_snp_sites
 
-    def snp_sites(self, contig, field=None, site_mask=None, site_filters="dt_20200416"):
+    def snp_sites(
+        self,
+        contig,
+        field=None,
+        site_mask=None,
+        site_filters="dt_20200416",
+        inline_array=True,
+    ):
         """Access SNP site data (positions and alleles).
 
         Parameters
@@ -355,6 +371,8 @@ class Ag3:
             Site filters mask to apply.
         site_filters : str
             Site filters analysis version.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
 
         Returns
         -------
@@ -372,7 +390,7 @@ class Ag3:
         else:
             root = self.open_snp_sites()
             z = root[contig]["variants"][field]
-            ret = da.from_array(z, chunks=z.chunks)
+            ret = from_zarr(z, inline_array=inline_array)
 
         if site_mask is not None:
             loc_sites = self.site_filters(
@@ -417,6 +435,7 @@ class Ag3:
         field="GT",
         site_mask=None,
         site_filters="dt_20200416",
+        inline_array=True,
     ):
         """Access SNP genotypes and associated data.
 
@@ -434,6 +453,8 @@ class Ag3:
             Site filters mask to apply.
         site_filters : str, optional
             Site filters analysis version.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
 
         Returns
         -------
@@ -447,7 +468,7 @@ class Ag3:
             # single sample set
             root = self.open_snp_genotypes(sample_set=sample_sets)
             z = root[contig]["calldata"][field]
-            d = da.from_array(z, chunks=z.chunks)
+            d = from_zarr(z, inline_array=inline_array)
 
         else:
             # concatenate multiple sample sets
@@ -480,13 +501,15 @@ class Ag3:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def genome_sequence(self, contig):
+    def genome_sequence(self, contig, inline_array=True):
         """Access the reference genome sequence.
 
         Parameters
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
 
         Returns
         -------
@@ -495,7 +518,7 @@ class Ag3:
         """
         genome = self.open_genome()
         z = genome[contig]
-        d = da.from_array(z, chunks=z.chunks)
+        d = from_zarr(z, inline_array=inline_array)
         return d
 
     def geneset(self, attributes=("ID", "Parent", "Name")):
@@ -619,7 +642,12 @@ class Ag3:
         return self._cache_site_annotations
 
     def site_annotations(
-        self, contig, field, site_mask=None, site_filters="dt_20200416"
+        self,
+        contig,
+        field,
+        site_mask=None,
+        site_filters="dt_20200416",
+        inline_array=True,
     ):
         """Load site annotations.
 
@@ -634,6 +662,8 @@ class Ag3:
             Site filters mask to apply.
         site_filters : str
             Site filters analysis version.
+        inline_array : bool, optional
+            Passed through to dask.from_array().
 
         Returns
         -------
@@ -643,8 +673,7 @@ class Ag3:
 
         # access the array of values for all genome positions
         root = self.open_site_annotations()
-        z = root[field][contig]
-        d = da.from_array(z, chunks=z.chunks)
+        d = from_zarr(root[field][contig], inline_array=inline_array)
 
         # access and subset to SNP positions
         pos = self.snp_sites(
@@ -654,7 +683,7 @@ class Ag3:
 
         return d
 
-    def _snp_calls_dataset(self, contig, sample_set, site_filters):
+    def _snp_calls_dataset(self, contig, sample_set, site_filters, inline_array):
 
         data_vars = dict()
 
@@ -663,14 +692,14 @@ class Ag3:
 
         # variant_position
         pos_z = sites_root[contig]["variants"]["POS"]
-        variant_position = da.from_array(pos_z, chunks=pos_z.chunks)
+        variant_position = from_zarr(pos_z, inline_array=inline_array)
         data_vars["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
         ref_z = sites_root[contig]["variants"]["REF"]
-        ref = da.from_array(ref_z, chunks=ref_z.chunks)
+        ref = from_zarr(ref_z, inline_array=inline_array)
         alt_z = sites_root[contig]["variants"]["ALT"]
-        alt = da.from_array(alt_z, chunks=alt_z.chunks)
+        alt = from_zarr(alt_z, inline_array=inline_array)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
@@ -685,19 +714,19 @@ class Ag3:
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
             z = filters_root[contig]["variants"]["filter_pass"]
-            d = da.from_array(z, chunks=z.chunks)
+            d = from_zarr(z, inline_array=inline_array)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
         gt_z = calls_root[contig]["calldata"]["GT"]
-        call_genotype = da.from_array(gt_z, chunks=gt_z.chunks)
+        call_genotype = from_zarr(gt_z, inline_array=inline_array)
         gq_z = calls_root[contig]["calldata"]["GQ"]
-        call_gq = da.from_array(gq_z, chunks=gq_z.chunks)
+        call_gq = from_zarr(gq_z, inline_array=inline_array)
         ad_z = calls_root[contig]["calldata"]["AD"]
-        call_ad = da.from_array(ad_z, chunks=ad_z.chunks)
+        call_ad = from_zarr(ad_z, inline_array=inline_array)
         mq_z = calls_root[contig]["calldata"]["MQ"]
-        call_mq = da.from_array(mq_z, chunks=mq_z.chunks)
+        call_mq = from_zarr(mq_z, inline_array=inline_array)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
@@ -712,7 +741,7 @@ class Ag3:
 
         # sample arrays
         z = calls_root["samples"]
-        sample_id = da.from_array(z, chunks=z.chunks)
+        sample_id = from_zarr(z, inline_array=inline_array)
         data_vars["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
@@ -729,6 +758,7 @@ class Ag3:
         sample_sets="v3_wild",
         site_mask=None,
         site_filters="dt_20200416",
+        inline_array=True,
     ):
         """Access SNP sites, site filters and genotype calls.
 
@@ -744,6 +774,8 @@ class Ag3:
             Site filters mask to apply.
         site_filters : str
             Site filters analysis version.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
 
         Returns
         -------
@@ -757,7 +789,10 @@ class Ag3:
 
             # single sample set requested
             ds = self._snp_calls_dataset(
-                contig=contig, sample_set=sample_sets, site_filters=site_filters
+                contig=contig,
+                sample_set=sample_sets,
+                site_filters=site_filters,
+                inline_array=inline_array,
             )
 
         else:
@@ -765,7 +800,10 @@ class Ag3:
             # multiple sample sets requested, need to concatenate along samples dimension
             datasets = [
                 self._snp_calls_dataset(
-                    contig=contig, sample_set=sample_set, site_filters=site_filters
+                    contig=contig,
+                    sample_set=sample_set,
+                    site_filters=site_filters,
+                    inline_array=inline_array,
                 )
                 for sample_set in sample_sets
             ]
