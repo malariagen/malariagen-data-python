@@ -404,6 +404,8 @@ def test_snp_calls(sample_sets, contig, site_mask):
         "call_MQ",
     }
     assert expected_fields == set(ds)
+    for f in expected_fields:
+        assert isinstance(ds[f].data, da.Array)
 
     # check dimensions
     assert {"alleles", "ploidy", "samples", "variants"} == set(ds.dims)
