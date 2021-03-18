@@ -195,7 +195,7 @@ def _dask_compress_dataarray(a, indexer, dim):
         old_chunks = data.chunks
         axis_old_chunks = old_chunks[axis]
         axis_n_chunks = len(axis_old_chunks)
-        axis_new_chunks = (
+        axis_new_chunks = tuple(
             indexer.rechunk(axis_old_chunks)
             .map_blocks(
                 lambda b: np.sum(b, keepdims=True),

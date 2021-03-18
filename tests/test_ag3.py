@@ -389,23 +389,25 @@ def test_snp_calls(sample_sets, contig, site_mask):
     assert isinstance(ds, xarray.Dataset)
 
     # check fields
-    expected_fields = {
-        "variant_contig",
-        "variant_position",
+    expected_data_vars = {
         "variant_allele",
         "variant_filter_pass_gamb_colu_arab",
         "variant_filter_pass_gamb_colu",
         "variant_filter_pass_arab",
-        "sample_id",
         "call_genotype",
         "call_genotype_mask",
         "call_GQ",
         "call_AD",
         "call_MQ",
     }
-    assert expected_fields == set(ds)
-    for f in expected_fields:
-        assert isinstance(ds[f].data, da.Array)
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
 
     # check dimensions
     assert {"alleles", "ploidy", "samples", "variants"} == set(ds.dims)
@@ -421,9 +423,10 @@ def test_snp_calls(sample_sets, contig, site_mask):
     assert 4 == ds.dims["alleles"]
 
     # check shapes
-    for f in expected_fields:
+    for f in expected_coords | expected_data_vars:
         x = ds[f]
         assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
 
         if f == "variant_allele":
             assert 2 == x.ndim, f
@@ -453,3 +456,9 @@ def test_snp_calls(sample_sets, contig, site_mask):
     # check attributes
     assert "contigs" in ds.attrs
     assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_AD"].sum(axis=(1, 2))
+    assert isinstance(d2, xarray.DataArray)
