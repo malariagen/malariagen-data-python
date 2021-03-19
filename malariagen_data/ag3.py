@@ -183,11 +183,9 @@ class Ag3:
                         return "coluzzii"
                     elif species_gambiae_coluzzii == "intermediate":
                         return "intermediate_gambiae_coluzzii"
-
-                # if not returned by this point, df must be malformed.
-                raise RuntimeError(
-                    f"Unexpected species string {species_gambcolu_arabiensis} / {species_gambiae_coluzzii}"
-                )
+                else:
+                    # some individuals, e.g., crosses, have a missing species call
+                    return np.nan
 
             df["species"] = df.apply(consolidate_species, axis=1)
 
