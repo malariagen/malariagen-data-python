@@ -49,3 +49,34 @@ $ poetry version prerelease
 $ poetry build
 $ poetry publish
 ```
+
+## Release notes
+
+### 0.4.2
+
+* Bug fix and minor improvements to `Ag3.snp_calls()`.
+
+
+### 0.4.1
+
+* Explore workarounds to xarray memory issues in the `Ag3.snp_calls()` method.
+
+
+### 0.4.0
+
+* Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
+* Add the `Ag3.cross_metadata()` method.
+* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods. 
+* Add the `Ag3.snp_calls()` method.
+* Improve unit tests.
+* Improve memory usage.
+
+
+### 0.3.1
+
+* Fix compatibility issue in recent fsspec/gcsfs release.
+
+
+### 0.3.0
+
+First release with basic functionality in the `Ag3` class for accessing Ag1000G phase 3 data.
