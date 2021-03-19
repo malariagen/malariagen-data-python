@@ -168,30 +168,28 @@ class Ag3:
                 )
 
             # add a single species call column, for convenience
-            def consolidate_species(arabiensis_vs_gambcolu, gambiae_vs_coluzzii):
-                if arabiensis_vs_gambcolu == "arabiensis":
+            def consolidate_species(s):
+                species_gambcolu_arabiensis = s["species_gambcolu_arabiensis"]
+                species_gambiae_coluzzii = s["species_gambiae_coluzzii"]
+                if species_gambcolu_arabiensis == "arabiensis":
                     return "arabiensis"
-                elif arabiensis_vs_gambcolu == "intermediate":
+                elif species_gambcolu_arabiensis == "intermediate":
                     return "intermediate_arabiensis_gambiae"
-                elif arabiensis_vs_gambcolu == "gamb_colu":
+                elif species_gambcolu_arabiensis == "gamb_colu":
                     # look at gambiae_vs_coluzzii
-                    if gambiae_vs_coluzzii == "gambiae":
+                    if species_gambiae_coluzzii == "gambiae":
                         return "gambiae"
-                    elif gambiae_vs_coluzzii == "coluzzii":
+                    elif species_gambiae_coluzzii == "coluzzii":
                         return "coluzzii"
-                    elif gambiae_vs_coluzzii == "intermediate":
+                    elif species_gambiae_coluzzii == "intermediate":
                         return "intermediate_gambiae_coluzzii"
 
                 # if not returned by this point, df must be malformed.
-                raise ValueError(
-                    f"Unexpected species string {arabiensis_vs_gambcolu} / {gambiae_vs_coluzzii}"
-                    )
-                
-            df["species"] = df.apply(
-                lambda y: consolidate_species(
-                    y["species_gambcolu_arabiensis"], 
-                    y["species_gambiae_coluzzii"]),
-                axis=1)
+                raise RuntimeError(
+                    f"Unexpected species string {species_gambcolu_arabiensis} / {species_gambiae_coluzzii}"
+                )
+
+            df["species"] = df.apply(consolidate_species, axis=1)
 
             self._cache_species_calls[key] = df
             return df
