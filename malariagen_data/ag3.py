@@ -168,23 +168,26 @@ class Ag3:
                 )
 
             # add a single species call column, for convenience
-            df["species"] = np.array([np.nan] * len(df), dtype=object)
-            loc = df["species_gambcolu_arabiensis"].values == "arabiensis"
-            df.loc[loc, "species"] = "arabiensis"
-            loc = df["species_gambcolu_arabiensis"].values == "intermediate"
-            df.loc[loc, "species"] = "intermediate_arabiensis_gambiae"
-            loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                df["species_gambiae_coluzzii"].values == "gambiae"
-            )
-            df.loc[loc, "species"] = "gambiae"
-            loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                df["species_gambiae_coluzzii"].values == "coluzzii"
-            )
-            df.loc[loc, "species"] = "coluzzii"
-            loc = (df["species_gambcolu_arabiensis"].values == "gamb_colu") & (
-                df["species_gambiae_coluzzii"].values == "intermediate"
-            )
-            df.loc[loc, "species"] = "intermediate_gambiae_coluzzii"
+            def consolidate_species(s):
+                species_gambcolu_arabiensis = s["species_gambcolu_arabiensis"]
+                species_gambiae_coluzzii = s["species_gambiae_coluzzii"]
+                if species_gambcolu_arabiensis == "arabiensis":
+                    return "arabiensis"
+                elif species_gambcolu_arabiensis == "intermediate":
+                    return "intermediate_arabiensis_gambiae"
+                elif species_gambcolu_arabiensis == "gamb_colu":
+                    # look at gambiae_vs_coluzzii
+                    if species_gambiae_coluzzii == "gambiae":
+                        return "gambiae"
+                    elif species_gambiae_coluzzii == "coluzzii":
+                        return "coluzzii"
+                    elif species_gambiae_coluzzii == "intermediate":
+                        return "intermediate_gambiae_coluzzii"
+                else:
+                    # some individuals, e.g., crosses, have a missing species call
+                    return np.nan
+
+            df["species"] = df.apply(consolidate_species, axis=1)
 
             self._cache_species_calls[key] = df
             return df
