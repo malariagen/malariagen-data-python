@@ -357,10 +357,13 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
         key=lambda v: v.start,
     )
 
-    # TODO deal with introns in UTRS e.g. AGAP004679-RB
+    # derive introns, assuming between 5' UTRs
+    introns_5utr = [(x.stop + 1, y.start - 1) for x, y in zip(utr5[:-1], utr5[1:])]
 
     # derive introns, assuming between CDSs
     introns = [(x.stop + 1, y.start - 1) for x, y in zip(cdss[:-1], cdss[1:])]
+
+
 
     # if not cdss:
     #
@@ -378,6 +381,12 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
     overlapping_introns = [
         (start, stop)
         for (start, stop) in introns
+        if start <= ref_stop and stop >= ref_start
+    ]
+
+    overlapping_5utr_introns = [
+        (start, stop)
+        for (start, stop) in introns_5utr
         if start <= ref_stop and stop >= ref_start
     ]
 
@@ -427,6 +436,24 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
 
             yield _get_intron_effect(annotator, base_effect, intron, cdss)
 
+    if overlapping_5utr_introns:
+
+        if len(overlapping_5utr_introns) > 1:
+
+            # TODO
+            # variant overlaps more than one intron
+            effect = base_effect._replace(effect="TODO")
+            yield effect
+
+        else:
+
+            # variant overlaps a single intron in 5' utr
+            assert len(overlapping_5utr_introns) == 1
+            #intron = overlapping_5utr_introns[0]
+            #yield _get_intron_effect(annotator, base_effect, intron, cdss)
+            base_effect._replace(effect="TESTING", impact="LOW")
+            yield effect
+
     if overlapping_utr5:
 
         if len(overlapping_utr5) > 1:
@@ -463,12 +490,14 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
             effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
             yield effect
 
-
     # if none of the above
-    if (not overlapping_cdss) and (not overlapping_introns) and (not overlapping_utr5) and (not overlapping_utr3):
+    if (not overlapping_cdss) and (not overlapping_introns) and (not overlapping_utr5) and (not overlapping_utr3) \
+            and (not overlapping_5utr_introns):
 
         effect = base_effect._replace(effect="INTRAGENIC", impact="LOW")
         yield effect
+
+
 
 def _get_cds_effect(annotator, base_effect, cds, cdss):
 
