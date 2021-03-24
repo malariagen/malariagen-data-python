@@ -363,8 +363,6 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
     # derive introns, assuming between CDSs
     introns = [(x.stop + 1, y.start - 1) for x, y in zip(cdss[:-1], cdss[1:])]
 
-
-
     # if not cdss:
     #
     #     # TODO
@@ -449,9 +447,10 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
 
             # variant overlaps a single intron in 5' utr
             assert len(overlapping_5utr_introns) == 1
-            #intron = overlapping_5utr_introns[0]
-            #yield _get_intron_effect(annotator, base_effect, intron, cdss)
-            base_effect._replace(effect="TESTING", impact="LOW")
+            # TODO why doesnt this work
+            # intron = overlapping_5utr_introns[0]
+            # yield _get_intron_effect(annotator, base_effect, intron, cdss)
+            effect = base_effect._replace(effect="INTRONIC")
             yield effect
 
     if overlapping_utr5:
@@ -485,12 +484,12 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
 
             # variant overlaps a single 3 prime UTR
             assert len(overlapping_utr3) == 1
-            utr5 = overlapping_utr3[0]
+            utr3 = overlapping_utr3[0]
 
             effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
             yield effect
 
-    # if none of the above
+    # if none of the above - #
     if (not overlapping_cdss) and (not overlapping_introns) and (not overlapping_utr5) and (not overlapping_utr3) \
             and (not overlapping_5utr_introns):
 

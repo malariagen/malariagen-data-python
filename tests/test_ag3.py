@@ -491,14 +491,13 @@ def test_snp_effects():
     # check 3' utr
     assert df.iloc[2828].effect == 'THREE_PRIME_UTR'
 
-    # check 5' utr intron
-    # test forward strand gene gste6
+    #check 5' utr intron
     utrintron5 = "AGAP004679-RB"
     df = ag3.snp_effects(utrintron5, site_mask)
     assert isinstance(df, pandas.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (7686, 11)
-
+    assert df.loc[180].effect == 'INTRONIC'
 
 
 
