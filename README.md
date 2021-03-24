@@ -52,6 +52,12 @@ $ poetry publish
 
 ## Release notes
 
+### 0.4.3
+
+* Performance improvements for faster reading a indexing
+  zarr arrays.
+  
+
 ### 0.4.2
 
 * Bug fix and minor improvements to `Ag3.snp_calls()`.
