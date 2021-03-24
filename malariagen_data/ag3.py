@@ -10,6 +10,7 @@ from .util import (
     SafeStore,
     from_zarr,
     dask_compress_dataset,
+    dask_compress,
 )
 
 
@@ -318,6 +319,7 @@ class Ag3:
         field="filter_pass",
         analysis="dt_20200416",
         inline_array=True,
+        chunks="auto",
     ):
         """Access SNP site filters.
 
@@ -333,6 +335,9 @@ class Ag3:
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -342,7 +347,7 @@ class Ag3:
 
         root = self.open_site_filters(mask=mask, analysis=analysis)
         z = root[contig]["variants"][field]
-        d = from_zarr(z, inline_array=inline_array)
+        d = from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
     def open_snp_sites(self):
@@ -367,6 +372,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
+        chunks="auto",
     ):
         """Access SNP site data (positions and alleles).
 
@@ -382,6 +388,9 @@ class Ag3:
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -399,19 +408,16 @@ class Ag3:
         else:
             root = self.open_snp_sites()
             z = root[contig]["variants"][field]
-            ret = from_zarr(z, inline_array=inline_array)
+            ret = from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         if site_mask is not None:
             loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
             )
             if isinstance(ret, tuple):
-                ret = tuple(da.compress(loc_sites, d, axis=0) for d in ret)
-                for a in ret:
-                    a.compute_chunk_sizes()
+                ret = tuple(dask_compress(loc_sites, d, axis=0) for d in ret)
             else:
-                ret = da.compress(loc_sites, ret, axis=0)
-                ret.compute_chunk_sizes()
+                ret = dask_compress(loc_sites, ret, axis=0)
 
         return ret
 
@@ -445,6 +451,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
+        chunks="auto",
     ):
         """Access SNP genotypes and associated data.
 
@@ -464,6 +471,9 @@ class Ag3:
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -477,7 +487,7 @@ class Ag3:
             # single sample set
             root = self.open_snp_genotypes(sample_set=sample_sets)
             z = root[contig]["calldata"][field]
-            d = from_zarr(z, inline_array=inline_array)
+            d = from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         else:
             # concatenate multiple sample sets
@@ -491,8 +501,7 @@ class Ag3:
             loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
             )
-            d = da.compress(loc_sites, d, axis=0)
-            d.compute_chunk_sizes()
+            d = dask_compress(loc_sites, d, axis=0)
 
         return d
 
@@ -510,7 +519,7 @@ class Ag3:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def genome_sequence(self, contig, inline_array=True):
+    def genome_sequence(self, contig, inline_array=True, chunks="auto"):
         """Access the reference genome sequence.
 
         Parameters
@@ -519,6 +528,9 @@ class Ag3:
             Chromosome arm, e.g., "3R".
         inline_array : bool, optional
             Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -527,7 +539,7 @@ class Ag3:
         """
         genome = self.open_genome()
         z = genome[contig]
-        d = from_zarr(z, inline_array=inline_array)
+        d = from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
     def geneset(self, attributes=("ID", "Parent", "Name")):
@@ -657,6 +669,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
+        chunks="auto",
     ):
         """Load site annotations.
 
@@ -673,6 +686,9 @@ class Ag3:
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -682,7 +698,7 @@ class Ag3:
 
         # access the array of values for all genome positions
         root = self.open_site_annotations()
-        d = from_zarr(root[field][contig], inline_array=inline_array)
+        d = from_zarr(root[field][contig], inline_array=inline_array, chunks=chunks)
 
         # access and subset to SNP positions
         pos = self.snp_sites(
@@ -692,7 +708,9 @@ class Ag3:
 
         return d
 
-    def _snp_calls_dataset(self, contig, sample_set, site_filters, inline_array):
+    def _snp_calls_dataset(
+        self, contig, sample_set, site_filters, inline_array, chunks
+    ):
 
         coords = dict()
         data_vars = dict()
@@ -702,14 +720,14 @@ class Ag3:
 
         # variant_position
         pos_z = sites_root[contig]["variants"]["POS"]
-        variant_position = from_zarr(pos_z, inline_array=inline_array)
+        variant_position = from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
         ref_z = sites_root[contig]["variants"]["REF"]
-        ref = from_zarr(ref_z, inline_array=inline_array)
+        ref = from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
         alt_z = sites_root[contig]["variants"]["ALT"]
-        alt = from_zarr(alt_z, inline_array=inline_array)
+        alt = from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
@@ -724,19 +742,19 @@ class Ag3:
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
             z = filters_root[contig]["variants"]["filter_pass"]
-            d = from_zarr(z, inline_array=inline_array)
+            d = from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
         gt_z = calls_root[contig]["calldata"]["GT"]
-        call_genotype = from_zarr(gt_z, inline_array=inline_array)
+        call_genotype = from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
         gq_z = calls_root[contig]["calldata"]["GQ"]
-        call_gq = from_zarr(gq_z, inline_array=inline_array)
+        call_gq = from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
         ad_z = calls_root[contig]["calldata"]["AD"]
-        call_ad = from_zarr(ad_z, inline_array=inline_array)
+        call_ad = from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         mq_z = calls_root[contig]["calldata"]["MQ"]
-        call_mq = from_zarr(mq_z, inline_array=inline_array)
+        call_mq = from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
@@ -747,7 +765,7 @@ class Ag3:
 
         # sample arrays
         z = calls_root["samples"]
-        sample_id = from_zarr(z, inline_array=inline_array)
+        sample_id = from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
@@ -765,6 +783,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
+        chunks="auto",
     ):
         """Access SNP sites, site filters and genotype calls.
 
@@ -782,6 +801,9 @@ class Ag3:
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -799,6 +821,7 @@ class Ag3:
                 sample_set=sample_sets,
                 site_filters=site_filters,
                 inline_array=inline_array,
+                chunks=chunks,
             )
 
         else:
@@ -810,6 +833,7 @@ class Ag3:
                     sample_set=sample_set,
                     site_filters=site_filters,
                     inline_array=inline_array,
+                    chunks=chunks,
                 )
                 for sample_set in sample_sets
             ]

@@ -109,14 +109,16 @@ class SiteClass(Enum):
     INTRON_LAST = 10
 
 
-def from_zarr(z, inline_array):
+def from_zarr(z, inline_array, chunks="auto"):
     """Utility function for turning a zarr array into a dask array.
 
     N.B., dask does have it's own from_zarr() function but we roll
     our own here to get a little more control.
 
     """
-    kwargs = dict(chunks=z.chunks, fancy=False, lock=False, inline_array=inline_array)
+    if chunks == "native":
+        chunks = z.chunks
+    kwargs = dict(chunks=chunks, fancy=False, lock=False, inline_array=inline_array)
     try:
         d = da.from_array(z, **kwargs)
     except TypeError:
@@ -179,33 +181,42 @@ def _dask_compress_dataarray(a, indexer, dim):
         v = a.data
 
     else:
-        data = a.data
-
-        # sanity checks
-        assert isinstance(data, da.Array)
-        assert indexer.shape[0] == data.shape[axis]
-
         # apply the indexing operation
-        v = da.compress(indexer, data, axis=axis)
+        v = dask_compress(indexer, a.data, axis)
 
-        # need to compute chunks sizes in order to know dimension sizes;
-        # would normally do v.compute_chunk_sizes() but that is slow for
-        # multidimensional arrays, so hack something more efficient
+    return v
 
-        old_chunks = data.chunks
-        axis_old_chunks = old_chunks[axis]
-        axis_n_chunks = len(axis_old_chunks)
-        axis_new_chunks = tuple(
-            indexer.rechunk(axis_old_chunks)
-            .map_blocks(
-                lambda b: np.sum(b, keepdims=True),
-                chunks=((1,) * axis_n_chunks,),
-            )
-            .compute()
+
+def dask_compress(indexer, data, axis):
+    """Wrapper for dask.array.compress() which computes chunk sizes faster."""
+
+    # sanity checks
+    assert isinstance(data, da.Array)
+    assert isinstance(indexer, da.Array)
+    assert isinstance(axis, int)
+    assert indexer.shape[0] == data.shape[axis]
+    old_chunks = data.chunks
+    axis_old_chunks = old_chunks[axis]
+    axis_n_chunks = len(axis_old_chunks)
+
+    # apply the indexing operation
+    v = da.compress(indexer, data, axis=axis)
+
+    # need to compute chunks sizes in order to know dimension sizes;
+    # would normally do v.compute_chunk_sizes() but that is slow for
+    # multidimensional arrays, so hack something more efficient
+
+    axis_new_chunks = tuple(
+        indexer.rechunk((axis_old_chunks,))
+        .map_blocks(
+            lambda b: np.sum(b, keepdims=True),
+            chunks=((1,) * axis_n_chunks,),
         )
-        new_chunks = tuple(
-            [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
-        )
-        v._chunks = new_chunks
+        .compute()
+    )
+    new_chunks = tuple(
+        [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
+    )
+    v._chunks = new_chunks
 
     return v
