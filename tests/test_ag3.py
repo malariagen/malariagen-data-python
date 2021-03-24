@@ -169,7 +169,8 @@ def test_site_filters():
             assert bool == filter_pass.dtype
 
 
-def test_snp_sites():
+@pytest.mark.parametrize("chunks", ["auto", "native"])
+def test_snp_sites(chunks):
 
     ag3 = Ag3(gcs_url)
 
@@ -181,7 +182,7 @@ def test_snp_sites():
 
     # check access as dask arrays
     for contig in contigs:
-        pos, ref, alt = ag3.snp_sites(contig=contig)
+        pos, ref, alt = ag3.snp_sites(contig=contig, chunks=chunks)
         assert isinstance(pos, da.Array)
         assert 1 == pos.ndim
         assert "i4" == pos.dtype
@@ -194,14 +195,16 @@ def test_snp_sites():
         assert pos.shape[0] == ref.shape[0] == alt.shape[0]
 
     # specific field
-    pos = ag3.snp_sites(contig="3R", field="POS")
+    pos = ag3.snp_sites(contig="3R", field="POS", chunks=chunks)
     assert isinstance(pos, da.Array)
     assert 1 == pos.ndim
     assert "i4" == pos.dtype
 
     # apply site mask
     filter_pass = ag3.site_filters(contig="X", mask="gamb_colu_arab").compute()
-    pos_pass = ag3.snp_sites(contig="X", field="POS", site_mask="gamb_colu_arab")
+    pos_pass = ag3.snp_sites(
+        contig="X", field="POS", site_mask="gamb_colu_arab", chunks=chunks
+    )
     assert isinstance(pos_pass, da.Array)
     assert 1 == pos_pass.ndim
     assert "i4" == pos_pass.dtype
@@ -212,7 +215,8 @@ def test_snp_sites():
         assert np.count_nonzero(filter_pass) == d.shape[0]
 
 
-def test_snp_genotypes():
+@pytest.mark.parametrize("chunks", ["auto", "native"])
+def test_snp_genotypes(chunks):
 
     ag3 = Ag3(gcs_url)
 
@@ -233,26 +237,28 @@ def test_snp_genotypes():
     for sample_sets in sample_setss:
         df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
         for contig in contigs:
-            gt = ag3.snp_genotypes(contig=contig, sample_sets=sample_sets)
+            gt = ag3.snp_genotypes(
+                contig=contig, sample_sets=sample_sets, chunks=chunks
+            )
             assert isinstance(gt, da.Array)
             assert 3 == gt.ndim
             assert "i1" == gt.dtype
             assert len(df_samples) == gt.shape[1]
 
     # specific fields
-    x = ag3.snp_genotypes(contig="X", field="GT")
+    x = ag3.snp_genotypes(contig="X", field="GT", chunks=chunks)
     assert isinstance(x, da.Array)
     assert 3 == x.ndim
     assert "i1" == x.dtype
-    x = ag3.snp_genotypes(contig="X", field="GQ")
+    x = ag3.snp_genotypes(contig="X", field="GQ", chunks=chunks)
     assert isinstance(x, da.Array)
     assert 2 == x.ndim
     assert "i2" == x.dtype
-    x = ag3.snp_genotypes(contig="X", field="MQ")
+    x = ag3.snp_genotypes(contig="X", field="MQ", chunks=chunks)
     assert isinstance(x, da.Array)
     assert 2 == x.ndim
     assert "i2" == x.dtype
-    x = ag3.snp_genotypes(contig="X", field="AD")
+    x = ag3.snp_genotypes(contig="X", field="AD", chunks=chunks)
     assert isinstance(x, da.Array)
     assert 3 == x.ndim
     assert "i2" == x.dtype
@@ -260,7 +266,7 @@ def test_snp_genotypes():
     # site mask
     filter_pass = ag3.site_filters(contig="X", mask="gamb_colu_arab").compute()
     df_samples = ag3.sample_metadata()
-    gt_pass = ag3.snp_genotypes(contig="X", site_mask="gamb_colu_arab")
+    gt_pass = ag3.snp_genotypes(contig="X", site_mask="gamb_colu_arab", chunks=chunks)
     assert isinstance(gt_pass, da.Array)
     assert 3 == gt_pass.ndim
     assert "i1" == gt_pass.dtype

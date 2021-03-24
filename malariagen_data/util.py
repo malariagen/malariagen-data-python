@@ -182,18 +182,22 @@ def _dask_compress_dataarray(a, indexer, dim):
 
     else:
         # apply the indexing operation
-        v = dask_compress(a.data, indexer, axis)
+        v = dask_compress(indexer, a.data, axis)
 
     return v
 
 
-def dask_compress(data, indexer, axis):
+def dask_compress(indexer, data, axis):
+    """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # sanity checks
     assert isinstance(data, da.Array)
     assert isinstance(indexer, da.Array)
     assert isinstance(axis, int)
     assert indexer.shape[0] == data.shape[axis]
+    old_chunks = data.chunks
+    axis_old_chunks = old_chunks[axis]
+    axis_n_chunks = len(axis_old_chunks)
 
     # apply the indexing operation
     v = da.compress(indexer, data, axis=axis)
@@ -202,11 +206,8 @@ def dask_compress(data, indexer, axis):
     # would normally do v.compute_chunk_sizes() but that is slow for
     # multidimensional arrays, so hack something more efficient
 
-    old_chunks = data.chunks
-    axis_old_chunks = old_chunks[axis]
-    axis_n_chunks = len(axis_old_chunks)
     axis_new_chunks = tuple(
-        indexer.rechunk(axis_old_chunks)
+        indexer.rechunk((axis_old_chunks,))
         .map_blocks(
             lambda b: np.sum(b, keepdims=True),
             chunks=((1,) * axis_n_chunks,),
