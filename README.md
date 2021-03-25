@@ -52,13 +52,30 @@ $ poetry publish
 
 ## Release notes
 
+### 0.4.3
+
+* Performance improvements for faster reading a indexing
+  zarr arrays.
+  
+
+### 0.4.2
+
+* Bug fix and minor improvements to `Ag3.snp_calls()`.
+
+
+### 0.4.1
+
+* Explore workarounds to xarray memory issues in the `Ag3.snp_calls()` method.
+
+
 ### 0.4.0
 
 * Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
 * Add the `Ag3.cross_metadata()` method.
 * Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods. 
-* Add `Ag3.snp_dataset()` method.  
+* Add the `Ag3.snp_calls()` method.
 * Improve unit tests.
+* Improve memory usage.
 
 
 ### 0.3.1
