@@ -12,7 +12,14 @@ zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
+petl = "*"
+petlx = "*"
+BioPython = "*"
+pyfasta = "*"
+intervaltree = "*"
+scikit-allel = "*"
 xarray = "*"
+
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
