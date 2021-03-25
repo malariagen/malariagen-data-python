@@ -1,3 +1,4 @@
+import malariagen_data
 from malariagen_data import Ag3
 import pandas
 from pandas.testing import assert_frame_equal
@@ -6,9 +7,6 @@ import numpy as np
 import zarr
 import xarray
 import pytest
-
-
-gcs_url = "gs://vo_agam_release/"
 
 
 expected_species = {
@@ -23,9 +21,26 @@ expected_species = {
 contigs = "2R", "2L", "3R", "3L", "X"
 
 
-def test_sample_sets():
+def setup_ag3(url="simplecache::gs://vo_agam_release/", **storage_kwargs):
+    if url.startswith("simplecache::"):
+        storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
+    return Ag3(url, **storage_kwargs)
 
-    ag3 = Ag3(gcs_url)
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "gs://vo_agam_release/",
+        "gcs://vo_agam_release/",
+        "gs://vo_agam_release",
+        "gcs://vo_agam_release",
+        "simplecache::gs://vo_agam_release/",
+        "simplecache::gcs://vo_agam_release/",
+    ],
+)
+def test_sample_sets(url):
+
+    ag3 = setup_ag3(url)
     df_sample_sets_v3 = ag3.sample_sets(release="v3")
     assert isinstance(df_sample_sets_v3, pandas.DataFrame)
     assert 28 == len(df_sample_sets_v3)
@@ -35,16 +50,10 @@ def test_sample_sets():
     df_default = ag3.sample_sets()
     assert_frame_equal(df_sample_sets_v3, df_default)
 
-    # try without trailing slash
-    ag3 = Ag3(gcs_url[:-1])
-    df_sample_sets_v3 = ag3.sample_sets(release="v3")
-    assert isinstance(df_sample_sets_v3, pandas.DataFrame)
-    assert 28 == len(df_sample_sets_v3)
-
 
 def test_sample_metadata():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     df_sample_sets_v3 = ag3.sample_sets(release="v3")
 
     expected_cols = (
@@ -133,7 +142,7 @@ def test_sample_metadata():
 
 def test_species_calls():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     sample_sets = ag3.sample_sets(release="v3")["sample_set"].tolist()
 
     for s in sample_sets:
@@ -151,7 +160,7 @@ def test_species_calls():
 
 def test_site_filters():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     for mask in "gamb_colu_arab", "gamb_colu", "arab":
 
@@ -172,7 +181,7 @@ def test_site_filters():
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 def test_snp_sites(chunks):
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # check can open the zarr directly
     root = ag3.open_snp_sites()
@@ -218,7 +227,7 @@ def test_snp_sites(chunks):
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 def test_snp_genotypes(chunks):
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # check can open the zarr directly
     root = ag3.open_snp_genotypes(sample_set="AG1000G-AO")
@@ -277,7 +286,7 @@ def test_snp_genotypes(chunks):
 
 def test_genome():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # test the open_genome() method to access as zarr
     genome = ag3.open_genome()
@@ -295,7 +304,7 @@ def test_genome():
 
 def test_geneset():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # default
     df = ag3.geneset()
@@ -322,7 +331,7 @@ def test_geneset():
 
 def test_is_accessible():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     # run a couple of tests
     tests = [("X", "gamb_colu_arab"), ("2R", "gamb_colu"), ("3L", "arab")]
     for contig, mask in tests:
@@ -334,7 +343,7 @@ def test_is_accessible():
 
 def test_cross_metadata():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
     df_crosses = ag3.cross_metadata()
     assert isinstance(df_crosses, pandas.DataFrame)
     expected_cols = ["cross", "sample_id", "father_id", "mother_id", "sex", "role"]
@@ -353,7 +362,7 @@ def test_cross_metadata():
 
 def test_site_annotations():
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     # test access as zarr
     root = ag3.open_site_annotations()
@@ -372,7 +381,7 @@ def test_site_annotations():
             assert contig in root[f]
 
     # test access as dask arrays
-    for contig in "2R", "X", "3L":
+    for contig in "2R", "X":
         for site_mask in None, "gamb_colu_arab":
             pos = ag3.snp_sites(contig=contig, field="POS", site_mask=site_mask)
             for field in "codon_degeneracy", "seq_cls":
@@ -389,7 +398,7 @@ def test_site_annotations():
 @pytest.mark.parametrize("contig", ["3L", "X"])
 def test_snp_calls(sample_sets, contig, site_mask):
 
-    ag3 = Ag3(gcs_url)
+    ag3 = setup_ag3()
 
     ds = ag3.snp_calls(contig=contig, sample_sets=sample_sets, site_mask=site_mask)
     assert isinstance(ds, xarray.Dataset)
@@ -468,3 +477,107 @@ def test_snp_calls(sample_sets, contig, site_mask):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_AD"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+
+def test_snp_single_effect():
+    ag3 = setup_ag3()
+    gste2 = 'AGAP009194-RA'
+    # no effect
+    e = ag3.snp_single_effect('3R', pos=28597652, ref='G', alt='A', transcript=[gste2])
+    assert isinstance(e, malariagen_data.veff.VariantEffect)
+    assert e.effect == 'THREE_PRIME_UTR'
+
+
+def test_snp_effects():
+    ag3 = setup_ag3()
+    gste2 = "AGAP009194-RA"
+    site_mask = "gamb_colu"
+    expected_fields = ["position",
+                       "ref_allele",
+                       "alt_alleles",
+                       "effect",
+                       "impact",
+                       "ref_codon",
+                       "alt_codon",
+                       "aa_pos",
+                       "ref_aa",
+                       "alt_aa",
+                       "aa_change"
+    ]
+
+    # df = ag3.snp_effects(gste2, site_mask)
+    # assert isinstance(df, pandas.DataFrame)
+    # assert expected_fields == df.columns.tolist()
+    #
+    # # reverse strand gene
+    # assert df.shape == (2838, 11)
+    # # check first, second, third codon position non-syn
+    # assert df.iloc[1454].aa_change == "I114L"
+    # assert df.iloc[1446].aa_change == "I114M"
+    # # while we are here, check all columns for a position
+    # assert df.iloc[1451].position == 28598166
+    # assert df.iloc[1451].ref_allele == "A"
+    # assert df.iloc[1451].alt_alleles == "G"
+    # assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
+    # assert df.iloc[1451].impact == "MODERATE"
+    # assert df.iloc[1451].ref_codon == "aTt"
+    # assert df.iloc[1451].alt_codon == "aCt"
+    # assert df.iloc[1451].aa_pos == 114
+    # assert df.iloc[1451].ref_aa == "I"
+    # assert df.iloc[1451].alt_aa == "T"
+    # assert df.iloc[1451].aa_change == "I114T"
+    # # check syn
+    # assert df.iloc[1447].aa_change == 'I114I'
+    # # check intronic
+    # assert df.iloc[1197].effect == 'INTRONIC'
+    # # check 5' utr
+    # assert df.iloc[2661].effect == 'FIVE_PRIME_UTR'
+    # # check 3' utr
+    # assert df.iloc[0].effect == 'THREE_PRIME_UTR'
+    #
+    # # test forward strand gene gste6
+    # gste6 = "AGAP009196-RA"
+    # df = ag3.snp_effects(gste6, site_mask)
+    # assert isinstance(df, pandas.DataFrame)
+    # assert expected_fields == df.columns.tolist()
+    # assert df.shape == (2829, 11)
+    #
+    # # check first, second, third codon position non-syn
+    # assert df.iloc[701].aa_change == "E35*"
+    # assert df.iloc[703].aa_change == "E35V"
+    # # while we are here, check all columns for a position
+    # assert df.iloc[706].position == 28600605
+    # assert df.iloc[706].ref_allele == "G"
+    # assert df.iloc[706].alt_alleles == "C"
+    # assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
+    # assert df.iloc[706].impact == "MODERATE"
+    # assert df.iloc[706].ref_codon == "gaG"
+    # assert df.iloc[706].alt_codon == "gaC"
+    # assert df.iloc[706].aa_pos == 35
+    # assert df.iloc[706].ref_aa == "E"
+    # assert df.iloc[706].alt_aa == "D"
+    # assert df.iloc[706].aa_change == "E35D"
+    # # check syn
+    # assert df.iloc[705].aa_change == 'E35E'
+    # # check intronic
+    # assert df.iloc[900].effect == 'INTRONIC'
+    # # check 5' utr
+    # assert df.iloc[0].effect == 'FIVE_PRIME_UTR'
+    # # check 3' utr
+    # assert df.iloc[2828].effect == 'THREE_PRIME_UTR'
+
+    #check 5' utr intron
+#     utrintron5 = "AGAP004679-RB"
+#     df = ag3.snp_effects(utrintron5, site_mask)
+#     assert isinstance(df, pandas.DataFrame)
+#     assert expected_fields == df.columns.tolist()
+#     assert df.shape == (7686, 11)
+#     assert df.loc[180].effect == 'SPLICE_REGION'
+
+    # check 3' utr intron
+    # utrintron3 = "AGAP004679-RB"
+    # df = ag3.snp_effects(utrintron3, site_mask)
+    # assert isinstance(df, pandas.DataFrame)
+    # assert expected_fields == df.columns.tolist()
+    # assert df.shape == (7686, 11)
+    # assert df.loc[180].effect == 'INTRONIC
