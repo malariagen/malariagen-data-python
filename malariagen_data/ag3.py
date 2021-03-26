@@ -631,23 +631,8 @@ class Ag3:
 
         return is_accessible
 
-    def snp_single_effect(self, chrom, pos, ref, alt, transcript):
-        # TODO remove seqid here and from veff constructor
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), geneset=self.geneset()
-            )
-        ann = self._cache_annotator
-
-        for effect in ann.get_effects(chrom=chrom, pos=pos, ref=ref, alt=alt,
-                                      transcript_ids=transcript):
-            return effect
-
-
-
 
     def snp_effects(self, transcript, site_mask):
-
         # take an AGAP transcript ID and get meta data from the gff using veff
         # first time sets up and caches ann object
         if self._cache_annotator is None:

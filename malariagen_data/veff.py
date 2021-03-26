@@ -935,11 +935,10 @@ def _get_within_intron_effect(annotator, base_effect, intron, exons):
         # SNPs
 
         if intron_min_dist <= 2:
-
             # splice site variation
             effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
 
-        if intron_min_dist <= 7:
+        elif intron_min_dist <= 7:
 
             # splice site variation
             effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
