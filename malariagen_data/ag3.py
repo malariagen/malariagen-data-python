@@ -668,9 +668,9 @@ class Ag3:
         df_in["position"] = np.asarray(pos[loc])
         df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
         # bytes within lists within lists...
-        df_in["alt_alleles"] = [list(q.tobytes().decode()) for q in list(alt)]
+        df_in["alt_allele"] = [list(q.tobytes().decode()) for q in list(alt)]
         # explode the alt alleles into their own rows
-        df_effects = df_in.explode("alt_alleles").reset_index(drop=True)
+        df_effects = df_in.explode("alt_allele").reset_index(drop=True)
 
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
@@ -690,7 +690,7 @@ class Ag3:
                 chrom=contig,
                 pos=row.position,
                 ref=row.ref_allele,
-                alt=row.alt_alleles,
+                alt=row.alt_allele,
                 transcript_ids=[transcript],
             ):
                 leffect.append(effect.effect)

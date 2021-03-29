@@ -485,7 +485,7 @@ def test_snp_effects():
     site_mask = "gamb_colu"
     expected_fields = ["position",
                        "ref_allele",
-                       "alt_alleles",
+                       "alt_allele",
                        "effect",
                        "impact",
                        "ref_codon",
@@ -508,7 +508,7 @@ def test_snp_effects():
     # while we are here, check all columns for a position
     assert df.iloc[1451].position == 28598166
     assert df.iloc[1451].ref_allele == "A"
-    assert df.iloc[1451].alt_alleles == "G"
+    assert df.iloc[1451].alt_allele == "G"
     assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
     assert df.iloc[1451].impact == "MODERATE"
     assert df.iloc[1451].ref_codon == "aTt"
@@ -539,7 +539,7 @@ def test_snp_effects():
     # while we are here, check all columns for a position
     assert df.iloc[706].position == 28600605
     assert df.iloc[706].ref_allele == "G"
-    assert df.iloc[706].alt_alleles == "C"
+    assert df.iloc[706].alt_allele == "C"
     assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
     assert df.iloc[706].impact == "MODERATE"
     assert df.iloc[706].ref_codon == "gaG"
