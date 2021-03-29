@@ -479,22 +479,13 @@ def test_snp_calls(sample_sets, contig, site_mask):
     assert isinstance(d2, xarray.DataArray)
 
 
-def test_snp_single_effect():
-    ag3 = setup_ag3()
-    gste2 = 'AGAP009194-RA'
-    # no effect
-    e = ag3.snp_single_effect('3R', pos=28597652, ref='G', alt='A', transcript=[gste2])
-    assert isinstance(e, malariagen_data.veff.VariantEffect)
-    assert e.effect == 'THREE_PRIME_UTR'
-
-
 def test_snp_effects():
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
     site_mask = "gamb_colu"
     expected_fields = ["position",
                        "ref_allele",
-                       "alt_alleles",
+                       "alt_allele",
                        "effect",
                        "impact",
                        "ref_codon",
@@ -503,81 +494,85 @@ def test_snp_effects():
                        "ref_aa",
                        "alt_aa",
                        "aa_change"
-    ]
+                       ]
 
-    # df = ag3.snp_effects(gste2, site_mask)
-    # assert isinstance(df, pandas.DataFrame)
-    # assert expected_fields == df.columns.tolist()
-    #
-    # # reverse strand gene
-    # assert df.shape == (2838, 11)
-    # # check first, second, third codon position non-syn
-    # assert df.iloc[1454].aa_change == "I114L"
-    # assert df.iloc[1446].aa_change == "I114M"
-    # # while we are here, check all columns for a position
-    # assert df.iloc[1451].position == 28598166
-    # assert df.iloc[1451].ref_allele == "A"
-    # assert df.iloc[1451].alt_alleles == "G"
-    # assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
-    # assert df.iloc[1451].impact == "MODERATE"
-    # assert df.iloc[1451].ref_codon == "aTt"
-    # assert df.iloc[1451].alt_codon == "aCt"
-    # assert df.iloc[1451].aa_pos == 114
-    # assert df.iloc[1451].ref_aa == "I"
-    # assert df.iloc[1451].alt_aa == "T"
-    # assert df.iloc[1451].aa_change == "I114T"
-    # # check syn
-    # assert df.iloc[1447].aa_change == 'I114I'
-    # # check intronic
-    # assert df.iloc[1197].effect == 'INTRONIC'
-    # # check 5' utr
-    # assert df.iloc[2661].effect == 'FIVE_PRIME_UTR'
-    # # check 3' utr
-    # assert df.iloc[0].effect == 'THREE_PRIME_UTR'
-    #
-    # # test forward strand gene gste6
-    # gste6 = "AGAP009196-RA"
-    # df = ag3.snp_effects(gste6, site_mask)
-    # assert isinstance(df, pandas.DataFrame)
-    # assert expected_fields == df.columns.tolist()
-    # assert df.shape == (2829, 11)
-    #
-    # # check first, second, third codon position non-syn
-    # assert df.iloc[701].aa_change == "E35*"
-    # assert df.iloc[703].aa_change == "E35V"
-    # # while we are here, check all columns for a position
-    # assert df.iloc[706].position == 28600605
-    # assert df.iloc[706].ref_allele == "G"
-    # assert df.iloc[706].alt_alleles == "C"
-    # assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
-    # assert df.iloc[706].impact == "MODERATE"
-    # assert df.iloc[706].ref_codon == "gaG"
-    # assert df.iloc[706].alt_codon == "gaC"
-    # assert df.iloc[706].aa_pos == 35
-    # assert df.iloc[706].ref_aa == "E"
-    # assert df.iloc[706].alt_aa == "D"
-    # assert df.iloc[706].aa_change == "E35D"
-    # # check syn
-    # assert df.iloc[705].aa_change == 'E35E'
-    # # check intronic
-    # assert df.iloc[900].effect == 'INTRONIC'
-    # # check 5' utr
-    # assert df.iloc[0].effect == 'FIVE_PRIME_UTR'
-    # # check 3' utr
-    # assert df.iloc[2828].effect == 'THREE_PRIME_UTR'
+    df = ag3.snp_effects(gste2, site_mask)
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
 
-    #check 5' utr intron
-#     utrintron5 = "AGAP004679-RB"
-#     df = ag3.snp_effects(utrintron5, site_mask)
-#     assert isinstance(df, pandas.DataFrame)
-#     assert expected_fields == df.columns.tolist()
-#     assert df.shape == (7686, 11)
-#     assert df.loc[180].effect == 'SPLICE_REGION'
+    # reverse strand gene
+    assert df.shape == (2838, 11)
+    # check first, second, third codon position non-syn
+    assert df.iloc[1454].aa_change == "I114L"
+    assert df.iloc[1446].aa_change == "I114M"
+    # while we are here, check all columns for a position
+    assert df.iloc[1451].position == 28598166
+    assert df.iloc[1451].ref_allele == "A"
+    assert df.iloc[1451].alt_allele == "G"
+    assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
+    assert df.iloc[1451].impact == "MODERATE"
+    assert df.iloc[1451].ref_codon == "aTt"
+    assert df.iloc[1451].alt_codon == "aCt"
+    assert df.iloc[1451].aa_pos == 114
+    assert df.iloc[1451].ref_aa == "I"
+    assert df.iloc[1451].alt_aa == "T"
+    assert df.iloc[1451].aa_change == "I114T"
+    # check syn
+    assert df.iloc[1447].aa_change == 'I114I'
+    # check intronic
+    assert df.iloc[1197].effect == 'INTRONIC'
+    # check 5' utr
+    assert df.iloc[2661].effect == 'FIVE_PRIME_UTR'
+    # check 3' utr
+    assert df.iloc[0].effect == 'THREE_PRIME_UTR'
+
+    # test forward strand gene gste6
+    gste6 = "AGAP009196-RA"
+    df = ag3.snp_effects(gste6, site_mask)
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (2829, 11)
+
+    # check first, second, third codon position non-syn
+    assert df.iloc[701].aa_change == "E35*"
+    assert df.iloc[703].aa_change == "E35V"
+    # while we are here, check all columns for a position
+    assert df.iloc[706].position == 28600605
+    assert df.iloc[706].ref_allele == "G"
+    assert df.iloc[706].alt_allele == "C"
+    assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
+    assert df.iloc[706].impact == "MODERATE"
+    assert df.iloc[706].ref_codon == "gaG"
+    assert df.iloc[706].alt_codon == "gaC"
+    assert df.iloc[706].aa_pos == 35
+    assert df.iloc[706].ref_aa == "E"
+    assert df.iloc[706].alt_aa == "D"
+    assert df.iloc[706].aa_change == "E35D"
+    # check syn
+    assert df.iloc[705].aa_change == 'E35E'
+    # check intronic
+    assert df.iloc[900].effect == 'INTRONIC'
+    # check 5' utr
+    assert df.iloc[0].effect == 'FIVE_PRIME_UTR'
+    # check 3' utr
+    assert df.iloc[2828].effect == 'THREE_PRIME_UTR'
+
+    # check 5' utr intron and the different intron effects
+    utrintron5 = "AGAP004679-RB"
+    df = ag3.snp_effects(utrintron5, site_mask)
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (7686, 11)
+    assert df.loc[180].effect == 'SPLICE_CORE'
+    assert df.loc[198].effect == 'SPLICE_REGION'
+    assert df.loc[202].effect == 'INTRONIC'
 
     # check 3' utr intron
-    # utrintron3 = "AGAP004679-RB"
-    # df = ag3.snp_effects(utrintron3, site_mask)
-    # assert isinstance(df, pandas.DataFrame)
-    # assert expected_fields == df.columns.tolist()
-    # assert df.shape == (7686, 11)
-    # assert df.loc[180].effect == 'INTRONIC
+    utrintron3 = "AGAP000689-RA"
+    df = ag3.snp_effects(utrintron3, site_mask)
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (5397, 11)
+    assert df.loc[646].effect == 'SPLICE_CORE'
+    assert df.loc[652].effect == 'SPLICE_REGION'
+    assert df.loc[674].effect == 'INTRONIC'
