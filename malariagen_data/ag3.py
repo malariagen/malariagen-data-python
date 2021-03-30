@@ -631,7 +631,6 @@ class Ag3:
 
         return is_accessible
 
-
     def snp_effects(self, transcript, site_mask):
         # take an AGAP transcript ID and get meta data from the gff using veff
         # first time sets up and caches ann object
@@ -713,8 +712,13 @@ class Ag3:
 
         return df_effects
 
-
-    def snp_allele_frequencies(self, transcript, site_mask):
+    def snp_allele_frequencies(
+            self,
+            transcript,
+            populations,
+            site_mask,
+            sample_sets="v3_wild",
+            drop_invariants=True):
 
         # get transcript idx - this is duplicated from snp_effects so should be broken out into it's own method/s
         # take an AGAP transcript ID and get meta data from the gff using veff
@@ -746,12 +750,11 @@ class Ag3:
         loc = pos.locate_range(start, stop)
 
         # we want to grab all metadata then get idx for samples we want
-        # what granularity do we want here - country+site+year TODO
         df_meta = self.sample_metadata(
-            sample_sets="v3_wild", species_calls=("20200422", "aim")
+            sample_sets=sample_sets, species_calls=("20200422", "aim")
         )
 
-        # get genotypes - chop to loc, chop to pop_idx TODO
+        # get genotypes
         gt = self.snp_genotypes(
             contig=contig,
             sample_sets="v3_wild",
@@ -759,15 +762,26 @@ class Ag3:
             site_mask=site_mask,
             site_filters="dt_20200416",
         )
+
+        # chop everything to loc
         gt = gt[loc].compute()
+        ref = sites[1][loc].compute()
+        alt = sites[2][loc].compute()
 
         # count alleles - should we calculate and add these to gcs like previous phases?
+        afs = dict()
+        for pop, query in populations.items():
+            loc_pop = df_meta.eval(query).values
+            gt_pop = da.compress(loc_pop, gt, axis=1)
+            ac_pop = allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
+            afs[pop] = ac_pop.to_frequencies()
 
-        # counts to frequencies
-
-        # build and return dataframe
-
-        return df_meta, gt
+        # TODO drop invariants
+        #
+        # TODO build and return dataframe
+        #
+        # return df_meta, gt
+        return afs
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
