@@ -774,14 +774,31 @@ class Ag3:
             loc_pop = df_meta.eval(query).values
             gt_pop = da.compress(loc_pop, gt, axis=1)
             ac_pop = allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
-            afs[pop] = ac_pop.to_frequencies()
+            # if drop_invariants:
+            #     invar = ac_pop[:, 0] != 1
+            #     ac_pop = ac_pop.compress(invar, axis=0)
+            # afs[pop] = ac_pop.to_frequencies()
 
-        # TODO drop invariants
-        #
-        # TODO build and return dataframe
-        #
-        # return df_meta, gt
-        return afs
+        cols = {
+            'pos': [],
+            'ref_allele': [],
+            'alt_allele': [],
+        }
+        for pop in populations:
+            cols[pop] = []
+
+        # populate columns
+        for i in range(len(pos)):
+            for j in range(3):
+                cols['pos'].append(pos[i])
+                cols['ref_allele'].append(ref[i])
+                cols['alt_allele'].append(alt[i, j])
+                for pop, af in afs.items():
+                    cols[pop].append(af[i, j + 1])
+
+        df = pandas.DataFrame(cols)
+
+        return df
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
