@@ -765,25 +765,25 @@ class Ag3:
 
         # chop everything to loc
         gt = gt[loc].compute()
+        pos = pos[loc]
         ref = sites[1][loc].compute()
         alt = sites[2][loc].compute()
 
-        # count alleles - should we calculate and add these to gcs like previous phases?
+        # count alleles
         afs = dict()
         for pop, query in populations.items():
             loc_pop = df_meta.eval(query).values
             gt_pop = da.compress(loc_pop, gt, axis=1)
             ac_pop = allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
-            # if drop_invariants:
-            #     invar = ac_pop[:, 0] != 1
-            #     ac_pop = ac_pop.compress(invar, axis=0)
-            # afs[pop] = ac_pop.to_frequencies()
+            afs[pop] = ac_pop.to_frequencies()
 
+        # initialise columns
         cols = {
             'pos': [],
             'ref_allele': [],
             'alt_allele': [],
         }
+
         for pop in populations:
             cols[pop] = []
 
@@ -796,9 +796,16 @@ class Ag3:
                 for pop, af in afs.items():
                     cols[pop].append(af[i, j + 1])
 
+        cols['ref_allele'] = [q.tobytes().decode() for q in np.asarray(cols['ref_allele'])]
+        cols['alt_allele'] = [q.tobytes().decode() for q in np.asarray(cols['alt_allele'])]
         df = pandas.DataFrame(cols)
 
+        if drop_invariants:
+            df['dropping'] = df[populations].sum(axis=1)
+            df = df[df.dropping > 0]
+            df.drop('dropping', axis=1, inplace=True)
         return df
+
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including

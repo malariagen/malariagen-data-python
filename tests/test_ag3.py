@@ -576,3 +576,18 @@ def test_snp_effects():
     assert df.loc[646].effect == 'SPLICE_CORE'
     assert df.loc[652].effect == 'SPLICE_REGION'
     assert df.loc[674].effect == 'INTRONIC'
+
+
+def test_snp_allele_frequencies():
+    ag3 = setup_ag3()
+    populations = {
+        "ke": "country == 'Kenya'",
+    }
+    df = ag3.snp_allele_frequencies(transcript="AGAP009194-RA",
+                                    populations=populations,
+                                    site_mask='gamb_colu',
+                                    sample_sets="v3_wild",
+                                    drop_invariants=False)
+
+    assert isinstance(df, pandas.DataFrame)
+
