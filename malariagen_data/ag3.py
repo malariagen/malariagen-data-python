@@ -717,24 +717,19 @@ class Ag3:
             transcript,
             populations,
             site_mask,
+            site_filters="dt_20200416",
+            species_calls=("20200422", "aim"),
             sample_sets="v3_wild",
             drop_invariants=True):
 
-        # get transcript idx - this is duplicated from snp_effects so should be broken out into it's own method/s
-        # take an AGAP transcript ID and get meta data from the gff using veff
-        # first time sets up and caches ann object
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(),
-                geneset=self.geneset(),
-            )
-
-        ann = self._cache_annotator
-        feature = ann.get_feature(transcript)
-        contig = feature[0]
-        start = feature[3]
-        stop = feature[4]
-        strand = feature[6]
+        # get feature details (don't need to set up an annotator here)
+        geneset = self.geneset()
+        geneset = geneset.set_index('ID')
+        feature = geneset.loc[transcript]
+        contig = feature.seqid
+        start = feature.start
+        stop = feature.end
+        strand = feature.strand
 
         print(
             f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
@@ -742,32 +737,32 @@ class Ag3:
         )
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        sites = self.snp_sites(contig=contig, site_mask=site_mask)
+        pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
 
         # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(sites[0].compute())
+        pos = allel.SortedIndex(pos.compute())
         # locate transcript range
         loc = pos.locate_range(start, stop)
 
         # we want to grab all metadata then get idx for samples we want
         df_meta = self.sample_metadata(
-            sample_sets=sample_sets, species_calls=("20200422", "aim")
+            sample_sets=sample_sets, species_calls=species_calls
         )
 
         # get genotypes
         gt = self.snp_genotypes(
             contig=contig,
-            sample_sets="v3_wild",
+            sample_sets=sample_sets,
             field="GT",
             site_mask=site_mask,
-            site_filters="dt_20200416",
+            site_filters=site_filters,
         )
 
         # chop everything to loc
         gt = gt[loc].compute()
         pos = pos[loc]
-        ref = sites[1][loc].compute()
-        alt = sites[2][loc].compute()
+        ref = ref[loc].compute()
+        alt = alt[loc].compute()
 
         # count alleles
         afs = dict()
@@ -788,6 +783,7 @@ class Ag3:
             cols[pop] = []
 
         # populate columns
+        # todo get rid of loops using numpy (repeat, flatten)
         for i in range(len(pos)):
             for j in range(3):
                 cols['pos'].append(pos[i])
@@ -796,7 +792,9 @@ class Ag3:
                 for pop, af in afs.items():
                     cols[pop].append(af[i, j + 1])
 
-        cols['ref_allele'] = [q.tobytes().decode() for q in np.asarray(cols['ref_allele'])]
+        # todo data types
+        # cols['ref_allele'] = cols['ref_allele'].astype('U1')
+        cols['ref_allele'] = [q.tobytes().decode() for q in np.asarray(cols['alt_allele'])]
         cols['alt_allele'] = [q.tobytes().decode() for q in np.asarray(cols['alt_allele'])]
         df = pandas.DataFrame(cols)
 
@@ -804,8 +802,11 @@ class Ag3:
             df['dropping'] = df[populations].sum(axis=1)
             df = df[df.dropping > 0]
             df.drop('dropping', axis=1, inplace=True)
-        return df
 
+        # todo add max
+        df.set_index('pos', inplace=True)
+        return df
+        # return geneset
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
