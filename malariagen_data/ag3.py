@@ -772,41 +772,30 @@ class Ag3:
             ac_pop = allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
             afs[pop] = ac_pop.to_frequencies()
 
-        # initialise columns
+        # set up columns
         cols = {
-            'pos': [],
-            'ref_allele': [],
-            'alt_allele': [],
+            'pos': np.repeat(pos, 3),
+            'ref_allele': np.repeat(ref.astype('U1'), 3),
+            'alt_allele': np.ndarray.flatten(alt.astype('U1')),
         }
 
         for pop in populations:
-            cols[pop] = []
+            cols[pop] = np.ndarray.flatten(afs[pop][:, 1:])
 
-        # populate columns
-        # todo get rid of loops using numpy (repeat, flatten)
-        for i in range(len(pos)):
-            for j in range(3):
-                cols['pos'].append(pos[i])
-                cols['ref_allele'].append(ref[i])
-                cols['alt_allele'].append(alt[i, j])
-                for pop, af in afs.items():
-                    cols[pop].append(af[i, j + 1])
-
-        # todo data types
-        # cols['ref_allele'] = cols['ref_allele'].astype('U1')
-        cols['ref_allele'] = [q.tobytes().decode() for q in np.asarray(cols['alt_allele'])]
-        cols['alt_allele'] = [q.tobytes().decode() for q in np.asarray(cols['alt_allele'])]
+        # build df
         df = pandas.DataFrame(cols)
 
+        # drop invariants
         if drop_invariants:
             df['dropping'] = df[populations].sum(axis=1)
             df = df[df.dropping > 0]
             df.drop('dropping', axis=1, inplace=True)
 
-        # todo add max
-        df.set_index('pos', inplace=True)
+        # add max freq column
+        df['maximum'] = df[populations].max(axis=1)
+
+        df.reset_index(inplace=True)
         return df
-        # return geneset
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
