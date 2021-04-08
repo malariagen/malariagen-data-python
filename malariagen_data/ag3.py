@@ -721,7 +721,7 @@ class Ag3:
             species_calls=("20200422", "aim"),
             sample_sets="v3_wild",
             drop_invariants=True):
-
+        # todo doc string (1 sentence, plus parameter, plus return
         # get feature details (don't need to set up an annotator here)
         geneset = self.geneset()
         geneset = geneset.set_index('ID')
@@ -776,11 +776,11 @@ class Ag3:
         cols = {
             'position': np.repeat(pos, 3),
             'ref_allele': np.repeat(ref.astype('U1'), 3),
-            'alt_allele': np.ndarray.flatten(alt.astype('U1')),
+            'alt_allele': alt.astype('U1').flatten(),
         }
 
         for pop in populations:
-            cols[pop] = np.ndarray.flatten(afs[pop][:, 1:])
+            cols[pop] = afs[pop][:, 1:].flatten()
 
         # build df
         df = pandas.DataFrame(cols)

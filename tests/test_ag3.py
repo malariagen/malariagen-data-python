@@ -582,13 +582,13 @@ def test_snp_allele_frequencies():
     ag3 = setup_ag3()
     populations = {
         "ke": "country == 'Kenya'",
-        "bf_bana_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
     expected_fields = ["position",
                        "ref_allele",
                        "alt_allele",
                        "ke",
-                       "bf_bana_2012_col",
+                       "bf_2012_col",
                        "maximum",
                        ]
     # drop invariants
@@ -605,8 +605,9 @@ def test_snp_allele_frequencies():
     assert df.loc[5].ref_allele == "A"
     assert df.loc[13].alt_allele == "C"
     assert df.loc[16].ke == 0
-    assert df.loc[22].bf_bana_2012_col == 0.006097560975609756
-    assert df.loc[39].maximum == 0.006097560975609756
+    assert df.loc[22].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
+    assert df.loc[39].maximum == pytest.approx(0.006097, abs=1e-6)
+    # todo check all max are >0
 
     populations = {
         "gm": "country == 'Gambia, The'",
@@ -634,4 +635,5 @@ def test_snp_allele_frequencies():
     assert df.loc[2].alt_allele == "G"
     assert df.loc[3].gm == 0.0
     assert df.loc[4].mz == 0.0
-    assert df.loc[72].maximum == 0.0017921146953405018
+    assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
+    # todo any max == 0
