@@ -584,7 +584,7 @@ def test_snp_allele_frequencies():
         "ke": "country == 'Kenya'",
         "bf_bana_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
-    expected_fields = ["pos",
+    expected_fields = ["position",
                        "ref_allele",
                        "alt_allele",
                        "ke",
@@ -601,7 +601,7 @@ def test_snp_allele_frequencies():
     assert isinstance(df, pandas.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (133, 6)
-    assert df.loc[4].pos == 28597653
+    assert df.loc[4].position == 28597653
     assert df.loc[5].ref_allele == "A"
     assert df.loc[13].alt_allele == "C"
     assert df.loc[16].ke == 0
@@ -612,7 +612,7 @@ def test_snp_allele_frequencies():
         "gm": "country == 'Gambia, The'",
         "mz": "country == 'Mozambique' and year == 2004"
     }
-    expected_fields = ["pos",
+    expected_fields = ["position",
                        "ref_allele",
                        "alt_allele",
                        "gm",
@@ -629,7 +629,7 @@ def test_snp_allele_frequencies():
     assert isinstance(df, pandas.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (132306, 6)
-    assert df.loc[0].pos == 2358158
+    assert df.loc[0].position == 2358158
     assert df.loc[1].ref_allele == "A"
     assert df.loc[2].alt_allele == "G"
     assert df.loc[3].gm == 0.0
