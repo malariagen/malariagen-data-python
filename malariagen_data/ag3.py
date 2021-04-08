@@ -774,7 +774,7 @@ class Ag3:
 
         # set up columns
         cols = {
-            'pos': np.repeat(pos, 3),
+            'position': np.repeat(pos, 3),
             'ref_allele': np.repeat(ref.astype('U1'), 3),
             'alt_allele': np.ndarray.flatten(alt.astype('U1')),
         }
