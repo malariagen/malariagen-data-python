@@ -582,12 +582,56 @@ def test_snp_allele_frequencies():
     ag3 = setup_ag3()
     populations = {
         "ke": "country == 'Kenya'",
+        "bf_bana_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
+    expected_fields = ["pos",
+                       "ref_allele",
+                       "alt_allele",
+                       "ke",
+                       "bf_bana_2012_col",
+                       "maximum",
+                       ]
+    # drop invariants
     df = ag3.snp_allele_frequencies(transcript="AGAP009194-RA",
+                                    populations=populations,
+                                    site_mask='gamb_colu',
+                                    sample_sets="v3_wild",
+                                    drop_invariants=True)
+
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (133, 6)
+    assert df.loc[4].pos == 28597653
+    assert df.loc[5].ref_allele == "A"
+    assert df.loc[13].alt_allele == "C"
+    assert df.loc[16].ke == 0
+    assert df.loc[22].bf_bana_2012_col == 0.006097560975609756
+    assert df.loc[39].maximum == 0.006097560975609756
+
+    populations = {
+        "gm": "country == 'Gambia, The'",
+        "mz": "country == 'Mozambique' and year == 2004"
+    }
+    expected_fields = ["pos",
+                       "ref_allele",
+                       "alt_allele",
+                       "gm",
+                       "mz",
+                       "maximum",
+                       ]
+    # keep invariants
+    df = ag3.snp_allele_frequencies(transcript="AGAP004707-RD",
                                     populations=populations,
                                     site_mask='gamb_colu',
                                     sample_sets="v3_wild",
                                     drop_invariants=False)
 
     assert isinstance(df, pandas.DataFrame)
-
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (132306, 6)
+    assert df.loc[0].pos == 2358158
+    assert df.loc[1].ref_allele == "A"
+    assert df.loc[2].alt_allele == "G"
+    assert df.loc[3].gm == 0.0
+    assert df.loc[4].mz == 0.0
+    assert df.loc[72].maximum == 0.0017921146953405018

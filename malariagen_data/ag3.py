@@ -794,7 +794,6 @@ class Ag3:
         # add max freq column
         df['maximum'] = df[populations].max(axis=1)
 
-        df.reset_index(inplace=True)
         return df
 
     def cross_metadata(self):
