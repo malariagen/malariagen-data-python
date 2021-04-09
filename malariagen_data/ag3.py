@@ -632,6 +632,20 @@ class Ag3:
         return is_accessible
 
     def snp_effects(self, transcript, site_mask):
+        """Compute variant effects for a gene transcript.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
         # take an AGAP transcript ID and get meta data from the gff using veff
         # first time sets up and caches ann object
         if self._cache_annotator is None:
@@ -721,7 +735,31 @@ class Ag3:
             species_calls=("20200422", "aim"),
             sample_sets="v3_wild",
             drop_invariants=True):
-        # todo doc string (1 sentence, plus parameter, plus return
+        """Compute per variant population allele frequencies for a gene transcript.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+        populations : dict
+            Dictionary to map population IDs to sample queries, e.g.,
+            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str, optional
+            Site filters analysis version.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        drop_invariants : bool, optional
+            If True, variants with no alt_allele calls across populations are dropped from the df.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
         # get feature details (don't need to set up an annotator here)
         geneset = self.geneset()
         geneset = geneset.set_index('ID')

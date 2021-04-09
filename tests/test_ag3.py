@@ -607,7 +607,8 @@ def test_snp_allele_frequencies():
     assert df.loc[16].ke == 0
     assert df.loc[22].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
     assert df.loc[39].maximum == pytest.approx(0.006097, abs=1e-6)
-    # todo check all max are >0
+    #check invariants have been dropped
+    assert df.maximum.min() > 0
 
     populations = {
         "gm": "country == 'Gambia, The'",
@@ -636,4 +637,5 @@ def test_snp_allele_frequencies():
     assert df.loc[3].gm == 0.0
     assert df.loc[4].mz == 0.0
     assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
-    # todo any max == 0
+    # check invariant positions are still present
+    assert 0 in df.maximum.unique()
