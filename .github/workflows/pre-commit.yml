@@ -1,14 +1,8 @@
 name: linting
-
-on:
-  push:
-    branches: "*"
-  pull_request:
-    branches: "*"
+on: pull_request
 
 jobs:
   linting:
-    name: "pre-commit hooks"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
