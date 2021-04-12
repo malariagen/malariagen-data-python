@@ -20,10 +20,10 @@ intervaltree = "*"
 scikit-allel = "*"
 xarray = "*"
 
-
 [tool.poetry.dev-dependencies]
 pytest = "*"
 notebook = "*"
+pre-commit = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -6,4 +6,5 @@ dist
 .ipynb_checkpoints/
 gcs_cache
 
-
+# emacs
+*~
