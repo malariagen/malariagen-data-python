@@ -24,6 +24,7 @@ xarray = "*"
 [tool.poetry.dev-dependencies]
 pytest = "*"
 notebook = "*"
+snakeviz = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
