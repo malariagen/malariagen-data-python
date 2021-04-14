@@ -638,4 +638,4 @@ def test_snp_allele_frequencies():
     assert df.loc[4].mz == 0.0
     assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
     # check invariant positions are still present
-    assert 0 in df.maximum.unique()
+    assert np.any(df.maximum == 0)
