@@ -752,7 +752,7 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
-        drop_invariants : bool, optional
+        drop_invariant : bool, optional
             If True, variants with no alternate allele calls in any populations are dropped from the result.
 
         Returns
