@@ -825,9 +825,8 @@ class Ag3:
 
         # drop invariants
         if drop_invariants:
-            df['dropping'] = df[populations].sum(axis=1)
-            df = df[df.dropping > 0]
-            df.drop('dropping', axis=1, inplace=True)
+            loc_variant = df[populations].sum(axis=1) > 0
+            df = df[loc_variant]
 
         # add max freq column
         df['maximum'] = df[populations].max(axis=1)
