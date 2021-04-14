@@ -730,7 +730,7 @@ class Ag3:
             self,
             transcript,
             populations,
-            site_mask,
+            site_mask=None,
             site_filters="dt_20200416",
             species_calls=("20200422", "aim"),
             sample_sets="v3_wild",
