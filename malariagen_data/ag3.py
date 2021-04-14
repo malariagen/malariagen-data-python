@@ -753,7 +753,7 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         drop_invariants : bool, optional
-            If True, variants with no alt_allele calls across populations are dropped from the df.
+            If True, variants with no alternate allele calls in any populations are dropped from the result.
 
         Returns
         -------
