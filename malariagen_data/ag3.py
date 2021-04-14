@@ -660,11 +660,6 @@ class Ag3:
         stop = feature[4]
         strand = feature[6]
 
-        print(
-            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
-            f"\nstrand : {strand}"
-        )
-
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
 
@@ -727,14 +722,15 @@ class Ag3:
         return df_effects
 
     def snp_allele_frequencies(
-            self,
-            transcript,
-            populations,
-            site_mask=None,
-            site_filters="dt_20200416",
-            species_calls=("20200422", "aim"),
-            sample_sets="v3_wild",
-            drop_invariants=True):
+        self,
+        transcript,
+        populations,
+        site_mask=None,
+        site_filters="dt_20200416",
+        species_calls=("20200422", "aim"),
+        sample_sets="v3_wild",
+        drop_invariant=True,
+    ):
         """Compute per variant population allele frequencies for a gene transcript.
 
         Parameters
@@ -748,6 +744,8 @@ class Ag3:
             Site filters mask to apply.
         site_filters : str, optional
             Site filters analysis version.
+        species_calls : (str, str), optional
+            Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -762,17 +760,12 @@ class Ag3:
         """
         # get feature details (don't need to set up an annotator here)
         geneset = self.geneset()
-        geneset = geneset.set_index('ID')
+        geneset = geneset.set_index("ID")
         feature = geneset.loc[transcript]
         contig = feature.seqid
         start = feature.start
         stop = feature.end
         strand = feature.strand
-
-        print(
-            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
-            f"\nstrand : {strand}"
-        )
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
@@ -807,14 +800,16 @@ class Ag3:
         for pop, query in populations.items():
             loc_pop = df_meta.eval(query).values
             gt_pop = da.compress(loc_pop, gt, axis=1)
-            ac_pop = allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
+            ac_pop = (
+                allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
+            )
             afs[pop] = ac_pop.to_frequencies()
 
         # set up columns
         cols = {
-            'position': np.repeat(pos, 3),
-            'ref_allele': np.repeat(ref.astype('U1'), 3),
-            'alt_allele': alt.astype('U1').flatten(),
+            "position": np.repeat(pos, 3),
+            "ref_allele": np.repeat(ref.astype("U1"), 3),
+            "alt_allele": alt.astype("U1").flatten(),
         }
 
         for pop in populations:
@@ -824,12 +819,12 @@ class Ag3:
         df = pandas.DataFrame(cols)
 
         # drop invariants
-        if drop_invariants:
+        if drop_invariant:
             loc_variant = df[populations].sum(axis=1) > 0
             df = df[loc_variant]
 
         # add max freq column
-        df['maximum'] = df[populations].max(axis=1)
+        df["maximum"] = df[populations].max(axis=1)
 
         return df
 
