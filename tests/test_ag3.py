@@ -483,18 +483,19 @@ def test_snp_effects():
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
     site_mask = "gamb_colu"
-    expected_fields = ["position",
-                       "ref_allele",
-                       "alt_allele",
-                       "effect",
-                       "impact",
-                       "ref_codon",
-                       "alt_codon",
-                       "aa_pos",
-                       "ref_aa",
-                       "alt_aa",
-                       "aa_change"
-                       ]
+    expected_fields = [
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "effect",
+        "impact",
+        "ref_codon",
+        "alt_codon",
+        "aa_pos",
+        "ref_aa",
+        "alt_aa",
+        "aa_change",
+    ]
 
     df = ag3.snp_effects(gste2, site_mask)
     assert isinstance(df, pandas.DataFrame)
@@ -518,13 +519,13 @@ def test_snp_effects():
     assert df.iloc[1451].alt_aa == "T"
     assert df.iloc[1451].aa_change == "I114T"
     # check syn
-    assert df.iloc[1447].aa_change == 'I114I'
+    assert df.iloc[1447].aa_change == "I114I"
     # check intronic
-    assert df.iloc[1197].effect == 'INTRONIC'
+    assert df.iloc[1197].effect == "INTRONIC"
     # check 5' utr
-    assert df.iloc[2661].effect == 'FIVE_PRIME_UTR'
+    assert df.iloc[2661].effect == "FIVE_PRIME_UTR"
     # check 3' utr
-    assert df.iloc[0].effect == 'THREE_PRIME_UTR'
+    assert df.iloc[0].effect == "THREE_PRIME_UTR"
 
     # test forward strand gene gste6
     gste6 = "AGAP009196-RA"
@@ -549,13 +550,13 @@ def test_snp_effects():
     assert df.iloc[706].alt_aa == "D"
     assert df.iloc[706].aa_change == "E35D"
     # check syn
-    assert df.iloc[705].aa_change == 'E35E'
+    assert df.iloc[705].aa_change == "E35E"
     # check intronic
-    assert df.iloc[900].effect == 'INTRONIC'
+    assert df.iloc[900].effect == "INTRONIC"
     # check 5' utr
-    assert df.iloc[0].effect == 'FIVE_PRIME_UTR'
+    assert df.iloc[0].effect == "FIVE_PRIME_UTR"
     # check 3' utr
-    assert df.iloc[2828].effect == 'THREE_PRIME_UTR'
+    assert df.iloc[2828].effect == "THREE_PRIME_UTR"
 
     # check 5' utr intron and the different intron effects
     utrintron5 = "AGAP004679-RB"
@@ -563,9 +564,9 @@ def test_snp_effects():
     assert isinstance(df, pandas.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (7686, 11)
-    assert df.loc[180].effect == 'SPLICE_CORE'
-    assert df.loc[198].effect == 'SPLICE_REGION'
-    assert df.loc[202].effect == 'INTRONIC'
+    assert df.loc[180].effect == "SPLICE_CORE"
+    assert df.loc[198].effect == "SPLICE_REGION"
+    assert df.loc[202].effect == "INTRONIC"
 
     # check 3' utr intron
     utrintron3 = "AGAP000689-RA"
@@ -573,6 +574,75 @@ def test_snp_effects():
     assert isinstance(df, pandas.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (5397, 11)
-    assert df.loc[646].effect == 'SPLICE_CORE'
-    assert df.loc[652].effect == 'SPLICE_REGION'
-    assert df.loc[674].effect == 'INTRONIC'
+    assert df.loc[646].effect == "SPLICE_CORE"
+    assert df.loc[652].effect == "SPLICE_REGION"
+    assert df.loc[674].effect == "INTRONIC"
+
+
+def test_snp_allele_frequencies():
+    ag3 = setup_ag3()
+    populations = {
+        "ke": "country == 'Kenya'",
+        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+    }
+    expected_fields = [
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "ke",
+        "bf_2012_col",
+        "maximum",
+    ]
+    # drop invariants
+    df = ag3.snp_allele_frequencies(
+        transcript="AGAP009194-RA",
+        populations=populations,
+        site_mask="gamb_colu",
+        sample_sets="v3_wild",
+        drop_invariant=True,
+    )
+
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (133, 6)
+    assert df.loc[4].position == 28597653
+    assert df.loc[5].ref_allele == "A"
+    assert df.loc[13].alt_allele == "C"
+    assert df.loc[16].ke == 0
+    assert df.loc[22].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
+    assert df.loc[39].maximum == pytest.approx(0.006097, abs=1e-6)
+    # check invariant have been dropped
+    assert df.maximum.min() > 0
+
+    populations = {
+        "gm": "country == 'Gambia, The'",
+        "mz": "country == 'Mozambique' and year == 2004",
+    }
+    expected_fields = [
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "gm",
+        "mz",
+        "maximum",
+    ]
+    # keep invariants
+    df = ag3.snp_allele_frequencies(
+        transcript="AGAP004707-RD",
+        populations=populations,
+        site_mask="gamb_colu",
+        sample_sets="v3_wild",
+        drop_invariant=False,
+    )
+
+    assert isinstance(df, pandas.DataFrame)
+    assert expected_fields == df.columns.tolist()
+    assert df.shape == (132306, 6)
+    assert df.loc[0].position == 2358158
+    assert df.loc[1].ref_allele == "A"
+    assert df.loc[2].alt_allele == "G"
+    assert df.loc[3].gm == 0.0
+    assert df.loc[4].mz == 0.0
+    assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
+    # check invariant positions are still present
+    assert np.any(df.maximum == 0)

@@ -631,8 +631,21 @@ class Ag3:
 
         return is_accessible
 
-
     def snp_effects(self, transcript, site_mask):
+        """Compute variant effects for a gene transcript.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
         # take an AGAP transcript ID and get meta data from the gff using veff
         # first time sets up and caches ann object
         if self._cache_annotator is None:
@@ -646,11 +659,6 @@ class Ag3:
         start = feature[3]
         stop = feature[4]
         strand = feature[6]
-
-        print(
-            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
-            f"\nstrand : {strand}"
-        )
 
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
@@ -713,61 +721,112 @@ class Ag3:
 
         return df_effects
 
+    def snp_allele_frequencies(
+        self,
+        transcript,
+        populations,
+        site_mask=None,
+        site_filters="dt_20200416",
+        species_calls=("20200422", "aim"),
+        sample_sets="v3_wild",
+        drop_invariant=True,
+    ):
+        """Compute per variant population allele frequencies for a gene transcript.
 
-    def snp_allele_frequencies(self, transcript, site_mask):
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+        populations : dict
+            Dictionary to map population IDs to sample queries, e.g.,
+            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str, optional
+            Site filters analysis version.
+        species_calls : (str, str), optional
+            Include species calls in metadata.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any populations are dropped from the result.
 
-        # get transcript idx - this is duplicated from snp_effects so should be broken out into it's own method/s
-        # take an AGAP transcript ID and get meta data from the gff using veff
-        # first time sets up and caches ann object
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(),
-                geneset=self.geneset(),
-            )
+        Returns
+        -------
+        df : pandas.DataFrame
 
-        ann = self._cache_annotator
-        feature = ann.get_feature(transcript)
-        contig = feature[0]
-        start = feature[3]
-        stop = feature[4]
-        strand = feature[6]
-
-        print(
-            f"transcript : {transcript}\nchromosome : {contig} \nstart : {start}\nstop : {stop}"
-            f"\nstrand : {strand}"
-        )
+        """
+        # get feature details (don't need to set up an annotator here)
+        geneset = self.geneset()
+        geneset = geneset.set_index("ID")
+        feature = geneset.loc[transcript]
+        contig = feature.seqid
+        start = feature.start
+        stop = feature.end
+        strand = feature.strand
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        sites = self.snp_sites(contig=contig, site_mask=site_mask)
+        pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
 
         # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(sites[0].compute())
+        pos = allel.SortedIndex(pos.compute())
         # locate transcript range
         loc = pos.locate_range(start, stop)
 
         # we want to grab all metadata then get idx for samples we want
-        # what granularity do we want here - country+site+year TODO
         df_meta = self.sample_metadata(
-            sample_sets="v3_wild", species_calls=("20200422", "aim")
+            sample_sets=sample_sets, species_calls=species_calls
         )
 
-        # get genotypes - chop to loc, chop to pop_idx TODO
+        # get genotypes
         gt = self.snp_genotypes(
             contig=contig,
-            sample_sets="v3_wild",
+            sample_sets=sample_sets,
             field="GT",
             site_mask=site_mask,
-            site_filters="dt_20200416",
+            site_filters=site_filters,
         )
+
+        # chop everything to loc
         gt = gt[loc].compute()
+        pos = pos[loc]
+        ref = ref[loc].compute()
+        alt = alt[loc].compute()
 
-        # count alleles - should we calculate and add these to gcs like previous phases?
+        # count alleles
+        afs = dict()
+        for pop, query in populations.items():
+            loc_pop = df_meta.eval(query).values
+            gt_pop = da.compress(loc_pop, gt, axis=1)
+            ac_pop = (
+                allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
+            )
+            afs[pop] = ac_pop.to_frequencies()
 
-        # counts to frequencies
+        # set up columns
+        cols = {
+            "position": np.repeat(pos, 3),
+            "ref_allele": np.repeat(ref.astype("U1"), 3),
+            "alt_allele": alt.astype("U1").flatten(),
+        }
 
-        # build and return dataframe
+        for pop in populations:
+            cols[pop] = afs[pop][:, 1:].flatten()
 
-        return df_meta, gt
+        # build df
+        df = pandas.DataFrame(cols)
+
+        # drop invariants
+        if drop_invariant:
+            loc_variant = df[populations].sum(axis=1) > 0
+            df = df[loc_variant]
+
+        # add max freq column
+        df["maximum"] = df[populations].max(axis=1)
+
+        return df
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
