@@ -25,6 +25,7 @@ pytest = "*"
 notebook = "*"
 pre-commit = "*"
 black = "*"
+snakeviz = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
