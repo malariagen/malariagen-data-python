@@ -1,21 +1,21 @@
-import pandas
-from fsspec.core import url_to_fs
-from fsspec.mapping import FSMap
-import zarr
+import allel
 import dask.array as da
 import numpy as np
+import pandas
 import xarray
+import zarr
+from fsspec.core import url_to_fs
+from fsspec.mapping import FSMap
+
+from . import veff
 from .util import (
+    SafeStore,
+    dask_compress,
+    dask_compress_dataset,
+    from_zarr,
     read_gff3,
     unpack_gff3_attributes,
-    SafeStore,
-    from_zarr,
-    dask_compress_dataset,
-    dask_compress,
 )
-from . import veff
-import allel
-
 
 public_releases = ("v3",)
 gff3_path = (
@@ -99,7 +99,7 @@ class Ag3:
                 sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
                 releases = sorted([d for d in sub_dirs if d.startswith("v3")])
                 if len(releases) == 0:
-                    raise ValueError(f"No releases found.")
+                    raise ValueError("No releases found.")
                 self._cache_releases = releases
             else:
                 self._cache_releases = public_releases
@@ -658,7 +658,6 @@ class Ag3:
         contig = feature[0]
         start = feature[3]
         stop = feature[4]
-        strand = feature[6]
 
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=contig, site_mask=site_mask)
@@ -765,7 +764,6 @@ class Ag3:
         contig = feature.seqid
         start = feature.start
         stop = feature.end
-        strand = feature.strand
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)

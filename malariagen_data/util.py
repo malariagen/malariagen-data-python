@@ -1,9 +1,10 @@
+from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import unquote_plus
-import pandas
-import numpy as np
-from collections.abc import Mapping
+
 import dask.array as da
+import numpy as np
+import pandas
 import xarray as xr
 
 

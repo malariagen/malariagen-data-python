@@ -36,10 +36,28 @@ $ cd malariagen-data-python
 $ poetry install
 ```
 
+Activate development environment:
+
+```bash
+$ poetry shell
+```
+
+Install pre-commit hooks:
+
+```bash
+$ pre-commit install
+```
+
+Run pre-commit checks (isort, black, blackdoc, flake8, ...) manually:
+
+```bash
+$ pre-commit run --all-files
+```
+
 Run tests:
 
 ```bash
-$ poetry run pytest
+$ pytest -v
 ```
 
 Bump version, build and publish to PyPI:
@@ -50,13 +68,14 @@ $ poetry build
 $ poetry publish
 ```
 
+
 ## Release notes
 
 ### 0.4.3
 
 * Performance improvements for faster reading a indexing
   zarr arrays.
-  
+
 
 ### 0.4.2
 
@@ -72,7 +91,7 @@ $ poetry publish
 
 * Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
 * Add the `Ag3.cross_metadata()` method.
-* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods. 
+* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods.
 * Add the `Ag3.snp_calls()` method.
 * Improve unit tests.
 * Improve memory usage.
