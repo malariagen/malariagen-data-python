@@ -24,6 +24,7 @@ xarray = "*"
 pytest = "*"
 notebook = "*"
 pre-commit = "*"
+black = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

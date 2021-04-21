@@ -340,11 +340,7 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
     )
 
     exons = sorted(
-        [
-            f
-            for f in annotator.get_children(transcript.feature_id)
-            if f.type == "exon"
-        ],
+        [f for f in annotator.get_children(transcript.feature_id) if f.type == "exon"],
         key=lambda v: v.start,
     )
 
@@ -368,7 +364,6 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
 
     # derive introns, assuming between exons
     introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
-
 
     # introns_5utr = [(x.stop + 1, y.start - 1) for x, y in zip(utr5[:-1], utr5[1:])]
     #
@@ -400,13 +395,9 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
     #     if start <= ref_stop and stop >= ref_start
     # ]
 
-    overlapping_utr5 = [
-        x for x in utr5 if x.start <= ref_stop and x.stop >= ref_start
-    ]
+    overlapping_utr5 = [x for x in utr5 if x.start <= ref_stop and x.stop >= ref_start]
 
-    overlapping_utr3 = [
-        x for x in utr3 if x.start <= ref_stop and x.stop >= ref_start
-    ]
+    overlapping_utr3 = [x for x in utr3 if x.start <= ref_stop and x.stop >= ref_start]
 
     # CDS effects
 
@@ -502,10 +493,14 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
             yield effect
 
     # if none of the above - #
-    if (not overlapping_cdss) and (not overlapping_introns) and (not overlapping_utr5) and (not overlapping_utr3):
+    if (
+        (not overlapping_cdss)
+        and (not overlapping_introns)
+        and (not overlapping_utr5)
+        and (not overlapping_utr3)
+    ):
         effect = base_effect._replace(effect="INTRAGENIC", impact="LOW")
         yield effect
-
 
 
 def _get_cds_effect(annotator, base_effect, cds, cdss):
