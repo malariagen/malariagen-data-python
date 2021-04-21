@@ -1,10 +1,9 @@
 from __future__ import division, print_function
+
 import collections
 import operator
 
-
 import petl as etl
-import petlx.bio
 from Bio.Seq import Seq
 
 
@@ -887,7 +886,6 @@ def _get_within_intron_effect(annotator, base_effect, intron, exons):
     # convenience
     ref_start = base_effect.ref_start
     ref_stop = base_effect.ref_stop
-    pos = base_effect.pos
     ref = base_effect.ref
     alt = base_effect.alt
     intron_start, intron_stop = intron

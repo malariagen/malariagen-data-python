@@ -1,13 +1,12 @@
-import malariagen_data
-from malariagen_data import Ag3
-import pandas
-from pandas.testing import assert_frame_equal
 import dask.array as da
 import numpy as np
-import zarr
-import xarray
+import pandas
 import pytest
+import xarray
+import zarr
+from pandas.testing import assert_frame_equal
 
+from malariagen_data import Ag3
 
 expected_species = {
     "gambiae",
