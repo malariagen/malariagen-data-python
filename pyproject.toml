@@ -21,6 +21,7 @@ scikit-allel = "*"
 xarray = "*"
 plotly = "^4.14.3"
 bokeh = "^2.3.1"
+snakeviz = "^2.1.0"
 
 
 [tool.poetry.dev-dependencies]
