@@ -3,7 +3,7 @@ from __future__ import division, print_function
 import collections
 import operator
 
-import petl as etl
+# import petl as etl
 from Bio.Seq import Seq
 
 
@@ -25,38 +25,53 @@ class Annotator(object):
         # store initialisation parameters
         self._genome = genome
         self._genome_cache = dict()
+        self._geneset_cache = None
         # when debugging snp effects unhash seqid and add .eq("seqid", seqid) parameter to tbl_features
         # and seqid to __init__
         # self._seqid = seqid
 
         # setup access to GFF3 as a petl table
         # TODO at some point we'd like to refactor this module to read directly from pandas
-        tbl_features = (
-            etl.fromdataframe(geneset)
-            .rename({"ID": "feature_id", "Parent": "parent_id", "end": "stop"})
-            .select(lambda row: (row.stop - row.start) > 0)
+        # tbl_features = (
+        #     etl.fromdataframe(geneset)
+        #     .rename({"ID": "feature_id", "Parent": "parent_id", "end": "stop"})
+        #     .select(lambda row: (row.stop - row.start) > 0)
+        # )
+        # self._tbl_features = tbl_features.cache()
+        # PANDARISED
+        geneset.rename(
+            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
+            inplace=True,
         )
-        self._tbl_features = tbl_features.cache()
+        # todo the line below to remove rows takes >4 secs, is it necessary?
+        geneset = geneset[geneset.apply(lambda x: (x.stop - x.start) > 0, axis=1)]
+        self._geneset_cache = geneset
 
         # index features by ID
-        self._idx_feature_id = self._tbl_features.recordlookupone("feature_id")
+        # self._idx_feature_id = self._tbl_features.recordlookupone("feature_id")
+        # PANDARISED
+        self._idx_feature_id = self._geneset_cache.set_index("feature_id")
 
         # index features by parent ID
-        self._idx_parent_id = self._tbl_features.recordlookup("parent_id")
+        # self._idx_parent_id = self._tbl_features.recordlookup("parent_id")
+        # PANDARISED
+        self._idx_parent_id = self._geneset_cache.set_index("parent_id")
 
-        # index features by genomic location
-        self._idx_location = self._tbl_features.facetintervalrecordlookup(
-            "seqid", "start", "stop", include_stop=True
-        )
+        # # index features by genomic location
+        # self._idx_location = self._tbl_features.facetintervalrecordlookup(
+        #     "seqid", "start", "stop", include_stop=True
+        # )
 
+    # PANDARISED
     def get_feature(self, feature_id):
-        return self._idx_feature_id[feature_id]
+        return self._idx_feature_id.loc[feature_id]
 
+    # PANDARISED
     def get_children(self, feature_id):
-        return self._idx_parent_id[feature_id]
+        return self._idx_parent_id.loc[feature_id]
 
-    def find(self, chrom, start, stop):
-        return self._idx_location[chrom].search(start, stop)
+    # def find(self, chrom, start, stop):
+    #     return self._idx_location[chrom].search(start, stop)
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
@@ -131,6 +146,15 @@ VariantEffect = collections.namedtuple(
 )
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
+#
+# def get_gene_effects(
+#     annotator,
+#     transcript,
+#     transcript_df,
+# ):
+#     # todo - get CDS, exon, utrs and intron lists
+#     fdfd
+
 
 def get_effects(
     annotator,
@@ -143,7 +167,7 @@ def get_effects(
     gff3_cds_types={"CDS", "pseudogenic_exon"},
     transcript_ids=None,
 ):
-    """TODO
+    """
 
     Parameters
     ----------
