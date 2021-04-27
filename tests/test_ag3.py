@@ -645,3 +645,73 @@ def test_snp_allele_frequencies():
     assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
     # check invariant positions are still present
     assert np.any(df.maximum == 0)
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
+)
+@pytest.mark.parametrize("contig", ["3L", "X"])
+def test_cnv_hmm(sample_sets, contig):
+
+    ag3 = setup_ag3()
+
+    ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "call_CN",
+        "call_NormCov",
+        "call_RawCov",
+    }
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
+
+    # check dimensions
+    assert {"samples", "variants"} == set(ds.dims)
+
+    # check dim lengths
+    n_variants = 1 + len(ag3.genome_sequence(contig=contig)) // 300
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    n_samples = len(df_samples)
+    assert n_variants == ds.dims["variants"]
+    assert n_samples == ds.dims["samples"]
+
+    # check sample IDs
+    assert df_samples["sample_id"].tolist() == ds["sample_id"].compute().values.tolist()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_"):
+            assert 1 == x.ndim, f
+            assert (n_variants,) == x.shape
+            assert ("variants",) == x.dims
+        elif f.startswith("call_"):
+            assert 2 == x.ndim, f
+            assert ("variants", "samples") == x.dims
+            assert (n_variants, n_samples) == x.shape
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim
+            assert ("samples",) == x.dims
+            assert (n_samples,) == x.shape
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_CN"].sum(axis=1)
+    assert isinstance(d2, xarray.DataArray)

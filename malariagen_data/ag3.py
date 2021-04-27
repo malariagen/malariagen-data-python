@@ -90,6 +90,7 @@ class Ag3:
         self._cache_geneset = dict()
         self._cache_cross_metadata = None
         self._cache_site_annotations = None
+        self._cache_cnv_hmm = dict()
 
     @property
     def releases(self):
@@ -321,7 +322,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         key = mask, analysis
@@ -377,7 +378,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         if self._cache_snp_sites is None:
@@ -452,7 +453,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         try:
@@ -532,7 +533,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         if self._cache_genome is None:
@@ -872,6 +873,14 @@ class Ag3:
         return self._cache_cross_metadata
 
     def open_site_annotations(self):
+        """Open site annotations zarr.
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+
         if self._cache_site_annotations is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
             store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
@@ -1076,3 +1085,132 @@ class Ag3:
     def snp_dataset(self, *args, **kwargs):
         # backwards compatibility, this method has been renamed to snp_calls()
         return self.snp_calls(*args, **kwargs)
+
+    def open_cnv_hmm(self, sample_set):
+        """Open CNV HMM zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_hmm[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/cnv/{sample_set}/hmm/zarr"
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_hmm[sample_set] = root
+        return root
+
+    def _cnv_hmm_dataset(self, contig, sample_set, inline_array, chunks):
+
+        coords = dict()
+        data_vars = dict()
+
+        # open zarr
+        root = self.open_cnv_hmm(sample_set=sample_set)
+
+        # variant arrays
+        pos_z = root[contig]["variants"]["POS"]
+        pos = from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
+        coords["variant_position"] = [DIM_VARIANT], pos
+        end_z = root[contig]["variants"]["END"]
+        end = from_zarr(end_z, inline_array=inline_array, chunks=chunks)
+        coords["variant_end"] = [DIM_VARIANT], end
+        contig_index = self.contigs.index(contig)
+        contig_arr = da.full_like(pos, fill_value=contig_index, dtype="u1")
+        coords["variant_contig"] = [DIM_VARIANT], contig_arr
+
+        # call arrays
+        cn_z = root[contig]["calldata"]["CN"]
+        cn = from_zarr(cn_z, inline_array=inline_array, chunks=chunks)
+        raw_cov_z = root[contig]["calldata"]["RawCov"]
+        raw_cov = from_zarr(raw_cov_z, inline_array=inline_array, chunks=chunks)
+        norm_cov_z = root[contig]["calldata"]["NormCov"]
+        norm_cov = from_zarr(norm_cov_z, inline_array=inline_array, chunks=chunks)
+        data_vars["call_CN"] = ([DIM_VARIANT, DIM_SAMPLE], cn)
+        data_vars["call_RawCov"] = ([DIM_VARIANT, DIM_SAMPLE], raw_cov)
+        data_vars["call_NormCov"] = ([DIM_VARIANT, DIM_SAMPLE], norm_cov)
+
+        # sample arrays
+        z = root["samples"]
+        sample_id = from_zarr(z, inline_array=inline_array, chunks=chunks)
+        coords["sample_id"] = [DIM_SAMPLE], sample_id
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def cnv_hmm(
+        self,
+        contig,
+        sample_sets="v3_wild",
+        inline_array=True,
+        chunks="auto",
+    ):
+        """Access CNV HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._cnv_hmm_dataset(
+                contig=contig,
+                sample_set=sample_sets,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._cnv_hmm_dataset(
+                    contig=contig,
+                    sample_set=sample_set,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for sample_set in sample_sets
+            ]
+            ds = xarray.concat(
+                datasets,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+        return ds
