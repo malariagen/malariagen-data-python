@@ -1139,9 +1139,17 @@ class Ag3:
         data_vars["call_NormCov"] = ([DIM_VARIANT, DIM_SAMPLE], norm_cov)
 
         # sample arrays
-        z = root["samples"]
-        sample_id = from_zarr(z, inline_array=inline_array, chunks=chunks)
+        sample_id = from_zarr(root["samples"], inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
+        # TODO add later when data available
+        # scv = from_zarr(
+        #     root["sample_coverage_variance"], inline_array=inline_array, chunks=chunks
+        # )
+        # data_vars["sample_coverage_variance"] = [DIM_SAMPLE], scv
+        # ihv = from_zarr(
+        #     root["sample_is_high_variance"], inline_array=inline_array, chunks=chunks
+        # )
+        # data_vars["sample_is_high_variance"] = [DIM_SAMPLE], ihv
 
         # setup attributes
         attrs = {"contigs": self.contigs}
