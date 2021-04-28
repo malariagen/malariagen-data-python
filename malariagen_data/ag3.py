@@ -90,6 +90,9 @@ class Ag3:
         self._cache_geneset = dict()
         self._cache_cross_metadata = None
         self._cache_site_annotations = None
+        self._cache_cnv_hmm = dict()
+        self._cache_cnv_coverage_calls = dict()
+        self._cache_cnv_discordant_read_calls = dict()
 
     @property
     def releases(self):
@@ -321,7 +324,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         key = mask, analysis
@@ -377,7 +380,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         if self._cache_snp_sites is None:
@@ -452,7 +455,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         try:
@@ -532,7 +535,7 @@ class Ag3:
 
         Returns
         -------
-        genome : zarr.hierarchy.Group
+        root : zarr.hierarchy.Group
 
         """
         if self._cache_genome is None:
@@ -872,6 +875,14 @@ class Ag3:
         return self._cache_cross_metadata
 
     def open_site_annotations(self):
+        """Open site annotations zarr.
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+
         if self._cache_site_annotations is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
             store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
@@ -1076,3 +1087,449 @@ class Ag3:
     def snp_dataset(self, *args, **kwargs):
         # backwards compatibility, this method has been renamed to snp_calls()
         return self.snp_calls(*args, **kwargs)
+
+    def open_cnv_hmm(self, sample_set):
+        """Open CNV HMM zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_hmm[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/cnv/{sample_set}/hmm/zarr"
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_hmm[sample_set] = root
+        return root
+
+    def _cnv_hmm_dataset(self, contig, sample_set, inline_array, chunks):
+
+        coords = dict()
+        data_vars = dict()
+
+        # open zarr
+        root = self.open_cnv_hmm(sample_set=sample_set)
+
+        # variant arrays
+        pos = root[f"{contig}/variants/POS"]
+        coords["variant_position"] = (
+            [DIM_VARIANT],
+            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+        )
+        coords["variant_end"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        contig_index = self.contigs.index(contig)
+        coords["variant_contig"] = (
+            [DIM_VARIANT],
+            da.full_like(pos, fill_value=contig_index, dtype="u1"),
+        )
+
+        # call arrays
+        data_vars["call_CN"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/CN"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        data_vars["call_RawCov"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/RawCov"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
+        data_vars["call_NormCov"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/NormCov"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
+
+        # sample arrays
+        coords["sample_id"] = (
+            [DIM_SAMPLE],
+            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+        )
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def cnv_hmm(
+        self,
+        contig,
+        sample_sets="v3_wild",
+        inline_array=True,
+        chunks="auto",
+    ):
+        """Access CNV HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._cnv_hmm_dataset(
+                contig=contig,
+                sample_set=sample_sets,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._cnv_hmm_dataset(
+                    contig=contig,
+                    sample_set=sample_set,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for sample_set in sample_sets
+            ]
+            ds = xarray.concat(
+                datasets,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+        return ds
+
+    def open_cnv_coverage_calls(self, sample_set, analysis):
+        """Open CNV coverage calls zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+        analysis : {'gamb_colu', 'arab', 'crosses'}
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        key = (sample_set, analysis)
+        try:
+            return self._cache_cnv_coverage_calls[key]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
+            # N.B., not all sample_set/analysis combinations exist, need to check
+            marker = path + "/.zmetadata"
+            if not self._fs.exists(marker):
+                raise ValueError(
+                    f"analysis f{analysis!r} not implemented for sample set {sample_set!r}"
+                )
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_coverage_calls[key] = root
+        return root
+
+    def cnv_coverage_calls(
+        self,
+        contig,
+        sample_set,
+        analysis,
+        inline_array=True,
+        chunks="auto",
+    ):
+        """Access CNV HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_set : str
+            Sample set identifier.
+        analysis : {'gamb_colu', 'arab', 'crosses'}
+            Name of CNV analysis.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        coords = dict()
+        data_vars = dict()
+
+        # open zarr
+        root = self.open_cnv_coverage_calls(sample_set=sample_set, analysis=analysis)
+
+        # variant arrays
+        pos = root[f"{contig}/variants/POS"]
+        coords["variant_position"] = (
+            [DIM_VARIANT],
+            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+        )
+        coords["variant_end"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        contig_index = self.contigs.index(contig)
+        coords["variant_contig"] = (
+            [DIM_VARIANT],
+            da.full_like(pos, fill_value=contig_index, dtype="u1"),
+        )
+        coords["variant_id"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        data_vars["variant_CIPOS"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/CIPOS"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
+        data_vars["variant_CIEND"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/CIEND"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
+        data_vars["variant_filter_pass"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/FILTER_PASS"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
+
+        # call arrays
+        data_vars["call_genotype"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+
+        # sample arrays
+        coords["sample_id"] = (
+            [DIM_SAMPLE],
+            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+        )
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def open_cnv_discordant_read_calls(self, sample_set):
+        """Open CNV discordant read calls zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_cnv_discordant_read_calls[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/cnv/{sample_set}/discordant_read_calls/zarr"
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            root = zarr.open_consolidated(store=store)
+            self._cache_cnv_discordant_read_calls[sample_set] = root
+        return root
+
+    def _cnv_discordant_read_calls_dataset(
+        self, contig, sample_set, inline_array, chunks
+    ):
+
+        coords = dict()
+        data_vars = dict()
+
+        # open zarr
+        root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
+
+        # not all contigs have CNVs, need to check
+        if contig not in root:
+            raise ValueError(f"no CNVs available for contig {contig!r}")
+
+        # variant arrays
+        pos = root[f"{contig}/variants/POS"]
+        coords["variant_position"] = (
+            [DIM_VARIANT],
+            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+        )
+        coords["variant_end"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        coords["variant_id"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        contig_index = self.contigs.index(contig)
+        coords["variant_contig"] = (
+            [DIM_VARIANT],
+            da.full_like(pos, fill_value=contig_index, dtype="u1"),
+        )
+        for field in "Region", "StartBreakpointMethod", "EndBreakpointMethod":
+            data_vars[f"variant_{field}"] = (
+                [DIM_VARIANT],
+                from_zarr(
+                    root[f"{contig}/variants/{field}"],
+                    inline_array=inline_array,
+                    chunks=chunks,
+                ),
+            )
+
+        # call arrays
+        data_vars["call_genotype"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+
+        # sample arrays
+        coords["sample_id"] = (
+            [DIM_SAMPLE],
+            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+        )
+        for field in "sample_coverage_variance", "sample_is_high_variance":
+            data_vars[field] = (
+                [DIM_SAMPLE],
+                from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+            )
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def cnv_discordant_read_calls(
+        self,
+        contig,
+        sample_sets="v3_wild",
+        inline_array=True,
+        chunks="auto",
+    ):
+        """Access CNV discordant read calls data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._cnv_discordant_read_calls_dataset(
+                contig=contig,
+                sample_set=sample_sets,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._cnv_discordant_read_calls_dataset(
+                    contig=contig,
+                    sample_set=sample_set,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for sample_set in sample_sets
+            ]
+            ds = xarray.concat(
+                datasets,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+        return ds
