@@ -146,14 +146,22 @@ VariantEffect = collections.namedtuple(
 )
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
-#
-# def get_gene_effects(
-#     annotator,
-#     transcript,
-#     transcript_df,
-# ):
-#     # todo - get CDS, exon, utrs and intron lists
-#     fdfd
+
+def get_only_transcript_effects(annotator, feature, children, positions_df):
+    # make sure all alleles are uppercase
+    positions_df.ref_allele = positions_df.ref_allele.str.upper()
+    positions_df.alt_allele = positions_df.alt_allele.str.upper()
+
+    # cdss =
+
+    # for row in positions_df.itertuples(index=True):
+    #     chrom = feature.seqid
+    #     pos = row.position
+    #     ref = row.ref_allele
+    #     alt = row.alt_allele
+
+
+# todo lists of feature types
 
 
 def get_effects(

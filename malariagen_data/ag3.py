@@ -654,33 +654,29 @@ class Ag3:
             )
 
         ann = self._cache_annotator
-        # feature = ann.get_feature(transcript)
+        feature = ann.get_feature(transcript)
         children = ann.get_children(transcript)
-        # contig = feature[0]
-        # start = feature[3]
-        # stop = feature[4]
 
-        # # grab pos, ref and alt for chrom arm from snp_sites
-        # sites = self.snp_sites(contig=contig, site_mask=site_mask)
-        #
-        # # sites are dask arrays, turn pos into sorted index
-        # pos = allel.SortedIndex(sites[0].compute())
-        # # locate transcript range
-        # loc = pos.locate_range(start, stop)
-        # # dask compute on the sliced arrays to speed things up
-        # ref = sites[1][loc].compute()
-        # alt = sites[2][loc].compute()
-        #
-        # # build an initial dataframe with contig, pos, ref, alt columns
-        # df_in = pandas.DataFrame()
-        # df_in["position"] = np.asarray(pos[loc])
-        # df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
-        # # bytes within lists within lists...
-        # df_in["alt_allele"] = [list(q.tobytes().decode()) for q in list(alt)]
-        # # explode the alt alleles into their own rows
-        # transcript_df = df_in.explode("alt_allele").reset_index(drop=True)
-        #
-        # df_effects = ann.get_gene_effects(transcript=transcript, transcript_df=transcript_df)
+        # grab pos, ref and alt for chrom arm from snp_sites
+        sites = self.snp_sites(contig=feature.seqid, site_mask=site_mask)
+        # sites are dask arrays, turn pos into sorted index
+        pos = allel.SortedIndex(sites[0].compute())
+        # locate transcript range
+        loc = pos.locate_range(feature.start, feature.stop)
+        # dask compute on the sliced arrays to speed things up
+        ref = sites[1][loc].compute()
+        alt = sites[2][loc].compute()
+
+        # build an initial dataframe with contig, pos, ref, alt columns
+        df_in = pandas.DataFrame()
+        df_in["position"] = np.asarray(pos[loc])
+        df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
+        # bytes within lists within lists...
+        df_in["alt_allele"] = [list(q.tobytes().decode()) for q in list(alt)]
+        # explode the alt alleles into their own rows
+        positions_df = df_in.explode("alt_allele").reset_index(drop=True)
+
+        # df_effects = ann.get_only_transcript_effects(feature=feature, children=children, positions_df=positions_df)
 
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
@@ -721,7 +717,7 @@ class Ag3:
         # df_effects["alt_aa"] = lalt_aa
         # df_effects["aa_change"] = laa_change
 
-        return children
+        return feature, children, positions_df
 
     def snp_allele_frequencies(
         self,
