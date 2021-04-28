@@ -147,21 +147,66 @@ VariantEffect = collections.namedtuple(
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 
-def get_only_transcript_effects(annotator, feature, children, positions_df):
-    # make sure all alleles are uppercase
-    positions_df.ref_allele = positions_df.ref_allele.str.upper()
-    positions_df.alt_allele = positions_df.alt_allele.str.upper()
-
-    # cdss =
-
-    # for row in positions_df.itertuples(index=True):
-    #     chrom = feature.seqid
-    #     pos = row.position
-    #     ref = row.ref_allele
-    #     alt = row.alt_allele
-
-
-# todo lists of feature types
+# def get_only_transcript_effects(
+#     annotator,
+#     feature,
+#     children,
+#     positions_df,
+#     gff3_gene_types={"gene", "pseudogene"},
+#     gff3_transcript_types={"mRNA", "rRNA", "pseudogenic_transcript"},
+#     gff3_cds_types={"CDS", "pseudogenic_exon"},
+#     transcript_ids=None,
+# ):
+#
+#     # make sure all alleles are uppercase
+#     positions_df.ref_allele = positions_df.ref_allele.str.upper()
+#     positions_df.alt_allele = positions_df.alt_allele.str.upper()
+#
+#     # feature types, currently pandas but can be list of tuples like before
+#     # by using 'cdss = list(exon.to_records(index=False))'
+#     cdss = list(
+#         children[children.type == "CDS"].sort_values("start").to_records(index=False)
+#     )
+#     exons = list(
+#         children[children.type == "exon"].sort_values("start").to_records(index=False)
+#     )
+#     UTR5 = list(
+#         children[children.type == "UTR5"].sort_values("start").to_records(index=False)
+#     )
+#     UTR3 = list(
+#         children[children.type == "UTR3"].sort_values("start").to_records(index=False)
+#     )
+#     introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
+#
+#     # Now iterate over the transcript alt alleles
+#     for row in positions_df.itertuples(index=True):
+#
+#         # some parameters
+#         chrom = feature.seqid
+#         pos = row.position
+#         ref = row.ref_allele
+#         alt = row.alt_allele
+#
+#         # obtain start and stop coordinates of the reference allele
+#         ref_start, ref_stop = annotator.get_ref_allele_coords(chrom, pos, ref)
+#
+#         # setup the common effect parameters
+#         base_effect = null_effect._replace(
+#             chrom=chrom,
+#             pos=pos,
+#             ref=ref,
+#             alt=alt,
+#             vlen=len(alt) - len(ref),
+#             ref_start=ref_start,
+#             ref_stop=ref_stop,
+#         )
+#
+#         # reference allele falls within current transcript
+#         assert transcript_start <= ref_start <= ref_stop <= transcript_stop
+#         for effect in _get_within_transcript_effects(
+#             annotator, base_effect, transcript, gff3_cds_types
+#         ):
+#             yield effect
 
 
 def get_effects(
