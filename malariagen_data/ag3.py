@@ -1117,39 +1117,52 @@ class Ag3:
         root = self.open_cnv_hmm(sample_set=sample_set)
 
         # variant arrays
-        pos_z = root[contig]["variants"]["POS"]
-        pos = from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], pos
-        end_z = root[contig]["variants"]["END"]
-        end = from_zarr(end_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_end"] = [DIM_VARIANT], end
+        pos = root[f"{contig}/variants/POS"]
+        coords["variant_position"] = (
+            [DIM_VARIANT],
+            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+        )
+        coords["variant_end"] = (
+            [DIM_VARIANT],
+            from_zarr(
+                root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
+            ),
+        )
         contig_index = self.contigs.index(contig)
-        contig_arr = da.full_like(pos, fill_value=contig_index, dtype="u1")
-        coords["variant_contig"] = [DIM_VARIANT], contig_arr
+        coords["variant_contig"] = (
+            [DIM_VARIANT],
+            da.full_like(pos, fill_value=contig_index, dtype="u1"),
+        )
 
         # call arrays
-        cn_z = root[contig]["calldata"]["CN"]
-        cn = from_zarr(cn_z, inline_array=inline_array, chunks=chunks)
-        raw_cov_z = root[contig]["calldata"]["RawCov"]
-        raw_cov = from_zarr(raw_cov_z, inline_array=inline_array, chunks=chunks)
-        norm_cov_z = root[contig]["calldata"]["NormCov"]
-        norm_cov = from_zarr(norm_cov_z, inline_array=inline_array, chunks=chunks)
-        data_vars["call_CN"] = ([DIM_VARIANT, DIM_SAMPLE], cn)
-        data_vars["call_RawCov"] = ([DIM_VARIANT, DIM_SAMPLE], raw_cov)
-        data_vars["call_NormCov"] = ([DIM_VARIANT, DIM_SAMPLE], norm_cov)
+        data_vars["call_CN"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/CN"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+        data_vars["call_RawCov"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/RawCov"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
+        data_vars["call_NormCov"] = (
+            [DIM_VARIANT, DIM_SAMPLE],
+            from_zarr(
+                root[f"{contig}/calldata/NormCov"],
+                inline_array=inline_array,
+                chunks=chunks,
+            ),
+        )
 
         # sample arrays
-        sample_id = from_zarr(root["samples"], inline_array=inline_array, chunks=chunks)
-        coords["sample_id"] = [DIM_SAMPLE], sample_id
-        # TODO add later when data available
-        # scv = from_zarr(
-        #     root["sample_coverage_variance"], inline_array=inline_array, chunks=chunks
-        # )
-        # data_vars["sample_coverage_variance"] = [DIM_SAMPLE], scv
-        # ihv = from_zarr(
-        #     root["sample_is_high_variance"], inline_array=inline_array, chunks=chunks
-        # )
-        # data_vars["sample_is_high_variance"] = [DIM_SAMPLE], ihv
+        coords["sample_id"] = (
+            [DIM_SAMPLE],
+            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+        )
 
         # setup attributes
         attrs = {"contigs": self.contigs}
