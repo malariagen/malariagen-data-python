@@ -685,7 +685,7 @@ def test_cnv_hmm(sample_sets, contig):
     assert n_samples == ds.dims["samples"]
 
     # check sample IDs
-    assert df_samples["sample_id"].tolist() == ds["sample_id"].compute().values.tolist()
+    assert df_samples["sample_id"].tolist() == ds["sample_id"].values.tolist()
 
     # check shapes
     for f in expected_coords | expected_data_vars:
@@ -730,7 +730,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         "AG1000G-X": {"crosses"},
     }
     if analysis not in expected_analyses[sample_set]:
-        with pytest.raises(NotImplementedError):
+        with pytest.raises(ValueError):
             ag3.cnv_coverage_calls(
                 contig=contig, analysis=analysis, sample_set=sample_set
             )
@@ -780,6 +780,81 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         elif f.startswith("sample_"):
             assert 1 == x.ndim, f
             assert ("samples",) == x.dims
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_genotype"].sum(axis=1)
+    assert isinstance(d2, xarray.DataArray)
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
+)
+@pytest.mark.parametrize("contig", ["2R", "3R", "X", "3L"])
+def test_cnv_discordant_read_calls(sample_sets, contig):
+
+    ag3 = setup_ag3()
+
+    if contig == "3L":
+        with pytest.raises(ValueError):
+            ag3.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+        return
+
+    ds = ag3.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_Region",
+        "variant_StartBreakpointMethod",
+        "variant_EndBreakpointMethod",
+        "call_genotype",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "variant_id",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
+
+    # check dimensions
+    assert {"samples", "variants"} == set(ds.dims)
+
+    # check dim lengths
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    n_samples = len(df_samples)
+    assert n_samples == ds.dims["samples"]
+
+    # check sample IDs
+    assert df_samples["sample_id"].tolist() == ds["sample_id"].values.tolist()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_"):
+            assert 1 == x.ndim, f
+            assert ("variants",) == x.dims
+        elif f.startswith("call_"):
+            assert 2 == x.ndim, f
+            assert ("variants", "samples") == x.dims
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim
+            assert ("samples",) == x.dims
+            assert (n_samples,) == x.shape
 
     # check attributes
     assert "contigs" in ds.attrs
