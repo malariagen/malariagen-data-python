@@ -676,7 +676,10 @@ class Ag3:
         # explode the alt alleles into their own rows
         positions_df = df_in.explode("alt_allele").reset_index(drop=True)
 
-        # df_effects = ann.get_only_transcript_effects(feature=feature, children=children, positions_df=positions_df)
+        df_effects = ann.get_only_transcript_effects(transcript=transcript,
+                                                     feature=feature,
+                                                     children=children,
+                                                     positions_df=positions_df)
 
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,
@@ -717,7 +720,7 @@ class Ag3:
         # df_effects["alt_aa"] = lalt_aa
         # df_effects["aa_change"] = laa_change
 
-        return feature, children, positions_df
+        return df_effects
 
     def snp_allele_frequencies(
         self,

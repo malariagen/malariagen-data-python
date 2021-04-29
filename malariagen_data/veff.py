@@ -57,6 +57,7 @@ class Annotator(object):
         # PANDARISED
         self._idx_parent_id = self._geneset_cache.set_index("parent_id")
 
+        # TODO - this has not been pandarised - do we need it now?
         # # index features by genomic location
         # self._idx_location = self._tbl_features.facetintervalrecordlookup(
         #     "seqid", "start", "stop", include_stop=True
@@ -70,6 +71,7 @@ class Annotator(object):
     def get_children(self, feature_id):
         return self._idx_parent_id.loc[feature_id]
 
+    # todo - see above, this is still petl, but do we still need it?
     # def find(self, chrom, start, stop):
     #     return self._idx_location[chrom].search(start, stop)
 
@@ -98,7 +100,6 @@ class Annotator(object):
         )
 
         return ref_start, ref_stop
-
 
 VariantEffect = collections.namedtuple(
     "VariantEffect",
@@ -146,68 +147,102 @@ VariantEffect = collections.namedtuple(
 )
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
+def get_only_transcript_effects(
+    annotator,
+    #transcript,
+    feature,
+    children,
+    positions_df,
+    # gff3_gene_types={"gene", "pseudogene"},
+    # gff3_transcript_types={"mRNA", "rRNA", "pseudogenic_transcript"},
+    #gff3_cds_types={"CDS", "pseudogenic_exon"},
+    # transcript_ids=None,
+):
 
-# def get_only_transcript_effects(
-#     annotator,
-#     feature,
-#     children,
-#     positions_df,
-#     gff3_gene_types={"gene", "pseudogene"},
-#     gff3_transcript_types={"mRNA", "rRNA", "pseudogenic_transcript"},
-#     gff3_cds_types={"CDS", "pseudogenic_exon"},
-#     transcript_ids=None,
-# ):
-#
-#     # make sure all alleles are uppercase
-#     positions_df.ref_allele = positions_df.ref_allele.str.upper()
-#     positions_df.alt_allele = positions_df.alt_allele.str.upper()
-#
-#     # feature types, currently pandas but can be list of tuples like before
-#     # by using 'cdss = list(exon.to_records(index=False))'
-#     cdss = list(
-#         children[children.type == "CDS"].sort_values("start").to_records(index=False)
-#     )
-#     exons = list(
-#         children[children.type == "exon"].sort_values("start").to_records(index=False)
-#     )
-#     UTR5 = list(
-#         children[children.type == "UTR5"].sort_values("start").to_records(index=False)
-#     )
-#     UTR3 = list(
-#         children[children.type == "UTR3"].sort_values("start").to_records(index=False)
-#     )
-#     introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
-#
-#     # Now iterate over the transcript alt alleles
-#     for row in positions_df.itertuples(index=True):
-#
-#         # some parameters
-#         chrom = feature.seqid
-#         pos = row.position
-#         ref = row.ref_allele
-#         alt = row.alt_allele
-#
-#         # obtain start and stop coordinates of the reference allele
-#         ref_start, ref_stop = annotator.get_ref_allele_coords(chrom, pos, ref)
-#
-#         # setup the common effect parameters
-#         base_effect = null_effect._replace(
-#             chrom=chrom,
-#             pos=pos,
-#             ref=ref,
-#             alt=alt,
-#             vlen=len(alt) - len(ref),
-#             ref_start=ref_start,
-#             ref_stop=ref_stop,
-#         )
-#
-#         # reference allele falls within current transcript
-#         assert transcript_start <= ref_start <= ref_stop <= transcript_stop
-#         for effect in _get_within_transcript_effects(
-#             annotator, base_effect, transcript, gff3_cds_types
-#         ):
-#             yield effect
+    # make sure all alleles are uppercase
+    positions_df.ref_allele = positions_df.ref_allele.str.upper()
+    positions_df.alt_allele = positions_df.alt_allele.str.upper()
 
+    # feature types, currently pandas but can be list of tuples like before
+    # by using 'cdss = list(exon.to_records(index=False))'
+    cdss = list(
+        children[children.type == "CDS"].sort_values("start").to_records(index=False)
+    )
+    exons = list(
+        children[children.type == "exon"].sort_values("start").to_records(index=False)
+    )
+    utr5 = list(
+        children[children.type == "UTR5"].sort_values("start").to_records(index=False)
+    )
+    utr3 = list(
+        children[children.type == "UTR3"].sort_values("start").to_records(index=False)
+    )
+    introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
+
+    leffect = []
+    limpact = []
+    lref_codon = []
+    lalt_codon = []
+    laa_pos = []
+    lref_aa = []
+    lalt_aa = []
+    laa_change = []
+
+    # Now iterate over the transcript alt alleles
+    for row in positions_df.itertuples(index=True):
+
+        # some parameters
+        chrom = feature.seqid
+        pos = row.position
+        ref = row.ref_allele
+        alt = row.alt_allele
+
+        # obtain start and stop coordinates of the reference allele
+        ref_start, ref_stop = annotator.get_ref_allele_coords(chrom, pos, ref)
+
+        # setup the common effect parameters
+        base_effect = null_effect._replace(
+            chrom=chrom,
+            pos=pos,
+            ref=ref,
+            alt=alt,
+            vlen=len(alt) - len(ref),
+            ref_start=ref_start,
+            ref_stop=ref_stop,
+        )
+
+        # convenience
+        ref_start = base_effect.ref_start
+        ref_stop = base_effect.ref_stop
+        transcript_start = feature.start
+        transcript_stop = feature.stop
+
+        # reference allele falls within current transcript
+        assert transcript_start <= ref_start <= ref_stop <= transcript_stop
+        for effect in _get_within_transcript_effects(
+            annotator, base_effect, exons, cdss, utr5, utr3, introns
+        ):
+            yield effect
+
+            leffect.append(effect.effect)
+            limpact.append(effect.impact)
+            lref_codon.append(effect.ref_codon)
+            lalt_codon.append(effect.alt_codon)
+            laa_pos.append(effect.aa_pos)
+            lref_aa.append(effect.ref_aa)
+            lalt_aa.append(effect.alt_aa)
+            laa_change.append(effect.aa_change)
+
+    positions_df["effect"] = leffect
+    positions_df["impact"] = limpact
+    positions_df["ref_codon"] = lref_codon
+    positions_df["alt_codon"] = lalt_codon
+    positions_df["aa_pos"] = laa_pos
+    positions_df["ref_aa"] = lref_aa
+    positions_df["alt_aa"] = lalt_aa
+    positions_df["aa_change"] = laa_change
+
+    return positions_df
 
 def get_effects(
     annotator,
@@ -399,47 +434,47 @@ def _get_transcript_effects(annotator, base_effect, transcript, gff3_cds_types):
             yield effect
 
 
-def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_types):
+def _get_within_transcript_effects(annotator, base_effect, cdss, exons, utr5, utr3, introns):
 
     # convenience
     ref_start = base_effect.ref_start
     ref_stop = base_effect.ref_stop
 
-    # obtain coding sequences that are children of the current transcript
-    cdss = sorted(
-        [
-            f
-            for f in annotator.get_children(transcript.feature_id)
-            if f.type in gff3_cds_types
-        ],
-        key=lambda v: v.start,
-    )
-
-    exons = sorted(
-        [f for f in annotator.get_children(transcript.feature_id) if f.type == "exon"],
-        key=lambda v: v.start,
-    )
-
-    utr5 = sorted(
-        [
-            f
-            for f in annotator.get_children(transcript.feature_id)
-            if f.type == "five_prime_UTR"
-        ],
-        key=lambda v: v.start,
-    )
-
-    utr3 = sorted(
-        [
-            f
-            for f in annotator.get_children(transcript.feature_id)
-            if f.type == "three_prime_UTR"
-        ],
-        key=lambda v: v.start,
-    )
-
-    # derive introns, assuming between exons
-    introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
+    # # obtain coding sequences that are children of the current transcript
+    # cdss = sorted(
+    #     [
+    #         f
+    #         for f in annotator.get_children(transcript.feature_id)
+    #         if f.type in gff3_cds_types
+    #     ],
+    #     key=lambda v: v.start,
+    # )
+    #
+    # exons = sorted(
+    #     [f for f in annotator.get_children(transcript.feature_id) if f.type == "exon"],
+    #     key=lambda v: v.start,
+    # )
+    #
+    # utr5 = sorted(
+    #     [
+    #         f
+    #         for f in annotator.get_children(transcript.feature_id)
+    #         if f.type == "five_prime_UTR"
+    #     ],
+    #     key=lambda v: v.start,
+    # )
+    #
+    # utr3 = sorted(
+    #     [
+    #         f
+    #         for f in annotator.get_children(transcript.feature_id)
+    #         if f.type == "three_prime_UTR"
+    #     ],
+    #     key=lambda v: v.start,
+    # )
+    #
+    # # derive introns, assuming between exons
+    # introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
 
     # introns_5utr = [(x.stop + 1, y.start - 1) for x, y in zip(utr5[:-1], utr5[1:])]
     #
@@ -464,12 +499,6 @@ def _get_within_transcript_effects(annotator, base_effect, transcript, gff3_cds_
         for (start, stop) in introns
         if start <= ref_stop and stop >= ref_start
     ]
-
-    # overlapping_5utr_introns = [
-    #     (start, stop)
-    #     for (start, stop) in introns_5utr
-    #     if start <= ref_stop and stop >= ref_start
-    # ]
 
     overlapping_utr5 = [x for x in utr5 if x.start <= ref_stop and x.stop >= ref_start]
 
