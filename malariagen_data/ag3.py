@@ -646,16 +646,9 @@ class Ag3:
         df : pandas.DataFrame
 
         """
-        # take an AGAP transcript ID and get meta data from the gff using veff
-        # first time sets up and caches ann object
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), geneset=self.geneset()
-            )
 
-        ann = self._cache_annotator
-        feature = ann.get_feature(transcript)
-        children = ann.get_children(transcript)
+        # todo get feature direct from geneset
+        # feature = ann.get_feature(transcript)
 
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=feature.seqid, site_mask=site_mask)
@@ -674,12 +667,19 @@ class Ag3:
         # bytes within lists within lists...
         df_in["alt_allele"] = [list(q.tobytes().decode()) for q in list(alt)]
         # explode the alt alleles into their own rows
-        positions_df = df_in.explode("alt_allele").reset_index(drop=True)
+        variants = df_in.explode("alt_allele").reset_index(drop=True)
+        # take an AGAP transcript ID and get meta data from the gff using veff
+        # first time sets up and caches ann object
+
+        if self._cache_annotator is None:
+            self._cache_annotator = veff.Annotator(
+                genome=self.open_genome(), geneset=self.geneset()
+            )
+
+        ann = self._cache_annotator
 
         df_effects = ann.get_only_transcript_effects(transcript=transcript,
-                                                     feature=feature,
-                                                     children=children,
-                                                     positions_df=positions_df)
+                                                     variants=variants)
 
         # then, iterate over rows of the dataframe, calling get_effects()
         # for each row, and using that to build additional columns effect,

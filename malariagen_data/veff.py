@@ -43,8 +43,8 @@ class Annotator(object):
             columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
             inplace=True,
         )
-        # todo the line below to remove rows takes >4 secs, is it necessary?
-        geneset = geneset[geneset.apply(lambda x: (x.stop - x.start) > 0, axis=1)]
+        # todo the line below to remove rows takes >4 secs, is it necessary? - TEST THIS
+        geneset = geneset[(geneset.stop - geneset.start) > 0]
         self._geneset_cache = geneset
 
         # index features by ID
@@ -148,20 +148,20 @@ VariantEffect = collections.namedtuple(
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 def get_only_transcript_effects(
-    annotator,
-    #transcript,
-    feature,
-    children,
-    positions_df,
+    ann,
+    transcript,
+    variants,
     # gff3_gene_types={"gene", "pseudogene"},
     # gff3_transcript_types={"mRNA", "rRNA", "pseudogenic_transcript"},
     #gff3_cds_types={"CDS", "pseudogenic_exon"},
     # transcript_ids=None,
 ):
 
+    children = ann.get_children(transcript)
+    feature = ann.get_feature(transcript)
     # make sure all alleles are uppercase
-    positions_df.ref_allele = positions_df.ref_allele.str.upper()
-    positions_df.alt_allele = positions_df.alt_allele.str.upper()
+    variants.ref_allele = variants.ref_allele.str.upper()
+    variants.alt_allele = variants.alt_allele.str.upper()
 
     # feature types, currently pandas but can be list of tuples like before
     # by using 'cdss = list(exon.to_records(index=False))'
@@ -189,7 +189,7 @@ def get_only_transcript_effects(
     laa_change = []
 
     # Now iterate over the transcript alt alleles
-    for row in positions_df.itertuples(index=True):
+    for row in variants.itertuples(index=True):
 
         # some parameters
         chrom = feature.seqid
@@ -198,7 +198,7 @@ def get_only_transcript_effects(
         alt = row.alt_allele
 
         # obtain start and stop coordinates of the reference allele
-        ref_start, ref_stop = annotator.get_ref_allele_coords(chrom, pos, ref)
+        ref_start, ref_stop = ann.get_ref_allele_coords(chrom, pos, ref)
 
         # setup the common effect parameters
         base_effect = null_effect._replace(
@@ -219,30 +219,32 @@ def get_only_transcript_effects(
 
         # reference allele falls within current transcript
         assert transcript_start <= ref_start <= ref_stop <= transcript_stop
-        for effect in _get_within_transcript_effects(
-            annotator, base_effect, exons, cdss, utr5, utr3, introns
-        ):
-            yield effect
+        effect = _get_within_transcript_effects(
+            ann, base_effect, exons, cdss, utr5, utr3, introns
+        )
 
-            leffect.append(effect.effect)
-            limpact.append(effect.impact)
-            lref_codon.append(effect.ref_codon)
-            lalt_codon.append(effect.alt_codon)
-            laa_pos.append(effect.aa_pos)
-            lref_aa.append(effect.ref_aa)
-            lalt_aa.append(effect.alt_aa)
-            laa_change.append(effect.aa_change)
+        leffect.append(effect.effect)
+        limpact.append(effect.impact)
+        lref_codon.append(effect.ref_codon)
+        lalt_codon.append(effect.alt_codon)
+        laa_pos.append(effect.aa_pos)
+        lref_aa.append(effect.ref_aa)
+        lalt_aa.append(effect.alt_aa)
+        laa_change.append(effect.aa_change)
 
-    positions_df["effect"] = leffect
-    positions_df["impact"] = limpact
-    positions_df["ref_codon"] = lref_codon
-    positions_df["alt_codon"] = lalt_codon
-    positions_df["aa_pos"] = laa_pos
-    positions_df["ref_aa"] = lref_aa
-    positions_df["alt_aa"] = lalt_aa
-    positions_df["aa_change"] = laa_change
+    variants["effect"] = leffect
+    variants["impact"] = limpact
+    variants["ref_codon"] = lref_codon
+    variants["alt_codon"] = lalt_codon
+    variants["aa_pos"] = laa_pos
+    variants["ref_aa"] = lref_aa
+    variants["alt_aa"] = lalt_aa
+    variants["aa_change"] = laa_change
 
-    return positions_df
+    return variants
+
+# add as method
+Annotator.get_only_transcript_effects = get_only_transcript_effects
 
 def get_effects(
     annotator,
@@ -434,52 +436,12 @@ def _get_transcript_effects(annotator, base_effect, transcript, gff3_cds_types):
             yield effect
 
 
-def _get_within_transcript_effects(annotator, base_effect, cdss, exons, utr5, utr3, introns):
+def _get_within_transcript_effects(ann, base_effect, cdss, exons, utr5, utr3, introns):
 
     # convenience
     ref_start = base_effect.ref_start
     ref_stop = base_effect.ref_stop
 
-    # # obtain coding sequences that are children of the current transcript
-    # cdss = sorted(
-    #     [
-    #         f
-    #         for f in annotator.get_children(transcript.feature_id)
-    #         if f.type in gff3_cds_types
-    #     ],
-    #     key=lambda v: v.start,
-    # )
-    #
-    # exons = sorted(
-    #     [f for f in annotator.get_children(transcript.feature_id) if f.type == "exon"],
-    #     key=lambda v: v.start,
-    # )
-    #
-    # utr5 = sorted(
-    #     [
-    #         f
-    #         for f in annotator.get_children(transcript.feature_id)
-    #         if f.type == "five_prime_UTR"
-    #     ],
-    #     key=lambda v: v.start,
-    # )
-    #
-    # utr3 = sorted(
-    #     [
-    #         f
-    #         for f in annotator.get_children(transcript.feature_id)
-    #         if f.type == "three_prime_UTR"
-    #     ],
-    #     key=lambda v: v.start,
-    # )
-    #
-    # # derive introns, assuming between exons
-    # introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
-
-    # introns_5utr = [(x.stop + 1, y.start - 1) for x, y in zip(utr5[:-1], utr5[1:])]
-    #
-    # # derive introns, assuming between CDSs
-    # introns = [(x.stop + 1, y.start - 1) for x, y in zip(cdss[:-1], cdss[1:])]
 
     # if not cdss:
     #
@@ -490,61 +452,48 @@ def _get_within_transcript_effects(annotator, base_effect, cdss, exons, utr5, ut
     #     yield effect
 
     # find coding sequence that overlaps the reference allele
-    overlapping_cdss = [
-        cds for cds in cdss if cds.start <= ref_stop and cds.stop >= ref_start
+    within_cdss = [
+        cds for cds in cdss if cds.start <= ref_start and cds.stop >= ref_stop
     ]
+    if within_cdss:
+        return _get_within_cds_effect(ann, base_effect, within_cdss[0], cdss)
 
-    overlapping_introns = [
-        (start, stop)
-        for (start, stop) in introns
-        if start <= ref_stop and stop >= ref_start
-    ]
+    # TODO do the same for within_cdss with the features below (and test as we go)
 
-    overlapping_utr5 = [x for x in utr5 if x.start <= ref_stop and x.stop >= ref_start]
-
-    overlapping_utr3 = [x for x in utr3 if x.start <= ref_stop and x.stop >= ref_start]
-
-    # CDS effects
-
-    if overlapping_cdss:
-
-        if len(overlapping_cdss) > 1:
-
-            # TODO
-            # variant overlaps more than one exon
-            effect = base_effect._replace(effect="TODO")
-            yield effect
-
-        else:
-
-            # variant overlaps a single exon
-            assert len(overlapping_cdss) == 1
-            cds = overlapping_cdss[0]
-
-            yield _get_cds_effect(annotator, base_effect, cds, cdss)
-
-    # intron effects
-
-    if overlapping_introns:
-
-        if len(overlapping_introns) > 1:
-
-            # TODO
-            # variant overlaps more than one intron
-            effect = base_effect._replace(effect="TODO")
-            yield effect
-
-        else:
-
-            # variant overlaps a single intron
-            assert len(overlapping_introns) == 1
-            intron = overlapping_introns[0]
-
-            yield _get_intron_effect(annotator, base_effect, intron, exons)
-
-    # if overlapping_5utr_introns:
+    # overlapping_introns = [
+    #     (start, stop)
+    #     for (start, stop) in introns
+    #     if start <= ref_stop and stop >= ref_start
+    # ]
     #
-    #     if len(overlapping_5utr_introns) > 1:
+    # overlapping_utr5 = [x for x in utr5 if x.start <= ref_stop and x.stop >= ref_start]
+    #
+    # overlapping_utr3 = [x for x in utr3 if x.start <= ref_stop and x.stop >= ref_start]
+    #
+    # # CDS effects
+    #
+    # if overlapping_cdss:
+    #
+    #     if len(overlapping_cdss) > 1:
+    #
+    #         # TODO
+    #         # variant overlaps more than one exon
+    #         effect = base_effect._replace(effect="TODO")
+    #         yield effect
+    #
+    #     else:
+    #
+    #         # variant overlaps a single exon
+    #         assert len(overlapping_cdss) == 1
+    #         cds = overlapping_cdss[0]
+    #
+    #         yield _get_cds_effect(annotator, base_effect, cds, cdss)
+    #
+    # # intron effects
+    #
+    # if overlapping_introns:
+    #
+    #     if len(overlapping_introns) > 1:
     #
     #         # TODO
     #         # variant overlaps more than one intron
@@ -553,62 +502,79 @@ def _get_within_transcript_effects(annotator, base_effect, cdss, exons, utr5, ut
     #
     #     else:
     #
-    #         # variant overlaps a single intron in 5' utr
-    #         assert len(overlapping_5utr_introns) == 1
-    #         # TODO why doesnt this work
-    #         # intron = overlapping_5utr_introns[0]
-    #         # yield _get_intron_effect(annotator, base_effect, intron, cdss)
-    #         effect = base_effect._replace(effect="INTRONIC")
+    #         # variant overlaps a single intron
+    #         assert len(overlapping_introns) == 1
+    #         intron = overlapping_introns[0]
+    #
+    #         yield _get_intron_effect(annotator, base_effect, intron, exons)
+    #
+    # # if overlapping_5utr_introns:
+    # #
+    # #     if len(overlapping_5utr_introns) > 1:
+    # #
+    # #         # TODO
+    # #         # variant overlaps more than one intron
+    # #         effect = base_effect._replace(effect="TODO")
+    # #         yield effect
+    # #
+    # #     else:
+    # #
+    # #         # variant overlaps a single intron in 5' utr
+    # #         assert len(overlapping_5utr_introns) == 1
+    # #         # TODO why doesnt this work
+    # #         # intron = overlapping_5utr_introns[0]
+    # #         # yield _get_intron_effect(annotator, base_effect, intron, cdss)
+    # #         effect = base_effect._replace(effect="INTRONIC")
+    # #         yield effect
+    #
+    # if overlapping_utr5:
+    #
+    #     if len(overlapping_utr5) > 1:
+    #
+    #         # TODO
+    #         # variant overlaps more than one 5'UTR
+    #         effect = base_effect._replace(effect="TODO")
     #         yield effect
-
-    if overlapping_utr5:
-
-        if len(overlapping_utr5) > 1:
-
-            # TODO
-            # variant overlaps more than one 5'UTR
-            effect = base_effect._replace(effect="TODO")
-            yield effect
-
-        else:
-
-            # variant overlaps a single 5 prime UTR
-            assert len(overlapping_utr5) == 1
-            utr5 = overlapping_utr5[0]
-
-            effect = base_effect._replace(effect="FIVE_PRIME_UTR", impact="LOW")
-            yield effect
-
-    if overlapping_utr3:
-
-        if len(overlapping_utr3) > 1:
-
-            # TODO
-            # variant overlaps more than one 3'UTR
-            effect = base_effect._replace(effect="TODO")
-            yield effect
-
-        else:
-
-            # variant overlaps a single 3 prime UTR
-            assert len(overlapping_utr3) == 1
-            utr3 = overlapping_utr3[0]
-
-            effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
-            yield effect
-
-    # if none of the above - #
-    if (
-        (not overlapping_cdss)
-        and (not overlapping_introns)
-        and (not overlapping_utr5)
-        and (not overlapping_utr3)
-    ):
-        effect = base_effect._replace(effect="INTRAGENIC", impact="LOW")
-        yield effect
+    #
+    #     else:
+    #
+    #         # variant overlaps a single 5 prime UTR
+    #         assert len(overlapping_utr5) == 1
+    #         utr5 = overlapping_utr5[0]
+    #
+    #         effect = base_effect._replace(effect="FIVE_PRIME_UTR", impact="LOW")
+    #         yield effect
+    #
+    # if overlapping_utr3:
+    #
+    #     if len(overlapping_utr3) > 1:
+    #
+    #         # TODO
+    #         # variant overlaps more than one 3'UTR
+    #         effect = base_effect._replace(effect="TODO")
+    #         yield effect
+    #
+    #     else:
+    #
+    #         # variant overlaps a single 3 prime UTR
+    #         assert len(overlapping_utr3) == 1
+    #         utr3 = overlapping_utr3[0]
+    #
+    #         effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
+    #         yield effect
+    #
+    # # if none of the above - #
+    # if (
+    #     (not overlapping_cdss)
+    #     and (not overlapping_introns)
+    #     and (not overlapping_utr5)
+    #     and (not overlapping_utr3)
+    # ):
+    #     effect = base_effect._replace(effect="INTRAGENIC", impact="LOW")
+    #     yield effect
 
 
-def _get_cds_effect(annotator, base_effect, cds, cdss):
+def _get_cds_effect(ann, base_effect, cds, cdss):
 
     # setup common effect parameters
     base_effect = base_effect._replace(
@@ -653,7 +619,7 @@ def _get_cds_effect(annotator, base_effect, cds, cdss):
         return _get_within_cds_effect(annotator, base_effect, cds, cdss)
 
 
-def _get_within_cds_effect(annotator, base_effect, cds, cdss):
+def _get_within_cds_effect(ann, base_effect, cds, cdss):
 
     # convenience
     chrom = base_effect.chrom
@@ -672,7 +638,7 @@ def _get_within_cds_effect(annotator, base_effect, cds, cdss):
         aa_pos,
         ref_aa,
         alt_aa,
-    ) = _get_aa_change(annotator, chrom, pos, ref, alt, cds, cdss)
+    ) = _get_aa_change(ann, chrom, pos, ref, alt, cds, cdss)
 
     # setup common effect parameters
     base_effect = base_effect._replace(
@@ -805,7 +771,7 @@ def _get_within_cds_effect(annotator, base_effect, cds, cdss):
     return effect
 
 
-def _get_aa_change(annotator, chrom, pos, ref, alt, cds, cdss):
+def _get_aa_change(ann, chrom, pos, ref, alt, cds, cdss):
 
     # obtain codon change
     (
@@ -814,7 +780,7 @@ def _get_aa_change(annotator, chrom, pos, ref, alt, cds, cdss):
         ref_start_phase,
         ref_codon,
         alt_codon,
-    ) = _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss)
+    ) = _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss)
 
     # translate codon change to amino acid change
     ref_aa = str(Seq(ref_codon).translate())
@@ -833,10 +799,10 @@ def _get_aa_change(annotator, chrom, pos, ref, alt, cds, cdss):
     )
 
 
-def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
+def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
 
     # obtain reference allele coords relative to coding sequence
-    ref_start, ref_stop = annotator.get_ref_allele_coords(chrom, pos, ref)
+    ref_start, ref_stop = ann.get_ref_allele_coords(chrom, pos, ref)
     ref_cds_start, ref_cds_stop = _get_coding_position(ref_start, ref_stop, cds, cdss)
 
     # calculate position of reference allele start within codon
@@ -845,7 +811,7 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
     if cds.strand == "+":
 
         # obtain any previous nucleotides to complete the first codon
-        prefix = annotator.get_ref_seq(
+        prefix = ann.get_ref_seq(
             chrom=chrom, start=ref_start - ref_start_phase, stop=ref_start - 1
         ).lower()
 
@@ -864,7 +830,7 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
 
         if len(alt_codon) % 3:
             alt_stop_phase = len(alt_codon) % 3
-            suffix = annotator.get_ref_seq(
+            suffix = ann.get_ref_seq(
                 chrom=chrom, start=ref_stop + 1, stop=ref_stop + 3 - alt_stop_phase
             ).lower()
             alt_codon += suffix
@@ -880,7 +846,7 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
         # code block
 
         # obtain any previous nucleotides to complete the first codon
-        prefix = annotator.get_ref_seq(
+        prefix = ann.get_ref_seq(
             chrom=chrom, start=ref_stop + 1, stop=ref_stop + ref_start_phase
         ).lower()
 
@@ -891,14 +857,14 @@ def _get_codon_change(annotator, chrom, pos, ref, alt, cds, cdss):
         # obtain any subsequence nucleotides to complete the last codon
         if len(ref_codon) % 3:
             ref_stop_phase = len(ref_codon) % 3
-            suffix = annotator.get_ref_seq(
+            suffix = ann.get_ref_seq(
                 chrom=chrom, start=ref_start - 3 + ref_stop_phase, stop=ref_start - 1
             ).lower()
             ref_codon = suffix + ref_codon
 
         if len(alt_codon) % 3:
             alt_stop_phase = len(alt_codon) % 3
-            suffix = annotator.get_ref_seq(
+            suffix = ann.get_ref_seq(
                 chrom=chrom, start=ref_start - 3 + alt_stop_phase, stop=ref_start - 1
             ).lower()
             alt_codon = suffix + alt_codon
@@ -951,7 +917,7 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
     return ref_cds_start, ref_cds_stop
 
 
-def _get_intron_effect(annotator, base_effect, intron, exons):
+def _get_intron_effect(ann, base_effect, intron, exons):
 
     # convenience
     ref_start = base_effect.ref_start
@@ -987,7 +953,7 @@ def _get_intron_effect(annotator, base_effect, intron, exons):
         return _get_within_intron_effect(annotator, base_effect, intron, exons)
 
 
-def _get_within_intron_effect(annotator, base_effect, intron, exons):
+def _get_within_intron_effect(ann, base_effect, intron, exons):
 
     # convenience
     ref_start = base_effect.ref_start

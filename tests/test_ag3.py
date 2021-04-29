@@ -577,6 +577,17 @@ def test_snp_effects():
     assert df.loc[652].effect == "SPLICE_REGION"
     assert df.loc[674].effect == "INTRONIC"
 
+def test_get_only_transcript_effects():
+    from malariagen_data import veff
+    ag3 = setup_ag3()
+    gste2 = "AGAP009194-RA"
+    d = {'position': [28598166,], 'ref_allele': ["A",], 'alt_allele': ["G",]}
+    variants = pandas.DataFrame(data=d)
+    ann = veff.Annotator(genome=ag3.open_genome(), geneset=ag3.geneset())
+    df = ann.get_only_transcript_effects(gste2, variants)
+    assert df.iloc[0].effect == "NON_SYNONYMOUS_CODING"
+
+
 
 def test_snp_allele_frequencies():
     ag3 = setup_ag3()
