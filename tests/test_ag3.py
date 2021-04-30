@@ -581,13 +581,16 @@ def test_get_only_transcript_effects():
     from malariagen_data import veff
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
-    d = {'position': [28598166,], 'ref_allele': ["A",], 'alt_allele': ["G",]}
+    d = {'position': [28598166, 28598638, 28597652, 28598427],
+         'ref_allele': ["A", "C", "G", "C"],
+         'alt_allele': ["G", "G", "C", "T"]}
     variants = pandas.DataFrame(data=d)
     ann = veff.Annotator(genome=ag3.open_genome(), geneset=ag3.geneset())
     df = ann.get_only_transcript_effects(gste2, variants)
     assert df.iloc[0].effect == "NON_SYNONYMOUS_CODING"
-
-
+    assert df.iloc[1].effect == "FIVE_PRIME_UTR"
+    assert df.iloc[2].effect == "THREE_PRIME_UTR"
+    assert df.iloc[3].effect == "INTRONIC"
 
 def test_snp_allele_frequencies():
     ag3 = setup_ag3()

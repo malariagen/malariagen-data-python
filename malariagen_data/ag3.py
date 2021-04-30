@@ -647,8 +647,13 @@ class Ag3:
 
         """
 
-        # todo get feature direct from geneset
-        # feature = ann.get_feature(transcript)
+        # get feature direct from geneset
+        gs = self.geneset()
+        gs.rename(
+            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
+            inplace=True,
+        )
+        feature = gs[gs.feature_id == transcript].squeeze()
 
         # grab pos, ref and alt for chrom arm from snp_sites
         sites = self.snp_sites(contig=feature.seqid, site_mask=site_mask)
