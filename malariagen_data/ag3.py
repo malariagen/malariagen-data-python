@@ -683,47 +683,9 @@ class Ag3:
 
         ann = self._cache_annotator
 
-        df_effects = ann.get_only_transcript_effects(transcript=transcript,
-                                                     variants=variants)
-
-        # then, iterate over rows of the dataframe, calling get_effects()
-        # for each row, and using that to build additional columns effect,
-        # impact, etc.
-
-        # leffect = []
-        # limpact = []
-        # lref_codon = []
-        # lalt_codon = []
-        # laa_pos = []
-        # lref_aa = []
-        # lalt_aa = []
-        # laa_change = []
-        #
-        # for row in df_effects.itertuples(index=True):
-        #     for effect in ann.get_effects(
-        #         chrom=contig,
-        #         pos=row.position,
-        #         ref=row.ref_allele,
-        #         alt=row.alt_allele,
-        #         transcript_ids=[transcript],
-        #     ):
-        #         leffect.append(effect.effect)
-        #         limpact.append(effect.impact)
-        #         lref_codon.append(effect.ref_codon)
-        #         lalt_codon.append(effect.alt_codon)
-        #         laa_pos.append(effect.aa_pos)
-        #         lref_aa.append(effect.ref_aa)
-        #         lalt_aa.append(effect.alt_aa)
-        #         laa_change.append(effect.aa_change)
-        #
-        # df_effects["effect"] = leffect
-        # df_effects["impact"] = limpact
-        # df_effects["ref_codon"] = lref_codon
-        # df_effects["alt_codon"] = lalt_codon
-        # df_effects["aa_pos"] = laa_pos
-        # df_effects["ref_aa"] = lref_aa
-        # df_effects["alt_aa"] = lalt_aa
-        # df_effects["aa_change"] = laa_change
+        df_effects = ann.get_only_transcript_effects(
+            transcript=transcript, variants=variants
+        )
 
         return df_effects
 

@@ -26,54 +26,26 @@ class Annotator(object):
         self._genome = genome
         self._genome_cache = dict()
         self._geneset_cache = None
-        # when debugging snp effects unhash seqid and add .eq("seqid", seqid) parameter to tbl_features
-        # and seqid to __init__
-        # self._seqid = seqid
 
-        # setup access to GFF3 as a petl table
-        # TODO at some point we'd like to refactor this module to read directly from pandas
-        # tbl_features = (
-        #     etl.fromdataframe(geneset)
-        #     .rename({"ID": "feature_id", "Parent": "parent_id", "end": "stop"})
-        #     .select(lambda row: (row.stop - row.start) > 0)
-        # )
-        # self._tbl_features = tbl_features.cache()
-        # PANDARISED
         geneset.rename(
             columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
             inplace=True,
         )
-        # todo the line below to remove rows takes >4 secs, is it necessary? - TEST THIS
+
         geneset = geneset[(geneset.stop - geneset.start) > 0]
         self._geneset_cache = geneset
 
         # index features by ID
-        # self._idx_feature_id = self._tbl_features.recordlookupone("feature_id")
-        # PANDARISED
         self._idx_feature_id = self._geneset_cache.set_index("feature_id")
 
         # index features by parent ID
-        # self._idx_parent_id = self._tbl_features.recordlookup("parent_id")
-        # PANDARISED
         self._idx_parent_id = self._geneset_cache.set_index("parent_id")
 
-        # TODO - this has not been pandarised - do we need it now?
-        # # index features by genomic location
-        # self._idx_location = self._tbl_features.facetintervalrecordlookup(
-        #     "seqid", "start", "stop", include_stop=True
-        # )
-
-    # PANDARISED
     def get_feature(self, feature_id):
         return self._idx_feature_id.loc[feature_id]
 
-    # PANDARISED
     def get_children(self, feature_id):
         return self._idx_parent_id.loc[feature_id]
-
-    # todo - see above, this is still petl, but do we still need it?
-    # def find(self, chrom, start, stop):
-    #     return self._idx_location[chrom].search(start, stop)
 
     def get_ref_seq(self, chrom, start, stop):
         """Accepts 1-based coords."""
@@ -100,6 +72,7 @@ class Annotator(object):
         )
 
         return ref_start, ref_stop
+
 
 VariantEffect = collections.namedtuple(
     "VariantEffect",
@@ -147,15 +120,8 @@ VariantEffect = collections.namedtuple(
 )
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
-def get_only_transcript_effects(
-    ann,
-    transcript,
-    variants,
-    # gff3_gene_types={"gene", "pseudogene"},
-    # gff3_transcript_types={"mRNA", "rRNA", "pseudogenic_transcript"},
-    #gff3_cds_types={"CDS", "pseudogenic_exon"},
-    # transcript_ids=None,
-):
+
+def get_only_transcript_effects(ann, transcript, variants):
 
     children = ann.get_children(transcript)
     feature = ann.get_feature(transcript)
@@ -165,12 +131,8 @@ def get_only_transcript_effects(
 
     # feature types, currently pandas but can be list of tuples like before
     # by using 'cdss = list(exon.to_records(index=False))'
-    cdss = list(
-        children[children.type == "CDS"].sort_values("start").itertuples()
-    )
-    exons = list(
-        children[children.type == "exon"].sort_values("start").itertuples()
-    )
+    cdss = list(children[children.type == "CDS"].sort_values("start").itertuples())
+    exons = list(children[children.type == "exon"].sort_values("start").itertuples())
     utr5 = list(
         children[children.type == "five_prime_UTR"].sort_values("start").itertuples()
     )
@@ -223,11 +185,10 @@ def get_only_transcript_effects(
         effect = _get_within_transcript_effects(
             ann=ann,
             base_effect=base_effect,
-            exons=exons,
             cdss=cdss,
             utr5=utr5,
             utr3=utr3,
-            introns=introns
+            introns=introns,
         )
 
         leffect.append(effect.effect)
@@ -250,124 +211,12 @@ def get_only_transcript_effects(
 
     return variants
 
+
 # add as method
 Annotator.get_only_transcript_effects = get_only_transcript_effects
 
-# def _get_intergenic_effects(annotator, base_effect):
-#
-#     # TODO
-#     # UPSTREAM and DOWNSTREAM
-#
-#     # the variant is in an intergenic region
-#     effect = base_effect._replace(effect="INTERGENIC", impact="MODIFIER")
-#     yield effect
 
-# def _get_gene_effects(
-#     annotator, base_effect, gene, gff3_transcript_types, gff3_cds_types, transcript_ids
-# ):
-#
-#     # setup common effect parameters
-#     base_effect = base_effect._replace(
-#         gene_id=gene.feature_id,
-#         gene_start=gene.start,
-#         gene_stop=gene.stop,
-#         gene_strand=gene.strand,
-#     )
-#
-#     # obtain transcripts that are children of the current gene
-#     transcripts = [
-#         t
-#         for t in annotator.get_children(gene.feature_id)
-#         if t.type in gff3_transcript_types
-#     ]
-#
-#     if not transcript_ids and not transcripts:
-#
-#         # the variant hits a gene, but no transcripts within the gene
-#         effect = base_effect._replace(effect="INTRAGENIC", impact="MODIFIER")
-#         yield effect
-#
-#     else:
-#
-#         # optionally filter to user-specified transcripts
-#         if transcript_ids:
-#             transcripts = [t for t in transcripts if t.feature_id in transcript_ids]
-#
-#         for transcript in transcripts:
-#             for effect in _get_transcript_effects(
-#                 annotator, base_effect, transcript, gff3_cds_types
-#             ):
-#                 yield effect
-
-
-def _get_transcript_effects(annotator, base_effect, transcript, gff3_cds_types):
-
-    # setup common effect parameters
-    base_effect = base_effect._replace(
-        transcript_id=transcript.feature_id,
-        transcript_start=transcript.start,
-        transcript_stop=transcript.stop,
-        transcript_strand=transcript.strand,
-    )
-
-    # convenience
-    ref_start = base_effect.ref_start
-    ref_stop = base_effect.ref_stop
-    transcript_start = transcript.start
-    transcript_stop = transcript.stop
-
-    # compare start and stop of reference allele to start
-    # and stop of current transcript
-
-    if ref_stop < transcript_start:
-
-        # TODO
-        # variant hits a gene but misses the current transcript, falling
-        # upstream
-        effect = base_effect._replace(effect="TODO")
-        yield effect
-
-    elif ref_start > transcript_stop:
-
-        # TODO
-        # variant hits a gene but misses the current transcript, falling
-        # downstream
-        effect = base_effect._replace(effect="TODO")
-        yield effect
-
-    elif ref_start < transcript_start <= ref_stop <= transcript_stop:
-
-        # TODO
-        # reference allele overhangs the start of the current transcript
-        effect = base_effect._replace(effect="TODO")
-        yield effect
-
-    elif transcript_start <= ref_start <= transcript_stop < ref_stop:
-
-        # TODO
-        # reference allele overhangs the end of the current transcript
-        effect = base_effect._replace(effect="TODO")
-        yield effect
-
-    elif ref_start < transcript_start <= transcript_stop < ref_stop:
-
-        # TODO
-        # reference allele entirely overlaps the current transcript and
-        # overhangs at both ends
-        effect = base_effect._replace(effect="TODO")
-        yield effect
-
-    else:
-
-        # reference allele falls within current transcript
-        assert transcript_start <= ref_start <= ref_stop <= transcript_stop
-        for effect in _get_within_transcript_effects(
-            annotator, base_effect, transcript, gff3_cds_types
-        ):
-            yield effect
-
-
-def _get_within_transcript_effects(ann, base_effect, exons, cdss, utr5, utr3, introns):
+def _get_within_transcript_effects(ann, base_effect, cdss, utr5, utr3, introns):
 
     # convenience
     ref_start = base_effect.ref_start
@@ -386,18 +235,14 @@ def _get_within_transcript_effects(ann, base_effect, exons, cdss, utr5, utr3, in
         if start <= ref_start and stop >= ref_stop
     ]
     if within_introns:
-        return _get_intron_effect(ann=ann, base_effect=base_effect, intron=within_introns[0], exons=exons)
+        return _get_intron_effect(base_effect=base_effect, intron=within_introns[0])
 
-    within_utr5 = [
-        x for x in utr5 if x.start <= ref_start and x.stop >= ref_stop
-    ]
+    within_utr5 = [x for x in utr5 if x.start <= ref_start and x.stop >= ref_stop]
     if within_utr5:
         effect = base_effect._replace(effect="FIVE_PRIME_UTR", impact="LOW")
         return effect
 
-    within_utr3 = [
-        x for x in utr3 if x.start <= ref_start and x.stop >= ref_stop
-    ]
+    within_utr3 = [x for x in utr3 if x.start <= ref_start and x.stop >= ref_stop]
     if within_utr3:
         effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
         return effect
@@ -423,33 +268,9 @@ def _get_cds_effect(ann, base_effect, cds, cdss):
     cds_start = cds.start
     cds_stop = cds.stop
 
-    if ref_start < cds_start <= ref_stop <= cds_stop:
-
-        # TODO
-        # reference allele overhangs the start of the current exon
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    elif cds_start <= ref_start <= cds_stop < ref_stop:
-
-        # TODO
-        # reference allele overhangs the end of the current transcript
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    elif ref_start < cds_start <= cds_stop < ref_stop:
-
-        # TODO
-        # reference allele entirely overlaps the current exon and
-        # overhangs at both ends
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    else:
-
-        # reference allele falls within current transcript
-        assert cds_start <= ref_start <= ref_stop <= cds_stop
-        return _get_within_cds_effect(ann, base_effect, cds, cdss)
+    # reference allele falls within current transcript
+    assert cds_start <= ref_start <= ref_stop <= cds_stop
+    return _get_within_cds_effect(ann, base_effect, cds, cdss)
 
 
 def _get_within_cds_effect(ann, base_effect, cds, cdss):
@@ -459,7 +280,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
     pos = base_effect.pos
     ref = base_effect.ref
     alt = base_effect.alt
-    strand = base_effect.cds_strand
 
     # obtain amino acid change
     (
@@ -525,81 +345,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(
                 effect="NON_SYNONYMOUS_CODING", impact="MODERATE"
             )
-
-    else:
-
-        # INDELs and MNPs
-
-        if (len(alt) - len(ref)) % 3:
-
-            # N.B., this case covers both simple INDELs and complex
-            # polymorphisms
-
-            # insertion or deletion causes a frame shift
-            # e.g.: An indel size is not multple of 3
-            effect = base_effect._replace(effect="FRAME_SHIFT", impact="HIGH")
-
-        elif len(ref) == 1 and len(ref) < len(alt):
-
-            # simple insertions
-
-            # figure out if there has been a codon change or not
-            is_codon_changed = (strand == "+" and ref_aa[0] != alt_aa[0]) or (
-                strand == "-" and ref_aa[-1] != alt_aa[-1]
-            )
-
-            if is_codon_changed:
-
-                # one codon is changed and one or many codons are inserted
-                # e.g.: An insert of size multiple of three, not at codon
-                # boundary
-                effect = base_effect._replace(
-                    effect="CODON_CHANGE_PLUS_CODON_INSERTION", impact="MODERATE"
-                )
-
-            else:
-
-                # one or many codons are inserted
-                # e.g.: An insert multiple of three in a codon boundary
-                effect = base_effect._replace(
-                    effect="CODON_INSERTION", impact="MODERATE"
-                )
-
-        elif len(alt) == 1 and len(ref) > len(alt):
-
-            # simple deletions
-
-            # figure out if there has been a codon change or not
-            is_codon_changed = (strand == "+" and ref_aa[0] != alt_aa[0]) or (
-                strand == "-" and ref_aa[-1] != alt_aa[-1]
-            )
-
-            if is_codon_changed:
-
-                # one codon is changed and one or many codons are deleted
-                # e.g.: A deletion of size multiple of three, not at codon
-                # boundary
-                effect = base_effect._replace(
-                    effect="CODON_CHANGE_PLUS_CODON_DELETION", impact="MODERATE"
-                )
-
-            else:
-
-                # one or many codons are deleted
-                # e.g.: A deletions multiple of three in a codon boundary
-                effect = base_effect._replace(
-                    effect="CODON_DELETION", impact="MODERATE"
-                )
-
-        elif len(ref) == len(alt):
-
-            # MNPs
-            effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
-
-        else:
-
-            # TODO in-frame complex variation (MNP + INDEL)
-            effect = base_effect._replace(effect="TODO")
 
     return effect
 
@@ -710,7 +455,6 @@ def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
 
 
 def _get_coding_position(ref_start, ref_stop, cds, cdss):
-    # print('_get_coding_position', ref_start, ref_stop, cds, len(cdss))
 
     if cds.strand == "+":
 
@@ -719,11 +463,9 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
 
         # find index of overlapping exons in all exons
         cds_index = [f.start for f in cdss].index(cds.start)
-        # print('_get_coding_position (+) cds_index', cds_index)
 
         # find offset
         offset = sum([f.stop - f.start + 1 for f in cdss[:cds_index]])
-        # print('_get_coding_position (+) offset', offset)
 
         # find ref cds position
         ref_cds_start = offset + (ref_start - cds.start)
@@ -736,21 +478,18 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
 
         # find index of overlapping exons in all exons
         cds_index = [f.stop for f in cdss].index(cds.stop)
-        # print('_get_coding_position (-) cds_index', cds_index)
 
         # find offset
         offset = sum([cds.stop - cds.start + 1 for cds in cdss[:cds_index]])
-        # print('_get_coding_position (-) offset', offset)
 
         # find ref cds position
         ref_cds_start = offset + (cds.stop - ref_stop)
         ref_cds_stop = offset + (cds.stop - ref_start)
 
-    # print('_get_coding_position return', ref_cds_start, ref_cds_stop)
     return ref_cds_start, ref_cds_stop
 
 
-def _get_intron_effect(ann, base_effect, intron, exons):
+def _get_intron_effect(base_effect, intron):
 
     # convenience
     ref_start = base_effect.ref_start
@@ -783,10 +522,10 @@ def _get_intron_effect(ann, base_effect, intron, exons):
 
         # reference allele falls within current intron
         assert intron_start <= ref_start <= ref_stop <= intron_stop
-        return _get_within_intron_effect(ann, base_effect, intron, exons)
+        return _get_within_intron_effect(base_effect, intron)
 
 
-def _get_within_intron_effect(ann, base_effect, intron, exons):
+def _get_within_intron_effect(base_effect, intron):
 
     # convenience
     ref_start = base_effect.ref_start
@@ -798,21 +537,10 @@ def _get_within_intron_effect(ann, base_effect, intron, exons):
     if strand == "+":
         intron_5prime_dist = ref_start - (intron_start - 1)
         intron_3prime_dist = ref_stop - (intron_stop + 1)
-        # intron_exon_5prime = [
-        #     exon.feature_id for exon in exons if exon.stop == intron_start - 1
-        # ][0]
-        # intron_exon_3prime = [
-        #     exon.feature_id for exon in exons if exon.start == intron_stop + 1
-        # ][0]
+
     else:
         intron_5prime_dist = (intron_stop + 1) - ref_stop
         intron_3prime_dist = (intron_start - 1) - ref_start
-        # intron_exon_3prime = [
-        #     exon.feature_id for exon in exons if exon.stop == intron_start - 1
-        # ][0]
-        # intron_exon_5prime = [
-        #     exon.feature_id for exon in exons if exon.start == intron_stop + 1
-        # ][0]
 
     # setup common effect parameters
     base_effect = base_effect._replace(
@@ -822,8 +550,6 @@ def _get_within_intron_effect(ann, base_effect, intron, exons):
         ref_intron_stop=ref_stop - intron_start,
         intron_5prime_dist=intron_5prime_dist,
         intron_3prime_dist=intron_3prime_dist,
-        # intron_exon_5prime=intron_exon_5prime,
-        # intron_exon_3prime=intron_exon_3prime,
     )
 
     intron_min_dist = min(intron_5prime_dist, -intron_3prime_dist)
