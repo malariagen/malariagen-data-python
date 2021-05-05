@@ -166,16 +166,16 @@ def get_only_transcript_effects(
     # feature types, currently pandas but can be list of tuples like before
     # by using 'cdss = list(exon.to_records(index=False))'
     cdss = list(
-        children[children.type == "CDS"].sort_values("start").to_records(index=False)
+        children[children.type == "CDS"].sort_values("start").itertuples()
     )
     exons = list(
-        children[children.type == "exon"].sort_values("start").to_records(index=False)
+        children[children.type == "exon"].sort_values("start").itertuples()
     )
     utr5 = list(
-        children[children.type == "five_prime_UTR"].sort_values("start").to_records(index=False)
+        children[children.type == "five_prime_UTR"].sort_values("start").itertuples()
     )
     utr3 = list(
-        children[children.type == "three_prime_UTR"].sort_values("start").to_records(index=False)
+        children[children.type == "three_prime_UTR"].sort_values("start").itertuples()
     )
     introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
 
@@ -189,10 +189,13 @@ def get_only_transcript_effects(
     laa_change = []
 
     # Now iterate over the transcript alt alleles
+    feature_seqid = feature.seqid
+    feature_start = feature.start
+    feature_stop = feature.stop
     for row in variants.itertuples(index=True):
 
         # some parameters
-        chrom = feature.seqid
+        chrom = feature_seqid
         pos = row.position
         ref = row.ref_allele
         alt = row.alt_allele
@@ -214,11 +217,9 @@ def get_only_transcript_effects(
         # convenience
         ref_start = base_effect.ref_start
         ref_stop = base_effect.ref_stop
-        transcript_start = feature.start
-        transcript_stop = feature.stop
 
         # reference allele falls within current transcript
-        assert transcript_start <= ref_start <= ref_stop <= transcript_stop
+        assert feature_start <= ref_start <= ref_stop <= feature_stop
         effect = _get_within_transcript_effects(
             ann=ann,
             base_effect=base_effect,
@@ -252,127 +253,51 @@ def get_only_transcript_effects(
 # add as method
 Annotator.get_only_transcript_effects = get_only_transcript_effects
 
-def get_effects(
-    annotator,
-    chrom,
-    pos,
-    ref,
-    alt,
-    gff3_gene_types={"gene", "pseudogene"},
-    gff3_transcript_types={"mRNA", "rRNA", "pseudogenic_transcript"},
-    gff3_cds_types={"CDS", "pseudogenic_exon"},
-    transcript_ids=None,
-):
-    """
+# def _get_intergenic_effects(annotator, base_effect):
+#
+#     # TODO
+#     # UPSTREAM and DOWNSTREAM
+#
+#     # the variant is in an intergenic region
+#     effect = base_effect._replace(effect="INTERGENIC", impact="MODIFIER")
+#     yield effect
 
-    Parameters
-    ----------
-
-    gff3_gene_types : list of strings, optional
-        Feature types to consider as genes.
-    gff3_transcript_types : list of strings, optional
-        Feature types to consider as transcripts.
-    gff3_cds_types : list of strings, optional
-        Feature types to consider as coding sequences.
-
-    Returns
-    -------
-
-    A `VariantEffect` generator.
-
-    """
-
-    # ensure types and case
-    ref = str(ref).upper()
-    alt = str(alt).upper()
-
-    # obtain start and stop coordinates of the reference allele
-    ref_start, ref_stop = annotator.get_ref_allele_coords(chrom, pos, ref)
-
-    # setup common effect parameters
-    base_effect = null_effect._replace(
-        chrom=chrom,
-        pos=pos,
-        ref=ref,
-        alt=alt,
-        vlen=len(alt) - len(ref),
-        ref_start=ref_start,
-        ref_stop=ref_stop,
-    )
-
-    # find overlapping genome features
-    features = annotator.find(chrom, ref_start, ref_stop)
-
-    # filter to find overlapping genes
-    genes = [f for f in features if f.type in gff3_gene_types]
-
-    if not genes:
-        for effect in _get_intergenic_effects(annotator, base_effect):
-            yield effect
-
-    else:
-        for gene in genes:
-            for effect in _get_gene_effects(
-                annotator,
-                base_effect,
-                gene,
-                gff3_transcript_types,
-                gff3_cds_types,
-                transcript_ids,
-            ):
-                yield effect
-
-
-# add as method
-Annotator.get_effects = get_effects
-
-
-def _get_intergenic_effects(annotator, base_effect):
-
-    # TODO
-    # UPSTREAM and DOWNSTREAM
-
-    # the variant is in an intergenic region
-    effect = base_effect._replace(effect="INTERGENIC", impact="MODIFIER")
-    yield effect
-
-
-def _get_gene_effects(
-    annotator, base_effect, gene, gff3_transcript_types, gff3_cds_types, transcript_ids
-):
-
-    # setup common effect parameters
-    base_effect = base_effect._replace(
-        gene_id=gene.feature_id,
-        gene_start=gene.start,
-        gene_stop=gene.stop,
-        gene_strand=gene.strand,
-    )
-
-    # obtain transcripts that are children of the current gene
-    transcripts = [
-        t
-        for t in annotator.get_children(gene.feature_id)
-        if t.type in gff3_transcript_types
-    ]
-
-    if not transcript_ids and not transcripts:
-
-        # the variant hits a gene, but no transcripts within the gene
-        effect = base_effect._replace(effect="INTRAGENIC", impact="MODIFIER")
-        yield effect
-
-    else:
-
-        # optionally filter to user-specified transcripts
-        if transcript_ids:
-            transcripts = [t for t in transcripts if t.feature_id in transcript_ids]
-
-        for transcript in transcripts:
-            for effect in _get_transcript_effects(
-                annotator, base_effect, transcript, gff3_cds_types
-            ):
-                yield effect
+# def _get_gene_effects(
+#     annotator, base_effect, gene, gff3_transcript_types, gff3_cds_types, transcript_ids
+# ):
+#
+#     # setup common effect parameters
+#     base_effect = base_effect._replace(
+#         gene_id=gene.feature_id,
+#         gene_start=gene.start,
+#         gene_stop=gene.stop,
+#         gene_strand=gene.strand,
+#     )
+#
+#     # obtain transcripts that are children of the current gene
+#     transcripts = [
+#         t
+#         for t in annotator.get_children(gene.feature_id)
+#         if t.type in gff3_transcript_types
+#     ]
+#
+#     if not transcript_ids and not transcripts:
+#
+#         # the variant hits a gene, but no transcripts within the gene
+#         effect = base_effect._replace(effect="INTRAGENIC", impact="MODIFIER")
+#         yield effect
+#
+#     else:
+#
+#         # optionally filter to user-specified transcripts
+#         if transcript_ids:
+#             transcripts = [t for t in transcripts if t.feature_id in transcript_ids]
+#
+#         for transcript in transcripts:
+#             for effect in _get_transcript_effects(
+#                 annotator, base_effect, transcript, gff3_cds_types
+#             ):
+#                 yield effect
 
 
 def _get_transcript_effects(annotator, base_effect, transcript, gff3_cds_types):
@@ -478,14 +403,8 @@ def _get_within_transcript_effects(ann, base_effect, exons, cdss, utr5, utr3, in
         return effect
 
     # if none of the above
-    if (
-        (not within_cdss)
-        and (not within_introns)
-        and (not within_utr5)
-        and (not within_utr3)
-    ):
-        effect = base_effect._replace(effect="INTRAGENIC", impact="LOW")
-        return effect
+    effect = base_effect.replace(effect="TODO", impact="UNKNOWN")
+    return effect
 
 
 def _get_cds_effect(ann, base_effect, cds, cdss):
@@ -796,7 +715,7 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
     if cds.strand == "+":
 
         # sort exons
-        cdss = sorted(cdss, key=operator.itemgetter("start"))
+        cdss = sorted(cdss, key=operator.attrgetter("start"))
 
         # find index of overlapping exons in all exons
         cds_index = [f.start for f in cdss].index(cds.start)
@@ -813,7 +732,7 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
     else:
 
         # sort exons (backwards this time)
-        cdss = sorted(cdss, key=operator.itemgetter("stop"), reverse=True)
+        cdss = sorted(cdss, key=operator.attrgetter("stop"), reverse=True)
 
         # find index of overlapping exons in all exons
         cds_index = [f.stop for f in cdss].index(cds.stop)
@@ -879,21 +798,21 @@ def _get_within_intron_effect(ann, base_effect, intron, exons):
     if strand == "+":
         intron_5prime_dist = ref_start - (intron_start - 1)
         intron_3prime_dist = ref_stop - (intron_stop + 1)
-        intron_exon_5prime = [
-            exon.feature_id for exon in exons if exon.stop == intron_start - 1
-        ][0]
-        intron_exon_3prime = [
-            exon.feature_id for exon in exons if exon.start == intron_stop + 1
-        ][0]
+        # intron_exon_5prime = [
+        #     exon.feature_id for exon in exons if exon.stop == intron_start - 1
+        # ][0]
+        # intron_exon_3prime = [
+        #     exon.feature_id for exon in exons if exon.start == intron_stop + 1
+        # ][0]
     else:
         intron_5prime_dist = (intron_stop + 1) - ref_stop
         intron_3prime_dist = (intron_start - 1) - ref_start
-        intron_exon_3prime = [
-            exon.feature_id for exon in exons if exon.stop == intron_start - 1
-        ][0]
-        intron_exon_5prime = [
-            exon.feature_id for exon in exons if exon.start == intron_stop + 1
-        ][0]
+        # intron_exon_3prime = [
+        #     exon.feature_id for exon in exons if exon.stop == intron_start - 1
+        # ][0]
+        # intron_exon_5prime = [
+        #     exon.feature_id for exon in exons if exon.start == intron_stop + 1
+        # ][0]
 
     # setup common effect parameters
     base_effect = base_effect._replace(
@@ -903,8 +822,8 @@ def _get_within_intron_effect(ann, base_effect, intron, exons):
         ref_intron_stop=ref_stop - intron_start,
         intron_5prime_dist=intron_5prime_dist,
         intron_3prime_dist=intron_3prime_dist,
-        intron_exon_5prime=intron_exon_5prime,
-        intron_exon_3prime=intron_exon_3prime,
+        # intron_exon_5prime=intron_exon_5prime,
+        # intron_exon_3prime=intron_exon_3prime,
     )
 
     intron_min_dist = min(intron_5prime_dist, -intron_3prime_dist)
