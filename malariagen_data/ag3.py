@@ -727,12 +727,16 @@ class Ag3:
 
         """
         # get feature details (don't need to set up an annotator here)
-        geneset = self.geneset()
-        geneset = geneset.set_index("ID")
+        gs = self.geneset()
+        gs.rename(
+            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
+            inplace=True,
+        )
+        geneset = gs.set_index("feature_id")
         feature = geneset.loc[transcript]
         contig = feature.seqid
         start = feature.start
-        stop = feature.end
+        stop = feature.stop
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
