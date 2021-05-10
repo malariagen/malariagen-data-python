@@ -84,29 +84,7 @@ VariantEffect = collections.namedtuple(
         "vlen",
         "ref_start",
         "ref_stop",
-        "gene_id",
-        "gene_start",
-        "gene_stop",
-        "gene_strand",
-        "transcript_id",
-        "transcript_start",
-        "transcript_stop",
-        "transcript_strand",
-        "cds_id",
-        "cds_start",
-        "cds_stop",
-        "cds_strand",
-        "intron_start",
-        "intron_stop",
-        "intron_5prime_dist",
-        "intron_3prime_dist",
-        "intron_exon_5prime",
-        "intron_exon_3prime",
-        "ref_cds_start",
-        "ref_cds_stop",
-        "ref_intron_start",
-        "ref_intron_stop",
-        "ref_start_phase",
+        "strand",
         "ref_codon",
         "alt_codon",
         "codon_change",
@@ -121,22 +99,18 @@ null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 def get_effects(ann, transcript, variants):
 
-    children = ann.get_children(transcript)
+    children = ann.get_children(transcript).sort_values("start")
     feature = ann.get_feature(transcript)
+
     # make sure all alleles are uppercase
     variants.ref_allele = variants.ref_allele.str.upper()
     variants.alt_allele = variants.alt_allele.str.upper()
 
-    # feature types, currently pandas but can be list of tuples like before
-    # by using 'cdss = list(exon.to_records(index=False))'
-    cdss = list(children[children.type == "CDS"].sort_values("start").itertuples())
-    exons = list(children[children.type == "exon"].sort_values("start").itertuples())
-    utr5 = list(
-        children[children.type == "five_prime_UTR"].sort_values("start").itertuples()
-    )
-    utr3 = list(
-        children[children.type == "three_prime_UTR"].sort_values("start").itertuples()
-    )
+    # get transcript children
+    cdss = list(children[children.type == "CDS"].itertuples())
+    exons = list(children[children.type == "exon"].itertuples())
+    utr5 = list(children[children.type == "five_prime_UTR"].itertuples())
+    utr3 = list(children[children.type == "three_prime_UTR"].itertuples())
     introns = [(x.stop + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
 
     leffect = []
@@ -152,6 +126,7 @@ def get_effects(ann, transcript, variants):
     feature_seqid = feature.seqid
     feature_start = feature.start
     feature_stop = feature.stop
+    feature_strand = feature.strand
     for row in variants.itertuples(index=True):
 
         # some parameters
@@ -172,15 +147,13 @@ def get_effects(ann, transcript, variants):
             vlen=len(alt) - len(ref),
             ref_start=ref_start,
             ref_stop=ref_stop,
+            strand=feature_strand,
         )
-
-        # convenience
-        ref_start = base_effect.ref_start
-        ref_stop = base_effect.ref_stop
 
         # reference allele falls within current transcript
         assert feature_start <= ref_start <= ref_stop <= feature_stop
-        effect = _get_within_transcript_effects(
+
+        effect = _get_within_transcript_effect(
             ann=ann,
             base_effect=base_effect,
             cdss=cdss,
@@ -214,7 +187,7 @@ def get_effects(ann, transcript, variants):
 Annotator.get_effects = get_effects
 
 
-def _get_within_transcript_effects(ann, base_effect, cdss, utr5, utr3, introns):
+def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
 
     # convenience
     ref_start = base_effect.ref_start
@@ -293,9 +266,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
 
     # setup common effect parameters
     base_effect = base_effect._replace(
-        ref_cds_start=ref_cds_start,
-        ref_cds_stop=ref_cds_stop,
-        ref_start_phase=ref_start_phase,
         ref_codon=ref_codon,
         alt_codon=alt_codon,
         codon_change="%s/%s" % (ref_codon, alt_codon),
@@ -531,7 +501,7 @@ def _get_within_intron_effect(base_effect, intron):
     ref = base_effect.ref
     alt = base_effect.alt
     intron_start, intron_stop = intron
-    strand = base_effect.gene_strand
+    strand = base_effect.strand
     if strand == "+":
         intron_5prime_dist = ref_start - (intron_start - 1)
         intron_3prime_dist = ref_stop - (intron_stop + 1)
@@ -539,16 +509,6 @@ def _get_within_intron_effect(base_effect, intron):
     else:
         intron_5prime_dist = (intron_stop + 1) - ref_stop
         intron_3prime_dist = (intron_start - 1) - ref_start
-
-    # setup common effect parameters
-    base_effect = base_effect._replace(
-        intron_start=intron_start,
-        intron_stop=intron_stop,
-        ref_intron_start=ref_start - intron_start,
-        ref_intron_stop=ref_stop - intron_start,
-        intron_5prime_dist=intron_5prime_dist,
-        intron_3prime_dist=intron_3prime_dist,
-    )
 
     intron_min_dist = min(intron_5prime_dist, -intron_3prime_dist)
 
@@ -572,8 +532,7 @@ def _get_within_intron_effect(base_effect, intron):
 
     else:
 
-        # TODO
-        # INDELs and MNPs
+        # TODO INDELs and MNPs
         effect = base_effect._replace(effect="TODO")
 
     return effect
