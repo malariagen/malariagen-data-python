@@ -117,7 +117,8 @@ def from_zarr(z, inline_array, chunks="auto"):
     our own here to get a little more control.
 
     """
-    if chunks == "native":
+    if chunks == "native" or z.dtype == object:
+        # N.B., dask does not support "auto" chunks for arrays with object dtype
         chunks = z.chunks
     kwargs = dict(chunks=chunks, fancy=False, lock=False, inline_array=inline_array)
     try:

@@ -1,6 +1,6 @@
 import dask.array as da
 import numpy as np
-import pandas
+import pandas as pd
 import pytest
 import xarray
 import zarr
@@ -41,7 +41,7 @@ def test_sample_sets(url):
 
     ag3 = setup_ag3(url)
     df_sample_sets_v3 = ag3.sample_sets(release="v3")
-    assert isinstance(df_sample_sets_v3, pandas.DataFrame)
+    assert isinstance(df_sample_sets_v3, pd.DataFrame)
     assert 28 == len(df_sample_sets_v3)
     assert ("sample_set", "sample_count", "release") == tuple(df_sample_sets_v3.columns)
 
@@ -307,7 +307,7 @@ def test_geneset():
 
     # default
     df = ag3.geneset()
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     gff3_cols = [
         "seqid",
         "source",
@@ -323,7 +323,7 @@ def test_geneset():
 
     # don't unpack attributes
     df = ag3.geneset(attributes=None)
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     expected_cols = gff3_cols + ["attributes"]
     assert expected_cols == df.columns.tolist()
 
@@ -344,7 +344,7 @@ def test_cross_metadata():
 
     ag3 = setup_ag3()
     df_crosses = ag3.cross_metadata()
-    assert isinstance(df_crosses, pandas.DataFrame)
+    assert isinstance(df_crosses, pd.DataFrame)
     expected_cols = ["cross", "sample_id", "father_id", "mother_id", "sex", "role"]
     assert expected_cols == df_crosses.columns.tolist()
 
@@ -497,7 +497,7 @@ def test_snp_effects():
     ]
 
     df = ag3.snp_effects(gste2, site_mask)
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     assert expected_fields == df.columns.tolist()
 
     # reverse strand gene
@@ -529,7 +529,7 @@ def test_snp_effects():
     # test forward strand gene gste6
     gste6 = "AGAP009196-RA"
     df = ag3.snp_effects(gste6, site_mask)
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (2829, 11)
 
@@ -560,7 +560,7 @@ def test_snp_effects():
     # check 5' utr intron and the different intron effects
     utrintron5 = "AGAP004679-RB"
     df = ag3.snp_effects(utrintron5, site_mask)
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (7686, 11)
     assert df.loc[180].effect == "SPLICE_CORE"
@@ -570,7 +570,7 @@ def test_snp_effects():
     # check 3' utr intron
     utrintron3 = "AGAP000689-RA"
     df = ag3.snp_effects(utrintron3, site_mask)
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (5397, 11)
     assert df.loc[646].effect == "SPLICE_CORE"
@@ -601,7 +601,7 @@ def test_snp_allele_frequencies():
         drop_invariant=True,
     )
 
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (133, 6)
     assert df.loc[4].position == 28597653
@@ -634,7 +634,7 @@ def test_snp_allele_frequencies():
         drop_invariant=False,
     )
 
-    assert isinstance(df, pandas.DataFrame)
+    assert isinstance(df, pd.DataFrame)
     assert expected_fields == df.columns.tolist()
     assert df.shape == (132306, 6)
     assert df.loc[0].position == 2358158
@@ -645,3 +645,223 @@ def test_snp_allele_frequencies():
     assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
     # check invariant positions are still present
     assert np.any(df.maximum == 0)
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
+)
+@pytest.mark.parametrize("contig", ["3L", "X"])
+def test_cnv_hmm(sample_sets, contig):
+
+    ag3 = setup_ag3()
+
+    ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "call_CN",
+        "call_NormCov",
+        "call_RawCov",
+    }
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
+
+    # check dimensions
+    assert {"samples", "variants"} == set(ds.dims)
+
+    # check dim lengths
+    n_variants = 1 + len(ag3.genome_sequence(contig=contig)) // 300
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    n_samples = len(df_samples)
+    assert n_variants == ds.dims["variants"]
+    assert n_samples == ds.dims["samples"]
+
+    # check sample IDs
+    assert df_samples["sample_id"].tolist() == ds["sample_id"].values.tolist()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_"):
+            assert 1 == x.ndim, f
+            assert (n_variants,) == x.shape
+            assert ("variants",) == x.dims
+        elif f.startswith("call_"):
+            assert 2 == x.ndim, f
+            assert ("variants", "samples") == x.dims
+            assert (n_variants, n_samples) == x.shape
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim
+            assert ("samples",) == x.dims
+            assert (n_samples,) == x.shape
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_CN"].sum(axis=1)
+    assert isinstance(d2, xarray.DataArray)
+
+
+@pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])
+@pytest.mark.parametrize("analysis", ["gamb_colu", "arab", "crosses"])
+@pytest.mark.parametrize("contig", ["3L", "X"])
+def test_cnv_coverage_calls(sample_set, analysis, contig):
+
+    ag3 = setup_ag3()
+
+    expected_analyses = {
+        "AG1000G-AO": {"gamb_colu"},
+        "AG1000G-UG": {"gamb_colu", "arab"},
+        "AG1000G-X": {"crosses"},
+    }
+    if analysis not in expected_analyses[sample_set]:
+        with pytest.raises(ValueError):
+            ag3.cnv_coverage_calls(
+                contig=contig, analysis=analysis, sample_set=sample_set
+            )
+        return
+
+    ds = ag3.cnv_coverage_calls(contig=contig, analysis=analysis, sample_set=sample_set)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_CIPOS",
+        "variant_CIEND",
+        "variant_filter_pass",
+        "call_genotype",
+    }
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "variant_id",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
+
+    # check dimensions
+    assert {"samples", "variants"} == set(ds.dims)
+
+    # check sample IDs
+    df_samples = ag3.sample_metadata(sample_sets=sample_set, species_calls=None)
+    sample_id = pd.Series(ds["sample_id"].values)
+    assert sample_id.isin(df_samples["sample_id"]).all()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_"):
+            assert 1 == x.ndim, f
+            assert ("variants",) == x.dims
+        elif f.startswith("call_"):
+            assert 2 == x.ndim, f
+            assert ("variants", "samples") == x.dims
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim, f
+            assert ("samples",) == x.dims
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_genotype"].sum(axis=1)
+    assert isinstance(d2, xarray.DataArray)
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
+)
+@pytest.mark.parametrize("contig", ["2R", "3R", "X", "3L"])
+def test_cnv_discordant_read_calls(sample_sets, contig):
+
+    ag3 = setup_ag3()
+
+    if contig == "3L":
+        with pytest.raises(ValueError):
+            ag3.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+        return
+
+    ds = ag3.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_Region",
+        "variant_StartBreakpointMethod",
+        "variant_EndBreakpointMethod",
+        "call_genotype",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "variant_id",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
+
+    # check dimensions
+    assert {"samples", "variants"} == set(ds.dims)
+
+    # check dim lengths
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    n_samples = len(df_samples)
+    assert n_samples == ds.dims["samples"]
+
+    # check sample IDs
+    assert df_samples["sample_id"].tolist() == ds["sample_id"].values.tolist()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_"):
+            assert 1 == x.ndim, f
+            assert ("variants",) == x.dims
+        elif f.startswith("call_"):
+            assert 2 == x.ndim, f
+            assert ("variants", "samples") == x.dims
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim
+            assert ("samples",) == x.dims
+            assert (n_samples,) == x.shape
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ("2R", "2L", "3R", "3L", "X") == ds.attrs["contigs"]
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_genotype"].sum(axis=1)
+    assert isinstance(d2, xarray.DataArray)
