@@ -14,7 +14,6 @@ class Annotator(object):
 
         Parameters
         ----------
-
         genome : zarr hierarchy
             Reference genome.
         geneset : pandas dataframe
@@ -27,9 +26,8 @@ class Annotator(object):
         self._genome_cache = dict()
         self._geneset_cache = None
 
-        geneset.rename(
+        geneset = geneset.rename(
             columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
-            inplace=True,
         )
 
         geneset = geneset[(geneset.stop - geneset.start) > 0]
@@ -121,7 +119,7 @@ VariantEffect = collections.namedtuple(
 null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 
-def get_only_transcript_effects(ann, transcript, variants):
+def get_effects(ann, transcript, variants):
 
     children = ann.get_children(transcript)
     feature = ann.get_feature(transcript)
@@ -213,7 +211,7 @@ def get_only_transcript_effects(ann, transcript, variants):
 
 
 # add as method
-Annotator.get_only_transcript_effects = get_only_transcript_effects
+Annotator.get_effects = get_effects
 
 
 def _get_within_transcript_effects(ann, base_effect, cdss, utr5, utr3, introns):

@@ -651,11 +651,7 @@ class Ag3:
 
         # get feature direct from geneset
         gs = self.geneset()
-        gs.rename(
-            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
-            inplace=True,
-        )
-        feature = gs[gs.feature_id == transcript].squeeze()
+        feature = gs[gs["ID"] == transcript].squeeze()
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(
@@ -666,7 +662,7 @@ class Ag3:
         pos = allel.SortedIndex(pos.compute())
 
         # locate transcript range
-        loc = pos.locate_range(feature.start, feature.stop)
+        loc = pos.locate_range(feature.start, feature.end)
 
         # dask compute on the sliced arrays to speed things up
         pos = pos[loc]
@@ -690,9 +686,7 @@ class Ag3:
             )
         ann = self._cache_annotator
 
-        df_effects = ann.get_only_transcript_effects(
-            transcript=transcript, variants=df_variants
-        )
+        df_effects = ann.get_effects(transcript=transcript, variants=df_variants)
 
         return df_effects
 
