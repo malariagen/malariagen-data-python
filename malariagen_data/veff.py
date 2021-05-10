@@ -3,7 +3,6 @@ from __future__ import division, print_function
 import collections
 import operator
 
-# import petl as etl
 from Bio.Seq import Seq
 
 
