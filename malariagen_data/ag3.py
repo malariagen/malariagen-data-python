@@ -631,15 +631,17 @@ class Ag3:
 
         return is_accessible
 
-    def snp_effects(self, transcript, site_mask):
+    def snp_effects(self, transcript, site_mask=None, site_filters="dt_20200416"):
         """Compute variant effects for a gene transcript.
 
         Parameters
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
+        site_filters : str, optional
+            Site filters analysis version.
 
         Returns
         -------
@@ -649,30 +651,32 @@ class Ag3:
 
         # get feature direct from geneset
         gs = self.geneset()
-        gs.rename(
-            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
-            inplace=True,
-        )
-        feature = gs[gs.feature_id == transcript].squeeze()
+        feature = gs[gs["ID"] == transcript].squeeze()
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        sites = self.snp_sites(contig=feature.seqid, site_mask=site_mask)
+        pos, ref, alt = self.snp_sites(
+            contig=feature.seqid, site_mask=site_mask, site_filters=site_filters
+        )
+
         # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(sites[0].compute())
+        pos = allel.SortedIndex(pos.compute())
+
         # locate transcript range
-        loc = pos.locate_range(feature.start, feature.stop)
+        loc = pos.locate_range(feature.start, feature.end)
+
         # dask compute on the sliced arrays to speed things up
-        ref = sites[1][loc].compute()
-        alt = sites[2][loc].compute()
+        pos = pos[loc]
+        ref = ref[loc].compute()
+        alt = alt[loc].compute()
 
         # build an initial dataframe with contig, pos, ref, alt columns
-        df_in = pandas.DataFrame()
-        df_in["position"] = np.asarray(pos[loc])
-        df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
-        # bytes within lists within lists...
-        df_in["alt_allele"] = [list(q.tobytes().decode()) for q in list(alt)]
-        # explode the alt alleles into their own rows
-        variants = df_in.explode("alt_allele").reset_index(drop=True)
+        cols = {
+            "position": np.repeat(pos, 3),
+            "ref_allele": np.repeat(ref.astype("U1"), 3),
+            "alt_allele": alt.astype("U1").flatten(),
+        }
+        df_variants = pandas.DataFrame(cols)
+
         # take an AGAP transcript ID and get meta data from the gff using veff
         # first time sets up and caches ann object
 
@@ -680,12 +684,9 @@ class Ag3:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(), geneset=self.geneset()
             )
-
         ann = self._cache_annotator
 
-        df_effects = ann.get_only_transcript_effects(
-            transcript=transcript, variants=variants
-        )
+        df_effects = ann.get_effects(transcript=transcript, variants=df_variants)
 
         return df_effects
 
