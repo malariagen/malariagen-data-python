@@ -71,6 +71,16 @@ $ poetry publish
 
 ## Release notes
 
+
+### 0.5.0
+
+* Add `Ag3.snp_allele_frequencies()`.
+* Add `Ag3.snp_effects()`.
+* Add `Ag3.cnv_hmm()`, `Ag3.cnv_coverage_calls()` and `Ag3.cnv_discordant_read_calls()`.
+* Speed up test suite via caching.
+* Add configuration for pre-commit hooks.
+
+
 ### 0.4.3
 
 * Performance improvements for faster reading a indexing
