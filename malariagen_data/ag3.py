@@ -634,92 +634,62 @@ class Ag3:
 
         return is_accessible
 
-    def snp_effects(self, transcript, site_mask):
+    def snp_effects(self, transcript, site_mask=None, site_filters="dt_20200416"):
         """Compute variant effects for a gene transcript.
 
         Parameters
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
+        site_filters : str, optional
+            Site filters analysis version.
 
         Returns
         -------
         df : pandas.DataFrame
 
         """
+
+        # get feature direct from geneset
+        gs = self.geneset()
+        feature = gs[gs["ID"] == transcript].squeeze()
+
+        # grab pos, ref and alt for chrom arm from snp_sites
+        pos, ref, alt = self.snp_sites(
+            contig=feature.seqid, site_mask=site_mask, site_filters=site_filters
+        )
+
+        # sites are dask arrays, turn pos into sorted index
+        pos = allel.SortedIndex(pos.compute())
+
+        # locate transcript range
+        loc = pos.locate_range(feature.start, feature.end)
+
+        # dask compute on the sliced arrays to speed things up
+        pos = pos[loc]
+        ref = ref[loc].compute()
+        alt = alt[loc].compute()
+
+        # build an initial dataframe with contig, pos, ref, alt columns
+        cols = {
+            "position": np.repeat(pos, 3),
+            "ref_allele": np.repeat(ref.astype("U1"), 3),
+            "alt_allele": alt.astype("U1").flatten(),
+        }
+        df_variants = pandas.DataFrame(cols)
+
         # take an AGAP transcript ID and get meta data from the gff using veff
         # first time sets up and caches ann object
+
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(), geneset=self.geneset()
             )
-
         ann = self._cache_annotator
-        feature = ann.get_feature(transcript)
-        contig = feature[0]
-        start = feature[3]
-        stop = feature[4]
 
-        # grab pos, ref and alt for chrom arm from snp_sites
-        sites = self.snp_sites(contig=contig, site_mask=site_mask)
-
-        # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(sites[0].compute())
-        # locate transcript range
-        loc = pos.locate_range(start, stop)
-        # dask compute on the sliced arrays to speed things up
-        ref = sites[1][loc].compute()
-        alt = sites[2][loc].compute()
-
-        # build an initial dataframe with contig, pos, ref, alt columns
-        df_in = pandas.DataFrame()
-        df_in["position"] = np.asarray(pos[loc])
-        df_in["ref_allele"] = [q.tobytes().decode() for q in np.asarray(ref)]
-        # bytes within lists within lists...
-        df_in["alt_allele"] = [list(q.tobytes().decode()) for q in list(alt)]
-        # explode the alt alleles into their own rows
-        df_effects = df_in.explode("alt_allele").reset_index(drop=True)
-
-        # then, iterate over rows of the dataframe, calling get_effects()
-        # for each row, and using that to build additional columns effect,
-        # impact, etc.
-
-        leffect = []
-        limpact = []
-        lref_codon = []
-        lalt_codon = []
-        laa_pos = []
-        lref_aa = []
-        lalt_aa = []
-        laa_change = []
-
-        for row in df_effects.itertuples(index=True):
-            for effect in ann.get_effects(
-                chrom=contig,
-                pos=row.position,
-                ref=row.ref_allele,
-                alt=row.alt_allele,
-                transcript_ids=[transcript],
-            ):
-                leffect.append(effect.effect)
-                limpact.append(effect.impact)
-                lref_codon.append(effect.ref_codon)
-                lalt_codon.append(effect.alt_codon)
-                laa_pos.append(effect.aa_pos)
-                lref_aa.append(effect.ref_aa)
-                lalt_aa.append(effect.alt_aa)
-                laa_change.append(effect.aa_change)
-
-        df_effects["effect"] = leffect
-        df_effects["impact"] = limpact
-        df_effects["ref_codon"] = lref_codon
-        df_effects["alt_codon"] = lalt_codon
-        df_effects["aa_pos"] = laa_pos
-        df_effects["ref_aa"] = lref_aa
-        df_effects["alt_aa"] = lalt_aa
-        df_effects["aa_change"] = laa_change
+        df_effects = ann.get_effects(transcript=transcript, variants=df_variants)
 
         return df_effects
 
@@ -761,12 +731,16 @@ class Ag3:
 
         """
         # get feature details (don't need to set up an annotator here)
-        geneset = self.geneset()
-        geneset = geneset.set_index("ID")
+        gs = self.geneset()
+        gs.rename(
+            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
+            inplace=True,
+        )
+        geneset = gs.set_index("feature_id")
         feature = geneset.loc[transcript]
         contig = feature.seqid
         start = feature.start
-        stop = feature.end
+        stop = feature.stop
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
