@@ -13,7 +13,6 @@ dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
 BioPython = "*"
-intervaltree = "*"
 scikit-allel = "*"
 xarray = "*"
 
