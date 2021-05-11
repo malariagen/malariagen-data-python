@@ -2,7 +2,7 @@
 name = "malariagen_data"
 version = "0.5.0"
 description = "A package for accessing MalariaGEN public data."
-authors = ["Alistair Miles <alimanfoo@googlemail.com>"]
+authors = ["Alistair Miles <alistair.miles@sanger.ac.uk>", "Chris Clarkson <cc28@sanger.ac.uk>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
