@@ -977,3 +977,33 @@ def test_gene_cnv(contig, sample_sets):
     o = ds.sel(genes=gene, samples=sample)
     assert isinstance(o, xarray.Dataset)
     assert set(o.dims) == set()
+
+
+@pytest.mark.parametrize("contig", ["2R", "X"])
+def test_gene_cnv_frequencies(contig):
+    ag3 = setup_ag3()
+    populations = {
+        "ke": "country == 'Kenya'",
+        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+    }
+    expected_cols = [
+        "seqid",
+        "start",
+        "end",
+        "strand",
+        "Name",
+        "ke_amp",
+        "ke_del",
+        "bf_2012_col_amp",
+        "bf_2012_col_del",
+    ]
+    df_genes = ag3.geneset().query(f"type == 'gene' and seqid == '{contig}'")
+
+    df = ag3.gene_cnv_frequencies(
+        contig=contig, sample_sets="v3_wild", populations=populations
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert expected_cols == df.columns.tolist()
+    assert len(df) == len(df_genes)
+    assert df.index.name == "ID"

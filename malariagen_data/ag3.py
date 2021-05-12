@@ -1570,6 +1570,55 @@ class Ag3:
 
         return ds_out
 
+    def gene_cnv_frequencies(self, contig, populations, sample_sets="v3_wild"):
+        """TODO"""
+
+        # get gene copy number data
+        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+
+        # get sample metadata
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+        # get genes
+        df_genes = self.geneset().query(f"type == 'gene' and seqid == '{contig}'")
+
+        # figure out expected copy number
+        if contig == "X":
+            is_male = (df_samples["sex_call"] == "M").values
+            expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
+        else:
+            expected_cn = 2
+
+        # setup output dataframe
+        df = df_genes.copy()
+        # drop columns we don't need
+        df.drop(columns=["source", "type", "score", "phase", "Parent"], inplace=True)
+
+        # setup intermediates
+        cn = ds_cnv["CN_mode"].values
+        is_amp = cn > expected_cn
+        is_del = (0 <= cn) & (cn <= expected_cn)
+
+        # compute population frequencies
+        for pop, query in populations.items():
+            loc_samples = df_samples.eval(query).values
+            n_samples = np.count_nonzero(loc_samples)
+            if n_samples == 0:
+                raise ValueError(f"no samples for population {pop!r}")
+            is_amp_pop = np.compress(loc_samples, is_amp, axis=1)
+            is_del_pop = np.compress(loc_samples, is_del, axis=1)
+            amp_count_pop = np.count_nonzero(is_amp_pop)
+            del_count_pop = np.count_nonzero(is_del_pop)
+            amp_freq_pop = amp_count_pop / n_samples
+            del_freq_pop = del_count_pop / n_samples
+            df[f"{pop}_amp"] = amp_freq_pop
+            df[f"{pop}_del"] = del_freq_pop
+
+        # set gene ID as index for convenience
+        df.set_index("ID", inplace=True)
+
+        return df
+
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
