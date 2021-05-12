@@ -1007,3 +1007,15 @@ def test_gene_cnv_frequencies(contig):
     assert expected_cols == df.columns.tolist()
     assert len(df) == len(df_genes)
     assert df.index.name == "ID"
+
+    # sanity checks
+    for f in ["ke_amp", "ke_del", "bf_2012_col_amp", "bf_2012_col_del"]:
+        x = df[f].values
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
+    for fa, fd in [["ke_amp", "ke_del"], ["bf_2012_col_amp", "bf_2012_col_del"]]:
+        a = df[fa].values
+        d = df[fd].values
+        x = a + d
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)

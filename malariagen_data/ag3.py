@@ -1607,8 +1607,8 @@ class Ag3:
                 raise ValueError(f"no samples for population {pop!r}")
             is_amp_pop = np.compress(loc_samples, is_amp, axis=1)
             is_del_pop = np.compress(loc_samples, is_del, axis=1)
-            amp_count_pop = np.count_nonzero(is_amp_pop)
-            del_count_pop = np.count_nonzero(is_del_pop)
+            amp_count_pop = np.sum(is_amp_pop, axis=1)
+            del_count_pop = np.sum(is_del_pop, axis=1)
             amp_freq_pop = amp_count_pop / n_samples
             del_freq_pop = del_count_pop / n_samples
             df[f"{pop}_amp"] = amp_freq_pop
