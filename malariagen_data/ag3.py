@@ -714,7 +714,7 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
         populations : dict
             Dictionary to map population IDs to sample queries, e.g.,
-            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"
+            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -1512,7 +1512,22 @@ class Ag3:
         return ds
 
     def gene_cnv(self, contig, sample_sets="v3_wild"):
-        """TODO"""
+        """Compute modal copy number by gene, from HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
 
         # access HMM data
         ds_hmm = self.cnv_hmm(contig=contig, sample_sets=sample_sets)
@@ -1571,7 +1586,26 @@ class Ag3:
         return ds_out
 
     def gene_cnv_frequencies(self, contig, populations, sample_sets="v3_wild"):
-        """TODO"""
+        """Compute modal copy number by gene, then compute the frequency of
+        amplifications and deletions by population, from HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        populations : dict
+            Dictionary to map population IDs to sample queries, e.g.,
+            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
