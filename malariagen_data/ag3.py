@@ -1,5 +1,8 @@
+from bisect import bisect_left, bisect_right
+
 import allel
 import dask.array as da
+import numba
 import numpy as np
 import pandas
 import xarray
@@ -1507,3 +1510,109 @@ class Ag3:
             )
 
         return ds
+
+    def gene_cnv(self, contig, sample_sets="v3_wild"):
+        """TODO"""
+
+        # access HMM data
+        ds_hmm = self.cnv_hmm(contig=contig, sample_sets=sample_sets)
+        pos = ds_hmm["variant_position"].values
+        end = ds_hmm["variant_end"].values
+        cn = ds_hmm["call_CN"].values
+
+        # access genes
+        df_geneset = self.geneset()
+        df_genes = df_geneset.query(f"type == 'gene' and seqid == '{contig}'")
+
+        # setup intermediates
+        windows = []
+        modes = []
+        counts = []
+
+        # iterate over genes
+        for gene in df_genes.itertuples():
+
+            # locate windows overlapping the gene
+            loc_gene_start = bisect_left(end, gene.start)
+            loc_gene_stop = bisect_right(pos, gene.end)
+            w = loc_gene_stop - loc_gene_start
+            windows.append(w)
+
+            # slice out copy number data for the given gene
+            cn_gene = cn[loc_gene_start:loc_gene_stop]
+
+            # compute the modes
+            m, c = _cn_mode(cn_gene, vmax=12)
+            modes.append(m)
+            counts.append(c)
+
+        # combine results
+        windows = np.array(windows)
+        modes = np.vstack(modes)
+        counts = np.vstack(counts)
+
+        # build dataset
+        ds_out = xarray.Dataset(
+            coords={
+                "gene_id": (["genes"], df_genes["ID"].values),
+                "gene_start": (["genes"], df_genes["start"].values),
+                "gene_end": (["genes"], df_genes["end"].values),
+                "sample_id": (["samples"], ds_hmm["sample_id"].values),
+            },
+            data_vars={
+                "gene_windows": (["genes"], windows),
+                "gene_name": (["genes"], df_genes["Name"].values),
+                "gene_strand": (["genes"], df_genes["strand"].values),
+                "CN_mode": (["genes", "samples"], modes),
+                "CN_mode_count": (["genes", "samples"], counts),
+            },
+        )
+
+        return ds_out
+
+
+@numba.njit("Tuple((int8, int64))(int8[:], int8)")
+def _cn_mode_1d(a, vmax):
+
+    # setup intermediates
+    m = a.shape[0]
+    counts = np.zeros(vmax + 1, dtype=numba.int64)
+
+    # initialise return values
+    mode = numba.int8(-1)
+    mode_count = numba.int64(0)
+
+    # iterate over array values, keeping track of counts
+    for i in range(m):
+        v = a[i]
+        if 0 <= v <= vmax:
+            c = counts[v]
+            c += 1
+            counts[v] = c
+            if c > mode_count:
+                mode = v
+                mode_count = c
+            elif c == mode_count and v < mode:
+                # consistency with scipy.stats, break ties by taking lower value
+                mode = v
+
+    return mode, mode_count
+
+
+@numba.njit("Tuple((int8[:], int64[:]))(int8[:, :], int8)")
+def _cn_mode(a, vmax):
+
+    # setup intermediates
+    n = a.shape[1]
+
+    # setup outputs
+    modes = np.zeros(n, dtype=numba.int8)
+    counts = np.zeros(n, dtype=numba.int64)
+
+    # iterate over columns, computing modes
+    for j in range(a.shape[1]):
+        mode, count = _cn_mode_1d(a[:, j], vmax)
+        modes[j] = mode
+        counts[j] = count
+
+    return modes, counts
