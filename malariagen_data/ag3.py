@@ -1597,7 +1597,7 @@ class Ag3:
         # setup intermediates
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
-        is_del = (0 <= cn) & (cn <= expected_cn)
+        is_del = (0 <= cn) & (cn < expected_cn)
 
         # compute population frequencies
         for pop, query in populations.items():
