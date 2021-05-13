@@ -27,7 +27,7 @@ def gff3_parse_attributes(attributes_string):
 
 
 gff3_cols = (
-    "seqid",
+    "contig",
     "source",
     "type",
     "start",
