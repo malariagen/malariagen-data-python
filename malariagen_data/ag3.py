@@ -406,7 +406,8 @@ class Ag3:
         contig : str
             Chromosome arm, e.g., "3R".
         field : {"POS", "REF", "ALT"}, optional
-            Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a tuple.
+            Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a
+            tuple.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str
@@ -723,7 +724,8 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any populations are dropped from the result.
+            If True, variants with no alternate allele calls in any populations are dropped from
+            the result.
 
         Returns
         -------
