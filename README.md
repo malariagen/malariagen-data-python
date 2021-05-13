@@ -72,6 +72,12 @@ $ poetry publish
 ## Release notes
 
 
+### 0.6.0
+
+* Add `Ag3.gene_cnv()` and `Ag3.gene_cnv_frequencies()`.
+* Improvements and maintenance to `Ag3.snp_effects()` and `Ag3.snp_allele_frequencies()`.
+
+
 ### 0.5.0
 
 * Add `Ag3.snp_allele_frequencies()`.
