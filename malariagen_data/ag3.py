@@ -659,7 +659,7 @@ class Ag3:
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(
-            contig=feature.seqid, site_mask=site_mask, site_filters=site_filters
+            contig=feature.contig, site_mask=site_mask, site_filters=site_filters
         )
 
         # sites are dask arrays, turn pos into sorted index
@@ -740,7 +740,7 @@ class Ag3:
         )
         geneset = gs.set_index("feature_id")
         feature = geneset.loc[transcript]
-        contig = feature.seqid
+        contig = feature.contig
         start = feature.start
         stop = feature.stop
 

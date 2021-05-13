@@ -309,7 +309,7 @@ def test_geneset():
     df = ag3.geneset()
     assert isinstance(df, pd.DataFrame)
     gff3_cols = [
-        "seqid",
+        "contig",
         "source",
         "type",
         "start",

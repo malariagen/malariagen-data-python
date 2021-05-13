@@ -114,14 +114,14 @@ class Annotator(object):
         laa_change = []
 
         # Now iterate over the transcript alt alleles
-        feature_seqid = feature.seqid
+        feature_contig = feature.contig
         feature_start = feature.start
         feature_stop = feature.end
         feature_strand = feature.strand
         for row in variants.itertuples(index=True):
 
             # some parameters
-            chrom = feature_seqid
+            chrom = feature_contig
             pos = row.position
             ref = row.ref_allele
             alt = row.alt_allele
