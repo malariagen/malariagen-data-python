@@ -1,5 +1,8 @@
+from bisect import bisect_left, bisect_right
+
 import allel
 import dask.array as da
+import numba
 import numpy as np
 import pandas
 import xarray
@@ -723,7 +726,7 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
         populations : dict
             Dictionary to map population IDs to sample queries, e.g.,
-            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"
+            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -1524,3 +1527,192 @@ class Ag3:
             )
 
         return ds
+
+    def gene_cnv(self, contig, sample_sets="v3_wild"):
+        """Compute modal copy number by gene, from HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        # access HMM data
+        ds_hmm = self.cnv_hmm(contig=contig, sample_sets=sample_sets)
+        pos = ds_hmm["variant_position"].values
+        end = ds_hmm["variant_end"].values
+        cn = ds_hmm["call_CN"].values
+
+        # access genes
+        df_geneset = self.geneset()
+        df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
+
+        # setup intermediates
+        windows = []
+        modes = []
+        counts = []
+
+        # iterate over genes
+        for gene in df_genes.itertuples():
+
+            # locate windows overlapping the gene
+            loc_gene_start = bisect_left(end, gene.start)
+            loc_gene_stop = bisect_right(pos, gene.end)
+            w = loc_gene_stop - loc_gene_start
+            windows.append(w)
+
+            # slice out copy number data for the given gene
+            cn_gene = cn[loc_gene_start:loc_gene_stop]
+
+            # compute the modes
+            m, c = _cn_mode(cn_gene, vmax=12)
+            modes.append(m)
+            counts.append(c)
+
+        # combine results
+        windows = np.array(windows)
+        modes = np.vstack(modes)
+        counts = np.vstack(counts)
+
+        # build dataset
+        ds_out = xarray.Dataset(
+            coords={
+                "gene_id": (["genes"], df_genes["ID"].values),
+                "gene_start": (["genes"], df_genes["start"].values),
+                "gene_end": (["genes"], df_genes["end"].values),
+                "sample_id": (["samples"], ds_hmm["sample_id"].values),
+            },
+            data_vars={
+                "gene_windows": (["genes"], windows),
+                "gene_name": (["genes"], df_genes["Name"].values),
+                "gene_strand": (["genes"], df_genes["strand"].values),
+                "CN_mode": (["genes", "samples"], modes),
+                "CN_mode_count": (["genes", "samples"], counts),
+            },
+        )
+
+        return ds_out
+
+    def gene_cnv_frequencies(self, contig, populations, sample_sets="v3_wild"):
+        """Compute modal copy number by gene, then compute the frequency of
+        amplifications and deletions by population, from HMM data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        populations : dict
+            Dictionary to map population IDs to sample queries, e.g.,
+            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+
+        # get gene copy number data
+        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+
+        # get sample metadata
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+        # get genes
+        df_genes = self.geneset().query(f"type == 'gene' and contig == '{contig}'")
+
+        # figure out expected copy number
+        if contig == "X":
+            is_male = (df_samples["sex_call"] == "M").values
+            expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
+        else:
+            expected_cn = 2
+
+        # setup output dataframe
+        df = df_genes.copy()
+        # drop columns we don't need
+        df.drop(columns=["source", "type", "score", "phase", "Parent"], inplace=True)
+
+        # setup intermediates
+        cn = ds_cnv["CN_mode"].values
+        is_amp = cn > expected_cn
+        is_del = (0 <= cn) & (cn < expected_cn)
+
+        # compute population frequencies
+        for pop, query in populations.items():
+            loc_samples = df_samples.eval(query).values
+            n_samples = np.count_nonzero(loc_samples)
+            if n_samples == 0:
+                raise ValueError(f"no samples for population {pop!r}")
+            is_amp_pop = np.compress(loc_samples, is_amp, axis=1)
+            is_del_pop = np.compress(loc_samples, is_del, axis=1)
+            amp_count_pop = np.sum(is_amp_pop, axis=1)
+            del_count_pop = np.sum(is_del_pop, axis=1)
+            amp_freq_pop = amp_count_pop / n_samples
+            del_freq_pop = del_count_pop / n_samples
+            df[f"{pop}_amp"] = amp_freq_pop
+            df[f"{pop}_del"] = del_freq_pop
+
+        # set gene ID as index for convenience
+        df.set_index("ID", inplace=True)
+
+        return df
+
+
+@numba.njit("Tuple((int8, int64))(int8[:], int8)")
+def _cn_mode_1d(a, vmax):
+
+    # setup intermediates
+    m = a.shape[0]
+    counts = np.zeros(vmax + 1, dtype=numba.int64)
+
+    # initialise return values
+    mode = numba.int8(-1)
+    mode_count = numba.int64(0)
+
+    # iterate over array values, keeping track of counts
+    for i in range(m):
+        v = a[i]
+        if 0 <= v <= vmax:
+            c = counts[v]
+            c += 1
+            counts[v] = c
+            if c > mode_count:
+                mode = v
+                mode_count = c
+            elif c == mode_count and v < mode:
+                # consistency with scipy.stats, break ties by taking lower value
+                mode = v
+
+    return mode, mode_count
+
+
+@numba.njit("Tuple((int8[:], int64[:]))(int8[:, :], int8)")
+def _cn_mode(a, vmax):
+
+    # setup intermediates
+    n = a.shape[1]
+
+    # setup outputs
+    modes = np.zeros(n, dtype=numba.int8)
+    counts = np.zeros(n, dtype=numba.int64)
+
+    # iterate over columns, computing modes
+    for j in range(a.shape[1]):
+        mode, count = _cn_mode_1d(a[:, j], vmax)
+        modes[j] = mode
+        counts[j] = count
+
+    return modes, counts

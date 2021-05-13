@@ -1,12 +1,17 @@
+import random
+
 import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
+import scipy.stats
 import xarray
 import zarr
+from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Ag3
+from malariagen_data.ag3 import _cn_mode
 
 expected_species = {
     "gambiae",
@@ -865,3 +870,153 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_genotype"].sum(axis=1)
     assert isinstance(d2, xarray.DataArray)
+
+
+@pytest.mark.parametrize("rows", [10, 100, 1000])
+@pytest.mark.parametrize("cols", [10, 100, 1000])
+@pytest.mark.parametrize("vmax", [2, 12, 100])
+def test_cn_mode(rows, cols, vmax):
+    """Test the numba-optimised function for computing modal copy number."""
+
+    a = np.random.randint(0, vmax, size=(rows * cols), dtype="i1").reshape(rows, cols)
+    expect = scipy.stats.mode(a, axis=0)
+    modes, counts = _cn_mode(a, vmax)
+    assert_array_equal(expect.mode.squeeze(), modes)
+    assert_array_equal(expect.count.squeeze(), counts)
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "v3_wild"]
+)
+@pytest.mark.parametrize("contig", ["2R", "X"])
+def test_gene_cnv(contig, sample_sets):
+    ag3 = setup_ag3()
+
+    ds = ag3.gene_cnv(contig=contig, sample_sets=sample_sets)
+
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "CN_mode",
+        "CN_mode_count",
+        "gene_windows",
+        "gene_name",
+        "gene_strand",
+    }
+    assert expected_data_vars == set(ds.data_vars)
+
+    expected_coords = {
+        "gene_id",
+        "gene_start",
+        "gene_end",
+        "sample_id",
+    }
+    assert expected_coords == set(ds.coords)
+
+    # check dimensions
+    assert {"samples", "genes"} == set(ds.dims)
+
+    # check dim lengths
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    n_samples = len(df_samples)
+    assert n_samples == ds.dims["samples"]
+    df_geneset = ag3.geneset()
+    df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
+    n_genes = len(df_genes)
+    assert n_genes == ds.dims["genes"]
+
+    # check IDs
+    assert df_samples["sample_id"].tolist() == ds["sample_id"].values.tolist()
+    assert df_genes["ID"].tolist() == ds["gene_id"].values.tolist()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, np.ndarray)
+
+        if f.startswith("gene_"):
+            assert 1 == x.ndim, f
+            assert ("genes",) == x.dims
+        elif f.startswith("CN"):
+            assert 2 == x.ndim, f
+            assert ("genes", "samples") == x.dims
+        elif f.startswith("sample_"):
+            assert 1 == x.ndim
+            assert ("samples",) == x.dims
+            assert (n_samples,) == x.shape
+
+    # check can setup computations
+    d1 = ds["gene_start"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["CN_mode"].max(axis=1)
+    assert isinstance(d2, xarray.DataArray)
+
+    # sanity checks
+    x = ds["gene_windows"].values
+    y = ds["CN_mode_count"].values.max(axis=1)
+    assert np.all(x >= y)
+    z = ds["CN_mode"].values
+    assert np.max(z) <= 12
+    assert np.min(z) >= -1
+
+    # check label-based indexing
+    # pick a random gene and sample ID
+    gene = random.choice(df_genes["ID"].tolist())
+    sample = random.choice(df_samples["sample_id"].tolist())
+    ds = ds.set_index(genes="gene_id", samples="sample_id")
+    o = ds.sel(genes=gene)
+    assert isinstance(o, xarray.Dataset)
+    assert set(o.dims) == {"samples"}
+    assert o.dims["samples"] == ds.dims["samples"]
+    o = ds.sel(samples=sample)
+    assert isinstance(o, xarray.Dataset)
+    assert set(o.dims) == {"genes"}
+    assert o.dims["genes"] == ds.dims["genes"]
+    o = ds.sel(genes=gene, samples=sample)
+    assert isinstance(o, xarray.Dataset)
+    assert set(o.dims) == set()
+
+
+@pytest.mark.parametrize("contig", ["2R", "X"])
+def test_gene_cnv_frequencies(contig):
+    ag3 = setup_ag3()
+    populations = {
+        "ke": "country == 'Kenya'",
+        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+    }
+    expected_cols = [
+        "contig",
+        "start",
+        "end",
+        "strand",
+        "Name",
+        "description",
+        "ke_amp",
+        "ke_del",
+        "bf_2012_col_amp",
+        "bf_2012_col_del",
+    ]
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+
+    df = ag3.gene_cnv_frequencies(
+        contig=contig, sample_sets="v3_wild", populations=populations
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert expected_cols == df.columns.tolist()
+    assert len(df) == len(df_genes)
+    assert df.index.name == "ID"
+
+    # sanity checks
+    for f in ["ke_amp", "ke_del", "bf_2012_col_amp", "bf_2012_col_del"]:
+        x = df[f].values
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
+    for fa, fd in [["ke_amp", "ke_del"], ["bf_2012_col_amp", "bf_2012_col_del"]]:
+        a = df[fa].values
+        d = df[fd].values
+        x = a + d
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
