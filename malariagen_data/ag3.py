@@ -658,20 +658,31 @@ class Ag3:
         feature = gs[gs["ID"] == transcript].squeeze()
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(
-            contig=feature.contig, site_mask=site_mask, site_filters=site_filters
-        )
+        pos, ref, alt = self.snp_sites(contig=feature.contig)
 
         # sites are dask arrays, turn pos into sorted index
         pos = allel.SortedIndex(pos.compute())
 
         # locate transcript range
-        loc = pos.locate_range(feature.start, feature.end)
+        loc_feature = pos.locate_range(feature.start, feature.end)
 
         # dask compute on the sliced arrays to speed things up
-        pos = pos[loc]
-        ref = ref[loc].compute()
-        alt = alt[loc].compute()
+        pos = pos[loc_feature]
+        ref = ref[loc_feature].compute()
+        alt = alt[loc_feature].compute()
+
+        # apply site mask if requested
+        if site_mask is not None:
+            # access filters for whole contig
+            loc_sites = self.site_filters(
+                contig=feature.contig, mask=site_mask, analysis=site_filters
+            )
+            # slice to feature and compute
+            loc_sites = loc_sites[loc_feature].compute()
+            # apply site filter
+            pos = pos[loc_sites]
+            ref = ref[loc_sites]
+            alt = alt[loc_sites]
 
         # build an initial dataframe with contig, pos, ref, alt columns
         cols = {
@@ -741,16 +752,13 @@ class Ag3:
         geneset = gs.set_index("feature_id")
         feature = geneset.loc[transcript]
         contig = feature.contig
-        start = feature.start
-        stop = feature.stop
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
+        pos, ref, alt = self.snp_sites(contig=contig)
 
-        # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(pos.compute())
         # locate transcript range
-        loc = pos.locate_range(start, stop)
+        pos = allel.SortedIndex(pos.compute())
+        loc_feature = pos.locate_range(feature.start, feature.stop)
 
         # we want to grab all metadata then get idx for samples we want
         df_meta = self.sample_metadata(
@@ -762,15 +770,27 @@ class Ag3:
             contig=contig,
             sample_sets=sample_sets,
             field="GT",
-            site_mask=site_mask,
-            site_filters=site_filters,
         )
 
-        # chop everything to loc
-        gt = gt[loc].compute()
-        pos = pos[loc]
-        ref = ref[loc].compute()
-        alt = alt[loc].compute()
+        # slice everything to feature location
+        pos = pos[loc_feature]
+        ref = ref[loc_feature].compute()
+        alt = alt[loc_feature].compute()
+        gt = gt[loc_feature].compute()
+
+        # apply site mask if requested
+        if site_mask is not None:
+            # access filters for whole contig
+            loc_sites = self.site_filters(
+                contig=feature.contig, mask=site_mask, analysis=site_filters
+            )
+            # slice to feature and compute
+            loc_sites = loc_sites[loc_feature].compute()
+            # apply site filter
+            pos = pos[loc_sites]
+            ref = ref[loc_sites]
+            alt = alt[loc_sites]
+            gt = gt[loc_sites]
 
         # count alleles
         afs = dict()
