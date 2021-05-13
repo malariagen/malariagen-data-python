@@ -1,9 +1,31 @@
-from __future__ import division, print_function
-
 import collections
 import operator
 
 from Bio.Seq import Seq
+
+VariantEffect = collections.namedtuple(
+    "VariantEffect",
+    (
+        "effect",
+        "impact",
+        "chrom",
+        "pos",
+        "ref",
+        "alt",
+        "vlen",
+        "ref_start",
+        "ref_stop",
+        "strand",
+        "ref_codon",
+        "alt_codon",
+        "codon_change",
+        "aa_pos",
+        "ref_aa",
+        "alt_aa",
+        "aa_change",
+    ),
+)
+null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 
 class Annotator(object):
@@ -66,120 +88,90 @@ class Annotator(object):
 
         return ref_start, ref_stop
 
+    def get_effects(self, transcript, variants):
 
-VariantEffect = collections.namedtuple(
-    "VariantEffect",
-    (
-        "effect",
-        "impact",
-        "chrom",
-        "pos",
-        "ref",
-        "alt",
-        "vlen",
-        "ref_start",
-        "ref_stop",
-        "strand",
-        "ref_codon",
-        "alt_codon",
-        "codon_change",
-        "aa_pos",
-        "ref_aa",
-        "alt_aa",
-        "aa_change",
-    ),
-)
-null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
+        children = self.get_children(transcript).sort_values("start")
+        feature = self.get_feature(transcript)
 
+        # make sure all alleles are uppercase
+        variants.ref_allele = variants.ref_allele.str.upper()
+        variants.alt_allele = variants.alt_allele.str.upper()
 
-def get_effects(ann, transcript, variants):
+        # get transcript children
+        cdss = list(children[children.type == "CDS"].itertuples())
+        exons = list(children[children.type == "exon"].itertuples())
+        utr5 = list(children[children.type == "five_prime_UTR"].itertuples())
+        utr3 = list(children[children.type == "three_prime_UTR"].itertuples())
+        introns = [(x.end + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
 
-    children = ann.get_children(transcript).sort_values("start")
-    feature = ann.get_feature(transcript)
+        leffect = []
+        limpact = []
+        lref_codon = []
+        lalt_codon = []
+        laa_pos = []
+        lref_aa = []
+        lalt_aa = []
+        laa_change = []
 
-    # make sure all alleles are uppercase
-    variants.ref_allele = variants.ref_allele.str.upper()
-    variants.alt_allele = variants.alt_allele.str.upper()
+        # Now iterate over the transcript alt alleles
+        feature_contig = feature.contig
+        feature_start = feature.start
+        feature_stop = feature.end
+        feature_strand = feature.strand
+        for row in variants.itertuples(index=True):
 
-    # get transcript children
-    cdss = list(children[children.type == "CDS"].itertuples())
-    exons = list(children[children.type == "exon"].itertuples())
-    utr5 = list(children[children.type == "five_prime_UTR"].itertuples())
-    utr3 = list(children[children.type == "three_prime_UTR"].itertuples())
-    introns = [(x.end + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
+            # some parameters
+            chrom = feature_contig
+            pos = row.position
+            ref = row.ref_allele
+            alt = row.alt_allele
 
-    leffect = []
-    limpact = []
-    lref_codon = []
-    lalt_codon = []
-    laa_pos = []
-    lref_aa = []
-    lalt_aa = []
-    laa_change = []
+            # obtain start and stop coordinates of the reference allele
+            ref_start, ref_stop = self.get_ref_allele_coords(chrom, pos, ref)
 
-    # Now iterate over the transcript alt alleles
-    feature_seqid = feature.seqid
-    feature_start = feature.start
-    feature_stop = feature.end
-    feature_strand = feature.strand
-    for row in variants.itertuples(index=True):
+            # setup the common effect parameters
+            base_effect = null_effect._replace(
+                chrom=chrom,
+                pos=pos,
+                ref=ref,
+                alt=alt,
+                vlen=len(alt) - len(ref),
+                ref_start=ref_start,
+                ref_stop=ref_stop,
+                strand=feature_strand,
+            )
 
-        # some parameters
-        chrom = feature_seqid
-        pos = row.position
-        ref = row.ref_allele
-        alt = row.alt_allele
+            # reference allele falls within current transcript
+            assert feature_start <= ref_start <= ref_stop <= feature_stop
 
-        # obtain start and stop coordinates of the reference allele
-        ref_start, ref_stop = ann.get_ref_allele_coords(chrom, pos, ref)
+            effect = _get_within_transcript_effect(
+                ann=self,
+                base_effect=base_effect,
+                cdss=cdss,
+                utr5=utr5,
+                utr3=utr3,
+                introns=introns,
+            )
 
-        # setup the common effect parameters
-        base_effect = null_effect._replace(
-            chrom=chrom,
-            pos=pos,
-            ref=ref,
-            alt=alt,
-            vlen=len(alt) - len(ref),
-            ref_start=ref_start,
-            ref_stop=ref_stop,
-            strand=feature_strand,
-        )
+            leffect.append(effect.effect)
+            limpact.append(effect.impact)
+            lref_codon.append(effect.ref_codon)
+            lalt_codon.append(effect.alt_codon)
+            laa_pos.append(effect.aa_pos)
+            lref_aa.append(effect.ref_aa)
+            lalt_aa.append(effect.alt_aa)
+            laa_change.append(effect.aa_change)
 
-        # reference allele falls within current transcript
-        assert feature_start <= ref_start <= ref_stop <= feature_stop
+        variants["effect"] = leffect
+        variants["impact"] = limpact
+        variants["ref_codon"] = lref_codon
+        variants["alt_codon"] = lalt_codon
+        variants["aa_pos"] = laa_pos
+        variants["ref_aa"] = lref_aa
+        variants["alt_aa"] = lalt_aa
+        variants["aa_change"] = laa_change
 
-        effect = _get_within_transcript_effect(
-            ann=ann,
-            base_effect=base_effect,
-            cdss=cdss,
-            utr5=utr5,
-            utr3=utr3,
-            introns=introns,
-        )
-
-        leffect.append(effect.effect)
-        limpact.append(effect.impact)
-        lref_codon.append(effect.ref_codon)
-        lalt_codon.append(effect.alt_codon)
-        laa_pos.append(effect.aa_pos)
-        lref_aa.append(effect.ref_aa)
-        lalt_aa.append(effect.alt_aa)
-        laa_change.append(effect.aa_change)
-
-    variants["effect"] = leffect
-    variants["impact"] = limpact
-    variants["ref_codon"] = lref_codon
-    variants["alt_codon"] = lalt_codon
-    variants["aa_pos"] = laa_pos
-    variants["ref_aa"] = lref_aa
-    variants["alt_aa"] = lalt_aa
-    variants["aa_change"] = laa_change
-
-    return variants
-
-
-# add as method
-Annotator.get_effects = get_effects
+        return variants
 
 
 def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
@@ -201,7 +193,9 @@ def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
         if start <= ref_start and stop >= ref_stop
     ]
     if within_introns:
-        return _get_intron_effect(base_effect=base_effect, intron=within_introns[0])
+        return _get_within_intron_effect(
+            base_effect=base_effect, intron=within_introns[0]
+        )
 
     within_utr5 = [x for x in utr5 if x.start <= ref_start and x.end >= ref_stop]
     if within_utr5:
@@ -214,7 +208,7 @@ def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
         return effect
 
     # if none of the above
-    effect = base_effect.replace(effect="TODO", impact="UNKNOWN")
+    effect = base_effect._replace(effect="TODO", impact="UNKNOWN")
     return effect
 
 
@@ -246,6 +240,7 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
     pos = base_effect.pos
     ref = base_effect.ref
     alt = base_effect.alt
+    strand = base_effect.strand
 
     # obtain amino acid change
     (
@@ -308,6 +303,81 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(
                 effect="NON_SYNONYMOUS_CODING", impact="MODERATE"
             )
+
+    else:
+
+        # INDELs and MNPs
+
+        if (len(alt) - len(ref)) % 3:
+
+            # N.B., this case covers both simple INDELs and complex
+            # polymorphisms
+
+            # insertion or deletion causes a frame shift
+            # e.g.: An indel size is not multple of 3
+            effect = base_effect._replace(effect="FRAME_SHIFT", impact="HIGH")
+
+        elif len(ref) == 1 and len(ref) < len(alt):
+
+            # simple insertions
+
+            # figure out if there has been a codon change or not
+            is_codon_changed = (strand == "+" and ref_aa[0] != alt_aa[0]) or (
+                strand == "-" and ref_aa[-1] != alt_aa[-1]
+            )
+
+            if is_codon_changed:
+
+                # one codon is changed and one or many codons are inserted
+                # e.g.: An insert of size multiple of three, not at codon
+                # boundary
+                effect = base_effect._replace(
+                    effect="CODON_CHANGE_PLUS_CODON_INSERTION", impact="MODERATE"
+                )
+
+            else:
+
+                # one or many codons are inserted
+                # e.g.: An insert multiple of three in a codon boundary
+                effect = base_effect._replace(
+                    effect="CODON_INSERTION", impact="MODERATE"
+                )
+
+        elif len(alt) == 1 and len(ref) > len(alt):
+
+            # simple deletions
+
+            # figure out if there has been a codon change or not
+            is_codon_changed = (strand == "+" and ref_aa[0] != alt_aa[0]) or (
+                strand == "-" and ref_aa[-1] != alt_aa[-1]
+            )
+
+            if is_codon_changed:
+
+                # one codon is changed and one or many codons are deleted
+                # e.g.: A deletion of size multiple of three, not at codon
+                # boundary
+                effect = base_effect._replace(
+                    effect="CODON_CHANGE_PLUS_CODON_DELETION", impact="MODERATE"
+                )
+
+            else:
+
+                # one or many codons are deleted
+                # e.g.: A deletions multiple of three in a codon boundary
+                effect = base_effect._replace(
+                    effect="CODON_DELETION", impact="MODERATE"
+                )
+
+        elif len(ref) == len(alt):
+
+            # MNPs
+            effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
+
+        else:
+
+            # TODO in-frame complex variation (MNP + INDEL)
+            effect = base_effect._replace(effect="TODO", impact="UNKNOWN")
 
     return effect
 
@@ -450,42 +520,6 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
         ref_cds_stop = offset + (cds.end - ref_start)
 
     return ref_cds_start, ref_cds_stop
-
-
-def _get_intron_effect(base_effect, intron):
-
-    # convenience
-    ref_start = base_effect.ref_start
-    ref_stop = base_effect.ref_stop
-    intron_start, intron_stop = intron
-
-    if ref_start < intron_start <= ref_stop <= intron_stop:
-
-        # TODO
-        # reference allele overhangs the start of the current intron
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    elif intron_start <= ref_start <= intron_stop < ref_stop:
-
-        # TODO
-        # reference allele overhangs the end of the current intron
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    elif ref_start < intron_start <= intron_stop < ref_stop:
-
-        # TODO
-        # reference allele entirely overlaps the current intron and
-        # overhangs at both ends
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    else:
-
-        # reference allele falls within current intron
-        assert intron_start <= ref_start <= ref_stop <= intron_stop
-        return _get_within_intron_effect(base_effect, intron)
 
 
 def _get_within_intron_effect(base_effect, intron):
