@@ -1554,7 +1554,7 @@ class Ag3:
 
         # access genes
         df_geneset = self.geneset()
-        df_genes = df_geneset.query(f"type == 'gene' and seqid == '{contig}'")
+        df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
 
         # setup intermediates
         windows = []
@@ -1631,7 +1631,7 @@ class Ag3:
         df_samples = self.sample_metadata(sample_sets=sample_sets)
 
         # get genes
-        df_genes = self.geneset().query(f"type == 'gene' and seqid == '{contig}'")
+        df_genes = self.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
         # figure out expected copy number
         if contig == "X":

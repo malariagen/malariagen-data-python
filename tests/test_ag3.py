@@ -922,7 +922,7 @@ def test_gene_cnv(contig, sample_sets):
     n_samples = len(df_samples)
     assert n_samples == ds.dims["samples"]
     df_geneset = ag3.geneset()
-    df_genes = df_geneset.query(f"type == 'gene' and seqid == '{contig}'")
+    df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
     n_genes = len(df_genes)
     assert n_genes == ds.dims["genes"]
 
@@ -987,7 +987,7 @@ def test_gene_cnv_frequencies(contig):
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
     expected_cols = [
-        "seqid",
+        "contig",
         "start",
         "end",
         "strand",
@@ -997,7 +997,7 @@ def test_gene_cnv_frequencies(contig):
         "bf_2012_col_amp",
         "bf_2012_col_del",
     ]
-    df_genes = ag3.geneset().query(f"type == 'gene' and seqid == '{contig}'")
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
     df = ag3.gene_cnv_frequencies(
         contig=contig, sample_sets="v3_wild", populations=populations
