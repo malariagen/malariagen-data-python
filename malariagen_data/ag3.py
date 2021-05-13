@@ -810,13 +810,13 @@ class Ag3:
         # build df
         df = pandas.DataFrame(cols)
 
+        # add max allele freq column
+        df["max_af"] = df[populations].max(axis=1)
+
         # drop invariants
         if drop_invariant:
-            loc_variant = df[populations].sum(axis=1) > 0
+            loc_variant = df["max_af"] > 0
             df = df[loc_variant]
-
-        # add max freq column
-        df["maximum"] = df[populations].max(axis=1)
 
         return df
 
