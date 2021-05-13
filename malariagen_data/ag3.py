@@ -406,7 +406,8 @@ class Ag3:
         contig : str
             Chromosome arm, e.g., "3R".
         field : {"POS", "REF", "ALT"}, optional
-            Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a tuple.
+            Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a
+            tuple.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str
@@ -567,7 +568,7 @@ class Ag3:
         d = from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
-    def geneset(self, attributes=("ID", "Parent", "Name")):
+    def geneset(self, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations (AgamP4.12).
 
         Parameters
@@ -657,20 +658,31 @@ class Ag3:
         feature = gs[gs["ID"] == transcript].squeeze()
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(
-            contig=feature.seqid, site_mask=site_mask, site_filters=site_filters
-        )
+        pos, ref, alt = self.snp_sites(contig=feature.contig)
 
         # sites are dask arrays, turn pos into sorted index
         pos = allel.SortedIndex(pos.compute())
 
         # locate transcript range
-        loc = pos.locate_range(feature.start, feature.end)
+        loc_feature = pos.locate_range(feature.start, feature.end)
 
         # dask compute on the sliced arrays to speed things up
-        pos = pos[loc]
-        ref = ref[loc].compute()
-        alt = alt[loc].compute()
+        pos = pos[loc_feature]
+        ref = ref[loc_feature].compute()
+        alt = alt[loc_feature].compute()
+
+        # apply site mask if requested
+        if site_mask is not None:
+            # access filters for whole contig
+            loc_sites = self.site_filters(
+                contig=feature.contig, mask=site_mask, analysis=site_filters
+            )
+            # slice to feature and compute
+            loc_sites = loc_sites[loc_feature].compute()
+            # apply site filter
+            pos = pos[loc_sites]
+            ref = ref[loc_sites]
+            alt = alt[loc_sites]
 
         # build an initial dataframe with contig, pos, ref, alt columns
         cols = {
@@ -723,7 +735,8 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any populations are dropped from the result.
+            If True, variants with no alternate allele calls in any populations are dropped from
+            the result.
 
         Returns
         -------
@@ -731,24 +744,16 @@ class Ag3:
 
         """
         # get feature details (don't need to set up an annotator here)
-        gs = self.geneset()
-        gs.rename(
-            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
-            inplace=True,
-        )
-        geneset = gs.set_index("feature_id")
+        geneset = self.geneset().set_index("ID")
         feature = geneset.loc[transcript]
-        contig = feature.seqid
-        start = feature.start
-        stop = feature.stop
+        contig = feature.contig
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(contig=contig, site_mask=site_mask)
+        pos, ref, alt = self.snp_sites(contig=contig)
 
-        # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(pos.compute())
         # locate transcript range
-        loc = pos.locate_range(start, stop)
+        pos = allel.SortedIndex(pos.compute())
+        loc_feature = pos.locate_range(feature.start, feature.end)
 
         # we want to grab all metadata then get idx for samples we want
         df_meta = self.sample_metadata(
@@ -760,15 +765,27 @@ class Ag3:
             contig=contig,
             sample_sets=sample_sets,
             field="GT",
-            site_mask=site_mask,
-            site_filters=site_filters,
         )
 
-        # chop everything to loc
-        gt = gt[loc].compute()
-        pos = pos[loc]
-        ref = ref[loc].compute()
-        alt = alt[loc].compute()
+        # slice everything to feature location
+        pos = pos[loc_feature]
+        ref = ref[loc_feature].compute()
+        alt = alt[loc_feature].compute()
+        gt = gt[loc_feature].compute()
+
+        # apply site mask if requested
+        if site_mask is not None:
+            # access filters for whole contig
+            loc_sites = self.site_filters(
+                contig=feature.contig, mask=site_mask, analysis=site_filters
+            )
+            # slice to feature and compute
+            loc_sites = loc_sites[loc_feature].compute()
+            # apply site filter
+            pos = pos[loc_sites]
+            ref = ref[loc_sites]
+            alt = alt[loc_sites]
+            gt = gt[loc_sites]
 
         # count alleles
         afs = dict()
@@ -793,13 +810,13 @@ class Ag3:
         # build df
         df = pandas.DataFrame(cols)
 
+        # add max allele freq column
+        df["max_af"] = df[populations].max(axis=1)
+
         # drop invariants
         if drop_invariant:
-            loc_variant = df[populations].sum(axis=1) > 0
+            loc_variant = df["max_af"] > 0
             df = df[loc_variant]
-
-        # add max freq column
-        df["maximum"] = df[populations].max(axis=1)
 
         return df
 

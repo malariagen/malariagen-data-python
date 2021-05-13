@@ -309,7 +309,7 @@ def test_geneset():
     df = ag3.geneset()
     assert isinstance(df, pd.DataFrame)
     gff3_cols = [
-        "seqid",
+        "contig",
         "source",
         "type",
         "start",
@@ -318,7 +318,7 @@ def test_geneset():
         "strand",
         "phase",
     ]
-    expected_cols = gff3_cols + ["ID", "Parent", "Name"]
+    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
     assert expected_cols == df.columns.tolist()
 
     # don't unpack attributes
@@ -590,7 +590,7 @@ def test_snp_allele_frequencies():
         "alt_allele",
         "ke",
         "bf_2012_col",
-        "maximum",
+        "max_af",
     ]
     # drop invariants
     df = ag3.snp_allele_frequencies(
@@ -609,9 +609,9 @@ def test_snp_allele_frequencies():
     assert df.loc[13].alt_allele == "C"
     assert df.loc[16].ke == 0
     assert df.loc[22].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
-    assert df.loc[39].maximum == pytest.approx(0.006097, abs=1e-6)
+    assert df.loc[39].max_af == pytest.approx(0.006097, abs=1e-6)
     # check invariant have been dropped
-    assert df.maximum.min() > 0
+    assert df.max_af.min() > 0
 
     populations = {
         "gm": "country == 'Gambia, The'",
@@ -623,7 +623,7 @@ def test_snp_allele_frequencies():
         "alt_allele",
         "gm",
         "mz",
-        "maximum",
+        "max_af",
     ]
     # keep invariants
     df = ag3.snp_allele_frequencies(
@@ -642,9 +642,9 @@ def test_snp_allele_frequencies():
     assert df.loc[2].alt_allele == "G"
     assert df.loc[3].gm == 0.0
     assert df.loc[4].mz == 0.0
-    assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
+    assert df.loc[72].max_af == pytest.approx(0.001792, abs=1e-6)
     # check invariant positions are still present
-    assert np.any(df.maximum == 0)
+    assert np.any(df.max_af == 0)
 
 
 @pytest.mark.parametrize(
