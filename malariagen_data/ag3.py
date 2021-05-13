@@ -568,7 +568,7 @@ class Ag3:
         d = from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
-    def geneset(self, attributes=("ID", "Parent", "Name")):
+    def geneset(self, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations (AgamP4.12).
 
         Parameters
