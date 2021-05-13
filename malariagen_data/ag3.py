@@ -744,12 +744,7 @@ class Ag3:
 
         """
         # get feature details (don't need to set up an annotator here)
-        gs = self.geneset()
-        gs.rename(
-            columns={"ID": "feature_id", "Parent": "parent_id", "end": "stop"},
-            inplace=True,
-        )
-        geneset = gs.set_index("feature_id")
+        geneset = self.geneset().set_index("ID")
         feature = geneset.loc[transcript]
         contig = feature.contig
 
@@ -758,7 +753,7 @@ class Ag3:
 
         # locate transcript range
         pos = allel.SortedIndex(pos.compute())
-        loc_feature = pos.locate_range(feature.start, feature.stop)
+        loc_feature = pos.locate_range(feature.start, feature.end)
 
         # we want to grab all metadata then get idx for samples we want
         df_meta = self.sample_metadata(
