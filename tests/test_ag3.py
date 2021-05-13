@@ -623,7 +623,7 @@ def test_snp_allele_frequencies():
         "alt_allele",
         "gm",
         "mz",
-        "maximum",
+        "max_af",
     ]
     # keep invariants
     df = ag3.snp_allele_frequencies(
@@ -642,9 +642,9 @@ def test_snp_allele_frequencies():
     assert df.loc[2].alt_allele == "G"
     assert df.loc[3].gm == 0.0
     assert df.loc[4].mz == 0.0
-    assert df.loc[72].maximum == pytest.approx(0.001792, abs=1e-6)
+    assert df.loc[72].max_af == pytest.approx(0.001792, abs=1e-6)
     # check invariant positions are still present
-    assert np.any(df.maximum == 0)
+    assert np.any(df.max_af == 0)
 
 
 @pytest.mark.parametrize(
