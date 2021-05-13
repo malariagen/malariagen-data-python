@@ -1,5 +1,3 @@
-from __future__ import division, print_function
-
 import collections
 import operator
 
@@ -201,7 +199,9 @@ def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
         if start <= ref_start and stop >= ref_stop
     ]
     if within_introns:
-        return _get_intron_effect(base_effect=base_effect, intron=within_introns[0])
+        return _get_within_intron_effect(
+            base_effect=base_effect, intron=within_introns[0]
+        )
 
     within_utr5 = [x for x in utr5 if x.start <= ref_start and x.end >= ref_stop]
     if within_utr5:
@@ -214,7 +214,7 @@ def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
         return effect
 
     # if none of the above
-    effect = base_effect.replace(effect="TODO", impact="UNKNOWN")
+    effect = base_effect._replace(effect="TODO", impact="UNKNOWN")
     return effect
 
 
@@ -450,42 +450,6 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
         ref_cds_stop = offset + (cds.end - ref_start)
 
     return ref_cds_start, ref_cds_stop
-
-
-def _get_intron_effect(base_effect, intron):
-
-    # convenience
-    ref_start = base_effect.ref_start
-    ref_stop = base_effect.ref_stop
-    intron_start, intron_stop = intron
-
-    if ref_start < intron_start <= ref_stop <= intron_stop:
-
-        # TODO
-        # reference allele overhangs the start of the current intron
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    elif intron_start <= ref_start <= intron_stop < ref_stop:
-
-        # TODO
-        # reference allele overhangs the end of the current intron
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    elif ref_start < intron_start <= intron_stop < ref_stop:
-
-        # TODO
-        # reference allele entirely overlaps the current intron and
-        # overhangs at both ends
-        effect = base_effect._replace(effect="TODO")
-        return effect
-
-    else:
-
-        # reference allele falls within current intron
-        assert intron_start <= ref_start <= ref_stop <= intron_stop
-        return _get_within_intron_effect(base_effect, intron)
 
 
 def _get_within_intron_effect(base_effect, intron):
