@@ -992,6 +992,7 @@ def test_gene_cnv_frequencies(contig):
         "end",
         "strand",
         "Name",
+        "description",
         "ke_amp",
         "ke_del",
         "bf_2012_col_amp",
