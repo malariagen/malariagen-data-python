@@ -585,7 +585,7 @@ def test_snp_effects():
 
 def test_snp_allele_frequencies():
     ag3 = setup_ag3()
-    populations = {
+    cohorts = {
         "ke": "country == 'Kenya'",
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
@@ -600,7 +600,7 @@ def test_snp_allele_frequencies():
     # drop invariants
     df = ag3.snp_allele_frequencies(
         transcript="AGAP009194-RA",
-        populations=populations,
+        cohorts=cohorts,
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=True,
@@ -618,7 +618,7 @@ def test_snp_allele_frequencies():
     # check invariant have been dropped
     assert df.max_af.min() > 0
 
-    populations = {
+    cohorts = {
         "gm": "country == 'Gambia, The'",
         "mz": "country == 'Mozambique' and year == 2004",
     }
@@ -633,7 +633,7 @@ def test_snp_allele_frequencies():
     # keep invariants
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
-        populations=populations,
+        cohorts=cohorts,
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=False,
@@ -982,7 +982,7 @@ def test_gene_cnv(contig, sample_sets):
 @pytest.mark.parametrize("contig", ["2R", "X"])
 def test_gene_cnv_frequencies(contig):
     ag3 = setup_ag3()
-    populations = {
+    cohorts = {
         "ke": "country == 'Kenya'",
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
@@ -1000,9 +1000,7 @@ def test_gene_cnv_frequencies(contig):
     ]
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
-    df = ag3.gene_cnv_frequencies(
-        contig=contig, sample_sets="v3_wild", populations=populations
-    )
+    df = ag3.gene_cnv_frequencies(contig=contig, sample_sets="v3_wild", cohorts=cohorts)
 
     assert isinstance(df, pd.DataFrame)
     assert expected_cols == df.columns.tolist()
