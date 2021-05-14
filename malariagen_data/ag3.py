@@ -711,21 +711,21 @@ class Ag3:
     def snp_allele_frequencies(
         self,
         transcript,
-        populations,
+        cohorts,
         site_mask=None,
         site_filters="dt_20200416",
         species_calls=("20200422", "aim"),
         sample_sets="v3_wild",
         drop_invariant=True,
     ):
-        """Compute per variant population allele frequencies for a gene transcript.
+        """Compute per variant allele frequencies for a gene transcript.
 
         Parameters
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        populations : dict
-            Dictionary to map population IDs to sample queries, e.g.,
+        cohorts : dict
+            Dictionary to map cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
@@ -738,7 +738,7 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any populations are dropped from
+            If True, variants with no alternate allele calls in any cohorts are dropped from
             the result.
 
         Returns
@@ -792,13 +792,13 @@ class Ag3:
 
         # count alleles
         afs = dict()
-        for pop, query in populations.items():
-            loc_pop = df_meta.eval(query).values
-            gt_pop = da.compress(loc_pop, gt, axis=1)
-            ac_pop = (
-                allel.GenotypeDaskArray(gt_pop).count_alleles(max_allele=3).compute()
+        for coh, query in cohorts.items():
+            loc_coh = df_meta.eval(query).values
+            gt_coh = da.compress(loc_coh, gt, axis=1)
+            ac_coh = (
+                allel.GenotypeDaskArray(gt_coh).count_alleles(max_allele=3).compute()
             )
-            afs[pop] = ac_pop.to_frequencies()
+            afs[coh] = ac_coh.to_frequencies()
 
         # set up columns
         cols = {
@@ -807,14 +807,14 @@ class Ag3:
             "alt_allele": alt.astype("U1").flatten(),
         }
 
-        for pop in populations:
-            cols[pop] = afs[pop][:, 1:].flatten()
+        for coh in cohorts:
+            cols[coh] = afs[coh][:, 1:].flatten()
 
         # build df
         df = pandas.DataFrame(cols)
 
         # add max allele freq column
-        df["max_af"] = df[populations].max(axis=1)
+        df["max_af"] = df[cohorts].max(axis=1)
 
         # drop invariants
         if drop_invariant:
@@ -1602,16 +1602,16 @@ class Ag3:
 
         return ds_out
 
-    def gene_cnv_frequencies(self, contig, populations, sample_sets="v3_wild"):
+    def gene_cnv_frequencies(self, contig, cohorts=None, sample_sets="v3_wild"):
         """Compute modal copy number by gene, then compute the frequency of
-        amplifications and deletions by population, from HMM data.
+        amplifications and deletions in one or more cohorts, from HMM data.
 
         Parameters
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        populations : dict
-            Dictionary to map population IDs to sample queries, e.g.,
+        cohorts : dict
+            Dictionary to map cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
@@ -1650,20 +1650,20 @@ class Ag3:
         is_amp = cn > expected_cn
         is_del = (0 <= cn) & (cn < expected_cn)
 
-        # compute population frequencies
-        for pop, query in populations.items():
+        # compute cohort frequencies
+        for coh, query in cohorts.items():
             loc_samples = df_samples.eval(query).values
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
-                raise ValueError(f"no samples for population {pop!r}")
-            is_amp_pop = np.compress(loc_samples, is_amp, axis=1)
-            is_del_pop = np.compress(loc_samples, is_del, axis=1)
-            amp_count_pop = np.sum(is_amp_pop, axis=1)
-            del_count_pop = np.sum(is_del_pop, axis=1)
-            amp_freq_pop = amp_count_pop / n_samples
-            del_freq_pop = del_count_pop / n_samples
-            df[f"{pop}_amp"] = amp_freq_pop
-            df[f"{pop}_del"] = del_freq_pop
+                raise ValueError(f"no samples for cohort {coh!r}")
+            is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
+            is_del_coh = np.compress(loc_samples, is_del, axis=1)
+            amp_count_coh = np.sum(is_amp_coh, axis=1)
+            del_count_coh = np.sum(is_del_coh, axis=1)
+            amp_freq_coh = amp_count_coh / n_samples
+            del_freq_coh = del_count_coh / n_samples
+            df[f"{coh}_amp"] = amp_freq_coh
+            df[f"{coh}_del"] = del_freq_coh
 
         # set gene ID as index for convenience
         df.set_index("ID", inplace=True)
