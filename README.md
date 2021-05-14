@@ -72,18 +72,31 @@ $ poetry publish
 ## Release notes
 
 
+### 0.7.0
+
+* Rename parameter "populations" to "cohorts" to be consistent with
+  sgkit terminology.
+
+
 ### 0.6.0
 
 * Add `Ag3.gene_cnv()` and `Ag3.gene_cnv_frequencies()`.
-* Improvements and maintenance to `Ag3.snp_effects()` and `Ag3.snp_allele_frequencies()`.
+
+* Improvements and maintenance to `Ag3.snp_effects()` and
+  `Ag3.snp_allele_frequencies()`.
 
 
 ### 0.5.0
 
 * Add `Ag3.snp_allele_frequencies()`.
+
 * Add `Ag3.snp_effects()`.
-* Add `Ag3.cnv_hmm()`, `Ag3.cnv_coverage_calls()` and `Ag3.cnv_discordant_read_calls()`.
+
+* Add `Ag3.cnv_hmm()`, `Ag3.cnv_coverage_calls()` and
+  `Ag3.cnv_discordant_read_calls()`.
+
 * Speed up test suite via caching.
+
 * Add configuration for pre-commit hooks.
 
 
@@ -100,16 +113,24 @@ $ poetry publish
 
 ### 0.4.1
 
-* Explore workarounds to xarray memory issues in the `Ag3.snp_calls()` method.
+* Explore workarounds to xarray memory issues in the `Ag3.snp_calls()`
+  method.
 
 
 ### 0.4.0
 
-* Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`, `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
+* Make public the `Ag3.open_genome()`, `Ag3.open_snp_sites()`,
+  `Ag3.open_site_filters()` and `Ag3.open_snp_genotypes()` methods.
+
 * Add the `Ag3.cross_metadata()` method.
-* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()` methods.
+
+* Add `Ag3.site_annotations()` and `Ag3.open_site_annotations()`
+  methods.
+
 * Add the `Ag3.snp_calls()` method.
+
 * Improve unit tests.
+
 * Improve memory usage.
 
 
@@ -120,4 +141,5 @@ $ poetry publish
 
 ### 0.3.0
 
-First release with basic functionality in the `Ag3` class for accessing Ag1000G phase 3 data.
+First release with basic functionality in the `Ag3` class for
+accessing Ag1000G phase 3 data.
