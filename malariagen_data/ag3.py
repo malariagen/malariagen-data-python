@@ -638,6 +638,56 @@ class Ag3:
 
         return is_accessible
 
+    def _snp_df(self, transcript, site_mask=None, site_filters="dt_20200416"):
+        """Set up a dataframe with SNP site and filter columns."""
+
+        # get feature direct from geneset
+        gs = self.geneset()
+        feature = gs[gs["ID"] == transcript].squeeze()
+
+        # grab pos, ref and alt for chrom arm from snp_sites
+        pos, ref, alt = self.snp_sites(contig=feature.contig)
+
+        # sites are dask arrays, turn pos into sorted index
+        pos = allel.SortedIndex(pos.compute())
+
+        # locate transcript range
+        loc_feature = pos.locate_range(feature.start, feature.end)
+
+        # dask compute on the sliced arrays to speed things up
+        pos = pos[loc_feature]
+        ref = ref[loc_feature].compute()
+        alt = alt[loc_feature].compute()
+
+        # access site filters
+        filter_pass = dict()
+        for m in "gamb_colu_arab", "gamb_colu", "arab":
+            x = self.site_filters(contig=feature.contig, mask=m, analysis=site_filters)
+            x = x[loc_feature].compute()
+            filter_pass[m] = x
+
+        # apply site mask if requested
+        if site_mask is not None:
+            loc_sites = filter_pass[site_mask]
+            pos = pos[loc_sites]
+            ref = ref[loc_sites]
+            alt = alt[loc_sites]
+            for m in "gamb_colu_arab", "gamb_colu", "arab":
+                x = filter_pass[m]
+                filter_pass[m] = x[loc_sites]
+
+        # build an initial dataframe with contig, pos, ref, alt columns
+        cols = {
+            "position": np.repeat(pos, 3),
+            "ref_allele": np.repeat(ref.astype("U1"), 3),
+            "alt_allele": alt.astype("U1").flatten(),
+        }
+        for m in "gamb_colu_arab", "gamb_colu", "arab":
+            x = filter_pass[m]
+            cols[f"pass_{m}"] = np.repeat(x, 3)
+        df_snps = pandas.DataFrame(cols)
+        return df_snps
+
     def snp_effects(self, transcript, site_mask=None, site_filters="dt_20200416"):
         """Compute variant effects for a gene transcript.
 

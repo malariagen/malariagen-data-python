@@ -499,6 +499,9 @@ def test_snp_effects():
         "ref_aa",
         "alt_aa",
         "aa_change",
+        "filter_pass_gamb_colu_arab",
+        "filter_pass_gamb_colu",
+        "filter_pass_arab",
     ]
 
     df = ag3.snp_effects(gste2, site_mask)
