@@ -18,6 +18,8 @@ BioPython = "*"
 scikit-allel = "*"
 xarray = "*"
 numba = "*"
+matplotlib = "3.3.0"
+geos = "^0.2.3"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
