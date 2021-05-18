@@ -72,6 +72,12 @@ $ poetry publish
 ## Release notes
 
 
+### 0.8.0
+
+* Add site filter columns to dataframes returned by
+  `Ag3.snp_effects()` and `Ag3.snp_allele_frequencies()`.
+
+
 ### 0.7.0
 
 * Rename parameter "populations" to "cohorts" to be consistent with
