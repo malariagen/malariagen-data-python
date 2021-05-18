@@ -638,15 +638,22 @@ class Ag3:
 
         return is_accessible
 
-    def _snp_df(self, transcript, site_mask=None, site_filters="dt_20200416"):
+    def _site_mask_ids(self, site_filters):
+        if site_filters == "dt_20200416":
+            return "gamb_colu_arab", "gamb_colu", "arab"
+        else:
+            raise ValueError
+
+    def _snp_df(self, transcript, site_filters="dt_20200416"):
         """Set up a dataframe with SNP site and filter columns."""
 
         # get feature direct from geneset
         gs = self.geneset()
         feature = gs[gs["ID"] == transcript].squeeze()
+        contig = feature.contig
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(contig=feature.contig)
+        pos, ref, alt = self.snp_sites(contig=contig)
 
         # sites are dask arrays, turn pos into sorted index
         pos = allel.SortedIndex(pos.compute())
@@ -661,32 +668,29 @@ class Ag3:
 
         # access site filters
         filter_pass = dict()
-        for m in "gamb_colu_arab", "gamb_colu", "arab":
+        masks = self._site_mask_ids(site_filters=site_filters)
+        for m in masks:
             x = self.site_filters(contig=feature.contig, mask=m, analysis=site_filters)
             x = x[loc_feature].compute()
             filter_pass[m] = x
 
-        # apply site mask if requested
-        if site_mask is not None:
-            loc_sites = filter_pass[site_mask]
-            pos = pos[loc_sites]
-            ref = ref[loc_sites]
-            alt = alt[loc_sites]
-            for m in "gamb_colu_arab", "gamb_colu", "arab":
-                x = filter_pass[m]
-                filter_pass[m] = x[loc_sites]
-
-        # build an initial dataframe with contig, pos, ref, alt columns
+        # setup columns with contig, pos, ref, alt columns
         cols = {
+            "contig": contig,
             "position": np.repeat(pos, 3),
             "ref_allele": np.repeat(ref.astype("U1"), 3),
             "alt_allele": alt.astype("U1").flatten(),
         }
-        for m in "gamb_colu_arab", "gamb_colu", "arab":
+
+        # add mask columns
+        for m in masks:
             x = filter_pass[m]
             cols[f"pass_{m}"] = np.repeat(x, 3)
+
+        # construct dataframe
         df_snps = pandas.DataFrame(cols)
-        return df_snps
+
+        return contig, loc_feature, df_snps
 
     def snp_effects(self, transcript, site_mask=None, site_filters="dt_20200416"):
         """Compute variant effects for a gene transcript.
@@ -706,55 +710,26 @@ class Ag3:
 
         """
 
-        # get feature direct from geneset
-        gs = self.geneset()
-        feature = gs[gs["ID"] == transcript].squeeze()
+        # setup initial dataframe of SNPs
+        _, _, df_snps = self._snp_df(transcript=transcript, site_filters=site_filters)
 
-        # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(contig=feature.contig)
-
-        # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(pos.compute())
-
-        # locate transcript range
-        loc_feature = pos.locate_range(feature.start, feature.end)
-
-        # dask compute on the sliced arrays to speed things up
-        pos = pos[loc_feature]
-        ref = ref[loc_feature].compute()
-        alt = alt[loc_feature].compute()
-
-        # apply site mask if requested
-        if site_mask is not None:
-            # access filters for whole contig
-            loc_sites = self.site_filters(
-                contig=feature.contig, mask=site_mask, analysis=site_filters
-            )
-            # slice to feature and compute
-            loc_sites = loc_sites[loc_feature].compute()
-            # apply site filter
-            pos = pos[loc_sites]
-            ref = ref[loc_sites]
-            alt = alt[loc_sites]
-
-        # build an initial dataframe with contig, pos, ref, alt columns
-        cols = {
-            "position": np.repeat(pos, 3),
-            "ref_allele": np.repeat(ref.astype("U1"), 3),
-            "alt_allele": alt.astype("U1").flatten(),
-        }
-        df_variants = pandas.DataFrame(cols)
-
-        # take an AGAP transcript ID and get meta data from the gff using veff
-        # first time sets up and caches ann object
-
+        # setup variant effect annotator
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(), geneset=self.geneset()
             )
         ann = self._cache_annotator
 
-        df_effects = ann.get_effects(transcript=transcript, variants=df_variants)
+        # apply mask if requested
+        if site_mask is not None:
+            loc_sites = df_snps[f"pass_{site_mask}"]
+            df_snps = df_snps.loc[loc_sites]
+
+        # reset index after filtering
+        df_snps.reset_index(inplace=True, drop=True)
+
+        # add effects to the dataframe
+        df_effects = ann.get_effects(transcript=transcript, variants=df_snps)
 
         return df_effects
 
@@ -793,22 +768,16 @@ class Ag3:
 
         Returns
         -------
-        df : pandas.DataFrame
+        df_snps : pandas.DataFrame
 
         """
-        # get feature details (don't need to set up an annotator here)
-        geneset = self.geneset().set_index("ID")
-        feature = geneset.loc[transcript]
-        contig = feature.contig
 
-        # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(contig=contig)
+        # setup initial dataframe of SNPs
+        contig, loc_feature, df_snps = self._snp_df(
+            transcript=transcript, site_filters=site_filters
+        )
 
-        # locate transcript range
-        pos = allel.SortedIndex(pos.compute())
-        loc_feature = pos.locate_range(feature.start, feature.end)
-
-        # we want to grab all metadata then get idx for samples we want
+        # get sample metadata
         df_meta = self.sample_metadata(
             sample_sets=sample_sets, species_calls=species_calls
         )
@@ -820,58 +789,38 @@ class Ag3:
             field="GT",
         )
 
-        # slice everything to feature location
-        pos = pos[loc_feature]
-        ref = ref[loc_feature].compute()
-        alt = alt[loc_feature].compute()
+        # slice to feature location
         gt = gt[loc_feature].compute()
+
+        # count alleles
+        for coh, query in cohorts.items():
+            # locate samples
+            loc_coh = df_meta.eval(query).values
+            gt_coh = np.compress(loc_coh, gt, axis=1)
+            # count alleles
+            ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+            # compute allele frequencies
+            af_coh = ac_coh.to_frequencies()
+            # add column to dataframe
+            df_snps[coh] = af_coh[:, 1:].flatten()
+
+        # add max allele freq column
+        df_snps["max_af"] = df_snps[cohorts].max(axis=1)
 
         # apply site mask if requested
         if site_mask is not None:
-            # access filters for whole contig
-            loc_sites = self.site_filters(
-                contig=feature.contig, mask=site_mask, analysis=site_filters
-            )
-            # slice to feature and compute
-            loc_sites = loc_sites[loc_feature].compute()
-            # apply site filter
-            pos = pos[loc_sites]
-            ref = ref[loc_sites]
-            alt = alt[loc_sites]
-            gt = gt[loc_sites]
-
-        # count alleles
-        afs = dict()
-        for coh, query in cohorts.items():
-            loc_coh = df_meta.eval(query).values
-            gt_coh = da.compress(loc_coh, gt, axis=1)
-            ac_coh = (
-                allel.GenotypeDaskArray(gt_coh).count_alleles(max_allele=3).compute()
-            )
-            afs[coh] = ac_coh.to_frequencies()
-
-        # set up columns
-        cols = {
-            "position": np.repeat(pos, 3),
-            "ref_allele": np.repeat(ref.astype("U1"), 3),
-            "alt_allele": alt.astype("U1").flatten(),
-        }
-
-        for coh in cohorts:
-            cols[coh] = afs[coh][:, 1:].flatten()
-
-        # build df
-        df = pandas.DataFrame(cols)
-
-        # add max allele freq column
-        df["max_af"] = df[cohorts].max(axis=1)
+            loc_sites = df_snps[f"pass_{site_mask}"]
+            df_snps = df_snps.loc[loc_sites]
 
         # drop invariants
         if drop_invariant:
-            loc_variant = df["max_af"] > 0
-            df = df[loc_variant]
+            loc_variant = df_snps["max_af"] > 0
+            df_snps = df_snps.loc[loc_variant]
 
-        return df
+        # reset index after filtering
+        df_snps.reset_index(inplace=True, drop=True)
+
+        return df_snps
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses, including
