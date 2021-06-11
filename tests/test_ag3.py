@@ -664,6 +664,29 @@ def test_snp_allele_frequencies():
     assert np.any(df.max_af == 0)
 
 
+def test_snp_allele_frequencies_0_cohort():
+    ag3 = setup_ag3()
+    cohorts = {
+        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'",
+    }
+
+    try:
+        _ = ag3.snp_allele_frequencies(
+            transcript="AGAP009194-RA",
+            cohorts=cohorts,
+            site_mask="gamb_colu",
+            sample_sets="v3_wild",
+            drop_invariant=True,
+        )
+    except ValueError:
+        # The exception was raised as expected
+        pass
+    else:
+        # If we get here, then the ValueError was not raised
+        # raise an exception so that the test fails
+        raise AssertionError("ValueError was not raised")
+
+
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
 )
@@ -1030,3 +1053,30 @@ def test_gene_cnv_frequencies(contig):
         x = a + d
         assert np.all(x >= 0)
         assert np.all(x <= 1)
+
+
+@pytest.mark.parametrize(
+    "contig",
+    [
+        "X",
+    ],
+)
+def test_gene_cnv_frequencies_0_cohort(contig):
+    ag3 = setup_ag3()
+    cohorts = {
+        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'",
+    }
+    # with self.assertRaises(ValueError):
+    #     df = ag3.gene_cnv_frequencies(contig=contig, sample_sets="v3_wild", cohorts=cohorts)
+    #
+    try:
+        _ = ag3.gene_cnv_frequencies(
+            contig=contig, sample_sets="v3_wild", cohorts=cohorts
+        )
+    except ValueError:
+        # The exception was raised as expected
+        pass
+    else:
+        # If we get here, then the ValueError was not raised
+        # raise an exception so that the test fails
+        raise AssertionError("ValueError was not raised")
