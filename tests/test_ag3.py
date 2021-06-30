@@ -1059,17 +1059,7 @@ def test_gene_cnv_frequencies_0_cohort(contig):
     cohorts = {
         "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'",
     }
-    # with self.assertRaises(ValueError):
-    #     df = ag3.gene_cnv_frequencies(contig=contig, sample_sets="v3_wild", cohorts=cohorts)
-    #
-    try:
+    with pytest.raises(ValueError):
         _ = ag3.gene_cnv_frequencies(
             contig=contig, sample_sets="v3_wild", cohorts=cohorts
         )
-    except ValueError:
-        # The exception was raised as expected
-        pass
-    else:
-        # If we get here, then the ValueError was not raised
-        # raise an exception so that the test fails
-        raise AssertionError("ValueError was not raised")
