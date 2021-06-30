@@ -670,7 +670,7 @@ def test_snp_allele_frequencies_0_cohort():
         "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'",
     }
 
-    try:
+    with pytest.raises(ValueError):
         _ = ag3.snp_allele_frequencies(
             transcript="AGAP009194-RA",
             cohorts=cohorts,
@@ -678,13 +678,6 @@ def test_snp_allele_frequencies_0_cohort():
             sample_sets="v3_wild",
             drop_invariant=True,
         )
-    except ValueError:
-        # The exception was raised as expected
-        pass
-    else:
-        # If we get here, then the ValueError was not raised
-        # raise an exception so that the test fails
-        raise AssertionError("ValueError was not raised")
 
 
 @pytest.mark.parametrize(
