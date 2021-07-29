@@ -1789,7 +1789,7 @@ class Ag3:
         inline_array=True,
         chunks="native",
     ):
-        """Access CNV HMM data.
+        """Access haplotype data.
 
         Parameters
         ----------
