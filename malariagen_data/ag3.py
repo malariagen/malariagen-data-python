@@ -96,6 +96,8 @@ class Ag3:
         self._cache_cnv_hmm = dict()
         self._cache_cnv_coverage_calls = dict()
         self._cache_cnv_discordant_read_calls = dict()
+        self._cache_haplotypes = dict()
+        self._cache_haplotype_sites = dict()
 
     @property
     def releases(self):
@@ -347,7 +349,7 @@ class Ag3:
         field="filter_pass",
         analysis="dt_20200416",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access SNP site filters.
 
@@ -400,7 +402,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access SNP site data (positions and alleles).
 
@@ -480,7 +482,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access SNP genotypes and associated data.
 
@@ -548,7 +550,7 @@ class Ag3:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def genome_sequence(self, contig, inline_array=True, chunks="auto"):
+    def genome_sequence(self, contig, inline_array=True, chunks="native"):
         """Access the reference genome sequence.
 
         Parameters
@@ -892,7 +894,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Load site annotations.
 
@@ -1006,7 +1008,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access SNP sites, site filters and genotype calls.
 
@@ -1175,7 +1177,7 @@ class Ag3:
         contig,
         sample_sets="v3_wild",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access CNV HMM data.
 
@@ -1270,7 +1272,7 @@ class Ag3:
         sample_set,
         analysis,
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access CNV HMM data.
 
@@ -1471,7 +1473,7 @@ class Ag3:
         contig,
         sample_sets="v3_wild",
         inline_array=True,
-        chunks="auto",
+        chunks="native",
     ):
         """Access CNV discordant read calls data.
 
@@ -1671,6 +1673,195 @@ class Ag3:
         df.set_index("ID", inplace=True)
 
         return df
+
+    def open_haplotypes(self, sample_set, analysis):
+        """Open haplotypes zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_haplotypes[(sample_set, analysis)]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/snp_haplotypes/{sample_set}/{analysis}/zarr"
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            # some sample sets have no data for a given analysis, handle this
+            if ".zmetadata" not in store:
+                root = None
+            else:
+                root = zarr.open_consolidated(store=store)
+            self._cache_haplotypes[(sample_set, analysis)] = root
+        return root
+
+    def open_haplotype_sites(self, analysis):
+        """Open haplotype sites zarr.
+
+        Parameters
+        ----------
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        try:
+            return self._cache_haplotype_sites[analysis]
+        except KeyError:
+            path = f"{self._path}/v3/snp_haplotypes/sites/{analysis}/zarr"
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            root = zarr.open_consolidated(store=store)
+            self._cache_haplotype_sites[analysis] = root
+        return root
+
+    def _haplotypes_dataset(self, contig, sample_set, analysis, inline_array, chunks):
+
+        # open zarr
+        root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
+        sites = self.open_haplotype_sites(analysis=analysis)
+
+        # some sample sets have no data for a given analysis, handle this
+        if root is None:
+            return None
+
+        coords = dict()
+        data_vars = dict()
+
+        # variant_position
+        pos = sites[f"{contig}/variants/POS"]
+        coords["variant_position"] = (
+            [DIM_VARIANT],
+            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+        )
+
+        # variant_contig
+        contig_index = self.contigs.index(contig)
+        coords["variant_contig"] = (
+            [DIM_VARIANT],
+            da.full_like(pos, fill_value=contig_index, dtype="u1"),
+        )
+
+        # variant_allele
+        ref = from_zarr(
+            sites[f"{contig}/variants/REF"], inline_array=inline_array, chunks=chunks
+        )
+        alt = from_zarr(
+            sites[f"{contig}/variants/ALT"], inline_array=inline_array, chunks=chunks
+        )
+        variant_allele = da.hstack([ref[:, None], alt[:, None]])
+        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
+
+        # call_genotype
+        data_vars["call_genotype"] = (
+            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+            from_zarr(
+                root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
+            ),
+        )
+
+        # sample arrays
+        coords["sample_id"] = (
+            [DIM_SAMPLE],
+            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+        )
+
+        # setup attributes
+        attrs = {"contigs": self.contigs}
+
+        # create a dataset
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def haplotypes(
+        self,
+        contig,
+        analysis,
+        sample_sets="v3_wild",
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access haplotype data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
+            is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
+            best. Otherwise use the "gamb_colu_arab" analysis.
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+
+        """
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+
+            # single sample set requested
+            ds = self._haplotypes_dataset(
+                contig=contig,
+                sample_set=sample_sets,
+                analysis=analysis,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+        else:
+
+            # multiple sample sets requested, need to concatenate along samples dimension
+            datasets = [
+                self._haplotypes_dataset(
+                    contig=contig,
+                    sample_set=sample_set,
+                    analysis=analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for sample_set in sample_sets
+            ]
+            # some sample sets have no data for a given analysis, handle this
+            datasets = [d for d in datasets if d is not None]
+            if len(datasets) == 0:
+                ds = None
+            else:
+                ds = xarray.concat(
+                    datasets,
+                    dim=DIM_SAMPLE,
+                    data_vars="minimal",
+                    coords="minimal",
+                    compat="override",
+                    join="override",
+                )
+
+        # if no samples at all, raise
+        if ds is None:
+            raise ValueError(
+                f"no samples available for analysis {analysis!r} and sample sets {sample_sets!r}"
+            )
+
+        return ds
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")

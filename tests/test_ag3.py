@@ -1063,3 +1063,90 @@ def test_gene_cnv_frequencies_0_cohort(contig):
         _ = ag3.gene_cnv_frequencies(
             contig=contig, sample_sets="v3_wild", cohorts=cohorts
         )
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "v3", "v3_wild"]
+)
+@pytest.mark.parametrize("contig", ["2R", "X"])
+@pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
+def test_haplotypes(sample_sets, contig, analysis):
+
+    ag3 = setup_ag3()
+
+    # check expected samples
+    sample_query = None
+    if analysis == "arab":
+        sample_query = "species == 'arabiensis' and sample_set != 'AG1000G-X'"
+    elif analysis == "gamb_colu":
+        sample_query = "species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
+    elif analysis == "gamb_colu_arab":
+        sample_query = "sample_set != 'AG1000G-X'"
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    expected_samples = set(df_samples.query(sample_query)["sample_id"].tolist())
+    n_samples = len(expected_samples)
+
+    # check if any samples
+    if n_samples == 0:
+        with pytest.raises(ValueError):
+            # no samples, raise
+            ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+        return
+
+    ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+    assert isinstance(ds, xarray.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check samples
+    samples = set(ds["sample_id"].values)
+    assert samples == expected_samples
+
+    # check dim lengths
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 2
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim, f == 2
+            assert x.shape[1] == 2
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim, f == 1
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape[1] == n_samples
+            assert x.shape[2] == 2
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
+
+    # check can setup computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xarray.DataArray)
+    d2 = ds["call_genotype"].sum(axis=(1, 2))
+    assert isinstance(d2, xarray.DataArray)

@@ -72,6 +72,12 @@ $ poetry publish
 ## Release notes
 
 
+### 0.9.0
+
+* Add `Ag3.haplotypes()` and supporting functions `Ag3.open_haplotypes()`
+  and `Ag3.open_haplotype_sites()`.
+
+
 ### 0.8.0
 
 * Add site filter columns to dataframes returned by
