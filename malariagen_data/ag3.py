@@ -796,6 +796,9 @@ class Ag3:
         for coh, query in cohorts.items():
             # locate samples
             loc_coh = df_meta.eval(query).values
+            n_samples = np.count_nonzero(loc_coh)
+            if n_samples == 0:
+                raise ValueError(f"no samples for cohort {coh!r}")
             gt_coh = np.compress(loc_coh, gt, axis=1)
             # count alleles
             ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
