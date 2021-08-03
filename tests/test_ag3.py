@@ -1150,3 +1150,8 @@ def test_haplotypes(sample_sets, contig, analysis):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_genotype"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+
+def test_foo():
+
+    assert False, "demo test failure"
