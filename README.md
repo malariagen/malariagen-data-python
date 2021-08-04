@@ -17,6 +17,8 @@ ag3 = malariagen_data.Ag3("gs://vo_agam_release/")
 
 ## Developer notes
 
+To get setup for development, see [this video](https://youtu.be/QniQi-Hoo9A) and the instructions below.
+
 Fork and clone this repo:
 
 ```bash
