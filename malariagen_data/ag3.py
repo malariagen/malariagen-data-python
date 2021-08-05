@@ -1864,6 +1864,61 @@ class Ag3:
 
         return ds
 
+    def _read_cohort_metadata(self, *, sample_set, cohort_analysis):
+        """Read cohort metadata for a single sample set."""
+        try:
+            return self._cache_cohort_metadata[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/metadata/cohorts_{cohort_analysis}/{sample_set}/samples.cohorts.csv"
+            with self._fs.open(path) as f:
+                df = pandas.read_csv(f, na_values="")
+
+            # add a couple of columns for convenience
+            df["sample_set"] = sample_set
+            df["release"] = release
+
+            self._cache_cohort_metadata[sample_set] = df
+            return df
+
+    def sample_cohorts(self, sample_sets="v3_wild", cohort_analysis="20210702"):
+        """Access cohorts metadata for one or more sample sets.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        cohort_analysis : str
+            Cohort analysis identifier (date of analysis), defaults is latest version.
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+        # TODO - check that cohort_analysis exists and return informative error if not.
+
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+            # assume single sample set
+            df = self._read_cohort_metadata(
+                sample_set=sample_sets, cohort_analysis=cohort_analysis
+            )
+
+        else:
+            # concatenate multiple sample sets
+            dfs = [
+                self._read_cohort_metadata(
+                    sample_set=c, cohort_analysis=cohort_analysis
+                )
+                for c in sample_sets
+            ]
+            df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
+
+        return df
+
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
@@ -1910,52 +1965,3 @@ def _cn_mode(a, vmax):
         counts[j] = count
 
     return modes, counts
-
-
-def _read_cohort_metadata(self, *, sample_set):
-    """Read cohort metadata for a single sample set."""
-    try:
-        return self._cache_cohort_metadata[sample_set]
-    except KeyError:
-        release = self._lookup_release(sample_set=sample_set)
-        # TODO fix the path
-        path = f"{self._path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
-        with self._fs.open(path) as f:
-            df = pandas.read_csv(f, na_values="")
-
-        # add a couple of columns for convenience
-        df["sample_set"] = sample_set
-        df["release"] = release
-
-        self._cache_cohort_metadata[sample_set] = df
-        return df
-
-
-def sample_cohorts(self, sample_sets="v3_wild", cohorts_analysis="20210702"):
-    """Access cohorts metadata for one or more sample sets.
-
-    Parameters
-    ----------
-    sample_sets : str or list of str
-        Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-        identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-        "v3") or a list of release identifiers.
-
-    Returns
-    -------
-    df : pandas.DataFrame
-
-    """
-
-    sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-
-    if isinstance(sample_sets, str):
-        # assume single sample set
-        df = self._read_cohort_metadata(sample_set=sample_sets)
-
-    else:
-        # concatenate multiple sample sets
-        dfs = [self.cohort_metadata(sample_sets=c) for c in sample_sets]
-        df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
-
-    return df
