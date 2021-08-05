@@ -1150,3 +1150,10 @@ def test_haplotypes(sample_sets, contig, analysis):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_genotype"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+
+def test_sample_cohorts(sample_sets="v3"):
+    ag3 = Ag3("gs://vo_agam_staging/")
+
+    df = ag3.sample_cohorts(sample_sets=sample_sets)
+    assert df.sample_set.unique() == "AG1000G-UG"
