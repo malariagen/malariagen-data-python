@@ -1891,14 +1891,15 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         cohort_analysis : str
-            Cohort analysis identifier (date of analysis), defaults is latest version.
+            Cohort analysis identifier (date of analysis), default is latest version.
         Returns
         -------
         df : pandas.DataFrame
 
         """
-        # TODO - check that cohort_analysis exists and return informative error if not.
-
+        # if v3, we don't want the colony crosses included
+        if sample_sets == "v3":
+            sample_sets = "v3_wild"
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         if isinstance(sample_sets, str):

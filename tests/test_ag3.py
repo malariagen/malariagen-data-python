@@ -1152,8 +1152,31 @@ def test_haplotypes(sample_sets, contig, analysis):
     assert isinstance(d2, xarray.DataArray)
 
 
-def test_sample_cohorts(sample_sets="v3"):
+# test v3 sample sets
+def test_sample_cohorts():
+    # TODO change staging to release once files copied over
+    expected_cols = (
+        "sample_id",
+        "cohort_admin1_year",
+        "cohort_admin1_month",
+        "cohort_admin2_year",
+        "cohort_admin2_month",
+        "sample_set",
+        "release",
+    )
+
     ag3 = Ag3("gs://vo_agam_staging/")
 
-    df = ag3.sample_cohorts(sample_sets=sample_sets)
-    assert df.sample_set.unique() == "AG1000G-UG"
+    # test v3 wild
+    sample_sets = "v3_wild"
+    df_v3_wild = ag3.sample_cohorts(sample_sets=sample_sets)
+    assert tuple(df_v3_wild.columns) == expected_cols
+    assert df_v3_wild.sample_set.unique()[-1] == "AG1000G-UG"
+    assert len(df_v3_wild) == 2784
+
+    # check v3 is the same
+    sample_sets = "v3"
+    df_v3 = ag3.sample_cohorts(sample_sets=sample_sets)
+    pd.testing.assert_frame_equal(df_v3, df_v3_wild)
+
+    # test a single sample set
