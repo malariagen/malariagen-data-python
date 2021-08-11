@@ -740,6 +740,8 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        cohort_analysis="20210702",
+        min_cohort_size=10,
         site_mask=None,
         site_filters="dt_20200416",
         species_calls=("20200422", "aim"),
@@ -752,9 +754,13 @@ class Ag3:
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        cohorts : dict
-            Dictionary to map cohort IDs to sample queries, e.g.,
+        cohorts : dict or string
+            Dictionary to map user cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+            String to map an ag3 defined cohort (see samples.cohort.csv files) to sample queries e.g.,
+            "UG-E_Tororo_2012_10_arab"
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -796,19 +802,24 @@ class Ag3:
         gt = gt[loc_feature].compute()
 
         # count alleles
-        for coh, query in cohorts.items():
-            # locate samples
-            loc_coh = df_meta.eval(query).values
-            n_samples = np.count_nonzero(loc_coh)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
-            gt_coh = np.compress(loc_coh, gt, axis=1)
-            # count alleles
-            ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
-            # compute allele frequencies
-            af_coh = ac_coh.to_frequencies()
-            # add column to dataframe
-            df_snps[coh] = af_coh[:, 1:].flatten()
+        if isinstance(cohorts, dict):
+            for coh, query in cohorts.items():
+                # locate samples
+                loc_coh = df_meta.eval(query).values
+                n_samples = np.count_nonzero(loc_coh)
+                if n_samples < min_cohort_size:
+                    raise ValueError(
+                        f"number of samples is less than min_cohort_size for cohort {coh!r}"
+                    )
+                if n_samples == 0:
+                    raise ValueError(f"no samples for cohort {coh!r}")
+                gt_coh = np.compress(loc_coh, gt, axis=1)
+                # count alleles
+                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+                # compute allele frequencies
+                af_coh = ac_coh.to_frequencies()
+                # add column to dataframe
+                df_snps[coh] = af_coh[:, 1:].flatten()
 
         # add max allele freq column
         df_snps["max_af"] = df_snps[cohorts].max(axis=1)

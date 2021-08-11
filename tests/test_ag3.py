@@ -680,6 +680,23 @@ def test_snp_allele_frequencies_0_cohort():
         )
 
 
+def test_snp_allele_frequencies_min_cohort():
+    ag3 = setup_ag3()
+    cohorts = {
+        "ke": "country == 'Kenya'",
+    }
+
+    with pytest.raises(ValueError):
+        _ = ag3.snp_allele_frequencies(
+            transcript="AGAP009194-RA",
+            cohorts=cohorts,
+            min_cohort_size=500,
+            site_mask="gamb_colu",
+            sample_sets="v3_wild",
+            drop_invariant=True,
+        )
+
+
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
 )
