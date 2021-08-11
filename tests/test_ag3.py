@@ -1180,3 +1180,13 @@ def test_sample_cohorts():
     pd.testing.assert_frame_equal(df_v3, df_v3_wild)
 
     # test a single sample set
+    sample_sets = "AG1000G-UG"
+    df_UG = ag3.sample_cohorts(sample_sets=sample_sets)
+    assert df_UG.sample_id[0] == "AC0007-C"
+    assert df_UG.cohort_admin1_year[23] == "UG-E_2012_arab"
+    assert df_UG.cohort_admin1_month[37] == "UG-E_2012_10_arab"
+    assert df_UG.cohort_admin2_year[42] == "UG-E_Tororo_2012_arab"
+    assert df_UG.cohort_admin2_month[49] == "UG-E_Tororo_2012_10_arab"
+    assert df_UG.sample_set[67] == sample_sets
+    assert df_UG.release[93] == "v3"
+    assert df_UG.shape == (290, 7)
