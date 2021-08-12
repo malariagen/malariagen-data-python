@@ -757,8 +757,8 @@ class Ag3:
         cohorts : dict or string
             Dictionary to map user cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
-            String to map an ag3 defined cohort (see samples.cohort.csv files) to sample queries e.g.,
-            "UG-E_Tororo_2012_10_arab"
+            String to map samples to an ag3 defined cohort level to samples :
+            {"cohort_admin1_month", "cohort_admin1_year", "cohort_admin2_month", "cohort_admin2_year"}
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -812,7 +812,7 @@ class Ag3:
                         f"number of samples is less than min_cohort_size for cohort {coh!r}"
                     )
                 if n_samples == 0:
-                    raise ValueError(f"no samples for cohort {coh!r}")
+                    raise ValueError(f"no samples in {coh!r}")
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
@@ -821,8 +821,38 @@ class Ag3:
                 # add column to dataframe
                 df_snps[coh] = af_coh[:, 1:].flatten()
 
-        # add max allele freq column
-        df_snps["max_af"] = df_snps[cohorts].max(axis=1)
+            # add max allele freq column for filtering
+            df_snps["max_af"] = df_snps[cohorts].max(axis=1)
+
+        if isinstance(cohorts, str):
+            # check if cohorts string is a cohort type
+            type_list = [
+                "cohort_admin1_month",
+                "cohort_admin1_year",
+                "cohort_admin2_month",
+                "cohort_admin2_year",
+            ]
+            assert cohorts in type_list, f"{cohorts!r} is not a known cohort"
+            # first we need to get all the cohort data for sample_sets
+            df_coh = Ag3.sample_cohorts(sample_sets=sample_sets)
+
+            for coh in df_coh[cohorts].unique():
+                loc_coh = df_coh[cohorts] == coh
+                n_samples = np.count_nonzero(loc_coh)
+                if n_samples < min_cohort_size:
+                    raise ValueError(
+                        f"number of samples is less than min_cohort_size for cohort {coh!r}"
+                    )
+                gt_coh = np.compress(loc_coh, gt, axis=1)
+                # count alleles
+                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+                # compute allele frequencies
+                af_coh = ac_coh.to_frequencies()
+                # add column to dataframe
+                df_snps[coh] = af_coh[:, 1:].flatten()
+
+            # add max allele freq column for filtering
+            df_snps["max_af"] = df_snps[df_coh[cohorts].unique()].max(axis=1)
 
         # apply site mask if requested
         if site_mask is not None:
