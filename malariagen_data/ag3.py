@@ -759,6 +759,8 @@ class Ag3:
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
             String to map samples to an ag3 defined cohort level to samples :
             {"cohort_admin1_month", "cohort_admin1_year", "cohort_admin2_month", "cohort_admin2_year"}
+        cohort_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -834,7 +836,9 @@ class Ag3:
             ]
             assert cohorts in type_list, f"{cohorts!r} is not a known cohort"
             # first we need to get all the cohort data for sample_sets
-            df_coh = Ag3.sample_cohorts(sample_sets=sample_sets)
+            df_coh = Ag3.sample_cohorts(
+                sample_sets=sample_sets, cohort_analysis=cohort_analysis
+            )
 
             for coh in df_coh[cohorts].unique():
                 loc_coh = df_coh[cohorts] == coh
@@ -1648,7 +1652,14 @@ class Ag3:
 
         return ds_out
 
-    def gene_cnv_frequencies(self, contig, cohorts=None, sample_sets="v3_wild"):
+    def gene_cnv_frequencies(
+        self,
+        contig,
+        cohorts,
+        cohort_analysis="20210702",
+        min_cohort_size=10,
+        sample_sets="v3_wild",
+    ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
 
@@ -1656,9 +1667,15 @@ class Ag3:
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        cohorts : dict
-            Dictionary to map cohort IDs to sample queries, e.g.,
+        cohorts : dict or string
+            Dictionary to map user cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+            String to map samples to an ag3 defined cohort level to samples :
+            {"cohort_admin1_month", "cohort_admin1_year", "cohort_admin2_month", "cohort_admin2_year"}
+        cohort_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1697,19 +1714,54 @@ class Ag3:
         is_del = (0 <= cn) & (cn < expected_cn)
 
         # compute cohort frequencies
-        for coh, query in cohorts.items():
-            loc_samples = df_samples.eval(query).values
-            n_samples = np.count_nonzero(loc_samples)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
-            is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-            is_del_coh = np.compress(loc_samples, is_del, axis=1)
-            amp_count_coh = np.sum(is_amp_coh, axis=1)
-            del_count_coh = np.sum(is_del_coh, axis=1)
-            amp_freq_coh = amp_count_coh / n_samples
-            del_freq_coh = del_count_coh / n_samples
-            df[f"{coh}_amp"] = amp_freq_coh
-            df[f"{coh}_del"] = del_freq_coh
+        if isinstance(cohorts, dict):
+            for coh, query in cohorts.items():
+                loc_samples = df_samples.eval(query).values
+                n_samples = np.count_nonzero(loc_samples)
+                if n_samples < min_cohort_size:
+                    raise ValueError(
+                        f"number of samples is less than min_cohort_size for cohort {coh!r}"
+                    )
+                if n_samples == 0:
+                    raise ValueError(f"no samples in {coh!r}")
+                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
+                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+                amp_count_coh = np.sum(is_amp_coh, axis=1)
+                del_count_coh = np.sum(is_del_coh, axis=1)
+                amp_freq_coh = amp_count_coh / n_samples
+                del_freq_coh = del_count_coh / n_samples
+                df[f"{coh}_amp"] = amp_freq_coh
+                df[f"{coh}_del"] = del_freq_coh
+
+        if isinstance(cohorts, str):
+            # check if cohorts string is a cohort type
+            type_list = [
+                "cohort_admin1_month",
+                "cohort_admin1_year",
+                "cohort_admin2_month",
+                "cohort_admin2_year",
+            ]
+            assert cohorts in type_list, f"{cohorts!r} is not a known cohort"
+            # first we need to get all the cohort data for sample_sets
+            df_coh = Ag3.sample_cohorts(
+                sample_sets=sample_sets, cohort_analysis=cohort_analysis
+            )
+
+            for coh in df_coh[cohorts].unique():
+                loc_coh = df_coh[cohorts] == coh
+                n_samples = np.count_nonzero(loc_coh)
+                if n_samples < min_cohort_size:
+                    raise ValueError(
+                        f"number of samples is less than min_cohort_size for cohort {coh!r}"
+                    )
+                is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
+                is_del_coh = np.compress(loc_coh, is_del, axis=1)
+                amp_count_coh = np.sum(is_amp_coh, axis=1)
+                del_count_coh = np.sum(is_del_coh, axis=1)
+                amp_freq_coh = amp_count_coh / n_samples
+                del_freq_coh = del_count_coh / n_samples
+                df[f"{coh}_amp"] = amp_freq_coh
+                df[f"{coh}_del"] = del_freq_coh
 
         # set gene ID as index for convenience
         df.set_index("ID", inplace=True)
