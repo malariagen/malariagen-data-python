@@ -759,9 +759,11 @@ class Ag3:
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
             String to map samples to an ag3 defined cohort level to samples :
             {"cohort_admin1_month", "cohort_admin1_year", "cohort_admin2_month", "cohort_admin2_year"}
+        cohort_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_cgene_cnv_frequenciesolu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
             Site filters analysis version.
@@ -834,7 +836,9 @@ class Ag3:
             ]
             assert cohorts in type_list, f"{cohorts!r} is not a known cohort"
             # first we need to get all the cohort data for sample_sets
-            df_coh = Ag3.sample_cohorts(sample_sets=sample_sets)
+            df_coh = Ag3.sample_cohorts(
+                sample_sets=sample_sets, cohort_analysis=cohort_analysis
+            )
 
             for coh in df_coh[cohorts].unique():
                 loc_coh = df_coh[cohorts] == coh
