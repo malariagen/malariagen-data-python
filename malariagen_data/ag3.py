@@ -809,12 +809,12 @@ class Ag3:
                 # locate samples
                 loc_coh = df_meta.eval(query).values
                 n_samples = np.count_nonzero(loc_coh)
+                if n_samples == 0:
+                    raise ValueError(f"no samples in {coh!r}")
                 if n_samples < min_cohort_size:
                     raise ValueError(
                         f"number of samples is less than min_cohort_size for cohort {coh!r}"
                     )
-                if n_samples == 0:
-                    raise ValueError(f"no samples in {coh!r}")
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
