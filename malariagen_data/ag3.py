@@ -1912,18 +1912,14 @@ class Ag3:
     def _read_cohort_metadata(self, *, sample_set, cohort_analysis):
         """Read cohort metadata for a single sample set."""
         try:
-            return self._cache_cohort_metadata[sample_set]
+            return self._cache_cohort_metadata[(sample_set, cohort_analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/metadata/cohorts_{cohort_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
-            # add a couple of columns for convenience
-            df["sample_set"] = sample_set
-            df["release"] = release
-
-            self._cache_cohort_metadata[sample_set] = df
+            self._cache_cohort_metadata[(sample_set, cohort_analysis)] = df
             return df
 
     def sample_cohorts(self, sample_sets="v3_wild", cohort_analysis="20210702"):

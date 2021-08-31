@@ -1171,24 +1171,20 @@ def test_haplotypes(sample_sets, contig, analysis):
 
 # test v3 sample sets
 def test_sample_cohorts():
-    # TODO change staging to release once files copied over
     expected_cols = (
         "sample_id",
         "cohort_admin1_year",
         "cohort_admin1_month",
         "cohort_admin2_year",
         "cohort_admin2_month",
-        "sample_set",
-        "release",
     )
 
-    ag3 = Ag3("gs://vo_agam_staging/")
+    ag3 = setup_ag3()
 
     # test v3 wild
     sample_sets = "v3_wild"
     df_v3_wild = ag3.sample_cohorts(sample_sets=sample_sets)
     assert tuple(df_v3_wild.columns) == expected_cols
-    assert df_v3_wild.sample_set.unique()[-1] == "AG1000G-UG"
     assert len(df_v3_wild) == 2784
 
     # check v3 is the same
@@ -1204,6 +1200,4 @@ def test_sample_cohorts():
     assert df_UG.cohort_admin1_month[37] == "UG-E_2012_10_arab"
     assert df_UG.cohort_admin2_year[42] == "UG-E_Tororo_2012_arab"
     assert df_UG.cohort_admin2_month[49] == "UG-E_Tororo_2012_10_arab"
-    assert df_UG.sample_set[67] == sample_sets
-    assert df_UG.release[93] == "v3"
-    assert df_UG.shape == (290, 7)
+    assert df_UG.shape == (290, 5)
