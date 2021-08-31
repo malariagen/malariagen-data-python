@@ -809,12 +809,13 @@ class Ag3:
                 # locate samples
                 loc_coh = df_meta.eval(query).values
                 n_samples = np.count_nonzero(loc_coh)
+                if n_samples == 0:
+                    raise ValueError(f"no samples in {coh!r}")
                 if n_samples < min_cohort_size:
                     raise ValueError(
                         f"number of samples is less than min_cohort_size for cohort {coh!r}"
                     )
-                if n_samples == 0:
-                    raise ValueError(f"no samples in {coh!r}")
+
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
@@ -827,22 +828,21 @@ class Ag3:
             df_snps["max_af"] = df_snps[cohorts].max(axis=1)
 
         if isinstance(cohorts, str):
-            # check if cohorts string is a cohort type
-            type_list = [
-                "cohort_admin1_month",
-                "cohort_admin1_year",
-                "cohort_admin2_month",
-                "cohort_admin2_year",
-            ]
-            assert cohorts in type_list, f"{cohorts!r} is not a known cohort"
-            # first we need to get all the cohort data for sample_sets
+
+            # grab the cohorts dataframe
             df_coh = Ag3.sample_cohorts(
                 sample_sets=sample_sets, cohort_analysis=cohort_analysis
             )
 
+            # check the given cohort class exists
+            if cohorts not in df_coh.columns:
+                raise ValueError(f"{cohorts!r} is not a known cohort class")
+
             for coh in df_coh[cohorts].unique():
                 loc_coh = df_coh[cohorts] == coh
                 n_samples = np.count_nonzero(loc_coh)
+                if n_samples == 0:
+                    raise ValueError(f"no samples in {coh!r}")
                 if n_samples < min_cohort_size:
                     raise ValueError(
                         f"number of samples is less than min_cohort_size for cohort {coh!r}"
