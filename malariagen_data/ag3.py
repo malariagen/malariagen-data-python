@@ -1874,10 +1874,6 @@ class Ag3:
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
-            # add a couple of columns for convenience
-            df["sample_set"] = sample_set
-            df["release"] = release
-
             self._cache_cohort_metadata[sample_set] = df
             return df
 
