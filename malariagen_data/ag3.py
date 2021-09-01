@@ -736,6 +736,28 @@ class Ag3:
 
         return df_effects
 
+    # def _count_alleles(
+    #         self,
+    #         coh,
+    #         loc_coh,
+    #         gt
+    # ):
+    #     n_samples = np.count_nonzero(loc_coh)
+    #     if n_samples == 0:
+    #         raise ValueError(f"no samples in {coh!r}")
+    #     if n_samples < min_cohort_size:
+    #         raise ValueError(
+    #             f"number of samples is less than min_cohort_size for cohort {coh!r}"
+    #         )
+    #
+    #     gt_coh = np.compress(loc_coh, gt, axis=1)
+    #     # count alleles
+    #     ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+    #     # compute allele frequencies
+    #     af_coh = ac_coh.to_frequencies()
+    #     # add column to dataframe
+    #     df_snps[coh] = af_coh[:, 1:].flatten()
+
     def snp_allele_frequencies(
         self,
         transcript,
@@ -841,6 +863,7 @@ class Ag3:
             for coh in df_coh[cohorts].unique():
                 loc_coh = df_coh[cohorts] == coh
                 n_samples = np.count_nonzero(loc_coh)
+
                 if n_samples == 0:
                     raise ValueError(f"no samples in {coh!r}")
                 if n_samples < min_cohort_size:
