@@ -1184,3 +1184,11 @@ def test_sample_cohorts():
     assert df_UG.cohort_admin2_year[42] == "UG-E_Tororo_2012_arab"
     assert df_UG.cohort_admin2_month[49] == "UG-E_Tororo_2012_10_arab"
     assert df_UG.shape == (290, 5)
+
+    # test a list of sample sets
+    sample_sets = ["AG1000G-AO", "AG1000G-FR"]
+    df_list = ag3.sample_cohorts(sample_sets=sample_sets)
+    assert df_list.shape == (104, 5)
+    assert tuple(df_list.columns) == expected_cols
+    assert df_list.sample_id[0] == "AR0047-C"
+    assert df_list.sample_id[103] == "AP0017-Cx"
