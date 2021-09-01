@@ -852,7 +852,7 @@ class Ag3:
         if isinstance(cohorts, str):
 
             # grab the cohorts dataframe
-            df_coh = Ag3.sample_cohorts(
+            df_coh = self.sample_cohorts(
                 sample_sets=sample_sets, cohort_analysis=cohort_analysis
             )
 
