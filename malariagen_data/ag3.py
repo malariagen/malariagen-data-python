@@ -853,7 +853,7 @@ class Ag3:
 
             # grab the cohorts dataframe
             df_coh = self.sample_cohorts(
-                sample_sets=sample_sets, cohort_analysis=cohort_analysis
+                sample_sets=sample_sets, cohorts_analysis=cohort_analysis
             )
 
             # check the given cohort class exists
@@ -1932,20 +1932,20 @@ class Ag3:
 
         return ds
 
-    def _read_cohort_metadata(self, *, sample_set, cohort_analysis):
+    def _read_cohort_metadata(self, *, sample_set, cohorts_analysis):
         """Read cohort metadata for a single sample set."""
         try:
-            return self._cache_cohort_metadata[(sample_set, cohort_analysis)]
+            return self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/metadata/cohorts_{cohort_analysis}/{sample_set}/samples.cohorts.csv"
+            path = f"{self._path}/{release}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
-            self._cache_cohort_metadata[(sample_set, cohort_analysis)] = df
+            self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
 
-    def sample_cohorts(self, sample_sets="v3_wild", cohort_analysis="20210702"):
+    def sample_cohorts(self, sample_sets="v3_wild", cohorts_analysis="20210702"):
         """Access cohorts metadata for one or more sample sets.
 
         Parameters
@@ -1954,7 +1954,7 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
-        cohort_analysis : str
+        cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         Returns
         -------
@@ -1969,14 +1969,14 @@ class Ag3:
         if isinstance(sample_sets, str):
             # assume single sample set
             df = self._read_cohort_metadata(
-                sample_set=sample_sets, cohort_analysis=cohort_analysis
+                sample_set=sample_sets, cohorts_analysis=cohorts_analysis
             )
 
         else:
             # concatenate multiple sample sets
             dfs = [
                 self._read_cohort_metadata(
-                    sample_set=c, cohort_analysis=cohort_analysis
+                    sample_set=c, cohorts_analysis=cohorts_analysis
                 )
                 for c in sample_sets
             ]
