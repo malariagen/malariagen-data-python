@@ -1153,6 +1153,9 @@ def test_haplotypes(sample_sets, contig, analysis):
 
 
 # test v3 sample sets
+@pytest.mark.parametrize(
+    "sample_sets", ["v3_wild", "v3", "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]]
+)
 def test_sample_cohorts():
     expected_cols = (
         "sample_id",
