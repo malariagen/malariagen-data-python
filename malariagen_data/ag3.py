@@ -1893,9 +1893,6 @@ class Ag3:
         df : pandas.DataFrame
 
         """
-        # if v3, we don't want the colony crosses included
-        if sample_sets == "v3":
-            sample_sets = "v3_wild"
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         if isinstance(sample_sets, str):
