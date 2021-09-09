@@ -98,6 +98,7 @@ class Ag3:
         self._cache_cnv_discordant_read_calls = dict()
         self._cache_haplotypes = dict()
         self._cache_haplotype_sites = dict()
+        self._cache_cohort_metadata = dict()
 
     @property
     def releases(self):
@@ -1862,6 +1863,55 @@ class Ag3:
             )
 
         return ds
+
+    def _read_cohort_metadata(self, *, sample_set, cohorts_analysis):
+        """Read cohort metadata for a single sample set."""
+        try:
+            return self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            path = f"{self._path}/{release}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+            with self._fs.open(path) as f:
+                df = pandas.read_csv(f, na_values="")
+
+            self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
+            return df
+
+    def sample_cohorts(self, sample_sets="v3_wild", cohorts_analysis="20210702"):
+        """Access cohorts metadata for one or more sample sets.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        if isinstance(sample_sets, str):
+            # assume single sample set
+            df = self._read_cohort_metadata(
+                sample_set=sample_sets, cohorts_analysis=cohorts_analysis
+            )
+
+        else:
+            # concatenate multiple sample sets
+            dfs = [
+                self._read_cohort_metadata(
+                    sample_set=c, cohorts_analysis=cohorts_analysis
+                )
+                for c in sample_sets
+            ]
+            df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
+
+        return df
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")

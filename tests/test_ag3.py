@@ -1150,3 +1150,34 @@ def test_haplotypes(sample_sets, contig, analysis):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_genotype"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+
+# test v3 sample sets
+@pytest.mark.parametrize(
+    "sample_sets", ["v3_wild", "v3", "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]]
+)
+def test_sample_cohorts(sample_sets):
+    expected_cols = (
+        "sample_id",
+        "cohort_admin1_year",
+        "cohort_admin1_month",
+        "cohort_admin2_year",
+        "cohort_admin2_month",
+    )
+
+    ag3 = setup_ag3()
+    df_coh = ag3.sample_cohorts(sample_sets=sample_sets, cohorts_analysis="20210702")
+    df_meta = ag3.sample_metadata(sample_sets=sample_sets)
+
+    assert tuple(df_coh.columns) == expected_cols
+    assert len(df_coh) == len(df_meta)
+    assert df_coh.sample_id.tolist() == df_meta.sample_id.tolist()
+    if sample_sets == "AG1000G-UG":
+        assert df_coh.sample_id[0] == "AC0007-C"
+        assert df_coh.cohort_admin1_year[23] == "UG-E_2012_arab"
+        assert df_coh.cohort_admin1_month[37] == "UG-E_2012_10_arab"
+        assert df_coh.cohort_admin2_year[42] == "UG-E_Tororo_2012_arab"
+        assert df_coh.cohort_admin2_month[49] == "UG-E_Tororo_2012_10_arab"
+    if sample_sets == ["AG1000G-AO", "AG1000G-FR"]:
+        assert df_coh.sample_id[0] == "AR0047-C"
+        assert df_coh.sample_id[103] == "AP0017-Cx"
