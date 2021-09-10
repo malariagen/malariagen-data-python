@@ -73,6 +73,9 @@ $ poetry publish
 
 ## Release notes
 
+### 0.10.0
+
+* Add `Ag3.sample_cohorts()`.
 
 ### 0.9.0
 
