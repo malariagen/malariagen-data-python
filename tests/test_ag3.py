@@ -664,6 +664,25 @@ def test_snp_allele_frequencies():
     assert np.any(df.max_af == 0)
 
 
+def test_cohort_freq():
+    ag3 = setup_ag3()
+    cohorts = "admin1_month"
+
+    df = ag3.snp_allele_frequencies(
+        transcript="AGAP004707-RD",
+        cohorts=cohorts,
+        cohorts_analysis="20210702",
+        min_cohort_size=10,
+        site_mask="gamb_colu",
+        sample_sets="v3_wild",
+        drop_invariant=False,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    # assert df.columns.tolist() == expected_fields
+    # assert df.shape == (132306, len(expected_fields))
+
+
 def test_snp_allele_frequencies_0_cohort():
     ag3 = setup_ag3()
     cohorts = {

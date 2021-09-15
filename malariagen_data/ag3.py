@@ -740,6 +740,8 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        cohorts_analysis="20210702",
+        min_cohort_size=10,
         site_mask=None,
         site_filters="dt_20200416",
         species_calls=("20200422", "aim"),
@@ -752,9 +754,15 @@ class Ag3:
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        cohorts : dict
+        cohorts : dict or str
             Dictionary to map cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+            String to map samples to an ag3 defined cohort level to samples :
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -795,10 +803,33 @@ class Ag3:
         # slice to feature location
         gt = gt[loc_feature].compute()
 
+        # build cohort dictionary where key = cohort_id, value=loc_coh
+        coh_dict = {}
+        if isinstance(cohorts, dict):
+            for coh, query in cohorts.items():
+                # locate samples
+                loc_coh = df_meta.eval(query).values
+                coh_dict[coh] = loc_coh
+        if isinstance(cohorts, str):
+            # grab the cohorts dataframe
+            df_coh = self.sample_cohorts(
+                sample_sets=sample_sets, cohorts_analysis=cohorts_analysis
+            )
+            # remove the nan rows
+            df_coh = df_coh.dropna()
+            # fix the string to match columns
+            cohorts = "cohort_" + cohorts
+            # check the given cohort class exists
+            if cohorts not in df_coh.columns:
+                raise ValueError(f"{cohorts!r} is not a known cohort class")
+
+            for coh in df_coh[cohorts].unique():
+                loc_coh = df_coh[cohorts] == coh
+                coh_dict[coh] = loc_coh
+
         # count alleles
-        for coh, query in cohorts.items():
-            # locate samples
-            loc_coh = df_meta.eval(query).values
+
+        for coh, loc_coh in coh_dict.items():
             n_samples = np.count_nonzero(loc_coh)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
