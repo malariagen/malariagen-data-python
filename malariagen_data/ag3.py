@@ -825,7 +825,7 @@ class Ag3:
 
             for coh in df_coh[cohorts].unique():
                 loc_coh = df_coh[cohorts] == coh
-                coh_dict[coh] = loc_coh
+                coh_dict[coh] = loc_coh.values
 
         # count alleles
 
@@ -842,7 +842,7 @@ class Ag3:
             df_snps[coh] = af_coh[:, 1:].flatten()
 
         # add max allele freq column
-        df_snps["max_af"] = df_snps[cohorts].max(axis=1)
+        df_snps["max_af"] = df_snps[list(coh_dict.keys())].max(axis=1)
 
         # apply site mask if requested
         if site_mask is not None:
