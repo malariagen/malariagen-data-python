@@ -1026,61 +1026,53 @@ def test_gene_cnv(contig, sample_sets):
 
 
 @pytest.mark.parametrize("contig", ["2R", "X"])
-def test_gene_cnv_frequencies(contig):
+@pytest.mark.parametrize(
+    "cohorts",
+    [
+        {
+            "ke": "country == 'Kenya'",
+            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+        },
+        "admin1_month",
+    ],
+)
+def test_gene_cnv_frequencies(contig, cohorts):
     ag3 = setup_ag3()
-    cohorts = {
-        "ke": "country == 'Kenya'",
-        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
-    }
-    expected_cols = [
-        "contig",
-        "start",
-        "end",
-        "strand",
-        "Name",
-        "description",
-        "ke_amp",
-        "ke_del",
-        "bf_2012_col_amp",
-        "bf_2012_col_del",
-    ]
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
-
     df = ag3.gene_cnv_frequencies(contig=contig, sample_sets="v3_wild", cohorts=cohorts)
 
     assert isinstance(df, pd.DataFrame)
-    assert df.columns.tolist() == expected_cols
     assert len(df) == len(df_genes)
     assert df.index.name == "ID"
 
     # sanity checks
-    for f in ["ke_amp", "ke_del", "bf_2012_col_amp", "bf_2012_col_del"]:
-        x = df[f].values
-        assert np.all(x >= 0)
-        assert np.all(x <= 1)
-    for fa, fd in [["ke_amp", "ke_del"], ["bf_2012_col_amp", "bf_2012_col_del"]]:
-        a = df[fa].values
-        d = df[fd].values
-        x = a + d
-        assert np.all(x >= 0)
-        assert np.all(x <= 1)
-
-
-@pytest.mark.parametrize(
-    "contig",
-    [
-        "X",
-    ],
-)
-def test_gene_cnv_frequencies_0_cohort(contig):
-    ag3 = setup_ag3()
-    cohorts = {
-        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'",
-    }
-    with pytest.raises(ValueError):
-        _ = ag3.gene_cnv_frequencies(
-            contig=contig, sample_sets="v3_wild", cohorts=cohorts
-        )
+    if isinstance(cohorts, dict):
+        if cohorts.keys() == "bf_2050_col":
+            with pytest.raises(ValueError):
+                _ = ag3.gene_cnv_frequencies(
+                    contig=contig, sample_sets="v3_wild", cohorts=cohorts
+                )
+        for f in ["ke_amp", "ke_del", "bf_2012_col_amp", "bf_2012_col_del"]:
+            x = df[f].values
+            assert np.all(x >= 0)
+            assert np.all(x <= 1)
+        for fa, fd in [["ke_amp", "ke_del"], ["bf_2012_col_amp", "bf_2012_col_del"]]:
+            a = df[fa].values
+            d = df[fd].values
+            x = a + d
+            assert np.all(x >= 0)
+            assert np.all(x <= 1)
+            # todo test expected columns with list
+            if contig == "2R":
+                assert df.shape == (3668, 10)
+            elif contig == "X":
+                assert df.shape == (1063, 10)
+    if isinstance(cohorts, str):
+        # todo test expected columns with cohorts meta data columns
+        if contig == "2R":
+            assert df.shape == (3668, 192)
+        elif contig == "X":
+            assert df.shape == (1063, 192)
 
 
 @pytest.mark.parametrize(
