@@ -828,18 +828,21 @@ class Ag3:
                 coh_dict[coh] = loc_coh.values
 
         # count alleles
-
         for coh, loc_coh in coh_dict.items():
             n_samples = np.count_nonzero(loc_coh)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            gt_coh = np.compress(loc_coh, gt, axis=1)
-            # count alleles
-            ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
-            # compute allele frequencies
-            af_coh = ac_coh.to_frequencies()
-            # add column to dataframe
-            df_snps[coh] = af_coh[:, 1:].flatten()
+            # todo we might want to report the cohorts that are too small
+            if n_samples < min_cohort_size:
+                df_snps[coh] = np.nan
+            if n_samples >= min_cohort_size:
+                gt_coh = np.compress(loc_coh, gt, axis=1)
+                # count alleles
+                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+                # compute allele frequencies
+                af_coh = ac_coh.to_frequencies()
+                # add column to dataframe
+                df_snps[coh] = af_coh[:, 1:].flatten()
 
         # add max allele freq column
         df_snps["max_af"] = df_snps[list(coh_dict.keys())].max(axis=1)
