@@ -815,17 +815,16 @@ class Ag3:
             df_coh = self.sample_cohorts(
                 sample_sets=sample_sets, cohorts_analysis=cohorts_analysis
             )
-            # remove the nan rows
-            df_coh = df_coh.dropna()
             # fix the string to match columns
             cohorts = "cohort_" + cohorts
             # check the given cohort class exists
             if cohorts not in df_coh.columns:
                 raise ValueError(f"{cohorts!r} is not a known cohort class")
-
+            # remove the nan rows
             for coh in df_coh[cohorts].unique():
-                loc_coh = df_coh[cohorts] == coh
-                coh_dict[coh] = loc_coh.values
+                if isinstance(coh, str):
+                    loc_coh = df_coh[cohorts] == coh
+                    coh_dict[coh] = loc_coh.values
 
         # count alleles
         for coh, loc_coh in coh_dict.items():
