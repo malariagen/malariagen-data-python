@@ -1047,7 +1047,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
 
     # sanity checks
     if isinstance(cohorts, dict):
-        if cohorts.keys() == "bf_2050_col":
+        if "bf_2050_col" in cohorts:
             with pytest.raises(ValueError):
                 _ = ag3.gene_cnv_frequencies(
                     contig=contig, sample_sets="v3_wild", cohorts=cohorts
