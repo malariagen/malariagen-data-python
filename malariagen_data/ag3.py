@@ -1664,8 +1664,8 @@ class Ag3:
         contig,
         cohorts,
         cohorts_analysis="20210702",
-        species_calls=("20200422", "aim"),
         min_cohort_size=10,
+        species_calls=("20200422", "aim"),
         sample_sets="v3_wild",
     ):
         """Compute modal copy number by gene, then compute the frequency of
@@ -1675,9 +1675,17 @@ class Ag3:
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        cohorts : dict
+        cohorts : dict or str
             Dictionary to map cohort IDs to sample queries, e.g.,
             {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+            String to map samples to an ag3 defined cohort level to samples :
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+        species_calls : (str, str)
+            Include species calls in metadata.
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1693,14 +1701,14 @@ class Ag3:
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
 
         # get sample metadata
-        df_samples = self.sample_metadata(sample_sets=sample_sets)
+        df_meta = self.sample_metadata(sample_sets=sample_sets)
 
         # get genes
         df_genes = self.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
         # figure out expected copy number
         if contig == "X":
-            is_male = (df_samples["sex_call"] == "M").values
+            is_male = (df_meta["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
             expected_cn = 2
@@ -1715,6 +1723,7 @@ class Ag3:
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
 
+        # set up cohort dict
         # build coh dict
         coh_dict = self._prep_cohorts_arg(
             cohorts=cohorts,
@@ -1724,8 +1733,7 @@ class Ag3:
         )
 
         # compute cohort frequencies
-        for coh, query in coh_dict.items():
-            loc_samples = df_samples.eval(query).values
+        for coh, loc_samples in coh_dict.items():
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
