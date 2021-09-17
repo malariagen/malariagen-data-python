@@ -736,6 +736,38 @@ class Ag3:
 
         return df_effects
 
+    def _prep_cohorts_arg(self, cohorts, sample_sets, species_calls, cohorts_analysis):
+        # build cohort dictionary where key = cohort_id, value=loc_coh
+
+        # get sample metadata
+        df_meta = self.sample_metadata(
+            sample_sets=sample_sets, species_calls=species_calls
+        )
+
+        coh_dict = {}
+        if isinstance(cohorts, dict):
+            for coh, query in cohorts.items():
+                # locate samples
+                loc_coh = df_meta.eval(query).values
+                coh_dict[coh] = loc_coh
+        if isinstance(cohorts, str):
+            # grab the cohorts dataframe
+            df_coh = self.sample_cohorts(
+                sample_sets=sample_sets, cohorts_analysis=cohorts_analysis
+            )
+            # fix the string to match columns
+            cohorts = "cohort_" + cohorts
+            # check the given cohort class exists
+            if cohorts not in df_coh.columns:
+                raise ValueError(f"{cohorts!r} is not a known cohort class")
+            # remove the nan rows
+            for coh in df_coh[cohorts].unique():
+                if isinstance(coh, str):
+                    loc_coh = df_coh[cohorts] == coh
+                    coh_dict[coh] = loc_coh.values
+
+        return coh_dict
+
     def snp_allele_frequencies(
         self,
         transcript,
@@ -763,6 +795,8 @@ class Ag3:
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -781,16 +815,16 @@ class Ag3:
         -------
         df_snps : pandas.DataFrame
 
+        Notes
+        -----
+        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+
         """
 
         # setup initial dataframe of SNPs
         contig, loc_feature, df_snps = self._snp_df(
             transcript=transcript, site_filters=site_filters
-        )
-
-        # get sample metadata
-        df_meta = self.sample_metadata(
-            sample_sets=sample_sets, species_calls=species_calls
         )
 
         # get genotypes
@@ -803,28 +837,13 @@ class Ag3:
         # slice to feature location
         gt = gt[loc_feature].compute()
 
-        # build cohort dictionary where key = cohort_id, value=loc_coh
-        coh_dict = {}
-        if isinstance(cohorts, dict):
-            for coh, query in cohorts.items():
-                # locate samples
-                loc_coh = df_meta.eval(query).values
-                coh_dict[coh] = loc_coh
-        if isinstance(cohorts, str):
-            # grab the cohorts dataframe
-            df_coh = self.sample_cohorts(
-                sample_sets=sample_sets, cohorts_analysis=cohorts_analysis
-            )
-            # fix the string to match columns
-            cohorts = "cohort_" + cohorts
-            # check the given cohort class exists
-            if cohorts not in df_coh.columns:
-                raise ValueError(f"{cohorts!r} is not a known cohort class")
-            # remove the nan rows
-            for coh in df_coh[cohorts].unique():
-                if isinstance(coh, str):
-                    loc_coh = df_coh[cohorts] == coh
-                    coh_dict[coh] = loc_coh.values
+        # build coh dict
+        coh_dict = self._prep_cohorts_arg(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            species_calls=species_calls,
+            cohorts_analysis=cohorts_analysis,
+        )
 
         # count alleles
         for coh, loc_coh in coh_dict.items():
@@ -1640,7 +1659,15 @@ class Ag3:
 
         return ds_out
 
-    def gene_cnv_frequencies(self, contig, cohorts=None, sample_sets="v3_wild"):
+    def gene_cnv_frequencies(
+        self,
+        contig,
+        cohorts,
+        cohorts_analysis="20210702",
+        species_calls=("20200422", "aim"),
+        min_cohort_size=10,
+        sample_sets="v3_wild",
+    ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
 
@@ -1686,10 +1713,18 @@ class Ag3:
         # setup intermediates
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
-        is_del = (0 <= cn) & (cn < expected_cn)
+        is_del = (cn >= 0) & (cn < expected_cn)
+
+        # build coh dict
+        coh_dict = self._prep_cohorts_arg(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            species_calls=species_calls,
+            cohorts_analysis=cohorts_analysis,
+        )
 
         # compute cohort frequencies
-        for coh, query in cohorts.items():
+        for coh, query in coh_dict.items():
             loc_samples = df_samples.eval(query).values
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:

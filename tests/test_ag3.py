@@ -679,7 +679,7 @@ def test_cohort_snp_allele_frequencies():
     )
 
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (16904, 101)
+    assert df.shape == (16639, 101)
 
 
 def test_snp_allele_frequencies_0_cohort():
