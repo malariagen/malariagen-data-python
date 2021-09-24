@@ -850,7 +850,6 @@ class Ag3:
             n_samples = np.count_nonzero(loc_coh)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            # todo we might want to report the cohorts that are too small
             if n_samples < min_cohort_size:
                 df_snps[coh] = np.nan
             if n_samples >= min_cohort_size:
@@ -1737,14 +1736,18 @@ class Ag3:
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-            is_del_coh = np.compress(loc_samples, is_del, axis=1)
-            amp_count_coh = np.sum(is_amp_coh, axis=1)
-            del_count_coh = np.sum(is_del_coh, axis=1)
-            amp_freq_coh = amp_count_coh / n_samples
-            del_freq_coh = del_count_coh / n_samples
-            df[f"{coh}_amp"] = amp_freq_coh
-            df[f"{coh}_del"] = del_freq_coh
+            if n_samples < min_cohort_size:
+                df[f"{coh}_amp"] = np.nan
+                df[f"{coh}_del"] = np.nan
+            if n_samples >= min_cohort_size:
+                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
+                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+                amp_count_coh = np.sum(is_amp_coh, axis=1)
+                del_count_coh = np.sum(is_del_coh, axis=1)
+                amp_freq_coh = amp_count_coh / n_samples
+                del_freq_coh = del_count_coh / n_samples
+                df[f"{coh}_amp"] = amp_freq_coh
+                df[f"{coh}_del"] = del_freq_coh
 
         # set gene ID as index for convenience
         df.set_index("ID", inplace=True)

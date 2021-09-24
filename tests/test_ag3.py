@@ -587,12 +587,21 @@ def test_snp_effects():
     assert df.iloc[674].effect == "INTRONIC"
 
 
-def test_snp_allele_frequencies():
+@pytest.mark.parametrize(
+    "cohorts",
+    [
+        {
+            "ke": "country == 'Kenya'",
+            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+        },
+        {
+            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'"
+        },
+        "admin1_month",
+    ],
+)
+def test_snp_allele_frequencies(cohorts):
     ag3 = setup_ag3()
-    cohorts = {
-        "ke": "country == 'Kenya'",
-        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
-    }
     expected_fields = [
         "contig",
         "position",
@@ -605,97 +614,72 @@ def test_snp_allele_frequencies():
         "bf_2012_col",
         "max_af",
     ]
-    # drop invariants
-    df = ag3.snp_allele_frequencies(
-        transcript="AGAP009194-RA",
-        cohorts=cohorts,
-        site_mask="gamb_colu",
-        sample_sets="v3_wild",
-        drop_invariant=True,
-    )
 
-    assert isinstance(df, pd.DataFrame)
-    assert df.columns.tolist() == expected_fields
-    assert df.shape == (133, len(expected_fields))
-    assert df.iloc[0].position == 28597653
-    assert df.iloc[1].ref_allele == "A"
-    assert df.iloc[2].alt_allele == "C"
-    assert df.iloc[3].ke == 0
-    assert df.iloc[4].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
-    assert df.iloc[4].max_af == pytest.approx(0.006097, abs=1e-6)
-    # check invariant have been dropped
-    assert df.max_af.min() > 0
+    # check 0 sample cohort error
+    if "bf_2050_col" in cohorts:
+        with pytest.raises(ValueError):
+            _ = ag3.snp_allele_frequencies(
+                transcript="AGAP009194-RA",
+                cohorts=cohorts,
+                site_mask="gamb_colu",
+                sample_sets="v3_wild",
+                drop_invariant=True,
+            )
 
-    cohorts = {
-        "gm": "country == 'Gambia, The'",
-        "mz": "country == 'Mozambique' and year == 2004",
-    }
-    expected_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
-        "pass_gamb_colu_arab",
-        "pass_gamb_colu",
-        "pass_arab",
-        "gm",
-        "mz",
-        "max_af",
-    ]
-    # keep invariants
-    df = ag3.snp_allele_frequencies(
-        transcript="AGAP004707-RD",
-        cohorts=cohorts,
-        site_mask="gamb_colu",
-        sample_sets="v3_wild",
-        drop_invariant=False,
-    )
+    # check admin unit cohorts
+    elif "admin1_month" in cohorts:
+        df = ag3.snp_allele_frequencies(
+            transcript="AGAP004707-RD",
+            cohorts=cohorts,
+            cohorts_analysis="20210702",
+            min_cohort_size=10,
+            site_mask="gamb_colu",
+            sample_sets="v3_wild",
+            drop_invariant=True,
+        )
+        df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20210702")
+        coh_nm = "cohort_" + cohorts
+        all_uni = df_coh[coh_nm].dropna().unique()
+        # todo simplify this assertion
+        assert all(np.in1d(all_uni, np.asarray(df.columns)))
+        assert isinstance(df, pd.DataFrame)
+        assert df.shape == (16639, 101)
 
-    assert isinstance(df, pd.DataFrame)
-    assert df.columns.tolist() == expected_fields
-    assert df.shape == (132306, len(expected_fields))
-    assert df.iloc[0].position == 2358158
-    assert df.iloc[1].ref_allele == "A"
-    assert df.iloc[2].alt_allele == "G"
-    assert df.iloc[3].gm == 0.0
-    assert df.iloc[4].mz == 0.0
-    assert df.iloc[72].max_af == pytest.approx(0.001792, abs=1e-6)
-    # check invariant positions are still present
-    assert np.any(df.max_af == 0)
-
-
-def test_cohort_snp_allele_frequencies():
-    ag3 = setup_ag3()
-    cohorts = "admin1_month"
-
-    df = ag3.snp_allele_frequencies(
-        transcript="AGAP004707-RD",
-        cohorts=cohorts,
-        cohorts_analysis="20210702",
-        min_cohort_size=10,
-        site_mask="gamb_colu",
-        sample_sets="v3_wild",
-        drop_invariant=True,
-    )
-
-    assert isinstance(df, pd.DataFrame)
-    assert df.shape == (16639, 101)
-
-
-def test_snp_allele_frequencies_0_cohort():
-    ag3 = setup_ag3()
-    cohorts = {
-        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'",
-    }
-
-    with pytest.raises(ValueError):
-        _ = ag3.snp_allele_frequencies(
+    else:
+        # test drop invariants
+        df = ag3.snp_allele_frequencies(
             transcript="AGAP009194-RA",
             cohorts=cohorts,
             site_mask="gamb_colu",
             sample_sets="v3_wild",
             drop_invariant=True,
         )
+
+        assert isinstance(df, pd.DataFrame)
+        assert df.columns.tolist() == expected_fields
+        assert df.shape == (133, len(expected_fields))
+        assert df.iloc[0].position == 28597653
+        assert df.iloc[1].ref_allele == "A"
+        assert df.iloc[2].alt_allele == "C"
+        assert df.iloc[3].ke == 0
+        assert df.iloc[4].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
+        assert df.iloc[4].max_af == pytest.approx(0.006097, abs=1e-6)
+        # check invariant have been dropped
+        assert df.max_af.min() > 0
+
+        # test keep invariants
+        df = ag3.snp_allele_frequencies(
+            transcript="AGAP004707-RD",
+            cohorts=cohorts,
+            site_mask="gamb_colu",
+            sample_sets="v3_wild",
+            drop_invariant=False,
+        )
+        assert isinstance(df, pd.DataFrame)
+        assert df.columns.tolist() == expected_fields
+        assert df.shape == (132306, len(expected_fields))
+        # check invariant positions are still present
+        assert np.any(df.max_af == 0)
 
 
 @pytest.mark.parametrize(
@@ -1089,8 +1073,15 @@ def test_gene_cnv_frequencies(contig, cohorts):
                     assert df.shape == (3668, 10)
                 elif contig == "X":
                     assert df.shape == (1063, 10)
+
         if isinstance(cohorts, str):
-            # todo test expected columns with cohorts meta data columns
+            df_coh = ag3.sample_cohorts(
+                sample_sets="v3_wild", cohorts_analysis="20210702"
+            )
+            coh_nm = "cohort_" + cohorts
+            all_uni = df_coh[coh_nm].dropna().unique()
+            coh_columns = np.asarray([a[:-4] for a in df.columns])
+            assert all(np.in1d(all_uni, coh_columns))
             if contig == "2R":
                 assert df.shape == (3668, 192)
             elif contig == "X":
