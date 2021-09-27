@@ -1683,6 +1683,8 @@ class Ag3:
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
         species_calls : (str, str)
             Include species calls in metadata.
         sample_sets : str or list of str
@@ -1693,6 +1695,11 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+
+        Notes
+        -----
+        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
 
         """
 
