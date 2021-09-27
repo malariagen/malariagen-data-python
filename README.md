@@ -5,7 +5,7 @@ This Python package provides convenience methods for accessing public data from 
 Installation:
 
 ```bash
-$ pip install --pre malariagen-data
+$ pip install malariagen-data
 ```
 
 Usage:
