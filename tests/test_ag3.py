@@ -605,6 +605,15 @@ def test_snp_allele_frequencies__no_samples():
 def test_snp_allele_frequencies__str_cohorts():
     ag3 = setup_ag3()
     cohorts = "admin1_month"
+    universal_fields = [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "pass_gamb_colu_arab",
+        "pass_gamb_colu",
+        "pass_arab",
+    ]
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
         cohorts=cohorts,
@@ -616,9 +625,10 @@ def test_snp_allele_frequencies__str_cohorts():
     )
     df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20210702")
     coh_nm = "cohort_" + cohorts
-    all_uni = df_coh[coh_nm].dropna().unique()
-    # todo simplify this assertion
-    assert all(np.in1d(all_uni, np.asarray(df.columns)))
+    all_uni = df_coh[coh_nm].dropna().unique().tolist()
+    expected_fields = universal_fields + all_uni + ["max_af"]
+
+    assert df.columns.tolist() == expected_fields
     assert isinstance(df, pd.DataFrame)
     assert df.shape == (16639, 101)
 
@@ -629,7 +639,7 @@ def test_snp_allele_frequencies__dict_cohorts():
         "ke": "country == 'Kenya'",
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
     }
-    expected_fields = [
+    universal_fields = [
         "contig",
         "position",
         "ref_allele",
@@ -637,9 +647,6 @@ def test_snp_allele_frequencies__dict_cohorts():
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
-        "ke",
-        "bf_2012_col",
-        "max_af",
     ]
 
     # test drop invariants
@@ -652,6 +659,7 @@ def test_snp_allele_frequencies__dict_cohorts():
     )
 
     assert isinstance(df, pd.DataFrame)
+    expected_fields = universal_fields + list(cohorts.keys()) + ["max_af"]
     assert df.columns.tolist() == expected_fields
     assert df.shape == (133, len(expected_fields))
     assert df.iloc[0].position == 28597653
