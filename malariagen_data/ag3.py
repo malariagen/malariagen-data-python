@@ -737,15 +737,14 @@ class Ag3:
         return df_effects
 
     def _prep_cohorts_arg(self, cohorts, sample_sets, species_calls, cohorts_analysis):
-        # build cohort dictionary where key = cohort_id, value=loc_coh
 
-        # get sample metadata
-        df_meta = self.sample_metadata(
-            sample_sets=sample_sets, species_calls=species_calls
-        )
-
+        # build cohort dictionary where key=cohort_id, value=loc_coh
         coh_dict = {}
         if isinstance(cohorts, dict):
+            # get sample metadata
+            df_meta = self.sample_metadata(
+                sample_sets=sample_sets, species_calls=species_calls
+            )
             for coh, query in cohorts.items():
                 # locate samples
                 loc_coh = df_meta.eval(query).values
@@ -757,9 +756,9 @@ class Ag3:
             )
             # fix the string to match columns
             cohorts = "cohort_" + cohorts
-            # check the given cohort class exists
+            # check the given cohort set exists
             if cohorts not in df_coh.columns:
-                raise ValueError(f"{cohorts!r} is not a known cohort class")
+                raise ValueError(f"{cohorts!r} is not a known cohort set")
             # remove the nan rows
             for coh in df_coh[cohorts].unique():
                 if isinstance(coh, str):
@@ -786,11 +785,11 @@ class Ag3:
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        cohorts : dict or str
-            Dictionary to map cohort IDs to sample queries, e.g.,
-            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
-            String to map samples to an ag3 defined cohort level to samples :
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -852,7 +851,7 @@ class Ag3:
                 raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples < min_cohort_size:
                 df_snps[coh] = np.nan
-            if n_samples >= min_cohort_size:
+            else:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
@@ -1674,11 +1673,11 @@ class Ag3:
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        cohorts : dict or str
-            Dictionary to map cohort IDs to sample queries, e.g.,
-            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
-            String to map samples to an ag3 defined cohort level to samples :
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -1746,7 +1745,7 @@ class Ag3:
             if n_samples < min_cohort_size:
                 df[f"{coh}_amp"] = np.nan
                 df[f"{coh}_del"] = np.nan
-            if n_samples >= min_cohort_size:
+            else:
                 is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
                 is_del_coh = np.compress(loc_samples, is_del, axis=1)
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
