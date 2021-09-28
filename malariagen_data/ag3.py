@@ -736,10 +736,43 @@ class Ag3:
 
         return df_effects
 
+    def _prep_cohorts_arg(self, cohorts, sample_sets, species_calls, cohorts_analysis):
+
+        # build cohort dictionary where key=cohort_id, value=loc_coh
+        coh_dict = {}
+        if isinstance(cohorts, dict):
+            # get sample metadata
+            df_meta = self.sample_metadata(
+                sample_sets=sample_sets, species_calls=species_calls
+            )
+            for coh, query in cohorts.items():
+                # locate samples
+                loc_coh = df_meta.eval(query).values
+                coh_dict[coh] = loc_coh
+        if isinstance(cohorts, str):
+            # grab the cohorts dataframe
+            df_coh = self.sample_cohorts(
+                sample_sets=sample_sets, cohorts_analysis=cohorts_analysis
+            )
+            # fix the string to match columns
+            cohorts = "cohort_" + cohorts
+            # check the given cohort set exists
+            if cohorts not in df_coh.columns:
+                raise ValueError(f"{cohorts!r} is not a known cohort set")
+            # remove the nan rows
+            for coh in df_coh[cohorts].unique():
+                if isinstance(coh, str):
+                    loc_coh = df_coh[cohorts] == coh
+                    coh_dict[coh] = loc_coh.values
+
+        return coh_dict
+
     def snp_allele_frequencies(
         self,
         transcript,
         cohorts,
+        cohorts_analysis="20210702",
+        min_cohort_size=10,
         site_mask=None,
         site_filters="dt_20200416",
         species_calls=("20200422", "aim"),
@@ -752,9 +785,17 @@ class Ag3:
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        cohorts : dict
-            Dictionary to map cohort IDs to sample queries, e.g.,
-            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -773,16 +814,16 @@ class Ag3:
         -------
         df_snps : pandas.DataFrame
 
+        Notes
+        -----
+        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+
         """
 
         # setup initial dataframe of SNPs
         contig, loc_feature, df_snps = self._snp_df(
             transcript=transcript, site_filters=site_filters
-        )
-
-        # get sample metadata
-        df_meta = self.sample_metadata(
-            sample_sets=sample_sets, species_calls=species_calls
         )
 
         # get genotypes
@@ -795,23 +836,32 @@ class Ag3:
         # slice to feature location
         gt = gt[loc_feature].compute()
 
+        # build coh dict
+        coh_dict = self._prep_cohorts_arg(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            species_calls=species_calls,
+            cohorts_analysis=cohorts_analysis,
+        )
+
         # count alleles
-        for coh, query in cohorts.items():
-            # locate samples
-            loc_coh = df_meta.eval(query).values
+        for coh, loc_coh in coh_dict.items():
             n_samples = np.count_nonzero(loc_coh)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            gt_coh = np.compress(loc_coh, gt, axis=1)
-            # count alleles
-            ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
-            # compute allele frequencies
-            af_coh = ac_coh.to_frequencies()
-            # add column to dataframe
-            df_snps[coh] = af_coh[:, 1:].flatten()
+            if n_samples < min_cohort_size:
+                df_snps[coh] = np.nan
+            else:
+                gt_coh = np.compress(loc_coh, gt, axis=1)
+                # count alleles
+                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+                # compute allele frequencies
+                af_coh = ac_coh.to_frequencies()
+                # add column to dataframe
+                df_snps[coh] = af_coh[:, 1:].flatten()
 
         # add max allele freq column
-        df_snps["max_af"] = df_snps[cohorts].max(axis=1)
+        df_snps["max_af"] = df_snps[list(coh_dict.keys())].max(axis=1)
 
         # apply site mask if requested
         if site_mask is not None:
@@ -1607,7 +1657,15 @@ class Ag3:
 
         return ds_out
 
-    def gene_cnv_frequencies(self, contig, cohorts=None, sample_sets="v3_wild"):
+    def gene_cnv_frequencies(
+        self,
+        contig,
+        cohorts,
+        cohorts_analysis="20210702",
+        min_cohort_size=10,
+        species_calls=("20200422", "aim"),
+        sample_sets="v3_wild",
+    ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
 
@@ -1615,9 +1673,19 @@ class Ag3:
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        cohorts : dict
-            Dictionary to map cohort IDs to sample queries, e.g.,
-            {"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+        species_calls : (str, str)
+            Include species calls in metadata.
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1627,20 +1695,25 @@ class Ag3:
         -------
         df : pandas.DataFrame
 
+        Notes
+        -----
+        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+
         """
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
 
         # get sample metadata
-        df_samples = self.sample_metadata(sample_sets=sample_sets)
+        df_meta = self.sample_metadata(sample_sets=sample_sets)
 
         # get genes
         df_genes = self.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
         # figure out expected copy number
         if contig == "X":
-            is_male = (df_samples["sex_call"] == "M").values
+            is_male = (df_meta["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
             expected_cn = 2
@@ -1653,22 +1726,34 @@ class Ag3:
         # setup intermediates
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
-        is_del = (0 <= cn) & (cn < expected_cn)
+        is_del = (cn >= 0) & (cn < expected_cn)
+
+        # set up cohort dict
+        # build coh dict
+        coh_dict = self._prep_cohorts_arg(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            species_calls=species_calls,
+            cohorts_analysis=cohorts_analysis,
+        )
 
         # compute cohort frequencies
-        for coh, query in cohorts.items():
-            loc_samples = df_samples.eval(query).values
+        for coh, loc_samples in coh_dict.items():
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-            is_del_coh = np.compress(loc_samples, is_del, axis=1)
-            amp_count_coh = np.sum(is_amp_coh, axis=1)
-            del_count_coh = np.sum(is_del_coh, axis=1)
-            amp_freq_coh = amp_count_coh / n_samples
-            del_freq_coh = del_count_coh / n_samples
-            df[f"{coh}_amp"] = amp_freq_coh
-            df[f"{coh}_del"] = del_freq_coh
+            if n_samples < min_cohort_size:
+                df[f"{coh}_amp"] = np.nan
+                df[f"{coh}_del"] = np.nan
+            else:
+                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
+                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+                amp_count_coh = np.sum(is_amp_coh, axis=1)
+                del_count_coh = np.sum(is_del_coh, axis=1)
+                amp_freq_coh = amp_count_coh / n_samples
+                del_freq_coh = del_count_coh / n_samples
+                df[f"{coh}_amp"] = amp_freq_coh
+                df[f"{coh}_del"] = del_freq_coh
 
         # set gene ID as index for convenience
         df.set_index("ID", inplace=True)
