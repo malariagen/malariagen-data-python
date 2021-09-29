@@ -24,6 +24,7 @@ pytest = "*"
 notebook = "*"
 pre-commit = "*"
 black = "*"
+pylint = "^2.11.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

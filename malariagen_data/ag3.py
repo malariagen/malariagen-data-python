@@ -10,8 +10,8 @@ import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
 
-from . import veff
-from .util import (
+from malariagen_data import veff
+from malariagen_data.util import (
     SafeStore,
     dask_compress,
     dask_compress_dataset,
@@ -1959,3 +1959,7 @@ def _cn_mode(a, vmax):
         counts[j] = count
 
     return modes, counts
+
+
+ag3 = Ag3("gs://vo_agam_release/")
+print(ag3.snp_sites(contig="3R"))
