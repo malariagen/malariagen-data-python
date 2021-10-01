@@ -1,3 +1,4 @@
 {
-  "metadata_path": "metadata/Pf_7_samples_20210630.txt"
+  "metadata_path": "metadata/Pf_7_samples_20210630.txt",
+  "zarr_path": "pf7.zarr/"
 }

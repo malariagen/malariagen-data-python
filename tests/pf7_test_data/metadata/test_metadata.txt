@@ -1,0 +1,5 @@
+Sample	Study	Country	Admin level 1	Country latitude	Country longitude	Admin level 1 latitude	Admin level 1 longitude	Year	ENA	All samples same case	Population	% callable	QC pass	Exclusion reason	Sample type	Sample was in Pf6
+sample1	study1	Mauritania	Hodh el Gharbi	20.265	-10.337	1.12	-9.42	2014	ERR1	sample	AF-W	81.25	TRUE	Analysis_set	gDNA	TRUE
+sample2	study2	Mauritania	Hodh el Gharbi	20.265	-10.337	3.45	-8.73	2014	ERR2	sample	AF-W	88.36	TRUE	Analysis_set	gDNA	TRUE
+sample3	study3	Ghana	Upper East	7.966	-1.211	6.78	-9.43	2009	ERR3	sample	AF-W	86.46	TRUE	Analysis_set	sWGA	FALSE
+sample4	study1	Mauritania	Hodh el Gharbi	20.265	-10.337	20.52	-9.87	2012	ERR4	sample	AF-W	82.15	TRUE	Analysis_set	sWGA	FALSE
