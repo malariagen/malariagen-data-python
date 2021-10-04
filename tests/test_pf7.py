@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import call, mock_open, patch
 
+import dask.array as da
 import fsspec
 import gcsfs
 import pandas as pd
@@ -18,7 +19,6 @@ class TestPf7(unittest.TestCase):
         self.url_includes_gcs = "some_prefix/gcs://test_url"
         self.url_not_cloud = "/local/path"
         self.url_trailing_slash = "/local/path/"
-        self.url_real_data = "gs://pf7_staging/"
         self.working_dir = os.path.dirname(os.path.abspath(__file__))
         self.test_config_path = os.path.join(self.working_dir, "test_pf7_config.json")
         self.test_data_path = os.path.join(self.working_dir, "pf7_test_data")
@@ -59,12 +59,13 @@ class TestPf7(unittest.TestCase):
             "Sample was in Pf6": [True, True, False, False],
         }
         self.test_metadata_df = pd.DataFrame(data=self.d)
-        self.pf7_real_data = Pf7(self.url_real_data)
         self.test_zarr_root = zarr.group()
         variants = self.test_zarr_root.create_group("variants")
         variants.create_group("POS")
         variants.create_group("REF")
         variants.create_group("ALT")
+        self.url_real_data = "gs://pf7_staging/"
+        self.pf7_real_data = Pf7(self.url_real_data)
 
     @patch(
         "malariagen_data.pf7.Pf7._process_url_with_fsspec", return_value=["fs", "path"]
@@ -235,6 +236,46 @@ class TestPf7(unittest.TestCase):
                 ),
             ]
         )
+
+    @patch("malariagen_data.pf7.Pf7.open_snp_sites")
+    @patch("malariagen_data.pf7.from_zarr")
+    def test_snp_sites_calls_correctly_with_field_set(
+        self, mock_from_zarr, mock_open_snp
+    ):
+        mock_open_snp.return_value = self.test_zarr_root
+        self.test_pf7_class.snp_sites(field="POS")
+        mock_open_snp.assert_called_once()
+        mock_from_zarr.assert_called_once_with(
+            self.test_zarr_root["variants"]["POS"],
+            chunks="native",
+            inline_array=True,
+        )
+
+    def test_open_snp_sites_on_real_data(self):
+
+        # check can open the zarr directly
+        root = self.pf7_real_data.open_snp_sites()
+        self.assertIsInstance(root, zarr.hierarchy.Group)
+        # assert isinstance(root, zarr.hierarchy.Group)
+
+    def test_snp_sites_on_real_data(self):
+        pos, ref, alt = self.pf7_real_data.snp_sites()
+        self.assertIsInstance(pos, da.Array)
+        self.assertEqual(pos.ndim, 1)
+        self.assertEqual(pos.dtype, "i4")
+        self.assertIsInstance(ref, da.Array)
+        self.assertEqual(ref.ndim, 1)
+        self.assertEqual(ref.dtype, "O")
+        self.assertIsInstance(alt, da.Array)
+        self.assertEqual(alt.ndim, 2)
+        self.assertEqual(alt.dtype, "O")
+        assert pos.shape[0] == ref.shape[0] == alt.shape[0]
+
+    def test_snp_sites_on_real_data_with_field(self):
+        pos = self.pf7_real_data.snp_sites(field="POS")
+        self.assertIsInstance(pos, da.Array)
+        self.assertEqual(pos.ndim, 1)
+        self.assertEqual(pos.dtype, "i4")
 
 
 if __name__ == "__main__":

@@ -84,7 +84,6 @@ class Pf7:
         self,
         field=None,
         site_mask=None,
-        site_filters="dt_20200416",
         inline_array=True,
         chunks="native",
     ):
