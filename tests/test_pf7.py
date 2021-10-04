@@ -70,6 +70,42 @@ class TestPf7(unittest.TestCase):
         "malariagen_data.pf7.Pf7._process_url_with_fsspec", return_value=["fs", "path"]
     )
     @patch("malariagen_data.pf7.Pf7._load_data_structure", return_value="config")
+    @patch("malariagen_data.pf7.Pf7._set_cloud_access", return_value={})
+    def test_setup_with_config_none(
+        self, mock_cloud_access, mock_load_data, mock_process_url
+    ):
+        pf7 = Pf7(self.url_starts_with_gs)
+        self.assertEqual(pf7.kwargs, {})
+        self.assertEqual(pf7._cache_general_metadata, None)
+        self.assertEqual(pf7._cache_snp_sites, None)
+        mock_cloud_access.assert_called_once_with(self.url_starts_with_gs, {})
+        mock_load_data.assert_called_once_with(
+            os.path.join(
+                os.path.dirname(self.working_dir), "malariagen_data/pf7_config.json"
+            )
+        )
+        mock_process_url.assert_called_once_with(self.url_starts_with_gs)
+
+    @patch(
+        "malariagen_data.pf7.Pf7._process_url_with_fsspec", return_value=["fs", "path"]
+    )
+    @patch("malariagen_data.pf7.Pf7._load_data_structure", return_value="config")
+    @patch("malariagen_data.pf7.Pf7._set_cloud_access", return_value={})
+    def test_setup_with_config_set(
+        self, mock_cloud_access, mock_load_data, mock_process_url
+    ):
+        pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_data_path)
+        self.assertEqual(pf7.kwargs, {})
+        self.assertEqual(pf7._cache_general_metadata, None)
+        self.assertEqual(pf7._cache_snp_sites, None)
+        mock_cloud_access.assert_called_once_with(self.url_starts_with_gs, {})
+        mock_load_data.assert_called_once_with(self.test_data_path)
+        mock_process_url.assert_called_once_with(self.url_starts_with_gs)
+
+    @patch(
+        "malariagen_data.pf7.Pf7._process_url_with_fsspec", return_value=["fs", "path"]
+    )
+    @patch("malariagen_data.pf7.Pf7._load_data_structure", return_value="config")
     def test_set_cloud_access(self, mock_process_url, mock_load_data_structure):
         pf7 = Pf7("/fake_path")
         self.assertEqual(
@@ -203,28 +239,3 @@ class TestPf7(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
-
-# def snp_sites(
-#     self,
-#     field=None,
-#     site_mask=None,
-#     site_filters="dt_20200416",
-#     inline_array=True,
-#     chunks="native",
-# ):
-
-#     if field is None:
-#         # return POS, REF, ALT
-#         ret = tuple(
-#             self.snp_sites(field=f, site_mask=None) for f in ("POS", "REF", "ALT")
-#         )
-
-#     else:
-#         root = self.open_snp_sites()
-#         z = root["variants"][field]
-#         ret = from_zarr(z, inline_array=inline_array, chunks=chunks)
-
-#     return ret
-
-
-# If data config is none then it is set to defualt

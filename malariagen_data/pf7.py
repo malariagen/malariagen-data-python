@@ -19,6 +19,7 @@ class Pf7:
             working_dir = os.path.dirname(os.path.abspath(__file__))
             data_config = os.path.join(working_dir, "pf7_config.json")
         self.CONF = self._load_data_structure(data_config)
+
         # setup caches
         self._cache_general_metadata = None
         self._cache_snp_sites = None
