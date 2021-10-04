@@ -1,10 +1,11 @@
 import os
 import unittest
-from unittest.mock import mock_open, patch
+from unittest.mock import call, mock_open, patch
 
 import fsspec
 import gcsfs
 import pandas as pd
+import zarr
 
 from malariagen_data.pf7 import Pf7
 
@@ -17,11 +18,12 @@ class TestPf7(unittest.TestCase):
         self.url_includes_gcs = "some_prefix/gcs://test_url"
         self.url_not_cloud = "/local/path"
         self.url_trailing_slash = "/local/path/"
+        self.url_real_data = "gs://pf7_staging/"
         self.working_dir = os.path.dirname(os.path.abspath(__file__))
         self.test_config_path = os.path.join(self.working_dir, "test_pf7_config.json")
         self.test_data_path = os.path.join(self.working_dir, "pf7_test_data")
         self.test_pf7_class = Pf7(
-            self.test_data_path, data_config="test_pf7_config.json"
+            self.test_data_path, data_config=self.test_config_path
         )
         self.test_metadata_path = os.path.join(
             self.test_data_path, "metadata/test_metadata.txt"
@@ -57,6 +59,12 @@ class TestPf7(unittest.TestCase):
             "Sample was in Pf6": [True, True, False, False],
         }
         self.test_metadata_df = pd.DataFrame(data=self.d)
+        self.pf7_real_data = Pf7(self.url_real_data)
+        self.test_zarr_root = zarr.group()
+        variants = self.test_zarr_root.create_group("variants")
+        variants.create_group("POS")
+        variants.create_group("REF")
+        variants.create_group("ALT")
 
     @patch(
         "malariagen_data.pf7.Pf7._process_url_with_fsspec", return_value=["fs", "path"]
@@ -155,7 +163,7 @@ class TestPf7(unittest.TestCase):
             "malariagen_data.pf7.Pf7._process_url_with_fsspec",
             return_value=["fs", self.test_data_path],
         ):
-            pf7_mock_fs = Pf7(self.test_data_path, data_config="test_pf7_config.json")
+            pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
         pf7_mock_fs.open_snp_sites()
 
         mock_fsmap.assert_called_once_with(
@@ -164,20 +172,59 @@ class TestPf7(unittest.TestCase):
         mock_safestore.assert_called_once_with("mocked_fsmap")
         mock_zarr.assert_called_once_with(store="Safe store object")
 
-    def test_open_snp_sites_returns_correct(self):
-        self.test_pf7_class.open_snp_sites()
-        # print(d)
+    @patch("malariagen_data.pf7.Pf7.open_snp_sites")
+    @patch("malariagen_data.pf7.from_zarr")
+    def test_snp_sites_calls_correctly_with_field_as_none(
+        self, mock_from_zarr, mock_open_snp
+    ):
+        mock_open_snp.return_value = self.test_zarr_root
+        self.test_pf7_class.snp_sites()
+        mock_open_snp.assert_has_calls([(), (), ()])
+        mock_from_zarr.assert_has_calls(
+            [
+                call(
+                    self.test_zarr_root["variants"]["POS"],
+                    chunks="native",
+                    inline_array=True,
+                ),
+                call(
+                    self.test_zarr_root["variants"]["REF"],
+                    chunks="native",
+                    inline_array=True,
+                ),
+                call(
+                    self.test_zarr_root["variants"]["ALT"],
+                    chunks="native",
+                    inline_array=True,
+                ),
+            ]
+        )
 
 
 if __name__ == "__main__":
     unittest.main()
 
-# def open_snp_sites(self):
-#     if self._cache_snp_sites is None:
-#         path = os.path.join(self._path, self.CONF["zarr_path"])
-#         store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
-#         """WARNING: Metadata has not been consolidated yet. Using open for now but will eventually switch to opn_consolidated when the .zmetadata file has been created
-#         """
-#         root = zarr.open(store=store)
-#         self._cache_snp_sites = root
-# return self._cache_snp_sites
+# def snp_sites(
+#     self,
+#     field=None,
+#     site_mask=None,
+#     site_filters="dt_20200416",
+#     inline_array=True,
+#     chunks="native",
+# ):
+
+#     if field is None:
+#         # return POS, REF, ALT
+#         ret = tuple(
+#             self.snp_sites(field=f, site_mask=None) for f in ("POS", "REF", "ALT")
+#         )
+
+#     else:
+#         root = self.open_snp_sites()
+#         z = root["variants"][field]
+#         ret = from_zarr(z, inline_array=inline_array, chunks=chunks)
+
+#     return ret
+
+
+# If data config is none then it is set to defualt

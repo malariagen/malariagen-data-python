@@ -12,11 +12,13 @@ from malariagen_data.util import SafeStore, from_zarr
 class Pf7:
     """Provides access to data from the Pf7 release"""
 
-    def __init__(self, url, data_config="pf7_config.json", **kwargs):
+    def __init__(self, url, data_config=None, **kwargs):
         self.kwargs = self._set_cloud_access(url, kwargs)
         self._fs, self._path = self._process_url_with_fsspec(url)
+        if not data_config:
+            working_dir = os.path.dirname(os.path.abspath(__file__))
+            data_config = os.path.join(working_dir, "pf7_config.json")
         self.CONF = self._load_data_structure(data_config)
-
         # setup caches
         self._cache_general_metadata = None
         self._cache_snp_sites = None
