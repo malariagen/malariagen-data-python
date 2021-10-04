@@ -1959,7 +1959,3 @@ def _cn_mode(a, vmax):
         counts[j] = count
 
     return modes, counts
-
-
-ag3 = Ag3("gs://vo_agam_release/")
-print(ag3.snp_sites(contig="3R"))
