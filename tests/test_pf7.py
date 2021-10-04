@@ -17,15 +17,16 @@ class TestPf7(unittest.TestCase):
         self.url_includes_gcs = "some_prefix/gcs://test_url"
         self.url_not_cloud = "/local/path"
         self.url_trailing_slash = "/local/path/"
-        self.data_dir = os.path.dirname(os.path.abspath(__file__))
-        self.test_config_path = os.path.join(self.data_dir, "test_pf7_config.json")
-        self.test_data_path = os.path.join(self.data_dir, "pf7_test_data")
+        self.working_dir = os.path.dirname(os.path.abspath(__file__))
+        self.test_config_path = os.path.join(self.working_dir, "test_pf7_config.json")
+        self.test_data_path = os.path.join(self.working_dir, "pf7_test_data")
         self.test_pf7_class = Pf7(
             self.test_data_path, data_config="test_pf7_config.json"
         )
         self.test_metadata_path = os.path.join(
             self.test_data_path, "metadata/test_metadata.txt"
         )
+        self.test_zarr_path = os.path.join(self.test_data_path, "pf7.zarr/")
         self.d = {
             "Sample": ["sample1", "sample2", "sample3", "sample4"],
             "Study": ["study1", "study2", "study3", "study1"],
@@ -133,17 +134,50 @@ class TestPf7(unittest.TestCase):
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("malariagen_data.pf7.pd.read_csv", return_value=pd.DataFrame())
-    def test_read_general_metadata_with_cache(self, mock_read_csv, mock_open):
+    def test_read_general_metadata_with_cache_set(self, mock_read_csv, mock_open):
         self.test_pf7_class._read_general_metadata()
         self.test_pf7_class._read_general_metadata()
         mock_open.assert_called_once()
         mock_read_csv.assert_called_once()
 
     @patch("malariagen_data.pf7.Pf7._read_general_metadata")
-    def test_sample_metadata(self, mock_read_general_metadata):
+    def test_sample_metadata_calls_read(self, mock_read_general_metadata):
         self.test_pf7_class.sample_metadata()
         mock_read_general_metadata.assert_called_once_with()
+
+    @patch("malariagen_data.pf7.FSMap", return_value="mocked_fsmap")
+    @patch("malariagen_data.pf7.SafeStore", return_value="Safe store object")
+    @patch("malariagen_data.pf7.zarr.open")
+    def test_open_snp_sites_calls_functions_correctly(
+        self, mock_zarr, mock_safestore, mock_fsmap
+    ):
+        with patch(
+            "malariagen_data.pf7.Pf7._process_url_with_fsspec",
+            return_value=["fs", self.test_data_path],
+        ):
+            pf7_mock_fs = Pf7(self.test_data_path, data_config="test_pf7_config.json")
+        pf7_mock_fs.open_snp_sites()
+
+        mock_fsmap.assert_called_once_with(
+            root=self.test_zarr_path, fs="fs", check=False, create=False
+        )
+        mock_safestore.assert_called_once_with("mocked_fsmap")
+        mock_zarr.assert_called_once_with(store="Safe store object")
+
+    def test_open_snp_sites_returns_correct(self):
+        self.test_pf7_class.open_snp_sites()
+        # print(d)
 
 
 if __name__ == "__main__":
     unittest.main()
+
+# def open_snp_sites(self):
+#     if self._cache_snp_sites is None:
+#         path = os.path.join(self._path, self.CONF["zarr_path"])
+#         store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+#         """WARNING: Metadata has not been consolidated yet. Using open for now but will eventually switch to opn_consolidated when the .zmetadata file has been created
+#         """
+#         root = zarr.open(store=store)
+#         self._cache_snp_sites = root
+# return self._cache_snp_sites
