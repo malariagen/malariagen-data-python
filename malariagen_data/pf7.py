@@ -23,6 +23,7 @@ class Pf7:
         # setup caches
         self._cache_general_metadata = None
         self._cache_snp_sites = None
+        self._cache_snp_genotypes = None
 
     def _set_cloud_access(self, url, kwargs):
         #  special case Google Cloud Storage, use anonymous access, avoids a delay
@@ -100,3 +101,65 @@ class Pf7:
             ret = from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         return ret
+
+    def open_snp_genotypes(self):
+        # Is this the same as opening snps for us?
+        """Open SNP genotypes zarr.
+
+        Parameters
+        ----------
+        sample_set : str
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+        if self._cache_snp_genotypes is None:
+            path = os.path.join(self._path, self.CONF["zarr_path"])
+            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            root = zarr.open(store=store)
+            self._cache_snp_genotypes = root
+        return self._cache_snp_genotypes
+
+    def snp_genotypes(
+        self,
+        sample_sets="v3_wild",
+        field="GT",
+        site_mask=None,
+        site_filters="dt_20200416",
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access SNP genotypes and associated data.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R".
+        sample_sets : str or list of str
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "v3") or a list of release identifiers.
+        field : {"GT", "GQ", "AD", "MQ"}
+            Array to access.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters : str, optional
+            Site filters analysis version.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        d : dask.array.Array
+
+        """
+
+        root = self.open_snp_genotypes()
+        z = root["calldata"][field]
+        d = from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return d
