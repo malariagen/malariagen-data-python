@@ -1739,6 +1739,7 @@ class Ag3:
 
         # compute cohort frequencies
         for coh, loc_samples in coh_dict.items():
+            df = df.copy()
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
@@ -1756,7 +1757,7 @@ class Ag3:
                 df[f"{coh}_del"] = del_freq_coh
 
         # set gene ID as index for convenience
-        df.set_index("ID", inplace=True)
+        df = df.set_index("ID")
 
         return df
 
