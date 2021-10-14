@@ -1757,14 +1757,14 @@ class Ag3:
                 freq_cols[f"{coh}_del"] = del_freq_coh
 
         # build a dataframe with the frequency columns
-        df_freqs = pandas.DataFrame.from_dict(freq_cols)
+        df_freqs = pandas.DataFrame(freq_cols)
 
         # build the final dataframe
-        df = df.reset_index(drop=True)
+        df.reset_index(drop=True, inplace=True)
         df = pandas.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
-        df = df.set_index("ID")
+        df.set_index("ID", inplace=True)
 
         return df
 
