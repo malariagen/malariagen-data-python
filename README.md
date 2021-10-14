@@ -73,6 +73,12 @@ $ poetry publish
 
 ## Release notes
 
+### 0.12.0
+
+* Updates default cohort parameter to latest analysis (20210927).
+
+* Reduces dataframe fragmentation and memory footprint in `Ag3.gene_cnv_frequencies()`.
+
 ### 0.11.0
 
 * Adds support for standard cohorts in the functions `Ag3.snp_allele_frequencies()` and `Ag3.gene_cnv_frequencies()`.
