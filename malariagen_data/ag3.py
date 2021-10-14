@@ -1738,13 +1738,14 @@ class Ag3:
         )
 
         # compute cohort frequencies
+        freq_cols = dict()
         for coh, loc_samples in coh_dict.items():
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples < min_cohort_size:
-                df[f"{coh}_amp"] = np.nan
-                df[f"{coh}_del"] = np.nan
+                freq_cols[f"{coh}_amp"] = np.nan
+                freq_cols[f"{coh}_del"] = np.nan
             else:
                 is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
                 is_del_coh = np.compress(loc_samples, is_del, axis=1)
@@ -1752,8 +1753,15 @@ class Ag3:
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
                 del_freq_coh = del_count_coh / n_samples
-                df[f"{coh}_amp"] = amp_freq_coh
-                df[f"{coh}_del"] = del_freq_coh
+                freq_cols[f"{coh}_amp"] = amp_freq_coh
+                freq_cols[f"{coh}_del"] = del_freq_coh
+
+        # build a dataframe with the frequency columns
+        df_freqs = pandas.DataFrame(freq_cols)
+
+        # build the final dataframe
+        df.reset_index(drop=True, inplace=True)
+        df = pandas.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
         df.set_index("ID", inplace=True)
