@@ -73,6 +73,10 @@ $ poetry publish
 
 ## Release notes
 
+### 0.12.1
+
+* Bug fix to `Ag3.sample_cohorts()`.
+
 ### 0.12.0
 
 * Updates default cohort parameter to latest analysis (20210927).

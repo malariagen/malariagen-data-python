@@ -1997,9 +1997,7 @@ class Ag3:
         else:
             # concatenate multiple sample sets
             dfs = [
-                self._read_cohort_metadata(
-                    sample_set=c, cohorts_analysis=cohorts_analysis
-                )
+                self.sample_cohorts(sample_sets=c, cohorts_analysis=cohorts_analysis)
                 for c in sample_sets
             ]
             df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
