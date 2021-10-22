@@ -75,7 +75,7 @@ $ poetry publish
 
 ### 0.12.1
 
-* Bug fix to Ag3.sample_cohorts()
+* Bug fix to `Ag3.sample_cohorts()`.
 
 ### 0.12.0
 
