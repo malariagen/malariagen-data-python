@@ -7,7 +7,6 @@ import numpy as np
 import pandas
 import xarray
 import zarr
-from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
 
 from . import veff
@@ -16,6 +15,7 @@ from .util import (
     dask_compress,
     dask_compress_dataset,
     from_zarr,
+    init_filesystem,
     read_gff3,
     unpack_gff3_attributes,
 )
@@ -61,24 +61,10 @@ class Ag3:
 
     def __init__(self, url, **kwargs):
 
-        # special case Google Cloud Storage, use anonymous access, avoids a delay
-        if url.startswith("gs://") or url.startswith("gcs://"):
-            kwargs["token"] = "anon"
-        elif "gs://" in url:
-            # chained URL
-            kwargs["gs"] = dict(token="anon")
-        elif "gcs://" in url:
-            # chained URL
-            kwargs["gcs"] = dict(token="anon")
-
-        # process the url using fsspec
         self._pre = kwargs.pop("pre", False)
-        fs, path = url_to_fs(url, **kwargs)
-        self._fs = fs
-        # path compatibility, fsspec/gcsfs behaviour varies between version
-        while path.endswith("/"):
-            path = path[:-1]
-        self._path = path
+
+        # setup filesystem
+        self._fs, self._path = init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_releases = None

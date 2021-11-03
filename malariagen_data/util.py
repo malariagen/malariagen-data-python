@@ -6,6 +6,7 @@ import dask.array as da
 import numpy as np
 import pandas
 import xarray as xr
+from fsspec.core import url_to_fs
 
 
 def gff3_parse_attributes(attributes_string):
@@ -222,3 +223,26 @@ def dask_compress(indexer, data, axis):
     v._chunks = new_chunks
 
     return v
+
+
+def init_filesystem(url, **kwargs):
+    """Initialise an fsspec filesystem from a given base URL and parameters."""
+
+    # special case Google Cloud Storage, use anonymous access, avoids a delay
+    if url.startswith("gs://") or url.startswith("gcs://"):
+        kwargs["token"] = "anon"
+    elif "gs://" in url:
+        # chained URL
+        kwargs["gs"] = dict(token="anon")
+    elif "gcs://" in url:
+        # chained URL
+        kwargs["gcs"] = dict(token="anon")
+
+    # process the url using fsspec
+    fs, path = url_to_fs(url, **kwargs)
+
+    # path compatibility, fsspec/gcsfs behaviour varies between version
+    while path.endswith("/"):
+        path = path[:-1]
+
+    return fs, path
