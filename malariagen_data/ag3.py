@@ -362,10 +362,25 @@ class Ag3:
 
         """
 
-        root = self.open_site_filters(mask=mask, analysis=analysis)
-        z = root[contig]["variants"][field]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+        if isinstance(contig, (list, tuple)):
+            return da.concatenate(
+                [
+                    self.site_filters(
+                        contig=c,
+                        mask=mask,
+                        field=field,
+                        analysis=analysis,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    for c in contig
+                ]
+            )
+        else:
+            root = self.open_site_filters(mask=mask, analysis=analysis)
+            z = root[contig]["variants"][field]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return d
 
     def open_snp_sites(self):
         """Open SNP sites zarr.
@@ -421,6 +436,12 @@ class Ag3:
             ret = tuple(
                 self.snp_sites(contig=contig, field=f, site_mask=None)
                 for f in ("POS", "REF", "ALT")
+            )
+
+        elif isinstance(contig, (tuple, list)):
+            # concatenate
+            ret = da.concatenate(
+                [self.snp_sites(contig=c, field=field, site_mask=None) for c in contig]
             )
 
         else:
@@ -1075,7 +1096,7 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str):
+        if isinstance(sample_sets, str) and isinstance(contig, str):
 
             # single sample set requested
             ds = self._snp_calls_dataset(
@@ -1088,20 +1109,37 @@ class Ag3:
 
         else:
 
-            # multiple sample sets requested, need to concatenate along samples dimension
-            datasets = [
-                self._snp_calls_dataset(
-                    contig=contig,
-                    sample_set=sample_set,
-                    site_filters=site_filters,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                for sample_set in sample_sets
-            ]
+            # multiple sample sets and/or contigs requested, need to concatenate
+
+            # normalise
+            if isinstance(sample_sets, str):
+                sample_sets = [sample_sets]
+            if isinstance(contig, str):
+                contig = [contig]
+
+            # concatenate - this is a bit gnarly, could do with simplification
             ds = xarray.concat(
-                datasets,
-                dim=DIM_SAMPLE,
+                [
+                    xarray.concat(
+                        [
+                            self._snp_calls_dataset(
+                                contig=c,
+                                sample_set=sample_set,
+                                site_filters=site_filters,
+                                inline_array=inline_array,
+                                chunks=chunks,
+                            )
+                            for sample_set in sample_sets
+                        ],
+                        dim=DIM_SAMPLE,
+                        data_vars="minimal",
+                        coords="minimal",
+                        compat="override",
+                        join="override",
+                    )
+                    for c in contig
+                ],
+                dim=DIM_VARIANT,
                 data_vars="minimal",
                 coords="minimal",
                 compat="override",
