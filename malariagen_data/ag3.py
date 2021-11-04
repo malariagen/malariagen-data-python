@@ -7,29 +7,29 @@ import numpy as np
 import pandas
 import xarray
 import zarr
-from fsspec.mapping import FSMap
 
 from . import veff
 from .util import (
-    SafeStore,
-    dask_compress,
+    DIM_ALLELE,
+    DIM_PLOIDY,
+    DIM_SAMPLE,
+    DIM_VARIANT,
+    da_compress,
+    da_from_zarr,
     dask_compress_dataset,
-    from_zarr,
     init_filesystem,
+    init_zarr_store,
     read_gff3,
     unpack_gff3_attributes,
 )
 
 public_releases = ("v3",)
-gff3_path = (
+geneset_gff3_path = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
 )
-
-
-DIM_VARIANT = "variants"
-DIM_ALLELE = "alleles"
-DIM_SAMPLE = "samples"
-DIM_PLOIDY = "ploidy"
+genome_zarr_path = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
+)
 
 
 class Ag3:
@@ -324,7 +324,7 @@ class Ag3:
             return self._cache_site_filters[key]
         except KeyError:
             path = f"{self._path}/v3/site_filters/{analysis}/{mask}/"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
             return root
@@ -364,7 +364,7 @@ class Ag3:
 
         root = self.open_site_filters(mask=mask, analysis=analysis)
         z = root[contig]["variants"][field]
-        d = from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
     def open_snp_sites(self):
@@ -377,7 +377,7 @@ class Ag3:
         """
         if self._cache_snp_sites is None:
             path = f"{self._path}/v3/snp_genotypes/all/sites/"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
@@ -426,16 +426,16 @@ class Ag3:
         else:
             root = self.open_snp_sites()
             z = root[contig]["variants"][field]
-            ret = from_zarr(z, inline_array=inline_array, chunks=chunks)
+            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         if site_mask is not None:
             loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
             )
             if isinstance(ret, tuple):
-                ret = tuple(dask_compress(loc_sites, d, axis=0) for d in ret)
+                ret = tuple(da_compress(loc_sites, d, axis=0) for d in ret)
             else:
-                ret = dask_compress(loc_sites, ret, axis=0)
+                ret = da_compress(loc_sites, ret, axis=0)
 
         return ret
 
@@ -456,7 +456,7 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/snp_genotypes/all/{sample_set}/"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
             return root
@@ -505,7 +505,7 @@ class Ag3:
             # single sample set
             root = self.open_snp_genotypes(sample_set=sample_sets)
             z = root[contig]["calldata"][field]
-            d = from_zarr(z, inline_array=inline_array, chunks=chunks)
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         else:
             # concatenate multiple sample sets
@@ -519,7 +519,7 @@ class Ag3:
             loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
             )
-            d = dask_compress(loc_sites, d, axis=0)
+            d = da_compress(loc_sites, d, axis=0)
 
         return d
 
@@ -532,8 +532,8 @@ class Ag3:
 
         """
         if self._cache_genome is None:
-            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            path = f"{self._path}/{genome_zarr_path}"
+            store = init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -557,7 +557,7 @@ class Ag3:
         """
         genome = self.open_genome()
         z = genome[contig]
-        d = from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
     def geneset(self, attributes=("ID", "Parent", "Name", "description")):
@@ -581,7 +581,7 @@ class Ag3:
             df = self._cache_geneset[attributes]
 
         except KeyError:
-            path = f"{self._path}/{gff3_path}"
+            path = f"{self._path}/{geneset_gff3_path}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -920,7 +920,7 @@ class Ag3:
 
         if self._cache_site_annotations is None:
             path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
@@ -960,7 +960,7 @@ class Ag3:
 
         # access the array of values for all genome positions
         root = self.open_site_annotations()
-        d = from_zarr(root[field][contig], inline_array=inline_array, chunks=chunks)
+        d = da_from_zarr(root[field][contig], inline_array=inline_array, chunks=chunks)
 
         # access and subset to SNP positions
         pos = self.snp_sites(
@@ -982,14 +982,14 @@ class Ag3:
 
         # variant_position
         pos_z = sites_root[contig]["variants"]["POS"]
-        variant_position = from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
+        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
         ref_z = sites_root[contig]["variants"]["REF"]
-        ref = from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
         alt_z = sites_root[contig]["variants"]["ALT"]
-        alt = from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
@@ -1004,19 +1004,19 @@ class Ag3:
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
             z = filters_root[contig]["variants"]["filter_pass"]
-            d = from_zarr(z, inline_array=inline_array, chunks=chunks)
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
         gt_z = calls_root[contig]["calldata"]["GT"]
-        call_genotype = from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
         gq_z = calls_root[contig]["calldata"]["GQ"]
-        call_gq = from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
         ad_z = calls_root[contig]["calldata"]["AD"]
-        call_ad = from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         mq_z = calls_root[contig]["calldata"]["MQ"]
-        call_mq = from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
+        call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
@@ -1027,7 +1027,7 @@ class Ag3:
 
         # sample arrays
         z = calls_root["samples"]
-        sample_id = from_zarr(z, inline_array=inline_array, chunks=chunks)
+        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
@@ -1140,7 +1140,7 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/cnv/{sample_set}/hmm/zarr"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_hmm[sample_set] = root
         return root
@@ -1157,11 +1157,11 @@ class Ag3:
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -1174,13 +1174,13 @@ class Ag3:
         # call arrays
         data_vars["call_CN"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/calldata/CN"], inline_array=inline_array, chunks=chunks
             ),
         )
         data_vars["call_RawCov"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/calldata/RawCov"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -1188,7 +1188,7 @@ class Ag3:
         )
         data_vars["call_NormCov"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/calldata/NormCov"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -1198,7 +1198,7 @@ class Ag3:
         # sample arrays
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
         # setup attributes
@@ -1298,7 +1298,7 @@ class Ag3:
                 raise ValueError(
                     f"analysis f{analysis!r} not implemented for sample set {sample_set!r}"
                 )
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_coverage_calls[key] = root
         return root
@@ -1343,11 +1343,11 @@ class Ag3:
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -1358,13 +1358,13 @@ class Ag3:
         )
         coords["variant_id"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
             ),
         )
         data_vars["variant_CIPOS"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/CIPOS"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -1372,7 +1372,7 @@ class Ag3:
         )
         data_vars["variant_CIEND"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/CIEND"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -1380,7 +1380,7 @@ class Ag3:
         )
         data_vars["variant_filter_pass"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/FILTER_PASS"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -1390,7 +1390,7 @@ class Ag3:
         # call arrays
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -1398,7 +1398,7 @@ class Ag3:
         # sample arrays
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
         # setup attributes
@@ -1426,7 +1426,7 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/cnv/{sample_set}/discordant_read_calls/zarr"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
         return root
@@ -1449,17 +1449,17 @@ class Ag3:
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
         coords["variant_id"] = (
             [DIM_VARIANT],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -1471,7 +1471,7 @@ class Ag3:
         for field in "Region", "StartBreakpointMethod", "EndBreakpointMethod":
             data_vars[f"variant_{field}"] = (
                 [DIM_VARIANT],
-                from_zarr(
+                da_from_zarr(
                     root[f"{contig}/variants/{field}"],
                     inline_array=inline_array,
                     chunks=chunks,
@@ -1481,7 +1481,7 @@ class Ag3:
         # call arrays
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -1489,12 +1489,12 @@ class Ag3:
         # sample arrays
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
         for field in "sample_coverage_variance", "sample_is_high_variance":
             data_vars[field] = (
                 [DIM_SAMPLE],
-                from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+                da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
         # setup attributes
@@ -1772,7 +1772,7 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             path = f"{self._path}/{release}/snp_haplotypes/{sample_set}/{analysis}/zarr"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             # some sample sets have no data for a given analysis, handle this
             if ".zmetadata" not in store:
                 root = None
@@ -1797,7 +1797,7 @@ class Ag3:
             return self._cache_haplotype_sites[analysis]
         except KeyError:
             path = f"{self._path}/v3/snp_haplotypes/sites/{analysis}/zarr"
-            store = SafeStore(FSMap(root=path, fs=self._fs, check=False, create=False))
+            store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
         return root
@@ -1819,7 +1819,7 @@ class Ag3:
         pos = sites[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
 
         # variant_contig
@@ -1830,10 +1830,10 @@ class Ag3:
         )
 
         # variant_allele
-        ref = from_zarr(
+        ref = da_from_zarr(
             sites[f"{contig}/variants/REF"], inline_array=inline_array, chunks=chunks
         )
-        alt = from_zarr(
+        alt = da_from_zarr(
             sites[f"{contig}/variants/ALT"], inline_array=inline_array, chunks=chunks
         )
         variant_allele = da.hstack([ref[:, None], alt[:, None]])
@@ -1842,7 +1842,7 @@ class Ag3:
         # call_genotype
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            from_zarr(
+            da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -1850,7 +1850,7 @@ class Ag3:
         # sample arrays
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
         # setup attributes

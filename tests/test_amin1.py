@@ -59,10 +59,12 @@ def test_genome():
     genome = amin1.open_genome()
     assert isinstance(genome, zarr.hierarchy.Group)
     for contig in genome:
-        assert genome[contig].dtype == "S1"
-
-    # test the genome_sequence() method to access sequences
-    for contig in genome:
+        # TODO delete this - rerun after cache has expired
+        if contig == ".zmetadata":
+            continue
+        assert contig.startswith("KB66"), contig
+        assert genome[contig].dtype == "S1", contig
+        # test the genome_sequence() method to access sequences
         seq = amin1.genome_sequence(contig)
         assert isinstance(seq, da.Array)
         assert seq.dtype == "S1"
@@ -99,7 +101,7 @@ def test_geneset():
 
 
 @pytest.mark.parametrize("site_mask", [False, True])
-@pytest.mark.parametrize("contig", ["3L", "X"])
+@pytest.mark.parametrize("contig", ["KB663610", "KB663622", "KB664287"])
 def test_snp_calls(contig, site_mask):
 
     amin1 = setup_amin1()
