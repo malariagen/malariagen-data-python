@@ -399,7 +399,7 @@ def test_site_annotations():
 
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 @pytest.mark.parametrize("sample_sets", ["AG1000G-AO", "v3_wild"])
-@pytest.mark.parametrize("contig", ["3L", "X"])
+@pytest.mark.parametrize("contig", ["2L", "X", ["3R", "3L"]])
 def test_snp_calls(sample_sets, contig, site_mask):
 
     ag3 = setup_ag3()
@@ -1075,7 +1075,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "v3", "v3_wild"]
 )
-@pytest.mark.parametrize("contig", ["2R", "X"])
+@pytest.mark.parametrize("contig", ["2R", "X", ["3R", "3L"]])
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
 def test_haplotypes(sample_sets, contig, analysis):
 

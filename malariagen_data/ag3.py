@@ -981,14 +981,14 @@ class Ag3:
         sites_root = self.open_snp_sites()
 
         # variant_position
-        pos_z = sites_root[contig]["variants"]["POS"]
+        pos_z = sites_root[f"{contig}/variants/POS"]
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
-        ref_z = sites_root[contig]["variants"]["REF"]
+        ref_z = sites_root[f"{contig}/variants/REF"]
+        alt_z = sites_root[f"{contig}/variants/ALT"]
         ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt_z = sites_root[contig]["variants"]["ALT"]
         alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
@@ -1003,19 +1003,19 @@ class Ag3:
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
-            z = filters_root[contig]["variants"]["filter_pass"]
+            z = filters_root[f"{contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = calls_root[contig]["calldata"]["GT"]
+        gt_z = calls_root[f"{contig}/calldata/GT"]
         call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = calls_root[contig]["calldata"]["GQ"]
+        gq_z = calls_root[f"{contig}/calldata/GQ"]
         call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = calls_root[contig]["calldata"]["AD"]
+        ad_z = calls_root[f"{contig}/calldata/AD"]
         call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = calls_root[contig]["calldata"]["MQ"]
+        mq_z = calls_root[f"{contig}/calldata/MQ"]
         call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],

@@ -59,9 +59,6 @@ def test_genome():
     genome = amin1.open_genome()
     assert isinstance(genome, zarr.hierarchy.Group)
     for contig in genome:
-        # TODO delete this - rerun after cache has expired
-        if contig == ".zmetadata":
-            continue
         assert contig.startswith("KB66"), contig
         assert genome[contig].dtype == "S1", contig
         # test the genome_sequence() method to access sequences
@@ -70,7 +67,8 @@ def test_genome():
         assert seq.dtype == "S1"
 
     # test the contigs property
-    assert amin1.contigs == tuple(sorted(genome))
+    assert len(amin1.contigs) == 40  # only 40 largest included
+    assert set(amin1.contigs) - set(genome) == set()
 
 
 def test_geneset():
@@ -101,7 +99,9 @@ def test_geneset():
 
 
 @pytest.mark.parametrize("site_mask", [False, True])
-@pytest.mark.parametrize("contig", ["KB663610", "KB663622", "KB664287"])
+@pytest.mark.parametrize(
+    "contig", ["KB663610", "KB663622", ["KB663610", "KB663611", "KB663622"]]
+)
 def test_snp_calls(contig, site_mask):
 
     amin1 = setup_amin1()
@@ -112,9 +112,7 @@ def test_snp_calls(contig, site_mask):
     # check fields
     expected_data_vars = {
         "variant_allele",
-        "variant_filter_pass_gamb_colu_arab",
-        "variant_filter_pass_gamb_colu",
-        "variant_filter_pass_arab",
+        "variant_filter_pass",
         "call_genotype",
         "call_genotype_mask",
         "call_GQ",
