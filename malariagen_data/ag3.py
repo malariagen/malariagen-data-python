@@ -522,19 +522,36 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str):
-            # single sample set
+        if isinstance(sample_sets, str) and isinstance(contig, str):
+            # single sample set, single contig
             root = self.open_snp_genotypes(sample_set=sample_sets)
             z = root[contig]["calldata"][field]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         else:
-            # concatenate multiple sample sets
-            ds = [
-                self.snp_genotypes(contig=contig, sample_sets=c, field=field)
-                for c in sample_sets
-            ]
-            d = da.concatenate(ds, axis=1)
+
+            # concatenate multiple sample sets and/or contigs
+
+            # normalise
+            if isinstance(sample_sets, str):
+                sample_sets = [sample_sets]
+            if isinstance(contig, str):
+                contig = [contig]
+
+            # concatenate
+            d = da.concatenate(
+                [
+                    da.concatenate(
+                        [
+                            self.snp_genotypes(contig=c, sample_sets=s, field=field)
+                            for s in sample_sets
+                        ],
+                        axis=1,
+                    )
+                    for c in contig
+                ],
+                axis=0,
+            )
 
         if site_mask is not None:
             loc_sites = self.site_filters(
@@ -1935,7 +1952,7 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str):
+        if isinstance(sample_sets, str) and isinstance(contig, str):
 
             # single sample set requested
             ds = self._haplotypes_dataset(
@@ -1948,25 +1965,46 @@ class Ag3:
 
         else:
 
-            # multiple sample sets requested, need to concatenate along samples dimension
+            # multiple sample sets and/or contigs requested, need to concatenate
+
+            # normalise
+            if isinstance(sample_sets, str):
+                sample_sets = [sample_sets]
+            if isinstance(contig, str):
+                contig = [contig]
+
+            # concatenate - this is a bit gnarly, could do with simplification
             datasets = [
-                self._haplotypes_dataset(
-                    contig=contig,
-                    sample_set=sample_set,
-                    analysis=analysis,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                for sample_set in sample_sets
+                [
+                    self._haplotypes_dataset(
+                        contig=c,
+                        sample_set=sample_set,
+                        analysis=analysis,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    for sample_set in sample_sets
+                ]
+                for c in contig
             ]
             # some sample sets have no data for a given analysis, handle this
-            datasets = [d for d in datasets if d is not None]
-            if len(datasets) == 0:
+            datasets = [[d for d in row if d is not None] for row in datasets]
+            if len(datasets[0]) == 0:
                 ds = None
             else:
                 ds = xarray.concat(
-                    datasets,
-                    dim=DIM_SAMPLE,
+                    [
+                        xarray.concat(
+                            row,
+                            dim=DIM_SAMPLE,
+                            data_vars="minimal",
+                            coords="minimal",
+                            compat="override",
+                            join="override",
+                        )
+                        for row in datasets
+                    ],
+                    dim=DIM_VARIANT,
                     data_vars="minimal",
                     coords="minimal",
                     compat="override",
