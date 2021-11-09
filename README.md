@@ -73,6 +73,10 @@ $ poetry publish
 
 ## Release notes
 
+### 0.14.0
+
+* Adds the `Amin1` class providing access to the *Anopheles minimus* `Amin1` SNP data release.
+
 ### 0.12.1
 
 * Bug fix to `Ag3.sample_cohorts()`.
