@@ -342,8 +342,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
+            in which case data will be concatenated, e.g., ["3R", "3L"].
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
         field : str, optional
@@ -410,8 +411,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
+            in which case data will be concatenated, e.g., ["3R", "3L"].
         field : {"POS", "REF", "ALT"}, optional
             Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a
             tuple.
@@ -496,8 +498,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
+            in which case data will be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -633,7 +636,7 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
+        contig : str or list of str
             Chromosome arm, e.g., "3R".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
@@ -1089,8 +1092,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
+            in which case data will be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1292,6 +1296,8 @@ class Ag3:
         ds : xarray.Dataset
 
         """
+
+        # TODO support multiple contigs?
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
@@ -1815,7 +1821,11 @@ class Ag3:
         Parameters
         ----------
         sample_set : str
+            Sample set identifier, e.g., "AG1000G-AO".
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
+            is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
+            best. Otherwise use the "gamb_colu_arab" analysis.
 
         Returns
         -------
@@ -1842,6 +1852,9 @@ class Ag3:
         Parameters
         ----------
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
+            is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
+            best. Otherwise use the "gamb_colu_arab" analysis.
 
         Returns
         -------
@@ -1928,8 +1941,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
+            in which case data will be concatenated, e.g., ["3R", "3L"].
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
@@ -2043,6 +2057,7 @@ class Ag3:
             "v3") or a list of release identifiers.
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
+
         Returns
         -------
         df : pandas.DataFrame
