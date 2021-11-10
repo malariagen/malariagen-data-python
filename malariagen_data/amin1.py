@@ -244,8 +244,8 @@ class Amin1:
                 join="override",
             )
 
-            # apply site filters
-        if site_mask is not None:
+        # apply site filters
+        if site_mask:
             ds = dask_compress_dataset(
                 ds, indexer="variant_filter_pass", dim=DIM_VARIANT
             )

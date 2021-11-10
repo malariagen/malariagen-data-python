@@ -1,4 +1,5 @@
 import dask.array as da
+import numpy as np
 import pandas as pd
 import pytest
 import xarray
@@ -169,6 +170,15 @@ def test_snp_calls(contig, site_mask):
             assert x.ndim == 1
             assert x.dims == ("samples",)
             assert x.shape == (n_samples,)
+
+    # check variant_filter_pass
+    filter_pass = ds["variant_filter_pass"].values
+    n_pass = np.count_nonzero(filter_pass)
+    if site_mask:
+        # variant filter has already been applied
+        assert n_pass == n_variants
+    else:
+        assert n_pass < n_variants
 
     # check attributes
     assert "contigs" in ds.attrs
