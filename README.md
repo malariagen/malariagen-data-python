@@ -73,6 +73,10 @@ $ poetry publish
 
 ## Release notes
 
+### 0.14.1
+
+* Big fix to `Amin1.snp_calls()` handling of site_mask parameter.
+
 ### 0.14.0
 
 * Adds the `Amin1` class providing access to the *Anopheles minimus* `Amin1` SNP data release.
