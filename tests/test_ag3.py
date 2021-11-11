@@ -618,13 +618,13 @@ def test_snp_allele_frequencies__str_cohorts():
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
         cohorts=cohorts,
-        cohorts_analysis="20210927",
+        cohorts_analysis="20211101",
         min_cohort_size=10,
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=True,
     )
-    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20210927")
+    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
     all_uni = df_coh[coh_nm].dropna().unique().tolist()
     expected_fields = universal_fields + all_uni + ["max_af"]
@@ -1050,7 +1050,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
             cohort_labels = cohorts.keys()
         if isinstance(cohorts, str):
             df_coh = ag3.sample_cohorts(
-                sample_sets="v3_wild", cohorts_analysis="20210927"
+                sample_sets="v3_wild", cohorts_analysis="20211101"
             )
             coh_nm = "cohort_" + cohorts
             cohort_labels = list(df_coh[coh_nm].dropna().unique())
@@ -1175,7 +1175,7 @@ def test_sample_cohorts(sample_sets):
     )
 
     ag3 = setup_ag3()
-    df_coh = ag3.sample_cohorts(sample_sets=sample_sets, cohorts_analysis="20210927")
+    df_coh = ag3.sample_cohorts(sample_sets=sample_sets, cohorts_analysis="20211101")
     df_meta = ag3.sample_metadata(sample_sets=sample_sets)
 
     assert tuple(df_coh.columns) == expected_cols
