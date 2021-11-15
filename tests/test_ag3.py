@@ -618,20 +618,20 @@ def test_snp_allele_frequencies__str_cohorts():
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
         cohorts=cohorts,
-        cohorts_analysis="20210927",
+        cohorts_analysis="20211101",
         min_cohort_size=10,
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=True,
     )
-    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20210927")
+    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
     all_uni = df_coh[coh_nm].dropna().unique().tolist()
     expected_fields = universal_fields + all_uni + ["max_af"]
 
     assert df.columns.tolist() == expected_fields
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (16524, 103)
+    assert df.shape == (16526, 103)
 
 
 def test_snp_allele_frequencies__dict_cohorts():
@@ -1050,7 +1050,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
             cohort_labels = cohorts.keys()
         if isinstance(cohorts, str):
             df_coh = ag3.sample_cohorts(
-                sample_sets="v3_wild", cohorts_analysis="20210927"
+                sample_sets="v3_wild", cohorts_analysis="20211101"
             )
             coh_nm = "cohort_" + cohorts
             cohort_labels = list(df_coh[coh_nm].dropna().unique())
@@ -1168,6 +1168,11 @@ def test_haplotypes(sample_sets, contig, analysis):
 def test_sample_cohorts(sample_sets):
     expected_cols = (
         "sample_id",
+        "country_ISO",
+        "adm1_name",
+        "adm1_ISO",
+        "adm2_name",
+        "taxon",
         "cohort_admin1_year",
         "cohort_admin1_month",
         "cohort_admin2_year",
@@ -1175,7 +1180,7 @@ def test_sample_cohorts(sample_sets):
     )
 
     ag3 = setup_ag3()
-    df_coh = ag3.sample_cohorts(sample_sets=sample_sets, cohorts_analysis="20210927")
+    df_coh = ag3.sample_cohorts(sample_sets=sample_sets, cohorts_analysis="20211101")
     df_meta = ag3.sample_metadata(sample_sets=sample_sets)
 
     assert tuple(df_coh.columns) == expected_cols
@@ -1183,10 +1188,10 @@ def test_sample_cohorts(sample_sets):
     assert df_coh.sample_id.tolist() == df_meta.sample_id.tolist()
     if sample_sets == "AG1000G-UG":
         assert df_coh.sample_id[0] == "AC0007-C"
-        assert df_coh.cohort_admin1_year[23] == "UG-E_2012_arab"
-        assert df_coh.cohort_admin1_month[37] == "UG-E_2012_10_arab"
-        assert df_coh.cohort_admin2_year[42] == "UG-E_Tororo_2012_arab"
-        assert df_coh.cohort_admin2_month[49] == "UG-E_Tororo_2012_10_arab"
+        assert df_coh.cohort_admin1_year[23] == "UG-E_arab_2012"
+        assert df_coh.cohort_admin1_month[37] == "UG-E_arab_2012_10"
+        assert df_coh.cohort_admin2_year[42] == "UG-E_Tororo_arab_2012"
+        assert df_coh.cohort_admin2_month[49] == "UG-E_Tororo_arab_2012_10"
     if sample_sets == ["AG1000G-AO", "AG1000G-FR"]:
         assert df_coh.sample_id[0] == "AR0047-C"
         assert df_coh.sample_id[103] == "AP0017-Cx"

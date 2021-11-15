@@ -798,7 +798,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
-        cohorts_analysis="20210927",
+        cohorts_analysis="20211101",
         min_cohort_size=10,
         site_mask=None,
         site_filters="dt_20200416",
@@ -1708,7 +1708,7 @@ class Ag3:
         self,
         contig,
         cohorts,
-        cohorts_analysis="20210927",
+        cohorts_analysis="20211101",
         min_cohort_size=10,
         species_calls=("20200422", "aim"),
         sample_sets="v3_wild",
@@ -2046,7 +2046,7 @@ class Ag3:
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
 
-    def sample_cohorts(self, sample_sets="v3_wild", cohorts_analysis="20210927"):
+    def sample_cohorts(self, sample_sets="v3_wild", cohorts_analysis="20211101"):
         """Access cohorts metadata for one or more sample sets.
 
         Parameters
