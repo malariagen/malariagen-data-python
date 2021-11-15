@@ -73,6 +73,10 @@ $ poetry publish
 
 ## Release notes
 
+### 0.15.0
+
+* Updates default cohort parameter to latest analysis (20211101).
+
 ### 0.14.1
 
 * Big fix to `Amin1.snp_calls()` handling of site_mask parameter.
