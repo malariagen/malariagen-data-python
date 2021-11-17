@@ -1259,6 +1259,11 @@ class Ag3:
             [DIM_SAMPLE],
             da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
+        for field in "sample_coverage_variance", "sample_is_high_variance":
+            data_vars[field] = (
+                [DIM_SAMPLE],
+                da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+            )
 
         # setup attributes
         attrs = {"contigs": self.contigs}
