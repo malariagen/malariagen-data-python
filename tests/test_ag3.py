@@ -701,6 +701,8 @@ def test_cnv_hmm(sample_sets, contig):
         "call_CN",
         "call_NormCov",
         "call_RawCov",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
     }
     assert set(ds.data_vars) == expected_data_vars
 
