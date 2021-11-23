@@ -57,7 +57,8 @@ def test_sample_sets(url):
     # test multiple releases
     df_multi = ag3.sample_sets(release=["v3", "v3"])
     assert_frame_equal(
-        df_multi, pd.concat([df_sample_sets_v3, df_sample_sets_v3], axis=0)
+        df_multi,
+        pd.concat([df_sample_sets_v3, df_sample_sets_v3], axis=0, ignore_index=True),
     )
 
 

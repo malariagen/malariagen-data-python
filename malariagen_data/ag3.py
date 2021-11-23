@@ -116,11 +116,11 @@ class Ag3:
         """
 
         if release is None:
-            # all available releases
+            # retrieve sample sets from all available releases
             release = self.releases
 
         if isinstance(release, str):
-            # single release
+            # retrieve sample sets for a single release
 
             if release not in self.releases:
                 raise ValueError(f"Release not available: {release!r}")
@@ -137,7 +137,7 @@ class Ag3:
                 return df
 
         elif isinstance(release, (list, tuple)):
-            # multiple releases
+            # retrieve sample sets from multiple releases
             df = pandas.concat(
                 [self.sample_sets(release=r) for r in release],
                 axis=0,
@@ -231,13 +231,14 @@ class Ag3:
             return df
 
     def _prep_sample_sets_arg(self, *, sample_sets):
-        if sample_sets == "v3_wild":
+
+        if sample_sets is None:
+            # all available sample sets
+            sample_sets = self.sample_sets()["sample_set"].tolist()
+
+        elif sample_sets == "v3_wild":
             # convenience, special case to exclude crosses
             sample_sets = self.v3_wild
-
-        elif sample_sets is None:
-            # all sample sets
-            sample_sets = self.sample_sets()["sample_set"].tolist()
 
         elif isinstance(sample_sets, str) and sample_sets.startswith("v3"):
             # convenience, can use a release identifier to denote all sample sets
@@ -249,12 +250,12 @@ class Ag3:
 
         return sample_sets
 
-    def species_calls(self, sample_sets="v3_wild", analysis="20200422", method="aim"):
+    def species_calls(self, sample_sets=None, analysis="20200422", method="aim"):
         """Access species calls for one or more sample sets.
 
         Parameters
         ----------
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -284,7 +285,7 @@ class Ag3:
                 self.species_calls(sample_sets=c, analysis=analysis, method=method)
                 for c in sample_sets
             ]
-            df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
+            df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
@@ -512,7 +513,7 @@ class Ag3:
     def snp_genotypes(
         self,
         contig,
-        sample_sets="v3_wild",
+        sample_sets=None,
         field="GT",
         site_mask=None,
         site_filters="dt_20200416",
@@ -526,7 +527,7 @@ class Ag3:
         contig : str or list of str
             Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
             in which case data will be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -828,7 +829,7 @@ class Ag3:
         site_mask=None,
         site_filters="dt_20200416",
         species_calls=("20200422", "aim"),
-        sample_sets="v3_wild",
+        sample_sets=None,
         drop_invariant=True,
     ):
         """Compute per variant allele frequencies for a gene transcript.
@@ -1107,7 +1108,7 @@ class Ag3:
     def snp_calls(
         self,
         contig,
-        sample_sets="v3_wild",
+        sample_sets=None,
         site_mask=None,
         site_filters="dt_20200416",
         inline_array=True,
@@ -1120,7 +1121,7 @@ class Ag3:
         contig : str or list of str
             Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
             in which case data will be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -1168,14 +1169,13 @@ class Ag3:
                 [
                     xarray.concat(
                         [
-                            self._snp_calls_dataset(
+                            self.snp_calls(
                                 contig=c,
-                                sample_set=sample_set,
-                                site_filters=site_filters,
+                                sample_sets=s,
                                 inline_array=inline_array,
                                 chunks=chunks,
                             )
-                            for sample_set in sample_sets
+                            for s in sample_sets
                         ],
                         dim=DIM_SAMPLE,
                         data_vars="minimal",
@@ -1296,7 +1296,7 @@ class Ag3:
     def cnv_hmm(
         self,
         contig,
-        sample_sets="v3_wild",
+        sample_sets=None,
         inline_array=True,
         chunks="native",
     ):
@@ -1306,7 +1306,7 @@ class Ag3:
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -1340,13 +1340,13 @@ class Ag3:
 
             # multiple sample sets requested, need to concatenate along samples dimension
             datasets = [
-                self._cnv_hmm_dataset(
+                self.cnv_hmm(
                     contig=contig,
-                    sample_set=sample_set,
+                    sample_sets=s,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-                for sample_set in sample_sets
+                for s in sample_sets
             ]
             ds = xarray.concat(
                 datasets,
@@ -1594,7 +1594,7 @@ class Ag3:
     def cnv_discordant_read_calls(
         self,
         contig,
-        sample_sets="v3_wild",
+        sample_sets=None,
         inline_array=True,
         chunks="native",
     ):
@@ -1604,7 +1604,7 @@ class Ag3:
         ----------
         contig : str
             Chromosome arm, e.g., "3R".
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -1636,13 +1636,13 @@ class Ag3:
 
             # multiple sample sets requested, need to concatenate along samples dimension
             datasets = [
-                self._cnv_discordant_read_calls_dataset(
+                self.cnv_discordant_read_calls(
                     contig=contig,
-                    sample_set=sample_set,
+                    sample_sets=s,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-                for sample_set in sample_sets
+                for s in sample_sets
             ]
             ds = xarray.concat(
                 datasets,
@@ -1655,7 +1655,7 @@ class Ag3:
 
         return ds
 
-    def gene_cnv(self, contig, sample_sets="v3_wild"):
+    def gene_cnv(self, contig, sample_sets=None):
         """Compute modal copy number by gene, from HMM data.
 
         Parameters
@@ -1736,7 +1736,7 @@ class Ag3:
         cohorts_analysis="20211101",
         min_cohort_size=10,
         species_calls=("20200422", "aim"),
-        sample_sets="v3_wild",
+        sample_sets=None,
     ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
@@ -1758,7 +1758,7 @@ class Ag3:
             these can be removed from the output dataframe using pandas df.dropna(axis='columns').
         species_calls : (str, str)
             Include species calls in metadata.
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -1958,7 +1958,7 @@ class Ag3:
         self,
         contig,
         analysis,
-        sample_sets="v3_wild",
+        sample_sets=None,
         inline_array=True,
         chunks="native",
     ):
@@ -1973,7 +1973,7 @@ class Ag3:
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
             best. Otherwise use the "gamb_colu_arab" analysis.
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -2015,14 +2015,14 @@ class Ag3:
             # concatenate - this is a bit gnarly, could do with simplification
             datasets = [
                 [
-                    self._haplotypes_dataset(
+                    self.haplotypes(
                         contig=c,
-                        sample_set=sample_set,
+                        sample_sets=s,
                         analysis=analysis,
                         inline_array=inline_array,
                         chunks=chunks,
                     )
-                    for sample_set in sample_sets
+                    for s in sample_sets
                 ]
                 for c in contig
             ]
@@ -2050,12 +2050,6 @@ class Ag3:
                     join="override",
                 )
 
-        # if no samples at all, raise
-        if ds is None:
-            raise ValueError(
-                f"no samples available for analysis {analysis!r} and sample sets {sample_sets!r}"
-            )
-
         return ds
 
     def _read_cohort_metadata(self, *, sample_set, cohorts_analysis):
@@ -2071,12 +2065,12 @@ class Ag3:
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
 
-    def sample_cohorts(self, sample_sets="v3_wild", cohorts_analysis="20211101"):
+    def sample_cohorts(self, sample_sets=None, cohorts_analysis="20211101"):
         """Access cohorts metadata for one or more sample sets.
 
         Parameters
         ----------
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -2102,7 +2096,7 @@ class Ag3:
                 self.sample_cohorts(sample_sets=c, cohorts_analysis=cohorts_analysis)
                 for c in sample_sets
             ]
-            df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
+            df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
