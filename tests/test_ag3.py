@@ -111,9 +111,17 @@ def test_sample_metadata():
     expected_len = df_sample_sets_v3.loc[loc_sample_sets]["sample_count"].sum()
     assert len(df_samples_bf) == expected_len
 
+    # multiple releases
+    sample_sets = ["v3", "v3"]
+    df_samples_mr = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    assert_frame_equal(
+        df_samples_mr,
+        pd.concat([df_samples_v3, df_samples_v3], axis=0, ignore_index=True),
+    )
+
     # default is v3_wild
     df_default = ag3.sample_metadata(species_calls=None)
-    assert_frame_equal(df_samples_v3_wild, df_default)
+    assert_frame_equal(df_samples_v3, df_default)
 
     aim_cols = (
         "aim_fraction_colu",
@@ -126,14 +134,14 @@ def test_sample_metadata():
     # AIM species calls, included by default
     df_samples_aim = ag3.sample_metadata()
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
-    assert len(df_samples_aim) == len(df_samples_v3_wild)
-    assert set(df_samples_aim["species"]) == expected_species
+    assert len(df_samples_aim) == len(df_samples_v3)
+    assert set(df_samples_aim["species"].dropna()) == expected_species
 
     # AIM species calls, explicit
     df_samples_aim = ag3.sample_metadata(species_calls=("20200422", "aim"))
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
-    assert len(df_samples_aim) == len(df_samples_v3_wild)
-    assert set(df_samples_aim["species"]) == expected_species
+    assert len(df_samples_aim) == len(df_samples_v3)
+    assert set(df_samples_aim["species"].dropna()) == expected_species
 
     pca_cols = (
         "PC1",
@@ -146,8 +154,8 @@ def test_sample_metadata():
     # PCA species calls
     df_samples_pca = ag3.sample_metadata(species_calls=("20200422", "pca"))
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
-    assert len(df_samples_pca) == len(df_samples_v3_wild)
-    assert set(df_samples_pca["species"]).difference(expected_species) == set()
+    assert len(df_samples_pca) == len(df_samples_v3)
+    assert set(df_samples_pca["species"].dropna()).difference(expected_species) == set()
 
 
 def test_species_calls():

@@ -111,7 +111,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of sample sets.
+            A dataframe of sample sets, one row per sample set.
 
         """
 
@@ -138,7 +138,11 @@ class Ag3:
 
         elif isinstance(release, (list, tuple)):
             # multiple releases
-            df = pandas.concat([self.sample_sets(release=r) for r in release], axis=0)
+            df = pandas.concat(
+                [self.sample_sets(release=r) for r in release],
+                axis=0,
+                ignore_index=True,
+            )
             return df
 
         else:
@@ -231,6 +235,10 @@ class Ag3:
             # convenience, special case to exclude crosses
             sample_sets = self.v3_wild
 
+        elif sample_sets is None:
+            # all sample sets
+            sample_sets = self.sample_sets()["sample_set"].tolist()
+
         elif isinstance(sample_sets, str) and sample_sets.startswith("v3"):
             # convenience, can use a release identifier to denote all sample sets
             # in a release
@@ -280,12 +288,12 @@ class Ag3:
 
         return df
 
-    def sample_metadata(self, sample_sets="v3_wild", species_calls=("20200422", "aim")):
+    def sample_metadata(self, sample_sets=None, species_calls=("20200422", "aim")):
         """Access sample metadata for one or more sample sets.
 
         Parameters
         ----------
-        sample_sets : str or list of str
+        sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
@@ -295,6 +303,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of sample metadata, one row per sample.
 
         """
 
@@ -316,7 +325,7 @@ class Ag3:
                 self.sample_metadata(sample_sets=c, species_calls=species_calls)
                 for c in sample_sets
             ]
-            df = pandas.concat(dfs, axis=0, sort=False).reset_index(drop=True)
+            df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
