@@ -546,7 +546,9 @@ class Ag3:
                 [
                     da.concatenate(
                         [
-                            self.snp_genotypes(contig=c, sample_sets=s, field=field)
+                            self.snp_genotypes(
+                                contig=c, sample_sets=s, field=field, chunks=chunks
+                            )
                             for s in sample_sets
                         ],
                         axis=1,
