@@ -179,13 +179,11 @@ def test_sample_metadata():
 )
 @pytest.mark.parametrize("method", ["aim", "pca"])
 def test_species_calls(sample_sets, method):
-
     ag3 = setup_ag3()
-    for method in "aim", "pca":
-        df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
-        df_species = ag3.species_calls(sample_sets=sample_sets, method=method)
-        assert len(df_species) == len(df_samples)
-        assert set(df_species["species"].dropna()).difference(expected_species) == set()
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_species = ag3.species_calls(sample_sets=sample_sets, method=method)
+    assert len(df_species) == len(df_samples)
+    assert set(df_species["species"].dropna()).difference(expected_species) == set()
 
 
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
