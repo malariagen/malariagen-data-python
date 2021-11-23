@@ -100,33 +100,49 @@ class Ag3:
                 self._cache_releases = public_releases
         return self._cache_releases
 
-    def sample_sets(self, release="v3"):
-        """Access the manifest of sample sets.
+    def sample_sets(self, release=None):
+        """Access a dataframe of sample sets.
 
         Parameters
         ----------
-        release : str
+        release : str, optional
             Release identifier. Give "v3" to access the Ag1000G phase 3 data release.
 
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of sample sets.
 
         """
 
-        if release not in self.releases:
-            raise ValueError(f"Release not available: {release!r}")
+        if release is None:
+            # all available releases
+            release = self.releases
 
-        try:
-            return self._cache_sample_sets[release]
+        if isinstance(release, str):
+            # single release
 
-        except KeyError:
-            path = f"{self._path}/{release}/manifest.tsv"
-            with self._fs.open(path) as f:
-                df = pandas.read_csv(f, sep="\t", na_values="")
-            df["release"] = release
-            self._cache_sample_sets[release] = df
+            if release not in self.releases:
+                raise ValueError(f"Release not available: {release!r}")
+
+            try:
+                return self._cache_sample_sets[release]
+
+            except KeyError:
+                path = f"{self._path}/{release}/manifest.tsv"
+                with self._fs.open(path) as f:
+                    df = pandas.read_csv(f, sep="\t", na_values="")
+                df["release"] = release
+                self._cache_sample_sets[release] = df
+                return df
+
+        elif isinstance(release, (list, tuple)):
+            # multiple releases
+            df = pandas.concat([self.sample_sets(release=r) for r in release], axis=0)
             return df
+
+        else:
+            raise TypeError
 
     @property
     def v3_wild(self):
