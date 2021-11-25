@@ -252,6 +252,10 @@ class Ag3:
                     "sample_set"
                 ].tolist()
 
+            else:
+                # single sample set, normalise to always return a list
+                sample_sets = [sample_sets]
+
         elif isinstance(sample_sets, (list, tuple)):
             # list or tuple of sample sets or releases
             prepped_sample_sets = []
@@ -295,20 +299,23 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str):
-            # assume single sample set
-            df = self._read_species_calls(
-                sample_set=sample_sets, analysis=analysis, method=method
+        # concatenate multiple sample sets
+        dfs = [
+            self._read_species_calls(sample_set=s, analysis=analysis, method=method)
+            for s in sample_sets
+        ]
+        df = pandas.concat(dfs, axis=0, ignore_index=True)
+
+        return df
+
+    def _sample_metadata(self, *, sample_set, species_calls):
+        df = self._read_general_metadata(sample_set=sample_set)
+        if species_calls is not None:
+            analysis, method = species_calls
+            df_species = self._read_species_calls(
+                sample_set=sample_set, analysis=analysis, method=method
             )
-
-        else:
-            # concatenate multiple sample sets
-            dfs = [
-                self.species_calls(sample_sets=c, analysis=analysis, method=method)
-                for c in sample_sets
-            ]
-            df = pandas.concat(dfs, axis=0, ignore_index=True)
-
+            df = df.merge(df_species, on="sample_id", sort=False)
         return df
 
     def sample_metadata(self, sample_sets=None, species_calls=("20200422", "aim")):
@@ -332,23 +339,12 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str):
-            # assume single sample set
-            df = self._read_general_metadata(sample_set=sample_sets)
-            if species_calls is not None:
-                analysis, method = species_calls
-                df_species = self._read_species_calls(
-                    sample_set=sample_sets, analysis=analysis, method=method
-                )
-                df = df.merge(df_species, on="sample_id", sort=False)
-
-        else:
-            # concatenate multiple sample sets
-            dfs = [
-                self.sample_metadata(sample_sets=c, species_calls=species_calls)
-                for c in sample_sets
-            ]
-            df = pandas.concat(dfs, axis=0, ignore_index=True)
+        # concatenate multiple sample sets
+        dfs = [
+            self._sample_metadata(sample_set=s, species_calls=species_calls)
+            for s in sample_sets
+        ]
+        df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
@@ -580,9 +576,7 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        # normalise parameters to lists to simplify concatenation logic
-        if isinstance(sample_sets, str):
-            sample_sets = [sample_sets]
+        # normalise to simplify concatenation logic
         if isinstance(contig, str):
             contig = [contig]
 
@@ -1169,9 +1163,7 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        # normalise parameters to simplify concatenation logic
-        if isinstance(sample_sets, str):
-            sample_sets = [sample_sets]
+        # normalise to simplify concatenation logic
         if isinstance(contig, str):
             contig = [contig]
 
@@ -1337,10 +1329,6 @@ class Ag3:
         # TODO support multiple contigs?
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-
-        # normalise to simplify concatenation logic
-        if isinstance(sample_sets, str):
-            sample_sets = [sample_sets]
 
         # concatenate sample sets along samples dimension
         datasets = [
@@ -1629,10 +1617,6 @@ class Ag3:
         # TODO support multiple contigs
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-
-        # normalise to simplify concatenation logic
-        if isinstance(sample_sets, str):
-            sample_sets = [sample_sets]
 
         # concatenate sample sets
         datasets = [
@@ -1994,8 +1978,6 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # normalise to simplify concatenation logic
-        if isinstance(sample_sets, str):
-            sample_sets = [sample_sets]
         if isinstance(contig, str):
             contig = [contig]
 
@@ -2071,19 +2053,12 @@ class Ag3:
         """
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str):
-            # assume single sample set
-            df = self._read_cohort_metadata(
-                sample_set=sample_sets, cohorts_analysis=cohorts_analysis
-            )
-
-        else:
-            # concatenate multiple sample sets
-            dfs = [
-                self.sample_cohorts(sample_sets=c, cohorts_analysis=cohorts_analysis)
-                for c in sample_sets
-            ]
-            df = pandas.concat(dfs, axis=0, ignore_index=True)
+        # concatenate multiple sample sets
+        dfs = [
+            self._read_cohort_metadata(sample_set=s, cohorts_analysis=cohorts_analysis)
+            for s in sample_sets
+        ]
+        df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
