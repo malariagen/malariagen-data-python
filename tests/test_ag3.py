@@ -31,14 +31,13 @@ def setup_ag3(url="simplecache::gs://vo_agam_release/", **storage_kwargs):
     return Ag3(url, **storage_kwargs)
 
 
-# TODO reinstate
 @pytest.mark.parametrize(
     "url",
     [
-        # "gs://vo_agam_release/",
-        # "gcs://vo_agam_release/",
-        # "gs://vo_agam_release",
-        # "gcs://vo_agam_release",
+        "gs://vo_agam_release/",
+        "gcs://vo_agam_release/",
+        "gs://vo_agam_release",
+        "gcs://vo_agam_release",
         "simplecache::gs://vo_agam_release/",
         "simplecache::gcs://vo_agam_release/",
     ],
@@ -312,6 +311,30 @@ def test_snp_genotypes(chunks, sample_sets, contig):
     assert gt_pass.shape[0] == np.count_nonzero(filter_pass)
     assert gt_pass.shape[1] == len(df_samples)
     assert gt_pass.shape[2] == 2
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "v3", "v3_wild", ["v3", "v3"]],
+)
+@pytest.mark.parametrize("contig", ["X", ["3R", "3L"]])
+def test_snp_genotypes_chunks(sample_sets, contig):
+
+    ag3 = setup_ag3()
+    gt_native = ag3.snp_genotypes(
+        contig=contig, sample_sets=sample_sets, chunks="native"
+    )
+    gt_auto = ag3.snp_genotypes(contig=contig, sample_sets=sample_sets, chunks="auto")
+    gt_manual = ag3.snp_genotypes(
+        contig=contig, sample_sets=sample_sets, chunks=(100_000, 10, 2)
+    )
+
+    assert gt_native.chunks != gt_auto.chunks
+    assert gt_auto.chunks != gt_manual.chunks
+    assert gt_manual.chunks != gt_native.chunks
+    assert gt_manual.chunks[0][0] == 100_000
+    assert gt_manual.chunks[1][0] == 10
+    assert gt_manual.chunks[2][0] == 2
 
 
 def test_genome():
@@ -866,7 +889,6 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     assert isinstance(d2, xarray.DataArray)
 
 
-@pytest.mark.skip("temporary")  # TODO remove skip
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -958,7 +980,6 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert isinstance(d2, xarray.DataArray)
 
 
-@pytest.mark.skip("temporary")  # TODO remove skip
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "v3_wild", "v3", ["v3", "v3"], None],
