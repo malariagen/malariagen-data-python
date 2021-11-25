@@ -92,7 +92,16 @@ class Ag3:
             if self._pre:
                 # discover which releases are available
                 sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
-                releases = sorted([d for d in sub_dirs if d.startswith("v3")])
+                releases = tuple(
+                    sorted(
+                        [
+                            d
+                            for d in sub_dirs
+                            if d.startswith("v3")
+                            and self._fs.exists(f"{self._path}/{d}/manifest.tsv")
+                        ]
+                    )
+                )
                 if len(releases) == 0:
                     raise ValueError("No releases found.")
                 self._cache_releases = releases
@@ -157,12 +166,12 @@ class Ag3:
         ]
 
     def _lookup_release(self, *, sample_set):
-        # find which release this sample set was included in
-        for release in self.releases:
-            df_sample_sets = self.sample_sets(release=release)
-            if sample_set in df_sample_sets["sample_set"].tolist():
-                return release
-        raise ValueError(f"No release found for sample set {sample_set!r}")
+        """Find which release a sample set was included in."""
+        df_sample_sets = self.sample_sets().set_index("sample_set")
+        try:
+            return df_sample_sets.loc[sample_set]["release"]
+        except KeyError:
+            raise ValueError(f"No release found for sample set {sample_set!r}")
 
     def _read_general_metadata(self, *, sample_set):
         """Read metadata for a single sample set."""
