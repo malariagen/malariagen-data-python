@@ -142,7 +142,8 @@ def test_sample_metadata():
 
     # AIM species calls, explicit
     df_samples_aim = ag3.sample_metadata(
-        sample_sets="v3", species_calls=("20200422", "aim")
+        sample_sets="v3",
+        species_calls="aim_20200422",
     )
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
@@ -158,7 +159,8 @@ def test_sample_metadata():
 
     # PCA species calls
     df_samples_pca = ag3.sample_metadata(
-        sample_sets="v3", species_calls=("20200422", "pca")
+        sample_sets="v3",
+        species_calls="pca_20200422",
     )
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
     assert len(df_samples_pca) == len(df_samples_v3)
@@ -177,11 +179,11 @@ def test_sample_metadata():
         None,
     ],
 )
-@pytest.mark.parametrize("method", ["aim", "pca"])
-def test_species_calls(sample_sets, method):
+@pytest.mark.parametrize("analysis", ["aim_20200422", "pca_20200422"])
+def test_species_calls(sample_sets, analysis):
     ag3 = setup_ag3()
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
-    df_species = ag3.species_calls(sample_sets=sample_sets, method=method)
+    df_species = ag3.species_calls(sample_sets=sample_sets, analysis=analysis)
     assert len(df_species) == len(df_samples)
     assert set(df_species["species"].dropna()).difference(expected_species) == set()
 

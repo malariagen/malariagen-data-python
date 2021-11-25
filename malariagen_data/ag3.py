@@ -183,17 +183,19 @@ class Ag3:
             self._cache_general_metadata[sample_set] = df
             return df
 
-    def _read_species_calls(self, *, sample_set, analysis, method):
+    def _read_species_calls(self, *, sample_set, analysis):
         """Read species calls for a single sample set."""
-        key = (sample_set, analysis, method)
+        key = (sample_set, analysis)
         try:
             return self._cache_species_calls[key]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = (
-                f"{self._path}/{release}/metadata/species_calls_{analysis}"
-                f"/{sample_set}/samples.species_{method}.csv"
-            )
+            if analysis == "aim_20200422":
+                path = f"{self._path}/{release}/metadata/species_calls_20200422/{sample_set}/samples.species_aim.csv"
+            elif analysis == "pca_20200422":
+                path = f"{self._path}/{release}/metadata/species_calls_20200422/{sample_set}/samples.species_pca.csv"
+            else:
+                raise ValueError(f"Unknown species calling analysis: {analysis!r}")
             with self._fs.open(path) as f:
                 df = pandas.read_csv(
                     f,
@@ -276,7 +278,7 @@ class Ag3:
 
         return sample_sets
 
-    def species_calls(self, sample_sets=None, analysis="20200422", method="aim"):
+    def species_calls(self, sample_sets=None, analysis="aim_20200422"):
         """Access species calls for one or more sample sets.
 
         Parameters
@@ -285,11 +287,8 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
             "v3") or a list of release identifiers.
-        analysis : str
-            Species calling analysis version.
-        method : str
-            Species calling method; "aim" is ancestry informative markers, "pca" is principal
-            components analysis.
+        analysis : {"aim_20200422", "pca_20200422"}
+            Species calling analysis.
 
         Returns
         -------
@@ -301,7 +300,7 @@ class Ag3:
 
         # concatenate multiple sample sets
         dfs = [
-            self._read_species_calls(sample_set=s, analysis=analysis, method=method)
+            self._read_species_calls(sample_set=s, analysis=analysis)
             for s in sample_sets
         ]
         df = pandas.concat(dfs, axis=0, ignore_index=True)
@@ -311,14 +310,13 @@ class Ag3:
     def _sample_metadata(self, *, sample_set, species_calls):
         df = self._read_general_metadata(sample_set=sample_set)
         if species_calls is not None:
-            analysis, method = species_calls
             df_species = self._read_species_calls(
-                sample_set=sample_set, analysis=analysis, method=method
+                sample_set=sample_set, analysis=species_calls
             )
             df = df.merge(df_species, on="sample_id", sort=False)
         return df
 
-    def sample_metadata(self, sample_sets=None, species_calls=("20200422", "aim")):
+    def sample_metadata(self, sample_sets=None, species_calls="aim_20200422"):
         """Access sample metadata for one or more sample sets.
 
         Parameters
@@ -327,7 +325,7 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
-        species_calls : (str, str), optional
+        species_calls : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
 
         Returns
@@ -850,7 +848,7 @@ class Ag3:
         min_cohort_size=10,
         site_mask=None,
         site_filters="dt_20200416",
-        species_calls=("20200422", "aim"),
+        species_calls="aim_20200422",
         sample_sets=None,
         drop_invariant=True,
     ):
@@ -875,7 +873,7 @@ class Ag3:
             Site filters mask to apply.
         site_filters : str, optional
             Site filters analysis version.
-        species_calls : (str, str), optional
+        species_calls : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
@@ -1726,7 +1724,7 @@ class Ag3:
         cohorts,
         cohorts_analysis="20211101",
         min_cohort_size=10,
-        species_calls=("20200422", "aim"),
+        species_calls="aim_20200422",
         sample_sets=None,
     ):
         """Compute modal copy number by gene, then compute the frequency of
@@ -1747,7 +1745,7 @@ class Ag3:
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
             Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
             these can be removed from the output dataframe using pandas df.dropna(axis='columns').
-        species_calls : (str, str)
+        species_calls : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
