@@ -23,13 +23,16 @@ from .util import (
     unpack_gff3_attributes,
 )
 
-public_releases = ("v3",)
-geneset_gff3_path = (
+PUBLIC_RELEASES = ("v3",)
+GENESET_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
 )
-genome_zarr_path = (
+GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
 )
+DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
+DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
+DEFAULT_COHORTS_ANALYSIS = "20211101"
 
 
 class Ag3:
@@ -56,7 +59,7 @@ class Ag3:
 
     """
 
-    public_releases = ("v3",)
+    PUBLIC_RELEASES = ("v3",)
     contigs = ("2R", "2L", "3R", "3L", "X")
 
     def __init__(self, url, **kwargs):
@@ -97,7 +100,7 @@ class Ag3:
                     raise ValueError("No releases found.")
                 self._cache_releases = releases
             else:
-                self._cache_releases = public_releases
+                self._cache_releases = PUBLIC_RELEASES
         return self._cache_releases
 
     def sample_sets(self, release=None):
@@ -278,7 +281,7 @@ class Ag3:
 
         return sample_sets
 
-    def species_calls(self, sample_sets=None, analysis="aim_20200422"):
+    def species_calls(self, sample_sets=None, analysis=DEFAULT_SPECIES_ANALYSIS):
         """Access species calls for one or more sample sets.
 
         Parameters
@@ -316,7 +319,7 @@ class Ag3:
             df = df.merge(df_species, on="sample_id", sort=False)
         return df
 
-    def sample_metadata(self, sample_sets=None, species_calls="aim_20200422"):
+    def sample_metadata(self, sample_sets=None, species_calls=DEFAULT_SPECIES_ANALYSIS):
         """Access sample metadata for one or more sample sets.
 
         Parameters
@@ -346,7 +349,7 @@ class Ag3:
 
         return df
 
-    def open_site_filters(self, mask, analysis="dt_20200416"):
+    def open_site_filters(self, mask, analysis=DEFAULT_SITE_FILTERS_ANALYSIS):
         """Open site filters zarr.
 
         Parameters
@@ -376,7 +379,7 @@ class Ag3:
         contig,
         mask,
         field="filter_pass",
-        analysis="dt_20200416",
+        analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -445,7 +448,7 @@ class Ag3:
         contig,
         field=None,
         site_mask=None,
-        site_filters="dt_20200416",
+        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -539,7 +542,7 @@ class Ag3:
         sample_sets=None,
         field="GT",
         site_mask=None,
-        site_filters="dt_20200416",
+        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -617,7 +620,7 @@ class Ag3:
 
         """
         if self._cache_genome is None:
-            path = f"{self._path}/{genome_zarr_path}"
+            path = f"{self._path}/{GENOME_ZARR_PATH}"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
@@ -666,7 +669,7 @@ class Ag3:
             df = self._cache_geneset[attributes]
 
         except KeyError:
-            path = f"{self._path}/{geneset_gff3_path}"
+            path = f"{self._path}/{GENESET_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -675,7 +678,9 @@ class Ag3:
 
         return df
 
-    def is_accessible(self, contig, site_mask, site_filters="dt_20200416"):
+    def is_accessible(
+        self, contig, site_mask, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+    ):
         """Compute genome accessibility array.
 
         Parameters
@@ -718,7 +723,7 @@ class Ag3:
         else:
             raise ValueError
 
-    def _snp_df(self, *, transcript, site_filters="dt_20200416"):
+    def _snp_df(self, *, transcript, site_filters):
         """Set up a dataframe with SNP site and filter columns."""
 
         # get feature direct from geneset
@@ -766,7 +771,9 @@ class Ag3:
 
         return contig, loc_feature, df_snps
 
-    def snp_effects(self, transcript, site_mask=None, site_filters="dt_20200416"):
+    def snp_effects(
+        self, transcript, site_mask=None, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+    ):
         """Compute variant effects for a gene transcript.
 
         Parameters
@@ -844,11 +851,11 @@ class Ag3:
         self,
         transcript,
         cohorts,
-        cohorts_analysis="20211101",
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
-        site_filters="dt_20200416",
-        species_calls="aim_20200422",
+        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        species_calls=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
     ):
@@ -1016,7 +1023,7 @@ class Ag3:
         contig,
         field,
         site_mask=None,
-        site_filters="dt_20200416",
+        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1130,7 +1137,7 @@ class Ag3:
         contig,
         sample_sets=None,
         site_mask=None,
-        site_filters="dt_20200416",
+        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1722,9 +1729,9 @@ class Ag3:
         self,
         contig,
         cohorts,
-        cohorts_analysis="20211101",
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
-        species_calls="aim_20200422",
+        species_calls=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
     ):
         """Compute modal copy number by gene, then compute the frequency of
@@ -2041,7 +2048,9 @@ class Ag3:
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
 
-    def sample_cohorts(self, sample_sets=None, cohorts_analysis="20211101"):
+    def sample_cohorts(
+        self, sample_sets=None, cohorts_analysis=DEFAULT_COHORTS_ANALYSIS
+    ):
         """Access cohorts metadata for one or more sample sets.
 
         Parameters
