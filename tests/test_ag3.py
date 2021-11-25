@@ -865,8 +865,6 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     assert isinstance(d2, xarray.DataArray)
 
 
-# TODO remove skip
-@pytest.mark.skip("temporarily skip until data problems resolved")
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -958,8 +956,6 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert isinstance(d2, xarray.DataArray)
 
 
-# TODO remove skip
-@pytest.mark.skip("temporarily skip until data problems resolved")
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "v3_wild", "v3", ["v3", "v3"], None],
