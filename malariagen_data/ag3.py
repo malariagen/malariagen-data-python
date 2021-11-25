@@ -714,13 +714,13 @@ class Ag3:
 
         return is_accessible
 
-    def _site_mask_ids(self, site_filters):
+    def _site_mask_ids(self, *, site_filters):
         if site_filters == "dt_20200416":
             return "gamb_colu_arab", "gamb_colu", "arab"
         else:
             raise ValueError
 
-    def _snp_df(self, transcript, site_filters="dt_20200416"):
+    def _snp_df(self, *, transcript, site_filters="dt_20200416"):
         """Set up a dataframe with SNP site and filter columns."""
 
         # get feature direct from geneset
@@ -809,7 +809,9 @@ class Ag3:
 
         return df_effects
 
-    def _prep_cohorts_arg(self, cohorts, sample_sets, species_calls, cohorts_analysis):
+    def _prep_cohorts_arg(
+        self, *, cohorts, sample_sets, species_calls, cohorts_analysis
+    ):
 
         # build cohort dictionary where key=cohort_id, value=loc_coh
         coh_dict = {}
@@ -1058,7 +1060,7 @@ class Ag3:
         return d
 
     def _snp_calls_dataset(
-        self, contig, sample_set, site_filters, inline_array, chunks
+        self, *, contig, sample_set, site_filters, inline_array, chunks
     ):
 
         coords = dict()
@@ -1233,7 +1235,7 @@ class Ag3:
             self._cache_cnv_hmm[sample_set] = root
         return root
 
-    def _cnv_hmm_dataset(self, contig, sample_set, inline_array, chunks):
+    def _cnv_hmm_dataset(self, *, contig, sample_set, inline_array, chunks):
 
         coords = dict()
         data_vars = dict()
@@ -1510,7 +1512,7 @@ class Ag3:
         return root
 
     def _cnv_discordant_read_calls_dataset(
-        self, contig, sample_set, inline_array, chunks
+        self, *, contig, sample_set, inline_array, chunks
     ):
 
         coords = dict()
@@ -1620,9 +1622,9 @@ class Ag3:
 
         # concatenate sample sets
         datasets = [
-            self.cnv_discordant_read_calls(
+            self._cnv_discordant_read_calls_dataset(
                 contig=contig,
-                sample_sets=s,
+                sample_set=s,
                 inline_array=inline_array,
                 chunks=chunks,
             )
@@ -1879,7 +1881,9 @@ class Ag3:
             self._cache_haplotype_sites[analysis] = root
         return root
 
-    def _haplotypes_dataset(self, contig, sample_set, analysis, inline_array, chunks):
+    def _haplotypes_dataset(
+        self, *, contig, sample_set, analysis, inline_array, chunks
+    ):
 
         # open zarr
         root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
