@@ -529,7 +529,7 @@ class Ag3:
             return root
 
     def _snp_genotypes(self, *, contig, sample_set, field, inline_array, chunks):
-        # single single contig, single sample set
+        # single contig, single sample set
         root = self.open_snp_genotypes(sample_set=sample_set)
         z = root[contig]["calldata"][field]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
