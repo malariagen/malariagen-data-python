@@ -60,7 +60,6 @@ class Ag3:
 
     """
 
-    public_releases = PUBLIC_RELEASES
     contigs = CONTIGS
 
     def __init__(self, url, **kwargs):
