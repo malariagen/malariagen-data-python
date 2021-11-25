@@ -231,22 +231,44 @@ class Ag3:
             return df
 
     def _prep_sample_sets_arg(self, *, sample_sets):
+        """Common handling for the `sample_sets` parameter. For convenience, we allow this
+        to be a single sample set, or a list of sample sets, or a release identifier, or a
+        list of release identifiers."""
 
         if sample_sets is None:
             # all available sample sets
             sample_sets = self.sample_sets()["sample_set"].tolist()
 
-        elif sample_sets == "v3_wild":
-            # convenience, special case to exclude crosses
-            sample_sets = self.v3_wild
+        elif isinstance(sample_sets, str):
 
-        elif isinstance(sample_sets, str) and sample_sets.startswith("v3"):
-            # convenience, can use a release identifier to denote all sample sets
-            # in a release
-            sample_sets = self.sample_sets(release=sample_sets)["sample_set"].tolist()
+            if sample_sets == "v3_wild":
+                # convenience, special case to exclude crosses
+                sample_sets = self.v3_wild
 
-        if not isinstance(sample_sets, (str, list, tuple)):
-            raise TypeError(f"Invalid sample_sets: {sample_sets!r}")
+            elif sample_sets.startswith("v3"):
+                # convenience, can use a release identifier to denote all sample sets
+                # in a release
+                sample_sets = self.sample_sets(release=sample_sets)[
+                    "sample_set"
+                ].tolist()
+
+        elif isinstance(sample_sets, (list, tuple)):
+            # list or tuple of sample sets or releases
+            prepped_sample_sets = []
+            for s in sample_sets:
+                # make a recursive call to handle the case where s is a release identifier
+                sp = self._prep_sample_sets_arg(sample_sets=s)
+                # make sure we end up with a flat list of sample sets
+                if isinstance(sp, str):
+                    prepped_sample_sets.append(sp)
+                else:
+                    prepped_sample_sets.extend(sp)
+            sample_sets = prepped_sample_sets
+
+        else:
+            raise TypeError(
+                f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
+            )
 
         return sample_sets
 
@@ -510,6 +532,13 @@ class Ag3:
             self._cache_snp_genotypes[sample_set] = root
             return root
 
+    def _snp_genotypes(self, *, contig, sample_set, field, inline_array, chunks):
+        # single single contig, single sample set
+        root = self.open_snp_genotypes(sample_set=sample_set)
+        z = root[contig]["calldata"][field]
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return d
+
     def snp_genotypes(
         self,
         contig,
@@ -551,37 +580,34 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str) and isinstance(contig, str):
-            # single sample set, single contig
-            root = self.open_snp_genotypes(sample_set=sample_sets)
-            z = root[contig]["calldata"][field]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        # normalise parameters to lists to simplify concatenation logic
+        if isinstance(sample_sets, str):
+            sample_sets = [sample_sets]
+        if isinstance(contig, str):
+            contig = [contig]
 
-        else:
+        # concatenate multiple sample sets and/or contigs
+        d = da.concatenate(
+            [
+                da.concatenate(
+                    [
+                        self._snp_genotypes(
+                            contig=c,
+                            sample_set=s,
+                            field=field,
+                            inline_array=inline_array,
+                            chunks=chunks,
+                        )
+                        for s in sample_sets
+                    ],
+                    axis=1,
+                )
+                for c in contig
+            ],
+            axis=0,
+        )
 
-            # concatenate multiple sample sets and/or contigs
-
-            # normalise
-            if isinstance(sample_sets, str):
-                sample_sets = [sample_sets]
-            if isinstance(contig, str):
-                contig = [contig]
-
-            # concatenate
-            d = da.concatenate(
-                [
-                    da.concatenate(
-                        [
-                            self.snp_genotypes(contig=c, sample_sets=s, field=field)
-                            for s in sample_sets
-                        ],
-                        axis=1,
-                    )
-                    for c in contig
-                ],
-                axis=0,
-            )
-
+        # apply site filters if requested
         if site_mask is not None:
             loc_sites = self.site_filters(
                 contig=contig, mask=site_mask, analysis=site_filters
@@ -1143,54 +1169,40 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str) and isinstance(contig, str):
+        # normalise parameters to simplify concatenation logic
+        if isinstance(sample_sets, str):
+            sample_sets = [sample_sets]
+        if isinstance(contig, str):
+            contig = [contig]
 
-            # single sample set requested
-            ds = self._snp_calls_dataset(
-                contig=contig,
-                sample_set=sample_sets,
-                site_filters=site_filters,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-
-        else:
-
-            # multiple sample sets and/or contigs requested, need to concatenate
-
-            # normalise
-            if isinstance(sample_sets, str):
-                sample_sets = [sample_sets]
-            if isinstance(contig, str):
-                contig = [contig]
-
-            # concatenate - this is a bit gnarly, could do with simplification
-            ds = xarray.concat(
-                [
-                    xarray.concat(
-                        [
-                            self.snp_calls(
-                                contig=c,
-                                sample_sets=s,
-                                inline_array=inline_array,
-                                chunks=chunks,
-                            )
-                            for s in sample_sets
-                        ],
-                        dim=DIM_SAMPLE,
-                        data_vars="minimal",
-                        coords="minimal",
-                        compat="override",
-                        join="override",
-                    )
-                    for c in contig
-                ],
-                dim=DIM_VARIANT,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+        # concatenate multiple sample sets and/or contigs
+        ds = xarray.concat(
+            [
+                xarray.concat(
+                    [
+                        self._snp_calls_dataset(
+                            contig=c,
+                            sample_set=s,
+                            site_filters=site_filters,
+                            inline_array=inline_array,
+                            chunks=chunks,
+                        )
+                        for s in sample_sets
+                    ],
+                    dim=DIM_SAMPLE,
+                    data_vars="minimal",
+                    coords="minimal",
+                    compat="override",
+                    join="override",
+                )
+                for c in contig
+            ],
+            dim=DIM_VARIANT,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
 
         # apply site filters
         if site_mask is not None:
@@ -1326,36 +1338,28 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
+        # normalise to simplify concatenation logic
         if isinstance(sample_sets, str):
+            sample_sets = [sample_sets]
 
-            # single sample set requested
-            ds = self._cnv_hmm_dataset(
+        # concatenate sample sets along samples dimension
+        datasets = [
+            self._cnv_hmm_dataset(
                 contig=contig,
-                sample_set=sample_sets,
+                sample_set=s,
                 inline_array=inline_array,
                 chunks=chunks,
             )
-
-        else:
-
-            # multiple sample sets requested, need to concatenate along samples dimension
-            datasets = [
-                self.cnv_hmm(
-                    contig=contig,
-                    sample_sets=s,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                for s in sample_sets
-            ]
-            ds = xarray.concat(
-                datasets,
-                dim=DIM_SAMPLE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            for s in sample_sets
+        ]
+        ds = xarray.concat(
+            datasets,
+            dim=DIM_SAMPLE,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
 
         return ds
 
@@ -1528,6 +1532,8 @@ class Ag3:
         root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
 
         # not all contigs have CNVs, need to check
+        # TODO consider returning dataset with zero length variants dimension, would
+        # probably simplify downstream logic
         if contig not in root:
             raise ValueError(f"no CNVs available for contig {contig!r}")
 
@@ -1620,38 +1626,32 @@ class Ag3:
 
         """
 
+        # TODO support multiple contigs
+
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
+        # normalise to simplify concatenation logic
         if isinstance(sample_sets, str):
+            sample_sets = [sample_sets]
 
-            # single sample set requested
-            ds = self._cnv_discordant_read_calls_dataset(
+        # concatenate sample sets
+        datasets = [
+            self.cnv_discordant_read_calls(
                 contig=contig,
-                sample_set=sample_sets,
+                sample_sets=s,
                 inline_array=inline_array,
                 chunks=chunks,
             )
-
-        else:
-
-            # multiple sample sets requested, need to concatenate along samples dimension
-            datasets = [
-                self.cnv_discordant_read_calls(
-                    contig=contig,
-                    sample_sets=s,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                for s in sample_sets
-            ]
-            ds = xarray.concat(
-                datasets,
-                dim=DIM_SAMPLE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            for s in sample_sets
+        ]
+        ds = xarray.concat(
+            datasets,
+            dim=DIM_SAMPLE,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
 
         return ds
 
@@ -1902,6 +1902,8 @@ class Ag3:
         sites = self.open_haplotype_sites(analysis=analysis)
 
         # some sample sets have no data for a given analysis, handle this
+        # TODO consider returning a dataset with 0 length samples dimension instead, would
+        # probably simplify a lot of other logic
         if root is None:
             return None
 
@@ -1991,64 +1993,49 @@ class Ag3:
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
-        if isinstance(sample_sets, str) and isinstance(contig, str):
+        # normalise to simplify concatenation logic
+        if isinstance(sample_sets, str):
+            sample_sets = [sample_sets]
+        if isinstance(contig, str):
+            contig = [contig]
 
-            # single sample set requested
-            ds = self._haplotypes_dataset(
-                contig=contig,
-                sample_set=sample_sets,
-                analysis=analysis,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-
-        else:
-
-            # multiple sample sets and/or contigs requested, need to concatenate
-
-            # normalise
-            if isinstance(sample_sets, str):
-                sample_sets = [sample_sets]
-            if isinstance(contig, str):
-                contig = [contig]
-
-            # concatenate - this is a bit gnarly, could do with simplification
-            datasets = [
-                [
-                    self.haplotypes(
-                        contig=c,
-                        sample_sets=s,
-                        analysis=analysis,
-                        inline_array=inline_array,
-                        chunks=chunks,
-                    )
-                    for s in sample_sets
-                ]
-                for c in contig
-            ]
-            # some sample sets have no data for a given analysis, handle this
-            datasets = [[d for d in row if d is not None] for row in datasets]
-            if len(datasets[0]) == 0:
-                ds = None
-            else:
-                ds = xarray.concat(
-                    [
-                        xarray.concat(
-                            row,
-                            dim=DIM_SAMPLE,
-                            data_vars="minimal",
-                            coords="minimal",
-                            compat="override",
-                            join="override",
-                        )
-                        for row in datasets
-                    ],
-                    dim=DIM_VARIANT,
-                    data_vars="minimal",
-                    coords="minimal",
-                    compat="override",
-                    join="override",
+        # concatenate - this is a bit gnarly, could do with simplification
+        datasets = [
+            [
+                self._haplotypes_dataset(
+                    contig=c,
+                    sample_set=s,
+                    analysis=analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
+                for s in sample_sets
+            ]
+            for c in contig
+        ]
+        # some sample sets have no data for a given analysis, handle this
+        datasets = [[d for d in row if d is not None] for row in datasets]
+        if len(datasets[0]) == 0:
+            ds = None
+        else:
+            ds = xarray.concat(
+                [
+                    xarray.concat(
+                        row,
+                        dim=DIM_SAMPLE,
+                        data_vars="minimal",
+                        coords="minimal",
+                        compat="override",
+                        join="override",
+                    )
+                    for row in datasets
+                ],
+                dim=DIM_VARIANT,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
 
         return ds
 
