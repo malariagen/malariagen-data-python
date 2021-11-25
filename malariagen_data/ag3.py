@@ -33,6 +33,7 @@ GENOME_ZARR_PATH = (
 DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
+CONTIGS = "2R", "2L", "3R", "3L", "X"
 
 
 class Ag3:
@@ -59,8 +60,8 @@ class Ag3:
 
     """
 
-    PUBLIC_RELEASES = ("v3",)
-    contigs = ("2R", "2L", "3R", "3L", "X")
+    public_releases = PUBLIC_RELEASES
+    contigs = CONTIGS
 
     def __init__(self, url, **kwargs):
 
