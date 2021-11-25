@@ -232,6 +232,30 @@ class Ag3:
 
             df["species"] = df.apply(consolidate_species, axis=1)
 
+            if analysis == "aim_20200422":
+                # normalise column prefixes
+                df = df.rename(
+                    columns={
+                        "aim_fraction_arab": "aim_species_fraction_arab",
+                        "aim_fraction_colu": "aim_species_fraction_colu",
+                        "species_gambcolu_arabiensis": "aim_species_gambcolu_arabiensis",
+                        "species_gambiae_coluzzii": "aim_species_gambiae_coluzzii",
+                        "species": "aim_species",
+                    }
+                )
+            elif analysis == "pca_20200422":
+                # normalise column prefixes
+                df = df.rename(
+                    # normalise column prefixes
+                    columns={
+                        "PC1": "pca_species_PC1",
+                        "PC2": "pca_species_PC2",
+                        "species_gambcolu_arabiensis": "pca_species_gambcolu_arabiensis",
+                        "species_gambiae_coluzzii": "pca_species_gambiae_coluzzii",
+                        "species": "pca_species",
+                    }
+                )
+
             self._cache_species_calls[key] = df
             return df
 
