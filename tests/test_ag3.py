@@ -50,9 +50,17 @@ def test_sample_sets(url):
     assert len(df_sample_sets_v3) == 28
     assert tuple(df_sample_sets_v3.columns) == ("sample_set", "sample_count", "release")
 
-    # test default is v3
+    # test multiple releases
+    df_multi = ag3.sample_sets(release=["v3", "v3"])
+    assert_frame_equal(
+        df_multi,
+        pd.concat([df_sample_sets_v3, df_sample_sets_v3], axis=0, ignore_index=True),
+    )
+
+    # test default is all public releases
     df_default = ag3.sample_sets()
-    assert_frame_equal(df_sample_sets_v3, df_default)
+    df_all = ag3.sample_sets(release=ag3.releases)
+    assert_frame_equal(df_default, df_all)
 
 
 def test_sample_metadata():
@@ -105,9 +113,18 @@ def test_sample_metadata():
     expected_len = df_sample_sets_v3.loc[loc_sample_sets]["sample_count"].sum()
     assert len(df_samples_bf) == expected_len
 
-    # default is v3_wild
+    # multiple releases
+    sample_sets = ["v3", "v3"]
+    df_samples_mr = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    assert_frame_equal(
+        df_samples_mr,
+        pd.concat([df_samples_v3, df_samples_v3], axis=0, ignore_index=True),
+    )
+
+    # default is all public releases
     df_default = ag3.sample_metadata(species_calls=None)
-    assert_frame_equal(df_samples_v3_wild, df_default)
+    df_all = ag3.sample_metadata(sample_sets=ag3.releases, species_calls=None)
+    assert_frame_equal(df_default, df_all)
 
     aim_cols = (
         "aim_fraction_colu",
@@ -118,16 +135,18 @@ def test_sample_metadata():
     )
 
     # AIM species calls, included by default
-    df_samples_aim = ag3.sample_metadata()
+    df_samples_aim = ag3.sample_metadata(sample_sets="v3")
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
-    assert len(df_samples_aim) == len(df_samples_v3_wild)
-    assert set(df_samples_aim["species"]) == expected_species
+    assert len(df_samples_aim) == len(df_samples_v3)
+    assert set(df_samples_aim["species"].dropna()) == expected_species
 
     # AIM species calls, explicit
-    df_samples_aim = ag3.sample_metadata(species_calls=("20200422", "aim"))
+    df_samples_aim = ag3.sample_metadata(
+        sample_sets="v3", species_calls=("20200422", "aim")
+    )
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
-    assert len(df_samples_aim) == len(df_samples_v3_wild)
-    assert set(df_samples_aim["species"]) == expected_species
+    assert len(df_samples_aim) == len(df_samples_v3)
+    assert set(df_samples_aim["species"].dropna()) == expected_species
 
     pca_cols = (
         "PC1",
@@ -138,28 +157,33 @@ def test_sample_metadata():
     )
 
     # PCA species calls
-    df_samples_pca = ag3.sample_metadata(species_calls=("20200422", "pca"))
+    df_samples_pca = ag3.sample_metadata(
+        sample_sets="v3", species_calls=("20200422", "pca")
+    )
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
-    assert len(df_samples_pca) == len(df_samples_v3_wild)
-    assert set(df_samples_pca["species"]).difference(expected_species) == set()
+    assert len(df_samples_pca) == len(df_samples_v3)
+    assert set(df_samples_pca["species"].dropna()).difference(expected_species) == set()
 
 
-def test_species_calls():
-
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "AG1000G-AO",
+        "AG1000G-X",
+        ["AG1000G-BF-A", "AG1000G-BF-B"],
+        "v3",
+        "v3_wild",
+        ["v3", "v3"],
+        None,
+    ],
+)
+@pytest.mark.parametrize("method", ["aim", "pca"])
+def test_species_calls(sample_sets, method):
     ag3 = setup_ag3()
-    sample_sets = ag3.sample_sets(release="v3")["sample_set"].tolist()
-
-    for s in sample_sets:
-        for method in "aim", "pca":
-            df_samples = ag3.sample_metadata(sample_sets=s, species_calls=None)
-            df_species = ag3.species_calls(sample_sets=s, method=method)
-            assert len(df_species) == len(df_samples)
-            if s == "AG1000G-X":
-                # no species calls
-                assert df_species["species"].isna().all()
-            else:
-                assert not df_species["species"].isna().any()
-                assert set(df_species["species"]).difference(expected_species) == set()
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_species = ag3.species_calls(sample_sets=sample_sets, method=method)
+    assert len(df_species) == len(df_samples)
+    assert set(df_species["species"].dropna()).difference(expected_species) == set()
 
 
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
@@ -243,7 +267,7 @@ def test_open_snp_genotypes():
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
-    ["v3", "v3_wild", "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"]],
+    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "v3", "v3_wild", ["v3", "v3"]],
 )
 @pytest.mark.parametrize("contig", ["X", ["3R", "3L"]])
 def test_snp_genotypes(chunks, sample_sets, contig):
@@ -287,6 +311,30 @@ def test_snp_genotypes(chunks, sample_sets, contig):
     assert gt_pass.shape[0] == np.count_nonzero(filter_pass)
     assert gt_pass.shape[1] == len(df_samples)
     assert gt_pass.shape[2] == 2
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "v3", "v3_wild", ["v3", "v3"]],
+)
+@pytest.mark.parametrize("contig", ["X", ["3R", "3L"]])
+def test_snp_genotypes_chunks(sample_sets, contig):
+
+    ag3 = setup_ag3()
+    gt_native = ag3.snp_genotypes(
+        contig=contig, sample_sets=sample_sets, chunks="native"
+    )
+    gt_auto = ag3.snp_genotypes(contig=contig, sample_sets=sample_sets, chunks="auto")
+    gt_manual = ag3.snp_genotypes(
+        contig=contig, sample_sets=sample_sets, chunks=(100_000, 10, 2)
+    )
+
+    assert gt_native.chunks != gt_auto.chunks
+    assert gt_auto.chunks != gt_manual.chunks
+    assert gt_manual.chunks != gt_native.chunks
+    assert gt_manual.chunks[0][0] == 100_000
+    assert gt_manual.chunks[1][0] == 10
+    assert gt_manual.chunks[2][0] == 2
 
 
 def test_genome():
@@ -398,9 +446,19 @@ def test_site_annotations():
                 assert d.shape == pos.shape
 
 
-@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
-@pytest.mark.parametrize("sample_sets", ["AG1000G-AO", "v3_wild"])
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "AG1000G-X",
+        ["AG1000G-BF-A", "AG1000G-BF-B"],
+        "v3",
+        "v3_wild",
+        ["v3", "v3"],
+        None,
+    ],
+)
 @pytest.mark.parametrize("contig", ["2L", "X", ["3R", "3L"]])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_snp_calls(sample_sets, contig, site_mask):
 
     ag3 = setup_ag3()
@@ -688,7 +746,8 @@ def test_snp_allele_frequencies__dict_cohorts():
 
 
 @pytest.mark.parametrize(
-    "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
+    "sample_sets",
+    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "v3_wild", "v3", ["v3", "v3"], None],
 )
 @pytest.mark.parametrize("contig", ["3L", "X"])
 def test_cnv_hmm(sample_sets, contig):
@@ -833,9 +892,18 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
 
 
 @pytest.mark.parametrize(
-    "sample_sets", ["AG1000G-AO", ("AG1000G-AO", "AG1000G-UG"), "v3_wild"]
+    "sample_sets",
+    [
+        "AG1000G-AO",
+        "AG1000G-UG",
+        ["AG1000G-AO", "AG1000G-UG"],
+        "v3_wild",
+        "v3",
+        ["v3", "v3"],
+        None,
+    ],
 )
-@pytest.mark.parametrize("contig", ["2R", "3R", "X", "3L"])
+@pytest.mark.parametrize("contig", ["2R", "3R", "X"])
 def test_cnv_discordant_read_calls(sample_sets, contig):
 
     ag3 = setup_ag3()
@@ -876,6 +944,13 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
 
+    if contig == "2R":
+        assert ds.dims["variants"] == 40
+    if contig == "3R":
+        assert ds.dims["variants"] == 29
+    if contig == "X":
+        assert ds.dims["variants"] == 29
+
     # check sample IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
 
@@ -907,6 +982,20 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert isinstance(d2, xarray.DataArray)
 
 
+@pytest.mark.parametrize(
+    "sample_sets",
+    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "v3_wild", "v3", ["v3", "v3"], None],
+)
+@pytest.mark.parametrize("contig", ["2L", "3L"])
+def test_cnv_discordant_read_calls__no_calls(sample_sets, contig):
+
+    ag3 = setup_ag3()
+
+    with pytest.raises(ValueError):
+        ag3.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
+    return
+
+
 @pytest.mark.parametrize("rows", [10, 100, 1000])
 @pytest.mark.parametrize("cols", [10, 100, 1000])
 @pytest.mark.parametrize("vmax", [2, 12, 100])
@@ -921,7 +1010,8 @@ def test_cn_mode(rows, cols, vmax):
 
 
 @pytest.mark.parametrize(
-    "sample_sets", ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "v3_wild"]
+    "sample_sets",
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "v3_wild", "v3", ["v3", "v3"], None],
 )
 @pytest.mark.parametrize("contig", ["2R", "X"])
 def test_gene_cnv(contig, sample_sets):
@@ -996,8 +1086,24 @@ def test_gene_cnv(contig, sample_sets):
     assert np.max(z) <= 12
     assert np.min(z) >= -1
 
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "v3_wild", "v3", None],
+)
+@pytest.mark.parametrize("contig", ["2R", "X"])
+def test_gene_cnv_xarray_indexing(contig, sample_sets):
+    ag3 = setup_ag3()
+
+    ds = ag3.gene_cnv(contig=contig, sample_sets=sample_sets)
+
     # check label-based indexing
     # pick a random gene and sample ID
+
+    # check dim lengths
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_geneset = ag3.geneset()
+    df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
     gene = random.choice(df_genes["ID"].tolist())
     sample = random.choice(df_samples["sample_id"].tolist())
     ds = ds.set_index(genes="gene_id", samples="sample_id")
@@ -1048,6 +1154,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
         assert df.index.name == "ID"
 
         # sanity checks
+        cohort_labels = None
         if isinstance(cohorts, dict):
             cohort_labels = cohorts.keys()
         if isinstance(cohorts, str):
@@ -1076,7 +1183,8 @@ def test_gene_cnv_frequencies(contig, cohorts):
 
 
 @pytest.mark.parametrize(
-    "sample_sets", ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "v3", "v3_wild"]
+    "sample_sets",
+    ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "v3", "v3_wild", ["v3", "v3"], None],
 )
 @pytest.mark.parametrize("contig", ["2R", "X", ["3R", "3L"]])
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
@@ -1093,14 +1201,13 @@ def test_haplotypes(sample_sets, contig, analysis):
     elif analysis == "gamb_colu_arab":
         sample_query = "sample_set != 'AG1000G-X'"
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
-    expected_samples = set(df_samples.query(sample_query)["sample_id"].tolist())
+    expected_samples = df_samples.query(sample_query)["sample_id"].tolist()
     n_samples = len(expected_samples)
 
     # check if any samples
     if n_samples == 0:
-        with pytest.raises(ValueError):
-            # no samples, raise
-            ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+        ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+        assert ds is None
         return
 
     ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
@@ -1124,8 +1231,8 @@ def test_haplotypes(sample_sets, contig, analysis):
     assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
 
     # check samples
-    samples = set(ds["sample_id"].values)
-    assert samples == expected_samples
+    samples = ds["sample_id"].values
+    assert set(samples) == set(expected_samples)
 
     # check dim lengths
     assert ds.dims["samples"] == n_samples
