@@ -531,6 +531,10 @@ def test_snp_calls(sample_sets, contig, site_mask):
             assert x.dims == ("samples",)
             assert x.shape == (n_samples,)
 
+    # check samples
+    expected_samples = df_samples["sample_id"].tolist()
+    assert ds["sample_id"].values.tolist() == expected_samples
+
     # check attributes
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
