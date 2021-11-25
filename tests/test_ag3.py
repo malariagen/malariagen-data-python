@@ -663,7 +663,7 @@ def test_snp_effects():
 def test_snp_allele_frequencies__no_samples():
     ag3 = setup_ag3()
     cohorts = {
-        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'"
+        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
     }
     with pytest.raises(ValueError):
         _ = ag3.snp_allele_frequencies(
@@ -710,7 +710,7 @@ def test_snp_allele_frequencies__dict_cohorts():
     ag3 = setup_ag3()
     cohorts = {
         "ke": "country == 'Kenya'",
-        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
     }
     universal_fields = [
         "contig",
@@ -1140,10 +1140,10 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
     [
         {
             "ke": "country == 'Kenya'",
-            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
         },
         {
-            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'"
+            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
         },
         "admin1_month",
     ],
@@ -1209,9 +1209,9 @@ def test_haplotypes(sample_sets, contig, analysis):
     # check expected samples
     sample_query = None
     if analysis == "arab":
-        sample_query = "species == 'arabiensis' and sample_set != 'AG1000G-X'"
+        sample_query = "aim_species == 'arabiensis' and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu":
-        sample_query = "species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
+        sample_query = "aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu_arab":
         sample_query = "sample_set != 'AG1000G-X'"
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
