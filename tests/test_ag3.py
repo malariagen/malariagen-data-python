@@ -127,42 +127,47 @@ def test_sample_metadata():
     assert_frame_equal(df_default, df_all)
 
     aim_cols = (
-        "aim_fraction_colu",
-        "aim_fraction_arab",
-        "species_gambcolu_arabiensis",
-        "species_gambiae_coluzzii",
-        "species",
+        "aim_species_fraction_colu",
+        "aim_species_fraction_arab",
+        "aim_species_gambcolu_arabiensis",
+        "aim_species_gambiae_coluzzii",
+        "aim_species",
     )
 
     # AIM species calls, included by default
     df_samples_aim = ag3.sample_metadata(sample_sets="v3")
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
-    assert set(df_samples_aim["species"].dropna()) == expected_species
+    assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
     # AIM species calls, explicit
     df_samples_aim = ag3.sample_metadata(
-        sample_sets="v3", species_calls=("20200422", "aim")
+        sample_sets="v3",
+        species_calls="aim_20200422",
     )
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
-    assert set(df_samples_aim["species"].dropna()) == expected_species
+    assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
     pca_cols = (
-        "PC1",
-        "PC2",
-        "species_gambcolu_arabiensis",
-        "species_gambiae_coluzzii",
-        "species",
+        "pca_species_PC1",
+        "pca_species_PC2",
+        "pca_species_gambcolu_arabiensis",
+        "pca_species_gambiae_coluzzii",
+        "pca_species",
     )
 
     # PCA species calls
     df_samples_pca = ag3.sample_metadata(
-        sample_sets="v3", species_calls=("20200422", "pca")
+        sample_sets="v3",
+        species_calls="pca_20200422",
     )
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
     assert len(df_samples_pca) == len(df_samples_v3)
-    assert set(df_samples_pca["species"].dropna()).difference(expected_species) == set()
+    assert (
+        set(df_samples_pca["pca_species"].dropna()).difference(expected_species)
+        == set()
+    )
 
 
 @pytest.mark.parametrize(
@@ -177,13 +182,22 @@ def test_sample_metadata():
         None,
     ],
 )
-@pytest.mark.parametrize("method", ["aim", "pca"])
-def test_species_calls(sample_sets, method):
+@pytest.mark.parametrize("analysis", ["aim_20200422", "pca_20200422"])
+def test_species_calls(sample_sets, analysis):
     ag3 = setup_ag3()
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
-    df_species = ag3.species_calls(sample_sets=sample_sets, method=method)
+    df_species = ag3.species_calls(sample_sets=sample_sets, analysis=analysis)
     assert len(df_species) == len(df_samples)
-    assert set(df_species["species"].dropna()).difference(expected_species) == set()
+    if analysis.startswith("aim_"):
+        assert (
+            set(df_species["aim_species"].dropna()).difference(expected_species)
+            == set()
+        )
+    if analysis.startswith("pca_"):
+        assert (
+            set(df_species["pca_species"].dropna()).difference(expected_species)
+            == set()
+        )
 
 
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
@@ -649,7 +663,7 @@ def test_snp_effects():
 def test_snp_allele_frequencies__no_samples():
     ag3 = setup_ag3()
     cohorts = {
-        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'"
+        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
     }
     with pytest.raises(ValueError):
         _ = ag3.snp_allele_frequencies(
@@ -696,7 +710,7 @@ def test_snp_allele_frequencies__dict_cohorts():
     ag3 = setup_ag3()
     cohorts = {
         "ke": "country == 'Kenya'",
-        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+        "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
     }
     universal_fields = [
         "contig",
@@ -1126,10 +1140,10 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
     [
         {
             "ke": "country == 'Kenya'",
-            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'",
+            "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
         },
         {
-            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and species == 'coluzzii'"
+            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
         },
         "admin1_month",
     ],
@@ -1195,9 +1209,9 @@ def test_haplotypes(sample_sets, contig, analysis):
     # check expected samples
     sample_query = None
     if analysis == "arab":
-        sample_query = "species == 'arabiensis' and sample_set != 'AG1000G-X'"
+        sample_query = "aim_species == 'arabiensis' and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu":
-        sample_query = "species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
+        sample_query = "aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu_arab":
         sample_query = "sample_set != 'AG1000G-X'"
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
