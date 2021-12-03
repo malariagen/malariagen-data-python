@@ -1155,6 +1155,8 @@ class Ag3:
         # sample arrays
         z = calls_root["samples"]
         sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        # decode to str, as it is stored as bytes objects
+        sample_id = sample_id.astype("U")
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
