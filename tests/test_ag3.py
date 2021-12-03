@@ -25,10 +25,10 @@ expected_species = {
 contigs = "2R", "2L", "3R", "3L", "X"
 
 
-def setup_ag3(url="simplecache::gs://vo_agam_release/", **storage_kwargs):
+def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
     if url.startswith("simplecache::"):
-        storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
-    return Ag3(url, **storage_kwargs)
+        kwargs["simplecache"] = dict(cache_storage="gcs_cache")
+    return Ag3(url, **kwargs)
 
 
 @pytest.mark.parametrize(
@@ -61,6 +61,18 @@ def test_sample_sets(url):
     df_default = ag3.sample_sets()
     df_all = ag3.sample_sets(release=ag3.releases)
     assert_frame_equal(df_default, df_all)
+
+
+def test_releases():
+
+    ag3 = setup_ag3()
+    assert isinstance(ag3.releases, tuple)
+    assert ag3.releases == ("v3",)
+
+    ag3 = setup_ag3(pre=True)
+    assert isinstance(ag3.releases, tuple)
+    assert len(ag3.releases) > 1
+    assert all([r.startswith("v3") for r in ag3.releases])
 
 
 def test_sample_metadata():
