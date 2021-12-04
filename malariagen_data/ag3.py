@@ -804,7 +804,6 @@ class Ag3:
 
         return contig, loc_feature, df_snps
 
-
     def _annotator(self):
         # setup variant effect annotator
         if self._cache_annotator is None:
