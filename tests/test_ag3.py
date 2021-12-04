@@ -711,11 +711,12 @@ def test_snp_allele_frequencies__str_cohorts():
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=True,
+        effects=False,
     )
     df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
-    all_uni = df_coh[coh_nm].dropna().unique().tolist()
-    expected_fields = universal_fields + all_uni + ["max_af"]
+    all_cohort_labels = df_coh[coh_nm].dropna().unique().tolist()
+    expected_fields = universal_fields + all_cohort_labels + ["max_af"]
 
     assert df.columns.tolist() == expected_fields
     assert isinstance(df, pd.DataFrame)
@@ -745,6 +746,7 @@ def test_snp_allele_frequencies__dict_cohorts():
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=True,
+        effects=False,
     )
 
     assert isinstance(df, pd.DataFrame)
@@ -767,12 +769,55 @@ def test_snp_allele_frequencies__dict_cohorts():
         site_mask="gamb_colu",
         sample_sets="v3_wild",
         drop_invariant=False,
+        effects=False,
     )
     assert isinstance(df, pd.DataFrame)
     assert df.columns.tolist() == expected_fields
     assert df.shape == (132306, len(expected_fields))
     # check invariant positions are still present
     assert np.any(df.max_af == 0)
+
+
+def test_snp_allele_frequencies__str_cohorts__effects():
+    ag3 = setup_ag3()
+    cohorts = "admin1_month"
+    universal_fields = [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "pass_gamb_colu_arab",
+        "pass_gamb_colu",
+        "pass_arab",
+    ]
+    effects_fields = [
+        "effect",
+        "impact",
+        "ref_codon",
+        "alt_codon",
+        "aa_pos",
+        "ref_aa",
+        "alt_aa",
+        "aa_change",
+    ]
+    df = ag3.snp_allele_frequencies(
+        transcript="AGAP004707-RD",
+        cohorts=cohorts,
+        cohorts_analysis="20211101",
+        min_cohort_size=10,
+        site_mask="gamb_colu",
+        sample_sets="v3_wild",
+        drop_invariant=True,
+        effects=True,
+    )
+    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20211101")
+    coh_nm = "cohort_" + cohorts
+    all_cohort_labels = df_coh[coh_nm].dropna().unique().tolist()
+    expected_fields = universal_fields + all_cohort_labels + ["max_af"] + effects_fields
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 16526
+    assert df.columns.tolist() == expected_fields
 
 
 @pytest.mark.parametrize(

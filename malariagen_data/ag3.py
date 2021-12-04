@@ -804,6 +804,14 @@ class Ag3:
 
         return contig, loc_feature, df_snps
 
+    def _annotator(self):
+        # setup variant effect annotator
+        if self._cache_annotator is None:
+            self._cache_annotator = veff.Annotator(
+                genome=self.open_genome(), geneset=self.geneset()
+            )
+        return self._cache_annotator
+
     def snp_effects(
         self, transcript, site_mask=None, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
     ):
@@ -828,11 +836,7 @@ class Ag3:
         _, _, df_snps = self._snp_df(transcript=transcript, site_filters=site_filters)
 
         # setup variant effect annotator
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), geneset=self.geneset()
-            )
-        ann = self._cache_annotator
+        ann = self._annotator()
 
         # apply mask if requested
         if site_mask is not None:
@@ -843,9 +847,9 @@ class Ag3:
         df_snps.reset_index(inplace=True, drop=True)
 
         # add effects to the dataframe
-        df_effects = ann.get_effects(transcript=transcript, variants=df_snps)
+        ann.get_effects(transcript=transcript, variants=df_snps)
 
-        return df_effects
+        return df_snps
 
     def _prep_cohorts_arg(
         self, *, cohorts, sample_sets, species_calls, cohorts_analysis
@@ -891,6 +895,7 @@ class Ag3:
         species_calls=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
+        effects=True,
     ):
         """Compute per variant allele frequencies for a gene transcript.
 
@@ -922,6 +927,8 @@ class Ag3:
         drop_invariant : bool, optional
             If True, variants with no alternate allele calls in any cohorts are dropped from
             the result.
+        effects : bool, optional
+            If True, add SNP effect columns.
 
         Returns
         -------
@@ -988,6 +995,11 @@ class Ag3:
 
         # reset index after filtering
         df_snps.reset_index(inplace=True, drop=True)
+
+        # add effects
+        if effects:
+            ann = self._annotator()
+            ann.get_effects(transcript=transcript, variants=df_snps)
 
         return df_snps
 
