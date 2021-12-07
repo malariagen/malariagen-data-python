@@ -6,7 +6,7 @@ import pandas as pd
 import zarr
 from fsspec.mapping import FSMap
 
-from malariagen_data.util import SafeStore, from_zarr
+from .util import SafeStore, from_zarr
 
 
 class Pf7:
@@ -130,10 +130,8 @@ class Pf7:
         """
 
         if field is None:
-            # return POS, REF, ALT
-            ret = tuple(
-                self.variants(field=f) for f in ("CHROM", "POS")
-            )  # change to chrom, pos, filter etc.
+            # if no field specified return CHROM, POS
+            ret = tuple(self.variants(field=f) for f in ("CHROM", "POS"))
 
         else:
             root = self.open_zarr()
