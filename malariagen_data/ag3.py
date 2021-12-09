@@ -37,6 +37,8 @@ DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 
+Region = namedtuple("Region", ["contig", "start", "end"])
+
 
 class Ag3:
     """Provides access to data from Ag 3 releases.
@@ -63,7 +65,6 @@ class Ag3:
     """
 
     contigs = CONTIGS
-    Region = namedtuple("Region", ["contig", "start", "end"])
 
     def __init__(self, url, **kwargs):
 
@@ -322,28 +323,21 @@ class Ag3:
         Supports contig names, gene names and genomic coordinates"""
 
         # region is already Region tuple
-        if isinstance(region, Ag3.Region):
+        if isinstance(region, Region):
             return region
 
-        # search the geneset and match a genomic region regex pattern
-        gene_annotation = self.geneset(["ID"]).query(
-            f"type == 'gene' and ID == '{region}'"
-        )
-        region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
+        # check type, fail early if bad
+        if not isinstance(region, str):
+            raise TypeError("The region parameter must be a string or Region object.")
 
-        # region is a chromosome arm
+        # check if region is a chromosome arm
         if region in self.contigs:
-            contig, start, end = region, None, None
+            return Region(region, None, None)
 
-        # region is a gene name
-        elif not gene_annotation.empty:
-            gene_annotation = gene_annotation.squeeze()
-            contig = gene_annotation.contig
-            start = gene_annotation.start
-            end = gene_annotation.end
-
-        # parse region string that contains genomic coordinates
-        elif region_pattern_match:
+        # check if region is a region string
+        region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
+        if region_pattern_match:
+            # parse region string that contains genomic coordinates
             region_split = region_pattern_match.groups()
 
             contig = region_split[0]
@@ -359,12 +353,22 @@ class Ag3:
             ):
                 raise ValueError("Provided genomic coordinates are not valid.")
 
-        else:
-            raise ValueError(f"Region {region} is not valid.")
+            return Region(contig, start, end)
 
-        return Ag3.Region(contig, start, end)
+        # check if region is a gene annotation feature ID
+        gene_annotation = self.geneset(["ID"]).query(f"ID == '{region}'")
+        if not gene_annotation.empty:
+            # region is a feature ID
+            gene_annotation = gene_annotation.squeeze()
+            return Region(
+                gene_annotation.contig, gene_annotation.start, gene_annotation.end
+            )
 
-    def region_slice(self, region):
+        raise ValueError(
+            f"Region {region!r} is not a valid contig, region string or feature ID."
+        )
+
+    def locate_region(self, region):
         """Get array slice and a parsed genomic region.
 
         Parameters
@@ -514,7 +518,7 @@ class Ag3:
 
         """
 
-        if isinstance(region, (list, tuple)) and not isinstance(region, Ag3.Region):
+        if isinstance(region, (list, tuple)) and not isinstance(region, Region):
             return da.concatenate(
                 [
                     self.site_filters(
@@ -529,7 +533,7 @@ class Ag3:
                 ]
             )
         else:
-            loc_region, region = self.region_slice(region)
+            loc_region, region = self.locate_region(region)
             root = self.open_site_filters(mask=mask, analysis=analysis)
             z = root[region.contig]["variants"][field]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -594,14 +598,14 @@ class Ag3:
                 for f in ("POS", "REF", "ALT")
             )
 
-        elif isinstance(region, (tuple, list)) and not isinstance(region, Ag3.Region):
+        elif isinstance(region, (tuple, list)) and not isinstance(region, Region):
             # concatenate
             ret = da.concatenate(
                 [self.snp_sites(region=r, field=field, site_mask=None) for r in region]
             )
 
         else:
-            loc_region, region = self.region_slice(region)
+            loc_region, region = self.locate_region(region)
             root = self.open_snp_sites()
             z = root[region.contig]["variants"][field]
             ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -642,7 +646,7 @@ class Ag3:
 
     def _snp_genotypes(self, *, region, sample_set, field, inline_array, chunks):
         # single contig, single sample set
-        loc_region, region = self.region_slice(region)
+        loc_region, region = self.locate_region(region)
         root = self.open_snp_genotypes(sample_set=sample_set)
         z = root[region.contig]["calldata"][field]
 
@@ -693,7 +697,7 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # normalise to simplify concatenation logic
-        if isinstance(region, str) or isinstance(region, Ag3.Region):
+        if isinstance(region, str) or isinstance(region, Region):
             region = [region]
 
         # concatenate multiple sample sets and/or contigs
@@ -860,9 +864,9 @@ class Ag3:
         gs = self.geneset()
         feature = gs[gs["ID"] == transcript].squeeze()
         contig = feature.contig
-        region = Ag3.Region(contig, feature.start, feature.end)
+        region = Region(contig, feature.start, feature.end)
 
-        loc_feature, _ = self.region_slice(region)
+        loc_feature, _ = self.locate_region(region)
 
         # grab pos, ref and alt for chrom arm from snp_sites
         pos, ref, alt = self.snp_sites(region=region)
@@ -1221,7 +1225,7 @@ class Ag3:
         # variant_position
         pos_z = sites_root[f"{contig}/variants/POS"]
 
-        loc_region, region = self.region_slice(region)
+        loc_region, region = self.locate_region(region)
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position[loc_region]
 
@@ -1326,7 +1330,7 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # normalise to simplify concatenation logic
-        if isinstance(region, str):
+        if isinstance(region, str) or isinstance(region, Region):
             region = [region]
 
         region = [self._resolve_region(r) for r in region]
