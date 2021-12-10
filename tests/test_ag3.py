@@ -10,7 +10,7 @@ import zarr
 from numpy.testing import assert_array_equal
 from pandas.testing import assert_frame_equal
 
-from malariagen_data import Ag3
+from malariagen_data import Ag3, Region
 from malariagen_data.ag3 import _cn_mode
 
 expected_species = {
@@ -1386,3 +1386,53 @@ def test_sample_cohorts(sample_sets):
     if sample_sets == ["AG1000G-AO", "AG1000G-FR"]:
         assert df_coh.sample_id[0] == "AR0047-C"
         assert df_coh.sample_id[103] == "AP0017-Cx"
+
+
+@pytest.mark.parametrize(
+    "region_raw",
+    [
+        "AGAP007280",
+        "3L",
+        "2R:48714463-48715355",
+        "2L:24,630,355-24,633,221",
+        Region("2R", 48714463, 48715355),
+    ],
+)
+def test_locate_region(region_raw):
+
+    ag3 = setup_ag3()
+    gene_annotation = ag3.geneset(["ID"])
+    loc_region, region = ag3.locate_region(region_raw)
+
+    pos, ref, _ = ag3.snp_sites(region=region.contig)
+
+    # check types
+    assert isinstance(loc_region, slice)
+    assert isinstance(region, Region)
+
+    # check Region with contig
+    if region_raw == "3L":
+        assert region.contig == "3L"
+        assert region.start is None
+        assert region.end is None
+
+    # check that Region goes through unchanged
+    if isinstance(region_raw, Region):
+        assert region == region_raw
+
+    # check that gene name matches coordinates from the geneset and matches gene sequence
+    if region_raw == "AGAP007280":
+        gene = gene_annotation.query("ID == 'AGAP007280'").squeeze()
+        assert region == Region(gene.contig, gene.start, gene.end)
+        assert pos[loc_region][0] == gene.start
+        assert pos[loc_region][-1] == gene.end
+        assert (
+            ref[loc_region][:5].compute()
+            == np.array(["A", "T", "G", "G", "C"], dtype="S1")
+        ).all()
+
+    # check string parsing
+    if region_raw == "2R:48714463-48715355":
+        assert region == Region("2R", 48714463, 48715355)
+    if region_raw == "2L:24,630,355-24,633,221":
+        assert region == Region("2L", 24630355, 24633221)
