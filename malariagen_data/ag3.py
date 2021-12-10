@@ -1215,7 +1215,9 @@ class Ag3:
     def _snp_calls_dataset(
         self, *, region, sample_set, site_filters, inline_array, chunks
     ):
-        contig, start, end = region
+
+        region = self._resolve_region(region)
+
         coords = dict()
         data_vars = dict()
 
@@ -1223,15 +1225,15 @@ class Ag3:
         sites_root = self.open_snp_sites()
 
         # variant_position
-        pos_z = sites_root[f"{contig}/variants/POS"]
+        pos_z = sites_root[f"{region.contig}/variants/POS"]
 
         loc_region, region = self.locate_region(region)
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position[loc_region]
 
         # variant_allele
-        ref_z = sites_root[f"{contig}/variants/REF"]
-        alt_z = sites_root[f"{contig}/variants/ALT"]
+        ref_z = sites_root[f"{region.contig}/variants/REF"]
+        alt_z = sites_root[f"{region.contig}/variants/ALT"]
         ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
         alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate(
@@ -1240,7 +1242,7 @@ class Ag3:
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
         # variant_contig
-        contig_index = self.contigs.index(contig)
+        contig_index = self.contigs.index(region.contig)
         variant_contig = da.full_like(
             variant_position, fill_value=contig_index, dtype="u1"
         )
@@ -1249,19 +1251,19 @@ class Ag3:
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
-            z = filters_root[f"{contig}/variants/filter_pass"]
+            z = filters_root[f"{region.contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d[loc_region]
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = calls_root[f"{contig}/calldata/GT"]
+        gt_z = calls_root[f"{region.contig}/calldata/GT"]
         call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = calls_root[f"{contig}/calldata/GQ"]
+        gq_z = calls_root[f"{region.contig}/calldata/GQ"]
         call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = calls_root[f"{contig}/calldata/AD"]
+        ad_z = calls_root[f"{region.contig}/calldata/AD"]
         call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = calls_root[f"{contig}/calldata/MQ"]
+        mq_z = calls_root[f"{region.contig}/calldata/MQ"]
         call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
@@ -1332,8 +1334,6 @@ class Ag3:
         # normalise to simplify concatenation logic
         if isinstance(region, str) or isinstance(region, Region):
             region = [region]
-
-        region = [self._resolve_region(r) for r in region]
 
         # concatenate multiple sample sets and/or contigs
         ds = xarray.concat(
