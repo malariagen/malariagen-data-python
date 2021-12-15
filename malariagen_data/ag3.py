@@ -1,4 +1,6 @@
+import re
 from bisect import bisect_left, bisect_right
+from collections import namedtuple
 
 import allel
 import dask.array as da
@@ -34,6 +36,8 @@ DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
+
+Region = namedtuple("Region", ["contig", "start", "end"])
 
 
 class Ag3:
@@ -314,6 +318,77 @@ class Ag3:
 
         return sample_sets
 
+    def _resolve_region(self, region):
+        """Parse the provided region and return `Region(contig, start, end)`.
+        Supports contig names, gene names and genomic coordinates"""
+
+        # region is already Region tuple
+        if isinstance(region, Region):
+            return region
+
+        # check type, fail early if bad
+        if not isinstance(region, str):
+            raise TypeError("The region parameter must be a string or Region object.")
+
+        # check if region is a chromosome arm
+        if region in self.contigs:
+            return Region(region, None, None)
+
+        # check if region is a region string
+        region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
+        if region_pattern_match:
+            # parse region string that contains genomic coordinates
+            region_split = region_pattern_match.groups()
+
+            contig = region_split[0]
+            start = int(region_split[1].replace(",", ""))
+            end = int(region_split[2].replace(",", ""))
+
+            if contig not in self.contigs:
+                raise ValueError(f"Contig {contig} does not exist in the dataset.")
+            elif (
+                start < 0
+                or end <= start
+                or end > self.genome_sequence(region=contig).shape[0]
+            ):
+                raise ValueError("Provided genomic coordinates are not valid.")
+
+            return Region(contig, start, end)
+
+        # check if region is a gene annotation feature ID
+        gene_annotation = self.geneset(["ID"]).query(f"ID == '{region}'")
+        if not gene_annotation.empty:
+            # region is a feature ID
+            gene_annotation = gene_annotation.squeeze()
+            return Region(
+                gene_annotation.contig, gene_annotation.start, gene_annotation.end
+            )
+
+        raise ValueError(
+            f"Region {region!r} is not a valid contig, region string or feature ID."
+        )
+
+    def locate_region(self, region):
+        """Get array slice and a parsed genomic region.
+
+        Parameters
+        ----------
+        region : str or Region
+            Can be a string with chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"),
+            genomic region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+
+        Returns
+        -------
+        loc_region, region : slice, Region
+        """
+        region = self._resolve_region(region)
+        root = self.open_snp_sites()
+        pos = allel.SortedIndex(root[region.contig]["variants"]["POS"])
+        loc_region = pos.locate_range(region.start, region.end)
+
+        return loc_region, region
+
     def species_calls(self, sample_sets=None, analysis=DEFAULT_SPECIES_ANALYSIS):
         """Access species calls for one or more sample sets.
 
@@ -409,7 +484,7 @@ class Ag3:
 
     def site_filters(
         self,
-        contig,
+        region,
         mask,
         field="filter_pass",
         analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
@@ -420,9 +495,11 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
-            in which case data will be concatenated, e.g., ["3R", "3L"].
+        region: str or list of str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
         field : str, optional
@@ -441,25 +518,26 @@ class Ag3:
 
         """
 
-        if isinstance(contig, (list, tuple)):
+        if isinstance(region, (list, tuple)) and not isinstance(region, Region):
             return da.concatenate(
                 [
                     self.site_filters(
-                        contig=c,
+                        region=r,
                         mask=mask,
                         field=field,
                         analysis=analysis,
                         inline_array=inline_array,
                         chunks=chunks,
                     )
-                    for c in contig
+                    for r in region
                 ]
             )
         else:
+            loc_region, region = self.locate_region(region)
             root = self.open_site_filters(mask=mask, analysis=analysis)
-            z = root[contig]["variants"][field]
+            z = root[region.contig]["variants"][field]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            return d
+            return d[loc_region]
 
     def open_snp_sites(self):
         """Open SNP sites zarr.
@@ -478,7 +556,7 @@ class Ag3:
 
     def snp_sites(
         self,
-        contig,
+        region,
         field=None,
         site_mask=None,
         site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
@@ -489,9 +567,11 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
-            in which case data will be concatenated, e.g., ["3R", "3L"].
+        region: str or list of str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
         field : {"POS", "REF", "ALT"}, optional
             Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a
             tuple.
@@ -514,24 +594,26 @@ class Ag3:
         if field is None:
             # return POS, REF, ALT
             ret = tuple(
-                self.snp_sites(contig=contig, field=f, site_mask=None)
+                self.snp_sites(region=region, field=f, site_mask=None)
                 for f in ("POS", "REF", "ALT")
             )
 
-        elif isinstance(contig, (tuple, list)):
+        elif isinstance(region, (tuple, list)) and not isinstance(region, Region):
             # concatenate
             ret = da.concatenate(
-                [self.snp_sites(contig=c, field=field, site_mask=None) for c in contig]
+                [self.snp_sites(region=r, field=field, site_mask=None) for r in region]
             )
 
         else:
+            loc_region, region = self.locate_region(region)
             root = self.open_snp_sites()
-            z = root[contig]["variants"][field]
+            z = root[region.contig]["variants"][field]
             ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            ret = ret[loc_region]
 
         if site_mask is not None:
             loc_sites = self.site_filters(
-                contig=contig, mask=site_mask, analysis=site_filters
+                region=region, mask=site_mask, analysis=site_filters
             )
             if isinstance(ret, tuple):
                 ret = tuple(da_compress(loc_sites, d, axis=0) for d in ret)
@@ -562,16 +644,18 @@ class Ag3:
             self._cache_snp_genotypes[sample_set] = root
             return root
 
-    def _snp_genotypes(self, *, contig, sample_set, field, inline_array, chunks):
+    def _snp_genotypes(self, *, region, sample_set, field, inline_array, chunks):
         # single contig, single sample set
+        loc_region, region = self.locate_region(region)
         root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[contig]["calldata"][field]
+        z = root[region.contig]["calldata"][field]
+
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+        return d[loc_region]
 
     def snp_genotypes(
         self,
-        contig,
+        region,
         sample_sets=None,
         field="GT",
         site_mask=None,
@@ -583,9 +667,11 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
-            in which case data will be concatenated, e.g., ["3R", "3L"].
+        region: str or list of str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -611,8 +697,8 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # normalise to simplify concatenation logic
-        if isinstance(contig, str):
-            contig = [contig]
+        if isinstance(region, str) or isinstance(region, Region):
+            region = [region]
 
         # concatenate multiple sample sets and/or contigs
         d = da.concatenate(
@@ -620,7 +706,7 @@ class Ag3:
                 da.concatenate(
                     [
                         self._snp_genotypes(
-                            contig=c,
+                            region=r,
                             sample_set=s,
                             field=field,
                             inline_array=inline_array,
@@ -630,7 +716,7 @@ class Ag3:
                     ],
                     axis=1,
                 )
-                for c in contig
+                for r in region
             ],
             axis=0,
         )
@@ -638,7 +724,7 @@ class Ag3:
         # apply site filters if requested
         if site_mask is not None:
             loc_sites = self.site_filters(
-                contig=contig, mask=site_mask, analysis=site_filters
+                region=region, mask=site_mask, analysis=site_filters
             )
             d = da_compress(loc_sites, d, axis=0)
 
@@ -658,13 +744,15 @@ class Ag3:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def genome_sequence(self, contig, inline_array=True, chunks="native"):
+    def genome_sequence(self, region, inline_array=True, chunks="native"):
         """Access the reference genome sequence.
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        region: str or list of str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -677,9 +765,16 @@ class Ag3:
 
         """
         genome = self.open_genome()
-        z = genome[contig]
+        region = self._resolve_region(region)
+        z = genome[region.contig]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+
+        if region.start and region.end:
+            loc_region = slice(region.start - 1, region.end)
+        else:
+            loc_region = slice(None, None)
+
+        return d[loc_region]
 
     def geneset(self, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations (AgamP4.12).
@@ -712,7 +807,7 @@ class Ag3:
         return df
 
     def is_accessible(
-        self, contig, site_mask, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+        self, region, site_mask, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
     ):
         """Compute genome accessibility array.
 
@@ -731,22 +826,28 @@ class Ag3:
 
         """
 
+        # resolve region
+        region = self._resolve_region(region=region)
+
         # determine contig sequence length
-        seq_length = self.genome_sequence(contig).shape[0]
+        seq_length = self.genome_sequence(region).shape[0]
 
         # setup output
         is_accessible = np.zeros(seq_length, dtype=bool)
 
-        # access positions
-        pos = self.snp_sites(contig, field="POS").compute()
+        pos = self.snp_sites(region, field="POS").compute()
+        if region.start:
+            offset = region.start
+        else:
+            offset = 1
 
         # access site filters
         filter_pass = self.site_filters(
-            contig, mask=site_mask, analysis=site_filters
+            region=region, mask=site_mask, analysis=site_filters
         ).compute()
 
         # assign values from site filters
-        is_accessible[pos - 1] = filter_pass
+        is_accessible[pos - offset] = filter_pass
 
         return is_accessible
 
@@ -763,27 +864,21 @@ class Ag3:
         gs = self.geneset()
         feature = gs[gs["ID"] == transcript].squeeze()
         contig = feature.contig
+        region = Region(contig, feature.start, feature.end)
+
+        loc_feature, _ = self.locate_region(region)
 
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(contig=contig)
-
-        # sites are dask arrays, turn pos into sorted index
-        pos = allel.SortedIndex(pos.compute())
-
-        # locate transcript range
-        loc_feature = pos.locate_range(feature.start, feature.end)
-
-        # dask compute on the sliced arrays to speed things up
-        pos = pos[loc_feature]
-        ref = ref[loc_feature].compute()
-        alt = alt[loc_feature].compute()
+        pos, ref, alt = self.snp_sites(region=region)
+        ref = ref.compute()
+        alt = alt.compute()
 
         # access site filters
         filter_pass = dict()
         masks = self._site_mask_ids(site_filters=site_filters)
         for m in masks:
-            x = self.site_filters(contig=feature.contig, mask=m, analysis=site_filters)
-            x = x[loc_feature].compute()
+            x = self.site_filters(region=region, mask=m, analysis=site_filters)
+            x = x.compute()
             filter_pass[m] = x
 
         # setup columns with contig, pos, ref, alt columns
@@ -802,7 +897,7 @@ class Ag3:
         # construct dataframe
         df_snps = pandas.DataFrame(cols)
 
-        return contig, loc_feature, df_snps
+        return region, loc_feature, df_snps
 
     def _annotator(self):
         # setup variant effect annotator
@@ -942,19 +1037,19 @@ class Ag3:
         """
 
         # setup initial dataframe of SNPs
-        contig, loc_feature, df_snps = self._snp_df(
+        region, loc_feature, df_snps = self._snp_df(
             transcript=transcript, site_filters=site_filters
         )
 
         # get genotypes
         gt = self.snp_genotypes(
-            contig=contig,
+            region=region,
             sample_sets=sample_sets,
             field="GT",
         )
 
         # slice to feature location
-        gt = gt[loc_feature].compute()
+        gt = gt.compute()
 
         # build coh dict
         coh_dict = self._prep_cohorts_arg(
@@ -1065,7 +1160,7 @@ class Ag3:
 
     def site_annotations(
         self,
-        contig,
+        region,
         field,
         site_mask=None,
         site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
@@ -1076,8 +1171,10 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        region: str or list of str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`.
         field : str
             One of "codon_degeneracy", "codon_nonsyn", "codon_position", "seq_cls",
             "seq_flen", "seq_relpos_start", "seq_relpos_stop".
@@ -1099,19 +1196,27 @@ class Ag3:
 
         # access the array of values for all genome positions
         root = self.open_site_annotations()
-        d = da_from_zarr(root[field][contig], inline_array=inline_array, chunks=chunks)
+
+        # resolve region
+        region = self._resolve_region(region)
+
+        d = da_from_zarr(
+            root[field][region.contig], inline_array=inline_array, chunks=chunks
+        )
 
         # access and subset to SNP positions
         pos = self.snp_sites(
-            contig=contig, field="POS", site_mask=site_mask, site_filters=site_filters
+            region=region, field="POS", site_mask=site_mask, site_filters=site_filters
         )
         d = da.take(d, pos - 1)
 
         return d
 
     def _snp_calls_dataset(
-        self, *, contig, sample_set, site_filters, inline_array, chunks
+        self, *, region, sample_set, site_filters, inline_array, chunks
     ):
+
+        region = self._resolve_region(region)
 
         coords = dict()
         data_vars = dict()
@@ -1120,49 +1225,56 @@ class Ag3:
         sites_root = self.open_snp_sites()
 
         # variant_position
-        pos_z = sites_root[f"{contig}/variants/POS"]
+        pos_z = sites_root[f"{region.contig}/variants/POS"]
+
+        loc_region, region = self.locate_region(region)
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], variant_position
+        coords["variant_position"] = [DIM_VARIANT], variant_position[loc_region]
 
         # variant_allele
-        ref_z = sites_root[f"{contig}/variants/REF"]
-        alt_z = sites_root[f"{contig}/variants/ALT"]
+        ref_z = sites_root[f"{region.contig}/variants/REF"]
+        alt_z = sites_root[f"{region.contig}/variants/ALT"]
         ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
         alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
-        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        variant_allele = da.concatenate(
+            [ref[loc_region, None], alt[loc_region]], axis=1
+        )
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
         # variant_contig
-        contig_index = self.contigs.index(contig)
+        contig_index = self.contigs.index(region.contig)
         variant_contig = da.full_like(
             variant_position, fill_value=contig_index, dtype="u1"
         )
-        coords["variant_contig"] = [DIM_VARIANT], variant_contig
+        coords["variant_contig"] = [DIM_VARIANT], variant_contig[loc_region]
 
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
-            z = filters_root[f"{contig}/variants/filter_pass"]
+            z = filters_root[f"{region.contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
+            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d[loc_region]
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = calls_root[f"{contig}/calldata/GT"]
+        gt_z = calls_root[f"{region.contig}/calldata/GT"]
         call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = calls_root[f"{contig}/calldata/GQ"]
+        gq_z = calls_root[f"{region.contig}/calldata/GQ"]
         call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = calls_root[f"{contig}/calldata/AD"]
+        ad_z = calls_root[f"{region.contig}/calldata/AD"]
         call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = calls_root[f"{contig}/calldata/MQ"]
+        mq_z = calls_root[f"{region.contig}/calldata/MQ"]
         call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            call_genotype,
+            call_genotype[loc_region],
         )
-        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
-        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
-        data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
+        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq[loc_region])
+        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq[loc_region])
+        data_vars["call_AD"] = (
+            [DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE],
+            call_ad[loc_region],
+        )
 
         # sample arrays
         z = calls_root["samples"]
@@ -1181,7 +1293,7 @@ class Ag3:
 
     def snp_calls(
         self,
-        contig,
+        region,
         sample_sets=None,
         site_mask=None,
         site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
@@ -1192,9 +1304,11 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
-            in which case data will be concatenated, e.g., ["3R", "3L"].
+        region: str or list of str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1218,8 +1332,8 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # normalise to simplify concatenation logic
-        if isinstance(contig, str):
-            contig = [contig]
+        if isinstance(region, str) or isinstance(region, Region):
+            region = [region]
 
         # concatenate multiple sample sets and/or contigs
         ds = xarray.concat(
@@ -1227,7 +1341,7 @@ class Ag3:
                 xarray.concat(
                     [
                         self._snp_calls_dataset(
-                            contig=c,
+                            region=r,
                             sample_set=s,
                             site_filters=site_filters,
                             inline_array=inline_array,
@@ -1241,7 +1355,7 @@ class Ag3:
                     compat="override",
                     join="override",
                 )
-                for c in contig
+                for r in region
             ],
             dim=DIM_VARIANT,
             data_vars="minimal",
