@@ -1065,7 +1065,10 @@ class Ag3:
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples < min_cohort_size:
-                df_snps[coh] = np.nan
+                nan_col = [np.nan] * len(df_snps)
+                df_snps = pandas.concat(
+                    [df_snps, pandas.DataFrame({coh: nan_col})], axis=1
+                )
             else:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
@@ -1073,10 +1076,20 @@ class Ag3:
                 # compute allele frequencies
                 af_coh = ac_coh.to_frequencies()
                 # add column to dataframe
-                df_snps[coh] = af_coh[:, 1:].flatten()
+                df_snps = pandas.concat(
+                    [df_snps, pandas.DataFrame({coh: af_coh[:, 1:].flatten()})], axis=1
+                )
 
         # add max allele freq column
-        df_snps["max_af"] = df_snps[list(coh_dict.keys())].max(axis=1)
+        df_snps = pandas.concat(
+            [
+                df_snps,
+                pandas.DataFrame(
+                    {"max_af": df_snps[list(coh_dict.keys())].max(axis=1)}
+                ),
+            ],
+            axis=1,
+        )
 
         # apply site mask if requested
         if site_mask is not None:
