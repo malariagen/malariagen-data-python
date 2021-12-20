@@ -418,16 +418,26 @@ class Ag3:
 
         return df
 
-    def _sample_metadata(self, *, sample_set, species_calls):
+    def _sample_metadata(self, *, sample_set, species_calls, cohorts_analysis):
         df = self._read_general_metadata(sample_set=sample_set)
         if species_calls is not None:
             df_species = self._read_species_calls(
                 sample_set=sample_set, analysis=species_calls
             )
             df = df.merge(df_species, on="sample_id", sort=False)
+        if cohorts_analysis is not None:
+            df_cohorts = self.sample_cohorts(
+                sample_sets=sample_set, cohorts_analysis=cohorts_analysis
+            )
+            df = df.merge(df_cohorts, on="sample_id", sort=False)
         return df
 
-    def sample_metadata(self, sample_sets=None, species_calls=DEFAULT_SPECIES_ANALYSIS):
+    def sample_metadata(
+        self,
+        sample_sets=None,
+        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+    ):
         """Access sample metadata for one or more sample sets.
 
         Parameters
@@ -438,6 +448,9 @@ class Ag3:
             "v3") or a list of release identifiers.
         species_calls : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), optional,  default is latest version.
+            Includes sample cohort calls in metadata.
 
         Returns
         -------
@@ -450,7 +463,11 @@ class Ag3:
 
         # concatenate multiple sample sets
         dfs = [
-            self._sample_metadata(sample_set=s, species_calls=species_calls)
+            self._sample_metadata(
+                sample_set=s,
+                species_calls=species_calls,
+                cohorts_analysis=cohorts_analysis,
+            )
             for s in sample_sets
         ]
         df = pandas.concat(dfs, axis=0, ignore_index=True)
