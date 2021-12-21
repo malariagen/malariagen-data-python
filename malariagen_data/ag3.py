@@ -1060,27 +1060,30 @@ class Ag3:
         )
 
         # count alleles
+        freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
             n_samples = np.count_nonzero(loc_coh)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples < min_cohort_size:
-                nan_col = [np.nan] * len(df_snps)
-                df_snps = pandas.concat(
-                    [df_snps, pandas.DataFrame({coh: nan_col})], axis=1
-                )
+                freq_cols[coh] = np.nan
             else:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
                 # compute allele frequencies
                 af_coh = ac_coh.to_frequencies()
-                # add column to dataframe
-                df_snps = pandas.concat(
-                    [df_snps, pandas.DataFrame({coh: af_coh[:, 1:].flatten()})], axis=1
-                )
+                # add column to dict
+                freq_cols[coh] = af_coh[:, 1:].flatten()
 
-        # add max allele freq column
+        # build a dataframe with the frequency columns
+        df_freqs = pandas.DataFrame(freq_cols)
+
+        # build the final dataframe
+        df_snps.reset_index(drop=True, inplace=True)
+        df_snps = pandas.concat([df_snps, df_freqs], axis=1)
+
+        # add max allele freq column (concat here also reduces fragmentation)
         df_snps = pandas.concat(
             [
                 df_snps,
