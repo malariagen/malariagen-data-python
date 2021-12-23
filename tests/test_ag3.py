@@ -96,13 +96,17 @@ def test_sample_metadata():
     )
 
     # all v3
-    df_samples_v3 = ag3.sample_metadata(sample_sets="v3", species_calls=None)
+    df_samples_v3 = ag3.sample_metadata(
+        sample_sets="v3", species_calls=None, cohorts_analysis=None
+    )
     assert tuple(df_samples_v3.columns) == expected_cols
     expected_len = df_sample_sets_v3["sample_count"].sum()
     assert len(df_samples_v3) == expected_len
 
     # v3_wild
-    df_samples_v3_wild = ag3.sample_metadata(sample_sets="v3_wild", species_calls=None)
+    df_samples_v3_wild = ag3.sample_metadata(
+        sample_sets="v3_wild", species_calls=None, cohorts_analysis=None
+    )
     assert tuple(df_samples_v3_wild.columns) == expected_cols
     expected_len = df_sample_sets_v3.query("sample_set != 'AG1000G-X'")[
         "sample_count"
@@ -110,7 +114,9 @@ def test_sample_metadata():
     assert len(df_samples_v3_wild) == expected_len
 
     # single sample set
-    df_samples_x = ag3.sample_metadata(sample_sets="AG1000G-X", species_calls=None)
+    df_samples_x = ag3.sample_metadata(
+        sample_sets="AG1000G-X", species_calls=None, cohorts_analysis=None
+    )
     assert tuple(df_samples_x.columns) == expected_cols
     expected_len = df_sample_sets_v3.query("sample_set == 'AG1000G-X'")[
         "sample_count"
@@ -119,7 +125,9 @@ def test_sample_metadata():
 
     # multiple sample sets
     sample_sets = ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"]
-    df_samples_bf = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples_bf = ag3.sample_metadata(
+        sample_sets=sample_sets, species_calls=None, cohorts_analysis=None
+    )
     assert tuple(df_samples_bf) == expected_cols
     loc_sample_sets = df_sample_sets_v3["sample_set"].isin(sample_sets)
     expected_len = df_sample_sets_v3.loc[loc_sample_sets]["sample_count"].sum()
@@ -127,15 +135,19 @@ def test_sample_metadata():
 
     # multiple releases
     sample_sets = ["v3", "v3"]
-    df_samples_mr = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples_mr = ag3.sample_metadata(
+        sample_sets=sample_sets, species_calls=None, cohorts_analysis=None
+    )
     assert_frame_equal(
         df_samples_mr,
         pd.concat([df_samples_v3, df_samples_v3], axis=0, ignore_index=True),
     )
 
     # default is all public releases
-    df_default = ag3.sample_metadata(species_calls=None)
-    df_all = ag3.sample_metadata(sample_sets=ag3.releases, species_calls=None)
+    df_default = ag3.sample_metadata(species_calls=None, cohorts_analysis=None)
+    df_all = ag3.sample_metadata(
+        sample_sets=ag3.releases, species_calls=None, cohorts_analysis=None
+    )
     assert_frame_equal(df_default, df_all)
 
     aim_cols = (
@@ -147,15 +159,14 @@ def test_sample_metadata():
     )
 
     # AIM species calls, included by default
-    df_samples_aim = ag3.sample_metadata(sample_sets="v3")
+    df_samples_aim = ag3.sample_metadata(sample_sets="v3", cohorts_analysis=None)
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
     assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
     # AIM species calls, explicit
     df_samples_aim = ag3.sample_metadata(
-        sample_sets="v3",
-        species_calls="aim_20200422",
+        sample_sets="v3", species_calls="aim_20200422", cohorts_analysis=None
     )
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
@@ -171,8 +182,7 @@ def test_sample_metadata():
 
     # PCA species calls
     df_samples_pca = ag3.sample_metadata(
-        sample_sets="v3",
-        species_calls="pca_20200422",
+        sample_sets="v3", species_calls="pca_20200422", cohorts_analysis=None
     )
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
     assert len(df_samples_pca) == len(df_samples_v3)
@@ -180,6 +190,24 @@ def test_sample_metadata():
         set(df_samples_pca["pca_species"].dropna()).difference(expected_species)
         == set()
     )
+
+    cohort_cols = (
+        "country_ISO",
+        "adm1_name",
+        "adm1_ISO",
+        "adm2_name",
+        "taxon",
+        "cohort_admin1_year",
+        "cohort_admin1_month",
+        "cohort_admin2_year",
+        "cohort_admin2_month",
+    )
+    # cohort calls
+    df_samples_coh = ag3.sample_metadata(
+        sample_sets="v3", species_calls=None, cohorts_analysis="20211101"
+    )
+    assert tuple(df_samples_coh.columns) == expected_cols + cohort_cols
+    assert len(df_samples_coh) == len(df_samples_v3)
 
 
 @pytest.mark.parametrize(
