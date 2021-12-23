@@ -28,12 +28,17 @@ contigs = "2R", "2L", "3R", "3L", "X"
 def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
     if url.startswith("simplecache::"):
         kwargs["simplecache"] = dict(cache_storage="gcs_cache")
-    return Ag3(url, **kwargs)
+    if url is None:
+        # test default URL
+        return Ag3(**kwargs)
+    else:
+        return Ag3(url, **kwargs)
 
 
 @pytest.mark.parametrize(
     "url",
     [
+        None,
         "gs://vo_agam_release/",
         "gcs://vo_agam_release/",
         "gs://vo_agam_release",

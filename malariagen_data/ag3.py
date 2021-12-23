@@ -26,6 +26,7 @@ from .util import (
 )
 
 PUBLIC_RELEASES = ("3.0",)
+DEFAULT_URL = "gs://vo_agam_release/"
 GENESET_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
 )
@@ -80,10 +81,10 @@ class Ag3:
 
     Examples
     --------
-    Access data from Google Cloud Storage:
+    Access data from Google Cloud Storage (default):
 
         >>> import malariagen_data
-        >>> ag3 = malariagen_data.Ag3("gs://vo_agam_release/")
+        >>> ag3 = malariagen_data.Ag3()
 
     Access data downloaded to a local file system:
 
@@ -93,7 +94,7 @@ class Ag3:
 
     contigs = CONTIGS
 
-    def __init__(self, url, **kwargs):
+    def __init__(self, url=DEFAULT_URL, **kwargs):
 
         self._pre = kwargs.pop("pre", False)
 
