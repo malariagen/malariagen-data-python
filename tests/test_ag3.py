@@ -45,13 +45,13 @@ def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
 def test_sample_sets(url):
 
     ag3 = setup_ag3(url)
-    df_sample_sets_v3 = ag3.sample_sets(release="v3")
+    df_sample_sets_v3 = ag3.sample_sets(release="3.0")
     assert isinstance(df_sample_sets_v3, pd.DataFrame)
     assert len(df_sample_sets_v3) == 28
     assert tuple(df_sample_sets_v3.columns) == ("sample_set", "sample_count", "release")
 
     # test multiple releases
-    df_multi = ag3.sample_sets(release=["v3", "v3"])
+    df_multi = ag3.sample_sets(release=["3.0", "3.0"])
     assert_frame_equal(
         df_multi,
         pd.concat([df_sample_sets_v3, df_sample_sets_v3], axis=0, ignore_index=True),
@@ -67,18 +67,18 @@ def test_releases():
 
     ag3 = setup_ag3()
     assert isinstance(ag3.releases, tuple)
-    assert ag3.releases == ("v3",)
+    assert ag3.releases == ("3.0",)
 
     ag3 = setup_ag3(pre=True)
     assert isinstance(ag3.releases, tuple)
     assert len(ag3.releases) > 1
-    assert all([r.startswith("v3") for r in ag3.releases])
+    assert all([r.startswith("3.") for r in ag3.releases])
 
 
 def test_sample_metadata():
 
     ag3 = setup_ag3()
-    df_sample_sets_v3 = ag3.sample_sets(release="v3")
+    df_sample_sets_v3 = ag3.sample_sets(release="3.0")
 
     expected_cols = (
         "sample_id",
@@ -97,13 +97,13 @@ def test_sample_metadata():
 
     # all v3
     df_samples_v3 = ag3.sample_metadata(
-        sample_sets="v3", species_calls=None, cohorts_analysis=None
+        sample_sets="3.0", species_calls=None, cohorts_analysis=None
     )
     assert tuple(df_samples_v3.columns) == expected_cols
     expected_len = df_sample_sets_v3["sample_count"].sum()
     assert len(df_samples_v3) == expected_len
 
-    # v3_wild
+    # legacy - support "v3_wild" as a shorthand for 3.0 without the crosses
     df_samples_v3_wild = ag3.sample_metadata(
         sample_sets="v3_wild", species_calls=None, cohorts_analysis=None
     )
@@ -134,7 +134,7 @@ def test_sample_metadata():
     assert len(df_samples_bf) == expected_len
 
     # multiple releases
-    sample_sets = ["v3", "v3"]
+    sample_sets = ["3.0", "3.0"]
     df_samples_mr = ag3.sample_metadata(
         sample_sets=sample_sets, species_calls=None, cohorts_analysis=None
     )
@@ -159,14 +159,14 @@ def test_sample_metadata():
     )
 
     # AIM species calls, included by default
-    df_samples_aim = ag3.sample_metadata(sample_sets="v3", cohorts_analysis=None)
+    df_samples_aim = ag3.sample_metadata(sample_sets="3.0", cohorts_analysis=None)
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
     assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
     # AIM species calls, explicit
     df_samples_aim = ag3.sample_metadata(
-        sample_sets="v3", species_calls="aim_20200422", cohorts_analysis=None
+        sample_sets="3.0", species_calls="aim_20200422", cohorts_analysis=None
     )
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
@@ -182,7 +182,7 @@ def test_sample_metadata():
 
     # PCA species calls
     df_samples_pca = ag3.sample_metadata(
-        sample_sets="v3", species_calls="pca_20200422", cohorts_analysis=None
+        sample_sets="3.0", species_calls="pca_20200422", cohorts_analysis=None
     )
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
     assert len(df_samples_pca) == len(df_samples_v3)
@@ -204,7 +204,7 @@ def test_sample_metadata():
     )
     # cohort calls
     df_samples_coh = ag3.sample_metadata(
-        sample_sets="v3", species_calls=None, cohorts_analysis="20211101"
+        sample_sets="3.0", species_calls=None, cohorts_analysis="20211101"
     )
     assert tuple(df_samples_coh.columns) == expected_cols + cohort_cols
     assert len(df_samples_coh) == len(df_samples_v3)
@@ -216,9 +216,8 @@ def test_sample_metadata():
         "AG1000G-AO",
         "AG1000G-X",
         ["AG1000G-BF-A", "AG1000G-BF-B"],
-        "v3",
-        "v3_wild",
-        ["v3", "v3"],
+        "3.0",
+        ["3.0", "3.0"],
         None,
     ],
 )
@@ -323,7 +322,7 @@ def test_open_snp_genotypes():
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "v3", "v3_wild", ["v3", "v3"]],
+    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
 @pytest.mark.parametrize("region", ["2R", ["3R", "3L", "AGAP007280"]])
 def test_snp_genotypes(chunks, sample_sets, region):
@@ -371,7 +370,7 @@ def test_snp_genotypes(chunks, sample_sets, region):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "v3", "v3_wild", ["v3", "v3"]],
+    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
 @pytest.mark.parametrize("region", ["2R", ["3R", "3L", "2R:48,714,463-48,715,355"]])
 def test_snp_genotypes_chunks(sample_sets, region):
@@ -510,9 +509,8 @@ def test_site_annotations():
     [
         "AG1000G-X",
         ["AG1000G-BF-A", "AG1000G-BF-B"],
-        "v3",
-        "v3_wild",
-        ["v3", "v3"],
+        "3.0",
+        ["3.0", "3.0"],
         None,
     ],
 )
@@ -721,7 +719,7 @@ def test_snp_allele_frequencies__no_samples():
             transcript="AGAP009194-RA",
             cohorts=cohorts,
             site_mask="gamb_colu",
-            sample_sets="v3_wild",
+            sample_sets="3.0",
             drop_invariant=True,
         )
 
@@ -744,11 +742,11 @@ def test_snp_allele_frequencies__str_cohorts():
         cohorts_analysis="20211101",
         min_cohort_size=10,
         site_mask="gamb_colu",
-        sample_sets="v3_wild",
+        sample_sets="3.0",
         drop_invariant=True,
         effects=False,
     )
-    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20211101")
+    df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
     all_cohort_labels = df_coh[coh_nm].dropna().unique().tolist()
     expected_fields = universal_fields + all_cohort_labels + ["max_af"]
@@ -779,7 +777,7 @@ def test_snp_allele_frequencies__dict_cohorts():
         transcript="AGAP009194-RA",
         cohorts=cohorts,
         site_mask="gamb_colu",
-        sample_sets="v3_wild",
+        sample_sets="3.0",
         drop_invariant=True,
         effects=False,
     )
@@ -802,7 +800,7 @@ def test_snp_allele_frequencies__dict_cohorts():
         transcript="AGAP004707-RD",
         cohorts=cohorts,
         site_mask="gamb_colu",
-        sample_sets="v3_wild",
+        sample_sets="3.0",
         drop_invariant=False,
         effects=False,
     )
@@ -841,11 +839,11 @@ def test_snp_allele_frequencies__str_cohorts__effects():
         cohorts_analysis="20211101",
         min_cohort_size=10,
         site_mask="gamb_colu",
-        sample_sets="v3_wild",
+        sample_sets="3.0",
         drop_invariant=True,
         effects=True,
     )
-    df_coh = ag3.sample_cohorts(sample_sets="v3_wild", cohorts_analysis="20211101")
+    df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
     all_cohort_labels = df_coh[coh_nm].dropna().unique().tolist()
     expected_fields = universal_fields + all_cohort_labels + ["max_af"] + effects_fields
@@ -857,7 +855,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "v3_wild", "v3", ["v3", "v3"], None],
+    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
 )
 @pytest.mark.parametrize("contig", ["3L", "X"])
 def test_cnv_hmm(sample_sets, contig):
@@ -1007,9 +1005,8 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         "AG1000G-AO",
         "AG1000G-UG",
         ["AG1000G-AO", "AG1000G-UG"],
-        "v3_wild",
-        "v3",
-        ["v3", "v3"],
+        "3.0",
+        ["3.0", "3.0"],
         None,
     ],
 )
@@ -1094,7 +1091,7 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "v3_wild", "v3", ["v3", "v3"], None],
+    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
 )
 @pytest.mark.parametrize("contig", ["2L", "3L"])
 def test_cnv_discordant_read_calls__no_calls(sample_sets, contig):
@@ -1121,7 +1118,7 @@ def test_cn_mode(rows, cols, vmax):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "v3_wild", "v3", ["v3", "v3"], None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
 )
 @pytest.mark.parametrize("contig", ["2R", "X"])
 def test_gene_cnv(contig, sample_sets):
@@ -1199,7 +1196,7 @@ def test_gene_cnv(contig, sample_sets):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "v3_wild", "v3", None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
 @pytest.mark.parametrize("contig", ["2R", "X"])
 def test_gene_cnv_xarray_indexing(contig, sample_sets):
@@ -1252,11 +1249,11 @@ def test_gene_cnv_frequencies(contig, cohorts):
     if "bf_2050_col" in cohorts:
         with pytest.raises(ValueError):
             _ = ag3.gene_cnv_frequencies(
-                contig=contig, sample_sets="v3_wild", cohorts=cohorts
+                contig=contig, sample_sets="3.0", cohorts=cohorts
             )
     else:
         df = ag3.gene_cnv_frequencies(
-            contig=contig, sample_sets="v3_wild", cohorts=cohorts, min_cohort_size=0
+            contig=contig, sample_sets="3.0", cohorts=cohorts, min_cohort_size=0
         )
 
         assert isinstance(df, pd.DataFrame)
@@ -1268,9 +1265,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
         if isinstance(cohorts, dict):
             cohort_labels = cohorts.keys()
         if isinstance(cohorts, str):
-            df_coh = ag3.sample_cohorts(
-                sample_sets="v3_wild", cohorts_analysis="20211101"
-            )
+            df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
             coh_nm = "cohort_" + cohorts
             cohort_labels = list(df_coh[coh_nm].dropna().unique())
 
@@ -1294,7 +1289,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "v3", "v3_wild", ["v3", "v3"], None],
+    ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
 )
 @pytest.mark.parametrize("contig", ["2R", "X", ["3R", "3L"]])
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
@@ -1382,7 +1377,7 @@ def test_haplotypes(sample_sets, contig, analysis):
 # test v3 sample sets
 @pytest.mark.parametrize(
     "sample_sets",
-    ["v3_wild", "v3", ["v3_wild", "v3"], "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
+    ["3.0", ["3.0", "3.0"], "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
 )
 def test_sample_cohorts(sample_sets):
     expected_cols = (

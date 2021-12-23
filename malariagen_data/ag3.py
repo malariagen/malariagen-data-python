@@ -25,7 +25,7 @@ from .util import (
     unpack_gff3_attributes,
 )
 
-PUBLIC_RELEASES = ("v3",)
+PUBLIC_RELEASES = ("3.0",)
 GENESET_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
 )
@@ -38,6 +38,33 @@ DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 
 Region = namedtuple("Region", ["contig", "start", "end"])
+
+
+def _release_to_path(release):
+    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
+    in the public API, and map these internally into storage path segments."""
+    if release.startswith("v3"):
+        # for backwards-compatibility, allow release parameter to be
+        # given as a path segment
+        return release
+    elif release == "3.0":
+        # special case
+        return "v3"
+    elif release.startswith("3."):
+        return f"v{release}"
+    else:
+        raise ValueError(f"Invalid release: {release!r}")
+
+
+def _path_to_release(path):
+    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
+    in the public API, and map these internally into storage path segments."""
+    if path == "v3":
+        return "3.0"
+    elif path.startswith("v3."):
+        return path[1:]
+    else:
+        raise RuntimeError(f"Unexpected release path: {path!r}")
 
 
 class Ag3:
@@ -71,7 +98,7 @@ class Ag3:
         self._pre = kwargs.pop("pre", False)
 
         # setup filesystem
-        self._fs, self._path = init_filesystem(url, **kwargs)
+        self._fs, self._base_path = init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_releases = None
@@ -97,15 +124,16 @@ class Ag3:
     def releases(self):
         if self._cache_releases is None:
             if self._pre:
-                # discover which releases are available
-                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
+                # here we discover which releases are available, by listing the storage
+                # directory and examining the subdirectories
+                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
                 releases = tuple(
                     sorted(
                         [
-                            d
+                            _path_to_release(d)
                             for d in sub_dirs
                             if d.startswith("v3")
-                            and self._fs.exists(f"{self._path}/{d}/manifest.tsv")
+                            and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
                         ]
                     )
                 )
@@ -145,10 +173,11 @@ class Ag3:
                 return self._cache_sample_sets[release]
 
             except KeyError:
-                path = f"{self._path}/{release}/manifest.tsv"
+                release_path = _release_to_path(release)
+                path = f"{self._base_path}/{release_path}/manifest.tsv"
                 with self._fs.open(path) as f:
                     df = pandas.read_csv(f, sep="\t", na_values="")
-                df["release"] = release
+                df["release"] = _path_to_release(release_path)  # ensure normalisation
                 self._cache_sample_sets[release] = df
                 return df
 
@@ -166,9 +195,11 @@ class Ag3:
 
     @property
     def v3_wild(self):
+        # legacy, convenience property to access sample sets from the
+        # 3.0 release, excluding the lab crosses
         return [
             x
-            for x in self.sample_sets(release="v3")["sample_set"].tolist()
+            for x in self.sample_sets(release="3.0")["sample_set"].tolist()
             if x != "AG1000G-X"
         ]
 
@@ -186,9 +217,8 @@ class Ag3:
             return self._cache_general_metadata[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = (
-                f"{self._path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
-            )
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
@@ -206,10 +236,11 @@ class Ag3:
             return self._cache_species_calls[key]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
+            release_path = _release_to_path(release)
             if analysis == "aim_20200422":
-                path = f"{self._path}/{release}/metadata/species_calls_20200422/{sample_set}/samples.species_aim.csv"
+                path = f"{self._base_path}/{release_path}/metadata/species_calls_20200422/{sample_set}/samples.species_aim.csv"
             elif analysis == "pca_20200422":
-                path = f"{self._path}/{release}/metadata/species_calls_20200422/{sample_set}/samples.species_pca.csv"
+                path = f"{self._base_path}/{release_path}/metadata/species_calls_20200422/{sample_set}/samples.species_pca.csv"
             else:
                 raise ValueError(f"Unknown species calling analysis: {analysis!r}")
             with self._fs.open(path) as f:
@@ -287,7 +318,7 @@ class Ag3:
                 # convenience, special case to exclude crosses
                 sample_sets = self.v3_wild
 
-            elif sample_sets.startswith("v3"):
+            elif sample_sets.startswith("3.") or sample_sets.startswith("v3"):
                 # convenience, can use a release identifier to denote all sample sets
                 # in a release
                 sample_sets = self.sample_sets(release=sample_sets)[
@@ -493,7 +524,7 @@ class Ag3:
         try:
             return self._cache_site_filters[key]
         except KeyError:
-            path = f"{self._path}/v3/site_filters/{analysis}/{mask}/"
+            path = f"{self._base_path}/v3/site_filters/{analysis}/{mask}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
@@ -512,7 +543,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -565,7 +596,7 @@ class Ag3:
 
         """
         if self._cache_snp_sites is None:
-            path = f"{self._path}/v3/snp_genotypes/all/sites/"
+            path = f"{self._base_path}/v3/snp_genotypes/all/sites/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
@@ -584,7 +615,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -655,7 +686,8 @@ class Ag3:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/snp_genotypes/all/{sample_set}/"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/snp_genotypes/all/{sample_set}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
@@ -684,7 +716,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -756,7 +788,7 @@ class Ag3:
 
         """
         if self._cache_genome is None:
-            path = f"{self._path}/{GENOME_ZARR_PATH}"
+            path = f"{self._base_path}/{GENOME_ZARR_PATH}"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
@@ -766,7 +798,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`.
@@ -814,7 +846,7 @@ class Ag3:
             df = self._cache_geneset[attributes]
 
         except KeyError:
-            path = f"{self._path}/{GENESET_GFF3_PATH}"
+            path = f"{self._base_path}/{GENESET_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -830,8 +862,10 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R".
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str, optional
@@ -1143,7 +1177,7 @@ class Ag3:
 
         if self._cache_cross_metadata is None:
 
-            path = f"{self._path}/v3/metadata/crosses/crosses.fam"
+            path = f"{self._base_path}/v3/metadata/crosses/crosses.fam"
             fam_names = [
                 "cross",
                 "sample_id",
@@ -1186,7 +1220,7 @@ class Ag3:
         """
 
         if self._cache_site_annotations is None:
-            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
+            path = f"{self._base_path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
@@ -1204,7 +1238,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`.
@@ -1337,7 +1371,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -1428,7 +1462,8 @@ class Ag3:
             return self._cache_cnv_hmm[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/cnv/{sample_set}/hmm/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/hmm/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_hmm[sample_set] = root
@@ -1575,7 +1610,8 @@ class Ag3:
             return self._cache_cnv_coverage_calls[key]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
             # N.B., not all sample_set/analysis combinations exist, need to check
             marker = path + "/.zmetadata"
             if not self._fs.exists(marker):
@@ -1709,7 +1745,8 @@ class Ag3:
             return self._cache_cnv_discordant_read_calls[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/cnv/{sample_set}/discordant_read_calls/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/discordant_read_calls/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
@@ -2051,7 +2088,8 @@ class Ag3:
             return self._cache_haplotypes[(sample_set, analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/snp_haplotypes/{sample_set}/{analysis}/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             # some sample sets have no data for a given analysis, handle this
             if ".zmetadata" not in store:
@@ -2079,7 +2117,7 @@ class Ag3:
         try:
             return self._cache_haplotype_sites[analysis]
         except KeyError:
-            path = f"{self._path}/v3/snp_haplotypes/sites/{analysis}/zarr"
+            path = f"{self._base_path}/v3/snp_haplotypes/sites/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
@@ -2235,7 +2273,8 @@ class Ag3:
             return self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
@@ -2254,7 +2293,7 @@ class Ag3:
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "v3") or a list of release identifiers.
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis identifier (date of analysis), default is the latest version.
 
         Returns
         -------
