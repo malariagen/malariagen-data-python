@@ -96,6 +96,7 @@ class Ag3:
 
     def __init__(self, url=DEFAULT_URL, **kwargs):
 
+        self._url = url
         self._pre = kwargs.pop("pre", False)
 
         # setup filesystem
@@ -120,6 +121,49 @@ class Ag3:
         self._cache_haplotypes = dict()
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
+
+    def __repr__(self):
+        return (
+            f"<MalariaGEN Ag3 data resource API>\n"
+            f"Storage URL           : {self._url}\n"
+            f"Releases available    : {','.join(self.releases)}\n"
+            f"Cohorts analysis      : {DEFAULT_COHORTS_ANALYSIS}\n"
+            f"Species analysis      : {DEFAULT_SPECIES_ANALYSIS}\n"
+            f"Site filters analysis : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"---\n"
+            f"Please note that data are subject to terms of use,\n"
+            f"for more information see https://www.malariagen.net/data\n"
+            f"or contact data@malariagen.net.\n"
+            f"---\n"
+            f"For API documentation see https://malariagen.github.io/vector-data/ag3/api.html"
+        )
+
+    def _repr_html_(self):
+        return f"""
+            <style type="text/css">
+                table.malariagen-ag3 th, table.malariagen-ag3 td {{
+                    text-align: left
+                }}
+            </style>
+            <table class="malariagen-ag3">
+                <thead>
+                    <tr>
+                        <th colspan=2>MalariaGEN Ag3 data resource API</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th>Storage URL</th><td>{self._url}</td></tr>
+                    <tr><th>Releases available</th><td>{','.join(self.releases)}</td></tr>
+                    <tr><th>Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
+                    <tr><th>Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
+                    <tr><th>Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
+                </tbody>
+            </table>
+            <p>Please note that data are subject to terms of use,
+            for more information see <a href="https://www.malariagen.net/data">
+            the MalariaGEN website</a> or contact data@malariagen.net.</p>
+            <p>See also the <a href="https://malariagen.github.io/vector-data/ag3/api.html">Ag3 API docs</a>.</p>
+        """
 
     @property
     def releases(self):
