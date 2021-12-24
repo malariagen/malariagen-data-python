@@ -29,11 +29,10 @@ def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
     if url is None:
         # test default URL
         return Ag3(**kwargs)
-    elif url.startswith("simplecache::"):
+    if url.startswith("simplecache::"):
         # configure the directory on the local file system to cache data
         kwargs["simplecache"] = dict(cache_storage="gcs_cache")
-    else:
-        return Ag3(url, **kwargs)
+    return Ag3(url, **kwargs)
 
 
 @pytest.mark.parametrize(
