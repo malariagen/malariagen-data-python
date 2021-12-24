@@ -26,11 +26,12 @@ contigs = "2R", "2L", "3R", "3L", "X"
 
 
 def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
-    if url.startswith("simplecache::"):
-        kwargs["simplecache"] = dict(cache_storage="gcs_cache")
     if url is None:
         # test default URL
         return Ag3(**kwargs)
+    elif url.startswith("simplecache::"):
+        # configure the directory on the local file system to cache data
+        kwargs["simplecache"] = dict(cache_storage="gcs_cache")
     else:
         return Ag3(url, **kwargs)
 
@@ -107,16 +108,6 @@ def test_sample_metadata():
     assert tuple(df_samples_v3.columns) == expected_cols
     expected_len = df_sample_sets_v3["sample_count"].sum()
     assert len(df_samples_v3) == expected_len
-
-    # legacy - support "v3_wild" as a shorthand for 3.0 without the crosses
-    df_samples_v3_wild = ag3.sample_metadata(
-        sample_sets="v3_wild", species_calls=None, cohorts_analysis=None
-    )
-    assert tuple(df_samples_v3_wild.columns) == expected_cols
-    expected_len = df_sample_sets_v3.query("sample_set != 'AG1000G-X'")[
-        "sample_count"
-    ].sum()
-    assert len(df_samples_v3_wild) == expected_len
 
     # single sample set
     df_samples_x = ag3.sample_metadata(

@@ -41,14 +41,22 @@ CONTIGS = "2R", "2L", "3R", "3L", "X"
 Region = namedtuple("Region", ["contig", "start", "end"])
 
 
+# Note regarding release identifiers and storage paths. Within the
+# data storage, we have used path segments like "v3", "v3.1", "v3.2",
+# etc., to separate data from different releases. There is an inconsistency
+# in this convention, because the "v3" should have been "v3.0". To
+# make the API more consistent, we would like to use consistent release
+# identifiers like "3.0", "3.1", "3.2", etc., as parameter values and
+# when release identifiers are added to returned dataframes. In order to
+# achieve this, below we define two functions that allow mapping between
+# these consistent release identifiers, and the less consistent release
+# storage path segments.
+
+
 def _release_to_path(release):
     """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
     in the public API, and map these internally into storage path segments."""
-    if release.startswith("v3"):
-        # for backwards-compatibility, allow release parameter to be
-        # given as a path segment
-        return release
-    elif release == "3.0":
+    if release == "3.0":
         # special case
         return "v3"
     elif release.startswith("3."):
@@ -167,10 +175,12 @@ class Ag3:
 
     @property
     def releases(self):
+        """The releases for which data are available at the given storage location."""
         if self._cache_releases is None:
             if self._pre:
-                # here we discover which releases are available, by listing the storage
-                # directory and examining the subdirectories
+                # Here we discover which releases are available, by listing the storage
+                # directory and examining the subdirectories. This may include "pre-releases"
+                # where data may be incomplete.
                 sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
                 releases = tuple(
                     sorted(
@@ -189,13 +199,22 @@ class Ag3:
                 self._cache_releases = PUBLIC_RELEASES
         return self._cache_releases
 
+    def _read_sample_sets(self, *, release):
+        """Read the manifest of sample sets for a given release."""
+        release_path = _release_to_path(release)
+        path = f"{self._base_path}/{release_path}/manifest.tsv"
+        with self._fs.open(path) as f:
+            df = pandas.read_csv(f, sep="\t", na_values="")
+        df["release"] = release
+        return df
+
     def sample_sets(self, release=None):
         """Access a dataframe of sample sets.
 
         Parameters
         ----------
         release : str, optional
-            Release identifier. Give "v3" to access the Ag1000G phase 3 data release.
+            Release identifier. Give "3.0" to access the Ag1000G phase 3 data release.
 
         Returns
         -------
@@ -218,11 +237,7 @@ class Ag3:
                 return self._cache_sample_sets[release]
 
             except KeyError:
-                release_path = _release_to_path(release)
-                path = f"{self._base_path}/{release_path}/manifest.tsv"
-                with self._fs.open(path) as f:
-                    df = pandas.read_csv(f, sep="\t", na_values="")
-                df["release"] = _path_to_release(release_path)  # ensure normalisation
+                df = self._read_sample_sets(release=release)
                 self._cache_sample_sets[release] = df
                 return df
 
@@ -359,11 +374,7 @@ class Ag3:
 
         elif isinstance(sample_sets, str):
 
-            if sample_sets == "v3_wild":
-                # convenience, special case to exclude crosses
-                sample_sets = self.v3_wild
-
-            elif sample_sets.startswith("3.") or sample_sets.startswith("v3"):
+            if sample_sets.startswith("3."):
                 # convenience, can use a release identifier to denote all sample sets
                 # in a release
                 sample_sets = self.sample_sets(release=sample_sets)[
@@ -473,7 +484,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         analysis : {"aim_20200422", "pca_20200422"}
             Species calling analysis.
 
@@ -521,7 +532,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         species_calls : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         cohorts_analysis : str
@@ -769,7 +780,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -1114,7 +1125,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
             If True, variants with no alternate allele calls in any cohorts are dropped from
             the result.
@@ -1424,7 +1435,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters : str
@@ -1599,7 +1610,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1889,7 +1900,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1937,7 +1948,7 @@ class Ag3:
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
 
         Returns
         -------
@@ -2033,7 +2044,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
 
         Returns
         -------
@@ -2253,7 +2264,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -2336,7 +2347,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is the latest version.
 
