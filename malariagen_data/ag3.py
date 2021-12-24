@@ -505,11 +505,11 @@ class Ag3:
 
         return df
 
-    def _sample_metadata(self, *, sample_set, species_calls, cohorts_analysis):
+    def _sample_metadata(self, *, sample_set, species_analysis, cohorts_analysis):
         df = self._read_general_metadata(sample_set=sample_set)
-        if species_calls is not None:
+        if species_analysis is not None:
             df_species = self._read_species_calls(
-                sample_set=sample_set, analysis=species_calls
+                sample_set=sample_set, analysis=species_analysis
             )
             df = df.merge(df_species, on="sample_id", sort=False)
         if cohorts_analysis is not None:
@@ -522,7 +522,7 @@ class Ag3:
     def sample_metadata(
         self,
         sample_sets=None,
-        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
     ):
         """Access sample metadata for one or more sample sets.
@@ -533,7 +533,7 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "3.0") or a list of release identifiers.
-        species_calls : {"aim_20200422", "pca_20200422"}, optional
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), optional,  default is latest version.
@@ -552,7 +552,7 @@ class Ag3:
         dfs = [
             self._sample_metadata(
                 sample_set=s,
-                species_calls=species_calls,
+                species_analysis=species_analysis,
                 cohorts_analysis=cohorts_analysis,
             )
             for s in sample_sets
@@ -663,7 +663,7 @@ class Ag3:
         region,
         field=None,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -681,7 +681,7 @@ class Ag3:
             tuple.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters_analysis : str
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -717,7 +717,7 @@ class Ag3:
 
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters
+                region=region, mask=site_mask, analysis=site_filters_analysis
             )
             if isinstance(ret, tuple):
                 ret = tuple(da_compress(loc_sites, d, axis=0) for d in ret)
@@ -764,7 +764,7 @@ class Ag3:
         sample_sets=None,
         field="GT",
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -785,7 +785,7 @@ class Ag3:
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -829,7 +829,7 @@ class Ag3:
         # apply site filters if requested
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters
+                region=region, mask=site_mask, analysis=site_filters_analysis
             )
             d = da_compress(loc_sites, d, axis=0)
 
@@ -912,7 +912,7 @@ class Ag3:
         return df
 
     def is_accessible(
-        self, region, site_mask, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+        self, region, site_mask, site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS
     ):
         """Compute genome accessibility array.
 
@@ -924,7 +924,7 @@ class Ag3:
             genomic location `Region(contig, start, end)`.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
 
         Returns
@@ -950,7 +950,7 @@ class Ag3:
 
         # access site filters
         filter_pass = self.site_filters(
-            region=region, mask=site_mask, analysis=site_filters
+            region=region, mask=site_mask, analysis=site_filters_analysis
         ).compute()
 
         # assign values from site filters
@@ -958,13 +958,13 @@ class Ag3:
 
         return is_accessible
 
-    def _site_mask_ids(self, *, site_filters):
-        if site_filters == "dt_20200416":
+    def _site_mask_ids(self, *, site_filters_analysis):
+        if site_filters_analysis == "dt_20200416":
             return "gamb_colu_arab", "gamb_colu", "arab"
         else:
             raise ValueError
 
-    def _snp_df(self, *, transcript, site_filters):
+    def _snp_df(self, *, transcript, site_filters_analysis):
         """Set up a dataframe with SNP site and filter columns."""
 
         # get feature direct from geneset
@@ -982,9 +982,9 @@ class Ag3:
 
         # access site filters
         filter_pass = dict()
-        masks = self._site_mask_ids(site_filters=site_filters)
+        masks = self._site_mask_ids(site_filters_analysis=site_filters_analysis)
         for m in masks:
-            x = self.site_filters(region=region, mask=m, analysis=site_filters)
+            x = self.site_filters(region=region, mask=m, analysis=site_filters_analysis)
             x = x.compute()
             filter_pass[m] = x
 
@@ -1015,7 +1015,10 @@ class Ag3:
         return self._cache_annotator
 
     def snp_effects(
-        self, transcript, site_mask=None, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+        self,
+        transcript,
+        site_mask=None,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
         """Compute variant effects for a gene transcript.
 
@@ -1025,7 +1028,7 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
 
         Returns
@@ -1035,7 +1038,9 @@ class Ag3:
         """
 
         # setup initial dataframe of SNPs
-        _, _, df_snps = self._snp_df(transcript=transcript, site_filters=site_filters)
+        _, _, df_snps = self._snp_df(
+            transcript=transcript, site_filters_analysis=site_filters_analysis
+        )
 
         # setup variant effect annotator
         ann = self._annotator()
@@ -1054,7 +1059,7 @@ class Ag3:
         return df_snps
 
     def _prep_cohorts_arg(
-        self, *, cohorts, sample_sets, species_calls, cohorts_analysis
+        self, *, cohorts, sample_sets, species_analysis, cohorts_analysis
     ):
 
         # build cohort dictionary where key=cohort_id, value=loc_coh
@@ -1062,7 +1067,7 @@ class Ag3:
         if isinstance(cohorts, dict):
             # get sample metadata
             df_meta = self.sample_metadata(
-                sample_sets=sample_sets, species_calls=species_calls
+                sample_sets=sample_sets, species_analysis=species_analysis
             )
             for coh, query in cohorts.items():
                 # locate samples
@@ -1093,8 +1098,8 @@ class Ag3:
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
-        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
         effects=True,
@@ -1118,9 +1123,9 @@ class Ag3:
             these can be removed from the output dataframe using pandas df.dropna(axis='columns').
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
-        species_calls : {"aim_20200422", "pca_20200422"}, optional
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
@@ -1145,7 +1150,7 @@ class Ag3:
 
         # setup initial dataframe of SNPs
         region, loc_feature, df_snps = self._snp_df(
-            transcript=transcript, site_filters=site_filters
+            transcript=transcript, site_filters_analysis=site_filters_analysis
         )
 
         # get genotypes
@@ -1162,7 +1167,7 @@ class Ag3:
         coh_dict = self._prep_cohorts_arg(
             cohorts=cohorts,
             sample_sets=sample_sets,
-            species_calls=species_calls,
+            species_analysis=species_analysis,
             cohorts_analysis=cohorts_analysis,
         )
 
@@ -1286,7 +1291,7 @@ class Ag3:
         region,
         field,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1303,7 +1308,7 @@ class Ag3:
             "seq_flen", "seq_relpos_start", "seq_relpos_stop".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters_analysis : str
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.from_array().
@@ -1329,14 +1334,17 @@ class Ag3:
 
         # access and subset to SNP positions
         pos = self.snp_sites(
-            region=region, field="POS", site_mask=site_mask, site_filters=site_filters
+            region=region,
+            field="POS",
+            site_mask=site_mask,
+            site_filters_analysis=site_filters_analysis,
         )
         d = da.take(d, pos - 1)
 
         return d
 
     def _snp_calls_dataset(
-        self, *, region, sample_set, site_filters, inline_array, chunks
+        self, *, region, sample_set, site_filters_analysis, inline_array, chunks
     ):
 
         region = self._resolve_region(region)
@@ -1373,7 +1381,9 @@ class Ag3:
 
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
-            filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
+            filters_root = self.open_site_filters(
+                mask=mask, analysis=site_filters_analysis
+            )
             z = filters_root[f"{region.contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d[loc_region]
@@ -1419,7 +1429,7 @@ class Ag3:
         region,
         sample_sets=None,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1438,7 +1448,7 @@ class Ag3:
             "3.0") or a list of release identifiers.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters_analysis : str
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -1466,7 +1476,7 @@ class Ag3:
                         self._snp_calls_dataset(
                             region=r,
                             sample_set=s,
-                            site_filters=site_filters,
+                            site_filters_analysis=site_filters_analysis,
                             inline_array=inline_array,
                             chunks=chunks,
                         )
@@ -2018,7 +2028,7 @@ class Ag3:
         cohorts,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
-        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
     ):
         """Compute modal copy number by gene, then compute the frequency of
@@ -2039,7 +2049,7 @@ class Ag3:
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
             Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
             these can be removed from the output dataframe using pandas df.dropna(axis='columns').
-        species_calls : {"aim_20200422", "pca_20200422"}, optional
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
@@ -2088,7 +2098,7 @@ class Ag3:
         coh_dict = self._prep_cohorts_arg(
             cohorts=cohorts,
             sample_sets=sample_sets,
-            species_calls=species_calls,
+            species_analysis=species_analysis,
             cohorts_analysis=cohorts_analysis,
         )
 

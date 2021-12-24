@@ -102,7 +102,7 @@ def test_sample_metadata():
 
     # all v3
     df_samples_v3 = ag3.sample_metadata(
-        sample_sets="3.0", species_calls=None, cohorts_analysis=None
+        sample_sets="3.0", species_analysis=None, cohorts_analysis=None
     )
     assert tuple(df_samples_v3.columns) == expected_cols
     expected_len = df_sample_sets_v3["sample_count"].sum()
@@ -110,7 +110,7 @@ def test_sample_metadata():
 
     # single sample set
     df_samples_x = ag3.sample_metadata(
-        sample_sets="AG1000G-X", species_calls=None, cohorts_analysis=None
+        sample_sets="AG1000G-X", species_analysis=None, cohorts_analysis=None
     )
     assert tuple(df_samples_x.columns) == expected_cols
     expected_len = df_sample_sets_v3.query("sample_set == 'AG1000G-X'")[
@@ -121,7 +121,7 @@ def test_sample_metadata():
     # multiple sample sets
     sample_sets = ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"]
     df_samples_bf = ag3.sample_metadata(
-        sample_sets=sample_sets, species_calls=None, cohorts_analysis=None
+        sample_sets=sample_sets, species_analysis=None, cohorts_analysis=None
     )
     assert tuple(df_samples_bf) == expected_cols
     loc_sample_sets = df_sample_sets_v3["sample_set"].isin(sample_sets)
@@ -131,7 +131,7 @@ def test_sample_metadata():
     # multiple releases
     sample_sets = ["3.0", "3.0"]
     df_samples_mr = ag3.sample_metadata(
-        sample_sets=sample_sets, species_calls=None, cohorts_analysis=None
+        sample_sets=sample_sets, species_analysis=None, cohorts_analysis=None
     )
     assert_frame_equal(
         df_samples_mr,
@@ -139,9 +139,9 @@ def test_sample_metadata():
     )
 
     # default is all public releases
-    df_default = ag3.sample_metadata(species_calls=None, cohorts_analysis=None)
+    df_default = ag3.sample_metadata(species_analysis=None, cohorts_analysis=None)
     df_all = ag3.sample_metadata(
-        sample_sets=ag3.releases, species_calls=None, cohorts_analysis=None
+        sample_sets=ag3.releases, species_analysis=None, cohorts_analysis=None
     )
     assert_frame_equal(df_default, df_all)
 
@@ -161,7 +161,7 @@ def test_sample_metadata():
 
     # AIM species calls, explicit
     df_samples_aim = ag3.sample_metadata(
-        sample_sets="3.0", species_calls="aim_20200422", cohorts_analysis=None
+        sample_sets="3.0", species_analysis="aim_20200422", cohorts_analysis=None
     )
     assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
     assert len(df_samples_aim) == len(df_samples_v3)
@@ -177,7 +177,7 @@ def test_sample_metadata():
 
     # PCA species calls
     df_samples_pca = ag3.sample_metadata(
-        sample_sets="3.0", species_calls="pca_20200422", cohorts_analysis=None
+        sample_sets="3.0", species_analysis="pca_20200422", cohorts_analysis=None
     )
     assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
     assert len(df_samples_pca) == len(df_samples_v3)
@@ -199,7 +199,7 @@ def test_sample_metadata():
     )
     # cohort calls
     df_samples_coh = ag3.sample_metadata(
-        sample_sets="3.0", species_calls=None, cohorts_analysis="20211101"
+        sample_sets="3.0", species_analysis=None, cohorts_analysis="20211101"
     )
     assert tuple(df_samples_coh.columns) == expected_cols + cohort_cols
     assert len(df_samples_coh) == len(df_samples_v3)
@@ -219,7 +219,7 @@ def test_sample_metadata():
 @pytest.mark.parametrize("analysis", ["aim_20200422", "pca_20200422"])
 def test_species_calls(sample_sets, analysis):
     ag3 = setup_ag3()
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     df_species = ag3.species_calls(sample_sets=sample_sets, analysis=analysis)
     assert len(df_species) == len(df_samples)
     if analysis.startswith("aim_"):
@@ -324,7 +324,7 @@ def test_snp_genotypes(chunks, sample_sets, region):
 
     ag3 = setup_ag3()
 
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     gt = ag3.snp_genotypes(region=region, sample_sets=sample_sets, chunks=chunks)
     assert isinstance(gt, da.Array)
     assert gt.ndim == 3
@@ -456,7 +456,7 @@ def test_cross_metadata():
     assert df_crosses.columns.tolist() == expected_cols
 
     # check samples are in AG1000G-X
-    df_samples = ag3.sample_metadata(sample_sets="AG1000G-X", species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets="AG1000G-X", species_analysis=None)
     assert set(df_crosses["sample_id"]) == set(df_samples["sample_id"])
 
     # check values
@@ -547,7 +547,7 @@ def test_snp_calls(sample_sets, region, site_mask):
     # check dim lengths
     pos = ag3.snp_sites(region=region, field="POS", site_mask=site_mask)
     n_variants = len(pos)
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["variants"] == n_variants
     assert ds.dims["samples"] == n_samples
@@ -881,7 +881,7 @@ def test_cnv_hmm(sample_sets, contig):
 
     # check dim lengths
     n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["variants"] == n_variants
     assert ds.dims["samples"] == n_samples
@@ -963,7 +963,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check sample IDs
-    df_samples = ag3.sample_metadata(sample_sets=sample_set, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_set, species_analysis=None)
     sample_id = pd.Series(ds["sample_id"].values)
     assert sample_id.isin(df_samples["sample_id"]).all()
 
@@ -1042,7 +1042,7 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
 
@@ -1145,7 +1145,7 @@ def test_gene_cnv(contig, sample_sets):
     assert set(ds.dims) == {"samples", "genes"}
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
     df_geneset = ag3.geneset()
@@ -1203,7 +1203,7 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
     # pick a random gene and sample ID
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_calls=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     df_geneset = ag3.geneset()
     df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
     gene = random.choice(df_genes["ID"].tolist())
