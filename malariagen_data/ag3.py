@@ -25,7 +25,8 @@ from .util import (
     unpack_gff3_attributes,
 )
 
-PUBLIC_RELEASES = ("v3",)
+PUBLIC_RELEASES = ("3.0",)
+DEFAULT_URL = "gs://vo_agam_release/"
 GENESET_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
 )
@@ -38,6 +39,41 @@ DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 
 Region = namedtuple("Region", ["contig", "start", "end"])
+
+
+# Note regarding release identifiers and storage paths. Within the
+# data storage, we have used path segments like "v3", "v3.1", "v3.2",
+# etc., to separate data from different releases. There is an inconsistency
+# in this convention, because the "v3" should have been "v3.0". To
+# make the API more consistent, we would like to use consistent release
+# identifiers like "3.0", "3.1", "3.2", etc., as parameter values and
+# when release identifiers are added to returned dataframes. In order to
+# achieve this, below we define two functions that allow mapping between
+# these consistent release identifiers, and the less consistent release
+# storage path segments.
+
+
+def _release_to_path(release):
+    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
+    in the public API, and map these internally into storage path segments."""
+    if release == "3.0":
+        # special case
+        return "v3"
+    elif release.startswith("3."):
+        return f"v{release}"
+    else:
+        raise ValueError(f"Invalid release: {release!r}")
+
+
+def _path_to_release(path):
+    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
+    in the public API, and map these internally into storage path segments."""
+    if path == "v3":
+        return "3.0"
+    elif path.startswith("v3."):
+        return path[1:]
+    else:
+        raise RuntimeError(f"Unexpected release path: {path!r}")
 
 
 class Ag3:
@@ -53,10 +89,10 @@ class Ag3:
 
     Examples
     --------
-    Access data from Google Cloud Storage:
+    Access data from Google Cloud Storage (default):
 
         >>> import malariagen_data
-        >>> ag3 = malariagen_data.Ag3("gs://vo_agam_release/")
+        >>> ag3 = malariagen_data.Ag3()
 
     Access data downloaded to a local file system:
 
@@ -66,12 +102,13 @@ class Ag3:
 
     contigs = CONTIGS
 
-    def __init__(self, url, **kwargs):
+    def __init__(self, url=DEFAULT_URL, **kwargs):
 
+        self._url = url
         self._pre = kwargs.pop("pre", False)
 
         # setup filesystem
-        self._fs, self._path = init_filesystem(url, **kwargs)
+        self._fs, self._base_path = init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_releases = None
@@ -93,19 +130,65 @@ class Ag3:
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
 
+    def __repr__(self):
+        return (
+            f"<MalariaGEN Ag3 data resource API>\n"
+            f"Storage URL           : {self._url}\n"
+            f"Releases available    : {','.join(self.releases)}\n"
+            f"Cohorts analysis      : {DEFAULT_COHORTS_ANALYSIS}\n"
+            f"Species analysis      : {DEFAULT_SPECIES_ANALYSIS}\n"
+            f"Site filters analysis : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"---\n"
+            f"Please note that data are subject to terms of use,\n"
+            f"for more information see https://www.malariagen.net/data\n"
+            f"or contact data@malariagen.net.\n"
+            f"---\n"
+            f"For API documentation see https://malariagen.github.io/vector-data/ag3/api.html"
+        )
+
+    def _repr_html_(self):
+        return f"""
+            <style type="text/css">
+                table.malariagen-ag3 th, table.malariagen-ag3 td {{
+                    text-align: left
+                }}
+            </style>
+            <table class="malariagen-ag3">
+                <thead>
+                    <tr>
+                        <th colspan=2>MalariaGEN Ag3 data resource API</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><th>Storage URL</th><td>{self._url}</td></tr>
+                    <tr><th>Releases available</th><td>{','.join(self.releases)}</td></tr>
+                    <tr><th>Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
+                    <tr><th>Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
+                    <tr><th>Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
+                </tbody>
+            </table>
+            <p>Please note that data are subject to terms of use,
+            for more information see <a href="https://www.malariagen.net/data">
+            the MalariaGEN website</a> or contact data@malariagen.net.</p>
+            <p>See also the <a href="https://malariagen.github.io/vector-data/ag3/api.html">Ag3 API docs</a>.</p>
+        """
+
     @property
     def releases(self):
+        """The releases for which data are available at the given storage location."""
         if self._cache_releases is None:
             if self._pre:
-                # discover which releases are available
-                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._path)]
+                # Here we discover which releases are available, by listing the storage
+                # directory and examining the subdirectories. This may include "pre-releases"
+                # where data may be incomplete.
+                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
                 releases = tuple(
                     sorted(
                         [
-                            d
+                            _path_to_release(d)
                             for d in sub_dirs
                             if d.startswith("v3")
-                            and self._fs.exists(f"{self._path}/{d}/manifest.tsv")
+                            and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
                         ]
                     )
                 )
@@ -116,13 +199,22 @@ class Ag3:
                 self._cache_releases = PUBLIC_RELEASES
         return self._cache_releases
 
+    def _read_sample_sets(self, *, release):
+        """Read the manifest of sample sets for a given release."""
+        release_path = _release_to_path(release)
+        path = f"{self._base_path}/{release_path}/manifest.tsv"
+        with self._fs.open(path) as f:
+            df = pandas.read_csv(f, sep="\t", na_values="")
+        df["release"] = release
+        return df
+
     def sample_sets(self, release=None):
         """Access a dataframe of sample sets.
 
         Parameters
         ----------
         release : str, optional
-            Release identifier. Give "v3" to access the Ag1000G phase 3 data release.
+            Release identifier. Give "3.0" to access the Ag1000G phase 3 data release.
 
         Returns
         -------
@@ -145,10 +237,7 @@ class Ag3:
                 return self._cache_sample_sets[release]
 
             except KeyError:
-                path = f"{self._path}/{release}/manifest.tsv"
-                with self._fs.open(path) as f:
-                    df = pandas.read_csv(f, sep="\t", na_values="")
-                df["release"] = release
+                df = self._read_sample_sets(release=release)
                 self._cache_sample_sets[release] = df
                 return df
 
@@ -166,9 +255,11 @@ class Ag3:
 
     @property
     def v3_wild(self):
+        # legacy, convenience property to access sample sets from the
+        # 3.0 release, excluding the lab crosses
         return [
             x
-            for x in self.sample_sets(release="v3")["sample_set"].tolist()
+            for x in self.sample_sets(release="3.0")["sample_set"].tolist()
             if x != "AG1000G-X"
         ]
 
@@ -186,9 +277,8 @@ class Ag3:
             return self._cache_general_metadata[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = (
-                f"{self._path}/{release}/metadata/general/{sample_set}/samples.meta.csv"
-            )
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
@@ -206,10 +296,11 @@ class Ag3:
             return self._cache_species_calls[key]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
+            release_path = _release_to_path(release)
             if analysis == "aim_20200422":
-                path = f"{self._path}/{release}/metadata/species_calls_20200422/{sample_set}/samples.species_aim.csv"
+                path = f"{self._base_path}/{release_path}/metadata/species_calls_20200422/{sample_set}/samples.species_aim.csv"
             elif analysis == "pca_20200422":
-                path = f"{self._path}/{release}/metadata/species_calls_20200422/{sample_set}/samples.species_pca.csv"
+                path = f"{self._base_path}/{release_path}/metadata/species_calls_20200422/{sample_set}/samples.species_pca.csv"
             else:
                 raise ValueError(f"Unknown species calling analysis: {analysis!r}")
             with self._fs.open(path) as f:
@@ -283,11 +374,7 @@ class Ag3:
 
         elif isinstance(sample_sets, str):
 
-            if sample_sets == "v3_wild":
-                # convenience, special case to exclude crosses
-                sample_sets = self.v3_wild
-
-            elif sample_sets.startswith("v3"):
+            if sample_sets.startswith("3."):
                 # convenience, can use a release identifier to denote all sample sets
                 # in a release
                 sample_sets = self.sample_sets(release=sample_sets)[
@@ -397,7 +484,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         analysis : {"aim_20200422", "pca_20200422"}
             Species calling analysis.
 
@@ -418,11 +505,11 @@ class Ag3:
 
         return df
 
-    def _sample_metadata(self, *, sample_set, species_calls, cohorts_analysis):
+    def _sample_metadata(self, *, sample_set, species_analysis, cohorts_analysis):
         df = self._read_general_metadata(sample_set=sample_set)
-        if species_calls is not None:
+        if species_analysis is not None:
             df_species = self._read_species_calls(
-                sample_set=sample_set, analysis=species_calls
+                sample_set=sample_set, analysis=species_analysis
             )
             df = df.merge(df_species, on="sample_id", sort=False)
         if cohorts_analysis is not None:
@@ -435,7 +522,7 @@ class Ag3:
     def sample_metadata(
         self,
         sample_sets=None,
-        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
     ):
         """Access sample metadata for one or more sample sets.
@@ -445,8 +532,8 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
-        species_calls : {"aim_20200422", "pca_20200422"}, optional
+            "3.0") or a list of release identifiers.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), optional,  default is latest version.
@@ -465,7 +552,7 @@ class Ag3:
         dfs = [
             self._sample_metadata(
                 sample_set=s,
-                species_calls=species_calls,
+                species_analysis=species_analysis,
                 cohorts_analysis=cohorts_analysis,
             )
             for s in sample_sets
@@ -493,7 +580,7 @@ class Ag3:
         try:
             return self._cache_site_filters[key]
         except KeyError:
-            path = f"{self._path}/v3/site_filters/{analysis}/{mask}/"
+            path = f"{self._base_path}/v3/site_filters/{analysis}/{mask}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[key] = root
@@ -512,7 +599,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -565,7 +652,7 @@ class Ag3:
 
         """
         if self._cache_snp_sites is None:
-            path = f"{self._path}/v3/snp_genotypes/all/sites/"
+            path = f"{self._base_path}/v3/snp_genotypes/all/sites/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
@@ -576,7 +663,7 @@ class Ag3:
         region,
         field=None,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -584,7 +671,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -594,7 +681,7 @@ class Ag3:
             tuple.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters_analysis : str
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -630,7 +717,7 @@ class Ag3:
 
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters
+                region=region, mask=site_mask, analysis=site_filters_analysis
             )
             if isinstance(ret, tuple):
                 ret = tuple(da_compress(loc_sites, d, axis=0) for d in ret)
@@ -655,7 +742,8 @@ class Ag3:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/snp_genotypes/all/{sample_set}/"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/snp_genotypes/all/{sample_set}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
@@ -676,7 +764,7 @@ class Ag3:
         sample_sets=None,
         field="GT",
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -684,7 +772,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -692,12 +780,12 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -741,7 +829,7 @@ class Ag3:
         # apply site filters if requested
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters
+                region=region, mask=site_mask, analysis=site_filters_analysis
             )
             d = da_compress(loc_sites, d, axis=0)
 
@@ -756,7 +844,7 @@ class Ag3:
 
         """
         if self._cache_genome is None:
-            path = f"{self._path}/{GENOME_ZARR_PATH}"
+            path = f"{self._base_path}/{GENOME_ZARR_PATH}"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
@@ -766,7 +854,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`.
@@ -814,7 +902,7 @@ class Ag3:
             df = self._cache_geneset[attributes]
 
         except KeyError:
-            path = f"{self._path}/{GENESET_GFF3_PATH}"
+            path = f"{self._base_path}/{GENESET_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -824,17 +912,19 @@ class Ag3:
         return df
 
     def is_accessible(
-        self, region, site_mask, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+        self, region, site_mask, site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS
     ):
         """Compute genome accessibility array.
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R".
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
 
         Returns
@@ -860,7 +950,7 @@ class Ag3:
 
         # access site filters
         filter_pass = self.site_filters(
-            region=region, mask=site_mask, analysis=site_filters
+            region=region, mask=site_mask, analysis=site_filters_analysis
         ).compute()
 
         # assign values from site filters
@@ -868,13 +958,13 @@ class Ag3:
 
         return is_accessible
 
-    def _site_mask_ids(self, *, site_filters):
-        if site_filters == "dt_20200416":
+    def _site_mask_ids(self, *, site_filters_analysis):
+        if site_filters_analysis == "dt_20200416":
             return "gamb_colu_arab", "gamb_colu", "arab"
         else:
             raise ValueError
 
-    def _snp_df(self, *, transcript, site_filters):
+    def _snp_df(self, *, transcript, site_filters_analysis):
         """Set up a dataframe with SNP site and filter columns."""
 
         # get feature direct from geneset
@@ -892,9 +982,9 @@ class Ag3:
 
         # access site filters
         filter_pass = dict()
-        masks = self._site_mask_ids(site_filters=site_filters)
+        masks = self._site_mask_ids(site_filters_analysis=site_filters_analysis)
         for m in masks:
-            x = self.site_filters(region=region, mask=m, analysis=site_filters)
+            x = self.site_filters(region=region, mask=m, analysis=site_filters_analysis)
             x = x.compute()
             filter_pass[m] = x
 
@@ -925,7 +1015,10 @@ class Ag3:
         return self._cache_annotator
 
     def snp_effects(
-        self, transcript, site_mask=None, site_filters=DEFAULT_SITE_FILTERS_ANALYSIS
+        self,
+        transcript,
+        site_mask=None,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
         """Compute variant effects for a gene transcript.
 
@@ -935,7 +1028,7 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
 
         Returns
@@ -945,7 +1038,9 @@ class Ag3:
         """
 
         # setup initial dataframe of SNPs
-        _, _, df_snps = self._snp_df(transcript=transcript, site_filters=site_filters)
+        _, _, df_snps = self._snp_df(
+            transcript=transcript, site_filters_analysis=site_filters_analysis
+        )
 
         # setup variant effect annotator
         ann = self._annotator()
@@ -964,7 +1059,7 @@ class Ag3:
         return df_snps
 
     def _prep_cohorts_arg(
-        self, *, cohorts, sample_sets, species_calls, cohorts_analysis
+        self, *, cohorts, sample_sets, species_analysis, cohorts_analysis
     ):
 
         # build cohort dictionary where key=cohort_id, value=loc_coh
@@ -972,7 +1067,7 @@ class Ag3:
         if isinstance(cohorts, dict):
             # get sample metadata
             df_meta = self.sample_metadata(
-                sample_sets=sample_sets, species_calls=species_calls
+                sample_sets=sample_sets, species_analysis=species_analysis
             )
             for coh, query in cohorts.items():
                 # locate samples
@@ -1003,8 +1098,8 @@ class Ag3:
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
-        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
         effects=True,
@@ -1028,14 +1123,14 @@ class Ag3:
             these can be removed from the output dataframe using pandas df.dropna(axis='columns').
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str, optional
+        site_filters_analysis : str, optional
             Site filters analysis version.
-        species_calls : {"aim_20200422", "pca_20200422"}, optional
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
             If True, variants with no alternate allele calls in any cohorts are dropped from
             the result.
@@ -1055,7 +1150,7 @@ class Ag3:
 
         # setup initial dataframe of SNPs
         region, loc_feature, df_snps = self._snp_df(
-            transcript=transcript, site_filters=site_filters
+            transcript=transcript, site_filters_analysis=site_filters_analysis
         )
 
         # get genotypes
@@ -1072,7 +1167,7 @@ class Ag3:
         coh_dict = self._prep_cohorts_arg(
             cohorts=cohorts,
             sample_sets=sample_sets,
-            species_calls=species_calls,
+            species_analysis=species_analysis,
             cohorts_analysis=cohorts_analysis,
         )
 
@@ -1143,7 +1238,7 @@ class Ag3:
 
         if self._cache_cross_metadata is None:
 
-            path = f"{self._path}/v3/metadata/crosses/crosses.fam"
+            path = f"{self._base_path}/v3/metadata/crosses/crosses.fam"
             fam_names = [
                 "cross",
                 "sample_id",
@@ -1186,7 +1281,7 @@ class Ag3:
         """
 
         if self._cache_site_annotations is None:
-            path = f"{self._path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
+            path = f"{self._base_path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
@@ -1196,7 +1291,7 @@ class Ag3:
         region,
         field,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1204,7 +1299,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`.
@@ -1213,7 +1308,7 @@ class Ag3:
             "seq_flen", "seq_relpos_start", "seq_relpos_stop".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters_analysis : str
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.from_array().
@@ -1239,14 +1334,17 @@ class Ag3:
 
         # access and subset to SNP positions
         pos = self.snp_sites(
-            region=region, field="POS", site_mask=site_mask, site_filters=site_filters
+            region=region,
+            field="POS",
+            site_mask=site_mask,
+            site_filters_analysis=site_filters_analysis,
         )
         d = da.take(d, pos - 1)
 
         return d
 
     def _snp_calls_dataset(
-        self, *, region, sample_set, site_filters, inline_array, chunks
+        self, *, region, sample_set, site_filters_analysis, inline_array, chunks
     ):
 
         region = self._resolve_region(region)
@@ -1283,7 +1381,9 @@ class Ag3:
 
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
-            filters_root = self.open_site_filters(mask=mask, analysis=site_filters)
+            filters_root = self.open_site_filters(
+                mask=mask, analysis=site_filters_analysis
+            )
             z = filters_root[f"{region.contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d[loc_region]
@@ -1329,7 +1429,7 @@ class Ag3:
         region,
         sample_sets=None,
         site_mask=None,
-        site_filters=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1337,7 +1437,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str
+        region: str or list of str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
@@ -1345,10 +1445,10 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters : str
+        site_filters_analysis : str
             Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -1376,7 +1476,7 @@ class Ag3:
                         self._snp_calls_dataset(
                             region=r,
                             sample_set=s,
-                            site_filters=site_filters,
+                            site_filters_analysis=site_filters_analysis,
                             inline_array=inline_array,
                             chunks=chunks,
                         )
@@ -1428,7 +1528,8 @@ class Ag3:
             return self._cache_cnv_hmm[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/cnv/{sample_set}/hmm/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/hmm/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_hmm[sample_set] = root
@@ -1519,7 +1620,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1575,7 +1676,8 @@ class Ag3:
             return self._cache_cnv_coverage_calls[key]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
             # N.B., not all sample_set/analysis combinations exist, need to check
             marker = path + "/.zmetadata"
             if not self._fs.exists(marker):
@@ -1709,7 +1811,8 @@ class Ag3:
             return self._cache_cnv_discordant_read_calls[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/cnv/{sample_set}/discordant_read_calls/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/discordant_read_calls/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
@@ -1807,7 +1910,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1855,7 +1958,7 @@ class Ag3:
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
 
         Returns
         -------
@@ -1925,7 +2028,7 @@ class Ag3:
         cohorts,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
-        species_calls=DEFAULT_SPECIES_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
     ):
         """Compute modal copy number by gene, then compute the frequency of
@@ -1946,12 +2049,12 @@ class Ag3:
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
             Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
             these can be removed from the output dataframe using pandas df.dropna(axis='columns').
-        species_calls : {"aim_20200422", "pca_20200422"}, optional
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
 
         Returns
         -------
@@ -1995,7 +2098,7 @@ class Ag3:
         coh_dict = self._prep_cohorts_arg(
             cohorts=cohorts,
             sample_sets=sample_sets,
-            species_calls=species_calls,
+            species_analysis=species_analysis,
             cohorts_analysis=cohorts_analysis,
         )
 
@@ -2051,7 +2154,8 @@ class Ag3:
             return self._cache_haplotypes[(sample_set, analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/snp_haplotypes/{sample_set}/{analysis}/zarr"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             # some sample sets have no data for a given analysis, handle this
             if ".zmetadata" not in store:
@@ -2079,7 +2183,7 @@ class Ag3:
         try:
             return self._cache_haplotype_sites[analysis]
         except KeyError:
-            path = f"{self._path}/v3/snp_haplotypes/sites/{analysis}/zarr"
+            path = f"{self._base_path}/v3/snp_haplotypes/sites/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
@@ -2170,7 +2274,7 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -2235,7 +2339,8 @@ class Ag3:
             return self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
-            path = f"{self._path}/{release}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+            release_path = _release_to_path(release)
+            path = f"{self._base_path}/{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pandas.read_csv(f, na_values="")
 
@@ -2252,9 +2357,9 @@ class Ag3:
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "v3") or a list of release identifiers.
+            "3.0") or a list of release identifiers.
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis identifier (date of analysis), default is the latest version.
 
         Returns
         -------
