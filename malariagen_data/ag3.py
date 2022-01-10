@@ -1178,7 +1178,7 @@ class Ag3:
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples < min_cohort_size:
-                freq_cols[coh] = np.nan
+                freq_cols["frq_" + coh] = np.nan
             else:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
@@ -1186,7 +1186,7 @@ class Ag3:
                 # compute allele frequencies
                 af_coh = ac_coh.to_frequencies()
                 # add column to dict
-                freq_cols[coh] = af_coh[:, 1:].flatten()
+                freq_cols["frq_" + coh] = af_coh[:, 1:].flatten()
 
         # build a dataframe with the frequency columns
         df_freqs = pandas.DataFrame(freq_cols)
@@ -1200,7 +1200,7 @@ class Ag3:
             [
                 df_snps,
                 pandas.DataFrame(
-                    {"max_af": df_snps[list(coh_dict.keys())].max(axis=1)}
+                    {"max_af": df_snps[list(freq_cols.keys())].max(axis=1)}
                 ),
             ],
             axis=1,

@@ -744,7 +744,8 @@ def test_snp_allele_frequencies__str_cohorts():
     df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
     all_cohort_labels = df_coh[coh_nm].dropna().unique().tolist()
-    expected_fields = universal_fields + all_cohort_labels + ["max_af"]
+    frq_cohort_labels = ["frq_" + s for s in all_cohort_labels]
+    expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
 
     assert df.columns.tolist() == expected_fields
     assert isinstance(df, pd.DataFrame)
@@ -778,14 +779,15 @@ def test_snp_allele_frequencies__dict_cohorts():
     )
 
     assert isinstance(df, pd.DataFrame)
-    expected_fields = universal_fields + list(cohorts.keys()) + ["max_af"]
+    frq_columns = ["frq_" + s for s in list(cohorts.keys())]
+    expected_fields = universal_fields + frq_columns + ["max_af"]
     assert df.columns.tolist() == expected_fields
     assert df.shape == (133, len(expected_fields))
     assert df.iloc[0].position == 28597653
     assert df.iloc[1].ref_allele == "A"
     assert df.iloc[2].alt_allele == "C"
-    assert df.iloc[3].ke == 0
-    assert df.iloc[4].bf_2012_col == pytest.approx(0.006097, abs=1e-6)
+    assert df.iloc[3].frq_ke == 0
+    assert df.iloc[4].frq_bf_2012_col == pytest.approx(0.006097, abs=1e-6)
     assert df.iloc[4].max_af == pytest.approx(0.006097, abs=1e-6)
     # check invariant have been dropped
     assert df.max_af.min() > 0
@@ -841,7 +843,8 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
     coh_nm = "cohort_" + cohorts
     all_cohort_labels = df_coh[coh_nm].dropna().unique().tolist()
-    expected_fields = universal_fields + all_cohort_labels + ["max_af"] + effects_fields
+    frq_cohort_labels = ["frq_" + s for s in all_cohort_labels]
+    expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 16526
