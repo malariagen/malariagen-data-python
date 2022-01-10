@@ -1177,9 +1177,11 @@ class Ag3:
             n_samples = np.count_nonzero(loc_coh)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            if n_samples < min_cohort_size:
-                freq_cols[coh] = np.nan
-            else:
+            # let's just drop columns < min cohort size
+            # if n_samples < min_cohort_size:
+            #     # freq_cols[coh] = np.nan
+            #     continue
+            if n_samples >= min_cohort_size:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
@@ -1200,7 +1202,7 @@ class Ag3:
             [
                 df_snps,
                 pandas.DataFrame(
-                    {"max_af": df_snps[list(coh_dict.keys())].max(axis=1)}
+                    {"max_af": df_snps[list(freq_cols.keys())].max(axis=1)}
                 ),
             ],
             axis=1,
