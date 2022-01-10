@@ -1261,11 +1261,11 @@ def test_gene_cnv_frequencies(contig, cohorts):
         # sanity checks
         cohort_labels = None
         if isinstance(cohorts, dict):
-            cohort_labels = cohorts.keys()
+            cohort_labels = ["frq_" + s for s in cohorts.keys()]
         if isinstance(cohorts, str):
             df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
             coh_nm = "cohort_" + cohorts
-            cohort_labels = list(df_coh[coh_nm].dropna().unique())
+            cohort_labels = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
 
         suffixes = ["_amp", "_del"]
         cnv_freq_cols = [a + b for a in cohort_labels for b in suffixes]

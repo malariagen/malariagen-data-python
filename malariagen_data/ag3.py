@@ -2109,8 +2109,8 @@ class Ag3:
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples < min_cohort_size:
-                freq_cols[f"{coh}_amp"] = np.nan
-                freq_cols[f"{coh}_del"] = np.nan
+                freq_cols[f"frq_{coh}_amp"] = np.nan
+                freq_cols[f"frq_{coh}_del"] = np.nan
             else:
                 is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
                 is_del_coh = np.compress(loc_samples, is_del, axis=1)
@@ -2118,8 +2118,8 @@ class Ag3:
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
                 del_freq_coh = del_count_coh / n_samples
-                freq_cols[f"{coh}_amp"] = amp_freq_coh
-                freq_cols[f"{coh}_del"] = del_freq_coh
+                freq_cols[f"frq_{coh}_amp"] = amp_freq_coh
+                freq_cols[f"frq_{coh}_del"] = del_freq_coh
 
         # build a dataframe with the frequency columns
         df_freqs = pandas.DataFrame(freq_cols)
