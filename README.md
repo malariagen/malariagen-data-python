@@ -5,7 +5,7 @@ This Python package provides convenience methods for accessing public data from 
 Installation:
 
 ```bash
-$ pip install --pre malariagen-data
+$ pip install malariagen-data
 ```
 
 Usage:
@@ -72,6 +72,32 @@ $ poetry publish
 
 
 ## Release notes
+
+### 0.15.0
+
+* Updates default cohort parameter to latest analysis (20211101).
+
+### 0.14.1
+
+* Big fix to `Amin1.snp_calls()` handling of site_mask parameter.
+
+### 0.14.0
+
+* Adds the `Amin1` class providing access to the *Anopheles minimus* `Amin1` SNP data release.
+
+### 0.12.1
+
+* Bug fix to `Ag3.sample_cohorts()`.
+
+### 0.12.0
+
+* Updates default cohort parameter to latest analysis (20210927).
+
+* Reduces dataframe fragmentation and memory footprint in `Ag3.gene_cnv_frequencies()`.
+
+### 0.11.0
+
+* Adds support for standard cohorts in the functions `Ag3.snp_allele_frequencies()` and `Ag3.gene_cnv_frequencies()`.
 
 ### 0.10.0
 
