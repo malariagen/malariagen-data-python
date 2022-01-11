@@ -126,7 +126,7 @@ class Pf7:
 
         return ds
 
-    def variant_calls(self, inline_array=True, chunks="native"):
+    def variant_calls(self, extended=False, inline_array=True, chunks="native"):
         """Access variant sites, site filters and genotype calls.
         Parameters
         ----------
@@ -143,6 +143,7 @@ class Pf7:
         # multiple sample sets requested, need to concatenate along samples dimension
         datasets = [
             self._variant_dataset(
+                extended=extended,
                 inline_array=inline_array,
                 chunks=chunks,
             )
