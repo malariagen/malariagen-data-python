@@ -117,12 +117,18 @@ class Pf7:
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         if extended:
-            gq_z = root["calldata/GQ"]
-            call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-            data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
+            variant_fields = ["AC", "AF", "AN", "ANN_AA_length", "ANN_AA_pos"]
+            for field_name in variant_fields:
+                field_z = root[f"variants/{field_name}"]
+                field = da_from_zarr(field_z, inline_array=inline_array, chunks=chunks)
+                data_vars[field_name] = (DIM_VARIANT, field)
+
+            # gq_z = root["calldata/GQ"]
+            # call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+            # data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords)  # , attrs=attrs)
+        ds = xarray.Dataset(data_vars=data_vars, coords=coords)
 
         return ds
 
