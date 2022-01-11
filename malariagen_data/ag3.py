@@ -1180,7 +1180,6 @@ class Ag3:
             # let's just drop columns < min cohort size
             # if n_samples < min_cohort_size:
             #     # freq_cols[coh] = np.nan
-            #     continue
             if n_samples >= min_cohort_size:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles

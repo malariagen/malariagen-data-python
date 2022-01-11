@@ -747,16 +747,14 @@ def test_snp_allele_frequencies__str_cohorts():
     coh_nm = "cohort_" + cohorts
     # all_cohort_labels = df_coh[coh_nm].dropna().value.tolist()
     coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
-    cohort_labels = coh_counts[
-        coh_counts.cohort_admin1_month >= min_cohort_size
-    ].index.to_list()
+    cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
 
     # expected_fields = universal_fields + all_cohort_labels + ["max_af"]
     expected_fields = universal_fields + cohort_labels + ["max_af"]
 
-    assert df.columns.tolist() == expected_fields
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    # assert df.shape == (16526, 103)
+    assert df.shape == (16526, 68)
 
 
 def test_snp_allele_frequencies__dict_cohorts():
