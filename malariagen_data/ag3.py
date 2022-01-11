@@ -698,14 +698,30 @@ class Ag3:
         if field is None:
             # return POS, REF, ALT
             ret = tuple(
-                self.snp_sites(region=region, field=f, site_mask=None)
+                self.snp_sites(
+                    region=region,
+                    field=f,
+                    site_mask=None,
+                    chunks=chunks,
+                    inline_array=inline_array,
+                )
                 for f in ("POS", "REF", "ALT")
             )
 
         elif isinstance(region, (tuple, list)) and not isinstance(region, Region):
             # concatenate
             ret = da.concatenate(
-                [self.snp_sites(region=r, field=field, site_mask=None) for r in region]
+                [
+                    self.snp_sites(
+                        region=r,
+                        field=field,
+                        site_mask=None,
+                        chunks=chunks,
+                        inline_array=inline_array,
+                    )
+                    for r in region
+                ],
+                axis=0,
             )
 
         else:
@@ -717,7 +733,11 @@ class Ag3:
 
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters_analysis
+                region=region,
+                mask=site_mask,
+                analysis=site_filters_analysis,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             if isinstance(ret, tuple):
                 ret = tuple(da_compress(loc_sites, d, axis=0) for d in ret)
