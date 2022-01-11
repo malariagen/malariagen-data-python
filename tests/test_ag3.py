@@ -265,7 +265,7 @@ def test_open_snp_sites():
 
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L", "2R:48714463-48715355"]])
+@pytest.mark.parametrize("region", ["2R", ["3R", "3L"], ["3R", "2R:48714463-48715355"]])
 def test_snp_sites(chunks, region):
 
     ag3 = setup_ag3()
@@ -297,12 +297,14 @@ def test_snp_sites(chunks, region):
     assert pos_pass.ndim == 1
     assert pos_pass.dtype == "i4"
     assert pos_pass.shape[0] == np.count_nonzero(filter_pass)
+    assert pos_pass.compute().shape == pos_pass.shape
     pos_pass, ref_pass, alt_pass = ag3.snp_sites(
         region=region, site_mask="gamb_colu_arab"
     )
     for d in pos_pass, ref_pass, alt_pass:
         assert isinstance(d, da.Array)
         assert d.shape[0] == np.count_nonzero(filter_pass)
+        assert d.shape == d.compute().shape
 
 
 def test_open_snp_genotypes():
@@ -598,6 +600,10 @@ def test_snp_calls(sample_sets, region, site_mask):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_AD"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+    # check compress bug
+    pos = ds["variant_position"].data
+    assert pos.shape == pos.compute().shape
 
 
 def test_snp_effects():

@@ -204,9 +204,14 @@ def da_compress(indexer, data, axis):
     assert isinstance(indexer, da.Array)
     assert isinstance(axis, int)
     assert indexer.shape[0] == data.shape[axis]
+
+    # useful variables
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
     axis_n_chunks = len(axis_old_chunks)
+
+    # ensure indexer and data are chunked in the same way
+    indexer = indexer.rechunk((axis_old_chunks,))
 
     # apply the indexing operation
     v = da.compress(indexer, data, axis=axis)
@@ -216,12 +221,10 @@ def da_compress(indexer, data, axis):
     # multidimensional arrays, so hack something more efficient
 
     axis_new_chunks = tuple(
-        indexer.rechunk((axis_old_chunks,))
-        .map_blocks(
+        indexer.map_blocks(
             lambda b: np.sum(b, keepdims=True),
             chunks=((1,) * axis_n_chunks,),
-        )
-        .compute()
+        ).compute()
     )
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
