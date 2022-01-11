@@ -6,6 +6,13 @@ import dask.array as da
 import numpy as np
 import pandas
 import xarray as xr
+from fsspec.core import url_to_fs
+from fsspec.mapping import FSMap
+
+DIM_VARIANT = "variants"
+DIM_ALLELE = "alleles"
+DIM_SAMPLE = "samples"
+DIM_PLOIDY = "ploidy"
 
 
 def gff3_parse_attributes(attributes_string):
@@ -110,12 +117,10 @@ class SiteClass(Enum):
     INTRON_LAST = 10
 
 
-def from_zarr(z, inline_array, chunks="auto"):
+def da_from_zarr(z, inline_array, chunks="auto"):
     """Utility function for turning a zarr array into a dask array.
-
     N.B., dask does have it's own from_zarr() function but we roll
     our own here to get a little more control.
-
     """
     if chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
@@ -133,19 +138,15 @@ def from_zarr(z, inline_array, chunks="auto"):
 def dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
     index an xarray dataset with a Boolean array.
-
     See also: https://github.com/pydata/xarray/issues/5054
-
     Parameters
     ----------
     ds : xarray.Dataset
     indexer : str
     dim : str
-
     Returns
     -------
     xarray.Dataset
-
     """
     if isinstance(indexer, str):
         indexer = ds[indexer].data
@@ -184,12 +185,12 @@ def _dask_compress_dataarray(a, indexer, dim):
 
     else:
         # apply the indexing operation
-        v = dask_compress(indexer, a.data, axis)
+        v = da_compress(indexer, a.data, axis)
 
     return v
 
 
-def dask_compress(indexer, data, axis):
+def da_compress(indexer, data, axis):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # sanity checks
@@ -222,3 +223,32 @@ def dask_compress(indexer, data, axis):
     v._chunks = new_chunks
 
     return v
+
+
+def init_filesystem(url, **kwargs):
+    """Initialise an fsspec filesystem from a given base URL and parameters."""
+
+    # special case Google Cloud Storage, use anonymous access, avoids a delay
+    if url.startswith("gs://") or url.startswith("gcs://"):
+        kwargs["token"] = "anon"
+    elif "gs://" in url:
+        # chained URL
+        kwargs["gs"] = dict(token="anon")
+    elif "gcs://" in url:
+        # chained URL
+        kwargs["gcs"] = dict(token="anon")
+
+    # process the url using fsspec
+    fs, path = url_to_fs(url, **kwargs)
+
+    # path compatibility, fsspec/gcsfs behaviour varies between version
+    while path.endswith("/"):
+        path = path[:-1]
+
+    return fs, path
+
+
+def init_zarr_store(fs, path):
+    """Initialise a zarr store (mapping) from an fsspec filesystem."""
+
+    return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))
