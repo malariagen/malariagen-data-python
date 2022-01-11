@@ -1,6 +1,7 @@
 import json
 import os
 
+import dask.array as da
 import pandas as pd
 import xarray
 import zarr
@@ -52,47 +53,73 @@ class Pf7:
             self._cache_zarr = zarr.open(store=store)
         return self._cache_zarr
 
-    def _variant_dataset(self, inline_array, chunks):
+    def _variant_dataset(self, inline_array, chunks, extended=False):
 
         # setup
         coords = dict()
         data_vars = dict()
         root = self.open_zarr()
+        # chrom, pos, ref, alt, gt, ad, filter_pass, is_snp, numalt
+        # cds
 
         # variant_position
         pos_z = root["variants/POS"]
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
-        # variant_allele
+        # variant_chrom
         chrom_z = root["variants/CHROM"]
         variant_chrom = da_from_zarr(chrom_z, inline_array=inline_array, chunks=chunks)
         coords["variant_chrom"] = [DIM_VARIANT], variant_chrom
+
+        # variant_allele
+        ref_z = root["variants/REF"]
+        alt_z = root["variants/ALT"]
+        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
         # variant_filter_pass
         fp_z = root["variants/FILTER_PASS"]
         fp = da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
         data_vars["variant_filter_pass"] = [DIM_VARIANT], fp
 
+        # variant_is_snp
+        is_snp_z = root["variants/is_snp"]
+        is_snp = da_from_zarr(is_snp_z, inline_array=inline_array, chunks=chunks)
+        data_vars["variant_is_snp"] = [DIM_VARIANT], is_snp
+
+        # variant_numalt
+        numalt_z = root["variants/numalt"]
+        numalt = da_from_zarr(numalt_z, inline_array=inline_array, chunks=chunks)
+        data_vars["variant_numalt"] = [DIM_VARIANT], numalt
+
+        # variant_numalt
+        cds_z = root["variants/CDS"]
+        cds = da_from_zarr(cds_z, inline_array=inline_array, chunks=chunks)
+        data_vars["variant_CDS"] = [DIM_VARIANT], cds
+
         # call arrays
         gt_z = root["calldata/GT"]
         call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = root["calldata/GQ"]
-        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
         ad_z = root["calldata/AD"]
         call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
         )
-        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
-        # data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
         data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
 
         # sample arrays
         z = root["samples"]
         sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
+
+        if extended:
+            gq_z = root["calldata/GQ"]
+            call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+            data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
 
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords)  # , attrs=attrs)
