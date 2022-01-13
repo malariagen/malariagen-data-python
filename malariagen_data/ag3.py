@@ -7,6 +7,7 @@ import dask.array as da
 import numba
 import numpy as np
 import pandas
+import seaborn as sns
 import xarray
 import zarr
 
@@ -2394,6 +2395,139 @@ class Ag3:
         df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
+
+    def frq_style(self, df, index, title="", species=None, max_table=100):
+        """Styles frequency dataframes for presentation.
+
+        Parameters
+        ----------
+        df : pandas dataframe
+            Must contain "frq_..." columns and at least one other column from which to construct a
+            unique index, e.g. as output by ag3.snp_allele_frequencies or ag3.gene_cnv_frequencies.
+            The dataframe must be below max_table size i.e. should be pre-filtered to desired loci.
+        index : list of str
+            Column names from the input df which are used to construct a unique display index for the output.
+        title : str, optional
+            User can provide a title for the output.
+        species : str or list of str, optional
+            The output table can be filtered to desired species by using "gamb" to select Anopheles gambiae,
+            "colu" for A. coluzzii and  "arab" for A. arabiensis. When "None" all species present in the
+            input df are displayed.
+        max_table : int, optional
+            The method will return an error if the input table length exceeds the integer here.
+            Warning - as Styler objects will get always displayed, increasing max_table may result in
+            crashing Jupyter Notebooks.
+
+        Returns
+        -------
+        df : pandas.style.Styler
+
+        """
+        # check user has filtered the input df
+        assert len(df) <= max_table, f"input dataframe is longer than {max_table} rows"
+
+        # ensure that the things we want to make the index out of are all str type
+        for i in index:
+            df.loc[:, i] = df[i].astype(str)
+
+        # add ref/alt for clarity
+        if "ref_allele" in index:
+            if not df["ref_allele"].str.contains("ref").any():
+                df.loc[:, "ref_allele"] = "ref-" + df["ref_allele"]
+        if "alt_allele" in index:
+            if not df["alt_allele"].str.contains("alt").any():
+                df.loc[:, "alt_allele"] = "alt-" + df["alt_allele"]
+
+        # make a new column out of index list and give it the index_name
+        df.loc[:, "comp_index"] = df[index].agg("_".join, axis=1)
+
+        # check that index is unique (otherwise style won't work)
+        assert df["comp_index"].nunique() == len(
+            df
+        ), f"{index} - does not produce a unique index"
+
+        # drop and re-order columns
+        frq_cols = ["comp_index"] + sorted([col for col in df.columns if "frq" in col])
+
+        # check that freqs are all floats
+        for i in [col for col in df.columns if "frq" in col]:
+            df.loc[:, i] = df[i].astype(float)
+
+        # keep only freq cols
+        style_input_df = df[frq_cols].copy()
+
+        # set index
+        style_input_df.set_index("comp_index", inplace=True)
+
+        # clean column names
+        style_input_df.index.name = ""
+        style_input_df.columns = style_input_df.columns.str.lstrip("frq_")
+
+        # species filter
+        if isinstance(species, str):
+            sp_cols = [col for col in style_input_df.columns if species in col]
+            style_input_df = style_input_df[sp_cols]
+        if isinstance(species, list):
+            sp_cols = []
+            for sp in species:
+                sp_cols.append([col for col in style_input_df.columns if sp in col])
+            sp_cols = [element for sublist in sp_cols for element in sublist]
+            style_input_df = style_input_df[sp_cols]
+
+        # style column header html
+        cols_mapper = {c: f"<div>{c}</div>" for c in style_input_df.columns}
+        style_input_df.rename(columns=cols_mapper, inplace=True)
+
+        # style format
+        palette = "red"
+        cm = sns.light_palette(palette, as_cmap=True)
+        table_styles = [
+            dict(
+                selector="th>div",
+                props=[
+                    ("writing-mode", "vertical-rl"),
+                    ("transform", "rotate(180deg)"),
+                    # ("height", "150px"),
+                    ("text-align", "left"),
+                ],
+            ),
+            dict(
+                selector="*",
+                props=[
+                    ("font-family", "monospace"),
+                ],
+            ),
+            dict(
+                selector="td",
+                props=[("text-align", "right"), ("border", "2px solid white")],
+            ),
+            dict(
+                selector="th",
+                props=[
+                    # ("text-align", "right"),
+                    ("border", "2px solid white")
+                ],
+            ),
+            dict(
+                selector="caption",
+                props=[
+                    ("color", "dark-gray"),
+                    ("font-size", "16px"),
+                    ("text-align", "left"),
+                ],
+            ),
+        ]
+
+        return (
+            style_input_df.style.set_caption(title)
+            .background_gradient(cmap=cm)
+            .format(
+                lambda v: "<span>{:.0%}</span>".format(v)
+                if v > 0.01
+                else "&nbsp;&nbsp;&nbsp;&nbsp;"
+            )
+            .set_table_styles(table_styles)
+        )
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")

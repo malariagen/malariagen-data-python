@@ -2,6 +2,7 @@ import random
 
 import dask.array as da
 import numpy as np
+import pandas
 import pandas as pd
 import pytest
 import scipy.stats
@@ -1467,3 +1468,26 @@ def test_locate_region(region_raw):
         assert region == Region("2R", 48714463, 48715355)
     if region_raw == "2L:24,630,355-24,633,221":
         assert region == Region("2L", 24630355, 24633221)
+
+
+def test_frq_style():
+    ag3 = setup_ag3()
+    gene = "AGAP004707"
+    transcript = f"{gene}-RD"
+    cohort = "admin1_year"
+    min_af = 0.05
+    index = ["position", "alt_allele", "ref_allele", "aa_change"]
+
+    df_snp_af = ag3.snp_allele_frequencies(
+        transcript=transcript,
+        cohorts=cohort,
+        min_cohort_size=10,
+        sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
+    )
+
+    df_snps = df_snp_af.query(
+        f"effect == 'NON_SYNONYMOUS_CODING' and max_af > {min_af}"
+    )
+
+    df_style = ag3.frq_style(df=df_snps, index=index)
+    assert isinstance(df_style, pandas.io.formats.style.Styler)
