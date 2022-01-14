@@ -2395,6 +2395,26 @@ class Ag3:
 
         return df
 
+    def aa_frequencies(self, df):
+        """Compute frequencies of amino acid substitutions from snp allele frequencies.
+        Where multiple snp changes cause identical amino acid substitutions, frequencies
+        are summed.
+
+        Parameters
+        ----------
+        df : pandas.Dataframe from ag3.snp_allele_frequencies()
+            Input dataframe must contain "aa_pos", "aa_change" and "frq..." columns, as output
+            from the ag3.snp_allele_frequencies() method.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+
+        df_aaf = df.groupby(["aa_pos", "aa_change"]).sum().reset_index()
+        return df_aaf
+
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):

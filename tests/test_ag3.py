@@ -1467,3 +1467,28 @@ def test_locate_region(region_raw):
         assert region == Region("2R", 48714463, 48715355)
     if region_raw == "2L:24,630,355-24,633,221":
         assert region == Region("2L", 24630355, 24633221)
+
+
+def test_aa_frequencies():
+    ag3 = setup_ag3()
+    gene = "AGAP004707"
+    transcript = f"{gene}-RD"
+    cohort = "admin1_year"
+    min_af = 0.05
+
+    df_snp_af = ag3.snp_allele_frequencies(
+        transcript=transcript,
+        cohorts=cohort,
+        min_cohort_size=10,
+        sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
+    )
+
+    df_snps = df_snp_af.query(
+        f"effect == 'NON_SYNONYMOUS_CODING' and max_af > {min_af}"
+    )
+
+    df_aaf = ag3.aa_frequencies(df_snps)
+
+    assert isinstance(df_aaf, pd.DataFrame)
+    assert len(df_aaf) == len(df_snps) - 1
+    assert df_aaf.aa_change.is_unique
