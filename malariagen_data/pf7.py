@@ -17,7 +17,7 @@ from malariagen_data.util import (
 )
 
 DIM_ALT_ALLELE = "alt_alleles"
-DIM_STATISTICS = "statistics"
+DIM_STATISTICS = "sb_statistics"
 DIM_GENOTYPES = "genotypes"
 
 
