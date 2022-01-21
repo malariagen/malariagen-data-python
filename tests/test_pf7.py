@@ -6,12 +6,8 @@ import numpy as np
 import pandas as pd
 import zarr
 
-from malariagen_data.pf7 import Pf7
+from malariagen_data.pf7 import DIM_ALT_ALLELE, DIM_GENOTYPES, DIM_STATISTICS, Pf7
 from malariagen_data.util import DIM_PLOIDY, DIM_SAMPLE, DIM_VARIANT
-
-DIM_ALT_ALLELE = "alt_alleles"
-DIM_STATISTICS = "statistics"
-DIM_GENOTYPES = "genotypes"
 
 
 class TestPf7(unittest.TestCase):
