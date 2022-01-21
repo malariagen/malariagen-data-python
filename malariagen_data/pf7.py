@@ -259,20 +259,10 @@ class Pf7:
         ds : xarray.Dataset
         """
 
-        datasets = [
-            self._variant_dataset(
-                extended=extended,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-        ]
-        ds = xarray.concat(
-            datasets,
-            dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
+        ds = self._variant_dataset(
+            extended=extended,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         return ds

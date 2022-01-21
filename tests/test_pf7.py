@@ -315,41 +315,21 @@ class TestPf7(unittest.TestCase):
         )
 
     @patch("malariagen_data.pf7.Pf7._variant_dataset")
-    @patch("malariagen_data.pf7.xarray.concat")
-    def test_variant_calls_default(self, mock_concat, mock_dataset):
-        mock_dataset.return_value = "ds"
+    def test_variant_calls_default(self, mock_dataset):
         self.test_pf7_class.variant_calls()
         mock_dataset.assert_called_once_with(
             extended=False,
             inline_array=True,
             chunks="native",
         )
-        mock_concat.assert_called_once_with(
-            ["ds"],
-            compat="override",
-            coords="minimal",
-            data_vars="minimal",
-            dim="variants",
-            join="override",
-        )
 
     @patch("malariagen_data.pf7.Pf7._variant_dataset")
-    @patch("malariagen_data.pf7.xarray.concat")
-    def test_variant_calls_with_extended_set(self, mock_concat, mock_dataset):
-        mock_dataset.return_value = "ds"
+    def test_variant_calls_with_extended_set(self, mock_dataset):
         self.test_pf7_class.variant_calls(extended=True)
         mock_dataset.assert_called_once_with(
             extended=True,
             inline_array=True,
             chunks="native",
-        )
-        mock_concat.assert_called_once_with(
-            ["ds"],
-            compat="override",
-            coords="minimal",
-            data_vars="minimal",
-            dim="variants",
-            join="override",
         )
 
 
