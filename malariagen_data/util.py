@@ -119,8 +119,10 @@ class SiteClass(Enum):
 
 def da_from_zarr(z, inline_array, chunks="auto"):
     """Utility function for turning a zarr array into a dask array.
+
     N.B., dask does have it's own from_zarr() function but we roll
     our own here to get a little more control.
+
     """
     if chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
@@ -138,15 +140,19 @@ def da_from_zarr(z, inline_array, chunks="auto"):
 def dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
     index an xarray dataset with a Boolean array.
+
     See also: https://github.com/pydata/xarray/issues/5054
+
     Parameters
     ----------
     ds : xarray.Dataset
     indexer : str
     dim : str
+
     Returns
     -------
     xarray.Dataset
+
     """
     if isinstance(indexer, str):
         indexer = ds[indexer].data
@@ -198,9 +204,14 @@ def da_compress(indexer, data, axis):
     assert isinstance(indexer, da.Array)
     assert isinstance(axis, int)
     assert indexer.shape[0] == data.shape[axis]
+
+    # useful variables
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
     axis_n_chunks = len(axis_old_chunks)
+
+    # ensure indexer and data are chunked in the same way
+    indexer = indexer.rechunk((axis_old_chunks,))
 
     # apply the indexing operation
     v = da.compress(indexer, data, axis=axis)
@@ -210,12 +221,10 @@ def da_compress(indexer, data, axis):
     # multidimensional arrays, so hack something more efficient
 
     axis_new_chunks = tuple(
-        indexer.rechunk((axis_old_chunks,))
-        .map_blocks(
+        indexer.map_blocks(
             lambda b: np.sum(b, keepdims=True),
             chunks=((1,) * axis_n_chunks,),
-        )
-        .compute()
+        ).compute()
     )
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
