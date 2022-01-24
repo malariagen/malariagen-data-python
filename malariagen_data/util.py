@@ -119,8 +119,10 @@ class SiteClass(Enum):
 
 def da_from_zarr(z, inline_array, chunks="auto"):
     """Utility function for turning a zarr array into a dask array.
+
     N.B., dask does have it's own from_zarr() function but we roll
     our own here to get a little more control.
+
     """
     if chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
@@ -138,15 +140,19 @@ def da_from_zarr(z, inline_array, chunks="auto"):
 def dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
     index an xarray dataset with a Boolean array.
+
     See also: https://github.com/pydata/xarray/issues/5054
+
     Parameters
     ----------
     ds : xarray.Dataset
     indexer : str
     dim : str
+
     Returns
     -------
     xarray.Dataset
+
     """
     if isinstance(indexer, str):
         indexer = ds[indexer].data
