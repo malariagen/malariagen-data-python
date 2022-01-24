@@ -255,9 +255,9 @@ class TestPf7(unittest.TestCase):
         self.assertIsInstance(root, zarr.hierarchy.Group)
 
     @patch("malariagen_data.pf7.Pf7.open_zarr")
-    def test_variant_dataset_default(self, mock_open_zarr):
+    def test_variant_calls_default(self, mock_open_zarr):
         mock_open_zarr.return_value = self.test_zarr_root
-        ds = self.test_pf7_class._variant_dataset(inline_array=True, chunks="native")
+        ds = self.test_pf7_class.variant_calls(inline_array=True, chunks="native")
         mock_open_zarr.assert_called_once_with()
         coords = list(ds.coords.keys())
         variables = list(ds.keys())
@@ -276,7 +276,7 @@ class TestPf7(unittest.TestCase):
         )
 
     @patch("malariagen_data.pf7.Pf7.open_zarr")
-    def test_variant_dataset_extended(self, mock_open_zarr):
+    def test_variant_calls_extended(self, mock_open_zarr):
         mock_open_zarr.return_value = self.test_zarr_root
         extended_variant_fields = {
             "AN": [DIM_VARIANT],
@@ -290,7 +290,7 @@ class TestPf7(unittest.TestCase):
             extended_calldata_variables=extended_calldata_variables,
             extended_variant_fields=extended_variant_fields,
         )
-        ds = test_pf7_class_extended._variant_dataset(
+        ds = test_pf7_class_extended.variant_calls(
             extended=True,
             inline_array=True,
             chunks="native",
@@ -312,24 +312,6 @@ class TestPf7(unittest.TestCase):
                 "call_DP",
                 "variant_AN",
             ],
-        )
-
-    @patch("malariagen_data.pf7.Pf7._variant_dataset")
-    def test_variant_calls_default(self, mock_dataset):
-        self.test_pf7_class.variant_calls()
-        mock_dataset.assert_called_once_with(
-            extended=False,
-            inline_array=True,
-            chunks="native",
-        )
-
-    @patch("malariagen_data.pf7.Pf7._variant_dataset")
-    def test_variant_calls_with_extended_set(self, mock_dataset):
-        self.test_pf7_class.variant_calls(extended=True)
-        mock_dataset.assert_called_once_with(
-            extended=True,
-            inline_array=True,
-            chunks="native",
         )
 
 

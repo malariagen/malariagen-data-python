@@ -163,7 +163,19 @@ class Pf7:
             self._cache_zarr = zarr.open(store=store)
         return self._cache_zarr
 
-    def _variant_dataset(self, inline_array, chunks, extended=False):
+    def variant_calls(self, extended=False, inline_array=True, chunks="native"):
+        """Access variant sites, site filters and genotype calls.
+        Parameters
+        ----------
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
 
         # setup
         coords = dict()
@@ -242,27 +254,5 @@ class Pf7:
 
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords)
-
-        return ds
-
-    def variant_calls(self, extended=False, inline_array=True, chunks="native"):
-        """Access variant sites, site filters and genotype calls.
-        Parameters
-        ----------
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
-        Returns
-        -------
-        ds : xarray.Dataset
-        """
-
-        ds = self._variant_dataset(
-            extended=extended,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
 
         return ds
