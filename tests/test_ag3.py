@@ -1471,24 +1471,26 @@ def test_locate_region(region_raw):
 
 def test_aa_frequencies():
     ag3 = setup_ag3()
-    gene = "AGAP004707"
-    transcript = f"{gene}-RD"
-    cohort = "admin1_year"
-    min_af = 0.05
+    cohorts = "admin1_year"
+    min_cohort_size = 10
+    sample_sets = ("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C")
 
-    df_snp_af = ag3.snp_allele_frequencies(
-        transcript=transcript,
-        cohorts=cohort,
-        min_cohort_size=10,
-        sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
+    df = ag3.aa_allele_frequencies(
+        transcript="AGAP004707-RD",
+        cohorts=cohorts,
+        cohorts_analysis="20211101",
+        min_cohort_size=min_cohort_size,
+        site_mask="gamb_colu",
+        sample_sets=sample_sets,
+        drop_invariant=True,
     )
+    # df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
+    # coh_nm = "cohort_" + cohorts
+    # coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
+    # cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
+    # frq_cohort_labels = ["frq_" + s for s in cohort_labels]
+    # expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
 
-    df_snps = df_snp_af.query(
-        f"effect == 'NON_SYNONYMOUS_CODING' and max_af > {min_af}"
-    )
-
-    df_aaf = ag3.aa_frequencies(df_snps)
-
-    assert isinstance(df_aaf, pd.DataFrame)
-    assert len(df_aaf) == len(df_snps) - 1
-    assert df_aaf.aa_change.is_unique
+    # assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert isinstance(df, pd.DataFrame)
+    # assert df.shape == (16526, 68)

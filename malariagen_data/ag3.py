@@ -2395,24 +2395,98 @@ class Ag3:
 
         return df
 
-    def aa_frequencies(self, df):
-        """Compute frequencies of amino acid substitutions from snp allele frequencies.
-        Where multiple snp changes cause identical amino acid substitutions, frequencies
-        are summed.
+    def aa_allele_frequencies(
+        self,
+        transcript,
+        cohorts,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        min_cohort_size=10,
+        site_mask=None,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        sample_sets=None,
+        drop_invariant=True,
+    ):
+        """Compute per amino acid allele frequencies for a gene transcript.
 
         Parameters
         ----------
-        df : pandas.Dataframe from ag3.snp_allele_frequencies()
-            Input dataframe must contain "aa_pos", "aa_change" and "frq..." columns, as output
-            from the ag3.snp_allele_frequencies() method.
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters_analysis : str, optional
+            Site filters analysis version.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
+            Include species calls in metadata.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "3.0") or a list of release identifiers.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any cohorts are dropped from
+            the result.
 
         Returns
         -------
-        df : pandas.DataFrame
+        df_snps : pandas.DataFrame
+
+        Notes
+        -----
+        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
 
         """
 
-        df_aaf = df.groupby(["aa_pos", "aa_change"]).sum().reset_index()
+        df_snps = self.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts=cohorts,
+            cohorts_analysis=cohorts_analysis,
+            min_cohort_size=min_cohort_size,
+            site_mask=site_mask,
+            site_filters_analysis=site_filters_analysis,
+            species_analysis=species_analysis,
+            sample_sets=sample_sets,
+            drop_invariant=drop_invariant,
+            effects=True,
+        )
+
+        # we just want aa change
+        df_ns_snps = df_snps.query("effect == 'NON_SYNONYMOUS_CODING'").copy()
+
+        # group and sum to collapse multi variant allele changes
+        df_aaf = df_ns_snps.groupby(["aa_pos", "aa_change"]).sum().reset_index()
+        df_aaf.set_index("aa_change", inplace=True)
+
+        # remove old max_af
+        df_aaf = df_aaf.drop(
+            [
+                "max_af",
+                "aa_pos",
+                "position",
+                "pass_gamb_colu_arab",
+                "pass_gamb_colu",
+                "pass_arab",
+            ],
+            axis=1,
+        ).copy()
+
+        freq_cols = [col for col in df_aaf if col.startswith("frq")]
+
+        # new max_af
+        df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
+
         return df_aaf
 
 
