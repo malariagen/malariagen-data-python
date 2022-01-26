@@ -1474,6 +1474,14 @@ def test_aa_frequencies():
     cohorts = "admin1_year"
     min_cohort_size = 10
     sample_sets = ("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C")
+    expected_fields = [
+        "frq_BF-09_gamb_2012",
+        "frq_BF-09_colu_2012",
+        "frq_BF-09_colu_2014",
+        "frq_BF-09_gamb_2014",
+        "frq_BF-07_gamb_2004",
+        "max_af",
+    ]
 
     df = ag3.aa_allele_frequencies(
         transcript="AGAP004707-RD",
@@ -1484,13 +1492,8 @@ def test_aa_frequencies():
         sample_sets=sample_sets,
         drop_invariant=True,
     )
-    # df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
-    # coh_nm = "cohort_" + cohorts
-    # coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
-    # cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
-    # frq_cohort_labels = ["frq_" + s for s in cohort_labels]
-    # expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
 
-    # assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    # assert df.shape == (16526, 68)
+    assert df.shape == (57, 6)
+    assert df.loc["V402L"].max_af == pytest.approx(0.121951, abs=1e-6)
