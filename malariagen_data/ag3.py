@@ -1163,8 +1163,7 @@ class Ag3:
 
         Notes
         -----
-        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+        Cohorts with fewer samples than min_cohort_size will be excluded from output.
 
         """
 
@@ -2444,8 +2443,7 @@ class Ag3:
 
         Notes
         -----
-        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+        Cohorts with fewer samples than min_cohort_size will be excluded from output.
 
         """
 
