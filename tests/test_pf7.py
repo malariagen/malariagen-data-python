@@ -218,20 +218,20 @@ class TestPf7(unittest.TestCase):
             },
         )
 
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("malariagen_data.pf7.pd.read_csv", return_value=pd.DataFrame())
-    def test_sample_metadata_calls_correctly(self, mock_read_csv, mock_open):
-        self.test_pf7_class.sample_metadata()
-        mock_open.assert_called_once_with(self.test_metadata_path, mode="rb")
-        mock_read_csv.assert_called_once()
-
     def test_sample_metadata_returns_extpected_df(self):
+        metadata_df = self.test_pf7_class.sample_metadata()
+        pd.testing.assert_frame_equal(metadata_df, self.test_metadata_df)
+
+    def test_read_general_metadata_returns_expected_df_with_cache_set(
+        self,
+    ):
+        self.test_pf7_class.sample_metadata()
         metadata_df = self.test_pf7_class.sample_metadata()
         pd.testing.assert_frame_equal(metadata_df, self.test_metadata_df)
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("malariagen_data.pf7.pd.read_csv", return_value=pd.DataFrame())
-    def test_read_general_metadata_with_cache_set(self, mock_read_csv, mock_open):
+    def test_read_general_metadata_uses_cache_when_set(self, mock_read_csv, mock_open):
         self.test_pf7_class.sample_metadata()
         self.test_pf7_class.sample_metadata()
         mock_open.assert_called_once()
@@ -246,13 +246,21 @@ class TestPf7(unittest.TestCase):
         ):
             pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
         pf7_mock_fs.open_zarr()
-
         mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
 
-    def test_open_zarr_on_real_data(self):
-        root = self.pf7_real_data.open_zarr()
-        self.assertIsInstance(root, zarr.hierarchy.Group)
+    @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
+    @patch("malariagen_data.pf7.zarr.open")
+    def test_open_zarr_uses_cache(self, mock_zarr, mock_safestore):
+        with patch(
+            "malariagen_data.pf7.init_filesystem",
+            return_value=["fs", self.test_data_path],
+        ):
+            pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
+        pf7_mock_fs.open_zarr()
+        pf7_mock_fs.open_zarr()
+        mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
+        mock_zarr.assert_called_once_with(store="Safe store object")
 
     @patch("malariagen_data.pf7.Pf7.open_zarr")
     def test_variant_calls_default(self, mock_open_zarr):
