@@ -38,6 +38,8 @@ class Pf7:
         # setup caches
         self._cache_sample_metadata = None
         self._cache_zarr = None
+
+        # zarr variables
         if extended_calldata_variables:
             self.extended_calldata_variables = extended_calldata_variables
         else:

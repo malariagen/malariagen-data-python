@@ -13,21 +13,19 @@ from malariagen_data.util import DIM_PLOIDY, DIM_SAMPLE, DIM_VARIANT
 class TestPf7(unittest.TestCase):
     def setUp(self):
         self.url_starts_with_gs = "gs://test_url"
-        self.url_starts_with_gcs = "gcs://test_url"
-        self.url_includes_gs = "some_prefix/gs://test_url"
-        self.url_includes_gcs = "some_prefix/gcs://test_url"
-        self.url_not_cloud = "/local/path"
-        self.url_trailing_slash = "/local/path/"
         self.working_dir = os.path.dirname(os.path.abspath(__file__))
         self.test_config_path = os.path.join(self.working_dir, "test_pf7_config.json")
         self.test_data_path = os.path.join(self.working_dir, "pf7_test_data")
         self.test_pf7_class = Pf7(
             self.test_data_path, data_config=self.test_config_path
         )
-        self.test_metadata_path = os.path.join(
-            self.test_data_path, "metadata/test_metadata.txt"
-        )
         self.test_zarr_path = os.path.join(self.test_data_path, "pf7.zarr/")
+
+        # Datasets
+        self.config_content = {
+            "metadata_path": "metadata/test_metadata.txt",
+            "zarr_path": "pf7.zarr/",
+        }
         self.d = {
             "Sample": ["sample1", "sample2", "sample3", "sample4"],
             "Study": ["study1", "study2", "study3", "study1"],
@@ -80,12 +78,6 @@ class TestPf7(unittest.TestCase):
         )
         calldata.create_dataset("DP", data=np.arange(50).reshape(10, 5), chunks=(1,))
         self.test_zarr_root.create_dataset("samples", data=np.arange(5), chunks=(1,))
-        self.url_real_data = "gs://pf7_staging/"
-        self.pf7_real_data = Pf7(self.url_real_data)
-        self.config_content = {
-            "metadata_path": "metadata/test_metadata.txt",
-            "zarr_path": "pf7.zarr/",
-        }
         self.test_extended_calldata_variables = {
             "DP": [DIM_VARIANT, DIM_SAMPLE],
             "GQ": [DIM_VARIANT, DIM_SAMPLE],
