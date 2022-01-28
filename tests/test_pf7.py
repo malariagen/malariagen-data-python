@@ -2,6 +2,7 @@ import os
 import unittest
 from unittest.mock import mock_open, patch
 
+import dask.array as da
 import numpy as np
 import pandas as pd
 import zarr
@@ -277,6 +278,67 @@ class TestPf7(unittest.TestCase):
     def test_subset_extended_dictionary_raises_error(self):
         with self.assertRaises(ValueError):
             self.test_pf7_class.subset_extended_dictionary(["DP", "AC", "BAD_VARIABLE"])
+
+    def test_add_coordinates(self):
+        var_names_for_outputs = {
+            "POS": "position",
+            "CHROM": "chrom",
+            "FILTER_PASS": "filter_pass",
+        }
+        actual_coordinates = self.test_pf7_class.add_coordinates(
+            self.test_zarr_root, True, "native", var_names_for_outputs
+        )
+        self.assertEqual(
+            list(actual_coordinates.keys()),
+            ["variant_position", "variant_chrom", "sample_id"],
+        )
+
+        values = [actual_coordinates[k] for k in actual_coordinates]
+        for value in values:
+            assert isinstance(value[1], da.Array)
+        dimensions = [i[0] for i in values]
+        self.assertEqual(
+            dimensions,
+            [["variants"], ["variants"], ["samples"]],
+        )
+
+    def test_add_data_vars(self):
+        var_names_for_outputs = {
+            "POS": "position",
+            "CHROM": "chrom",
+            "FILTER_PASS": "filter_pass",
+        }
+        actual_vars = self.test_pf7_class.add_data_vars(
+            self.test_zarr_root, True, "native", var_names_for_outputs
+        )
+        self.assertEqual(
+            list(actual_vars.keys()),
+            [
+                "variant_allele",
+                "variant_filter_pass",
+                "variant_is_snp",
+                "variant_numalt",
+                "variant_CDS",
+                "call_genotype",
+                "call_AD",
+            ],
+        )
+        values = [actual_vars[k] for k in actual_vars]
+        for value in values:
+            assert isinstance(value[1], da.Array)
+        dimensions = [i[0] for i in values]
+        self.assertEqual(
+            dimensions,
+            [
+                ["variants", "alleles"],
+                ["variants"],
+                ["variants"],
+                ["variants"],
+                ["variants"],
+                ["variants", "samples", "ploidy"],
+                ["variants", "samples", "alleles"],
+            ],
+        )
 
     @patch("malariagen_data.pf7.Pf7.open_zarr")
     def test_variant_calls_default(self, mock_open_zarr):

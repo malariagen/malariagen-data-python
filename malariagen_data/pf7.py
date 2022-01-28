@@ -186,32 +186,9 @@ class Pf7:
                 raise ValueError("{} not found in zarr.".format(variable))
         return subset_extended_variants, subset_extended_calldata
 
-    def variant_calls(self, extended=[], inline_array=True, chunks="native"):
-        """Access variant sites, site filters and genotype calls.
-        Parameters
-        ----------
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
-        Returns
-        -------
-        ds : xarray.Dataset
-        """
-
-        # setup
-        coords = dict()
-        data_vars = dict()
-        root = self.open_zarr()
-
-        var_names_for_outputs = {
-            "POS": "position",
-            "CHROM": "chrom",
-            "FILTER_PASS": "filter_pass",
-        }
-
+    def add_coordinates(self, root, inline_array, chunks, var_names_for_outputs):
         # coordinates
+        coords = dict()
         for var_name in "POS", "CHROM":
             z = root[f"variants/{var_name}"]
             var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -220,6 +197,10 @@ class Pf7:
         z = root["samples"]
         sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
+        return coords
+
+    def add_data_vars(self, root, inline_array, chunks, var_names_for_outputs):
+        data_vars = dict()
 
         # variant_allele
         ref_z = root["variants/REF"]
@@ -248,34 +229,70 @@ class Pf7:
         )
         data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
 
-        # pull the extended version
+        return data_vars
+
+    def add_extended_data(self, root, inline_array, chunks, extended, data_vars):
+        if extended == "*":
+            subset_extended_variants = self.extended_variant_fields
+            subset_extended_calldata = self.extended_calldata_variables
+        elif isinstance(extended, list):
+            (
+                subset_extended_variants,
+                subset_extended_calldata,
+            ) = self.subset_extended_dictionary(extended)
+        else:
+            raise ValueError("Input to extended is invalid.")
+
+        for var_name in subset_extended_calldata:
+            z = root[f"calldata/{var_name}"]
+            var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            data_vars[f"call_{var_name}"] = (
+                subset_extended_calldata[var_name],
+                var,
+            )
+
+        for var_name in subset_extended_variants:
+            z = root[f"variants/{var_name}"]
+            field = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            data_vars[f"variant_{var_name}"] = (
+                subset_extended_variants[var_name],
+                field,
+            )
+        return data_vars
+
+    def variant_calls(self, extended=[], inline_array=True, chunks="native"):
+        """Access variant sites, site filters and genotype calls.
+        Parameters
+        ----------
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'.
+        Returns
+        -------
+        ds : xarray.Dataset
+        """
+
+        # setup
+        root = self.open_zarr()
+        var_names_for_outputs = {
+            "POS": "position",
+            "CHROM": "chrom",
+            "FILTER_PASS": "filter_pass",
+        }
+
+        # Add default data
+        coords = self.add_coordinates(root, inline_array, chunks, var_names_for_outputs)
+        data_vars = self.add_data_vars(
+            root, inline_array, chunks, var_names_for_outputs
+        )
+
+        # Add extended data
         if extended:
-            if extended == "*":
-                subset_extended_variants = self.extended_variant_fields
-                subset_extended_calldata = self.extended_calldata_variables
-            elif isinstance(extended, list):
-                (
-                    subset_extended_variants,
-                    subset_extended_calldata,
-                ) = self.subset_extended_dictionary(extended)
-            else:
-                raise ValueError("Input to extended is invalid.")
-
-            for var_name in subset_extended_calldata:
-                z = root[f"calldata/{var_name}"]
-                var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-                data_vars[f"call_{var_name}"] = (
-                    subset_extended_calldata[var_name],
-                    var,
-                )
-
-            for var_name in subset_extended_variants:
-                z = root[f"variants/{var_name}"]
-                field = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-                data_vars[f"variant_{var_name}"] = (
-                    subset_extended_variants[var_name],
-                    field,
-                )
+            data_vars = self.add_extended_data(
+                root, inline_array, chunks, extended, data_vars
+            )
 
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords)

@@ -60,7 +60,7 @@ def test_open_zarr():
     assert isinstance(root, zarr.hierarchy.Group)
 
 
-@pytest.mark.parametrize("extended", [False, True])
+@pytest.mark.parametrize("extended", ["*", []])
 def test_variant_calls(extended):
 
     pf7 = setup_pf7()
