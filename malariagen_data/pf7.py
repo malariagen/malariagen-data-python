@@ -39,7 +39,6 @@ class Pf7:
         self._cache_sample_metadata = None
         self._cache_zarr = None
 
-        # zarr variables
         if extended_calldata_variables:
             self.extended_calldata_variables = extended_calldata_variables
         else:
@@ -183,15 +182,18 @@ class Pf7:
         coords = dict()
         data_vars = dict()
         root = self.open_zarr()
-        # variant_position
-        pos_z = root["variants/POS"]
-        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], variant_position
 
-        # variant_chrom
-        chrom_z = root["variants/CHROM"]
-        variant_chrom = da_from_zarr(chrom_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_chrom"] = [DIM_VARIANT], variant_chrom
+        var_names_for_outputs = {
+            "POS": "position",
+            "CHROM": "chrom",
+            "FILTER_PASS": "filter_pass",
+        }
+
+        # coordinates
+        for var_name in "POS", "CHROM":
+            z = root[f"variants/{var_name}"]
+            var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            coords[f"variant_{var_names_for_outputs[var_name]}"] = [DIM_VARIANT], var
 
         # variant_allele
         ref_z = root["variants/REF"]
@@ -201,25 +203,13 @@ class Pf7:
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
-        # variant_filter_pass
-        fp_z = root["variants/FILTER_PASS"]
-        fp = da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
-        data_vars["variant_filter_pass"] = [DIM_VARIANT], fp
-
-        # variant_is_snp
-        is_snp_z = root["variants/is_snp"]
-        is_snp = da_from_zarr(is_snp_z, inline_array=inline_array, chunks=chunks)
-        data_vars["variant_is_snp"] = [DIM_VARIANT], is_snp
-
-        # variant_numalt
-        numalt_z = root["variants/numalt"]
-        numalt = da_from_zarr(numalt_z, inline_array=inline_array, chunks=chunks)
-        data_vars["variant_numalt"] = [DIM_VARIANT], numalt
-
-        # variant_CDS
-        cds_z = root["variants/CDS"]
-        cds = da_from_zarr(cds_z, inline_array=inline_array, chunks=chunks)
-        data_vars["variant_CDS"] = [DIM_VARIANT], cds
+        # other default variant values
+        for var_name in ["FILTER_PASS", "is_snp", "numalt", "CDS"]:
+            z = root[f"variants/{var_name}"]
+            var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            if var_name in var_names_for_outputs.keys():
+                var_name = var_names_for_outputs[var_name]
+            data_vars[f"variant_{var_name}"] = [DIM_VARIANT], var
 
         # call arrays
         gt_z = root["calldata/GT"]
@@ -237,6 +227,7 @@ class Pf7:
         sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
+        # pull the extended version
         if extended:
             for var_name in self.extended_calldata_variables:
                 z = root[f"calldata/{var_name}"]
