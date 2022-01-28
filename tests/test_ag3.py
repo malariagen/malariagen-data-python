@@ -1467,3 +1467,33 @@ def test_locate_region(region_raw):
         assert region == Region("2R", 48714463, 48715355)
     if region_raw == "2L:24,630,355-24,633,221":
         assert region == Region("2L", 24630355, 24633221)
+
+
+def test_aa_frequencies():
+    ag3 = setup_ag3()
+    cohorts = "admin1_year"
+    min_cohort_size = 10
+    sample_sets = ("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C")
+    expected_fields = [
+        "frq_BF-09_gamb_2012",
+        "frq_BF-09_colu_2012",
+        "frq_BF-09_colu_2014",
+        "frq_BF-09_gamb_2014",
+        "frq_BF-07_gamb_2004",
+        "max_af",
+    ]
+
+    df = ag3.aa_allele_frequencies(
+        transcript="AGAP004707-RD",
+        cohorts=cohorts,
+        cohorts_analysis="20211101",
+        min_cohort_size=min_cohort_size,
+        site_mask="gamb_colu",
+        sample_sets=sample_sets,
+        drop_invariant=True,
+    )
+
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape == (61, 6)
+    assert df.loc["V402L"].max_af == pytest.approx(0.121951, abs=1e-6)
