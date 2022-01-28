@@ -76,7 +76,7 @@ class TestPf7(unittest.TestCase):
         calldata.create_dataset(
             "AD", data=np.arange(350).reshape(10, 5, 7), chunks=(1,)
         )
-        calldata.create_dataset("DP", data=np.arange(50).reshape(10, 5), chunks=(1,))
+        calldata.create_dataset("GQ", data=np.arange(50).reshape(10, 5), chunks=(1,))
         self.test_zarr_root.create_dataset("samples", data=np.arange(5), chunks=(1,))
         self.test_extended_calldata_variables = {
             "DP": [DIM_VARIANT, DIM_SAMPLE],
@@ -254,6 +254,30 @@ class TestPf7(unittest.TestCase):
         mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
 
+    def test_subset_extended_dictionary(self):
+        (
+            actual_variants_dictionary,
+            actual_calldata_dictionary,
+        ) = self.test_pf7_class.subset_extended_dictionary(
+            ["DP", "GQ", "AC", "AF", "ANN_Feature_Type"]
+        )
+        expected_calldata_dictionary = {
+            "DP": [DIM_VARIANT, DIM_SAMPLE],
+            "GQ": [DIM_VARIANT, DIM_SAMPLE],
+        }
+        expected_variants_dictionary = {
+            "DP": [DIM_VARIANT],
+            "AC": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AF": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Feature_Type": [DIM_VARIANT, DIM_ALT_ALLELE],
+        }
+        self.assertEqual(actual_variants_dictionary, expected_variants_dictionary)
+        self.assertEqual(actual_calldata_dictionary, expected_calldata_dictionary)
+
+    def test_subset_extended_dictionary_raises_error(self):
+        with self.assertRaises(ValueError):
+            self.test_pf7_class.subset_extended_dictionary(["DP", "AC", "BAD_VARIABLE"])
+
     @patch("malariagen_data.pf7.Pf7.open_zarr")
     def test_variant_calls_default(self, mock_open_zarr):
         mock_open_zarr.return_value = self.test_zarr_root
@@ -278,20 +302,12 @@ class TestPf7(unittest.TestCase):
     @patch("malariagen_data.pf7.Pf7.open_zarr")
     def test_variant_calls_extended(self, mock_open_zarr):
         mock_open_zarr.return_value = self.test_zarr_root
-        extended_variant_fields = {
-            "AN": [DIM_VARIANT],
-        }
-        extended_calldata_variables = {
-            "DP": [DIM_VARIANT, DIM_SAMPLE],
-        }
         test_pf7_class_extended = Pf7(
             self.test_data_path,
             data_config=self.test_config_path,
-            extended_calldata_variables=extended_calldata_variables,
-            extended_variant_fields=extended_variant_fields,
         )
         ds = test_pf7_class_extended.variant_calls(
-            extended=True,
+            extended=["AN", "GQ"],
             inline_array=True,
             chunks="native",
         )
@@ -309,7 +325,7 @@ class TestPf7(unittest.TestCase):
                 "variant_CDS",
                 "call_genotype",
                 "call_AD",
-                "call_DP",
+                "call_GQ",
                 "variant_AN",
             ],
         )

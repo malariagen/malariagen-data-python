@@ -26,8 +26,6 @@ class Pf7:
         self,
         url,
         data_config=None,
-        extended_calldata_variables=None,
-        extended_variant_fields=None,
         **kwargs,
     ):
 
@@ -39,101 +37,95 @@ class Pf7:
         self._cache_sample_metadata = None
         self._cache_zarr = None
 
-        if extended_calldata_variables:
-            self.extended_calldata_variables = extended_calldata_variables
-        else:
-            self.extended_calldata_variables = {
-                "DP": [DIM_VARIANT, DIM_SAMPLE],
-                "GQ": [DIM_VARIANT, DIM_SAMPLE],
-                "MIN_DP": [DIM_VARIANT, DIM_SAMPLE],
-                "PGT": [DIM_VARIANT, DIM_SAMPLE],
-                "PID": [DIM_VARIANT, DIM_SAMPLE],
-                "PS": [DIM_VARIANT, DIM_SAMPLE],
-                "RGQ": [DIM_VARIANT, DIM_SAMPLE],
-                "PL": [DIM_VARIANT, DIM_SAMPLE, DIM_GENOTYPES],
-                "SB": [DIM_VARIANT, DIM_SAMPLE, DIM_STATISTICS],
-            }
-        if extended_variant_fields:
-            self.extended_variant_fields = extended_variant_fields
-        else:
-            self.extended_variant_fields = {
-                "AC": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AF": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AN": [DIM_VARIANT],
-                "ANN_AA_length": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_AA_pos": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Allele": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Annotation": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Annotation_Impact": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_CDS_length": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_CDS_pos": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Distance": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Feature_ID": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Feature_Type": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Gene_ID": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Gene_Name": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_HGVS_c": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_HGVS_p": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Rank": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_Transcript_BioType": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_cDNA_length": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "ANN_cDNA_pos": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_BaseQRankSum": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_FS": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_InbreedingCoeff": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_MQ": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_MQRankSum": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_QD": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_ReadPosRankSum": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "AS_SOR": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "BaseQRankSum": [DIM_VARIANT],
-                "DP": [DIM_VARIANT],
-                "DS": [DIM_VARIANT],
-                "END": [DIM_VARIANT],
-                "ExcessHet": [DIM_VARIANT],
-                "FILTER_Apicoplast": [DIM_VARIANT],
-                "FILTER_Centromere": [DIM_VARIANT],
-                "FILTER_InternalHypervariable": [DIM_VARIANT],
-                "FILTER_LowQual": [DIM_VARIANT],
-                "FILTER_Low_VQSLOD": [DIM_VARIANT],
-                "FILTER_MissingVQSLOD": [DIM_VARIANT],
-                "FILTER_Mitochondrion": [DIM_VARIANT],
-                "FILTER_SubtelomericHypervariable": [DIM_VARIANT],
-                "FILTER_SubtelomericRepeat": [DIM_VARIANT],
-                "FILTER_VQSRTrancheINDEL99.50to99.60": [DIM_VARIANT],
-                "FILTER_VQSRTrancheINDEL99.60to99.80": [DIM_VARIANT],
-                "FILTER_VQSRTrancheINDEL99.80to99.90": [DIM_VARIANT],
-                "FILTER_VQSRTrancheINDEL99.90to99.95": [DIM_VARIANT],
-                "FILTER_VQSRTrancheINDEL99.95to100.00+": [DIM_VARIANT],
-                "FILTER_VQSRTrancheINDEL99.95to100.00": [DIM_VARIANT],
-                "FILTER_VQSRTrancheSNP99.50to99.60": [DIM_VARIANT],
-                "FILTER_VQSRTrancheSNP99.60to99.80": [DIM_VARIANT],
-                "FILTER_VQSRTrancheSNP99.80to99.90": [DIM_VARIANT],
-                "FILTER_VQSRTrancheSNP99.90to99.95": [DIM_VARIANT],
-                "FILTER_VQSRTrancheSNP99.95to100.00+": [DIM_VARIANT],
-                "FILTER_VQSRTrancheSNP99.95to100.00": [DIM_VARIANT],
-                "FS": [DIM_VARIANT],
-                "ID": [DIM_VARIANT],
-                "InbreedingCoeff": [DIM_VARIANT],
-                "LOF": [DIM_VARIANT],
-                "MLEAC": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "MLEAF": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "MQ": [DIM_VARIANT],
-                "MQRankSum": [DIM_VARIANT],
-                "NEGATIVE_TRAIN_SITE": [DIM_VARIANT],
-                "NMD": [DIM_VARIANT],
-                "POSITIVE_TRAIN_SITE": [DIM_VARIANT],
-                "QD": [DIM_VARIANT],
-                "QUAL": [DIM_VARIANT],
-                "RAW_MQandDP": [DIM_VARIANT, DIM_PLOIDY],
-                "ReadPosRankSum": [DIM_VARIANT],
-                "RegionType": [DIM_VARIANT],
-                "SOR": [DIM_VARIANT],
-                "VQSLOD": [DIM_VARIANT],
-                "altlen": [DIM_VARIANT, DIM_ALT_ALLELE],
-                "culprit": [DIM_VARIANT],
-                "set": [DIM_VARIANT],
-            }
+        self.extended_calldata_variables = {
+            "DP": [DIM_VARIANT, DIM_SAMPLE],
+            "GQ": [DIM_VARIANT, DIM_SAMPLE],
+            "MIN_DP": [DIM_VARIANT, DIM_SAMPLE],
+            "PGT": [DIM_VARIANT, DIM_SAMPLE],
+            "PID": [DIM_VARIANT, DIM_SAMPLE],
+            "PS": [DIM_VARIANT, DIM_SAMPLE],
+            "RGQ": [DIM_VARIANT, DIM_SAMPLE],
+            "PL": [DIM_VARIANT, DIM_SAMPLE, DIM_GENOTYPES],
+            "SB": [DIM_VARIANT, DIM_SAMPLE, DIM_STATISTICS],
+        }
+        self.extended_variant_fields = {
+            "AC": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AF": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AN": [DIM_VARIANT],
+            "ANN_AA_length": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_AA_pos": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Allele": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Annotation": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Annotation_Impact": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_CDS_length": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_CDS_pos": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Distance": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Feature_ID": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Feature_Type": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Gene_ID": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Gene_Name": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_HGVS_c": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_HGVS_p": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Rank": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_Transcript_BioType": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_cDNA_length": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "ANN_cDNA_pos": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_BaseQRankSum": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_FS": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_InbreedingCoeff": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_MQ": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_MQRankSum": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_QD": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_ReadPosRankSum": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "AS_SOR": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "BaseQRankSum": [DIM_VARIANT],
+            "DP": [DIM_VARIANT],
+            "DS": [DIM_VARIANT],
+            "END": [DIM_VARIANT],
+            "ExcessHet": [DIM_VARIANT],
+            "FILTER_Apicoplast": [DIM_VARIANT],
+            "FILTER_Centromere": [DIM_VARIANT],
+            "FILTER_InternalHypervariable": [DIM_VARIANT],
+            "FILTER_LowQual": [DIM_VARIANT],
+            "FILTER_Low_VQSLOD": [DIM_VARIANT],
+            "FILTER_MissingVQSLOD": [DIM_VARIANT],
+            "FILTER_Mitochondrion": [DIM_VARIANT],
+            "FILTER_SubtelomericHypervariable": [DIM_VARIANT],
+            "FILTER_SubtelomericRepeat": [DIM_VARIANT],
+            "FILTER_VQSRTrancheINDEL99.50to99.60": [DIM_VARIANT],
+            "FILTER_VQSRTrancheINDEL99.60to99.80": [DIM_VARIANT],
+            "FILTER_VQSRTrancheINDEL99.80to99.90": [DIM_VARIANT],
+            "FILTER_VQSRTrancheINDEL99.90to99.95": [DIM_VARIANT],
+            "FILTER_VQSRTrancheINDEL99.95to100.00+": [DIM_VARIANT],
+            "FILTER_VQSRTrancheINDEL99.95to100.00": [DIM_VARIANT],
+            "FILTER_VQSRTrancheSNP99.50to99.60": [DIM_VARIANT],
+            "FILTER_VQSRTrancheSNP99.60to99.80": [DIM_VARIANT],
+            "FILTER_VQSRTrancheSNP99.80to99.90": [DIM_VARIANT],
+            "FILTER_VQSRTrancheSNP99.90to99.95": [DIM_VARIANT],
+            "FILTER_VQSRTrancheSNP99.95to100.00+": [DIM_VARIANT],
+            "FILTER_VQSRTrancheSNP99.95to100.00": [DIM_VARIANT],
+            "FS": [DIM_VARIANT],
+            "ID": [DIM_VARIANT],
+            "InbreedingCoeff": [DIM_VARIANT],
+            "LOF": [DIM_VARIANT],
+            "MLEAC": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "MLEAF": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "MQ": [DIM_VARIANT],
+            "MQRankSum": [DIM_VARIANT],
+            "NEGATIVE_TRAIN_SITE": [DIM_VARIANT],
+            "NMD": [DIM_VARIANT],
+            "POSITIVE_TRAIN_SITE": [DIM_VARIANT],
+            "QD": [DIM_VARIANT],
+            "QUAL": [DIM_VARIANT],
+            "RAW_MQandDP": [DIM_VARIANT, DIM_PLOIDY],
+            "ReadPosRankSum": [DIM_VARIANT],
+            "RegionType": [DIM_VARIANT],
+            "SOR": [DIM_VARIANT],
+            "VQSLOD": [DIM_VARIANT],
+            "altlen": [DIM_VARIANT, DIM_ALT_ALLELE],
+            "culprit": [DIM_VARIANT],
+            "set": [DIM_VARIANT],
+        }
 
     def _load_config(self, data_config):
         if not data_config:
@@ -164,7 +156,37 @@ class Pf7:
             self._cache_zarr = zarr.open(store=store)
         return self._cache_zarr
 
-    def variant_calls(self, extended=False, inline_array=True, chunks="native"):
+    def subset_extended_dictionary(self, extended_variables):
+        """# subset extended variants and calldata dictionaries to only include items in list
+
+        Args:
+            extended_variables (list): list of variables to add onto default dataset
+
+        Raises:
+            ValueError: If variable isn't in either variants or calldata dictionary raises error as invalid entry
+
+        Returns:
+            subset_extended_variants, subset_extended_calldata : dictionaries containing subset of extended values
+        """
+        subset_extended_variants = {}
+        subset_extended_calldata = {}
+        for variable in extended_variables:
+            if variable in self.extended_variant_fields:
+                subset_extended_variants[variable] = self.extended_variant_fields[
+                    variable
+                ]
+            if variable in self.extended_calldata_variables:
+                subset_extended_calldata[variable] = self.extended_calldata_variables[
+                    variable
+                ]
+            if (
+                variable not in self.extended_calldata_variables
+                and variable not in self.extended_variant_fields
+            ):
+                raise ValueError("{} not found in zarr.".format(variable))
+        return subset_extended_variants, subset_extended_calldata
+
+    def variant_calls(self, extended=[], inline_array=True, chunks="native"):
         """Access variant sites, site filters and genotype calls.
         Parameters
         ----------
@@ -195,6 +217,10 @@ class Pf7:
             var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             coords[f"variant_{var_names_for_outputs[var_name]}"] = [DIM_VARIANT], var
 
+        z = root["samples"]
+        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        coords["sample_id"] = [DIM_SAMPLE], sample_id
+
         # variant_allele
         ref_z = root["variants/REF"]
         alt_z = root["variants/ALT"]
@@ -213,8 +239,8 @@ class Pf7:
 
         # call arrays
         gt_z = root["calldata/GT"]
-        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
         ad_z = root["calldata/AD"]
+        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
         call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
@@ -222,26 +248,32 @@ class Pf7:
         )
         data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
 
-        # sample arrays
-        z = root["samples"]
-        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        coords["sample_id"] = [DIM_SAMPLE], sample_id
-
         # pull the extended version
         if extended:
-            for var_name in self.extended_calldata_variables:
+            if extended == "*":
+                subset_extended_variants = self.extended_variant_fields
+                subset_extended_calldata = self.extended_calldata_variables
+            elif isinstance(extended, list):
+                (
+                    subset_extended_variants,
+                    subset_extended_calldata,
+                ) = self.subset_extended_dictionary(extended)
+            else:
+                raise ValueError("Input to extended is invalid.")
+
+            for var_name in subset_extended_calldata:
                 z = root[f"calldata/{var_name}"]
                 var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
                 data_vars[f"call_{var_name}"] = (
-                    self.extended_calldata_variables[var_name],
+                    subset_extended_calldata[var_name],
                     var,
                 )
 
-            for var_name in self.extended_variant_fields:
-                field_z = root[f"variants/{var_name}"]
-                field = da_from_zarr(field_z, inline_array=inline_array, chunks=chunks)
+            for var_name in subset_extended_variants:
+                z = root[f"variants/{var_name}"]
+                field = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
                 data_vars[f"variant_{var_name}"] = (
-                    self.extended_variant_fields[var_name],
+                    subset_extended_variants[var_name],
                     field,
                 )
 
