@@ -1495,5 +1495,5 @@ def test_aa_frequencies():
 
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (57, 6)
+    assert df.shape == (61, 6)
     assert df.loc["V402L"].max_af == pytest.approx(0.121951, abs=1e-6)

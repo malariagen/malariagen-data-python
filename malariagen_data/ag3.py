@@ -2461,7 +2461,9 @@ class Ag3:
         )
 
         # we just want aa change
-        df_ns_snps = df_snps.query("effect == 'NON_SYNONYMOUS_CODING'").copy()
+        df_ns_snps = df_snps.query(
+            "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
+        ).copy()
 
         # group and sum to collapse multi variant allele changes
         df_aaf = df_ns_snps.groupby(["aa_pos", "aa_change"]).sum().reset_index()
