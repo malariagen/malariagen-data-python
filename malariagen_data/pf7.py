@@ -157,7 +157,7 @@ class Pf7:
         return self._cache_zarr
 
     def subset_extended_dictionary(self, extended_variables):
-        """# subset extended variants and calldata dictionaries to only include items in list
+        """Subset extended variants and calldata dictionaries to only include items in extended_variables list
 
         Args:
             extended_variables (list): list of variables to add onto default dataset

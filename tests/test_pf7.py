@@ -79,6 +79,7 @@ class TestPf7(unittest.TestCase):
         )
         calldata.create_dataset("GQ", data=np.arange(50).reshape(10, 5), chunks=(1,))
         self.test_zarr_root.create_dataset("samples", data=np.arange(5), chunks=(1,))
+        self.test_extended = ["AN", "GQ"]
         self.test_extended_calldata_variables = {
             "DP": [DIM_VARIANT, DIM_SAMPLE],
             "GQ": [DIM_VARIANT, DIM_SAMPLE],
@@ -340,6 +341,36 @@ class TestPf7(unittest.TestCase):
             ],
         )
 
+    def test_add_extended_data(self):
+        actual_extended = self.test_pf7_class.add_extended_data(
+            self.test_zarr_root, True, "native", self.test_extended, {}
+        )
+        self.assertEqual(
+            list(actual_extended.keys()),
+            [
+                "call_GQ",
+                "variant_AN",
+            ],
+        )
+
+        values = [actual_extended[k] for k in actual_extended]
+        for value in values:
+            assert isinstance(value[1], da.Array)
+        dimensions = [i[0] for i in values]
+        self.assertEqual(
+            dimensions,
+            [
+                ["variants", "samples"],
+                ["variants"],
+            ],
+        )
+
+    def test_add_extended_data_raises_error(self):
+        with self.assertRaises(ValueError):
+            self.test_pf7_class.add_extended_data(
+                self.test_zarr_root, True, "native", {"key": "value"}, {}
+            )
+
     @patch("malariagen_data.pf7.Pf7.open_zarr")
     def test_variant_calls_default(self, mock_open_zarr):
         mock_open_zarr.return_value = self.test_zarr_root
@@ -369,7 +400,7 @@ class TestPf7(unittest.TestCase):
             data_config=self.test_config_path,
         )
         ds = test_pf7_class_extended.variant_calls(
-            extended=["AN", "GQ"],
+            extended=self.test_extended,
             inline_array=True,
             chunks="native",
         )
