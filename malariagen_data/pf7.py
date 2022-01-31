@@ -232,7 +232,7 @@ class Pf7:
         return data_vars
 
     def _add_extended_data(self, root, inline_array, chunks, extended, data_vars):
-        if extended == "*":
+        if extended == "*" or extended == ["*"]:
             subset_extended_variants = self.extended_variant_fields
             subset_extended_calldata = self.extended_calldata_variables
         elif isinstance(extended, list):
