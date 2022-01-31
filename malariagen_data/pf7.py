@@ -156,7 +156,7 @@ class Pf7:
             self._cache_zarr = zarr.open(store=store)
         return self._cache_zarr
 
-    def subset_extended_dictionary(self, extended_variables):
+    def _subset_extended_dictionary(self, extended_variables):
         """Subset extended variants and calldata dictionaries to only include items in extended_variables list
 
         Args:
@@ -186,7 +186,7 @@ class Pf7:
                 raise ValueError("{} not found in zarr.".format(variable))
         return subset_extended_variants, subset_extended_calldata
 
-    def add_coordinates(self, root, inline_array, chunks, var_names_for_outputs):
+    def _add_coordinates(self, root, inline_array, chunks, var_names_for_outputs):
         # coordinates
         coords = dict()
         for var_name in "POS", "CHROM":
@@ -231,7 +231,7 @@ class Pf7:
 
         return data_vars
 
-    def add_extended_data(self, root, inline_array, chunks, extended, data_vars):
+    def _add_extended_data(self, root, inline_array, chunks, extended, data_vars):
         if extended == "*":
             subset_extended_variants = self.extended_variant_fields
             subset_extended_calldata = self.extended_calldata_variables
@@ -239,7 +239,7 @@ class Pf7:
             (
                 subset_extended_variants,
                 subset_extended_calldata,
-            ) = self.subset_extended_dictionary(extended)
+            ) = self._subset_extended_dictionary(extended)
         else:
             raise ValueError("Input to extended is invalid.")
 
@@ -283,14 +283,16 @@ class Pf7:
         }
 
         # Add default data
-        coords = self.add_coordinates(root, inline_array, chunks, var_names_for_outputs)
+        coords = self._add_coordinates(
+            root, inline_array, chunks, var_names_for_outputs
+        )
         data_vars = self.add_data_vars(
             root, inline_array, chunks, var_names_for_outputs
         )
 
         # Add extended data
         if extended:
-            data_vars = self.add_extended_data(
+            data_vars = self._add_extended_data(
                 root, inline_array, chunks, extended, data_vars
             )
 

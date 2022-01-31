@@ -260,7 +260,7 @@ class TestPf7(unittest.TestCase):
         (
             actual_variants_dictionary,
             actual_calldata_dictionary,
-        ) = self.test_pf7_class.subset_extended_dictionary(
+        ) = self.test_pf7_class._subset_extended_dictionary(
             ["DP", "GQ", "AC", "AF", "ANN_Feature_Type"]
         )
         expected_calldata_dictionary = {
@@ -278,7 +278,9 @@ class TestPf7(unittest.TestCase):
 
     def test_subset_extended_dictionary_raises_error(self):
         with self.assertRaises(ValueError):
-            self.test_pf7_class.subset_extended_dictionary(["DP", "AC", "BAD_VARIABLE"])
+            self.test_pf7_class._subset_extended_dictionary(
+                ["DP", "AC", "BAD_VARIABLE"]
+            )
 
     def test_add_coordinates(self):
         var_names_for_outputs = {
@@ -286,7 +288,7 @@ class TestPf7(unittest.TestCase):
             "CHROM": "chrom",
             "FILTER_PASS": "filter_pass",
         }
-        actual_coordinates = self.test_pf7_class.add_coordinates(
+        actual_coordinates = self.test_pf7_class._add_coordinates(
             self.test_zarr_root, True, "native", var_names_for_outputs
         )
         self.assertEqual(
@@ -342,7 +344,7 @@ class TestPf7(unittest.TestCase):
         )
 
     def test_add_extended_data(self):
-        actual_extended = self.test_pf7_class.add_extended_data(
+        actual_extended = self.test_pf7_class._add_extended_data(
             self.test_zarr_root, True, "native", self.test_extended, {}
         )
         self.assertEqual(
@@ -367,7 +369,7 @@ class TestPf7(unittest.TestCase):
 
     def test_add_extended_data_raises_error(self):
         with self.assertRaises(ValueError):
-            self.test_pf7_class.add_extended_data(
+            self.test_pf7_class._add_extended_data(
                 self.test_zarr_root, True, "native", {"key": "value"}, {}
             )
 
