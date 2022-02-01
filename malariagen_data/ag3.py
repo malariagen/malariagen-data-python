@@ -7,6 +7,7 @@ import dask.array as da
 import numba
 import numpy as np
 import pandas
+import plotly.express as px
 import xarray
 import zarr
 
@@ -2488,6 +2489,67 @@ class Ag3:
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         return df_aaf
+
+    def freq_style(self, df, index, max_len=100, width=500, colorbar=True):
+
+        """Generate a heatmap-styled frequency dataframe using pandas DataFrame output from
+        ag3.snp_allele_frequencies() or ag3.gene_cnv_frequencies() that has been user-filtered
+        to just rows of interest (fewer rows than max_len).
+
+        Parameters
+        ----------
+        df : pandas DataFrame
+           Output from ag3.snp_allele_frequencies() or ag3.gene_cnv_frequencies.
+        index : str
+            A single column header that is present in the input dataframe, this becomes the styled
+             output index.
+        max_len : int, optional
+            Displaying large styled dataframes may cause ipython notebooks to crash.
+        width : int
+            Width of styled output.
+        colorbar : bool, optional
+            If False, colorbar is not output.
+
+        Returns
+        -------
+        Plotly.express heatmap built from the index and "frq_" columns of input DataFrame, where
+        increasing frequency is denoted by intensity of red coloration.
+
+        """
+        # check input length
+        assert len(df) <= max_len
+
+        # reset index
+        df.reset_index(inplace=True)
+
+        # make sure str type index or heat map fails
+        df[index] = df[index].astype(str)
+
+        # drop unwanted columns
+        df = df.filter(regex="frq_").copy()
+
+        # plotly heatmap styling
+        fig = px.imshow(
+            img=df,
+            zmin=0,
+            zmax=1,
+            text_auto=".0%",
+            aspect="auto",
+            width=width,
+            color_continuous_scale="Reds",
+        )
+
+        fig.update_xaxes(side="top", tickangle=270)
+        fig.update_layout(
+            coloraxis_colorbar=dict(
+                title="frequency",
+                tickvals=[0, 0.2, 0.4, 0.6, 0.8, 0.99],
+                ticktext=["1%", "20%", "40%", "60%", "80%", "100%"],
+            )
+        )
+        if not colorbar:
+            fig.update(layout_coloraxis_showscale=False)
+        fig.show()
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
