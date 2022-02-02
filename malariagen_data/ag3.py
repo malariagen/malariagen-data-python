@@ -2569,7 +2569,7 @@ class Ag3:
             coloraxis_colorbar=dict(
                 title="frequency",
                 tickvals=[0, 0.2, 0.4, 0.6, 0.8, 0.99],
-                ticktext=["1%", "20%", "40%", "60%", "80%", "100%"],
+                ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
             )
         )
         if not colorbar:
