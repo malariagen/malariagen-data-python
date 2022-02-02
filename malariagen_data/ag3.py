@@ -2491,47 +2491,51 @@ class Ag3:
         return df_aaf
 
     def plot_frequencies_heatmap(
-        self, df, index, index_name, max_len=100, width=500, colorbar=True
+        self, df, index, max_len=100, index_name=None, colorbar=True, width=None
     ):
 
-        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from 
-            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to 
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
+            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to
             filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
 
         Parameters
         ----------
         df : pandas DataFrame
            A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
-        index : list of str
-            A list of one or more column headers present in the input dataframe, these become
-            the heatmap y-axis row labels. When taken together, these columns must produce a unique index.
-        index_name : str
-            This is the y-axis label that will be displayed on the heatmap
+        index : str or list of str
+            One or more column headers that are present in the input dataframe. This becomes the heatmap y-axis
+            row labels. The column/s must produce a unique index.
         max_len : int, optional
             Displaying large styled dataframes may cause ipython notebooks to crash.
-        width : int
-            Width of styled output.
+        index_name : str, optional
+            This is the y-axis label that will be displayed on the heatmap
         colorbar : bool, optional
             If False, colorbar is not output.
-
-        Returns
-        -------
-        Plotly.express heatmap built from the index and "frq_" columns of input DataFrame, where
-        increasing frequency is denoted by intensity of red coloration.
+        width : int, optional
+            Width of heatmap output.
 
         """
+
+        # if no index is given (cheaper than passing None to plotly but same effect)
+        if not index_name:
+            index_name = ""
+
         # check len of input
-        assert len(df) <= max_len
+        if not len(df) <= max_len:
+            raise ValueError(f"Input DataFrame is longer than {max_len}")
 
         # reset index
         df = df.reset_index().copy()
 
-        # ensure that the things we want to make the index out of are all str type
-        for i in index:
-            df.loc[:, i] = df[i].astype(str)
+        if isinstance(index, list):
+            # ensure that the things we want to make the index out of are all str type
+            for i in index:
+                df.loc[:, i] = df[i].astype(str)
+                # make a new column out of index list and give it the index_name
+                df.loc[:, index_name] = df[index].agg("_".join, axis=1)
 
-        # make a new column out of index list and give it the index_name
-        df.loc[:, index_name] = df[index].agg("_".join, axis=1)
+        if isinstance(index, str):
+            df.loc[:, index_name] = df[index].astype(str)
 
         # check that index is unique (otherwise style won't work)
         if not df[index_name].is_unique:
@@ -2554,21 +2558,31 @@ class Ag3:
         heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
 
         # plotly heatmap styling
-        fig = px.imshow(
-            img=df,
-            zmin=0,
-            zmax=1,
-            text_auto=".0%",
-            aspect="auto",
-            width=width,
-            color_continuous_scale="Reds",
-        )
+        if width:
+            fig = px.imshow(
+                img=heatmap_df,
+                zmin=0,
+                zmax=1,
+                text_auto=".0%",
+                aspect="auto",
+                width=width,
+                color_continuous_scale="Reds",
+            )
+        else:
+            fig = px.imshow(
+                img=heatmap_df,
+                zmin=0,
+                zmax=1,
+                text_auto=".0%",
+                aspect="auto",
+                color_continuous_scale="Reds",
+            )
 
         fig.update_xaxes(side="top", tickangle=270, title="cohorts")
         fig.update_layout(
             coloraxis_colorbar=dict(
                 title="frequency",
-                tickvals=[0, 0.2, 0.4, 0.6, 0.8, 0.99],
+                tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
                 ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
             )
         )
