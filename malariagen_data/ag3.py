@@ -2538,7 +2538,7 @@ class Ag3:
         ), f"{index} - does not produce a unique index"
 
         # drop and re-order columns
-        frq_cols = [index_name] + sorted([col for col in df.columns if "frq_" in col])
+        frq_cols = [index_name] + [col for col in df.columns if col.startswith("frq_")]
 
         # check that freqs are all floats
         for c in frq_cols[1:]:
