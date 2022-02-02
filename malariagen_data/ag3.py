@@ -2494,8 +2494,9 @@ class Ag3:
         self, df, index, index_name, max_len=100, width=500, colorbar=True
     ):
 
-        """Generate a Plotly.express frequency heatmap using pandas DataFrame output from ag3.snp_allele_frequencies()
-        or ag3.gene_cnv_frequencies() that has been user-filtered to just rows of interest (fewer rows than max_len).
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from 
+            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to 
+            filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
 
         Parameters
         ----------
