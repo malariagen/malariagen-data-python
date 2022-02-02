@@ -2533,9 +2533,8 @@ class Ag3:
         df.loc[:, index_name] = df[index].agg("_".join, axis=1)
 
         # check that index is unique (otherwise style won't work)
-        assert df[index_name].nunique() == len(
-            df
-        ), f"{index} - does not produce a unique index"
+        if not df[index_name].is_unique:
+            raise ValueError(f"{index} does not produce a unique index")
 
         # drop and re-order columns
         frq_cols = [index_name] + [col for col in df.columns if col.startswith("frq_")]
