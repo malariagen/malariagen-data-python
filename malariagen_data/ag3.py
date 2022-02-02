@@ -2501,7 +2501,7 @@ class Ag3:
         Parameters
         ----------
         df : pandas DataFrame
-           Filtered output from ag3.snp_allele_frequencies() or ag3.gene_cnv_frequencies.
+           A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
         index : list of str
             A list of one or more column headers present in the input dataframe, these become
             the heatmap y-axis row labels. When taken together, these columns must produce a unique index.
