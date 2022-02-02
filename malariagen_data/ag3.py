@@ -2564,7 +2564,7 @@ class Ag3:
             color_continuous_scale="Reds",
         )
 
-        fig.update_xaxes(side="top", tickangle=270)
+        fig.update_xaxes(side="top", tickangle=270, title="cohorts")
         fig.update_layout(
             coloraxis_colorbar=dict(
                 title="frequency",
