@@ -2541,8 +2541,8 @@ class Ag3:
         frq_cols = [index_name] + sorted([col for col in df.columns if "frq_" in col])
 
         # check that freqs are all floats
-        for i in [col for col in df.columns if "frq_" in col]:
-            df.loc[:, i] = df[i].astype(float)
+        for c in frq_cols[1:]:
+            df.loc[:, c] = df[c].astype(float)
 
         # keep only freq cols
         heatmap_df = df[frq_cols].copy()
