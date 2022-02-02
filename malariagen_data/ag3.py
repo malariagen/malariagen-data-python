@@ -2490,19 +2490,22 @@ class Ag3:
 
         return df_aaf
 
-    def freq_style(self, df, index, max_len=100, width=500, colorbar=True):
+    def plot_frequencies_heatmap(
+        self, df, index, index_name, max_len=100, width=500, colorbar=True
+    ):
 
-        """Generate a heatmap-styled frequency dataframe using pandas DataFrame output from
-        ag3.snp_allele_frequencies() or ag3.gene_cnv_frequencies() that has been user-filtered
-        to just rows of interest (fewer rows than max_len).
+        """Generate a Plotly.express frequency heatmap using pandas DataFrame output from ag3.snp_allele_frequencies()
+        or ag3.gene_cnv_frequencies() that has been user-filtered to just rows of interest (fewer rows than max_len).
 
         Parameters
         ----------
         df : pandas DataFrame
-           Output from ag3.snp_allele_frequencies() or ag3.gene_cnv_frequencies.
-        index : str
-            A single column header that is present in the input dataframe, this becomes the styled
-             output index.
+           Filtered output from ag3.snp_allele_frequencies() or ag3.gene_cnv_frequencies.
+        index : list of str
+            A list of one or more column headers present in the input dataframe, these become
+            the heatmap y-axis row labels. When taken together, these columns must produce a unique index.
+        index_name : str
+            This is the y-axis label that will be displayed on the heatmap
         max_len : int, optional
             Displaying large styled dataframes may cause ipython notebooks to crash.
         width : int
@@ -2516,17 +2519,39 @@ class Ag3:
         increasing frequency is denoted by intensity of red coloration.
 
         """
-        # check input length
+        # check len of input
         assert len(df) <= max_len
 
         # reset index
-        df.reset_index(inplace=True)
+        df = df.reset_index().copy()
 
-        # make sure str type index or heat map fails
-        df[index] = df[index].astype(str)
+        # ensure that the things we want to make the index out of are all str type
+        for i in index:
+            df.loc[:, i] = df[i].astype(str)
 
-        # drop unwanted columns
-        df = df.filter(regex="frq_").copy()
+        # make a new column out of index list and give it the index_name
+        df.loc[:, index_name] = df[index].agg("_".join, axis=1)
+
+        # check that index is unique (otherwise style won't work)
+        assert df[index_name].nunique() == len(
+            df
+        ), f"{index} - does not produce a unique index"
+
+        # drop and re-order columns
+        frq_cols = [index_name] + sorted([col for col in df.columns if "frq_" in col])
+
+        # check that freqs are all floats
+        for i in [col for col in df.columns if "frq_" in col]:
+            df.loc[:, i] = df[i].astype(float)
+
+        # keep only freq cols
+        heatmap_df = df[frq_cols].copy()
+
+        # set index
+        heatmap_df.set_index(index_name, inplace=True)
+
+        # clean column names
+        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
 
         # plotly heatmap styling
         fig = px.imshow(
