@@ -2491,7 +2491,7 @@ class Ag3:
         return df_aaf
 
     def plot_frequencies_heatmap(
-        self, df, index, max_len=100, index_name=None, colorbar=True, width=None
+        self, df, index, max_len=100, y_label=None, colorbar=True, width=None
     ):
 
         """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
@@ -2507,8 +2507,8 @@ class Ag3:
             row labels. The column/s must produce a unique index.
         max_len : int, optional
             Displaying large styled dataframes may cause ipython notebooks to crash.
-        index_name : str, optional
-            This is the y-axis label that will be displayed on the heatmap
+        y_label : str, optional
+            This is the y-axis label that will be displayed on the heatmap.
         colorbar : bool, optional
             If False, colorbar is not output.
         width : int, optional
@@ -2560,6 +2560,8 @@ class Ag3:
 
         fig.update_xaxes(side="top", tickangle=270, title="cohorts")
         # set Y axis title if index_name is given
+        if y_label is not None:
+            fig.update_yaxes(title=y_label)
         fig.update_layout(
             coloraxis_colorbar=dict(
                 title="frequency",
