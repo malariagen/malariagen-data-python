@@ -2516,69 +2516,50 @@ class Ag3:
 
         """
 
-        # if no index is given (cheaper than passing None to plotly but same effect)
-        if not index_name:
-            index_name = ""
-
         # check len of input
-        if not len(df) <= max_len:
+        if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
 
         # reset index
         df = df.reset_index().copy()
 
         if isinstance(index, list):
-            # ensure that the things we want to make the index out of are all str type
-            for i in index:
-                df.loc[:, i] = df[i].astype(str)
-                # make a new column out of index list and give it the index_name
-                df.loc[:, index_name] = df[index].agg("_".join, axis=1)
+            index_col = (
+                df[index].astype(str).apply(lambda row: "_".join(row), axis="columns")
+            )
 
         if isinstance(index, str):
-            df.loc[:, index_name] = df[index].astype(str)
+            index_col = df[index].astype(str)
 
         # check that index is unique (otherwise style won't work)
-        if not df[index_name].is_unique:
+        if not index_col.is_unique:
             raise ValueError(f"{index} does not produce a unique index")
 
         # drop and re-order columns
-        frq_cols = [index_name] + [col for col in df.columns if col.startswith("frq_")]
-
-        # check that freqs are all floats
-        for c in frq_cols[1:]:
-            df.loc[:, c] = df[c].astype(float)
+        frq_cols = [col for col in df.columns if col.startswith("frq_")]
 
         # keep only freq cols
         heatmap_df = df[frq_cols].copy()
 
         # set index
-        heatmap_df.set_index(index_name, inplace=True)
+        heatmap_df.set_index(index_col, inplace=True)
 
         # clean column names
         heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
 
         # plotly heatmap styling
-        if width:
-            fig = px.imshow(
-                img=heatmap_df,
-                zmin=0,
-                zmax=1,
-                text_auto=".0%",
-                aspect="auto",
-                width=width,
-                color_continuous_scale="Reds",
-            )
-        else:
-            fig = px.imshow(
-                img=heatmap_df,
-                zmin=0,
-                zmax=1,
-                text_auto=".0%",
-                aspect="auto",
-                color_continuous_scale="Reds",
-            )
+        fig = px.imshow(
+            img=heatmap_df,
+            zmin=0,
+            zmax=1,
+            text_auto=".0%",
+            aspect="auto",
+            width=width,
+            color_continuous_scale="Reds",
+        )
 
         fig.update_xaxes(side="top", tickangle=270, title="cohorts")
+        # set Y axis title if index_name is given
         fig.update_layout(
             coloraxis_colorbar=dict(
                 title="frequency",
