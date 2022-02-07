@@ -1242,6 +1242,11 @@ class Ag3:
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
 
+        df_snps.set_index(
+            ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+            inplace=True,
+        )
+
         return df_snps
 
     def cross_metadata(self):
@@ -2126,10 +2131,7 @@ class Ag3:
             n_samples = np.count_nonzero(loc_samples)
             if n_samples == 0:
                 raise ValueError(f"no samples for cohort {coh!r}")
-            if n_samples < min_cohort_size:
-                freq_cols[f"frq_{coh}_amp"] = np.nan
-                freq_cols[f"frq_{coh}_del"] = np.nan
-            else:
+            if n_samples >= min_cohort_size:
                 is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
                 is_del_coh = np.compress(loc_samples, is_del, axis=1)
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
@@ -2147,7 +2149,7 @@ class Ag3:
         df = pandas.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
-        df.set_index("ID", inplace=True)
+        df.set_index(["ID", "Name"], inplace=True)
 
         return df
 
@@ -2461,6 +2463,8 @@ class Ag3:
             effects=True,
         )
 
+        df_snps.reset_index(inplace=True)
+
         # we just want aa change
         df_ns_snps = df_snps.query(
             "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
@@ -2491,7 +2495,7 @@ class Ag3:
         return df_aaf
 
     def plot_frequencies_heatmap(
-        self, df, index, max_len=100, y_label=None, colorbar=True, width=None
+        self, df, index=None, max_len=100, y_label=None, colorbar=True, width=None
     ):
 
         """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
@@ -2520,16 +2524,25 @@ class Ag3:
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
 
-        # reset index
-        df = df.reset_index().copy()
-
-        if isinstance(index, list):
+        if index is None:
+            index_names = list(df.index.names)
+            df = df.reset_index().copy()
             index_col = (
-                df[index].astype(str).apply(lambda row: "_".join(row), axis="columns")
+                df[index_names]
+                .astype(str)
+                .apply(lambda row: "_".join(row), axis="columns")
             )
 
-        if isinstance(index, str):
-            index_col = df[index].astype(str)
+        if index is not None:
+            df = df.reset_index().copy()
+            if isinstance(index, list):
+                index_col = (
+                    df[index]
+                    .astype(str)
+                    .apply(lambda row: "_".join(row), axis="columns")
+                )
+            if isinstance(index, str):
+                index_col = df[index].astype(str)
 
         # check that index is unique (otherwise style won't work)
         if not index_col.is_unique:
