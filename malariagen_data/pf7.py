@@ -229,17 +229,10 @@ class Pf7:
 
         return data_vars
 
-    def _add_extended_data(self, root, inline_array, chunks, extended, data_vars):
-        if extended == "*" or extended == ["*"]:
-            subset_extended_variants = self.extended_variant_fields
-            subset_extended_calldata = self.extended_calldata_variables
-        elif isinstance(extended, list):
-            (
-                subset_extended_variants,
-                subset_extended_calldata,
-            ) = self._subset_extended_dictionary(extended)
-        else:
-            raise ValueError("Input to extended is invalid.")
+    def _add_extended_data(self, root, inline_array, chunks, data_vars):
+
+        subset_extended_variants = self.extended_variant_fields
+        subset_extended_calldata = self.extended_calldata_variables
 
         for var_name in subset_extended_calldata:
             z = root[f"calldata/{var_name}"]
@@ -258,7 +251,7 @@ class Pf7:
             )
         return data_vars
 
-    def variant_calls(self, extended=[], inline_array=True, chunks="native"):
+    def variant_calls(self, extended=False, inline_array=True, chunks="native"):
         """Access variant sites, site filters and genotype calls.
         Parameters
         ----------
@@ -290,9 +283,7 @@ class Pf7:
 
         # Add extended data
         if extended:
-            data_vars = self._add_extended_data(
-                root, inline_array, chunks, extended, data_vars
-            )
+            data_vars = self._add_extended_data(root, inline_array, chunks, data_vars)
 
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords)

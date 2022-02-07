@@ -344,8 +344,13 @@ class TestPf7(unittest.TestCase):
         )
 
     def test_add_extended_data(self):
-        actual_extended = self.test_pf7_class._add_extended_data(
-            self.test_zarr_root, True, "native", self.test_extended, {}
+        test_pf7_extended = Pf7(self.test_data_path, data_config=self.test_config_path)
+        test_pf7_extended.extended_variant_fields = {"AN": [DIM_VARIANT]}
+        test_pf7_extended.extended_calldata_variables = {
+            "GQ": [DIM_VARIANT, DIM_SAMPLE]
+        }
+        actual_extended = test_pf7_extended._add_extended_data(
+            self.test_zarr_root, True, "native", {}
         )
         self.assertEqual(
             list(actual_extended.keys()),
@@ -366,12 +371,6 @@ class TestPf7(unittest.TestCase):
                 ["variants"],
             ],
         )
-
-    def test_add_extended_data_raises_error(self):
-        with self.assertRaises(ValueError):
-            self.test_pf7_class._add_extended_data(
-                self.test_zarr_root, True, "native", {"key": "value"}, {}
-            )
 
     @patch("malariagen_data.pf7.Pf7.open_zarr")
     def test_variant_calls_default(self, mock_open_zarr):
@@ -401,8 +400,12 @@ class TestPf7(unittest.TestCase):
             self.test_data_path,
             data_config=self.test_config_path,
         )
+        test_pf7_class_extended.extended_variant_fields = {"AN": [DIM_VARIANT]}
+        test_pf7_class_extended.extended_calldata_variables = {
+            "GQ": [DIM_VARIANT, DIM_SAMPLE]
+        }
         ds = test_pf7_class_extended.variant_calls(
-            extended=self.test_extended,
+            extended=True,
             inline_array=True,
             chunks="native",
         )
