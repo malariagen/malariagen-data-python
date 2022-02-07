@@ -1328,6 +1328,33 @@ def test_gene_cnv_frequencies(contig, cohorts):
         assert df.columns.tolist() == expected_fields
 
 
+def test_gene_cnv_frequencies__query():
+
+    expected_columns = [
+        "contig",
+        "start",
+        "end",
+        "strand",
+        "Name",
+        "description",
+        "frq_AO-LUA_colu_2009_amp",
+        "frq_AO-LUA_colu_2009_del",
+    ]
+
+    ag3 = setup_ag3()
+    df = ag3.gene_cnv_frequencies(
+        contig="3L",
+        sample_sets="3.0",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        sample_query="country == 'Angola'",
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert df.shape == (2211, 8)
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],

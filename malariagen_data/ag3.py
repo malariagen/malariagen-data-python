@@ -1137,7 +1137,8 @@ class Ag3:
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
         sample_query : str, optional
-            @@TODO
+            A query statement which maps to the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'"
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2075,6 +2076,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A query statement which maps to the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'"
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2098,6 +2102,16 @@ class Ag3:
         these can be removed from the output dataframe using pandas df.dropna(axis='columns').
 
         """
+
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
@@ -2136,16 +2150,17 @@ class Ag3:
 
         # compute cohort frequencies
         freq_cols = dict()
-        for coh, loc_samples in coh_dict.items():
-            n_samples = np.count_nonzero(loc_samples)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
-            if n_samples < min_cohort_size:
-                freq_cols[f"frq_{coh}_amp"] = np.nan
-                freq_cols[f"frq_{coh}_del"] = np.nan
-            else:
-                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+        for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
+            n_samples = np.count_nonzero(loc_coh)
+            # not working with this chunk
+            # if n_samples == 0:
+            #     raise ValueError(f"no samples for cohort {coh!r}")
+            if n_samples >= min_cohort_size:
+                is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
+                is_del_coh = np.compress(loc_coh, is_del, axis=1)
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
