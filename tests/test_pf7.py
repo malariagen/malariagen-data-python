@@ -232,7 +232,7 @@ class TestPf7(unittest.TestCase):
         mock_read_csv.assert_called_once()
 
     @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
-    @patch("malariagen_data.pf7.zarr.open")
+    @patch("malariagen_data.pf7.zarr.open_consolidated")
     def test_open_zarr_calls_functions_correctly(self, mock_zarr, mock_safestore):
         with patch(
             "malariagen_data.pf7.init_filesystem",
@@ -244,7 +244,7 @@ class TestPf7(unittest.TestCase):
         mock_zarr.assert_called_once_with(store="Safe store object")
 
     @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
-    @patch("malariagen_data.pf7.zarr.open")
+    @patch("malariagen_data.pf7.zarr.open_consolidated")
     def test_open_zarr_uses_cache(self, mock_zarr, mock_safestore):
         with patch(
             "malariagen_data.pf7.init_filesystem",

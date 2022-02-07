@@ -151,9 +151,7 @@ class Pf7:
         if self._cache_zarr is None:
             path = os.path.join(self._path, self.CONF["zarr_path"])
             store = init_zarr_store(fs=self._fs, path=path)
-            """WARNING: Metadata has not been consolidated yet. Using open for now but will eventually switch to opn_consolidated when the .zmetadata file has been created
-            """
-            self._cache_zarr = zarr.open(store=store)
+            self._cache_zarr = zarr.open_consolidated(store=store)
         return self._cache_zarr
 
     def _subset_extended_dictionary(self, extended_variables):
