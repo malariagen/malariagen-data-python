@@ -2057,6 +2057,7 @@ class Ag3:
         self,
         contig,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,

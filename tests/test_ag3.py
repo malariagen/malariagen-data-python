@@ -861,6 +861,39 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
 
 
+def test_snp_allele_frequencies__query():
+    ag3 = setup_ag3()
+    cohorts = "admin1_year"
+    min_cohort_size = 10
+    expected_columns = [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "pass_gamb_colu_arab",
+        "pass_gamb_colu",
+        "pass_arab",
+        "frq_AO-LUA_colu_2009",
+        "max_af",
+    ]
+
+    df = ag3.snp_allele_frequencies(
+        transcript="AGAP004707-RD",
+        cohorts=cohorts,
+        sample_query="country == 'Angola'",
+        cohorts_analysis="20211101",
+        min_cohort_size=min_cohort_size,
+        site_mask="gamb_colu",
+        sample_sets="3.0",
+        drop_invariant=True,
+        effects=False,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert df.shape == (695, 9)
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
