@@ -715,10 +715,6 @@ def test_snp_allele_frequencies__str_cohorts():
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -740,9 +736,10 @@ def test_snp_allele_frequencies__str_cohorts():
     frq_cohort_labels = ["frq_" + s for s in cohort_labels]
     expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
 
-    assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (16526, 68)
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.index.names == ["contig", "position", "ref_allele", "alt_allele"]
+    assert df.shape == (16526, 64)
 
 
 def test_snp_allele_frequencies__dict_cohorts():
@@ -752,10 +749,6 @@ def test_snp_allele_frequencies__dict_cohorts():
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
     }
     universal_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -776,9 +769,6 @@ def test_snp_allele_frequencies__dict_cohorts():
     expected_fields = universal_fields + frq_columns + ["max_af"]
     assert df.columns.tolist() == expected_fields
     assert df.shape == (133, len(expected_fields))
-    assert df.iloc[0].position == 28597653
-    assert df.iloc[1].ref_allele == "A"
-    assert df.iloc[2].alt_allele == "C"
     assert df.iloc[3].frq_ke == 0
     assert df.iloc[4].frq_bf_2012_col == pytest.approx(0.006097, abs=1e-6)
     assert df.iloc[4].max_af == pytest.approx(0.006097, abs=1e-6)
@@ -806,10 +796,6 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -822,7 +808,6 @@ def test_snp_allele_frequencies__str_cohorts__effects():
         "aa_pos",
         "ref_aa",
         "alt_aa",
-        "aa_change",
     ]
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
@@ -844,6 +829,13 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 16526
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.index.names == [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "aa_change",
+    ]
 
 
 def test_snp_allele_frequencies__query():
@@ -851,10 +843,6 @@ def test_snp_allele_frequencies__query():
     cohorts = "admin1_year"
     min_cohort_size = 10
     expected_columns = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -876,7 +864,7 @@ def test_snp_allele_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    assert df.shape == (695, 9)
+    assert df.shape == (695, 5)
 
 
 @pytest.mark.parametrize(
@@ -1266,7 +1254,7 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
 )
 def test_gene_cnv_frequencies(contig, cohorts):
 
-    universal_fields = ["contig", "start", "end", "strand", "Name", "description"]
+    universal_fields = ["contig", "start", "end", "strand", "description"]
     ag3 = setup_ag3()
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
@@ -1276,7 +1264,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
 
     assert isinstance(df, pd.DataFrame)
     assert len(df) == len(df_genes)
-    assert df.index.name == "ID"
+    assert df.index.names == ["ID", "Name"]
 
     # sanity checks
     cohort_labels = None
@@ -1312,7 +1300,6 @@ def test_gene_cnv_frequencies__query():
         "start",
         "end",
         "strand",
-        "Name",
         "description",
         "frq_AO-LUA_colu_2009_amp",
         "frq_AO-LUA_colu_2009_del",
@@ -1329,7 +1316,7 @@ def test_gene_cnv_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    assert df.shape == (2211, 8)
+    assert df.shape == (2211, 7)
 
 
 @pytest.mark.parametrize(
@@ -1532,5 +1519,6 @@ def test_aa_frequencies():
 
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
+    assert df.index.name == "aa_change"
     assert df.shape == (61, 6)
     assert df.loc["V402L"].max_af == pytest.approx(0.121951, abs=1e-6)

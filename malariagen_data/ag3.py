@@ -7,6 +7,7 @@ import dask.array as da
 import numba
 import numpy as np
 import pandas
+import plotly.express as px
 import xarray
 import zarr
 
@@ -1256,6 +1257,17 @@ class Ag3:
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
 
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+                inplace=True,
+            )
+
+        else:
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele"],
+                inplace=True,
+            )
+
         return df_snps
 
     def cross_metadata(self):
@@ -2173,7 +2185,7 @@ class Ag3:
         df = pandas.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
-        df.set_index("ID", inplace=True)
+        df.set_index(["ID", "Name"], inplace=True)
 
         return df
 
@@ -2492,6 +2504,8 @@ class Ag3:
             effects=True,
         )
 
+        df_snps.reset_index(inplace=True)
+
         # we just want aa change
         df_ns_snps = df_snps.query(
             "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
@@ -2520,6 +2534,96 @@ class Ag3:
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         return df_aaf
+
+    def plot_frequencies_heatmap(
+        self, df, index=None, max_len=100, y_label=None, colorbar=True, width=None
+    ):
+
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
+            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to
+            filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
+
+        Parameters
+        ----------
+        df : pandas DataFrame
+           A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+        index : str or list of str
+            One or more column headers that are present in the input dataframe. This becomes the heatmap y-axis
+            row labels. The column/s must produce a unique index.
+        max_len : int, optional
+            Displaying large styled dataframes may cause ipython notebooks to crash.
+        y_label : str, optional
+            This is the y-axis label that will be displayed on the heatmap.
+        colorbar : bool, optional
+            If False, colorbar is not output.
+        width : int, optional
+            Width of heatmap output.
+
+        """
+
+        # check len of input
+        if len(df) > max_len:
+            raise ValueError(f"Input DataFrame is longer than {max_len}")
+
+        # indexing
+        if index is None:
+            index = list(df.index.names)
+        df = df.reset_index().copy()
+        if isinstance(index, list):
+            index_col = (
+                df[index]
+                .astype(str)
+                .apply(
+                    lambda row: ", ".join([o for o in row if o is not None]),
+                    axis="columns",
+                )
+            )
+        elif isinstance(index, str):
+            index_col = df[index].astype(str)
+        else:
+            raise TypeError("wrong type for index parameter, expected list or str")
+
+        # check that index is unique (otherwise style won't work)
+        if not index_col.is_unique:
+            raise ValueError(f"{index} does not produce a unique index")
+
+        # drop and re-order columns
+        frq_cols = [col for col in df.columns if col.startswith("frq_")]
+
+        # keep only freq cols
+        heatmap_df = df[frq_cols].copy()
+
+        # set index
+        heatmap_df.set_index(index_col, inplace=True)
+
+        # clean column names
+        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
+
+        # plotly heatmap styling
+        fig = px.imshow(
+            img=heatmap_df,
+            zmin=0,
+            zmax=1,
+            text_auto=".0%",
+            aspect="auto",
+            width=width,
+            color_continuous_scale="Reds",
+        )
+
+        fig.update_xaxes(side="top", tickangle=270, title="cohorts")
+        # set Y axis title if index_name is given
+        if y_label is not None:
+            fig.update_yaxes(title=y_label)
+        fig.update_layout(
+            coloraxis_colorbar=dict(
+                title="frequency",
+                tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
+            )
+        )
+        if not colorbar:
+            fig.update(layout_coloraxis_showscale=False)
+        fig.show()
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
