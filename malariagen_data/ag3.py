@@ -1242,10 +1242,16 @@ class Ag3:
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
 
-        df_snps.set_index(
-            ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-            inplace=True,
-        )
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+                inplace=True,
+            )
+
+        if not effects:
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele"],
+                inplace=True,
+            )
 
         return df_snps
 
@@ -2524,25 +2530,23 @@ class Ag3:
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
 
+        # indexing
         if index is None:
-            index_names = list(df.index.names)
-            df = df.reset_index().copy()
+            index = list(df.index.names)
+        df = df.reset_index().copy()
+        if isinstance(index, list):
             index_col = (
-                df[index_names]
+                df[index]
                 .astype(str)
-                .apply(lambda row: "_".join(row), axis="columns")
-            )
-
-        if index is not None:
-            df = df.reset_index().copy()
-            if isinstance(index, list):
-                index_col = (
-                    df[index]
-                    .astype(str)
-                    .apply(lambda row: "_".join(row), axis="columns")
+                .apply(
+                    lambda row: ", ".join([o for o in row if o is not None]),
+                    axis="columns",
                 )
-            if isinstance(index, str):
-                index_col = df[index].astype(str)
+            )
+        elif isinstance(index, str):
+            index_col = df[index].astype(str)
+        else:
+            raise TypeError("wrong type for index parameter, expected list or str")
 
         # check that index is unique (otherwise style won't work)
         if not index_col.is_unique:
