@@ -710,21 +710,6 @@ def test_snp_effects():
     assert df.iloc[674].effect == "INTRONIC"
 
 
-def test_snp_allele_frequencies__no_samples():
-    ag3 = setup_ag3()
-    cohorts = {
-        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
-    }
-    with pytest.raises(ValueError):
-        _ = ag3.snp_allele_frequencies(
-            transcript="AGAP009194-RA",
-            cohorts=cohorts,
-            site_mask="gamb_colu",
-            sample_sets="3.0",
-            drop_invariant=True,
-        )
-
-
 def test_snp_allele_frequencies__str_cohorts():
     ag3 = setup_ag3()
     cohorts = "admin1_month"
@@ -1276,9 +1261,6 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
             "ke": "country == 'Kenya'",
             "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
         },
-        {
-            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
-        },
         "admin1_month",
     ],
 )
@@ -1287,45 +1269,40 @@ def test_gene_cnv_frequencies(contig, cohorts):
     universal_fields = ["contig", "start", "end", "strand", "Name", "description"]
     ag3 = setup_ag3()
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
-    if "bf_2050_col" in cohorts:
-        with pytest.raises(ValueError):
-            _ = ag3.gene_cnv_frequencies(
-                contig=contig, sample_sets="3.0", cohorts=cohorts
-            )
-    else:
-        df = ag3.gene_cnv_frequencies(
-            contig=contig, sample_sets="3.0", cohorts=cohorts, min_cohort_size=0
-        )
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == len(df_genes)
-        assert df.index.name == "ID"
+    df = ag3.gene_cnv_frequencies(
+        contig=contig, sample_sets="3.0", cohorts=cohorts, min_cohort_size=0
+    )
 
-        # sanity checks
-        cohort_labels = None
-        if isinstance(cohorts, dict):
-            cohort_labels = ["frq_" + s for s in cohorts.keys()]
-        if isinstance(cohorts, str):
-            df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
-            coh_nm = "cohort_" + cohorts
-            cohort_labels = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == len(df_genes)
+    assert df.index.name == "ID"
 
-        suffixes = ["_amp", "_del"]
-        cnv_freq_cols = [a + b for a in cohort_labels for b in suffixes]
+    # sanity checks
+    cohort_labels = None
+    if isinstance(cohorts, dict):
+        cohort_labels = ["frq_" + s for s in cohorts.keys()]
+    if isinstance(cohorts, str):
+        df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
+        coh_nm = "cohort_" + cohorts
+        cohort_labels = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
 
-        for f in cnv_freq_cols:
-            x = df[f].values
-            assert np.all(x >= 0)
-            assert np.all(x <= 1)
-        cnv_freq_col_pairs = list(zip(cnv_freq_cols[::2], cnv_freq_cols[1::2]))
-        for fa, fd in cnv_freq_col_pairs:
-            a = df[fa].values
-            d = df[fd].values
-            x = a + d
-            assert np.all(x >= 0)
-            assert np.all(x <= 1)
-        expected_fields = universal_fields + cnv_freq_cols
-        assert df.columns.tolist() == expected_fields
+    suffixes = ["_amp", "_del"]
+    cnv_freq_cols = [a + b for a in cohort_labels for b in suffixes]
+
+    for f in cnv_freq_cols:
+        x = df[f].values
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
+    cnv_freq_col_pairs = list(zip(cnv_freq_cols[::2], cnv_freq_cols[1::2]))
+    for fa, fd in cnv_freq_col_pairs:
+        a = df[fa].values
+        d = df[fd].values
+        x = a + d
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
+    expected_fields = universal_fields + cnv_freq_cols
+    assert df.columns.tolist() == expected_fields
 
 
 def test_gene_cnv_frequencies__query():

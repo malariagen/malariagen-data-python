@@ -2425,6 +2425,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
@@ -2444,6 +2445,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2477,6 +2481,7 @@ class Ag3:
         df_snps = self.snp_allele_frequencies(
             transcript=transcript,
             cohorts=cohorts,
+            sample_query=sample_query,
             cohorts_analysis=cohorts_analysis,
             min_cohort_size=min_cohort_size,
             site_mask=site_mask,
