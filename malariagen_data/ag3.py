@@ -2077,8 +2077,8 @@ class Ag3:
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
         sample_query : str, optional
-            A query statement which maps to the sample metadata e.g.,
-            "species == 'coluzzii' and country == 'Burkina Faso'"
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
