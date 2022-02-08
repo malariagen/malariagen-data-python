@@ -17,6 +17,7 @@ from .util import (
     read_gff3,
     resolve_region,
     unpack_gff3_attributes,
+    xarray_concat,
 )
 
 geneset_gff3_path = (
@@ -262,7 +263,7 @@ class Amin1:
             )
             for r in region
         ]
-        ds = xarray.concat(
+        ds = xarray_concat(
             datasets,
             dim=DIM_VARIANT,
             data_vars="minimal",

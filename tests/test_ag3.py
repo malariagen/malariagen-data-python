@@ -265,7 +265,9 @@ def test_open_snp_sites():
 
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L"], ["3R", "2R:48714463-48715355"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 def test_snp_sites(chunks, region):
 
     ag3 = setup_ag3()
