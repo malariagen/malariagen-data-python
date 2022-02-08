@@ -1304,7 +1304,6 @@ def test_gene_cnv_frequencies__query():
         "start",
         "end",
         "strand",
-        "Name",
         "description",
         "frq_AO-LUA_colu_2009_amp",
         "frq_AO-LUA_colu_2009_del",
@@ -1321,7 +1320,7 @@ def test_gene_cnv_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    assert df.shape == (2211, 8)
+    assert df.shape == (2211, 7)
 
 
 @pytest.mark.parametrize(
