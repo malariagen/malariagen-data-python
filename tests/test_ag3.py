@@ -270,7 +270,9 @@ def test_snp_sites(chunks, region):
 
     ag3 = setup_ag3()
 
-    pos, ref, alt = ag3.snp_sites(region=region, chunks=chunks)
+    pos = ag3.snp_sites(region=region, field="POS", chunks=chunks)
+    ref = ag3.snp_sites(region=region, field="REF", chunks=chunks)
+    alt = ag3.snp_sites(region=region, field="ALT", chunks=chunks)
     assert isinstance(pos, da.Array)
     assert pos.ndim == 1
     assert pos.dtype == "i4"
@@ -282,28 +284,23 @@ def test_snp_sites(chunks, region):
     assert alt.dtype == "S1"
     assert pos.shape[0] == ref.shape[0] == alt.shape[0]
 
-    # specific field
-    pos = ag3.snp_sites(region=region, field="POS", chunks=chunks)
-    assert isinstance(pos, da.Array)
-    assert pos.ndim == 1
-    assert pos.dtype == "i4"
-
     # apply site mask
     filter_pass = ag3.site_filters(region=region, mask="gamb_colu_arab").compute()
+    n_pass = np.count_nonzero(filter_pass)
     pos_pass = ag3.snp_sites(
         region=region, field="POS", site_mask="gamb_colu_arab", chunks=chunks
     )
     assert isinstance(pos_pass, da.Array)
     assert pos_pass.ndim == 1
     assert pos_pass.dtype == "i4"
-    assert pos_pass.shape[0] == np.count_nonzero(filter_pass)
+    assert pos_pass.shape[0] == n_pass
     assert pos_pass.compute().shape == pos_pass.shape
-    pos_pass, ref_pass, alt_pass = ag3.snp_sites(
-        region=region, site_mask="gamb_colu_arab"
-    )
-    for d in pos_pass, ref_pass, alt_pass:
+    for f in "POS", "REF", "ALT":
+        d = ag3.snp_sites(
+            region=region, site_mask="gamb_colu_arab", field=f, chunks=chunks
+        )
         assert isinstance(d, da.Array)
-        assert d.shape[0] == np.count_nonzero(filter_pass)
+        assert d.shape[0] == n_pass
         assert d.shape == d.compute().shape
 
 

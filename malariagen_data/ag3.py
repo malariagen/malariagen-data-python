@@ -615,7 +615,7 @@ class Ag3:
         inline_array,
         chunks,
     ):
-        assert isinstance(region, Region)
+        assert isinstance(region, Region), type(region)
         root = self.open_snp_sites()
         z = root[f"{region.contig}/variants/{field}"]
         ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -674,6 +674,7 @@ class Ag3:
                     site_mask=None,
                     chunks=chunks,
                     inline_array=inline_array,
+                    site_filters_analysis=site_filters_analysis,
                 )
                 for r in region
             ],
@@ -723,7 +724,7 @@ class Ag3:
         z = root[region.contig]["calldata"][field]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
-            pos = self._snp_sites(region=region.contig, field="POS")
+            pos = self.snp_sites(region=region.contig, field="POS")
             loc_region = locate_region(region, pos)
             d = d[loc_region]
 
