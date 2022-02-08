@@ -83,25 +83,47 @@ def unpack_gff3_attributes(df, attributes):
     return df
 
 
-class SafeStore(Mapping):
-    def __init__(self, store):
-        self.store = store
+# zarr compatibility, version 2.11.0 introduced the BaseStore class
+# see also https://github.com/malariagen/malariagen-data-python/issues/129
 
-    def __getitem__(self, key):
-        try:
-            return self.store[key]
-        except KeyError as e:
-            # always raise a runtime error to ensure zarr propagates the exception
-            raise RuntimeError(e)
+try:
+    # zarr >= 2.11.0
+    from zarr.storage import KVStore
 
-    def __contains__(self, key):
-        return key in self.store
+    class SafeStore(KVStore):
+        def __getitem__(self, key):
+            try:
+                return self._mutable_mapping[key]
+            except KeyError as e:
+                # always raise a runtime error to ensure zarr propagates the exception
+                raise RuntimeError(e)
 
-    def __iter__(self):
-        return iter(self.store)
+        def __contains__(self, key):
+            return key in self._mutable_mapping
 
-    def __len__(self):
-        return len(self.store)
+
+except ImportError:
+    # zarr < 2.11.0
+
+    class SafeStore(Mapping):
+        def __init__(self, store):
+            self.store = store
+
+        def __getitem__(self, key):
+            try:
+                return self.store[key]
+            except KeyError as e:
+                # always raise a runtime error to ensure zarr propagates the exception
+                raise RuntimeError(e)
+
+        def __contains__(self, key):
+            return key in self.store
+
+        def __iter__(self):
+            return iter(self.store)
+
+        def __len__(self):
+            return len(self.store)
 
 
 class SiteClass(Enum):
