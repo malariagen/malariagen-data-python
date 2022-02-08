@@ -843,10 +843,6 @@ def test_snp_allele_frequencies__query():
     cohorts = "admin1_year"
     min_cohort_size = 10
     expected_columns = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -868,7 +864,7 @@ def test_snp_allele_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    assert df.shape == (695, 9)
+    assert df.shape == (695, 5)
 
 
 @pytest.mark.parametrize(
