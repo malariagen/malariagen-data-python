@@ -18,6 +18,7 @@ BioPython = "*"
 scikit-allel = "*"
 xarray = "*"
 numba = "*"
+plotly = "^5.5.0"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
