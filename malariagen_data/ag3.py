@@ -5,6 +5,7 @@ import dask.array as da
 import numba
 import numpy as np
 import pandas
+import plotly.express as px
 import xarray
 import zarr
 
@@ -1085,6 +1086,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
@@ -1105,6 +1107,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -1137,6 +1142,16 @@ class Ag3:
 
         """
 
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
+
         # setup initial dataframe of SNPs
         region, df_snps = self._snp_df(
             transcript=transcript, site_filters_analysis=site_filters_analysis
@@ -1163,9 +1178,10 @@ class Ag3:
         # count alleles
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
             n_samples = np.count_nonzero(loc_coh)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples >= min_cohort_size:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
@@ -1210,6 +1226,17 @@ class Ag3:
         if effects:
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
+
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+                inplace=True,
+            )
+
+        else:
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele"],
+                inplace=True,
+            )
 
         return df_snps
 
@@ -2032,6 +2059,7 @@ class Ag3:
         self,
         contig,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -2049,6 +2077,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2072,6 +2103,16 @@ class Ag3:
         these can be removed from the output dataframe using pandas df.dropna(axis='columns').
 
         """
+
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
@@ -2110,16 +2151,14 @@ class Ag3:
 
         # compute cohort frequencies
         freq_cols = dict()
-        for coh, loc_samples in coh_dict.items():
-            n_samples = np.count_nonzero(loc_samples)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
-            if n_samples < min_cohort_size:
-                freq_cols[f"frq_{coh}_amp"] = np.nan
-                freq_cols[f"frq_{coh}_del"] = np.nan
-            else:
-                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+        for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
+            n_samples = np.count_nonzero(loc_coh)
+            if n_samples >= min_cohort_size:
+                is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
+                is_del_coh = np.compress(loc_coh, is_del, axis=1)
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
@@ -2135,7 +2174,7 @@ class Ag3:
         df = pandas.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
-        df.set_index("ID", inplace=True)
+        df.set_index(["ID", "Name"], inplace=True)
 
         return df
 
@@ -2401,6 +2440,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
@@ -2420,6 +2460,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2453,6 +2496,7 @@ class Ag3:
         df_snps = self.snp_allele_frequencies(
             transcript=transcript,
             cohorts=cohorts,
+            sample_query=sample_query,
             cohorts_analysis=cohorts_analysis,
             min_cohort_size=min_cohort_size,
             site_mask=site_mask,
@@ -2462,6 +2506,8 @@ class Ag3:
             drop_invariant=drop_invariant,
             effects=True,
         )
+
+        df_snps.reset_index(inplace=True)
 
         # we just want aa change
         df_ns_snps = df_snps.query(
@@ -2491,6 +2537,96 @@ class Ag3:
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         return df_aaf
+
+    def plot_frequencies_heatmap(
+        self, df, index=None, max_len=100, y_label=None, colorbar=True, width=None
+    ):
+
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
+            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to
+            filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
+
+        Parameters
+        ----------
+        df : pandas DataFrame
+           A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+        index : str or list of str
+            One or more column headers that are present in the input dataframe. This becomes the heatmap y-axis
+            row labels. The column/s must produce a unique index.
+        max_len : int, optional
+            Displaying large styled dataframes may cause ipython notebooks to crash.
+        y_label : str, optional
+            This is the y-axis label that will be displayed on the heatmap.
+        colorbar : bool, optional
+            If False, colorbar is not output.
+        width : int, optional
+            Width of heatmap output.
+
+        """
+
+        # check len of input
+        if len(df) > max_len:
+            raise ValueError(f"Input DataFrame is longer than {max_len}")
+
+        # indexing
+        if index is None:
+            index = list(df.index.names)
+        df = df.reset_index().copy()
+        if isinstance(index, list):
+            index_col = (
+                df[index]
+                .astype(str)
+                .apply(
+                    lambda row: ", ".join([o for o in row if o is not None]),
+                    axis="columns",
+                )
+            )
+        elif isinstance(index, str):
+            index_col = df[index].astype(str)
+        else:
+            raise TypeError("wrong type for index parameter, expected list or str")
+
+        # check that index is unique (otherwise style won't work)
+        if not index_col.is_unique:
+            raise ValueError(f"{index} does not produce a unique index")
+
+        # drop and re-order columns
+        frq_cols = [col for col in df.columns if col.startswith("frq_")]
+
+        # keep only freq cols
+        heatmap_df = df[frq_cols].copy()
+
+        # set index
+        heatmap_df.set_index(index_col, inplace=True)
+
+        # clean column names
+        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
+
+        # plotly heatmap styling
+        fig = px.imshow(
+            img=heatmap_df,
+            zmin=0,
+            zmax=1,
+            text_auto=".0%",
+            aspect="auto",
+            width=width,
+            color_continuous_scale="Reds",
+        )
+
+        fig.update_xaxes(side="top", tickangle=270, title="cohorts")
+        # set Y axis title if index_name is given
+        if y_label is not None:
+            fig.update_yaxes(title=y_label)
+        fig.update_layout(
+            coloraxis_colorbar=dict(
+                title="frequency",
+                tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
+            )
+        )
+        if not colorbar:
+            fig.update(layout_coloraxis_showscale=False)
+        fig.show()
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
