@@ -2155,9 +2155,6 @@ class Ag3:
             if loc_samples is not None:
                 loc_coh = loc_coh & loc_samples
             n_samples = np.count_nonzero(loc_coh)
-            # not working with this chunk
-            # if n_samples == 0:
-            #     raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples >= min_cohort_size:
                 is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
                 is_del_coh = np.compress(loc_coh, is_del, axis=1)
