@@ -256,32 +256,6 @@ class TestPf7(unittest.TestCase):
         mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
 
-    def test_subset_extended_dictionary(self):
-        (
-            actual_variants_dictionary,
-            actual_calldata_dictionary,
-        ) = self.test_pf7_class._subset_extended_dictionary(
-            ["DP", "GQ", "AC", "AF", "ANN_Feature_Type"]
-        )
-        expected_calldata_dictionary = {
-            "DP": [DIM_VARIANT, DIM_SAMPLE],
-            "GQ": [DIM_VARIANT, DIM_SAMPLE],
-        }
-        expected_variants_dictionary = {
-            "DP": [DIM_VARIANT],
-            "AC": [DIM_VARIANT, DIM_ALT_ALLELE],
-            "AF": [DIM_VARIANT, DIM_ALT_ALLELE],
-            "ANN_Feature_Type": [DIM_VARIANT, DIM_ALT_ALLELE],
-        }
-        self.assertEqual(actual_variants_dictionary, expected_variants_dictionary)
-        self.assertEqual(actual_calldata_dictionary, expected_calldata_dictionary)
-
-    def test_subset_extended_dictionary_raises_error(self):
-        with self.assertRaises(ValueError):
-            self.test_pf7_class._subset_extended_dictionary(
-                ["DP", "AC", "BAD_VARIABLE"]
-            )
-
     def test_add_coordinates(self):
         var_names_for_outputs = {
             "POS": "position",

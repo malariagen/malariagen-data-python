@@ -154,36 +154,6 @@ class Pf7:
             self._cache_zarr = zarr.open_consolidated(store=store)
         return self._cache_zarr
 
-    def _subset_extended_dictionary(self, extended_variables):
-        """Subset extended variants and calldata dictionaries to only include items in extended_variables list
-
-        Args:
-            extended_variables (list): list of variables to add onto default dataset
-
-        Raises:
-            ValueError: If variable isn't in either variants or calldata dictionary raises error as invalid entry
-
-        Returns:
-            subset_extended_variants, subset_extended_calldata : dictionaries containing subset of extended values
-        """
-        subset_extended_variants = {}
-        subset_extended_calldata = {}
-        for variable in extended_variables:
-            if variable in self.extended_variant_fields:
-                subset_extended_variants[variable] = self.extended_variant_fields[
-                    variable
-                ]
-            if variable in self.extended_calldata_variables:
-                subset_extended_calldata[variable] = self.extended_calldata_variables[
-                    variable
-                ]
-            if (
-                variable not in self.extended_calldata_variables
-                and variable not in self.extended_variant_fields
-            ):
-                raise ValueError("{} not found in zarr.".format(variable))
-        return subset_extended_variants, subset_extended_calldata
-
     def _add_coordinates(self, root, inline_array, chunks, var_names_for_outputs):
         # coordinates
         coords = dict()
