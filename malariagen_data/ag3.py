@@ -1247,7 +1247,7 @@ class Ag3:
                 inplace=True,
             )
 
-        if not effects:
+        else:
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele"],
                 inplace=True,
