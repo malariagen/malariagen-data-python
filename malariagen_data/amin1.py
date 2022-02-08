@@ -78,13 +78,16 @@ class Amin1:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def genome_sequence(self, contig, inline_array=True, chunks="native"):
+    def genome_sequence(self, region, inline_array=True, chunks="native"):
         """Access the reference genome sequence.
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        region: str or list of str or Region
+            Contig (e.g., "KB663610"), gene name (e.g., "AMIN002150"), genomic region
+            defined with coordinates (e.g., "KB663610:1-100000") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -97,9 +100,21 @@ class Amin1:
 
         """
         genome = self.open_genome()
-        z = genome[contig]
+        region = resolve_region(self, region)
+        z = genome[region.contig]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+
+        if region.start:
+            slice_start = region.start - 1
+        else:
+            slice_start = None
+        if region.end:
+            slice_stop = region.end
+        else:
+            slice_stop = None
+        loc_region = slice(slice_start, slice_stop)
+
+        return d[loc_region]
 
     def geneset(self, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations.
