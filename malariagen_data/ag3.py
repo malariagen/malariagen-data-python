@@ -1116,6 +1116,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
@@ -1136,6 +1137,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -1168,6 +1172,16 @@ class Ag3:
 
         """
 
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
+
         # setup initial dataframe of SNPs
         region, loc_feature, df_snps = self._snp_df(
             transcript=transcript, site_filters_analysis=site_filters_analysis
@@ -1194,9 +1208,10 @@ class Ag3:
         # count alleles
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
             n_samples = np.count_nonzero(loc_coh)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
             if n_samples >= min_cohort_size:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
@@ -2055,6 +2070,7 @@ class Ag3:
         self,
         contig,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -2072,6 +2088,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2095,6 +2114,16 @@ class Ag3:
         these can be removed from the output dataframe using pandas df.dropna(axis='columns').
 
         """
+
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
@@ -2133,13 +2162,14 @@ class Ag3:
 
         # compute cohort frequencies
         freq_cols = dict()
-        for coh, loc_samples in coh_dict.items():
-            n_samples = np.count_nonzero(loc_samples)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
+        for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
+            n_samples = np.count_nonzero(loc_coh)
             if n_samples >= min_cohort_size:
-                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+                is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
+                is_del_coh = np.compress(loc_coh, is_del, axis=1)
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
@@ -2407,6 +2437,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
@@ -2426,6 +2457,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2459,6 +2493,7 @@ class Ag3:
         df_snps = self.snp_allele_frequencies(
             transcript=transcript,
             cohorts=cohorts,
+            sample_query=sample_query,
             cohorts_analysis=cohorts_analysis,
             min_cohort_size=min_cohort_size,
             site_mask=site_mask,
