@@ -296,13 +296,12 @@ def _handle_region_coords(resource, region):
 
 
 def _handle_region_feature(resource, region):
-    gene_annotation = resource.geneset(attributes=["ID"]).query(f"ID == '{region}'")
-    if not gene_annotation.empty:
+    gene_annotation = resource.geneset(attributes=["ID"])
+    results = gene_annotation.query(f"ID == '{region}'")
+    if not results.empty:
         # region is a feature ID
-        gene_annotation = gene_annotation.squeeze()
-        return Region(
-            gene_annotation.contig, gene_annotation.start, gene_annotation.end
-        )
+        feature = results.squeeze()
+        return Region(feature.contig, feature.start, feature.end)
     else:
         return None
 
@@ -360,3 +359,10 @@ def locate_region(region, pos):
     pos = allel.SortedIndex(pos)
     loc_region = pos.locate_range(region.start, region.end)
     return loc_region
+
+
+def xarray_concat(datasets, **kwargs):
+    if len(datasets) == 0:
+        return datasets[0]
+    else:
+        return xr.concat(datasets, **kwargs)

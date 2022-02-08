@@ -24,6 +24,7 @@ from .util import (
     read_gff3,
     resolve_region,
     unpack_gff3_attributes,
+    xarray_concat,
 )
 
 PUBLIC_RELEASES = ("3.0",)
@@ -721,7 +722,7 @@ class Ag3:
         assert isinstance(region, Region)
         assert isinstance(sample_set, str)
         root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[region.contig]["calldata"][field]
+        z = root[f"{region.contig}/calldata/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
             pos = self.snp_sites(region=region.contig, field="POS")
@@ -771,33 +772,42 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         region = resolve_region(self, region)
 
-        # normalise to list to simplify concatenation logic
+        # normalise region to list to simplify concatenation logic
         if isinstance(region, Region):
             region = [region]
 
         # concatenate multiple sample sets and/or contigs
-        d = da.concatenate(
-            [
-                da.concatenate(
-                    [
-                        self._snp_genotypes(
-                            region=r,
-                            sample_set=s,
-                            field=field,
-                            inline_array=inline_array,
-                            chunks=chunks,
-                        )
-                        for s in sample_sets
-                    ],
-                    axis=1,
+        lx = []
+        for r in region:
+            ly = []
+
+            for s in sample_sets:
+                y = self._snp_genotypes(
+                    region=Region(r.contig, None, None),
+                    sample_set=s,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
-                for r in region
-            ],
-            axis=0,
-        )
+                ly.append(y)
+
+            # concatenate data from multiple sample sets
+            x = da.concatenate(ly, axis=1)
+
+            # locate region - do this only once, optimisation
+            if r.start or r.end:
+                pos = self.snp_sites(region=r.contig, field="POS")
+                loc_region = locate_region(r, pos)
+                x = x[loc_region]
+
+            lx.append(x)
+
+        # concatenate data from multiple regions
+        d = da.concatenate(lx, axis=0)
 
         # apply site filters if requested
         if site_mask is not None:
@@ -1323,11 +1333,11 @@ class Ag3:
         return d
 
     def _snp_calls_dataset(
-        self, *, region, sample_set, site_filters_analysis, inline_array, chunks
+        self, *, contig, sample_set, site_filters_analysis, inline_array, chunks
     ):
 
-        assert isinstance(region, Region)
-        contig = region.contig
+        # assert isinstance(region, Region)
+        # contig = region.contig
 
         coords = dict()
         data_vars = dict()
@@ -1398,10 +1408,10 @@ class Ag3:
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
-        # handle region
-        if region.start or region.end:
-            loc_region = locate_region(region, pos_z)
-            ds = ds.isel(variants=loc_region)
+        # # handle region
+        # if region.start or region.end:
+        #     loc_region = locate_region(region, pos_z)
+        #     ds = ds.isel(variants=loc_region)
 
         return ds
 
@@ -1451,27 +1461,41 @@ class Ag3:
             region = [region]
 
         # concatenate multiple sample sets and/or regions
-        ds = xarray.concat(
-            [
-                xarray.concat(
-                    [
-                        self._snp_calls_dataset(
-                            region=r,
-                            sample_set=s,
-                            site_filters_analysis=site_filters_analysis,
-                            inline_array=inline_array,
-                            chunks=chunks,
-                        )
-                        for s in sample_sets
-                    ],
-                    dim=DIM_SAMPLE,
-                    data_vars="minimal",
-                    coords="minimal",
-                    compat="override",
-                    join="override",
+        lx = []
+        for r in region:
+
+            ly = []
+            for s in sample_sets:
+                y = self._snp_calls_dataset(
+                    contig=r.contig,
+                    sample_set=s,
+                    site_filters_analysis=site_filters_analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
-                for r in region
-            ],
+                ly.append(y)
+
+            # concatenate data from multiple sample sets
+            x = xarray_concat(
+                ly,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+            # handle region, do this only once - optimisation
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        # concatenate data from multiple regions
+        ds = xarray_concat(
+            lx,
             dim=DIM_VARIANT,
             data_vars="minimal",
             coords="minimal",
@@ -1629,7 +1653,7 @@ class Ag3:
             )
             for s in sample_sets
         ]
-        ds = xarray.concat(
+        ds = xarray_concat(
             datasets,
             dim=DIM_SAMPLE,
             data_vars="minimal",
@@ -1919,7 +1943,7 @@ class Ag3:
             )
             for s in sample_sets
         ]
-        ds = xarray.concat(
+        ds = xarray_concat(
             datasets,
             dim=DIM_SAMPLE,
             data_vars="minimal",
@@ -2236,7 +2260,7 @@ class Ag3:
 
     def haplotypes(
         self,
-        contig,
+        region,
         analysis,
         sample_sets=None,
         inline_array=True,
@@ -2246,9 +2270,11 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
-            in which case data will be concatenated, e.g., ["3R", "3L"].
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
@@ -2269,49 +2295,61 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        region = resolve_region(self, region)
 
         # normalise to simplify concatenation logic
-        if isinstance(contig, str):
-            contig = [contig]
+        if isinstance(region, Region):
+            region = [region]
 
-        # concatenate - this is a bit gnarly, could do with simplification
-        datasets = [
-            [
-                self._haplotypes_dataset(
-                    contig=c,
+        # build dataset
+        lx = []
+        for r in region:
+            ly = []
+
+            for s in sample_sets:
+                y = self._haplotypes_dataset(
+                    contig=r.contig,
                     sample_set=s,
                     analysis=analysis,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-                for s in sample_sets
-            ]
-            for c in contig
-        ]
-        # some sample sets have no data for a given analysis, handle this
-        datasets = [[d for d in row if d is not None] for row in datasets]
-        if len(datasets[0]) == 0:
-            ds = None
-        else:
-            ds = xarray.concat(
-                [
-                    xarray.concat(
-                        row,
-                        dim=DIM_SAMPLE,
-                        data_vars="minimal",
-                        coords="minimal",
-                        compat="override",
-                        join="override",
-                    )
-                    for row in datasets
-                ],
-                dim=DIM_VARIANT,
+                if y is not None:
+                    ly.append(y)
+
+            if len(ly) == 0:
+                # early out, no data for given sample sets and analysis
+                return None
+
+            # concatenate data from multiple sample sets
+            x = xarray_concat(
+                ly,
+                dim=DIM_SAMPLE,
                 data_vars="minimal",
                 coords="minimal",
                 compat="override",
                 join="override",
             )
+
+            # handle region
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        # concatenate data from multiple regions
+        ds = xarray_concat(
+            lx,
+            dim=DIM_VARIANT,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
 
         return ds
 

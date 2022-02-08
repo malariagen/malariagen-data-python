@@ -316,9 +316,11 @@ def test_open_snp_genotypes():
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L", "AGAP007280"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 def test_snp_genotypes(chunks, sample_sets, region):
 
     ag3 = setup_ag3()
@@ -331,28 +333,38 @@ def test_snp_genotypes(chunks, sample_sets, region):
     assert gt.shape[1] == len(df_samples)
 
     # specific fields
-    x = ag3.snp_genotypes(region=region, field="GT", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="GT", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i1"
-    x = ag3.snp_genotypes(region=region, field="GQ", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="GQ", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 2
     assert x.dtype == "i2"
-    x = ag3.snp_genotypes(region=region, field="MQ", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="MQ", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 2
     assert x.dtype == "i2"
-    x = ag3.snp_genotypes(region=region, field="AD", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="AD", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i2"
 
     # site mask
     filter_pass = ag3.site_filters(region=region, mask="gamb_colu_arab").compute()
-    df_samples = ag3.sample_metadata()
     gt_pass = ag3.snp_genotypes(
-        region=region, site_mask="gamb_colu_arab", chunks=chunks
+        region=region,
+        sample_sets=sample_sets,
+        site_mask="gamb_colu_arab",
+        chunks=chunks,
     )
     assert isinstance(gt_pass, da.Array)
     assert gt_pass.ndim == 3
@@ -364,9 +376,11 @@ def test_snp_genotypes(chunks, sample_sets, region):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L", "2R:48,714,463-48,715,355"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 def test_snp_genotypes_chunks(sample_sets, region):
 
     ag3 = setup_ag3()
@@ -500,16 +514,10 @@ def test_site_annotations():
 
 @pytest.mark.parametrize(
     "sample_sets",
-    [
-        "AG1000G-X",
-        ["AG1000G-BF-A", "AG1000G-BF-B"],
-        "3.0",
-        ["3.0", "3.0"],
-        None,
-    ],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
 @pytest.mark.parametrize(
-    "region", ["2L", "X", ["3R", "3L", "2R:48,714,463-48,715,355", "AGAP007280"]]
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
 )
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_snp_calls(sample_sets, region, site_mask):
@@ -1296,9 +1304,11 @@ def test_gene_cnv_frequencies(contig, cohorts):
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
 )
-@pytest.mark.parametrize("contig", ["2R", "X", ["3R", "3L"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
-def test_haplotypes(sample_sets, contig, analysis):
+def test_haplotypes(sample_sets, region, analysis):
 
     ag3 = setup_ag3()
 
@@ -1316,11 +1326,11 @@ def test_haplotypes(sample_sets, contig, analysis):
 
     # check if any samples
     if n_samples == 0:
-        ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+        ds = ag3.haplotypes(region=region, sample_sets=sample_sets, analysis=analysis)
         assert ds is None
         return
 
-    ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+    ds = ag3.haplotypes(region=region, sample_sets=sample_sets, analysis=analysis)
     assert isinstance(ds, xarray.Dataset)
 
     # check fields
