@@ -98,6 +98,9 @@ ag3 = malariagen_data.Ag3()
   use "3.0" instead of "v3", "3.1" instead of "v3.1",
   etc. ([GH104](https://github.com/malariagen/malariagen-data-python/issues/104))
 
+* The `Ag3` and `Amin1` classes have a better repr
+  ([GH111](https://github.com/malariagen/malariagen-data-python/issues/111)).
+
 * `Ag3`: All dataframe columns containing allele frequency values are
   now prefixed with "frq_" to allow for easier selection of frequency
   columns
@@ -139,6 +142,10 @@ ag3 = malariagen_data.Ag3()
 
 * `Ag3`: Fix pandas performance warnings
   ([GH108](https://github.com/malariagen/malariagen-data-python/issues/108)).
+
+* `Ag3`: Fix bug involving inconsistent array lengths before and after
+  computation
+  ([GH114](https://github.com/malariagen/malariagen-data-python/issues/114)).
 
 * `Ag3`: Fix compatibility with zarr 2.11.0
   ([GH129](https://github.com/malariagen/malariagen-data-python/issues/129)).
