@@ -54,9 +54,9 @@ def test_sample_metadata(url):
     assert len(df_samples) == expected_len
 
 
-def test_open_zarr():
+def test_open_variant_calls_zarr():
     pf7 = setup_pf7()
-    root = pf7.open_zarr()
+    root = pf7.open_variant_calls_zarr()
     assert isinstance(root, zarr.hierarchy.Group)
 
 

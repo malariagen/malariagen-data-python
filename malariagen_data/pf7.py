@@ -35,7 +35,7 @@ class Pf7:
 
         # setup caches
         self._cache_sample_metadata = None
-        self._cache_zarr = None
+        self._cache_variant_calls_zarr = None
 
         self.extended_calldata_variables = {
             "DP": [DIM_VARIANT, DIM_SAMPLE],
@@ -147,12 +147,12 @@ class Pf7:
                 self._cache_sample_metadata = pd.read_csv(f, sep="\t", na_values="")
         return self._cache_sample_metadata
 
-    def open_zarr(self):
-        if self._cache_zarr is None:
-            path = os.path.join(self._path, self.CONF["zarr_path"])
+    def open_variant_calls_zarr(self):
+        if self._cache_variant_calls_zarr is None:
+            path = os.path.join(self._path, self.CONF["variant_calls_zarr_path"])
             store = init_zarr_store(fs=self._fs, path=path)
-            self._cache_zarr = zarr.open_consolidated(store=store)
-        return self._cache_zarr
+            self._cache_variant_calls_zarr = zarr.open_consolidated(store=store)
+        return self._cache_variant_calls_zarr
 
     def _add_coordinates(self, root, inline_array, chunks, var_names_for_outputs):
         # coordinates
@@ -236,7 +236,7 @@ class Pf7:
         """
 
         # setup
-        root = self.open_zarr()
+        root = self.open_variant_calls_zarr()
         var_names_for_outputs = {
             "POS": "position",
             "CHROM": "chrom",

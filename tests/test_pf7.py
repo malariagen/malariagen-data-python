@@ -178,7 +178,7 @@ class TestPf7(unittest.TestCase):
         ) as mock_load_config:
             pf7 = Pf7(self.url_starts_with_gs)
         self.assertEqual(pf7._cache_sample_metadata, None)
-        self.assertEqual(pf7._cache_zarr, None)
+        self.assertEqual(pf7._cache_variant_calls_zarr, None)
         self.assertEqual(
             pf7.extended_calldata_variables, self.test_extended_calldata_variables
         )
@@ -194,7 +194,7 @@ class TestPf7(unittest.TestCase):
         ) as mock_load_config:
             pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_config_path)
         self.assertEqual(pf7._cache_sample_metadata, None)
-        self.assertEqual(pf7._cache_zarr, None)
+        self.assertEqual(pf7._cache_variant_calls_zarr, None)
         self.assertEqual(
             pf7.extended_calldata_variables, self.test_extended_calldata_variables
         )
@@ -208,7 +208,7 @@ class TestPf7(unittest.TestCase):
             config,
             {
                 "metadata_path": "metadata/test_metadata.txt",
-                "zarr_path": "pf7.zarr/",
+                "variant_calls_zarr_path": "pf7.zarr/",
             },
         )
 
@@ -233,26 +233,28 @@ class TestPf7(unittest.TestCase):
 
     @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
     @patch("malariagen_data.pf7.zarr.open_consolidated")
-    def test_open_zarr_calls_functions_correctly(self, mock_zarr, mock_safestore):
+    def test_open_variant_calls_zarr_calls_functions_correctly(
+        self, mock_zarr, mock_safestore
+    ):
         with patch(
             "malariagen_data.pf7.init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
-        pf7_mock_fs.open_zarr()
+        pf7_mock_fs.open_variant_calls_zarr()
         mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
 
     @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
     @patch("malariagen_data.pf7.zarr.open_consolidated")
-    def test_open_zarr_uses_cache(self, mock_zarr, mock_safestore):
+    def test_open_variant_calls_zarr_uses_cache(self, mock_zarr, mock_safestore):
         with patch(
             "malariagen_data.pf7.init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
-        pf7_mock_fs.open_zarr()
-        pf7_mock_fs.open_zarr()
+        pf7_mock_fs.open_variant_calls_zarr()
+        pf7_mock_fs.open_variant_calls_zarr()
         mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
 
@@ -346,11 +348,11 @@ class TestPf7(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.pf7.Pf7.open_zarr")
-    def test_variant_calls_default(self, mock_open_zarr):
-        mock_open_zarr.return_value = self.test_zarr_root
+    @patch("malariagen_data.pf7.Pf7.open_variant_calls_zarr")
+    def test_variant_calls_default(self, mock_open_variant_calls_zarr):
+        mock_open_variant_calls_zarr.return_value = self.test_zarr_root
         ds = self.test_pf7_class.variant_calls(inline_array=True, chunks="native")
-        mock_open_zarr.assert_called_once_with()
+        mock_open_variant_calls_zarr.assert_called_once_with()
         coords = list(ds.coords.keys())
         variables = list(ds.keys())
         self.assertEqual(coords, ["variant_position", "variant_chrom", "sample_id"])
@@ -367,9 +369,9 @@ class TestPf7(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.pf7.Pf7.open_zarr")
-    def test_variant_calls_extended(self, mock_open_zarr):
-        mock_open_zarr.return_value = self.test_zarr_root
+    @patch("malariagen_data.pf7.Pf7.open_variant_calls_zarr")
+    def test_variant_calls_extended(self, mock_open_variant_calls_zarr):
+        mock_open_variant_calls_zarr.return_value = self.test_zarr_root
         test_pf7_class_extended = Pf7(
             self.test_data_path,
             data_config=self.test_config_path,
@@ -383,7 +385,7 @@ class TestPf7(unittest.TestCase):
             inline_array=True,
             chunks="native",
         )
-        mock_open_zarr.assert_called_once_with()
+        mock_open_variant_calls_zarr.assert_called_once_with()
         coords = list(ds.coords.keys())
         variables = list(ds.keys())
         self.assertEqual(coords, ["variant_position", "variant_chrom", "sample_id"])
