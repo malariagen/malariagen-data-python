@@ -107,6 +107,14 @@ ag3 = malariagen_data.Ag3()
   cohorts below the minimum cohort size
   ([GH118](https://github.com/malariagen/malariagen-data-python/issues/118)).
 
+* `Amin1`: Added support for `region` parameter instead of `contig`
+  ([GH119](https://github.com/malariagen/malariagen-data-python/issues/119)).
+
+* `Ag3`: The `snp_sites()` method no longer returns a tuple of arrays
+  if the `field` parameter is not provided, please provide an explicit
+  `field` parameter or use the `snp_calls()` method instead
+  (recommended).
+
 
 #### Bug fixes, maintenance and documentation
 
@@ -134,6 +142,9 @@ ag3 = malariagen_data.Ag3()
 
 * `Ag3`: Fix compatibility with zarr 2.11.0
   ([GH129](https://github.com/malariagen/malariagen-data-python/issues/129)).
+
+* Some optimisations to speed up the test suite a bit
+  ([GH122](https://github.com/malariagen/malariagen-data-python/issues/122)).
 
 
 ### 0.15.0
