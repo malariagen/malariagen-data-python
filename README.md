@@ -36,6 +36,16 @@ breaking changes to the public API, see below for more information.
 
 #### New features and API changes
 
+* `Ag3`: Added support for genome regions when accessing data
+  ([GH14](https://github.com/malariagen/malariagen-data-python/issues/14)). N.B.,
+  the `contig` parameter is no longer supported, instead use the
+  `region` parameter which can be a contig ID (e.g., "3L"), a contig
+  region (e.g., "3L:1000000-2000000"), a gene ID ("AGAP004070"), or a
+  list of any of the above. This affects methods including
+  `snp_sites()`, `site_filters()`, `snp_genotypes()` and
+  `snp_dataset()`. Contributed by [Nace
+  Kranjc](https://github.com/nkran).
+
 * `Ag3`: The parameters for specifying which species analysis version
   is used have changed
   ([GH55](https://github.com/malariagen/malariagen-data-python/issues/55)). This
