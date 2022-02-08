@@ -167,7 +167,7 @@ class Pf7:
         coords["sample_id"] = [DIM_SAMPLE], sample_id
         return coords
 
-    def add_data_vars(self, root, inline_array, chunks, var_names_for_outputs):
+    def _add_data_vars(self, root, inline_array, chunks, var_names_for_outputs):
         data_vars = dict()
 
         # variant_allele
@@ -247,7 +247,7 @@ class Pf7:
         coords = self._add_coordinates(
             root, inline_array, chunks, var_names_for_outputs
         )
-        data_vars = self.add_data_vars(
+        data_vars = self._add_data_vars(
             root, inline_array, chunks, var_names_for_outputs
         )
 

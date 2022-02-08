@@ -287,7 +287,7 @@ class TestPf7(unittest.TestCase):
             "CHROM": "chrom",
             "FILTER_PASS": "filter_pass",
         }
-        actual_vars = self.test_pf7_class.add_data_vars(
+        actual_vars = self.test_pf7_class._add_data_vars(
             self.test_zarr_root, True, "native", var_names_for_outputs
         )
         self.assertEqual(
