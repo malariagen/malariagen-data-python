@@ -1,7 +1,10 @@
+import re
+from collections import namedtuple
 from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import unquote_plus
 
+import allel
 import dask.array as da
 import numpy as np
 import pandas
@@ -261,3 +264,99 @@ def init_zarr_store(fs, path):
     """Initialise a zarr store (mapping) from an fsspec filesystem."""
 
     return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))
+
+
+Region = namedtuple("Region", ["contig", "start", "end"])
+
+
+def _handle_region_coords(resource, region):
+
+    region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
+    if region_pattern_match:
+        # parse region string that contains genomic coordinates
+        region_split = region_pattern_match.groups()
+
+        contig = region_split[0]
+        start = int(region_split[1].replace(",", ""))
+        end = int(region_split[2].replace(",", ""))
+
+        if contig not in resource.contigs:
+            raise ValueError(f"Contig {contig} does not exist in the dataset.")
+        elif (
+            start < 0
+            or end <= start
+            or end > resource.genome_sequence(region=contig).shape[0]
+        ):
+            raise ValueError("Provided genomic coordinates are not valid.")
+
+        return Region(contig, start, end)
+
+    else:
+        return None
+
+
+def _handle_region_feature(resource, region):
+    gene_annotation = resource.geneset(attributes=["ID"]).query(f"ID == '{region}'")
+    if not gene_annotation.empty:
+        # region is a feature ID
+        gene_annotation = gene_annotation.squeeze()
+        return Region(
+            gene_annotation.contig, gene_annotation.start, gene_annotation.end
+        )
+    else:
+        return None
+
+
+def resolve_region(resource, region):
+    """Parse the provided region and return `Region(contig, start, end)`.
+    Supports contig names, gene names and genomic coordinates"""
+
+    if isinstance(region, Region):
+        # region is already Region tuple, nothing to do
+        return region
+
+    if isinstance(region, (list, tuple)):
+        # multiple regions, normalise to list and resolve components
+        return [resolve_region(resource, r) for r in region]
+
+    # check type, fail early if bad
+    if not isinstance(region, str):
+        raise TypeError("The region parameter must be a string or Region object.")
+
+    # check if region is a chromosome arm
+    if region in resource.contigs:
+        return Region(region, None, None)
+
+    # check if region is a region string providing coordinates
+    region_from_coords = _handle_region_coords(resource, region)
+    if region_from_coords is not None:
+        return region_from_coords
+
+    # check if region is a gene annotation feature ID
+    region_from_feature = _handle_region_feature(resource, region)
+    if region_from_feature is not None:
+        return region_from_feature
+
+    raise ValueError(
+        f"Region {region!r} is not a valid contig, region string or feature ID."
+    )
+
+
+def locate_region(region, pos):
+    """Get array slice and a parsed genomic region.
+
+    Parameters
+    ----------
+    region : Region
+        Region to locate.
+    pos : array-like
+        Positions to be searched.
+
+    Returns
+    -------
+    loc_region : slice
+
+    """
+    pos = allel.SortedIndex(pos)
+    loc_region = pos.locate_range(region.start, region.end)
+    return loc_region

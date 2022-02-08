@@ -8,11 +8,14 @@ from .util import (
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    Region,
     da_from_zarr,
     dask_compress_dataset,
     init_filesystem,
     init_zarr_store,
+    locate_region,
     read_gff3,
+    resolve_region,
     unpack_gff3_attributes,
 )
 
@@ -22,8 +25,11 @@ geneset_gff3_path = (
 genome_zarr_path = "reference/genome/aminm1/VectorBase-48_AminimusMINIMUS1_Genome.zarr"
 
 
+DEFAULT_URL = "gs://vo_amin_release/"
+
+
 class Amin1:
-    def __init__(self, url, **kwargs):
+    def __init__(self, url=DEFAULT_URL, **kwargs):
 
         # setup filesystem
         self._fs, self._path = init_filesystem(url, **kwargs)
@@ -40,7 +46,7 @@ class Amin1:
         if self._contigs is None:
             # only include the contigs that were genotyped - 40 largest
             self._contigs = tuple(
-                k for k in sorted(self.open_snp_genotypes()) if k.startswith("KB")
+                k for k in sorted(self.open_snp_calls()) if k.startswith("KB")
             )
         return self._contigs
 
@@ -125,19 +131,22 @@ class Amin1:
 
         return df
 
-    def open_snp_genotypes(self):
+    def open_snp_calls(self):
         if self._cache_snp_genotypes is None:
             path = f"{self._path}/v1/snp_genotypes/all"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_snp_genotypes = zarr.open_consolidated(store=store)
         return self._cache_snp_genotypes
 
-    def _snp_calls_dataset(self, contig, inline_array, chunks):
+    def _snp_calls_dataset(self, *, region, inline_array, chunks):
+
+        assert isinstance(region, Region)
+        contig = region.contig
 
         # setup
         coords = dict()
         data_vars = dict()
-        root = self.open_snp_genotypes()
+        root = self.open_snp_calls()
 
         # variant_position
         pos_z = root[f"{contig}/variants/POS"]
@@ -192,15 +201,23 @@ class Amin1:
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
+        # deal with region
+        if region.start or region.end:
+            loc_region = locate_region(region, pos_z)
+            ds = ds.isel(variants=loc_region)
+
         return ds
 
-    def snp_calls(self, contig, site_mask=False, inline_array=True, chunks="native"):
+    def snp_calls(self, region, site_mask=False, inline_array=True, chunks="native"):
         """Access SNP sites, site filters and genotype calls.
 
         Parameters
         ----------
-        contig : str or list
-            Contig, e.g., "KB663610", or list of contigs.
+        region: str or list of str or Region
+            Contig (e.g., "KB663610"), gene name (e.g., "AMIN002150"), genomic region
+            defined with coordinates (e.g., "KB663610:1-100000") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated.
         site_mask : bool
             Apply site filters.
         inline_array : bool, optional
@@ -215,34 +232,29 @@ class Amin1:
 
         """
 
-        if isinstance(contig, str):
+        region = resolve_region(self, region)
 
-            # single contig requested
-            ds = self._snp_calls_dataset(
-                contig=contig,
+        # normalise to simplify concatenation logic
+        if isinstance(region, str) or isinstance(region, Region):
+            region = [region]
+
+        # concatenate along variants dimension
+        datasets = [
+            self._snp_calls_dataset(
+                region=r,
                 inline_array=inline_array,
                 chunks=chunks,
             )
-
-        else:
-
-            # multiple sample sets requested, need to concatenate along samples dimension
-            datasets = [
-                self._snp_calls_dataset(
-                    contig=c,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                for c in contig
-            ]
-            ds = xarray.concat(
-                datasets,
-                dim=DIM_VARIANT,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            for r in region
+        ]
+        ds = xarray.concat(
+            datasets,
+            dim=DIM_VARIANT,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
 
         # apply site filters
         if site_mask:
