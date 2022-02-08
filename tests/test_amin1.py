@@ -8,15 +8,19 @@ import zarr
 from malariagen_data import Amin1
 
 
-def setup_amin1(url="simplecache::gs://vo_amin_release/", **storage_kwargs):
+def setup_amin1(url="simplecache::gs://vo_amin_release/", **kwargs):
+    if url is None:
+        # test default URL
+        return Amin1(**kwargs)
     if url.startswith("simplecache::"):
-        storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
-    return Amin1(url, **storage_kwargs)
+        kwargs["simplecache"] = dict(cache_storage="gcs_cache")
+    return Amin1(url, **kwargs)
 
 
 @pytest.mark.parametrize(
     "url",
     [
+        None,
         "gs://vo_amin_release/",
         "gcs://vo_amin_release/",
         "gs://vo_amin_release",
@@ -101,13 +105,20 @@ def test_geneset():
 
 @pytest.mark.parametrize("site_mask", [False, True])
 @pytest.mark.parametrize(
-    "contig", ["KB663610", "KB663622", ["KB663610", "KB663611", "KB663622"]]
+    "region",
+    [
+        "KB663610",
+        "KB663622",
+        ["KB663610", "KB663611", "KB663622"],
+        "KB663610:100000-200000",
+        "AMIN002150",
+    ],
 )
-def test_snp_calls(contig, site_mask):
+def test_snp_calls(region, site_mask):
 
     amin1 = setup_amin1()
 
-    ds = amin1.snp_calls(contig=contig, site_mask=site_mask)
+    ds = amin1.snp_calls(region=region, site_mask=site_mask)
     assert isinstance(ds, xarray.Dataset)
 
     # check fields
