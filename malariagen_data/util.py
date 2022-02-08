@@ -92,7 +92,7 @@ try:
     class SafeStore(KVStore):
         def __getitem__(self, key):
             try:
-                return self.store[key]
+                return self._mutable_mapping[key]
             except KeyError as e:
                 # always raise a runtime error to ensure zarr propagates the exception
                 raise RuntimeError(e)
