@@ -2164,10 +2164,10 @@ class Ag3:
             path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             # some sample sets have no data for a given analysis, handle this
-            if ".zmetadata" not in store:
-                root = None
-            else:
+            try:
                 root = zarr.open_consolidated(store=store)
+            except FileNotFoundError:
+                root = None
             self._cache_haplotypes[(sample_set, analysis)] = root
         return root
 

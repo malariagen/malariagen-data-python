@@ -94,8 +94,8 @@ class SafeStore(Mapping):
         try:
             return self.store[key]
         except KeyError as e:
-            # always raise a runtime error to ensure zarr propagates the exception
-            raise RuntimeError(e)
+            # raise a different error to ensure zarr propagates the exception, rather than filling
+            raise FileNotFoundError(e)
 
     def __contains__(self, key):
         return key in self.store
