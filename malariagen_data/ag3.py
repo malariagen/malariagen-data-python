@@ -2539,7 +2539,18 @@ class Ag3:
         return df_aaf
 
     def plot_frequencies_heatmap(
-        self, df, index=None, max_len=100, y_label=None, colorbar=True, width=None
+        self,
+        df,
+        index=None,
+        max_len=100,
+        y_label=None,
+        colorbar=True,
+        width=None,
+        height=None,
+        text_auto=".0%",
+        aspect="auto",
+        color_continuous_scale="Reds",
+        **kwargs,
     ):
 
         """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
@@ -2559,8 +2570,8 @@ class Ag3:
             This is the y-axis label that will be displayed on the heatmap.
         colorbar : bool, optional
             If False, colorbar is not output.
-        width : int, optional
-            Width of heatmap output.
+        **kwargs
+            Other parameters are passed through to px.imshow().
 
         """
 
@@ -2607,10 +2618,12 @@ class Ag3:
             img=heatmap_df,
             zmin=0,
             zmax=1,
-            text_auto=".0%",
-            aspect="auto",
             width=width,
-            color_continuous_scale="Reds",
+            height=height,
+            text_auto=text_auto,
+            aspect=aspect,
+            color_continuous_scale=color_continuous_scale,
+            **kwargs,
         )
 
         fig.update_xaxes(side="top", tickangle=270, title="cohorts")
