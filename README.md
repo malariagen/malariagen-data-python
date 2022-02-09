@@ -28,6 +28,14 @@ from the following locations:
 
 ## Release notes
 
+
+### 1.0.1
+
+* `Ag3`: Expose more plotting parameters through the
+  `plot_frequencies_heatmap()` method
+  ([GH133](https://github.com/malariagen/malariagen-data-python/issues/133)).
+
+
 ### 1.0.0
 
 This is a major release which includes new features and makes some
