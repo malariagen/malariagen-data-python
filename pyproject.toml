@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "1.0.0"
+version = "1.0.1"
 description = "A package for accessing MalariaGEN public data."
 authors = ["Alistair Miles <alistair.miles@sanger.ac.uk>", "Chris Clarkson <cc28@sanger.ac.uk>"]
 license = "MIT"
@@ -18,7 +18,7 @@ BioPython = "*"
 scikit-allel = "*"
 xarray = "*"
 numba = "*"
-plotly = "^5.5.0"
+plotly = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
