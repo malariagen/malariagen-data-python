@@ -29,7 +29,7 @@ class Pf7:
         Base path to data. Default uses Google Cloud Storage "gs://pf7_release/",
         or specify a local path on your file system if data have been downloaded.
     data_config : str, optional
-        Path to config for structure of Pf7 data resource. Defaults to config included 
+        Path to config for structure of Pf7 data resource. Defaults to config included
         with the malariagen_data package.
     **kwargs
         Passed through to fsspec when setting up file system access.
