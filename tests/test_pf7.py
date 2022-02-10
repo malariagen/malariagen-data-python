@@ -20,7 +20,7 @@ class TestPf7(unittest.TestCase):
         self.test_pf7_class = Pf7(
             self.test_data_path, data_config=self.test_config_path
         )
-        self.test_zarr_path = os.path.join(self.test_data_path, "pf7.zarr/")
+        self.test_zarr_path = os.path.join(self.test_data_path, "test_pf7.zarr/")
 
         # Datasets
         self.config_content = {
@@ -170,47 +170,31 @@ class TestPf7(unittest.TestCase):
             "set": [DIM_VARIANT],
         }
 
-    @patch("malariagen_data.pf7.init_filesystem", return_value=["fs", "path"])
-    def test_setup_with_config_none(self, mock_init_filesystem):
-        with patch(
-            "malariagen_data.pf7.Pf7._load_config",
-            return_value=self.config_content,
-        ) as mock_load_config:
-            pf7 = Pf7(self.url_starts_with_gs)
-        self.assertEqual(pf7._cache_sample_metadata, None)
-        self.assertEqual(pf7._cache_variant_calls_zarr, None)
+    def test_setup_returns_config_correctly(self):
+        pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_config_path)
         self.assertEqual(
-            pf7.extended_calldata_variables, self.test_extended_calldata_variables
-        )
-        self.assertEqual(pf7.extended_variant_fields, self.test_extended_variant_fields)
-        mock_load_config.assert_called_once_with(None)
-        mock_init_filesystem.assert_called_once_with(self.url_starts_with_gs)
-
-    @patch("malariagen_data.pf7.init_filesystem", return_value=["fs", "path"])
-    def test_setup_with_config_set(self, mock_init_filesystem):
-        with patch(
-            "malariagen_data.pf7.Pf7._load_config",
-            return_value=self.config_content,
-        ) as mock_load_config:
-            pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_config_path)
-        self.assertEqual(pf7._cache_sample_metadata, None)
-        self.assertEqual(pf7._cache_variant_calls_zarr, None)
-        self.assertEqual(
-            pf7.extended_calldata_variables, self.test_extended_calldata_variables
-        )
-        self.assertEqual(pf7.extended_variant_fields, self.test_extended_variant_fields)
-        mock_load_config.assert_called_once_with(self.test_config_path)
-        mock_init_filesystem.assert_called_once_with(self.url_starts_with_gs)
-
-    def test_load_config(self):
-        config = self.test_pf7_class._load_config(self.test_config_path)
-        self.assertEqual(
-            config,
+            pf7.CONF,
             {
                 "metadata_path": "metadata/test_metadata.txt",
-                "variant_calls_zarr_path": "pf7.zarr/",
+                "variant_calls_zarr_path": "test_pf7.zarr/",
             },
         )
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("json.load")
+    def test_load_config_calls_default_path(self, mock_load_json, mock_open):
+        self.test_pf7_class._load_config(None)
+        mock_open.assert_called_once_with(
+            os.path.join(
+                os.path.dirname(self.working_dir), "malariagen_data/pf7_config.json"
+            )
+        )
+
+    @patch("builtins.open", new_callable=mock_open)
+    @patch("json.load")
+    def test_load_config_calls_path(self, mock_load_json, mock_open):
+        self.test_pf7_class._load_config(self.test_config_path)
+        open.assert_called_once_with(self.test_config_path)
 
     def test_sample_metadata_returns_extpected_df(self):
         metadata_df = self.test_pf7_class.sample_metadata()
