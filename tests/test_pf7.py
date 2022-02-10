@@ -217,20 +217,6 @@ class TestPf7(unittest.TestCase):
 
     @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
     @patch("malariagen_data.pf7.zarr.open_consolidated")
-    def test_open_variant_calls_zarr_calls_functions_correctly(
-        self, mock_zarr, mock_safestore
-    ):
-        with patch(
-            "malariagen_data.pf7.init_filesystem",
-            return_value=["fs", self.test_data_path],
-        ):
-            pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
-        pf7_mock_fs.open_variant_calls_zarr()
-        mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
-        mock_zarr.assert_called_once_with(store="Safe store object")
-
-    @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
-    @patch("malariagen_data.pf7.zarr.open_consolidated")
     def test_open_variant_calls_zarr_uses_cache(self, mock_zarr, mock_safestore):
         with patch(
             "malariagen_data.pf7.init_filesystem",
