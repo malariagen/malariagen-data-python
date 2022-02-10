@@ -23,14 +23,15 @@ DIM_GENOTYPES = "genotypes"
 
 class Pf7:
     """Provides access to data from the Pf7 release.
-
     Parameters
     ----------
-        url (str, optional): Base path to data. Default uses Google Cloud Storage "gs://pf7_release/",
-                             or specify a local path on your file system if data have been downloaded.
-        data_config (str, optional) : path to config for structure of Pf7 data resource. Defaults to config in repository.
-        **kwargs
-            Passed through to fsspec when setting up file system access.
+    url : str, optional
+        Base path to data. Default uses Google Cloud Storage "gs://pf7_release/",
+        or specify a local path on your file system if data have been downloaded.
+    data_config : str, optional
+        path to config for structure of Pf7 data resource. Defaults to config in
+    **kwargs
+        Passed through to fsspec when setting up file system access.
 
     Examples
     --------
@@ -166,14 +167,17 @@ class Pf7:
 
         Returns
         -------
-            df (pandas.DataFrame) : A dataframe of sample metadata on the samples that were sequenced as part of this resource.
-                                    Includes the time and place of collection, quality metrics, and accesion numbers.
-                                    One row per sample.
+        df : pandas.DataFrame
+            A dataframe of sample metadata on the samples that were sequenced as part of this resource.
+                                Includes the time and place of collection, quality metrics, and accesion numbers.
+                                One row per sample.
 
         Example
         -------
         Access metadata as pandas dataframe:
+
             >>> pf7.sample_metadata()
+
         """
         if self._cache_sample_metadata is None:
             path = os.path.join(self._path, self.CONF["metadata_path"])
@@ -186,7 +190,9 @@ class Pf7:
 
         Returns
         -------
-            root (zarr.hierarchy.Group): Root of zarr containing information on variant calls.
+        root : zarr.hierarchy.Group
+            Root of zarr containing information on variant calls.
+
         """
         if self._cache_variant_calls_zarr is None:
             path = os.path.join(self._path, self.CONF["variant_calls_zarr_path"])
@@ -269,22 +275,27 @@ class Pf7:
 
         Parameters
         ----------
-            extended (bool, optional): If False only the default variables are returned. If True all variables from the zarr are returned.
-                                        Defaults to False.
-            inline_array (bool, optional): Passed through to dask.array.from_array(). Defaults to True.
-            chunks (str, optional): If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-                                    Also can be a target size, e.g., '200 MiB'. Defaults to "native".
+        extended : bool, optional
+            If False only the default variables are returned. If True all variables from the zarr are returned. Defaults to False.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array(). Defaults to True.
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also can be a target size, e.g., '200 MiB'. Defaults to "native".
 
         Returns
         -------
-            ds (xarray.Dataset): Dataset containing either defualt or extended variables from the variant calls Zarr.
+        ds : xarray.Dataset
+            Dataset containing either defualt or extended variables from the variant calls Zarr.
 
         Examples
         --------
         Access core set of variables for variant calls (default):
+
             >>> pf7.variant_calls()
 
         Access extended set of variables for variant calls:
+
             >>> pf7.variant_calls(extended=True)
 
         """
