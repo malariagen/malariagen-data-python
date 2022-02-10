@@ -163,7 +163,7 @@ class Pf7:
         return config_content
 
     def sample_metadata(self):
-        """Access sample metadata and return as pandas dataframe
+        """Access sample metadata and return as pandas dataframe.
 
         Returns
         -------
@@ -186,7 +186,7 @@ class Pf7:
         return self._cache_sample_metadata
 
     def open_variant_calls_zarr(self):
-        """Open variant calls zarr
+        """Open variant calls zarr.
 
         Returns
         -------
