@@ -287,7 +287,7 @@ class Pf7:
         Returns
         -------
         ds : xarray.Dataset
-            Dataset containing either defualt or extended variables from the variant calls Zarr.
+            Dataset containing either default or extended variables from the variant calls Zarr.
 
         Examples
         --------
