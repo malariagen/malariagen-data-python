@@ -169,8 +169,8 @@ class Pf7:
         -------
         df : pandas.DataFrame
             A dataframe of sample metadata on the samples that were sequenced as part of this resource.
-                                Includes the time and place of collection, quality metrics, and accesion numbers.
-                                One row per sample.
+            Includes the time and place of collection, quality metrics, and accesion numbers.
+            One row per sample.
 
         Example
         -------
