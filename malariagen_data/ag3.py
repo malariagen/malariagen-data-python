@@ -2441,7 +2441,7 @@ class Ag3:
 
         Returns
         -------
-        df_snps : pandas.DataFrame
+        df : pandas.DataFrame
 
         Notes
         -----
