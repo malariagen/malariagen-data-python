@@ -162,7 +162,7 @@ class Pf7:
         return config_content
 
     def sample_metadata(self):
-        """Access sample metadata and return as pandas dataframe
+        """Access sample metadata and return as pandas dataframe.
 
         Returns
         -------
