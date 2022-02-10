@@ -171,14 +171,20 @@ class TestPf7(unittest.TestCase):
         }
 
     def test_setup_returns_config_correctly(self):
-        pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_config_path)
+        pf7 = Pf7(data_config=self.test_config_path)
         self.assertEqual(
             pf7.CONF,
             {
+                "default_url": "gs://test_pf7_release/",
                 "metadata_path": "metadata/test_metadata.txt",
                 "variant_calls_zarr_path": "test_pf7.zarr/",
             },
         )
+        self.assertEqual(pf7._path, "test_pf7_release")
+
+    def test_setup_overrides_default_url(self):
+        pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_config_path)
+        self.assertEqual(pf7._path, "test_url")
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("json.load")

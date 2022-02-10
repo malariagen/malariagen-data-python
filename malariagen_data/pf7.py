@@ -26,8 +26,8 @@ class Pf7:
 
     Parameters
     ----------
-        url (str): Base path to data. Give "gs://gs://pf7_release/" to use Google Cloud Storage,
-                   or a local path on your file system if data have been downloaded.
+        url (str, optional): Base path to data. Default uses Google Cloud Storage "gs://pf7_release/",
+                             or specify a local path on your file system if data have been downloaded.
         data_config (str, optional) : path to config for structure of Pf7 data resource. Defaults to config in repository.
         **kwargs
             Passed through to fsspec when setting up file system access.
@@ -47,14 +47,16 @@ class Pf7:
 
     def __init__(
         self,
-        url,
+        url=None,
         data_config=None,
         **kwargs,
     ):
 
         # setup filesystem
-        self._fs, self._path = init_filesystem(url, **kwargs)
         self.CONF = self._load_config(data_config)
+        if not url:
+            url = self.CONF["default_url"]
+        self._fs, self._path = init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_sample_metadata = None
@@ -286,7 +288,6 @@ class Pf7:
             >>> pf7.variant_calls(extended=True)
 
         """
-
         # setup
         root = self.open_variant_calls_zarr()
         var_names_for_outputs = {
