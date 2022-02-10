@@ -182,7 +182,7 @@ class Pf7:
         return self._cache_sample_metadata
 
     def open_variant_calls_zarr(self):
-        """Open variant calls zarr
+        """Open variant calls zarr.
 
         Returns
         -------
