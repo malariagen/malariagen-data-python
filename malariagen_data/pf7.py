@@ -26,10 +26,9 @@ class Pf7:
 
     Parameters
     ----------
-        url : str
-            Base path to data. Give "gs://gs://pf7_release/" to use Google Cloud Storage,
-            or a local path on your file system if data have been downloaded.
-        data_config (optional) : path to config for structure of Pf7 data resource. Defaults to config in repository.
+        url (str): Base path to data. Give "gs://gs://pf7_release/" to use Google Cloud Storage,
+                   or a local path on your file system if data have been downloaded.
+        data_config (str, optional) : path to config for structure of Pf7 data resource. Defaults to config in repository.
         **kwargs
             Passed through to fsspec when setting up file system access.
 
@@ -152,7 +151,7 @@ class Pf7:
         }
 
     def _load_config(self, data_config):
-        """Load the config supplied into json format."""
+        """Load the config for data structure on the cloud into json format."""
         if not data_config:
             working_dir = os.path.dirname(os.path.abspath(__file__))
             data_config = os.path.join(working_dir, "pf7_config.json")
@@ -161,10 +160,18 @@ class Pf7:
         return config_content
 
     def sample_metadata(self):
-        """Access sample metadata and return as pandas dataframe.
+        """Access sample metadata and return as pandas dataframe
+
         Returns
         -------
-            df : pandas.DataFrame
+            df (pandas.DataFrame) : A dataframe of sample metadata on the samples that were sequenced as part of this resource.
+                                    Includes the time and place of collection, quality metrics, and accesion numbers.
+                                    One row per sample.
+
+        Example
+        -------
+        Access metadata as pandas dataframe:
+            >>> pf7.sample_metadata()
         """
         if self._cache_sample_metadata is None:
             path = os.path.join(self._path, self.CONF["metadata_path"])
@@ -177,7 +184,7 @@ class Pf7:
 
         Returns
         -------
-            root : zarr.hierarchy.Group
+            root (zarr.hierarchy.Group): Root of zarr containing information on variant calls.
         """
         if self._cache_variant_calls_zarr is None:
             path = os.path.join(self._path, self.CONF["variant_calls_zarr_path"])
@@ -269,6 +276,15 @@ class Pf7:
         Returns
         -------
             ds (xarray.Dataset): Dataset containing either defualt or extended variables from the variant calls Zarr.
+
+        Examples
+        --------
+        Access core set of variables for variant calls (default):
+            >>> pf7.variant_calls()
+
+        Access extended set of variables for variant calls:
+            >>> pf7.variant_calls(extended=True)
+
         """
 
         # setup
