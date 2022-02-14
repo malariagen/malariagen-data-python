@@ -1572,6 +1572,7 @@ class Ag3:
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
+
         contig_index = self.contigs.index(contig)
         coords["variant_contig"] = (
             [DIM_VARIANT],
@@ -1633,7 +1634,8 @@ class Ag3:
         Parameters
         ----------
         contig : str
-            Chromosome arm, e.g., "3R".
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1650,23 +1652,34 @@ class Ag3:
 
         """
 
-        # TODO support multiple contigs?
-
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # concatenate sample sets along samples dimension
-        datasets = [
-            self._cnv_hmm_dataset(
-                contig=contig,
-                sample_set=s,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            for s in sample_sets
-        ]
+
+        if isinstance(contig, str):
+            contig = [contig]
+        # concatenate
         ds = xarray.concat(
-            datasets,
-            dim=DIM_SAMPLE,
+            [
+                xarray.concat(
+                    [
+                        self._cnv_hmm_dataset(
+                            contig=c,
+                            sample_set=s,
+                            inline_array=inline_array,
+                            chunks=chunks,
+                        )
+                        for s in sample_sets
+                    ],
+                    dim=DIM_SAMPLE,
+                    data_vars="minimal",
+                    coords="minimal",
+                    compat="override",
+                    join="override",
+                )
+                for c in contig
+            ],
+            dim="variants",
             data_vars="minimal",
             coords="minimal",
             compat="override",
@@ -1923,7 +1936,8 @@ class Ag3:
         Parameters
         ----------
         contig : str
-            Chromosome arm, e.g., "3R".
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1940,23 +1954,34 @@ class Ag3:
 
         """
 
-        # TODO support multiple contigs
-
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # concatenate sample sets
-        datasets = [
-            self._cnv_discordant_read_calls_dataset(
-                contig=contig,
-                sample_set=s,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            for s in sample_sets
-        ]
+
+        if isinstance(contig, str):
+            contig = [contig]
+            # concatenate
         ds = xarray.concat(
-            datasets,
-            dim=DIM_SAMPLE,
+            [
+                xarray.concat(
+                    [
+                        self._cnv_discordant_read_calls_dataset(
+                            contig=c,
+                            sample_set=s,
+                            inline_array=inline_array,
+                            chunks=chunks,
+                        )
+                        for s in sample_sets
+                    ],
+                    dim=DIM_SAMPLE,
+                    data_vars="minimal",
+                    coords="minimal",
+                    compat="override",
+                    join="override",
+                )
+                for c in contig
+            ],
+            dim="variants",
             data_vars="minimal",
             coords="minimal",
             compat="override",

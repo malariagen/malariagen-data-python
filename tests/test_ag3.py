@@ -865,7 +865,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
 )
-@pytest.mark.parametrize("contig", ["3L", "X"])
+@pytest.mark.parametrize("contig", ["2R", ["3L", "X"]])
 def test_cnv_hmm(sample_sets, contig):
     ag3 = setup_ag3()
     ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
@@ -893,7 +893,13 @@ def test_cnv_hmm(sample_sets, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check dim lengths
-    n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
+    if isinstance(contig, str):
+        n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
+    if isinstance(contig, (tuple, list)):
+        n_variants = len(contig) + sum(
+            [len(ag3.genome_sequence(c)) // 300 for c in contig]
+        )
+
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["variants"] == n_variants
@@ -1018,7 +1024,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         None,
     ],
 )
-@pytest.mark.parametrize("contig", ["2R", "3R", "X"])
+@pytest.mark.parametrize("contig", ["2R", "3R", "X", ["2R", "3R"]])
 def test_cnv_discordant_read_calls(sample_sets, contig):
 
     ag3 = setup_ag3()
@@ -1065,6 +1071,16 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
         assert ds.dims["variants"] == 29
     if contig == "X":
         assert ds.dims["variants"] == 29
+
+    dim_dict = {"2R": 40, "3R": 29, "X": 29}
+
+    if isinstance(contig, (tuple, list)):
+        dim = 0
+        for key, value in dim_dict.items():
+            for c in contig:
+                if c in key:
+                    dim = dim + value
+        assert ds.dims["variants"] == dim
 
     # check sample IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
