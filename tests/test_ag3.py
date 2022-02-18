@@ -1065,22 +1065,13 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
 
-    if contig == "2R":
-        assert ds.dims["variants"] == 40
-    if contig == "3R":
-        assert ds.dims["variants"] == 29
-    if contig == "X":
-        assert ds.dims["variants"] == 29
+    expected_variants = {"2R": 40, "3R": 29, "X": 29}
+    if isinstance(contig, str):
+        n_variants = expected_variants[contig]
+    elif isinstance(contig, (list, tuple)):
+        n_variants = sum([expected_variants[c] for c in contig])
 
-    dim_dict = {"2R": 40, "3R": 29, "X": 29}
-
-    if isinstance(contig, (tuple, list)):
-        dim = 0
-        for key, value in dim_dict.items():
-            for c in contig:
-                if c in key:
-                    dim = dim + value
-        assert ds.dims["variants"] == dim
+    assert ds.dims["variants"] == n_variants
 
     # check sample IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
