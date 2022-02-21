@@ -1,12 +1,11 @@
-import re
 from bisect import bisect_left, bisect_right
-from collections import namedtuple
 
 import allel
 import dask.array as da
 import numba
 import numpy as np
 import pandas
+import plotly.express as px
 import xarray
 import zarr
 
@@ -16,13 +15,17 @@ from .util import (
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    Region,
     da_compress,
     da_from_zarr,
     dask_compress_dataset,
     init_filesystem,
     init_zarr_store,
+    locate_region,
     read_gff3,
+    resolve_region,
     unpack_gff3_attributes,
+    xarray_concat,
 )
 
 PUBLIC_RELEASES = ("3.0",)
@@ -37,8 +40,6 @@ DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
-
-Region = namedtuple("Region", ["contig", "start", "end"])
 
 
 # Note regarding release identifiers and storage paths. Within the
@@ -405,77 +406,6 @@ class Ag3:
 
         return sample_sets
 
-    def _resolve_region(self, region):
-        """Parse the provided region and return `Region(contig, start, end)`.
-        Supports contig names, gene names and genomic coordinates"""
-
-        # region is already Region tuple
-        if isinstance(region, Region):
-            return region
-
-        # check type, fail early if bad
-        if not isinstance(region, str):
-            raise TypeError("The region parameter must be a string or Region object.")
-
-        # check if region is a chromosome arm
-        if region in self.contigs:
-            return Region(region, None, None)
-
-        # check if region is a region string
-        region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
-        if region_pattern_match:
-            # parse region string that contains genomic coordinates
-            region_split = region_pattern_match.groups()
-
-            contig = region_split[0]
-            start = int(region_split[1].replace(",", ""))
-            end = int(region_split[2].replace(",", ""))
-
-            if contig not in self.contigs:
-                raise ValueError(f"Contig {contig} does not exist in the dataset.")
-            elif (
-                start < 0
-                or end <= start
-                or end > self.genome_sequence(region=contig).shape[0]
-            ):
-                raise ValueError("Provided genomic coordinates are not valid.")
-
-            return Region(contig, start, end)
-
-        # check if region is a gene annotation feature ID
-        gene_annotation = self.geneset(["ID"]).query(f"ID == '{region}'")
-        if not gene_annotation.empty:
-            # region is a feature ID
-            gene_annotation = gene_annotation.squeeze()
-            return Region(
-                gene_annotation.contig, gene_annotation.start, gene_annotation.end
-            )
-
-        raise ValueError(
-            f"Region {region!r} is not a valid contig, region string or feature ID."
-        )
-
-    def locate_region(self, region):
-        """Get array slice and a parsed genomic region.
-
-        Parameters
-        ----------
-        region : str or Region
-            Can be a string with chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"),
-            genomic region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-
-        Returns
-        -------
-        loc_region, region : slice, Region
-        """
-        region = self._resolve_region(region)
-        root = self.open_snp_sites()
-        pos = allel.SortedIndex(root[region.contig]["variants"]["POS"])
-        loc_region = pos.locate_range(region.start, region.end)
-
-        return loc_region, region
-
     def species_calls(self, sample_sets=None, analysis=DEFAULT_SPECIES_ANALYSIS):
         """Access species calls for one or more sample sets.
 
@@ -586,6 +516,26 @@ class Ag3:
             self._cache_site_filters[key] = root
             return root
 
+    def _site_filters(
+        self,
+        *,
+        region,
+        mask,
+        field,
+        analysis,
+        inline_array,
+        chunks,
+    ):
+        assert isinstance(region, Region)
+        root = self.open_site_filters(mask=mask, analysis=analysis)
+        z = root[f"{region.contig}/variants/{field}"]
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        if region.start or region.end:
+            pos = self.snp_sites(region=region.contig, field="POS")
+            loc_region = locate_region(region, pos)
+            d = d[loc_region]
+        return d
+
     def site_filters(
         self,
         region,
@@ -622,26 +572,25 @@ class Ag3:
 
         """
 
-        if isinstance(region, (list, tuple)) and not isinstance(region, Region):
-            return da.concatenate(
-                [
-                    self.site_filters(
-                        region=r,
-                        mask=mask,
-                        field=field,
-                        analysis=analysis,
-                        inline_array=inline_array,
-                        chunks=chunks,
-                    )
-                    for r in region
-                ]
-            )
-        else:
-            loc_region, region = self.locate_region(region)
-            root = self.open_site_filters(mask=mask, analysis=analysis)
-            z = root[region.contig]["variants"][field]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            return d[loc_region]
+        region = resolve_region(self, region)
+        if isinstance(region, Region):
+            region = [region]
+
+        d = da.concatenate(
+            [
+                self._site_filters(
+                    region=r,
+                    mask=mask,
+                    field=field,
+                    analysis=analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for r in region
+            ]
+        )
+
+        return d
 
     def open_snp_sites(self):
         """Open SNP sites zarr.
@@ -658,10 +607,30 @@ class Ag3:
             self._cache_snp_sites = root
         return self._cache_snp_sites
 
+    def _snp_sites(
+        self,
+        *,
+        region,
+        field,
+        site_mask,
+        site_filters_analysis,
+        inline_array,
+        chunks,
+    ):
+        assert isinstance(region, Region), type(region)
+        root = self.open_snp_sites()
+        z = root[f"{region.contig}/variants/{field}"]
+        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        if region.start or region.end:
+            pos = root[f"{region.contig}/variants/POS"]
+            loc_region = locate_region(region, pos)
+            ret = ret[loc_region]
+        return ret
+
     def snp_sites(
         self,
         region,
-        field=None,
+        field,
         site_mask=None,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
@@ -676,9 +645,8 @@ class Ag3:
             defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
             genomic location `Region(contig, start, end)`. Multiple values can be provided
             as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
-        field : {"POS", "REF", "ALT"}, optional
-            Array to access. If not provided, all three arrays POS, REF, ALT will be returned as a
-            tuple.
+        field : {"POS", "REF", "ALT"}
+            Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str
@@ -695,34 +663,35 @@ class Ag3:
 
         """
 
-        if field is None:
-            # return POS, REF, ALT
-            ret = tuple(
-                self.snp_sites(region=region, field=f, site_mask=None)
-                for f in ("POS", "REF", "ALT")
-            )
+        region = resolve_region(self, region)
+        if isinstance(region, Region):
+            region = [region]
 
-        elif isinstance(region, (tuple, list)) and not isinstance(region, Region):
-            # concatenate
-            ret = da.concatenate(
-                [self.snp_sites(region=r, field=field, site_mask=None) for r in region]
-            )
-
-        else:
-            loc_region, region = self.locate_region(region)
-            root = self.open_snp_sites()
-            z = root[region.contig]["variants"][field]
-            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            ret = ret[loc_region]
+        # concatenate
+        ret = da.concatenate(
+            [
+                self._snp_sites(
+                    region=r,
+                    field=field,
+                    site_mask=None,
+                    chunks=chunks,
+                    inline_array=inline_array,
+                    site_filters_analysis=site_filters_analysis,
+                )
+                for r in region
+            ],
+            axis=0,
+        )
 
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters_analysis
+                region=region,
+                mask=site_mask,
+                analysis=site_filters_analysis,
+                chunks=chunks,
+                inline_array=inline_array,
             )
-            if isinstance(ret, tuple):
-                ret = tuple(da_compress(loc_sites, d, axis=0) for d in ret)
-            else:
-                ret = da_compress(loc_sites, ret, axis=0)
+            ret = da_compress(loc_sites, ret, axis=0)
 
         return ret
 
@@ -751,12 +720,17 @@ class Ag3:
 
     def _snp_genotypes(self, *, region, sample_set, field, inline_array, chunks):
         # single contig, single sample set
-        loc_region, region = self.locate_region(region)
+        assert isinstance(region, Region)
+        assert isinstance(sample_set, str)
         root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[region.contig]["calldata"][field]
-
+        z = root[f"{region.contig}/calldata/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d[loc_region]
+        if region.start or region.end:
+            pos = self.snp_sites(region=region.contig, field="POS")
+            loc_region = locate_region(region, pos)
+            d = d[loc_region]
+
+        return d
 
     def snp_genotypes(
         self,
@@ -799,32 +773,42 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        region = resolve_region(self, region)
 
-        # normalise to simplify concatenation logic
-        if isinstance(region, str) or isinstance(region, Region):
+        # normalise region to list to simplify concatenation logic
+        if isinstance(region, Region):
             region = [region]
 
         # concatenate multiple sample sets and/or contigs
-        d = da.concatenate(
-            [
-                da.concatenate(
-                    [
-                        self._snp_genotypes(
-                            region=r,
-                            sample_set=s,
-                            field=field,
-                            inline_array=inline_array,
-                            chunks=chunks,
-                        )
-                        for s in sample_sets
-                    ],
-                    axis=1,
+        lx = []
+        for r in region:
+            ly = []
+
+            for s in sample_sets:
+                y = self._snp_genotypes(
+                    region=Region(r.contig, None, None),
+                    sample_set=s,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
-                for r in region
-            ],
-            axis=0,
-        )
+                ly.append(y)
+
+            # concatenate data from multiple sample sets
+            x = da.concatenate(ly, axis=1)
+
+            # locate region - do this only once, optimisation
+            if r.start or r.end:
+                pos = self.snp_sites(region=r.contig, field="POS")
+                loc_region = locate_region(r, pos)
+                x = x[loc_region]
+
+            lx.append(x)
+
+        # concatenate data from multiple regions
+        d = da.concatenate(lx, axis=0)
 
         # apply site filters if requested
         if site_mask is not None:
@@ -870,14 +854,19 @@ class Ag3:
 
         """
         genome = self.open_genome()
-        region = self._resolve_region(region)
+        region = resolve_region(self, region)
         z = genome[region.contig]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
-        if region.start and region.end:
-            loc_region = slice(region.start - 1, region.end)
+        if region.start:
+            slice_start = region.start - 1
         else:
-            loc_region = slice(None, None)
+            slice_start = None
+        if region.end:
+            slice_stop = region.end
+        else:
+            slice_stop = None
+        loc_region = slice(slice_start, slice_stop)
 
         return d[loc_region]
 
@@ -934,7 +923,7 @@ class Ag3:
         """
 
         # resolve region
-        region = self._resolve_region(region=region)
+        region = resolve_region(self, region)
 
         # determine contig sequence length
         seq_length = self.genome_sequence(region).shape[0]
@@ -973,19 +962,21 @@ class Ag3:
         contig = feature.contig
         region = Region(contig, feature.start, feature.end)
 
-        loc_feature, _ = self.locate_region(region)
-
         # grab pos, ref and alt for chrom arm from snp_sites
-        pos, ref, alt = self.snp_sites(region=region)
-        ref = ref.compute()
-        alt = alt.compute()
+        pos = self.snp_sites(region=contig, field="POS")
+        ref = self.snp_sites(region=contig, field="REF")
+        alt = self.snp_sites(region=contig, field="ALT")
+        loc_feature = locate_region(region, pos)
+        pos = pos[loc_feature].compute()
+        ref = ref[loc_feature].compute()
+        alt = alt[loc_feature].compute()
 
         # access site filters
         filter_pass = dict()
         masks = self._site_mask_ids(site_filters_analysis=site_filters_analysis)
         for m in masks:
-            x = self.site_filters(region=region, mask=m, analysis=site_filters_analysis)
-            x = x.compute()
+            x = self.site_filters(region=contig, mask=m, analysis=site_filters_analysis)
+            x = x[loc_feature].compute()
             filter_pass[m] = x
 
         # setup columns with contig, pos, ref, alt columns
@@ -1004,7 +995,7 @@ class Ag3:
         # construct dataframe
         df_snps = pandas.DataFrame(cols)
 
-        return region, loc_feature, df_snps
+        return region, df_snps
 
     def _annotator(self):
         # setup variant effect annotator
@@ -1038,7 +1029,7 @@ class Ag3:
         """
 
         # setup initial dataframe of SNPs
-        _, _, df_snps = self._snp_df(
+        _, df_snps = self._snp_df(
             transcript=transcript, site_filters_analysis=site_filters_analysis
         )
 
@@ -1095,6 +1086,7 @@ class Ag3:
         self,
         transcript,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
@@ -1115,6 +1107,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -1143,13 +1138,22 @@ class Ag3:
 
         Notes
         -----
-        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+        Cohorts with fewer samples than min_cohort_size will be excluded from output.
 
         """
 
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
+
         # setup initial dataframe of SNPs
-        region, loc_feature, df_snps = self._snp_df(
+        region, df_snps = self._snp_df(
             transcript=transcript, site_filters_analysis=site_filters_analysis
         )
 
@@ -1174,12 +1178,11 @@ class Ag3:
         # count alleles
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
             n_samples = np.count_nonzero(loc_coh)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
-            if n_samples < min_cohort_size:
-                freq_cols["frq_" + coh] = np.nan
-            else:
+            if n_samples >= min_cohort_size:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
                 # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
@@ -1223,6 +1226,17 @@ class Ag3:
         if effects:
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
+
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+                inplace=True,
+            )
+
+        else:
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele"],
+                inplace=True,
+            )
 
         return df_snps
 
@@ -1326,7 +1340,9 @@ class Ag3:
         root = self.open_site_annotations()
 
         # resolve region
-        region = self._resolve_region(region)
+        region = resolve_region(self, region)
+        if isinstance(region, list):
+            raise TypeError("Multiple regions not supported.")
 
         d = da_from_zarr(
             root[field][region.contig], inline_array=inline_array, chunks=chunks
@@ -1344,10 +1360,11 @@ class Ag3:
         return d
 
     def _snp_calls_dataset(
-        self, *, region, sample_set, site_filters_analysis, inline_array, chunks
+        self, *, contig, sample_set, site_filters_analysis, inline_array, chunks
     ):
 
-        region = self._resolve_region(region)
+        # assert isinstance(region, Region)
+        # contig = region.contig
 
         coords = dict()
         data_vars = dict()
@@ -1356,57 +1373,53 @@ class Ag3:
         sites_root = self.open_snp_sites()
 
         # variant_position
-        pos_z = sites_root[f"{region.contig}/variants/POS"]
-
-        loc_region, region = self.locate_region(region)
+        pos_z = sites_root[f"{contig}/variants/POS"]
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], variant_position[loc_region]
+        coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
-        ref_z = sites_root[f"{region.contig}/variants/REF"]
-        alt_z = sites_root[f"{region.contig}/variants/ALT"]
+        ref_z = sites_root[f"{contig}/variants/REF"]
+        alt_z = sites_root[f"{contig}/variants/ALT"]
         ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
         alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
-        variant_allele = da.concatenate(
-            [ref[loc_region, None], alt[loc_region]], axis=1
-        )
+        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
         # variant_contig
-        contig_index = self.contigs.index(region.contig)
+        contig_index = self.contigs.index(contig)
         variant_contig = da.full_like(
             variant_position, fill_value=contig_index, dtype="u1"
         )
-        coords["variant_contig"] = [DIM_VARIANT], variant_contig[loc_region]
+        coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
         # site filters arrays
         for mask in "gamb_colu_arab", "gamb_colu", "arab":
             filters_root = self.open_site_filters(
                 mask=mask, analysis=site_filters_analysis
             )
-            z = filters_root[f"{region.contig}/variants/filter_pass"]
+            z = filters_root[f"{contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d[loc_region]
+            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
         # call arrays
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = calls_root[f"{region.contig}/calldata/GT"]
+        gt_z = calls_root[f"{contig}/calldata/GT"]
         call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = calls_root[f"{region.contig}/calldata/GQ"]
+        gq_z = calls_root[f"{contig}/calldata/GQ"]
         call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = calls_root[f"{region.contig}/calldata/AD"]
+        ad_z = calls_root[f"{contig}/calldata/AD"]
         call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = calls_root[f"{region.contig}/calldata/MQ"]
+        mq_z = calls_root[f"{contig}/calldata/MQ"]
         call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            call_genotype[loc_region],
+            call_genotype,
         )
-        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq[loc_region])
-        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq[loc_region])
+        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
+        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
         data_vars["call_AD"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE],
-            call_ad[loc_region],
+            call_ad,
         )
 
         # sample arrays
@@ -1421,6 +1434,11 @@ class Ag3:
 
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        # # handle region
+        # if region.start or region.end:
+        #     loc_region = locate_region(region, pos_z)
+        #     ds = ds.isel(variants=loc_region)
 
         return ds
 
@@ -1463,33 +1481,48 @@ class Ag3:
         """
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        region = resolve_region(self, region)
 
         # normalise to simplify concatenation logic
-        if isinstance(region, str) or isinstance(region, Region):
+        if isinstance(region, Region):
             region = [region]
 
-        # concatenate multiple sample sets and/or contigs
-        ds = xarray.concat(
-            [
-                xarray.concat(
-                    [
-                        self._snp_calls_dataset(
-                            region=r,
-                            sample_set=s,
-                            site_filters_analysis=site_filters_analysis,
-                            inline_array=inline_array,
-                            chunks=chunks,
-                        )
-                        for s in sample_sets
-                    ],
-                    dim=DIM_SAMPLE,
-                    data_vars="minimal",
-                    coords="minimal",
-                    compat="override",
-                    join="override",
+        # concatenate multiple sample sets and/or regions
+        lx = []
+        for r in region:
+
+            ly = []
+            for s in sample_sets:
+                y = self._snp_calls_dataset(
+                    contig=r.contig,
+                    sample_set=s,
+                    site_filters_analysis=site_filters_analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
-                for r in region
-            ],
+                ly.append(y)
+
+            # concatenate data from multiple sample sets
+            x = xarray_concat(
+                ly,
+                dim=DIM_SAMPLE,
+                data_vars="minimal",
+                coords="minimal",
+                compat="override",
+                join="override",
+            )
+
+            # handle region, do this only once - optimisation
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        # concatenate data from multiple regions
+        ds = xarray_concat(
+            lx,
             dim=DIM_VARIANT,
             data_vars="minimal",
             coords="minimal",
@@ -1647,7 +1680,7 @@ class Ag3:
             )
             for s in sample_sets
         ]
-        ds = xarray.concat(
+        ds = xarray_concat(
             datasets,
             dim=DIM_SAMPLE,
             data_vars="minimal",
@@ -1937,7 +1970,7 @@ class Ag3:
             )
             for s in sample_sets
         ]
-        ds = xarray.concat(
+        ds = xarray_concat(
             datasets,
             dim=DIM_SAMPLE,
             data_vars="minimal",
@@ -2026,6 +2059,7 @@ class Ag3:
         self,
         contig,
         cohorts,
+        sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -2043,6 +2077,9 @@ class Ag3:
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
             `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2066,6 +2103,16 @@ class Ag3:
         these can be removed from the output dataframe using pandas df.dropna(axis='columns').
 
         """
+
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                cohorts_analysis=cohorts_analysis,
+                species_analysis=species_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
@@ -2104,16 +2151,14 @@ class Ag3:
 
         # compute cohort frequencies
         freq_cols = dict()
-        for coh, loc_samples in coh_dict.items():
-            n_samples = np.count_nonzero(loc_samples)
-            if n_samples == 0:
-                raise ValueError(f"no samples for cohort {coh!r}")
-            if n_samples < min_cohort_size:
-                freq_cols[f"frq_{coh}_amp"] = np.nan
-                freq_cols[f"frq_{coh}_del"] = np.nan
-            else:
-                is_amp_coh = np.compress(loc_samples, is_amp, axis=1)
-                is_del_coh = np.compress(loc_samples, is_del, axis=1)
+        for coh, loc_coh in coh_dict.items():
+            # handle sample query
+            if loc_samples is not None:
+                loc_coh = loc_coh & loc_samples
+            n_samples = np.count_nonzero(loc_coh)
+            if n_samples >= min_cohort_size:
+                is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
+                is_del_coh = np.compress(loc_coh, is_del, axis=1)
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
@@ -2129,7 +2174,7 @@ class Ag3:
         df = pandas.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
-        df.set_index("ID", inplace=True)
+        df.set_index(["ID", "Name"], inplace=True)
 
         return df
 
@@ -2158,10 +2203,10 @@ class Ag3:
             path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             # some sample sets have no data for a given analysis, handle this
-            if ".zmetadata" not in store:
-                root = None
-            else:
+            try:
                 root = zarr.open_consolidated(store=store)
+            except FileNotFoundError:
+                root = None
             self._cache_haplotypes[(sample_set, analysis)] = root
         return root
 
@@ -2254,7 +2299,7 @@ class Ag3:
 
     def haplotypes(
         self,
-        contig,
+        region,
         analysis,
         sample_sets=None,
         inline_array=True,
@@ -2264,9 +2309,11 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided as a list,
-            in which case data will be concatenated, e.g., ["3R", "3L"].
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
+            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
+            genomic location `Region(contig, start, end)`. Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
@@ -2287,49 +2334,61 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        region = resolve_region(self, region)
 
         # normalise to simplify concatenation logic
-        if isinstance(contig, str):
-            contig = [contig]
+        if isinstance(region, Region):
+            region = [region]
 
-        # concatenate - this is a bit gnarly, could do with simplification
-        datasets = [
-            [
-                self._haplotypes_dataset(
-                    contig=c,
+        # build dataset
+        lx = []
+        for r in region:
+            ly = []
+
+            for s in sample_sets:
+                y = self._haplotypes_dataset(
+                    contig=r.contig,
                     sample_set=s,
                     analysis=analysis,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-                for s in sample_sets
-            ]
-            for c in contig
-        ]
-        # some sample sets have no data for a given analysis, handle this
-        datasets = [[d for d in row if d is not None] for row in datasets]
-        if len(datasets[0]) == 0:
-            ds = None
-        else:
-            ds = xarray.concat(
-                [
-                    xarray.concat(
-                        row,
-                        dim=DIM_SAMPLE,
-                        data_vars="minimal",
-                        coords="minimal",
-                        compat="override",
-                        join="override",
-                    )
-                    for row in datasets
-                ],
-                dim=DIM_VARIANT,
+                if y is not None:
+                    ly.append(y)
+
+            if len(ly) == 0:
+                # early out, no data for given sample sets and analysis
+                return None
+
+            # concatenate data from multiple sample sets
+            x = xarray_concat(
+                ly,
+                dim=DIM_SAMPLE,
                 data_vars="minimal",
                 coords="minimal",
                 compat="override",
                 join="override",
             )
+
+            # handle region
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        # concatenate data from multiple regions
+        ds = xarray_concat(
+            lx,
+            dim=DIM_VARIANT,
+            data_vars="minimal",
+            coords="minimal",
+            compat="override",
+            join="override",
+        )
 
         return ds
 
@@ -2376,6 +2435,211 @@ class Ag3:
         df = pandas.concat(dfs, axis=0, ignore_index=True)
 
         return df
+
+    def aa_allele_frequencies(
+        self,
+        transcript,
+        cohorts,
+        sample_query=None,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        min_cohort_size=10,
+        site_mask=None,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        sample_sets=None,
+        drop_invariant=True,
+    ):
+        """Compute per amino acid allele frequencies for a gene transcript.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "species == 'coluzzii' and country == 'Burkina Faso'".
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is latest version.
+        min_cohort_size : int
+            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
+            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
+            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_filters_analysis : str, optional
+            Site filters analysis version.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
+            Include species calls in metadata.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "3.0") or a list of release identifiers.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any cohorts are dropped from
+            the result.
+
+        Returns
+        -------
+        df_snps : pandas.DataFrame
+
+        Notes
+        -----
+        Cohorts with fewer samples than min_cohort_size will be excluded from output.
+
+        """
+
+        df_snps = self.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts=cohorts,
+            sample_query=sample_query,
+            cohorts_analysis=cohorts_analysis,
+            min_cohort_size=min_cohort_size,
+            site_mask=site_mask,
+            site_filters_analysis=site_filters_analysis,
+            species_analysis=species_analysis,
+            sample_sets=sample_sets,
+            drop_invariant=drop_invariant,
+            effects=True,
+        )
+
+        df_snps.reset_index(inplace=True)
+
+        # we just want aa change
+        df_ns_snps = df_snps.query(
+            "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
+        ).copy()
+
+        # group and sum to collapse multi variant allele changes
+        df_aaf = df_ns_snps.groupby(["aa_pos", "aa_change"]).sum().reset_index()
+        df_aaf.set_index("aa_change", inplace=True)
+
+        # remove old max_af
+        df_aaf = df_aaf.drop(
+            [
+                "max_af",
+                "aa_pos",
+                "position",
+                "pass_gamb_colu_arab",
+                "pass_gamb_colu",
+                "pass_arab",
+            ],
+            axis=1,
+        ).copy()
+
+        freq_cols = [col for col in df_aaf if col.startswith("frq")]
+
+        # new max_af
+        df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
+
+        return df_aaf
+
+    def plot_frequencies_heatmap(
+        self,
+        df,
+        index=None,
+        max_len=100,
+        y_label=None,
+        colorbar=True,
+        width=None,
+        height=None,
+        text_auto=".0%",
+        aspect="auto",
+        color_continuous_scale="Reds",
+        **kwargs,
+    ):
+
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
+            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to
+            filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
+
+        Parameters
+        ----------
+        df : pandas DataFrame
+           A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+        index : str or list of str
+            One or more column headers that are present in the input dataframe. This becomes the heatmap y-axis
+            row labels. The column/s must produce a unique index.
+        max_len : int, optional
+            Displaying large styled dataframes may cause ipython notebooks to crash.
+        y_label : str, optional
+            This is the y-axis label that will be displayed on the heatmap.
+        colorbar : bool, optional
+            If False, colorbar is not output.
+        **kwargs
+            Other parameters are passed through to px.imshow().
+
+        """
+
+        # check len of input
+        if len(df) > max_len:
+            raise ValueError(f"Input DataFrame is longer than {max_len}")
+
+        # indexing
+        if index is None:
+            index = list(df.index.names)
+        df = df.reset_index().copy()
+        if isinstance(index, list):
+            index_col = (
+                df[index]
+                .astype(str)
+                .apply(
+                    lambda row: ", ".join([o for o in row if o is not None]),
+                    axis="columns",
+                )
+            )
+        elif isinstance(index, str):
+            index_col = df[index].astype(str)
+        else:
+            raise TypeError("wrong type for index parameter, expected list or str")
+
+        # check that index is unique (otherwise style won't work)
+        if not index_col.is_unique:
+            raise ValueError(f"{index} does not produce a unique index")
+
+        # drop and re-order columns
+        frq_cols = [col for col in df.columns if col.startswith("frq_")]
+
+        # keep only freq cols
+        heatmap_df = df[frq_cols].copy()
+
+        # set index
+        heatmap_df.set_index(index_col, inplace=True)
+
+        # clean column names
+        heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
+
+        # plotly heatmap styling
+        fig = px.imshow(
+            img=heatmap_df,
+            zmin=0,
+            zmax=1,
+            width=width,
+            height=height,
+            text_auto=text_auto,
+            aspect=aspect,
+            color_continuous_scale=color_continuous_scale,
+            **kwargs,
+        )
+
+        fig.update_xaxes(side="top", tickangle=270, title="cohorts")
+        # set Y axis title if index_name is given
+        if y_label is not None:
+            fig.update_yaxes(title=y_label)
+        fig.update_layout(
+            coloraxis_colorbar=dict(
+                title="frequency",
+                tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
+                ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
+            )
+        )
+        if not colorbar:
+            fig.update(layout_coloraxis_showscale=False)
+        fig.show()
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
