@@ -3168,6 +3168,11 @@ class Ag3:
         ds,
         center=(-2, 20),
         zoom=3,
+        title="<h2>Map of variant frequencies</h2>",
+        epilogue="""
+            Variant frequencies are shown as coloured markers. Opacity of color
+            denotes frequency. Click on a marker for more information.
+        """,
     ):
         """TODO doc me
 
@@ -3199,13 +3204,15 @@ class Ag3:
         )
 
         # lay out widgets
-        out = ipywidgets.VBox(
-            [
-                ipywidgets.HTML(value="<h2>Map of variant frequencies</h2>"),
-                controls,
-                freq_map,
-            ]
-        )
+        components = []
+        if title is not None:
+            components.append(ipywidgets.HTML(value=f"{title}"))
+        components.append(controls)
+        components.append(freq_map)
+        if epilogue is not None:
+            components.append(ipywidgets.HTML(value=f"{epilogue}"))
+
+        out = ipywidgets.VBox(components)
 
         return out
 
