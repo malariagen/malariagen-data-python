@@ -3,15 +3,15 @@ import os
 from malariagen_data.plasmodium import PlasmodiumTools
 
 
-class Pf7:
-    """Provides access to data from the Pf7 release.
+class Pv4:
+    """Provides access to data from the Pv4 release.
     Parameters
     ----------
     url : str, optional
-        Base path to data. Default uses Google Cloud Storage "gs://pf7_release/",
+        Base path to data. Default uses Google Cloud Storage "gs://pv4_release/",
         or specify a local path on your file system if data have been downloaded.
     data_config : str, optional
-        Path to config for structure of Pf7 data resource. Defaults to config included
+        Path to config for structure of Pv4 data resource. Defaults to config included
         with the malariagen_data package.
     **kwargs
         Passed through to fsspec when setting up file system access.
@@ -21,11 +21,11 @@ class Pf7:
     Access data from Google Cloud Storage (default):
 
         >>> import malariagen_data
-        >>> pf7 = malariagen_data.Pf7()
+        >>> pv4 = malariagen_data.Pv4()
 
     Access data downloaded to a local file system:
 
-        >>> pf7 = malariagen_data.Pf7("/local/path/to/pf7_release/")
+        >>> pv4 = malariagen_data.Pv4("/local/path/to/pv4_release/")
 
     """
 
@@ -36,10 +36,9 @@ class Pf7:
         **kwargs,
     ):
 
-        # setup filesystem
         if not data_config:
             working_dir = os.path.dirname(os.path.abspath(__file__))
-            data_config = os.path.join(working_dir, "pf7_config.json")
+            data_config = os.path.join(working_dir, "pv4_config.json")
         self.tools = PlasmodiumTools(data_config, url)
 
     def sample_metadata(self):
@@ -56,9 +55,10 @@ class Pf7:
         -------
         Access metadata as pandas dataframe:
 
-            >>> pf7.sample_metadata()
+            >>> pv4.sample_metadata()
 
         """
+
         return self.tools.open_sample_metadata()
 
     def variant_calls(self, extended=False, inline_array=True, chunks="native"):
@@ -83,11 +83,11 @@ class Pf7:
         --------
         Access core set of variables for variant calls (default):
 
-            >>> pf7.variant_calls()
+            >>> pv4.variant_calls()
 
         Access extended set of variables for variant calls:
 
-            >>> pf7.variant_calls(extended=True)
+            >>> pv4.variant_calls(extended=True)
 
         """
         ds = self.tools.load_variant_calls(
