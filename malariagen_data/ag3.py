@@ -2897,7 +2897,114 @@ class Ag3:
             ds_out["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
             ds_out["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
 
+        # tidy up display by sorting variables
+        ds_out = ds_out[sorted(ds_out)]
+
         return ds_out
+
+    def aa_allele_frequencies_advanced(
+        self,
+        transcript,
+        area_by,
+        period_by,
+        sample_sets=None,
+        sample_query=None,
+        min_cohort_size=10,
+        drop_invariant=True,
+        variant_query=None,
+        site_mask=None,
+        nobs_mode="called",  # or "fixed"
+        ci_method="wilson",
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+    ):
+        """Group samples by taxon, area and period, then compute amino acid
+        substitution allele counts and frequencies.
+
+        Parameters
+        ----------
+        @@TODO
+
+        Returns
+        -------
+        @@TODO
+
+        """
+
+        # begin by computing SNP allele frequencies
+        aa_variant_query = "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
+        ds_snp_frq = self.snp_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by=area_by,
+            period_by=period_by,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            drop_invariant=True,  # always drop invariant for aa frequencies
+            effects=True,  # need effects to identify amino acid changes
+            variant_query=aa_variant_query,  # we'll also apply a variant query later
+            site_mask=site_mask,
+            nobs_mode=nobs_mode,
+            ci_method=None,  # we will recompute confidence intervals later
+            cohorts_analysis=cohorts_analysis,
+            species_analysis=species_analysis,
+            site_filters_analysis=site_filters_analysis,
+        )
+
+        # group by amino acid change
+        groupby_aa_change = ds_snp_frq.groupby("variant_aa_change")
+
+        # apply aggregation
+        ds_aa_frq = groupby_aa_change.map(_map_snp_to_aa_change_frq_ds)
+
+        # TODO Do we ever need to worry about the possibility of the
+        # same aa change due to SNPs at different positions? If so,
+        # there is a possibility of ending up with frequency greater
+        # than 1. N.B., this applies to the aa_allele_frequencies()
+        # method also.
+
+        # add back in cohort variables, unaffected by aggregation
+        cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
+        for v in cohort_vars:
+            ds_aa_frq[v] = ds_snp_frq[v]
+
+        # sort by amino acid position
+        ds_aa_frq = ds_aa_frq.sortby("variant_aa_pos")
+
+        # recompute frequency
+        count = ds_aa_frq["event_count"].values
+        nobs = ds_aa_frq["event_nobs"].values
+        with np.errstate(divide="ignore", invalid="ignore"):
+            # ignore division warnings
+            frequency = count / nobs
+        ds_aa_frq["event_frequency"] = ("variants", "cohorts"), frequency
+
+        # recompute max frequency over cohorts
+        max_af = ds_aa_frq["event_frequency"].max(dim="cohorts")
+        ds_aa_frq["variant_max_af"] = max_af
+
+        # apply variant query if given
+        if variant_query is not None:
+            variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
+            df_variants = ds_aa_frq[variant_cols].to_dataframe()
+            df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
+            loc_variants = df_variants.eval(variant_query).values
+            ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
+
+        # compute new confidence intervals
+        count = ds_aa_frq["event_count"].values
+        nobs = ds_aa_frq["event_nobs"].values
+        frq_ci_low, frq_ci_upp = proportion_confint(
+            count=count, nobs=nobs, method=ci_method
+        )
+        ds_aa_frq["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
+        ds_aa_frq["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+
+        # tidy up display by sorting variables
+        ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
+
+        return ds_aa_frq
 
     def plot_frequencies_time_series(self, ds, height=None, width=None, **kwargs):
         """Create a time series plot of variant frequencies using plotly.
@@ -2982,6 +3089,17 @@ class Ag3:
         return fig
 
     def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
+        """TODO doc me
+
+        Parameters
+        ----------
+        @@TODO
+
+        Returns
+        -------
+        @@TODO
+
+        """
 
         # slice dataset to variant of interest
         if isinstance(variant, int):
@@ -3051,11 +3169,23 @@ class Ag3:
         center=(-2, 20),
         zoom=3,
     ):
+        """TODO doc me
+
+        Parameters
+        ----------
+        @@TODO
+
+        Returns
+        -------
+        @@TODO
+
+        """
+
         # create a map
         freq_map = ipyleaflet.Map(center=center, zoom=zoom)
 
         # setup interactive controls
-        variants = np.unique(ds["variant_label"].values)
+        variants = ds["variant_label"].values
         taxa = np.unique(ds["cohort_taxon"].values)
         periods = np.unique(ds["cohort_period"].values)
         controls = ipywidgets.interactive(
@@ -3194,3 +3324,36 @@ def _make_snp_label_effect(row):
     if aa_change is not None:
         label += f" ({aa_change})"
     return label
+
+
+def _map_snp_to_aa_change_frq_ds(ds):
+
+    # keep only variables that make sense for amino acid substitutions
+    keep_vars = [
+        "variant_contig",
+        "variant_position",
+        "variant_effect",
+        "variant_impact",
+        "variant_aa_pos",  # include this so we can sort afterwards
+        "variant_aa_change",
+        "event_nobs",
+    ]
+
+    if ds.dims["variants"] == 1:
+
+        # keep everything as-is, no need for aggregation
+        ds_out = ds[keep_vars + ["event_count"]]
+
+    else:
+
+        # take the first value from all variants variables
+        ds_out = ds[keep_vars].isel(variants=[0])
+
+        # sum event count over variants
+        count = ds["event_count"].values.sum(axis=0, keepdims=True)
+        ds_out["event_count"] = ("variants", "cohorts"), count
+
+    # assign new variant label
+    ds_out["variant_label"] = ds_out["variant_aa_change"]
+
+    return ds_out
