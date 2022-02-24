@@ -4,10 +4,11 @@ import allel
 import dask.array as da
 import numba
 import numpy as np
-import pandas
+import pandas as pd
 import plotly.express as px
-import xarray
+import xarray as xr
 import zarr
+from statsmodels.stats.proportion import proportion_confint
 
 from . import veff
 from .util import (
@@ -205,7 +206,7 @@ class Ag3:
         release_path = _release_to_path(release)
         path = f"{self._base_path}/{release_path}/manifest.tsv"
         with self._fs.open(path) as f:
-            df = pandas.read_csv(f, sep="\t", na_values="")
+            df = pd.read_csv(f, sep="\t", na_values="")
         df["release"] = release
         return df
 
@@ -244,7 +245,7 @@ class Ag3:
 
         elif isinstance(release, (list, tuple)):
             # retrieve sample sets from multiple releases
-            df = pandas.concat(
+            df = pd.concat(
                 [self.sample_sets(release=r) for r in release],
                 axis=0,
                 ignore_index=True,
@@ -281,7 +282,7 @@ class Ag3:
             release_path = _release_to_path(release)
             path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
             with self._fs.open(path) as f:
-                df = pandas.read_csv(f, na_values="")
+                df = pd.read_csv(f, na_values="")
 
             # add a couple of columns for convenience
             df["sample_set"] = sample_set
@@ -305,7 +306,7 @@ class Ag3:
             else:
                 raise ValueError(f"Unknown species calling analysis: {analysis!r}")
             with self._fs.open(path) as f:
-                df = pandas.read_csv(
+                df = pd.read_csv(
                     f,
                     na_values="",
                     # ensure correct dtype even where all values are missing
@@ -431,7 +432,7 @@ class Ag3:
             self._read_species_calls(sample_set=s, analysis=analysis)
             for s in sample_sets
         ]
-        df = pandas.concat(dfs, axis=0, ignore_index=True)
+        df = pd.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
@@ -487,7 +488,7 @@ class Ag3:
             )
             for s in sample_sets
         ]
-        df = pandas.concat(dfs, axis=0, ignore_index=True)
+        df = pd.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
@@ -993,7 +994,7 @@ class Ag3:
             cols[f"pass_{m}"] = np.repeat(x, 3)
 
         # construct dataframe
-        df_snps = pandas.DataFrame(cols)
+        df_snps = pd.DataFrame(cols)
 
         return region, df_snps
 
@@ -1192,19 +1193,17 @@ class Ag3:
                 freq_cols["frq_" + coh] = af_coh[:, 1:].flatten()
 
         # build a dataframe with the frequency columns
-        df_freqs = pandas.DataFrame(freq_cols)
+        df_freqs = pd.DataFrame(freq_cols)
 
         # build the final dataframe
         df_snps.reset_index(drop=True, inplace=True)
-        df_snps = pandas.concat([df_snps, df_freqs], axis=1)
+        df_snps = pd.concat([df_snps, df_freqs], axis=1)
 
         # add max allele freq column (concat here also reduces fragmentation)
-        df_snps = pandas.concat(
+        df_snps = pd.concat(
             [
                 df_snps,
-                pandas.DataFrame(
-                    {"max_af": df_snps[list(freq_cols.keys())].max(axis=1)}
-                ),
+                pd.DataFrame({"max_af": df_snps[list(freq_cols.keys())].max(axis=1)}),
             ],
             axis=1,
         )
@@ -1262,7 +1261,7 @@ class Ag3:
                 "phenotype",
             ]
             with self._fs.open(path) as f:
-                df = pandas.read_csv(
+                df = pd.read_csv(
                     f,
                     sep="\t",
                     na_values=["", "0"],
@@ -1433,7 +1432,7 @@ class Ag3:
         attrs = {"contigs": self.contigs}
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         # # handle region
         # if region.start or region.end:
@@ -1633,7 +1632,7 @@ class Ag3:
         attrs = {"contigs": self.contigs}
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
 
@@ -1824,7 +1823,7 @@ class Ag3:
         attrs = {"contigs": self.contigs}
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
 
@@ -1923,7 +1922,7 @@ class Ag3:
         attrs = {"contigs": self.contigs}
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
 
@@ -2037,7 +2036,7 @@ class Ag3:
         counts = np.vstack(counts)
 
         # build dataset
-        ds_out = xarray.Dataset(
+        ds_out = xr.Dataset(
             coords={
                 "gene_id": (["genes"], df_genes["ID"].values),
                 "gene_start": (["genes"], df_genes["start"].values),
@@ -2167,11 +2166,11 @@ class Ag3:
                 freq_cols[f"frq_{coh}_del"] = del_freq_coh
 
         # build a dataframe with the frequency columns
-        df_freqs = pandas.DataFrame(freq_cols)
+        df_freqs = pd.DataFrame(freq_cols)
 
         # build the final dataframe
         df.reset_index(drop=True, inplace=True)
-        df = pandas.concat([df, df_freqs], axis=1)
+        df = pd.concat([df, df_freqs], axis=1)
 
         # set gene ID as index for convenience
         df.set_index(["ID", "Name"], inplace=True)
@@ -2293,7 +2292,7 @@ class Ag3:
         attrs = {"contigs": self.contigs}
 
         # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
 
@@ -2401,7 +2400,7 @@ class Ag3:
             release_path = _release_to_path(release)
             path = f"{self._base_path}/{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
-                df = pandas.read_csv(f, na_values="")
+                df = pd.read_csv(f, na_values="")
 
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
@@ -2432,7 +2431,7 @@ class Ag3:
             self._read_cohort_metadata(sample_set=s, cohorts_analysis=cohorts_analysis)
             for s in sample_sets
         ]
-        df = pandas.concat(dfs, axis=0, ignore_index=True)
+        df = pd.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
@@ -2641,6 +2640,336 @@ class Ag3:
             fig.update(layout_coloraxis_showscale=False)
         fig.show()
 
+    def snp_allele_frequencies_advanced(
+        self,
+        transcript,
+        area_by,
+        period_by,
+        sample_sets=None,
+        sample_query=None,
+        min_cohort_size=10,
+        drop_invariant=True,
+        variant_query=None,
+        site_mask=None,
+        nobs_mode="called",  # or "fixed"
+        effects=True,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+    ):
+        """Group samples by taxon, area and period, then compute SNP allele counts
+        and frequencies.
+
+        Parameters
+        ----------
+        @@TODO
+
+        Returns
+        -------
+        @@TODO
+
+        """
+
+        # load sample metadata
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
+        )
+
+        # take a copy, as we will modify the dataframe
+        df_samples = df_samples.copy()
+
+        # fix intermediate taxon values - we only want to build cohorts with clean
+        # taxon calls, so we set intermediate values to None
+        loc_intermediate_taxon = (
+            df_samples["taxon"].str.startswith("intermediate").fillna(False)
+        )
+        df_samples.loc[loc_intermediate_taxon, "taxon"] = None
+
+        # add period column
+        if period_by == "year":
+            make_period = _make_sample_period_year
+        elif period_by == "quarter":
+            make_period = _make_sample_period_quarter
+        elif period_by == "month":
+            make_period = _make_sample_period_month
+        else:
+            raise ValueError(
+                f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
+            )
+        sample_period = df_samples.apply(make_period, axis="columns")
+        df_samples["period"] = sample_period
+
+        # apply sample query
+        loc_samples = None
+        if sample_query is not None:
+            loc_samples = df_samples.eval(sample_query).values
+            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
+
+        # add area column for consistent output
+        df_samples["area"] = df_samples[area_by]
+
+        # group samples to make cohorts
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+
+        # build cohorts dataframe
+        df_cohorts = group_samples_by_cohort.agg(
+            size=("sample_id", len),
+            lat_mean=("latitude", "mean"),
+            lat_max=("latitude", "mean"),
+            lat_min=("latitude", "mean"),
+            lon_mean=("longitude", "mean"),
+            lon_max=("longitude", "mean"),
+            lon_min=("longitude", "mean"),
+        )
+        # reset index so that the index fields are included as columns
+        df_cohorts = df_cohorts.reset_index()
+
+        # add cohort helper variables
+        cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
+        cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
+        df_cohorts["period_start"] = cohort_period_start
+        df_cohorts["period_end"] = cohort_period_end
+        df_cohorts["label"] = df_cohorts.apply(
+            lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
+        )
+
+        # apply minimum cohort size
+        df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(
+            drop=True
+        )
+
+        # access SNP calls
+        ds_snps = self.snp_calls(
+            region=transcript,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            site_filters_analysis=site_filters_analysis,
+        )
+
+        # access genotypes
+        gt = ds_snps["call_genotype"].data
+
+        # apply sample query
+        if sample_query is not None:
+            gt = da.compress(loc_samples, gt, axis=1)
+
+        # bring genotypes into memory
+        gt = gt.compute()
+
+        # convert genotypes to more convenient representation
+        gac, gan = _genotypes_to_alt_allele_counts_melt(gt, max_allele=3)
+
+        # set up variant variables
+        contigs = ds_snps.attrs["contigs"]
+        variant_contig = np.repeat(
+            [contigs[i] for i in ds_snps["variant_contig"].values], 3
+        )
+        variant_position = np.repeat(ds_snps["variant_position"].values, 3)
+        alleles = ds_snps["variant_allele"].values
+        variant_ref_allele = np.repeat(alleles[:, 0], 3)
+        variant_alt_allele = alleles[:, 1:].flatten()
+        variant_pass_gamb_colu_arab = np.repeat(
+            ds_snps["variant_filter_pass_gamb_colu_arab"].values, 3
+        )
+        variant_pass_gamb_colu = np.repeat(
+            ds_snps["variant_filter_pass_gamb_colu"].values, 3
+        )
+        variant_pass_arab = np.repeat(ds_snps["variant_filter_pass_arab"].values, 3)
+
+        # deal with SNP alleles not observed
+        if drop_invariant:
+            ac = np.sum(gac, axis=1)
+            loc_variant = ac > 0
+            variant_contig = np.compress(loc_variant, variant_contig, axis=0)
+            variant_position = np.compress(loc_variant, variant_position, axis=0)
+            variant_ref_allele = np.compress(loc_variant, variant_ref_allele, axis=0)
+            variant_alt_allele = np.compress(loc_variant, variant_alt_allele, axis=0)
+            variant_pass_gamb_colu_arab = np.compress(
+                loc_variant, variant_pass_gamb_colu_arab, axis=0
+            )
+            variant_pass_gamb_colu = np.compress(
+                loc_variant, variant_pass_gamb_colu, axis=0
+            )
+            variant_pass_arab = np.compress(loc_variant, variant_pass_arab, axis=0)
+            gac = np.compress(loc_variant, gac, axis=0)
+            gan = np.compress(loc_variant, gan, axis=0)
+
+        # setup main event variables
+        n_variants, n_cohorts = len(variant_position), len(df_cohorts)
+        count = np.zeros((n_variants, n_cohorts), dtype=int)
+        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
+
+        # build event count and nobs for each cohort
+        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
+
+            # construct grouping key
+            cohort_key = cohort.taxon, cohort.area, cohort.period
+
+            # obtain sample indices for cohort
+            sample_indices = group_samples_by_cohort.indices[cohort_key]
+
+            # select genotype data for cohort
+            cohort_gac = np.take(gac, sample_indices, axis=1)
+
+            # compute cohort allele counts
+            np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
+
+            # compute cohort allele numbers
+            cohort_gan = np.take(gan, sample_indices, axis=1)
+            if nobs_mode == "called":
+                np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
+            elif nobs_mode == "fixed":
+                nobs[:, cohort_index] = cohort.size * 2
+            else:
+                raise ValueError(f"Bad nobs_mode: {nobs_mode!r}")
+
+        # compute frequency
+        with np.errstate(divide="ignore", invalid="ignore"):
+            # ignore division warnings
+            frequency = count / nobs
+
+        # make dataframe of SNPs
+        df_variants = pd.DataFrame(
+            {
+                "contig": variant_contig,
+                "position": variant_position,
+                "ref_allele": variant_ref_allele.astype("U1"),
+                "alt_allele": variant_alt_allele.astype("U1"),
+                "max_af": np.nanmax(frequency, axis=1),
+                "pass_gamb_colu_arab": variant_pass_gamb_colu_arab,
+                "pass_gamb_colu": variant_pass_gamb_colu,
+                "pass_arab": variant_pass_arab,
+            }
+        )
+
+        # get effect annotations
+        if effects:
+
+            # setup variant effect annotator
+            ann = self._annotator()
+
+            # add effects to the dataframe
+            ann.get_effects(transcript=transcript, variants=df_variants)
+
+            df_variants["label"] = df_variants.apply(
+                _make_snp_label_effect, axis="columns"
+            )
+
+        else:
+
+            df_variants["label"] = df_variants.apply(
+                _make_snp_label_basic, axis="columns"
+            )
+
+        # build the output dataset
+        ds_out = xr.Dataset()
+
+        # cohort variables
+        for coh_col in df_cohorts.columns:
+            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+
+        # variant variables
+        for snp_col in df_variants.columns:
+            ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
+
+        # event variables
+        ds_out["event_count"] = ("variants", "cohorts"), count
+        ds_out["event_nobs"] = ("variants", "cohorts"), nobs
+        ds_out["event_frequency"] = ("variants", "cohorts"), frequency
+
+        # apply variant query
+        if variant_query is not None:
+            loc_variants = df_variants.eval(variant_query).values
+            ds_out = ds_out.isel(variants=loc_variants)
+
+        return ds_out
+
+    def plot_frequencies_time_series(
+        self, ds, ci_method="wilson", height=None, width=None, **kwargs
+    ):
+        """Create a time series plot of variant frequencies using plotly.
+
+        Parameters
+        ----------
+        @@TODO
+
+        Returns
+        -------
+        @@TODO
+
+        """
+
+        # extract cohorts into a dataframe
+        cohort_vars = [v for v in ds if v.startswith("cohort_")]
+        df_cohorts = ds[cohort_vars].to_dataframe()
+        df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
+
+        # extract variant labels
+        variant_labels = ds["variant_label"].values
+
+        # build a long-form dataframe from the dataset
+        dfs = []
+        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
+            df = pd.DataFrame(
+                {
+                    "taxon": cohort.taxon,
+                    "area": cohort.area,
+                    "date": cohort.period_start,
+                    "period": str(
+                        cohort.period
+                    ),  # use string representation for hover label
+                    "sample_size": cohort.size,
+                    "variant": variant_labels,
+                    "count": ds["event_count"].isel(cohorts=cohort_index).values,
+                    "nobs": ds["event_nobs"].isel(cohorts=cohort_index).values,
+                    "frequency": ds["event_frequency"]
+                    .isel(cohorts=cohort_index)
+                    .values,
+                }
+            )
+            dfs.append(df)
+        df_events = pd.concat(dfs, axis=0).reset_index(drop=True)
+
+        # remove events with no observations
+        df_events = df_events.query("nobs > 0")
+
+        # calculate confidence intervals
+        frq = df_events["frequency"]
+        frq_ci_low, frq_ci_upp = proportion_confint(
+            count=df_events["count"], nobs=df_events["nobs"], method=ci_method
+        )
+        df_events["frequency_error"] = frq_ci_upp - frq
+        df_events["frequency_error_minus"] = frq - frq_ci_low
+
+        # make a plot
+        fig = px.line(
+            df_events,
+            facet_col="taxon",
+            facet_row="area",
+            x="date",
+            y="frequency",
+            error_y="frequency_error",
+            error_y_minus="frequency_error_minus",
+            color="variant",
+            markers=True,
+            hover_name="variant",
+            hover_data={
+                "frequency": ":.0%",
+                "period": True,
+                "area": True,
+                "taxon": True,
+                "sample_size": True,
+                "date": False,
+                "variant": False,
+            },
+            height=height,
+            width=width,
+            **kwargs,
+        )
+        return fig
+
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
@@ -2687,3 +3016,72 @@ def _cn_mode(a, vmax):
         counts[j] = count
 
     return modes, counts
+
+
+def _make_sample_period_month(row):
+    year = row.year
+    month = row.month
+    if year > 0 and month > 0:
+        return pd.Period(freq="M", year=year, month=month)
+    else:
+        return pd.NaT
+
+
+def _make_sample_period_quarter(row):
+    year = row.year
+    month = row.month
+    if year > 0 and month > 0:
+        return pd.Period(freq="Q", year=year, month=month)
+    else:
+        return pd.NaT
+
+
+def _make_sample_period_year(row):
+    year = row.year
+    if year > 0:
+        return pd.Period(freq="A", year=year)
+    else:
+        return pd.NaT
+
+
+def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+    """Convert a genotype array to an array of alt allele counts, melted to
+    store one row per alt allele."""
+
+    n_variants = gt.shape[0]
+    n_samples = gt.shape[1]
+
+    # convert to genotype allele counts
+    gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
+    assert gac.shape == (n_variants, n_samples, max_allele + 1)
+
+    # sum total observations over alleles
+    gan = gac.sum(axis=2)
+
+    # keep only alt allele counts
+    gac_alt = gac[:, :, 1:]
+    assert gac_alt.shape == (n_variants, n_samples, max_allele)
+
+    # use some numpy tricks to melt alleles into rows
+    gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
+    assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
+    gan_melt = np.repeat(gan, max_allele, axis=0)
+    assert gan_melt.shape == (n_variants * max_allele, n_samples)
+
+    return gac_alt_melt, gan_melt
+
+
+def _make_snp_label_basic(row):
+    return (
+        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
+    )
+
+
+def _make_snp_label_effect(row):
+    label = (
+        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
+    )
+    aa_change = row["aa_change"]
+    if aa_change is not None:
+        label += f" ({aa_change})"
+    return label

@@ -20,10 +20,13 @@ xarray = "*"
 numba = "*"
 plotly = "*"
 statsmodels = "*"
+ipyleaflet = "*"
+ipywidgets = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
 notebook = "*"
+jupyterlab = "*"
 pre-commit = "*"
 black = "*"
 
