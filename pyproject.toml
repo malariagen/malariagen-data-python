@@ -19,6 +19,7 @@ scikit-allel = "*"
 xarray = "*"
 numba = "*"
 plotly = "*"
+statsmodels = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
