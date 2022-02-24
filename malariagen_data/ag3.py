@@ -2,6 +2,8 @@ from bisect import bisect_left, bisect_right
 
 import allel
 import dask.array as da
+import ipyleaflet
+import ipywidgets
 import numba
 import numpy as np
 import pandas as pd
@@ -2653,6 +2655,7 @@ class Ag3:
         site_mask=None,
         nobs_mode="called",  # or "fixed"
         effects=True,
+        ci_method="wilson",
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
@@ -2884,11 +2887,19 @@ class Ag3:
             loc_variants = df_variants.eval(variant_query).values
             ds_out = ds_out.isel(variants=loc_variants)
 
+        # add confidence intervals
+        if ci_method is not None:
+            count = ds_out["event_count"].values
+            nobs = ds_out["event_nobs"].values
+            frq_ci_low, frq_ci_upp = proportion_confint(
+                count=count, nobs=nobs, method=ci_method
+            )
+            ds_out["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
+            ds_out["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+
         return ds_out
 
-    def plot_frequencies_time_series(
-        self, ds, ci_method="wilson", height=None, width=None, **kwargs
-    ):
+    def plot_frequencies_time_series(self, ds, height=None, width=None, **kwargs):
         """Create a time series plot of variant frequencies using plotly.
 
         Parameters
@@ -2912,6 +2923,7 @@ class Ag3:
         # build a long-form dataframe from the dataset
         dfs = []
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
+            ds_cohort = ds.isel(cohorts=cohort_index)
             df = pd.DataFrame(
                 {
                     "taxon": cohort.taxon,
@@ -2922,11 +2934,11 @@ class Ag3:
                     ),  # use string representation for hover label
                     "sample_size": cohort.size,
                     "variant": variant_labels,
-                    "count": ds["event_count"].isel(cohorts=cohort_index).values,
-                    "nobs": ds["event_nobs"].isel(cohorts=cohort_index).values,
-                    "frequency": ds["event_frequency"]
-                    .isel(cohorts=cohort_index)
-                    .values,
+                    "count": ds_cohort["event_count"].values,
+                    "nobs": ds_cohort["event_nobs"].values,
+                    "frequency": ds_cohort["event_frequency"].values,
+                    "frequency_ci_low": ds_cohort["event_frequency_ci_low"].values,
+                    "frequency_ci_upp": ds_cohort["event_frequency_ci_upp"].values,
                 }
             )
             dfs.append(df)
@@ -2935,11 +2947,10 @@ class Ag3:
         # remove events with no observations
         df_events = df_events.query("nobs > 0")
 
-        # calculate confidence intervals
+        # calculate error bars
         frq = df_events["frequency"]
-        frq_ci_low, frq_ci_upp = proportion_confint(
-            count=df_events["count"], nobs=df_events["nobs"], method=ci_method
-        )
+        frq_ci_low = df_events["frequency_ci_low"]
+        frq_ci_upp = df_events["frequency_ci_upp"]
         df_events["frequency_error"] = frq_ci_upp - frq
         df_events["frequency_error_minus"] = frq - frq_ci_low
 
@@ -2969,6 +2980,104 @@ class Ag3:
             **kwargs,
         )
         return fig
+
+    def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
+
+        # slice dataset to variant of interest
+        if isinstance(variant, int):
+            ds_variant = ds.isel(variants=variant)
+            variant_label = ds["variant_label"].values[variant]
+        elif isinstance(variant, str):
+            ds_variant = ds.set_index(variants="variant_label").sel(variants=variant)
+            variant_label = variant
+        else:
+            raise TypeError(
+                f"Bad type for variant parameter; expected int or str, found {type(variant)}."
+            )
+
+        # convert to a dataframe for convenience
+        df_markers = ds_variant[
+            [
+                "cohort_taxon",
+                "cohort_area",
+                "cohort_period",
+                "cohort_lat_mean",
+                "cohort_lon_mean",
+                "cohort_size",
+                "event_frequency",
+                "event_frequency_ci_low",
+                "event_frequency_ci_upp",
+            ]
+        ].to_dataframe()
+
+        # select data matching taxon and period parameters
+        df_markers = df_markers.loc[
+            (
+                (df_markers["cohort_taxon"] == taxon)
+                & (df_markers["cohort_period"] == period)
+            )
+        ]
+
+        # clear existing layers in the map
+        if clear:
+            for layer in m.layers[1:]:
+                m.remove_layer(layer)
+
+        # add markers
+        for x in df_markers.itertuples():
+            marker = ipyleaflet.CircleMarker()
+            marker.location = (x.cohort_lat_mean, x.cohort_lon_mean)
+            marker.radius = 20
+            marker.color = "black"
+            marker.weight = 1
+            marker.fill_color = "red"
+            marker.fill_opacity = x.event_frequency
+            popup_html = f"""
+                <strong>{variant_label}</strong> <br/>
+                taxon: {x.cohort_taxon} <br/>
+                area: {x.cohort_area} <br/>
+                period: {x.cohort_period} <br/>
+                sample size: {x.cohort_size} <br/>
+                frequency: {x.event_frequency:.0%} (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})
+            """
+            marker.popup = ipyleaflet.Popup(
+                child=ipywidgets.HTML(popup_html),
+            )
+            m.add_layer(marker)
+
+    def plot_frequencies_interactive_map(
+        self,
+        ds,
+        center=(-2, 20),
+        zoom=3,
+    ):
+        # create a map
+        freq_map = ipyleaflet.Map(center=center, zoom=zoom)
+
+        # setup interactive controls
+        variants = np.unique(ds["variant_label"].values)
+        taxa = np.unique(ds["cohort_taxon"].values)
+        periods = np.unique(ds["cohort_period"].values)
+        controls = ipywidgets.interactive(
+            self.plot_frequencies_map_markers,
+            m=ipywidgets.fixed(freq_map),
+            ds=ipywidgets.fixed(ds),
+            variant=ipywidgets.Dropdown(options=variants, description="variant: "),
+            taxon=ipywidgets.Dropdown(options=taxa, description="taxon: "),
+            period=ipywidgets.Dropdown(options=periods, description="period: "),
+            clear=ipywidgets.fixed(True),
+        )
+
+        # lay out widgets
+        out = ipywidgets.VBox(
+            [
+                ipywidgets.HTML(value="<h2>Map of variant frequencies</h2>"),
+                controls,
+                freq_map,
+            ]
+        )
+
+        return out
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
