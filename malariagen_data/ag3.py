@@ -472,8 +472,8 @@ class Ag3:
             "3.0") or a list of release identifiers.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
-        cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), optional,  default is latest version.
+        cohorts_analysis : str, optional
+            Cohort analysis identifier (date of analysis), optional,  default is the latest version.
             Includes sample cohort calls in metadata.
 
         Returns
@@ -2662,7 +2662,6 @@ class Ag3:
         variant_query=None,
         site_mask=None,
         nobs_mode="called",  # or "fixed"
-        effects=True,
         ci_method="wilson",
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -2701,13 +2700,11 @@ class Ag3:
             then use the number of called alleles, i.e., number of samples with non-missing
             genotype calls multiplied by 2. If "fixed" then use the number of samples
             multiplied by 2.
-        effects : bool, optional
-            If True, add SNP effect columns.
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
         cohorts_analysis : str, optional
-            Cohort analysis version, default is latest version.
+            Cohort analysis version, default is the latest version.
         species_analysis : str, optional
             Species calls analysis version.
         site_filters_analysis : str, optional
@@ -2853,24 +2850,14 @@ class Ag3:
             }
         )
 
-        # get effect annotations
-        if effects:
+        # setup variant effect annotator
+        ann = self._annotator()
 
-            # setup variant effect annotator
-            ann = self._annotator()
+        # add effects to the dataframe
+        ann.get_effects(transcript=transcript, variants=df_variants)
 
-            # add effects to the dataframe
-            ann.get_effects(transcript=transcript, variants=df_variants)
-
-            df_variants["label"] = df_variants.apply(
-                _make_snp_label_effect, axis="columns"
-            )
-
-        else:
-
-            df_variants["label"] = df_variants.apply(
-                _make_snp_label_basic, axis="columns"
-            )
+        # add variant labels
+        df_variants["label"] = df_variants.apply(_make_snp_label_effect, axis="columns")
 
         # build the output dataset
         ds_out = xr.Dataset()
@@ -2979,7 +2966,6 @@ class Ag3:
             sample_query=sample_query,
             min_cohort_size=min_cohort_size,
             drop_invariant=True,  # always drop invariant for aa frequencies
-            effects=True,  # need effects to identify amino acid changes
             variant_query=AA_CHANGE_QUERY,  # we'll also apply a variant query later
             site_mask=site_mask,
             nobs_mode=nobs_mode,
@@ -3565,12 +3551,6 @@ def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
     assert gan_melt.shape == (n_variants * max_allele, n_samples)
 
     return gac_alt_melt, gan_melt
-
-
-def _make_snp_label_basic(row):
-    return (
-        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-    )
 
 
 def _make_snp_label_effect(row):
