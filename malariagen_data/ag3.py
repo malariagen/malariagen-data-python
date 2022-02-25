@@ -2680,67 +2680,20 @@ class Ag3:
             cohorts_analysis=cohorts_analysis,
         )
 
-        # take a copy, as we will modify the dataframe
-        df_samples = df_samples.copy()
-
-        # fix intermediate taxon values - we only want to build cohorts with clean
-        # taxon calls, so we set intermediate values to None
-        loc_intermediate_taxon = (
-            df_samples["taxon"].str.startswith("intermediate").fillna(False)
+        # prepare sample metadata for cohort grouping
+        loc_samples, df_samples = _prep_samples_for_cohort_grouping(
+            df_samples,
+            sample_query=sample_query,
+            area_by=area_by,
+            period_by=period_by,
         )
-        df_samples.loc[loc_intermediate_taxon, "taxon"] = None
-
-        # add period column
-        if period_by == "year":
-            make_period = _make_sample_period_year
-        elif period_by == "quarter":
-            make_period = _make_sample_period_quarter
-        elif period_by == "month":
-            make_period = _make_sample_period_month
-        else:
-            raise ValueError(
-                f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
-            )
-        sample_period = df_samples.apply(make_period, axis="columns")
-        df_samples["period"] = sample_period
-
-        # apply sample query
-        loc_samples = None
-        if sample_query is not None:
-            loc_samples = df_samples.eval(sample_query).values
-            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
-
-        # add area column for consistent output
-        df_samples["area"] = df_samples[area_by]
 
         # group samples to make cohorts
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         # build cohorts dataframe
-        df_cohorts = group_samples_by_cohort.agg(
-            size=("sample_id", len),
-            lat_mean=("latitude", "mean"),
-            lat_max=("latitude", "mean"),
-            lat_min=("latitude", "mean"),
-            lon_mean=("longitude", "mean"),
-            lon_max=("longitude", "mean"),
-            lon_min=("longitude", "mean"),
-        )
-        # reset index so that the index fields are included as columns
-        df_cohorts = df_cohorts.reset_index()
-
-        # add cohort helper variables
-        cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
-        cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
-        df_cohorts["period_start"] = cohort_period_start
-        df_cohorts["period_end"] = cohort_period_end
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
-        )
-
-        # apply minimum cohort size
-        df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(
-            drop=True
+        df_cohorts = _build_cohorts_from_sample_grouping(
+            group_samples_by_cohort, min_cohort_size
         )
 
         # access SNP calls
@@ -2888,14 +2841,7 @@ class Ag3:
             ds_out = ds_out.isel(variants=loc_variants)
 
         # add confidence intervals
-        if ci_method is not None:
-            count = ds_out["event_count"].values
-            nobs = ds_out["event_nobs"].values
-            frq_ci_low, frq_ci_upp = proportion_confint(
-                count=count, nobs=nobs, method=ci_method
-            )
-            ds_out["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
-            ds_out["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+        _add_frequency_ci(ds_out, ci_method)
 
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
@@ -2982,7 +2928,7 @@ class Ag3:
 
         # recompute max frequency over cohorts
         max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
-        ds_aa_frq["variant_max_af"] = max_af
+        ds_aa_frq["variant_max_af"] = "variants", max_af
 
         # apply variant query if given
         if variant_query is not None:
@@ -2993,13 +2939,7 @@ class Ag3:
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
 
         # compute new confidence intervals
-        count = ds_aa_frq["event_count"].values
-        nobs = ds_aa_frq["event_nobs"].values
-        frq_ci_low, frq_ci_upp = proportion_confint(
-            count=count, nobs=nobs, method=ci_method
-        )
-        ds_aa_frq["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
-        ds_aa_frq["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+        _add_frequency_ci(ds_aa_frq, ci_method)
 
         # tidy up display by sorting variables
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
@@ -3039,67 +2979,20 @@ class Ag3:
             cohorts_analysis=cohorts_analysis,
         )
 
-        # take a copy, as we will modify the dataframe
-        df_samples = df_samples.copy()
-
-        # apply sample query
-        loc_samples = None
-        if sample_query is not None:
-            loc_samples = df_samples.eval(sample_query).values
-            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
-
-        # fix intermediate taxon values - we only want to build cohorts with clean
-        # taxon calls, so we set intermediate values to None
-        loc_intermediate_taxon = (
-            df_samples["taxon"].str.startswith("intermediate").fillna(False)
+        # prepare sample metadata for cohort grouping
+        loc_samples, df_samples = _prep_samples_for_cohort_grouping(
+            df_samples,
+            sample_query=sample_query,
+            area_by=area_by,
+            period_by=period_by,
         )
-        df_samples.loc[loc_intermediate_taxon, "taxon"] = None
-
-        # add period column
-        if period_by == "year":
-            make_period = _make_sample_period_year
-        elif period_by == "quarter":
-            make_period = _make_sample_period_quarter
-        elif period_by == "month":
-            make_period = _make_sample_period_month
-        else:
-            raise ValueError(
-                f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
-            )
-        sample_period = df_samples.apply(make_period, axis="columns")
-        df_samples["period"] = sample_period
-
-        # add area column for consistent output
-        df_samples["area"] = df_samples[area_by]
 
         # group samples to make cohorts
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         # build cohorts dataframe
-        df_cohorts = group_samples_by_cohort.agg(
-            size=("sample_id", len),
-            lat_mean=("latitude", "mean"),
-            lat_max=("latitude", "mean"),
-            lat_min=("latitude", "mean"),
-            lon_mean=("longitude", "mean"),
-            lon_max=("longitude", "mean"),
-            lon_min=("longitude", "mean"),
-        )
-        # reset index so that the index fields are included as columns
-        df_cohorts = df_cohorts.reset_index()
-
-        # add cohort helper variables
-        cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
-        cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
-        df_cohorts["period_start"] = cohort_period_start
-        df_cohorts["period_end"] = cohort_period_end
-        df_cohorts["label"] = df_cohorts.apply(
-            lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
-        )
-
-        # apply minimum cohort size
-        df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(
-            drop=True
+        df_cohorts = _build_cohorts_from_sample_grouping(
+            group_samples_by_cohort, min_cohort_size
         )
 
         # access gene CNV calls
@@ -3193,14 +3086,7 @@ class Ag3:
             ds_out = ds_out.isel(variants=loc_variants)
 
         # add confidence intervals
-        if ci_method is not None:
-            count = ds_out["event_count"].values
-            nobs = ds_out["event_nobs"].values
-            frq_ci_low, frq_ci_upp = proportion_confint(
-                count=count, nobs=nobs, method=ci_method
-            )
-            ds_out["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
-            ds_out["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+        _add_frequency_ci(ds_out, ci_method)
 
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
@@ -3289,7 +3175,7 @@ class Ag3:
         )
 
         # set Y axis limits
-        fig.update_layout(yaxis_range=[0, 1])
+        fig.update_layout(yaxis_range=[-0.05, 1.05])
 
         return fig
 
@@ -3578,3 +3464,82 @@ def _map_snp_to_aa_change_frq_ds(ds):
     ds_out["variant_label"] = ds_out["variant_aa_change"]
 
     return ds_out
+
+
+def _add_frequency_ci(ds, ci_method):
+    if ci_method is not None:
+        count = ds["event_count"].values
+        nobs = ds["event_nobs"].values
+        frq_ci_low, frq_ci_upp = proportion_confint(
+            count=count, nobs=nobs, method=ci_method
+        )
+        ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
+        ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+
+
+def _prep_samples_for_cohort_grouping(df_samples, sample_query, area_by, period_by):
+
+    # apply sample query
+    loc_samples = None
+    if sample_query is not None:
+        loc_samples = df_samples.eval(sample_query).values
+        df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
+
+    # take a copy, as we will modify the dataframe
+    df_samples = df_samples.copy()
+
+    # fix intermediate taxon values - we only want to build cohorts with clean
+    # taxon calls, so we set intermediate values to None
+    loc_intermediate_taxon = (
+        df_samples["taxon"].str.startswith("intermediate").fillna(False)
+    )
+    df_samples.loc[loc_intermediate_taxon, "taxon"] = None
+
+    # add period column
+    if period_by == "year":
+        make_period = _make_sample_period_year
+    elif period_by == "quarter":
+        make_period = _make_sample_period_quarter
+    elif period_by == "month":
+        make_period = _make_sample_period_month
+    else:
+        raise ValueError(
+            f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
+        )
+    sample_period = df_samples.apply(make_period, axis="columns")
+    df_samples["period"] = sample_period
+
+    # add area column for consistent output
+    df_samples["area"] = df_samples[area_by]
+
+    return loc_samples, df_samples
+
+
+def _build_cohorts_from_sample_grouping(group_samples_by_cohort, min_cohort_size):
+
+    # build cohorts dataframe
+    df_cohorts = group_samples_by_cohort.agg(
+        size=("sample_id", len),
+        lat_mean=("latitude", "mean"),
+        lat_max=("latitude", "mean"),
+        lat_min=("latitude", "mean"),
+        lon_mean=("longitude", "mean"),
+        lon_max=("longitude", "mean"),
+        lon_min=("longitude", "mean"),
+    )
+    # reset index so that the index fields are included as columns
+    df_cohorts = df_cohorts.reset_index()
+
+    # add cohort helper variables
+    cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
+    cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
+    df_cohorts["period_start"] = cohort_period_start
+    df_cohorts["period_end"] = cohort_period_end
+    df_cohorts["label"] = df_cohorts.apply(
+        lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
+    )
+
+    # apply minimum cohort size
+    df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
+
+    return df_cohorts
