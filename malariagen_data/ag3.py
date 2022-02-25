@@ -44,6 +44,9 @@ DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 
+AA_CHANGE_QUERY = (
+    "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
+)
 
 # Note regarding release identifiers and storage paths. Within the
 # data storage, we have used path segments like "v3", "v3.1", "v3.2",
@@ -1104,27 +1107,25 @@ class Ag3:
         Parameters
         ----------
         transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         cohorts : str or dict
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample metadata e.g.,
-            "species == 'coluzzii' and country == 'Burkina Faso'".
+            "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis version, default is latest version.
         min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
-            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+            Minimum cohort size. Any cohorts below this size are omitted.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str, optional
             Site filters analysis version.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Include species calls in metadata.
+            Species calls analysis version.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -2077,10 +2078,10 @@ class Ag3:
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample metadata e.g.,
-            "species == 'coluzzii' and country == 'Burkina Faso'".
+            "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2460,10 +2461,10 @@ class Ag3:
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and species == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample metadata e.g.,
-            "species == 'coluzzii' and country == 'Burkina Faso'".
+            "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis identifier (date of analysis), default is latest version.
         min_cohort_size : int
@@ -2511,9 +2512,7 @@ class Ag3:
         df_snps.reset_index(inplace=True)
 
         # we just want aa change
-        df_ns_snps = df_snps.query(
-            "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
-        ).copy()
+        df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
         # group and sum to collapse multi variant allele changes
         df_aaf = df_ns_snps.groupby(["aa_pos", "aa_change"]).sum().reset_index()
@@ -2660,16 +2659,61 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
-        """Group samples by taxon, area and period, then compute SNP allele counts
+        """Group samples by taxon, area (space) and period (time), then compute SNP allele counts
         and frequencies.
 
         Parameters
         ----------
-        @@TODO
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
+        area_by : str
+            Column name in the sample metadata to use to group samples spatially. E.g.,
+            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
+            or use "adm2_name" to groupby by level 2 administrative divisions.
+        period_by : {"year", "quarter", "month"}
+            Length of time to group samples temporally.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int, optional
+            Minimum cohort size. Any cohorts below this size are omitted.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any cohorts are dropped from
+            the result.
+        variant_query : str, optional
+        site_mask : str, optional
+            Site filters mask to apply.
+        nobs_mode : {"called", "fixed"}
+            Method for calculating the denominator when computing frequencies. If "called"
+            then use the number of called alleles, i.e., number of samples with non-missing
+            genotype calls multiplied by 2. If "fixed" then use the number of samples
+            multiplied by 2.
+        effects : bool, optional
+            If True, add SNP effect columns.
+        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
+            Method to use for computing confidence intervals, passed through to
+            `statsmodels.stats.proportion.proportion_confint`.
+        cohorts_analysis : str, optional
+            Cohort analysis version, default is latest version.
+        species_analysis : str, optional
+            Species calls analysis version.
+        site_filters_analysis : str, optional
+            Site filters analysis version.
 
         Returns
         -------
-        @@TODO
+        ds : xarray.Dataset
+            The resulting dataset contains data has dimensions "cohorts" and "variants".
+            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            the cohorts, such as the area, period, taxon and cohort size. Variables
+            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            such as the contig, position, reference and alternate alleles. Variables prefixed
+            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            calculations.
 
         """
 
@@ -2865,21 +2909,63 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
-        """Group samples by taxon, area and period, then compute amino acid
-        substitution allele counts and frequencies.
+        """Group samples by taxon, area (space) and period (time), then compute amino acid
+        change allele counts and frequencies.
 
         Parameters
         ----------
-        @@TODO
+        transcript : str
+            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
+        area_by : str
+            Column name in the sample metadata to use to group samples spatially. E.g.,
+            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
+            or use "adm2_name" to groupby by level 2 administrative divisions.
+        period_by : {"year", "quarter", "month"}
+            Length of time to group samples temporally.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int, optional
+            Minimum cohort size. Any cohorts below this size are omitted.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any cohorts are dropped from
+            the result.
+        variant_query : str, optional
+        site_mask : str, optional
+            Site filters mask to apply.
+        nobs_mode : {"called", "fixed"}
+            Method for calculating the denominator when computing frequencies. If "called"
+            then use the number of called alleles, i.e., number of samples with non-missing
+            genotype calls multiplied by 2. If "fixed" then use the number of samples
+            multiplied by 2.
+        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
+            Method to use for computing confidence intervals, passed through to
+            `statsmodels.stats.proportion.proportion_confint`.
+        cohorts_analysis : str, optional
+            Cohort analysis version, default is latest version.
+        species_analysis : str, optional
+            Species calls analysis version.
+        site_filters_analysis : str, optional
+            Site filters analysis version.
 
         Returns
         -------
-        @@TODO
+        ds : xarray.Dataset
+            The resulting dataset contains data has dimensions "cohorts" and "variants".
+            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            the cohorts, such as the area, period, taxon and cohort size. Variables
+            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            such as the contig, position, reference and alternate alleles. Variables prefixed
+            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            calculations.
 
         """
 
         # begin by computing SNP allele frequencies
-        aa_variant_query = "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
         ds_snp_frq = self.snp_allele_frequencies_advanced(
             transcript=transcript,
             area_by=area_by,
@@ -2889,7 +2975,7 @@ class Ag3:
             min_cohort_size=min_cohort_size,
             drop_invariant=True,  # always drop invariant for aa frequencies
             effects=True,  # need effects to identify amino acid changes
-            variant_query=aa_variant_query,  # we'll also apply a variant query later
+            variant_query=AA_CHANGE_QUERY,  # we'll also apply a variant query later
             site_mask=site_mask,
             nobs_mode=nobs_mode,
             ci_method=None,  # we will recompute confidence intervals later
@@ -2959,16 +3045,47 @@ class Ag3:
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
     ):
-        """Group samples by taxon, area and period, then compute gene CNV counts
+        """Group samples by taxon, area (space) and period (time), then compute gene CNV counts
         and frequencies.
 
         Parameters
         ----------
-        @@TODO
+        contig : str
+            Chromosome arm, e.g., "3R".
+        area_by : str
+            Column name in the sample metadata to use to group samples spatially. E.g.,
+            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
+            or use "adm2_name" to groupby by level 2 administrative divisions.
+        period_by : {"year", "quarter", "month"}
+            Length of time to group samples temporally.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
+            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
+            "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample metadata e.g.,
+            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int, optional
+            Minimum cohort size. Any cohorts below this size are omitted.
+        variant_query : str, optional
+        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
+            Method to use for computing confidence intervals, passed through to
+            `statsmodels.stats.proportion.proportion_confint`.
+        cohorts_analysis : str, optional
+            Cohort analysis version, default is latest version.
+        species_analysis : str, optional
+            Species calls analysis version.
 
         Returns
         -------
-        @@TODO
+        ds : xarray.Dataset
+            The resulting dataset contains data has dimensions "cohorts" and "variants".
+            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            the cohorts, such as the area, period, taxon and cohort size. Variables
+            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            such as the contig, position, reference and alternate alleles. Variables prefixed
+            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            calculations.
 
         """
 
@@ -3098,11 +3215,22 @@ class Ag3:
 
         Parameters
         ----------
-        @@TODO
+        ds : xarray.Dataset
+            A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
+            `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
+        height : int, optional
+            Height of plot in pixels.
+        width : int, optional
+            Width of plot in pixels
+        **kwargs
+            Passed through to `px.line()`.
 
         Returns
         -------
-        @@TODO
+        fig : plotly.graph_objects.Figure
+            A plotly figure containing line graphs. The resulting figure will have one
+            panel per cohort, grouped into columns by taxon, and grouped into rows by
+            area. Markers and lines show frequencies of variants.
 
         """
 
@@ -3180,15 +3308,25 @@ class Ag3:
         return fig
 
     def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
-        """TODO doc me
+        """Plot markers on a map showing variant frequencies for cohorts grouped
+        by area (space), period (time) and taxon.
 
         Parameters
         ----------
-        @@TODO
-
-        Returns
-        -------
-        @@TODO
+        m : ipyleaflet.Map
+            Map on which to add the markers.
+        ds : xarray.Dataset
+            A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
+            `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
+        variant : int or str
+            Index or label of variant to plot.
+        taxon : str
+            Taxon to show markers for.
+        period : pd.Period
+            Time period to show markers for.
+        clear : bool, optional
+            If True, clear all layers (except the base layer) from the map before
+            adding new markers.
 
         """
 
@@ -3265,15 +3403,28 @@ class Ag3:
             denotes frequency. Click on a marker for more information.
         """,
     ):
-        """TODO doc me
+        """Create an interactive map with markers showing variant frequencies for cohorts
+        grouped by area (space), period (time) and taxon.
 
         Parameters
         ----------
-        @@TODO
+        ds : xarray.Dataset
+            A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
+            `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
+        center : pair of ints, optional
+            Location to center the map.
+        zoom : int, optional
+            Initial zoom level.
+        title : str, optional
+            Title to display above the map.
+        epilogue : str, optional
+            Additional text to display below the map.
 
         Returns
         -------
-        @@TODO
+        out : ipywidgets.Widget
+            An interactive map with widgets for selecting which variant, taxon and
+            time period to display.
 
         """
 
