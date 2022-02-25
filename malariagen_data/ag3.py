@@ -304,10 +304,11 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
+            path_prefix = f"{self._base_path}/{release_path}/metadata"
             if analysis == "aim_20200422":
-                path = f"{self._base_path}/{release_path}/metadata/species_calls_20200422/{sample_set}/samples.species_aim.csv"
+                path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_aim.csv"
             elif analysis == "pca_20200422":
-                path = f"{self._base_path}/{release_path}/metadata/species_calls_20200422/{sample_set}/samples.species_pca.csv"
+                path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_pca.csv"
             else:
                 raise ValueError(f"Unknown species calling analysis: {analysis!r}")
             with self._fs.open(path) as f:
@@ -570,7 +571,7 @@ class Ag3:
             Passed through to dask.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -618,8 +619,6 @@ class Ag3:
         *,
         region,
         field,
-        site_mask,
-        site_filters_analysis,
         inline_array,
         chunks,
     ):
@@ -661,7 +660,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -679,10 +678,8 @@ class Ag3:
                 self._snp_sites(
                     region=r,
                     field=field,
-                    site_mask=None,
                     chunks=chunks,
                     inline_array=inline_array,
-                    site_filters_analysis=site_filters_analysis,
                 )
                 for r in region
             ],
@@ -953,7 +950,8 @@ class Ag3:
 
         return is_accessible
 
-    def _site_mask_ids(self, *, site_filters_analysis):
+    @staticmethod
+    def _site_mask_ids(*, site_filters_analysis):
         if site_filters_analysis == "dt_20200416":
             return "gamb_colu_arab", "gamb_colu", "arab"
         else:
@@ -2401,7 +2399,8 @@ class Ag3:
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
-            path = f"{self._base_path}/{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+            path_prefix = f"{self._base_path}/{release_path}/metadata"
+            path = f"{path_prefix}/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pd.read_csv(f, na_values="")
 
@@ -2538,8 +2537,8 @@ class Ag3:
 
         return df_aaf
 
+    @staticmethod
     def plot_frequencies_heatmap(
-        self,
         df,
         index=None,
         max_len=100,
@@ -2570,6 +2569,16 @@ class Ag3:
             This is the y-axis label that will be displayed on the heatmap.
         colorbar : bool, optional
             If False, colorbar is not output.
+        width : int, optional
+            Plot width in pixels.
+        height : int, optional
+            Plot height in pixels.
+        text_auto : str, optional
+            Formatting for frequency values.
+        aspect : str, optional
+            Control the aspect ratio of the heatmap.
+        color_continuous_scale : str, optional
+            Color scale to use.
         **kwargs
             Other parameters are passed through to px.imshow().
 
@@ -2900,7 +2909,6 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         min_cohort_size=10,
-        drop_invariant=True,
         variant_query=None,
         site_mask=None,
         nobs_mode="called",  # or "fixed"
@@ -2919,7 +2927,7 @@ class Ag3:
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
             use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to groupby by level 2 administrative divisions.
+            or use "adm2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
@@ -2931,9 +2939,6 @@ class Ag3:
             "taxon == 'coluzzii' and country == 'Burkina Faso'".
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are dropped from
-            the result.
         variant_query : str, optional
         site_mask : str, optional
             Site filters mask to apply.
@@ -2946,7 +2951,7 @@ class Ag3:
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
         cohorts_analysis : str, optional
-            Cohort analysis version, default is latest version.
+            Cohort analysis version, default is the latest version.
         species_analysis : str, optional
             Species calls analysis version.
         site_filters_analysis : str, optional
@@ -2985,10 +2990,10 @@ class Ag3:
         )
 
         # group by amino acid change
-        groupby_aa_change = ds_snp_frq.groupby("variant_aa_change")
+        group_by_aa_change = ds_snp_frq.groupby("variant_aa_change")
 
         # apply aggregation
-        ds_aa_frq = groupby_aa_change.map(_map_snp_to_aa_change_frq_ds)
+        ds_aa_frq = group_by_aa_change.map(_map_snp_to_aa_change_frq_ds)
 
         # TODO Do we ever need to worry about the possibility of the
         # same aa change due to SNPs at different positions? If so,
@@ -3055,7 +3060,7 @@ class Ag3:
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
             use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to groupby by level 2 administrative divisions.
+            or use "adm2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
@@ -3072,7 +3077,7 @@ class Ag3:
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
         cohorts_analysis : str, optional
-            Cohort analysis version, default is latest version.
+            Cohort analysis version, default is the latest version.
         species_analysis : str, optional
             Species calls analysis version.
 
@@ -3210,7 +3215,8 @@ class Ag3:
 
         return ds_out
 
-    def plot_frequencies_time_series(self, ds, height=None, width=None, **kwargs):
+    @staticmethod
+    def plot_frequencies_time_series(ds, height=None, width=None, **kwargs):
         """Create a time series plot of variant frequencies using plotly.
 
         Parameters
@@ -3307,14 +3313,15 @@ class Ag3:
 
         return fig
 
-    def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
+    @staticmethod
+    def plot_frequencies_map_markers(m, ds, variant, taxon, period, clear=True):
         """Plot markers on a map showing variant frequencies for cohorts grouped
         by area (space), period (time) and taxon.
 
         Parameters
         ----------
         m : ipyleaflet.Map
-            Map on which to add the markers.
+            The map on which to add the markers.
         ds : xarray.Dataset
             A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
             `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
@@ -3385,15 +3392,16 @@ class Ag3:
                 area: {x.cohort_area} <br/>
                 period: {x.cohort_period} <br/>
                 sample size: {x.cohort_size} <br/>
-                frequency: {x.event_frequency:.0%} (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})
+                frequency: {x.event_frequency:.0%}
+                (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})
             """
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
             m.add_layer(marker)
 
+    @staticmethod
     def plot_frequencies_interactive_map(
-        self,
         ds,
         center=(-2, 20),
         zoom=3,
@@ -3411,7 +3419,7 @@ class Ag3:
         ds : xarray.Dataset
             A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
             `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
-        center : pair of ints, optional
+        center : tuple of int, optional
             Location to center the map.
         zoom : int, optional
             Initial zoom level.
@@ -3436,7 +3444,7 @@ class Ag3:
         taxa = np.unique(ds["cohort_taxon"].values)
         periods = np.unique(ds["cohort_period"].values)
         controls = ipywidgets.interactive(
-            self.plot_frequencies_map_markers,
+            Ag3.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
             variant=ipywidgets.Dropdown(options=variants, description="variant: "),
