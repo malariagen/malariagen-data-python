@@ -2981,7 +2981,7 @@ class Ag3:
         ds_aa_frq["event_frequency"] = ("variants", "cohorts"), frequency
 
         # recompute max frequency over cohorts
-        max_af = ds_aa_frq["event_frequency"].max(dim="cohorts")
+        max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
         ds_aa_frq["variant_max_af"] = max_af
 
         # apply variant query if given
@@ -3005,6 +3005,207 @@ class Ag3:
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
 
         return ds_aa_frq
+
+    def gene_cnv_frequencies_advanced(
+        self,
+        contig,
+        area_by,
+        period_by,
+        sample_sets=None,
+        sample_query=None,
+        min_cohort_size=10,
+        variant_query=None,
+        ci_method="wilson",
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+    ):
+        """Group samples by taxon, area and period, then compute gene CNV counts
+        and frequencies.
+
+        Parameters
+        ----------
+        @@TODO
+
+        Returns
+        -------
+        @@TODO
+
+        """
+
+        # load sample metadata
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
+        )
+
+        # take a copy, as we will modify the dataframe
+        df_samples = df_samples.copy()
+
+        # apply sample query
+        loc_samples = None
+        if sample_query is not None:
+            loc_samples = df_samples.eval(sample_query).values
+            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
+
+        # fix intermediate taxon values - we only want to build cohorts with clean
+        # taxon calls, so we set intermediate values to None
+        loc_intermediate_taxon = (
+            df_samples["taxon"].str.startswith("intermediate").fillna(False)
+        )
+        df_samples.loc[loc_intermediate_taxon, "taxon"] = None
+
+        # add period column
+        if period_by == "year":
+            make_period = _make_sample_period_year
+        elif period_by == "quarter":
+            make_period = _make_sample_period_quarter
+        elif period_by == "month":
+            make_period = _make_sample_period_month
+        else:
+            raise ValueError(
+                f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
+            )
+        sample_period = df_samples.apply(make_period, axis="columns")
+        df_samples["period"] = sample_period
+
+        # add area column for consistent output
+        df_samples["area"] = df_samples[area_by]
+
+        # group samples to make cohorts
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+
+        # build cohorts dataframe
+        df_cohorts = group_samples_by_cohort.agg(
+            size=("sample_id", len),
+            lat_mean=("latitude", "mean"),
+            lat_max=("latitude", "mean"),
+            lat_min=("latitude", "mean"),
+            lon_mean=("longitude", "mean"),
+            lon_max=("longitude", "mean"),
+            lon_min=("longitude", "mean"),
+        )
+        # reset index so that the index fields are included as columns
+        df_cohorts = df_cohorts.reset_index()
+
+        # add cohort helper variables
+        cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
+        cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
+        df_cohorts["period_start"] = cohort_period_start
+        df_cohorts["period_end"] = cohort_period_end
+        df_cohorts["label"] = df_cohorts.apply(
+            lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
+        )
+
+        # apply minimum cohort size
+        df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(
+            drop=True
+        )
+
+        # access gene CNV calls
+        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+
+        # apply sample query
+        if sample_query is not None:
+            ds_cnv = ds_cnv.isel(samples=loc_samples)
+
+        # figure out expected copy number
+        if contig == "X":
+            is_male = (df_samples["sex_call"] == "M").values
+            expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
+        else:
+            expected_cn = 2
+
+        # setup intermediates
+        cn = ds_cnv["CN_mode"].values
+        is_amp = cn > expected_cn
+        is_del = (cn >= 0) & (cn < expected_cn)
+
+        # setup main event variables
+        n_genes = ds_cnv.dims["genes"]
+        n_variants, n_cohorts = n_genes * 2, len(df_cohorts)
+        count = np.zeros((n_variants, n_cohorts), dtype=int)
+        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
+
+        # build event count and nobs for each cohort
+        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
+
+            # construct grouping key
+            cohort_key = cohort.taxon, cohort.area, cohort.period
+
+            # obtain sample indices for cohort
+            sample_indices = group_samples_by_cohort.indices[cohort_key]
+
+            # select genotype data for cohort
+            cohort_is_amp = np.take(is_amp, sample_indices, axis=1)
+            cohort_is_del = np.take(is_del, sample_indices, axis=1)
+
+            # compute cohort allele counts
+            np.sum(cohort_is_amp, axis=1, out=count[::2, cohort_index])
+            np.sum(cohort_is_del, axis=1, out=count[1::2, cohort_index])
+
+            # compute cohort allele numbers
+            nobs[:, cohort_index] = cohort.size
+
+        # compute frequency
+        with np.errstate(divide="ignore", invalid="ignore"):
+            # ignore division warnings
+            frequency = count / nobs
+
+        # make dataframe of variants
+        df_variants = pd.DataFrame(
+            {
+                "contig": contig,
+                "start": np.repeat(ds_cnv["gene_start"].values, 2),
+                "end": np.repeat(ds_cnv["gene_end"].values, 2),
+                "windows": np.repeat(ds_cnv["gene_windows"].values, 2),
+                # alternate amplification and deletion
+                "cnv_type": np.tile(np.array(["amp", "del"]), n_genes),
+                "max_af": np.nanmax(frequency, axis=1),
+                "gene_id": np.repeat(ds_cnv["gene_id"].values, 2),
+                "gene_name": np.repeat(ds_cnv["gene_name"].values, 2),
+                "gene_strand": np.repeat(ds_cnv["gene_strand"].values, 2),
+            }
+        )
+
+        # add variant label
+        df_variants["label"] = df_variants.apply(_make_gene_cnv_label, axis="columns")
+
+        # build the output dataset
+        ds_out = xr.Dataset()
+
+        # cohort variables
+        for coh_col in df_cohorts.columns:
+            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+
+        # variant variables
+        for snp_col in df_variants.columns:
+            ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
+
+        # event variables
+        ds_out["event_count"] = ("variants", "cohorts"), count
+        ds_out["event_nobs"] = ("variants", "cohorts"), nobs
+        ds_out["event_frequency"] = ("variants", "cohorts"), frequency
+
+        # apply variant query
+        if variant_query is not None:
+            loc_variants = df_variants.eval(variant_query).values
+            ds_out = ds_out.isel(variants=loc_variants)
+
+        # add confidence intervals
+        if ci_method is not None:
+            count = ds_out["event_count"].values
+            nobs = ds_out["event_nobs"].values
+            frq_ci_low, frq_ci_upp = proportion_confint(
+                count=count, nobs=nobs, method=ci_method
+            )
+            ds_out["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
+            ds_out["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+
+        # tidy up display by sorting variables
+        ds_out = ds_out[sorted(ds_out)]
+
+        return ds_out
 
     def plot_frequencies_time_series(self, ds, height=None, width=None, **kwargs):
         """Create a time series plot of variant frequencies using plotly.
@@ -3086,6 +3287,10 @@ class Ag3:
             width=width,
             **kwargs,
         )
+
+        # set Y axis limits
+        fig.update_layout(yaxis_range=[0, 1])
+
         return fig
 
     def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
@@ -3328,8 +3533,17 @@ def _make_snp_label_effect(row):
         f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
     )
     aa_change = row["aa_change"]
-    if aa_change is not None:
+    if isinstance(aa_change, str):
         label += f" ({aa_change})"
+    return label
+
+
+def _make_gene_cnv_label(row):
+    label = row["gene_id"]
+    gene_name = row["gene_name"]
+    if isinstance(gene_name, str):
+        label += f" ({gene_name})"
+    label += f" {row['cnv_type']}"
     return label
 
 
