@@ -7,7 +7,7 @@ import pytest
 import scipy.stats
 import xarray as xr
 import zarr
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_array_almost_equal, assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Ag3, Region
@@ -1539,76 +1539,181 @@ def test_aa_frequencies():
     assert df.loc["V402L"].max_af == pytest.approx(0.121951, abs=1e-6)
 
 
-def test_snp_allele_frequencies_advanced__default():
+SNP_ALLELE_FREQUENCIES_VARIANT_VARS = (
+    "variant_label",
+    "variant_contig",
+    "variant_position",
+    "variant_ref_allele",
+    "variant_alt_allele",
+    "variant_max_af",
+    "variant_pass_gamb_colu_arab",
+    "variant_pass_gamb_colu",
+    "variant_pass_arab",
+    "variant_effect",
+    "variant_impact",
+    "variant_ref_codon",
+    "variant_alt_codon",
+    "variant_ref_aa",
+    "variant_alt_aa",
+    "variant_aa_pos",
+    "variant_aa_change",
+)
+
+SNP_ALLELE_FREQUENCIES_COHORT_VARS = (
+    "cohort_label",
+    "cohort_size",
+    "cohort_taxon",
+    "cohort_area",
+    "cohort_period",
+    "cohort_period_start",
+    "cohort_period_end",
+    "cohort_lat_mean",
+    "cohort_lat_min",
+    "cohort_lat_max",
+    "cohort_lon_mean",
+    "cohort_lon_min",
+    "cohort_lon_max",
+)
+
+SNP_ALLELE_FREQUENCIES_EVENT_VARS = (
+    "event_count",
+    "event_nobs",
+    "event_frequency",
+    "event_frequency_ci_low",
+    "event_frequency_ci_upp",
+)
+
+
+# noinspection PyDefaultArgument
+def _check_snp_allele_frequencies_advanced(
+    transcript="AGAP004707-RD",
+    area_by="adm1_ISO",
+    period_by="year",
+    sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
+    sample_query=None,
+):
 
     ag3 = setup_ag3()
-
-    transcript = "AGAP004707-RD"
-    area_by = "adm1_ISO"
-    period_by = "year"
 
     ds = ag3.snp_allele_frequencies_advanced(
         transcript=transcript,
         area_by=area_by,
         period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
     )
 
     assert isinstance(ds, xr.Dataset)
 
+    # noinspection PyTypeChecker
     assert sorted(ds.dims) == ["cohorts", "variants"]
 
-    expected_variant_vars = [
-        "variant_label",
-        "variant_contig",
-        "variant_position",
-        "variant_ref_allele",
-        "variant_alt_allele",
-        "variant_max_af",
-        "variant_pass_gamb_colu_arab",
-        "variant_pass_gamb_colu",
-        "variant_pass_arab",
-        "variant_effect",
-        "variant_impact",
-        "variant_ref_codon",
-        "variant_alt_codon",
-        "variant_ref_aa",
-        "variant_alt_aa",
-        "variant_aa_pos",
-        "variant_aa_change",
-    ]
+    expected_variant_vars = SNP_ALLELE_FREQUENCIES_VARIANT_VARS
     for v in expected_variant_vars:
         a = ds[v]
         assert isinstance(a, xr.DataArray)
         assert a.dims == ("variants",)
 
-    expected_cohort_vars = [
-        "cohort_label",
-        "cohort_size",
-        "cohort_taxon",
-        "cohort_area",
-        "cohort_period",
-        "cohort_period_start",
-        "cohort_period_end",
-        "cohort_lat_mean",
-        "cohort_lat_min",
-        "cohort_lat_max",
-        "cohort_lon_mean",
-        "cohort_lon_min",
-        "cohort_lon_max",
-    ]
+    expected_cohort_vars = SNP_ALLELE_FREQUENCIES_COHORT_VARS
     for v in expected_cohort_vars:
         a = ds[v]
         assert isinstance(a, xr.DataArray)
         assert a.dims == ("cohorts",)
 
-    expected_event_vars = [
-        "event_count",
-        "event_nobs",
-        "event_frequency",
-        "event_frequency_ci_low",
-        "event_frequency_ci_upp",
-    ]
+    expected_event_vars = SNP_ALLELE_FREQUENCIES_EVENT_VARS
     for v in expected_event_vars:
         a = ds[v]
         assert isinstance(a, xr.DataArray)
         assert a.dims == ("variants", "cohorts")
+
+    # TODO sanity checks for different area_by values
+    # TODO sanity checks for different period_by values
+
+    if area_by == "adm1_ISO" and period_by == "year":
+
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler snp_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # check consistency with the basic snp allele frequencies method
+        df_af = ag3.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+        )
+        df_af = df_af.reset_index()  # make sure all variables available to check
+
+        # check cohorts are consistent
+        expect_cohorts = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        actual_cohorts = sorted(ds["cohort_label"].values)
+        assert actual_cohorts == expect_cohorts
+
+        # check variants are consistent
+        assert ds.dims["variants"] == len(df_af)
+        for v in SNP_ALLELE_FREQUENCIES_VARIANT_VARS:
+            if v == "variant_label":
+                # this is not present in the dataframe, skip check
+                continue
+            c = v.split("variant_")[1]
+            loc_na = df_af[c].isna().values
+            expect = df_af[c].values
+            actual = ds[v].values
+            assert_array_equal(actual[~loc_na], expect[~loc_na])
+            assert_array_equal(pd.Series(actual).isna(), loc_na)
+
+        # check frequencies are consistent
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            loc_na = np.isnan(expect_frq)
+            assert_array_almost_equal(
+                actual_frq[~loc_na], expect_frq[~loc_na], decimal=6
+            )
+            assert_array_equal(np.isnan(actual_frq), loc_na)
+
+
+# Here we don't explore the full matrix, but vary one parameter at a time, otherwise
+# the test suite would take too long to run.
+
+
+@pytest.mark.parametrize("transcript", ["AGAP004707-RD", "AGAP006028-RA"])
+def test_snp_allele_frequencies_advanced__transcript(transcript):
+    _check_snp_allele_frequencies_advanced(
+        transcript=transcript,
+    )
+
+
+@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+def test_snp_allele_frequencies_advanced__area_by(area_by):
+    _check_snp_allele_frequencies_advanced(
+        area_by=area_by,
+    )
+
+
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+def test_snp_allele_frequencies_advanced__period_by(period_by):
+    _check_snp_allele_frequencies_advanced(
+        period_by=period_by,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-BF-A", ["AG1000G-BF-A", "AG1000G-ML-A"], "3.0"]
+)
+def test_snp_allele_frequencies_advanced__sample_sets(sample_sets):
+    _check_snp_allele_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_query", ["taxon in ['gambiae', 'coluzzii'] and country == 'Mali'"]
+)
+def test_snp_allele_frequencies_advanced__sample_query(sample_query):
+    _check_snp_allele_frequencies_advanced(
+        sample_query=sample_query,
+    )

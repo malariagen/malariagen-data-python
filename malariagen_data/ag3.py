@@ -2784,24 +2784,6 @@ class Ag3:
         )
         variant_pass_arab = np.repeat(ds_snps["variant_filter_pass_arab"].values, 3)
 
-        # deal with SNP alleles not observed
-        if drop_invariant:
-            ac = np.sum(gac, axis=1)
-            loc_variant = ac > 0
-            variant_contig = np.compress(loc_variant, variant_contig, axis=0)
-            variant_position = np.compress(loc_variant, variant_position, axis=0)
-            variant_ref_allele = np.compress(loc_variant, variant_ref_allele, axis=0)
-            variant_alt_allele = np.compress(loc_variant, variant_alt_allele, axis=0)
-            variant_pass_gamb_colu_arab = np.compress(
-                loc_variant, variant_pass_gamb_colu_arab, axis=0
-            )
-            variant_pass_gamb_colu = np.compress(
-                loc_variant, variant_pass_gamb_colu, axis=0
-            )
-            variant_pass_arab = np.compress(loc_variant, variant_pass_arab, axis=0)
-            gac = np.compress(loc_variant, gac, axis=0)
-            gan = np.compress(loc_variant, gan, axis=0)
-
         # setup main event variables
         n_variants, n_cohorts = len(variant_position), len(df_cohorts)
         count = np.zeros((n_variants, n_cohorts), dtype=int)
@@ -2836,6 +2818,9 @@ class Ag3:
             # ignore division warnings
             frequency = count / nobs
 
+        # compute maximum frequency over cohorts
+        max_af = np.nanmax(frequency, axis=1)
+
         # make dataframe of SNPs
         df_variants = pd.DataFrame(
             {
@@ -2843,12 +2828,20 @@ class Ag3:
                 "position": variant_position,
                 "ref_allele": variant_ref_allele.astype("U1"),
                 "alt_allele": variant_alt_allele.astype("U1"),
-                "max_af": np.nanmax(frequency, axis=1),
+                "max_af": max_af,
                 "pass_gamb_colu_arab": variant_pass_gamb_colu_arab,
                 "pass_gamb_colu": variant_pass_gamb_colu,
                 "pass_arab": variant_pass_arab,
             }
         )
+
+        # deal with SNP alleles not observed
+        if drop_invariant:
+            loc_variant = max_af > 0
+            df_variants = df_variants.loc[loc_variant]
+            count = np.compress(loc_variant, count, axis=0)
+            nobs = np.compress(loc_variant, nobs, axis=0)
+            frequency = np.compress(loc_variant, frequency, axis=0)
 
         # setup variant effect annotator
         ann = self._annotator()
@@ -3674,6 +3667,8 @@ def _build_cohorts_from_sample_grouping(group_samples_by_cohort, min_cohort_size
     cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
     df_cohorts["period_start"] = cohort_period_start
     df_cohorts["period_end"] = cohort_period_end
+    # create a label that is similar to the cohort metadata,
+    # although this won't be perfect
     df_cohorts["label"] = df_cohorts.apply(
         lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
     )
