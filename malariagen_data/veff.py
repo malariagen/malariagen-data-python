@@ -162,6 +162,7 @@ class Annotator(object):
             lalt_aa.append(effect.alt_aa)
             laa_change.append(effect.aa_change)
 
+        variants["transcript"] = transcript
         variants["effect"] = leffect
         variants["impact"] = limpact
         variants["ref_codon"] = lref_codon

@@ -1115,7 +1115,7 @@ class Ag3:
             A pandas query string which will be evaluated against the sample metadata e.g.,
             "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis version, default is latest version.
+            Cohort analysis version, default is the latest version.
         min_cohort_size : int
             Minimum cohort size. Any cohorts below this size are omitted.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -2507,29 +2507,27 @@ class Ag3:
             drop_invariant=drop_invariant,
             effects=True,
         )
-
         df_snps.reset_index(inplace=True)
 
         # we just want aa change
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
         # group and sum to collapse multi variant allele changes
-        df_aaf = (
-            df_ns_snps.groupby(
-                ["contig", "position", "aa_pos", "aa_change", "effect", "impact"]
-            )
-            .sum()
-            .reset_index()
+        freq_cols = [col for col in df_ns_snps if col.startswith("frq")]
+        agg = {c: np.nansum for c in freq_cols}
+        keep_cols = (
+            "contig",
+            "transcript",
+            "aa_pos",
+            "ref_aa",
+            "alt_aa",
+            "effect",
+            "impact",
         )
-        # add transcript column in case someone concatenates dataframes later
-        df_aaf["transcript"] = transcript
+        for c in keep_cols:
+            agg[c] = "first"
+        df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
         df_aaf.set_index(["transcript", "aa_change"], inplace=True)
-
-        # select columns to keep, remove old max_af
-        freq_cols = [col for col in df_aaf if col.startswith("frq")]
-        df_aaf = df_aaf[
-            ["contig", "position", "aa_pos", "effect", "impact"] + freq_cols
-        ].copy()
 
         # compute new max_af
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
@@ -2970,17 +2968,25 @@ class Ag3:
             site_filters_analysis=site_filters_analysis,
         )
 
+        # N.B., we need to worry about the possibility of the
+        # same aa change due to SNPs at different positions. We cannot
+        # sum frequencies of SNPs at different genomic positions.
+
+        # add in a special grouping column to work around the fact that xarray currently
+        # doesn't support grouping by multiple variables in the same dimension
+        df_grouper = ds_snp_frq[
+            ["variant_position", "variant_aa_change"]
+        ].to_dataframe()
+        grouper_var = df_grouper.apply(
+            lambda row: "_".join([str(v) for v in row]), axis="columns"
+        )
+        ds_snp_frq["variant_position_aa_change"] = "variants", grouper_var
+
         # group by amino acid change
-        group_by_aa_change = ds_snp_frq.groupby("variant_aa_change")
+        group_by_aa_change = ds_snp_frq.groupby("variant_position_aa_change")
 
         # apply aggregation
         ds_aa_frq = group_by_aa_change.map(_map_snp_to_aa_change_frq_ds)
-
-        # TODO Do we ever need to worry about the possibility of the
-        # same aa change due to SNPs at different positions? If so,
-        # there is a possibility of ending up with frequency greater
-        # than 1. N.B., this applies to the aa_allele_frequencies()
-        # method also.
 
         # add back in cohort variables, unaffected by aggregation
         cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
@@ -3573,9 +3579,10 @@ def _map_snp_to_aa_change_frq_ds(ds):
     keep_vars = [
         "variant_contig",
         "variant_position",
+        "variant_transcript",
         "variant_effect",
         "variant_impact",
-        "variant_aa_pos",  # include this so we can sort afterwards
+        "variant_aa_pos",
         "variant_aa_change",
         "variant_ref_aa",
         "variant_alt_aa",
