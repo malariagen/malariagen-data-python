@@ -2514,26 +2514,28 @@ class Ag3:
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
         # group and sum to collapse multi variant allele changes
-        df_aaf = df_ns_snps.groupby(["aa_pos", "aa_change"]).sum().reset_index()
-        df_aaf.set_index("aa_change", inplace=True)
+        df_aaf = (
+            df_ns_snps.groupby(
+                ["contig", "position", "aa_pos", "aa_change", "effect", "impact"]
+            )
+            .sum()
+            .reset_index()
+        )
+        # add transcript column in case someone concatenates dataframes later
+        df_aaf["transcript"] = transcript
+        df_aaf.set_index(["transcript", "aa_change"], inplace=True)
 
-        # remove old max_af
-        df_aaf = df_aaf.drop(
-            [
-                "max_af",
-                "aa_pos",
-                "position",
-                "pass_gamb_colu_arab",
-                "pass_gamb_colu",
-                "pass_arab",
-            ],
-            axis=1,
-        ).copy()
-
+        # select columns to keep, remove old max_af
         freq_cols = [col for col in df_aaf if col.startswith("frq")]
+        df_aaf = df_aaf[
+            ["contig", "position", "aa_pos", "effect", "impact"] + freq_cols
+        ].copy()
 
-        # new max_af
+        # compute new max_af
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
+
+        # sort by genomic position
+        df_aaf = df_aaf.sort_values("position")
 
         return df_aaf
 
@@ -2677,7 +2679,7 @@ class Ag3:
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
             use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to groupby by level 2 administrative divisions.
+            or use "adm2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
@@ -2985,8 +2987,8 @@ class Ag3:
         for v in cohort_vars:
             ds_aa_frq[v] = ds_snp_frq[v]
 
-        # sort by amino acid position
-        ds_aa_frq = ds_aa_frq.sortby("variant_aa_pos")
+        # sort by genomic position
+        ds_aa_frq = ds_aa_frq.sortby("variant_position")
 
         # recompute frequency
         count = ds_aa_frq["event_count"].values
@@ -3575,6 +3577,8 @@ def _map_snp_to_aa_change_frq_ds(ds):
         "variant_impact",
         "variant_aa_pos",  # include this so we can sort afterwards
         "variant_aa_change",
+        "variant_ref_aa",
+        "variant_alt_aa",
         "event_nobs",
     ]
 
