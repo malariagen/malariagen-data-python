@@ -1511,12 +1511,9 @@ def test_locate_region(region_raw):
 
 def test_aa_allele_frequencies():
     ag3 = setup_ag3()
-    cohorts = "admin1_year"
-    min_cohort_size = 10
-    sample_sets = ("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C")
+
     expected_fields = [
-        "contig",
-        "position",
+        "transcript",
         "aa_pos",
         "ref_aa",
         "alt_aa",
@@ -1532,21 +1529,19 @@ def test_aa_allele_frequencies():
 
     df = ag3.aa_allele_frequencies(
         transcript="AGAP004707-RD",
-        cohorts=cohorts,
+        cohorts="admin1_year",
         cohorts_analysis="20211101",
-        min_cohort_size=min_cohort_size,
+        min_cohort_size=10,
         site_mask="gamb_colu",
-        sample_sets=sample_sets,
+        sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
         drop_invariant=True,
     )
 
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    assert df.index.names == ["transcript", "aa_change"]
+    assert df.index.names == ["aa_change", "contig", "position"]
     assert df.shape == (61, len(expected_fields))
-    assert df.loc[("AGAP004707-RD", "V402L")].max_af == pytest.approx(
-        0.121951, abs=1e-6
-    )
+    assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
 
 
 # noinspection PyDefaultArgument

@@ -2513,6 +2513,11 @@ class Ag3:
         # we just want aa change
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
+        # N.B., we need to worry about the possibility of the
+        # same aa change due to SNPs at different positions. We cannot
+        # sum frequencies of SNPs at different genomic positions. This
+        # is why we group by position and aa_change, not just aa_change.
+
         # group and sum to collapse multi variant allele changes
         freq_cols = [col for col in df_ns_snps if col.startswith("frq")]
         agg = {c: np.nansum for c in freq_cols}
@@ -2974,7 +2979,8 @@ class Ag3:
 
         # N.B., we need to worry about the possibility of the
         # same aa change due to SNPs at different positions. We cannot
-        # sum frequencies of SNPs at different genomic positions.
+        # sum frequencies of SNPs at different genomic positions. This
+        # is why we group by position and aa_change, not just aa_change.
 
         # add in a special grouping column to work around the fact that xarray currently
         # doesn't support grouping by multiple variables in the same dimension
@@ -2986,7 +2992,7 @@ class Ag3:
         )
         ds_snp_frq["variant_position_aa_change"] = "variants", grouper_var
 
-        # group by amino acid change
+        # group by position and amino acid change
         group_by_aa_change = ds_snp_frq.groupby("variant_position_aa_change")
 
         # apply aggregation
@@ -3009,7 +3015,10 @@ class Ag3:
         ds_aa_frq["event_frequency"] = ("variants", "cohorts"), frequency
 
         # recompute max frequency over cohorts
-        max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
+        with warnings.catch_warnings():
+            # ignore "All-NaN slice encountered" warnings
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
         # apply variant query if given
@@ -3169,6 +3178,10 @@ class Ag3:
             frequency = count / nobs
 
         # make dataframe of variants
+        with warnings.catch_warnings():
+            # ignore "All-NaN slice encountered" warnings
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            max_af = np.nanmax(frequency, axis=1)
         df_variants = pd.DataFrame(
             {
                 "contig": contig,
@@ -3177,7 +3190,7 @@ class Ag3:
                 "windows": np.repeat(ds_cnv["gene_windows"].values, 2),
                 # alternate amplification and deletion
                 "cnv_type": np.tile(np.array(["amp", "del"]), n_genes),
-                "max_af": np.nanmax(frequency, axis=1),
+                "max_af": max_af,
                 "gene_id": np.repeat(ds_cnv["gene_id"].values, 2),
                 "gene_name": np.repeat(ds_cnv["gene_name"].values, 2),
                 "gene_strand": np.repeat(ds_cnv["gene_strand"].values, 2),
