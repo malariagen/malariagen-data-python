@@ -1,3 +1,4 @@
+import warnings
 from bisect import bisect_left, bisect_right
 
 import allel
@@ -2527,13 +2528,13 @@ class Ag3:
         for c in keep_cols:
             agg[c] = "first"
         df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
-        df_aaf.set_index(["transcript", "aa_change"], inplace=True)
+        df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
         # compute new max_af
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         # sort by genomic position
-        df_aaf = df_aaf.sort_values("position")
+        df_aaf = df_aaf.sort_values(["position", "aa_change"])
 
         return df_aaf
 
@@ -2819,7 +2820,10 @@ class Ag3:
             frequency = count / nobs
 
         # compute maximum frequency over cohorts
-        max_af = np.nanmax(frequency, axis=1)
+        with warnings.catch_warnings():
+            # ignore "All-NaN slice encountered" warnings
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            max_af = np.nanmax(frequency, axis=1)
 
         # make dataframe of SNPs
         df_variants = pd.DataFrame(
@@ -2994,7 +2998,7 @@ class Ag3:
             ds_aa_frq[v] = ds_snp_frq[v]
 
         # sort by genomic position
-        ds_aa_frq = ds_aa_frq.sortby("variant_position")
+        ds_aa_frq = ds_aa_frq.sortby(["variant_position", "variant_aa_change"])
 
         # recompute frequency
         count = ds_aa_frq["event_count"].values
@@ -3018,6 +3022,16 @@ class Ag3:
 
         # compute new confidence intervals
         _add_frequency_ci(ds_aa_frq, ci_method)
+
+        # assign new variant label
+        contig = ds_aa_frq["variant_contig"].values
+        position = ds_aa_frq["variant_position"].values
+        aa_change = ds_aa_frq["variant_aa_change"].values
+        label = np.array(
+            [f"{a} ({b}:{c:,})" for a, b, c in zip(aa_change, contig, position)],
+            dtype=object,
+        )
+        ds_aa_frq["variant_label"] = "variants", label
 
         # tidy up display by sorting variables
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
@@ -3602,9 +3616,6 @@ def _map_snp_to_aa_change_frq_ds(ds):
         # sum event count over variants
         count = ds["event_count"].values.sum(axis=0, keepdims=True)
         ds_out["event_count"] = ("variants", "cohorts"), count
-
-    # assign new variant label
-    ds_out["variant_label"] = ds_out["variant_aa_change"]
 
     return ds_out
 

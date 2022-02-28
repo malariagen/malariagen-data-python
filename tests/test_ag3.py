@@ -7,7 +7,7 @@ import pytest
 import scipy.stats
 import xarray as xr
 import zarr
-from numpy.testing import assert_array_almost_equal, assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Ag3, Region
@@ -1699,25 +1699,15 @@ def _check_snp_allele_frequencies_advanced(
                 # this is not present in the dataframe, skip check
                 continue
             c = v.split("variant_")[1]
-            loc_na = df_af[c].isna().values
-            expect = df_af[c].values
-            actual = ds[v].values
-            assert_array_equal(actual[~loc_na], expect[~loc_na])
-            assert_array_equal(pd.Series(actual).isna(), loc_na)
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
 
         # check frequencies are consistent
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
             actual_frq = ds["event_frequency"].values[:, cohort_index]
             expect_frq = df_af[f"frq_{cohort_label}"].values
-            loc_na = np.isnan(expect_frq)
-            assert_array_almost_equal(
-                actual_frq[~loc_na], expect_frq[~loc_na], decimal=6
-            )
-            assert_array_equal(np.isnan(actual_frq), loc_na)
-
-
-# Here we don't explore the full matrix, but vary one parameter at a time, otherwise
-# the test suite would take too long to run.
+            assert_allclose(actual_frq, expect_frq)
 
 
 # noinspection PyDefaultArgument
@@ -1857,30 +1847,26 @@ def _check_aa_allele_frequencies_advanced(
         assert cohort_labels == expect_cohort_labels
 
         # check variants are consistent
-        print(ds.dims["variants"], len(df_af))
         assert ds.dims["variants"] == len(df_af)
         for v in expected_variant_vars:
             if v == "variant_label":
                 # this is not present in the dataframe, skip check
                 continue
-            # TODO reinstate
-            # c = v.split("variant_")[1]
-            # loc_na = df_af[c].isna().values
-            # expect = df_af[c].values
-            # actual = ds[v].values
-            # assert_array_equal(actual[~loc_na], expect[~loc_na])
-            # assert_array_equal(pd.Series(actual).isna(), loc_na)
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
 
         # check frequencies are consistent
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
             print(cohort_label)
             actual_frq = ds["event_frequency"].values[:, cohort_index]
             expect_frq = df_af[f"frq_{cohort_label}"].values
-            loc_na = np.isnan(expect_frq)
-            assert_array_almost_equal(
-                actual_frq[~loc_na], expect_frq[~loc_na], decimal=6
-            )
-            assert_array_equal(np.isnan(actual_frq), loc_na)
+            assert_allclose(actual_frq, expect_frq)
+
+
+# Here we don't explore the full matrix, but vary one parameter at a time, otherwise
+# the test suite would take too long to run.
 
 
 @pytest.mark.parametrize("transcript", ["AGAP004707-RD", "AGAP006028-RA"])
@@ -1917,10 +1903,9 @@ def test_allele_frequencies_advanced__period_by(period_by):
     "sample_sets", ["AG1000G-BF-A", ["AG1000G-BF-A", "AG1000G-ML-A"], "3.0"]
 )
 def test_allele_frequencies_advanced__sample_sets(sample_sets):
-    # TODO reinstate
-    # _check_snp_allele_frequencies_advanced(
-    #     sample_sets=sample_sets,
-    # )
+    _check_snp_allele_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
     _check_aa_allele_frequencies_advanced(
         sample_sets=sample_sets,
     )
@@ -1976,3 +1961,23 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
     _check_aa_allele_frequencies_advanced(
         nobs_mode=nobs_mode,
     )
+
+
+# TODO test gene_cnv_frequencies_advanced()
+
+
+def _compare_series_like(actual, expect):
+
+    # compare pandas series-like objects for equality or floating point
+    # similarity, handling missing values appropriately
+
+    # handle object arrays, these don't get nans compared properly
+    t = actual.dtype
+    if t == object:
+        expect = expect.fillna("NA")
+        actual = actual.fillna("NA")
+
+    if t.kind == "f":
+        assert_allclose(actual.values, expect.values)
+    else:
+        assert_array_equal(actual.values, expect.values)
