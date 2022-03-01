@@ -1,6 +1,7 @@
 import collections
 import operator
 
+import pandas as pd
 from Bio.Seq import Seq
 
 VariantEffect = collections.namedtuple(
@@ -167,7 +168,7 @@ class Annotator(object):
         variants["impact"] = limpact
         variants["ref_codon"] = lref_codon
         variants["alt_codon"] = lalt_codon
-        variants["aa_pos"] = laa_pos
+        variants["aa_pos"] = pd.Series(laa_pos, dtype="Int64")
         variants["ref_aa"] = lref_aa
         variants["alt_aa"] = lalt_aa
         variants["aa_change"] = laa_change

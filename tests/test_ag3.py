@@ -1278,7 +1278,11 @@ def test_gene_cnv_frequencies(contig, cohorts):
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
     df_cnv_frq = ag3.gene_cnv_frequencies(
-        contig=contig, sample_sets="3.0", cohorts=cohorts, min_cohort_size=0
+        contig=contig,
+        sample_sets="3.0",
+        cohorts=cohorts,
+        min_cohort_size=0,
+        drop_invariant=False,
     )
 
     assert isinstance(df_cnv_frq, pd.DataFrame)
@@ -1334,12 +1338,45 @@ def test_gene_cnv_frequencies__query():
         cohorts="admin1_year",
         min_cohort_size=10,
         sample_query="country == 'Angola'",
+        drop_invariant=False,
     )
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
     assert len(df) == len(df_genes) * 2
+
+
+def test_gene_cnv_frequencies__drop_invariant():
+
+    contig = "3L"
+
+    expected_columns = [
+        "contig",
+        "start",
+        "end",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+        "frq_AO-LUA_colu_2009",
+    ]
+
+    ag3 = setup_ag3()
+    df = ag3.gene_cnv_frequencies(
+        contig=contig,
+        sample_sets="3.0",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        sample_query="country == 'Angola'",
+        drop_invariant=True,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert np.all(df["max_af"] > 0)
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    assert len(df) < len(df_genes) * 2
 
 
 @pytest.mark.parametrize(
@@ -1980,6 +2017,7 @@ def _check_gene_cnv_frequencies_advanced(
     sample_query=None,
     min_cohort_size=10,
     variant_query="max_af > 0.02",
+    drop_invariant=True,
 ):
 
     ag3 = setup_ag3()
@@ -1992,6 +2030,7 @@ def _check_gene_cnv_frequencies_advanced(
         sample_query=sample_query,
         min_cohort_size=min_cohort_size,
         variant_query=variant_query,
+        drop_invariant=drop_invariant,
     )
 
     assert isinstance(ds, xr.Dataset)
@@ -2085,13 +2124,14 @@ def _check_gene_cnv_frequencies_advanced(
         # we can compare results directly against the simpler gene_cnv_frequencies()
         # function with the admin1_year cohorts.
 
-        # check consistency with the basic snp allele frequencies method
+        # check consistency with the basic gene CNV frequencies method
         df_af = ag3.gene_cnv_frequencies(
             contig=contig,
             cohorts="admin1_year",
             sample_sets=sample_sets,
             sample_query=sample_query,
             min_cohort_size=min_cohort_size,
+            drop_invariant=drop_invariant,
         )
         df_af = df_af.reset_index()  # make sure all variables available to check
         if variant_query is not None:
@@ -2182,6 +2222,20 @@ def test_gene_cnv_frequencies_advanced__min_cohort_size(min_cohort_size):
 def test_gene_cnv_frequencies_advanced__variant_query(variant_query):
     _check_gene_cnv_frequencies_advanced(
         variant_query=variant_query,
+    )
+
+
+@pytest.mark.parametrize(
+    "drop_invariant",
+    [
+        False,
+        True,
+    ],
+)
+def test_gene_cnv_frequencies_advanced__drop_invariant(drop_invariant):
+    _check_gene_cnv_frequencies_advanced(
+        variant_query=None,
+        drop_invariant=drop_invariant,
     )
 
 

@@ -1079,11 +1079,12 @@ class Ag3:
             # check the given cohort set exists
             if cohorts not in df_coh.columns:
                 raise ValueError(f"{cohorts!r} is not a known cohort set")
-            # remove the nan rows
-            for coh in df_coh[cohorts].unique():
-                if isinstance(coh, str):
-                    loc_coh = df_coh[cohorts] == coh
-                    coh_dict[coh] = loc_coh.values
+            cohort_labels = df_coh[cohorts].unique()
+            # remove the nans and sort
+            cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
+            for coh in cohort_labels:
+                loc_coh = df_coh[cohorts] == coh
+                coh_dict[coh] = loc_coh.values
 
         return coh_dict
 
@@ -1198,7 +1199,7 @@ class Ag3:
         df_freqs = pd.DataFrame(freq_cols)
 
         # compute max_af
-        df_max_af = (pd.DataFrame({"max_af": df_freqs.max(axis=1)}),)
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
 
         # build the final dataframe
         df_snps.reset_index(drop=True, inplace=True)
@@ -2059,6 +2060,7 @@ class Ag3:
         min_cohort_size=10,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
+        drop_invariant=True,
     ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
@@ -2087,6 +2089,8 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
             "3.0") or a list of release identifiers.
+        drop_invariant : bool, optional
+            If True, drop any rows where there is no evidence of variation.
 
         Returns
         -------
@@ -2199,6 +2203,10 @@ class Ag3:
         df.reset_index(drop=True, inplace=True)
         df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
+
+        # deal with invariants
+        if drop_invariant:
+            df = df.query("max_af > 0")
 
         # set index for convenience
         df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
@@ -3082,6 +3090,7 @@ class Ag3:
         sample_query=None,
         min_cohort_size=10,
         variant_query=None,
+        drop_invariant=True,
         ci_method="wilson",
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -3109,6 +3118,8 @@ class Ag3:
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
+        drop_invariant : bool, optional
+            If True, drop any rows where there is no evidence of variation.
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
@@ -3241,6 +3252,12 @@ class Ag3:
         ds_out["event_count"] = ("variants", "cohorts"), count
         ds_out["event_nobs"] = ("variants", "cohorts"), nobs
         ds_out["event_frequency"] = ("variants", "cohorts"), frequency
+
+        # deal with invariants
+        if drop_invariant:
+            loc_variant = df_variants["max_af"].values > 0
+            ds_out = ds_out.isel(variants=loc_variant)
+            df_variants = df_variants.loc[loc_variant]
 
         # apply variant query
         if variant_query is not None:
