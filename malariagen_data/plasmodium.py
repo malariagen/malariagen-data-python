@@ -40,8 +40,8 @@ class PlasmodiumTools:
 
     def _load_config(self, data_config):
         """Load the config for data structure on the cloud into json format."""
-        with open(data_config) as pf7_json_conf:
-            config_content = json.load(pf7_json_conf)
+        with open(data_config) as json_conf:
+            config_content = json.load(json_conf)
         return config_content
 
     def open_sample_metadata(self):
@@ -53,12 +53,6 @@ class PlasmodiumTools:
             A dataframe of sample metadata on the samples that were sequenced as part of this resource.
             Includes the time and place of collection, quality metrics, and accesion numbers.
             One row per sample.
-
-        Example
-        -------
-        Access metadata as pandas dataframe:
-
-            >>> pv4.sample_metadata()
 
         """
         if self._cache_sample_metadata is None:
@@ -86,7 +80,7 @@ class PlasmodiumTools:
         """Add coordinate variables in zarr to dictionary"""
         # coordinates
         coords = dict()
-        for var_name in "POS", "CHROM":
+        for var_name in ["POS", "CHROM"]:
             z = root[f"variants/{var_name}"]
             var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             coords[f"variant_{var_names_for_outputs[var_name]}"] = [DIM_VARIANT], var
@@ -96,7 +90,7 @@ class PlasmodiumTools:
         coords["sample_id"] = [DIM_SAMPLE], sample_id
         return coords
 
-    def _add_data_vars(self, root, inline_array, chunks, var_names_for_outputs):
+    def _add_default_data_vars(self, root, inline_array, chunks, var_names_for_outputs):
         """Add default set of variables from zarr to dictionary"""
         data_vars = dict()
 
@@ -109,10 +103,10 @@ class PlasmodiumTools:
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
         # other default variant values
-        default_variant_variables = self.CONF["default_variant_variables"]
-        for var_name in default_variant_variables:
+        configurable_default_variant_variables = self.CONF["default_variant_variables"]
+        for var_name in configurable_default_variant_variables:
             z = root[f"variants/{var_name}"]
-            dimension = default_variant_variables[var_name]
+            dimension = configurable_default_variant_variables[var_name]
             var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             if var_name in var_names_for_outputs.keys():
                 var_name = var_names_for_outputs[var_name]
@@ -171,17 +165,6 @@ class PlasmodiumTools:
         -------
         ds : xarray.Dataset
             Dataset containing either default or extended variables from the variant calls Zarr.
-
-        Examples
-        --------
-        Access core set of variables for variant calls (default):
-
-            >>> pv4.variant_calls()
-
-        Access extended set of variables for variant calls:
-
-            >>> pv4.variant_calls(extended=True)
-
         """
         # setup
         root = self.open_variant_calls_zarr()
@@ -195,7 +178,7 @@ class PlasmodiumTools:
         coords = self._add_coordinates(
             root, inline_array, chunks, var_names_for_outputs
         )
-        data_vars = self._add_data_vars(
+        data_vars = self._add_default_data_vars(
             root, inline_array, chunks, var_names_for_outputs
         )
 

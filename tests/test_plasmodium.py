@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import zarr
 
-from malariagen_data.pf7 import Pf7
+from malariagen_data.plasmodium import PlasmodiumTools
 from malariagen_data.util import DIM_PLOIDY, DIM_SAMPLE, DIM_VARIANT
 
 DIM_ALT_ALLELE = "alt_alleles"
@@ -15,22 +15,19 @@ DIM_STATISTICS = "sb_statistics"
 DIM_GENOTYPES = "genotypes"
 
 
-class TestPf7(unittest.TestCase):
+class TestPlasmodiumTools(unittest.TestCase):
     def setUp(self):
-        self.url_starts_with_gs = "gs://test_url"
         self.working_dir = os.path.dirname(os.path.abspath(__file__))
-        self.test_config_path = os.path.join(self.working_dir, "test_pf7_config.json")
-        self.test_data_path = os.path.join(self.working_dir, "pf7_test_data")
-        self.test_pf7_class = Pf7(
-            self.test_data_path, data_config=self.test_config_path
+        self.test_config_path = os.path.join(
+            self.working_dir, "test_plasmodium_config.json"
         )
-        self.test_zarr_path = os.path.join(self.test_data_path, "test_pf7.zarr/")
+        self.test_data_path = os.path.join(self.working_dir, "plasmodium_test_data")
+        self.test_plasmodium_class = PlasmodiumTools(
+            self.test_config_path,
+            url=self.test_data_path,
+        )
 
         # Datasets
-        self.config_content = {
-            "metadata_path": "metadata/test_metadata.txt",
-            "zarr_path": "pf7.zarr/",
-        }
         self.d = {
             "Sample": ["sample1", "sample2", "sample3", "sample4"],
             "Study": ["study1", "study2", "study3", "study1"],
@@ -175,13 +172,19 @@ class TestPf7(unittest.TestCase):
         }
 
     def test_setup_returns_config_correctly(self):
-        pf7 = Pf7(data_config=self.test_config_path)
+        plasmodium = PlasmodiumTools(self.test_config_path)
         self.assertEqual(
-            pf7.CONF,
+            plasmodium.CONF,
             {
-                "default_url": "gs://test_pf7_release/",
+                "default_url": "gs://test_plasmodium_release/",
                 "metadata_path": "metadata/test_metadata.txt",
-                "variant_calls_zarr_path": "test_pf7.zarr/",
+                "variant_calls_zarr_path": "test_plasmodium.zarr/",
+                "default_variant_variables": {
+                    "FILTER_PASS": ["variants"],
+                    "is_snp": ["variants"],
+                    "numalt": ["variants"],
+                    "CDS": ["variants"],
+                },
                 "extended_calldata_variables": {
                     "DP": ["variants", "samples"],
                     "GQ": ["variants", "samples"],
@@ -273,58 +276,56 @@ class TestPf7(unittest.TestCase):
                 },
             },
         )
-        self.assertEqual(pf7._path, "test_pf7_release")
+        self.assertEqual(plasmodium._path, "test_plasmodium_release")
 
-    def test_setup_overrides_default_url(self):
-        pf7 = Pf7(self.url_starts_with_gs, data_config=self.test_config_path)
-        self.assertEqual(pf7._path, "test_url")
-
-    @patch("builtins.open", new_callable=mock_open)
-    @patch("json.load")
-    def test_load_config_calls_default_path(self, mock_load_json, mock_open):
-        self.test_pf7_class._load_config(None)
-        mock_open.assert_called_once_with(
-            os.path.join(
-                os.path.dirname(self.working_dir), "malariagen_data/pf7_config.json"
-            )
-        )
+    @patch("malariagen_data.plasmodium.PlasmodiumTools._load_config")
+    def test_setup_overrides_default_url(self, mock_load_config):
+        url_starts_with_gs = "gs://test_url"
+        plasmodium = PlasmodiumTools(self.test_config_path, url=url_starts_with_gs)
+        self.assertEqual(plasmodium._path, "test_url")
+        mock_load_config.assert_called_once_with(self.test_config_path)
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("json.load")
     def test_load_config_calls_path(self, mock_load_json, mock_open):
-        self.test_pf7_class._load_config(self.test_config_path)
+        self.test_plasmodium_class._load_config(self.test_config_path)
         open.assert_called_once_with(self.test_config_path)
 
     def test_sample_metadata_returns_extpected_df(self):
-        metadata_df = self.test_pf7_class.sample_metadata()
+        metadata_df = self.test_plasmodium_class.open_sample_metadata()
         pd.testing.assert_frame_equal(metadata_df, self.test_metadata_df)
 
-    def test_read_general_metadata_returns_expected_df_with_cache_set(
+    def test_sample_metadata_returns_expected_df_with_cache_set(
         self,
     ):
-        self.test_pf7_class.sample_metadata()
-        metadata_df = self.test_pf7_class.sample_metadata()
+        self.test_plasmodium_class.open_sample_metadata()
+        metadata_df = self.test_plasmodium_class.open_sample_metadata()
         pd.testing.assert_frame_equal(metadata_df, self.test_metadata_df)
 
     @patch("builtins.open", new_callable=mock_open)
-    @patch("malariagen_data.pf7.pd.read_csv", return_value=pd.DataFrame())
-    def test_read_general_metadata_uses_cache_when_set(self, mock_read_csv, mock_open):
-        self.test_pf7_class.sample_metadata()
-        self.test_pf7_class.sample_metadata()
+    @patch("malariagen_data.plasmodium.pd.read_csv", return_value=pd.DataFrame())
+    def test_sample_metadata_uses_cache_when_set(self, mock_read_csv, mock_open):
+        self.test_plasmodium_class.open_sample_metadata()
+        self.test_plasmodium_class.open_sample_metadata()
         mock_open.assert_called_once()
         mock_read_csv.assert_called_once()
 
-    @patch("malariagen_data.pf7.init_zarr_store", return_value="Safe store object")
-    @patch("malariagen_data.pf7.zarr.open_consolidated")
+    @patch(
+        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+    )
+    @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_variant_calls_zarr_uses_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.pf7.init_filesystem",
+            "malariagen_data.plasmodium.init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
-            pf7_mock_fs = Pf7(self.test_data_path, data_config=self.test_config_path)
-        pf7_mock_fs.open_variant_calls_zarr()
-        pf7_mock_fs.open_variant_calls_zarr()
-        mock_safestore.assert_called_once_with(fs="fs", path=self.test_zarr_path)
+            plas_mock_fs = PlasmodiumTools(
+                self.test_config_path, url=self.test_data_path
+            )
+        plas_mock_fs.open_variant_calls_zarr()
+        plas_mock_fs.open_variant_calls_zarr()
+        test_zarr_path = os.path.join(self.test_data_path, "test_plasmodium.zarr/")
+        mock_safestore.assert_called_once_with(fs="fs", path=test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
 
     def test_add_coordinates(self):
@@ -333,7 +334,7 @@ class TestPf7(unittest.TestCase):
             "CHROM": "chrom",
             "FILTER_PASS": "filter_pass",
         }
-        actual_coordinates = self.test_pf7_class._add_coordinates(
+        actual_coordinates = self.test_plasmodium_class._add_coordinates(
             self.test_zarr_root, True, "native", var_names_for_outputs
         )
         self.assertEqual(
@@ -356,7 +357,7 @@ class TestPf7(unittest.TestCase):
             "CHROM": "chrom",
             "FILTER_PASS": "filter_pass",
         }
-        actual_vars = self.test_pf7_class._add_data_vars(
+        actual_vars = self.test_plasmodium_class._add_default_data_vars(
             self.test_zarr_root, True, "native", var_names_for_outputs
         )
         self.assertEqual(
@@ -389,12 +390,15 @@ class TestPf7(unittest.TestCase):
         )
 
     def test_add_extended_data(self):
-        test_pf7_extended = Pf7(self.test_data_path, data_config=self.test_config_path)
-        test_pf7_extended.extended_variant_fields = {"AN": [DIM_VARIANT]}
-        test_pf7_extended.extended_calldata_variables = {
+        test_plasmodium_extended = PlasmodiumTools(
+            self.test_config_path,
+            url=self.test_data_path,
+        )
+        test_plasmodium_extended.extended_variant_fields = {"AN": [DIM_VARIANT]}
+        test_plasmodium_extended.extended_calldata_variables = {
             "GQ": [DIM_VARIANT, DIM_SAMPLE]
         }
-        actual_extended = test_pf7_extended._add_extended_data(
+        actual_extended = test_plasmodium_extended._add_extended_data(
             self.test_zarr_root, True, "native", {}
         )
         self.assertEqual(
@@ -417,10 +421,12 @@ class TestPf7(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.pf7.Pf7.open_variant_calls_zarr")
+    @patch("malariagen_data.plasmodium.PlasmodiumTools.open_variant_calls_zarr")
     def test_variant_calls_default(self, mock_open_variant_calls_zarr):
         mock_open_variant_calls_zarr.return_value = self.test_zarr_root
-        ds = self.test_pf7_class.variant_calls(inline_array=True, chunks="native")
+        ds = self.test_plasmodium_class.load_variant_calls(
+            inline_array=True, chunks="native"
+        )
         mock_open_variant_calls_zarr.assert_called_once_with()
         coords = list(ds.coords.keys())
         variables = list(ds.keys())
@@ -438,18 +444,18 @@ class TestPf7(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.pf7.Pf7.open_variant_calls_zarr")
+    @patch("malariagen_data.plasmodium.PlasmodiumTools.open_variant_calls_zarr")
     def test_variant_calls_extended(self, mock_open_variant_calls_zarr):
         mock_open_variant_calls_zarr.return_value = self.test_zarr_root
-        test_pf7_class_extended = Pf7(
-            self.test_data_path,
-            data_config=self.test_config_path,
+        test_plasmodium_class_extended = PlasmodiumTools(
+            self.test_config_path,
+            url=self.test_data_path,
         )
-        test_pf7_class_extended.extended_variant_fields = {"AN": [DIM_VARIANT]}
-        test_pf7_class_extended.extended_calldata_variables = {
+        test_plasmodium_class_extended.extended_variant_fields = {"AN": [DIM_VARIANT]}
+        test_plasmodium_class_extended.extended_calldata_variables = {
             "GQ": [DIM_VARIANT, DIM_SAMPLE]
         }
-        ds = test_pf7_class_extended.variant_calls(
+        ds = test_plasmodium_class_extended.load_variant_calls(
             extended=True,
             inline_array=True,
             chunks="native",

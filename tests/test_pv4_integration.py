@@ -3,160 +3,109 @@ import numpy as np
 import pytest
 import xarray
 
-from malariagen_data.pf7 import Pf7
+from malariagen_data.pv4 import Pv4
 
 
-def setup_pf7(url="simplecache::gs://pf7_staging/", **storage_kwargs):
+def setup_pv4(url="simplecache::gs://pv4_staging/", **storage_kwargs):
     if url.startswith("simplecache::"):
         storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
-    return Pf7(url, **storage_kwargs)
+    return Pv4(url, **storage_kwargs)
 
 
 @pytest.mark.parametrize(
     "url",
     [
-        "gs://pf7_staging/",
-        "gcs://pf7_staging/",
-        "gs://pf7_staging",
-        "gcs://pf7_staging",
-        "simplecache::gs://pf7_staging/",
-        "simplecache::gcs://pf7_staging/",
+        "gs://pv4_staging/",
+        "gcs://pv4_staging/",
+        "gs://pv4_staging",
+        "gcs://pv4_staging",
+        "simplecache::gs://pv4_staging/",
+        "simplecache::gcs://pv4_staging/",
     ],
 )
 def test_sample_metadata(url):
 
-    pf7 = setup_pf7(url)
-    df_samples = pf7.sample_metadata()
+    pv4 = setup_pv4(url)
+    df_samples = pv4.sample_metadata()
 
     expected_cols = (
         "Sample",
         "Study",
+        "Site",
+        "First-level administrative division",
         "Country",
-        "Admin level 1",
-        "Country latitude",
-        "Country longitude",
-        "Admin level 1 latitude",
-        "Admin level 1 longitude",
+        "Lat",
+        "Long",
         "Year",
         "ENA",
-        "All samples same case",
+        "All samples same individual",
         "Population",
         "% callable",
         "QC pass",
         "Exclusion reason",
-        "Sample type",
-        "Sample was in Pf6",
+        "Is returning traveller",
     )
 
     assert tuple(df_samples.columns) == expected_cols
-    expected_len = 20864
+    expected_len = 1895
     assert len(df_samples) == expected_len
 
 
 @pytest.mark.parametrize("extended", [True, False])
 def test_variant_calls(extended):
 
-    pf7 = setup_pf7()
+    pv4 = setup_pv4()
 
-    ds = pf7.variant_calls(extended=extended)
+    ds = pv4.variant_calls(extended=extended)
     assert isinstance(ds, xarray.Dataset)
 
     # check fields
     if extended:
         expected_data_vars = {
             "variant_allele",
-            "variant_filter_pass",
-            "variant_is_snp",
-            "variant_numalt",
-            "variant_CDS",
-            "call_genotype",
             "call_AD",
-            "call_DP",
-            "call_GQ",
-            "call_MIN_DP",
-            "call_PGT",
-            "call_PID",
-            "call_PS",
-            "call_RGQ",
-            "call_PL",
-            "call_SB",
-            "variant_AC",
-            "variant_AF",
-            "variant_AN",
-            "variant_ANN_AA_length",
-            "variant_ANN_AA_pos",
-            "variant_ANN_Allele",
-            "variant_ANN_Annotation",
-            "variant_ANN_Annotation_Impact",
-            "variant_ANN_CDS_length",
-            "variant_ANN_CDS_pos",
-            "variant_ANN_Distance",
-            "variant_ANN_Feature_ID",
-            "variant_ANN_Feature_Type",
-            "variant_ANN_Gene_ID",
-            "variant_ANN_Gene_Name",
-            "variant_ANN_HGVS_c",
-            "variant_ANN_HGVS_p",
-            "variant_ANN_Rank",
-            "variant_ANN_Transcript_BioType",
-            "variant_ANN_cDNA_length",
-            "variant_ANN_cDNA_pos",
-            "variant_AS_BaseQRankSum",
-            "variant_AS_FS",
-            "variant_AS_InbreedingCoeff",
-            "variant_AS_MQ",
-            "variant_AS_MQRankSum",
-            "variant_AS_QD",
-            "variant_AS_ReadPosRankSum",
-            "variant_AS_SOR",
-            "variant_BaseQRankSum",
-            "variant_DP",
-            "variant_DS",
-            "variant_END",
-            "variant_ExcessHet",
+            "call_genotype",
             "variant_FILTER_Apicoplast",
-            "variant_FILTER_Centromere",
-            "variant_FILTER_InternalHypervariable",
-            "variant_FILTER_LowQual",
-            "variant_FILTER_Low_VQSLOD",
-            "variant_FILTER_MissingVQSLOD",
-            "variant_FILTER_Mitochondrion",
-            "variant_FILTER_SubtelomericHypervariable",
-            "variant_FILTER_SubtelomericRepeat",
-            "variant_FILTER_VQSRTrancheINDEL99.50to99.60",
-            "variant_FILTER_VQSRTrancheINDEL99.60to99.80",
-            "variant_FILTER_VQSRTrancheINDEL99.80to99.90",
-            "variant_FILTER_VQSRTrancheINDEL99.90to99.95",
-            "variant_FILTER_VQSRTrancheINDEL99.95to100.00+",
-            "variant_FILTER_VQSRTrancheINDEL99.95to100.00",
-            "variant_FILTER_VQSRTrancheSNP99.50to99.60",
-            "variant_FILTER_VQSRTrancheSNP99.60to99.80",
-            "variant_FILTER_VQSRTrancheSNP99.80to99.90",
-            "variant_FILTER_VQSRTrancheSNP99.90to99.95",
-            "variant_FILTER_VQSRTrancheSNP99.95to100.00+",
-            "variant_FILTER_VQSRTrancheSNP99.95to100.00",
             "variant_FS",
-            "variant_ID",
-            "variant_InbreedingCoeff",
-            "variant_LOF",
-            "variant_MLEAC",
-            "variant_MLEAF",
-            "variant_MQ",
-            "variant_MQRankSum",
-            "variant_NEGATIVE_TRAIN_SITE",
-            "variant_NMD",
-            "variant_POSITIVE_TRAIN_SITE",
-            "variant_QD",
-            "variant_QUAL",
-            "variant_RAW_MQandDP",
-            "variant_ReadPosRankSum",
+            "variant_MULTIALLELIC",
+            "variant_SNPEFF_AMINO_ACID_CHANGE",
+            "variant_SNPEFF_EFFECT",
+            "variant_is_snp",
+            "variant_SNPEFF_IMPACT",
+            "variant_FILTER_Low_VQSLOD",
+            "variant_VariantType",
+            "variant_FILTER_Centromere",
+            "variant_SNPEFF_EXON_ID",
+            "variant_AF",
+            "variant_FILTER_InternalHypervariable",
+            "variant_FILTER_Mitochondrion",
             "variant_RegionType",
+            "variant_SNPEFF_TRANSCRIPT_ID",
             "variant_SOR",
+            "variant_FILTER_ShortContig",
             "variant_VQSLOD",
+            "call_DP",
+            "variant_filter_pass",
+            "variant_ID",
+            "variant_FILTER_SubtelomericHypervariable",
+            "variant_QD",
+            "variant_MQ",
+            "call_PGT",
+            "variant_CDS",
+            "variant_QUAL",
+            "variant_DP",
             "variant_altlen",
-            "variant_culprit",
-            "variant_set",
+            "variant_AC",
+            "call_PL",
+            "variant_SNPEFF_GENE_NAME",
+            "call_GQ",
+            "variant_numalt",
+            "variant_SNPEFF_CODON_CHANGE",
+            "variant_AN",
+            "variant_SNPEFF_FUNCTIONAL_CLASS",
+            "call_PID",
         }
+
         dimensions = {
             "alleles",
             "ploidy",
@@ -164,7 +113,6 @@ def test_variant_calls(extended):
             "variants",
             "alt_alleles",
             "genotypes",
-            "sb_statistics",
         }
         dim_variant_alt_allele_variable = [
             "variant_AC",
@@ -224,7 +172,7 @@ def test_variant_calls(extended):
     assert set(ds.dims) == dimensions
 
     # check dim lengths
-    df_samples = pf7.sample_metadata()
+    df_samples = pv4.sample_metadata()
     n_samples = len(df_samples)
     n_variants = ds.dims["variants"]
     assert ds.dims["samples"] == n_samples
