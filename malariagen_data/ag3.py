@@ -62,8 +62,9 @@ AA_CHANGE_QUERY = (
 
 
 def _release_to_path(release):
-    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
-    in the public API, and map these internally into storage path segments."""
+    """Compatibility function, allows us to use release identifiers like "3.0"
+    and "3.1" in the public API, and map these internally into storage path
+    segments."""
     if release == "3.0":
         # special case
         return "v3"
@@ -74,8 +75,9 @@ def _release_to_path(release):
 
 
 def _path_to_release(path):
-    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
-    in the public API, and map these internally into storage path segments."""
+    """Compatibility function, allows us to use release identifiers like "3.0"
+    and "3.1" in the public API, and map these internally into storage path
+    segments."""
     if path == "v3":
         return "3.0"
     elif path.startswith("v3."):
@@ -90,8 +92,9 @@ class Ag3:
     Parameters
     ----------
     url : str
-        Base path to data. Give "gs://vo_agam_release/" to use Google Cloud Storage,
-        or a local path on your file system if data have been downloaded.
+        Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
+        Storage, or a local path on your file system if data have been
+        downloaded.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -183,7 +186,8 @@ class Ag3:
 
     @property
     def releases(self):
-        """The releases for which data are available at the given storage location."""
+        """The releases for which data are available at the given storage
+        location."""
         if self._cache_releases is None:
             if self._pre:
                 # Here we discover which releases are available, by listing the storage
@@ -222,7 +226,8 @@ class Ag3:
         Parameters
         ----------
         release : str, optional
-            Release identifier. Give "3.0" to access the Ag1000G phase 3 data release.
+            Release identifier. Give "3.0" to access the Ag1000G phase 3 data
+            release.
 
         Returns
         -------
@@ -373,9 +378,9 @@ class Ag3:
             return df
 
     def _prep_sample_sets_arg(self, *, sample_sets):
-        """Common handling for the `sample_sets` parameter. For convenience, we allow this
-        to be a single sample set, or a list of sample sets, or a release identifier, or a
-        list of release identifiers."""
+        """Common handling for the `sample_sets` parameter. For convenience, we
+        allow this to be a single sample set, or a list of sample sets, or a
+        release identifier, or a list of release identifiers."""
 
         if sample_sets is None:
             # all available sample sets
@@ -420,16 +425,17 @@ class Ag3:
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         analysis : {"aim_20200422", "pca_20200422"}
             Species calling analysis.
 
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of species calls for one or more sample sets, one row per sample.
+            A dataframe of species calls for one or more sample sets, one row
+            per sample.
 
         """
 
@@ -469,14 +475,14 @@ class Ag3:
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         cohorts_analysis : str, optional
-            Cohort analysis identifier (date of analysis), optional,  default is the latest version.
-            Includes sample cohort calls in metadata.
+            Cohort analysis identifier (date of analysis), optional,  default is
+            the latest version. Includes sample cohort calls in metadata.
 
         Returns
         -------
@@ -559,10 +565,11 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
         field : str, optional
@@ -572,8 +579,8 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -649,10 +656,11 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         field : {"POS", "REF", "ALT"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -662,15 +670,14 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
         d : dask.array.Array
-            An array of either SNP positions, reference alleles or alternate alleles.
-
-
+            An array of either SNP positions, reference alleles or alternate
+            alleles.
 
         """
 
@@ -756,14 +763,15 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -773,13 +781,14 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
         d : dask.array.Array
-            An array of either genotypes (GT), genotype quality (GQ), allele depths (AD) or mapping quality (MQ) values.
+            An array of either genotypes (GT), genotype quality (GQ), allele
+            depths (AD) or mapping quality (MQ) values.
 
         """
 
@@ -850,19 +859,20 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`.
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
         d : dask.array.Array
-            An array of nucleotides giving the reference genome sequence for the given contig.
+            An array of nucleotides giving the reference genome sequence for the
+            given contig.
 
         """
         genome = self.open_genome()
@@ -888,7 +898,8 @@ class Ag3:
         Parameters
         ----------
         attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all attributes.
+            Attribute keys to unpack into columns. Provide "*" to unpack all
+            attributes.
 
         Returns
         -------
@@ -921,9 +932,9 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`.
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str, optional
@@ -1040,7 +1051,8 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of all possible SNP variants and their effects, one row per variant.
+            A dataframe of all possible SNP variants and their effects, one row
+            per variant.
 
         """
 
