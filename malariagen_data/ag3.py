@@ -692,7 +692,7 @@ class Ag3:
 
         Returns
         -------
-        pos, ref, alt : dask.array.Array
+        d : dask.array.Array
             An array of either SNP positions, reference alleles or alternate alleles.
 
 
@@ -865,7 +865,8 @@ class Ag3:
 
         Returns
         -------
-        root : zarr.hierarchy.Group of zarr.core.Array for the available chromosome regions.
+        root : zarr.hierarchy.Group
+            Zarr hierarchy containing the reference genome sequence.
 
         """
         if self._cache_genome is None:
@@ -892,7 +893,7 @@ class Ag3:
         Returns
         -------
         d : dask.array.Array
-            An array of a specified region of the reference genome sequence.
+            An array of nucleotides giving the reference genome sequence for the given contig.
 
         """
         genome = self.open_genome()
@@ -1062,7 +1063,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of all possible variants and their effects, one row per variant.
+            A dataframe of all possible SNP variants and their effects, one row per variant.
 
         """
 
@@ -1487,8 +1488,8 @@ class Ag3:
 
         Returns
         -------
-        ds : xarray.Dataset of xarray.DataArray
-            An array dataset of SNP sites, site filters and genotype calls.
+        ds : xarray.Dataset
+            An dataset containing SNP sites, site filters and genotype calls.
 
         """
 
@@ -1659,8 +1660,8 @@ class Ag3:
 
         Returns
         -------
-        ds : xarray.Dataset of xarray.DataArray
-            An array dataset of CNV HMM calls and associated data.
+        ds : xarray.Dataset
+            A dataset of CNV HMM calls and associated data.
 
         """
 
@@ -1744,8 +1745,8 @@ class Ag3:
 
         Returns
         -------
-        ds : xarray.Dataset of xarray.DataArray
-            An array dataset of CNV HMM breakpoints and their associated data.
+        ds : xarray.Dataset
+            A dataset of CNV alleles and genotypes.
 
         """
 
@@ -1949,8 +1950,8 @@ class Ag3:
 
         Returns
         -------
-        ds : xarray.Dataset of xarray.DataArray
-            An array dataset of discordant read calls and associated data.
+        ds : xarray.Dataset
+            A dataset of CNV alleles and genotypes.
 
         """
 
@@ -1991,8 +1992,8 @@ class Ag3:
 
         Returns
         -------
-        ds : xarray.Dataset of xarray.DataArray
-            An array dataset of modal copy number per gene and associated data.
+        ds : xarray.Dataset
+            A dataset of modal copy number per gene and associated data.
 
         """
 
@@ -2089,7 +2090,8 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of CNV amplification and deletion frequencies in the specified cohorts, one row per gene.
+            A dataframe of CNV amplification (amp) and deletion (del) frequencies in the specified cohorts, 
+            one row per gene and CNV type (amp/del).
 
         Notes
         -----
@@ -2314,8 +2316,8 @@ class Ag3:
 
         Returns
         -------
-        ds : xarray.Dataset of xarray.DataArray
-            An array dataset of haplotypes and associated data.
+        ds : xarray.Dataset
+            A dataset of haplotypes and associated data.
 
         """
 
