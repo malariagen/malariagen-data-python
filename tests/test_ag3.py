@@ -2233,6 +2233,7 @@ def test_gene_cnv_frequencies_advanced__variant_query(variant_query):
     ],
 )
 def test_gene_cnv_frequencies_advanced__drop_invariant(drop_invariant):
+    # noinspection PyTypeChecker
     _check_gene_cnv_frequencies_advanced(
         variant_query=None,
         drop_invariant=drop_invariant,
