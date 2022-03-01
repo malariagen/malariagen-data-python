@@ -100,7 +100,7 @@ class PlasmodiumTools:
         """Add default set of variables from zarr to dictionary"""
         data_vars = dict()
 
-        # variant_allele
+        # Add variant_allele as combination of REF and ALT
         ref_z = root["variants/REF"]
         alt_z = root["variants/ALT"]
         ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
@@ -109,12 +109,14 @@ class PlasmodiumTools:
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
         # other default variant values
-        for var_name in ["FILTER_PASS", "is_snp", "numalt", "CDS"]:
+        default_variant_variables = self.CONF["default_variant_variables"]
+        for var_name in default_variant_variables:
             z = root[f"variants/{var_name}"]
+            dimension = default_variant_variables[var_name]
             var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             if var_name in var_names_for_outputs.keys():
                 var_name = var_names_for_outputs[var_name]
-            data_vars[f"variant_{var_name}"] = [DIM_VARIANT], var
+            data_vars[f"variant_{var_name}"] = dimension, var
 
         # call arrays
         gt_z = root["calldata/GT"]

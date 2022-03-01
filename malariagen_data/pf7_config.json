@@ -2,6 +2,12 @@
   "default_url": "gs://pf7_release/",
   "metadata_path": "metadata/Pf_7_samples_20210630.txt",
   "variant_calls_zarr_path": "pf7.zarr/",
+  "default_variant_variables": {
+    "FILTER_PASS": ["variants"],
+    "is_snp": ["variants"],
+    "numalt": ["variants"],
+    "CDS": ["variants"]
+  },
   "extended_calldata_variables": {
     "DP": ["variants", "samples"],
     "GQ": ["variants", "samples"],

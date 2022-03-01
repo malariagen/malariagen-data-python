@@ -36,6 +36,7 @@ class Pv4:
         **kwargs,
     ):
 
+        # setup filesystem
         if not data_config:
             working_dir = os.path.dirname(os.path.abspath(__file__))
             data_config = os.path.join(working_dir, "pv4_config.json")
