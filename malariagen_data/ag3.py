@@ -2023,7 +2023,7 @@ class Ag3:
             x = xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
 
-        ds = xarray_concat(lx, dim="variants")
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
