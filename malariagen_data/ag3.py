@@ -1489,7 +1489,7 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
-            An dataset containing SNP sites, site filters and genotype calls.
+            A dataset containing SNP sites, site filters and genotype calls.
 
         """
 
