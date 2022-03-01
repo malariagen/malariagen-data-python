@@ -429,6 +429,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of species calls for one or more sample sets, one row per sample.
 
         """
 
@@ -577,6 +578,7 @@ class Ag3:
         Returns
         -------
         d : dask.array.Array
+            An array of boolean values identifying sites that pass the filters.
 
         """
 
@@ -665,7 +667,10 @@ class Ag3:
 
         Returns
         -------
-        d : dask.array.Array or tuple of dask.array.Array
+        d : dask.array.Array
+            An array of either SNP positions, reference alleles or alternate alleles.
+
+
 
         """
 
@@ -774,6 +779,7 @@ class Ag3:
         Returns
         -------
         d : dask.array.Array
+            An array of either genotypes (GT), genotype quality (GQ), allele depths (AD) or mapping quality (MQ) values.
 
         """
 
@@ -829,6 +835,7 @@ class Ag3:
         Returns
         -------
         root : zarr.hierarchy.Group
+            Zarr hierarchy containing the reference genome sequence.
 
         """
         if self._cache_genome is None:
@@ -855,6 +862,7 @@ class Ag3:
         Returns
         -------
         d : dask.array.Array
+            An array of nucleotides giving the reference genome sequence for the given contig.
 
         """
         genome = self.open_genome()
@@ -885,6 +893,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of genome annotations, one row per feature.
 
         """
 
@@ -923,6 +932,7 @@ class Ag3:
         Returns
         -------
         a : numpy.ndarray
+            An array of boolean values identifying accessible genome sites.
 
         """
 
@@ -1030,6 +1040,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of all possible SNP variants and their effects, one row per variant.
 
         """
 
@@ -1138,7 +1149,8 @@ class Ag3:
 
         Returns
         -------
-        df_snps : pandas.DataFrame
+        df : pandas.DataFrame
+            A dataframe of SNP frequencies, one row per variant.
 
         Notes
         -----
@@ -1243,6 +1255,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of sample metadata for colony crosses.
 
         """
 
@@ -1329,6 +1342,7 @@ class Ag3:
         Returns
         -------
         d : dask.Array
+            An array of site annotations.
 
         """
 
@@ -1473,6 +1487,7 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
+            A dataset containing SNP sites, site filters and genotype calls.
 
         """
 
@@ -1640,7 +1655,7 @@ class Ag3:
         inline_array=True,
         chunks="native",
     ):
-        """Access CNV HMM data.
+        """Access CNV HMM data from CNV calling.
 
         Parameters
         ----------
@@ -1659,10 +1674,9 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
+            A dataset of CNV HMM calls and associated data.
 
         """
-
-        # TODO support multiple contigs?
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
@@ -1726,7 +1740,7 @@ class Ag3:
         inline_array=True,
         chunks="native",
     ):
-        """Access CNV HMM data.
+        """Access CNV HMM data from genome-wide CNV discovery and filtering.
 
         Parameters
         ----------
@@ -1745,6 +1759,7 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
+            A dataset of CNV alleles and genotypes.
 
         """
 
@@ -1949,10 +1964,9 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
+            A dataset of CNV alleles and genotypes.
 
         """
-
-        # TODO support multiple contigs
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
@@ -1992,6 +2006,7 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
+            A dataset of modal copy number per gene and associated data.
 
         """
 
@@ -2095,6 +2110,8 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of CNV amplification (amp) and deletion (del) frequencies in the specified cohorts,
+            one row per gene and CNV type (amp/del).
 
         Notes
         -----
@@ -2223,7 +2240,7 @@ class Ag3:
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise use the "gamb_colu_arab" analysis.
+            best. Otherwise, use the "gamb_colu_arab" analysis.
 
         Returns
         -------
@@ -2253,7 +2270,7 @@ class Ag3:
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise use the "gamb_colu_arab" analysis.
+            best. Otherwise, use the "gamb_colu_arab" analysis.
 
         Returns
         -------
@@ -2366,6 +2383,7 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
+            A dataset of haplotypes and associated data.
 
         """
 
@@ -2459,6 +2477,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
+            A dataframe of cohort metadata, one row per sample.
 
         """
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
@@ -2521,7 +2540,8 @@ class Ag3:
 
         Returns
         -------
-        df_snps : pandas.DataFrame
+        df : pandas.DataFrame
+            A dataframe of amino acid allele frequencies, one row per replacement.
 
         Notes
         -----
