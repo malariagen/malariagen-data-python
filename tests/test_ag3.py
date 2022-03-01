@@ -5,13 +5,14 @@ import numpy as np
 import pandas as pd
 import pytest
 import scipy.stats
-import xarray
+import xarray as xr
 import zarr
-from numpy.testing import assert_array_equal
+from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Ag3, Region
 from malariagen_data.ag3 import _cn_mode
+from malariagen_data.util import locate_region, resolve_region
 
 expected_species = {
     "gambiae",
@@ -265,12 +266,16 @@ def test_open_snp_sites():
 
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L"], ["3R", "2R:48714463-48715355"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 def test_snp_sites(chunks, region):
 
     ag3 = setup_ag3()
 
-    pos, ref, alt = ag3.snp_sites(region=region, chunks=chunks)
+    pos = ag3.snp_sites(region=region, field="POS", chunks=chunks)
+    ref = ag3.snp_sites(region=region, field="REF", chunks=chunks)
+    alt = ag3.snp_sites(region=region, field="ALT", chunks=chunks)
     assert isinstance(pos, da.Array)
     assert pos.ndim == 1
     assert pos.dtype == "i4"
@@ -282,28 +287,23 @@ def test_snp_sites(chunks, region):
     assert alt.dtype == "S1"
     assert pos.shape[0] == ref.shape[0] == alt.shape[0]
 
-    # specific field
-    pos = ag3.snp_sites(region=region, field="POS", chunks=chunks)
-    assert isinstance(pos, da.Array)
-    assert pos.ndim == 1
-    assert pos.dtype == "i4"
-
     # apply site mask
     filter_pass = ag3.site_filters(region=region, mask="gamb_colu_arab").compute()
+    n_pass = np.count_nonzero(filter_pass)
     pos_pass = ag3.snp_sites(
         region=region, field="POS", site_mask="gamb_colu_arab", chunks=chunks
     )
     assert isinstance(pos_pass, da.Array)
     assert pos_pass.ndim == 1
     assert pos_pass.dtype == "i4"
-    assert pos_pass.shape[0] == np.count_nonzero(filter_pass)
+    assert pos_pass.shape[0] == n_pass
     assert pos_pass.compute().shape == pos_pass.shape
-    pos_pass, ref_pass, alt_pass = ag3.snp_sites(
-        region=region, site_mask="gamb_colu_arab"
-    )
-    for d in pos_pass, ref_pass, alt_pass:
+    for f in "POS", "REF", "ALT":
+        d = ag3.snp_sites(
+            region=region, site_mask="gamb_colu_arab", field=f, chunks=chunks
+        )
         assert isinstance(d, da.Array)
-        assert d.shape[0] == np.count_nonzero(filter_pass)
+        assert d.shape[0] == n_pass
         assert d.shape == d.compute().shape
 
 
@@ -319,9 +319,11 @@ def test_open_snp_genotypes():
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L", "AGAP007280"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 def test_snp_genotypes(chunks, sample_sets, region):
 
     ag3 = setup_ag3()
@@ -334,28 +336,38 @@ def test_snp_genotypes(chunks, sample_sets, region):
     assert gt.shape[1] == len(df_samples)
 
     # specific fields
-    x = ag3.snp_genotypes(region=region, field="GT", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="GT", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i1"
-    x = ag3.snp_genotypes(region=region, field="GQ", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="GQ", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 2
     assert x.dtype == "i2"
-    x = ag3.snp_genotypes(region=region, field="MQ", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="MQ", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 2
     assert x.dtype == "i2"
-    x = ag3.snp_genotypes(region=region, field="AD", chunks=chunks)
+    x = ag3.snp_genotypes(
+        region=region, sample_sets=sample_sets, field="AD", chunks=chunks
+    )
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i2"
 
     # site mask
     filter_pass = ag3.site_filters(region=region, mask="gamb_colu_arab").compute()
-    df_samples = ag3.sample_metadata()
     gt_pass = ag3.snp_genotypes(
-        region=region, site_mask="gamb_colu_arab", chunks=chunks
+        region=region,
+        sample_sets=sample_sets,
+        site_mask="gamb_colu_arab",
+        chunks=chunks,
     )
     assert isinstance(gt_pass, da.Array)
     assert gt_pass.ndim == 3
@@ -367,9 +379,11 @@ def test_snp_genotypes(chunks, sample_sets, region):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
-@pytest.mark.parametrize("region", ["2R", ["3R", "3L", "2R:48,714,463-48,715,355"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 def test_snp_genotypes_chunks(sample_sets, region):
 
     ag3 = setup_ag3()
@@ -503,16 +517,10 @@ def test_site_annotations():
 
 @pytest.mark.parametrize(
     "sample_sets",
-    [
-        "AG1000G-X",
-        ["AG1000G-BF-A", "AG1000G-BF-B"],
-        "3.0",
-        ["3.0", "3.0"],
-        None,
-    ],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
 )
 @pytest.mark.parametrize(
-    "region", ["2L", "X", ["3R", "3L", "2R:48,714,463-48,715,355", "AGAP007280"]]
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
 )
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_snp_calls(sample_sets, region, site_mask):
@@ -520,7 +528,7 @@ def test_snp_calls(sample_sets, region, site_mask):
     ag3 = setup_ag3()
 
     ds = ag3.snp_calls(region=region, sample_sets=sample_sets, site_mask=site_mask)
-    assert isinstance(ds, xarray.Dataset)
+    assert isinstance(ds, xr.Dataset)
 
     # check fields
     expected_data_vars = {
@@ -559,7 +567,7 @@ def test_snp_calls(sample_sets, region, site_mask):
     # check shapes
     for f in expected_coords | expected_data_vars:
         x = ds[f]
-        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x, xr.DataArray)
         assert isinstance(x.data, da.Array)
 
         if f == "variant_allele":
@@ -597,9 +605,9 @@ def test_snp_calls(sample_sets, region, site_mask):
 
     # check can setup computations
     d1 = ds["variant_position"] > 10_000
-    assert isinstance(d1, xarray.DataArray)
+    assert isinstance(d1, xr.DataArray)
     d2 = ds["call_AD"].sum(axis=(1, 2))
-    assert isinstance(d2, xarray.DataArray)
+    assert isinstance(d2, xr.DataArray)
 
     # check compress bug
     pos = ds["variant_position"].data
@@ -618,6 +626,7 @@ def test_snp_effects():
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
+        "transcript",
         "effect",
         "impact",
         "ref_codon",
@@ -710,30 +719,11 @@ def test_snp_effects():
     assert df.iloc[674].effect == "INTRONIC"
 
 
-def test_snp_allele_frequencies__no_samples():
-    ag3 = setup_ag3()
-    cohorts = {
-        "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
-    }
-    with pytest.raises(ValueError):
-        _ = ag3.snp_allele_frequencies(
-            transcript="AGAP009194-RA",
-            cohorts=cohorts,
-            site_mask="gamb_colu",
-            sample_sets="3.0",
-            drop_invariant=True,
-        )
-
-
 def test_snp_allele_frequencies__str_cohorts():
     ag3 = setup_ag3()
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -755,9 +745,10 @@ def test_snp_allele_frequencies__str_cohorts():
     frq_cohort_labels = ["frq_" + s for s in cohort_labels]
     expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
 
-    assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (16526, 68)
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.index.names == ["contig", "position", "ref_allele", "alt_allele"]
+    assert df.shape == (16526, 64)
 
 
 def test_snp_allele_frequencies__dict_cohorts():
@@ -767,10 +758,6 @@ def test_snp_allele_frequencies__dict_cohorts():
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
     }
     universal_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
@@ -791,9 +778,6 @@ def test_snp_allele_frequencies__dict_cohorts():
     expected_fields = universal_fields + frq_columns + ["max_af"]
     assert df.columns.tolist() == expected_fields
     assert df.shape == (133, len(expected_fields))
-    assert df.iloc[0].position == 28597653
-    assert df.iloc[1].ref_allele == "A"
-    assert df.iloc[2].alt_allele == "C"
     assert df.iloc[3].frq_ke == 0
     assert df.iloc[4].frq_bf_2012_col == pytest.approx(0.006097, abs=1e-6)
     assert df.iloc[4].max_af == pytest.approx(0.006097, abs=1e-6)
@@ -821,15 +805,12 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
     ]
     effects_fields = [
+        "transcript",
         "effect",
         "impact",
         "ref_codon",
@@ -837,7 +818,6 @@ def test_snp_allele_frequencies__str_cohorts__effects():
         "aa_pos",
         "ref_aa",
         "alt_aa",
-        "aa_change",
     ]
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
@@ -859,6 +839,42 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     assert isinstance(df, pd.DataFrame)
     assert len(df) == 16526
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.index.names == [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "aa_change",
+    ]
+
+
+def test_snp_allele_frequencies__query():
+    ag3 = setup_ag3()
+    cohorts = "admin1_year"
+    min_cohort_size = 10
+    expected_columns = [
+        "pass_gamb_colu_arab",
+        "pass_gamb_colu",
+        "pass_arab",
+        "frq_AO-LUA_colu_2009",
+        "max_af",
+    ]
+
+    df = ag3.snp_allele_frequencies(
+        transcript="AGAP004707-RD",
+        cohorts=cohorts,
+        sample_query="country == 'Angola'",
+        cohorts_analysis="20211101",
+        min_cohort_size=min_cohort_size,
+        site_mask="gamb_colu",
+        sample_sets="3.0",
+        drop_invariant=True,
+        effects=False,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert df.shape == (695, 5)
 
 
 @pytest.mark.parametrize(
@@ -869,7 +885,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
 def test_cnv_hmm(sample_sets, contig):
     ag3 = setup_ag3()
     ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
-    assert isinstance(ds, xarray.Dataset)
+    assert isinstance(ds, xr.Dataset)
 
     # check fields
     expected_data_vars = {
@@ -911,7 +927,7 @@ def test_cnv_hmm(sample_sets, contig):
     # check shapes
     for f in expected_coords | expected_data_vars:
         x = ds[f]
-        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x, xr.DataArray)
         assert isinstance(x.data, da.Array)
 
         if f.startswith("variant_"):
@@ -933,9 +949,9 @@ def test_cnv_hmm(sample_sets, contig):
 
     # check can setup computations
     d1 = ds["variant_position"] > 10_000
-    assert isinstance(d1, xarray.DataArray)
+    assert isinstance(d1, xr.DataArray)
     d2 = ds["call_CN"].sum(axis=1)
-    assert isinstance(d2, xarray.DataArray)
+    assert isinstance(d2, xr.DataArray)
 
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])
@@ -958,7 +974,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         return
 
     ds = ag3.cnv_coverage_calls(contig=contig, analysis=analysis, sample_set=sample_set)
-    assert isinstance(ds, xarray.Dataset)
+    assert isinstance(ds, xr.Dataset)
 
     # check fields
     expected_data_vars = {
@@ -989,7 +1005,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     # check shapes
     for f in expected_coords | expected_data_vars:
         x = ds[f]
-        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x, xr.DataArray)
         assert isinstance(x.data, da.Array)
 
         if f.startswith("variant_"):
@@ -1008,9 +1024,9 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
 
     # check can setup computations
     d1 = ds["variant_position"] > 10_000
-    assert isinstance(d1, xarray.DataArray)
+    assert isinstance(d1, xr.DataArray)
     d2 = ds["call_genotype"].sum(axis=1)
-    assert isinstance(d2, xarray.DataArray)
+    assert isinstance(d2, xr.DataArray)
 
 
 @pytest.mark.parametrize(
@@ -1035,7 +1051,7 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
         return
 
     ds = ag3.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
-    assert isinstance(ds, xarray.Dataset)
+    assert isinstance(ds, xr.Dataset)
 
     # check fields
     expected_data_vars = {
@@ -1079,7 +1095,7 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     # check shapes
     for f in expected_coords | expected_data_vars:
         x = ds[f]
-        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x, xr.DataArray)
         assert isinstance(x.data, da.Array)
 
         if f.startswith("variant_"):
@@ -1097,11 +1113,11 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
-    # check can setup computations
+    # check can set up computations
     d1 = ds["variant_position"] > 10_000
-    assert isinstance(d1, xarray.DataArray)
+    assert isinstance(d1, xr.DataArray)
     d2 = ds["call_genotype"].sum(axis=1)
-    assert isinstance(d2, xarray.DataArray)
+    assert isinstance(d2, xr.DataArray)
 
 
 @pytest.mark.parametrize(
@@ -1131,6 +1147,7 @@ def test_cn_mode(rows, cols, vmax):
     assert_array_equal(expect.count.squeeze(), counts)
 
 
+# noinspection PyArgumentList
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
@@ -1141,7 +1158,7 @@ def test_gene_cnv(contig, sample_sets):
 
     ds = ag3.gene_cnv(contig=contig, sample_sets=sample_sets)
 
-    assert isinstance(ds, xarray.Dataset)
+    assert isinstance(ds, xr.Dataset)
 
     # check fields
     expected_data_vars = {
@@ -1180,7 +1197,7 @@ def test_gene_cnv(contig, sample_sets):
     # check shapes
     for f in expected_coords | expected_data_vars:
         x = ds[f]
-        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x, xr.DataArray)
         assert isinstance(x.data, np.ndarray)
 
         if f.startswith("gene_"):
@@ -1194,11 +1211,11 @@ def test_gene_cnv(contig, sample_sets):
             assert x.dims == ("samples",)
             assert x.shape == (n_samples,)
 
-    # check can setup computations
+    # check can set up computations
     d1 = ds["gene_start"] > 10_000
-    assert isinstance(d1, xarray.DataArray)
+    assert isinstance(d1, xr.DataArray)
     d2 = ds["CN_mode"].max(axis=1)
-    assert isinstance(d2, xarray.DataArray)
+    assert isinstance(d2, xr.DataArray)
 
     # sanity checks
     x = ds["gene_windows"].values
@@ -1230,15 +1247,15 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
     sample = random.choice(df_samples["sample_id"].tolist())
     ds = ds.set_index(genes="gene_id", samples="sample_id")
     o = ds.sel(genes=gene)
-    assert isinstance(o, xarray.Dataset)
+    assert isinstance(o, xr.Dataset)
     assert set(o.dims) == {"samples"}
     assert o.dims["samples"] == ds.dims["samples"]
     o = ds.sel(samples=sample)
-    assert isinstance(o, xarray.Dataset)
+    assert isinstance(o, xr.Dataset)
     assert set(o.dims) == {"genes"}
     assert o.dims["genes"] == ds.dims["genes"]
     o = ds.sel(genes=gene, samples=sample)
-    assert isinstance(o, xarray.Dataset)
+    assert isinstance(o, xr.Dataset)
     assert set(o.dims) == set()
 
 
@@ -1250,65 +1267,134 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
             "ke": "country == 'Kenya'",
             "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
         },
-        {
-            "bf_2050_col": "country == 'Burkina Faso' and year == 2050 and aim_species == 'coluzzii'"
-        },
         "admin1_month",
     ],
 )
 def test_gene_cnv_frequencies(contig, cohorts):
 
-    universal_fields = ["contig", "start", "end", "strand", "Name", "description"]
+    universal_fields = [
+        "contig",
+        "start",
+        "end",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+    ]
     ag3 = setup_ag3()
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
-    if "bf_2050_col" in cohorts:
-        with pytest.raises(ValueError):
-            _ = ag3.gene_cnv_frequencies(
-                contig=contig, sample_sets="3.0", cohorts=cohorts
-            )
-    else:
-        df = ag3.gene_cnv_frequencies(
-            contig=contig, sample_sets="3.0", cohorts=cohorts, min_cohort_size=0
-        )
 
-        assert isinstance(df, pd.DataFrame)
-        assert len(df) == len(df_genes)
-        assert df.index.name == "ID"
+    df_cnv_frq = ag3.gene_cnv_frequencies(
+        contig=contig,
+        sample_sets="3.0",
+        cohorts=cohorts,
+        min_cohort_size=0,
+        drop_invariant=False,
+    )
 
-        # sanity checks
-        cohort_labels = None
-        if isinstance(cohorts, dict):
-            cohort_labels = ["frq_" + s for s in cohorts.keys()]
-        if isinstance(cohorts, str):
-            df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
-            coh_nm = "cohort_" + cohorts
-            cohort_labels = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
+    assert isinstance(df_cnv_frq, pd.DataFrame)
+    assert len(df_cnv_frq) == len(df_genes) * 2
+    assert df_cnv_frq.index.names == ["gene_id", "gene_name", "cnv_type"]
 
-        suffixes = ["_amp", "_del"]
-        cnv_freq_cols = [a + b for a in cohort_labels for b in suffixes]
+    # sanity checks
+    frq_cols = None
+    if isinstance(cohorts, dict):
+        frq_cols = ["frq_" + s for s in cohorts.keys()]
+    if isinstance(cohorts, str):
+        df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
+        coh_nm = "cohort_" + cohorts
+        frq_cols = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
 
-        for f in cnv_freq_cols:
-            x = df[f].values
-            assert np.all(x >= 0)
-            assert np.all(x <= 1)
-        cnv_freq_col_pairs = list(zip(cnv_freq_cols[::2], cnv_freq_cols[1::2]))
-        for fa, fd in cnv_freq_col_pairs:
-            a = df[fa].values
-            d = df[fd].values
-            x = a + d
-            assert np.all(x >= 0)
-            assert np.all(x <= 1)
-        expected_fields = universal_fields + cnv_freq_cols
-        assert df.columns.tolist() == expected_fields
+    # check frequencies are within sensible range
+    for f in frq_cols:
+        x = df_cnv_frq[f].values
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
+
+    # check amp and del frequencies are within sensible range
+    df_frq_amp = df_cnv_frq[frq_cols].xs("amp", level="cnv_type")
+    df_frq_del = df_cnv_frq[frq_cols].xs("del", level="cnv_type")
+    df_frq_sum = df_frq_amp + df_frq_del
+    for f in frq_cols:
+        x = df_frq_sum[f].values
+        assert np.all(x >= 0)
+        assert np.all(x <= 1)
+    expected_fields = universal_fields + frq_cols
+    assert sorted(df_cnv_frq.columns.tolist()) == sorted(expected_fields)
+
+
+def test_gene_cnv_frequencies__query():
+
+    contig = "3L"
+
+    expected_columns = [
+        "contig",
+        "start",
+        "end",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+        "frq_AO-LUA_colu_2009",
+    ]
+
+    ag3 = setup_ag3()
+    df = ag3.gene_cnv_frequencies(
+        contig=contig,
+        sample_sets="3.0",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        sample_query="country == 'Angola'",
+        drop_invariant=False,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    assert len(df) == len(df_genes) * 2
+
+
+def test_gene_cnv_frequencies__drop_invariant():
+
+    contig = "3L"
+
+    expected_columns = [
+        "contig",
+        "start",
+        "end",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+        "frq_AO-LUA_colu_2009",
+    ]
+
+    ag3 = setup_ag3()
+    df = ag3.gene_cnv_frequencies(
+        contig=contig,
+        sample_sets="3.0",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        sample_query="country == 'Angola'",
+        drop_invariant=True,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert np.all(df["max_af"] > 0)
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    assert len(df) < len(df_genes) * 2
 
 
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
 )
-@pytest.mark.parametrize("contig", ["2R", "X", ["3R", "3L"]])
+@pytest.mark.parametrize(
+    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
+)
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
-def test_haplotypes(sample_sets, contig, analysis):
+def test_haplotypes(sample_sets, region, analysis):
 
     ag3 = setup_ag3()
 
@@ -1317,7 +1403,10 @@ def test_haplotypes(sample_sets, contig, analysis):
     if analysis == "arab":
         sample_query = "aim_species == 'arabiensis' and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu":
-        sample_query = "aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
+        sample_query = (
+            "aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and "
+            "sample_set != 'AG1000G-X'"
+        )
     elif analysis == "gamb_colu_arab":
         sample_query = "sample_set != 'AG1000G-X'"
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
@@ -1326,12 +1415,12 @@ def test_haplotypes(sample_sets, contig, analysis):
 
     # check if any samples
     if n_samples == 0:
-        ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
+        ds = ag3.haplotypes(region=region, sample_sets=sample_sets, analysis=analysis)
         assert ds is None
         return
 
-    ds = ag3.haplotypes(contig=contig, sample_sets=sample_sets, analysis=analysis)
-    assert isinstance(ds, xarray.Dataset)
+    ds = ag3.haplotypes(region=region, sample_sets=sample_sets, analysis=analysis)
+    assert isinstance(ds, xr.Dataset)
 
     # check fields
     expected_data_vars = {
@@ -1362,7 +1451,7 @@ def test_haplotypes(sample_sets, contig, analysis):
     # check shapes
     for f in expected_coords | expected_data_vars:
         x = ds[f]
-        assert isinstance(x, xarray.DataArray)
+        assert isinstance(x, xr.DataArray)
         assert isinstance(x.data, da.Array)
 
         if f == "variant_allele":
@@ -1384,9 +1473,9 @@ def test_haplotypes(sample_sets, contig, analysis):
 
     # check can setup computations
     d1 = ds["variant_position"] > 10_000
-    assert isinstance(d1, xarray.DataArray)
+    assert isinstance(d1, xr.DataArray)
     d2 = ds["call_genotype"].sum(axis=(1, 2))
-    assert isinstance(d2, xarray.DataArray)
+    assert isinstance(d2, xr.DataArray)
 
 
 # test v3 sample sets
@@ -1440,9 +1529,10 @@ def test_locate_region(region_raw):
 
     ag3 = setup_ag3()
     gene_annotation = ag3.geneset(["ID"])
-    loc_region, region = ag3.locate_region(region_raw)
-
-    pos, ref, _ = ag3.snp_sites(region=region.contig)
+    region = resolve_region(ag3, region_raw)
+    pos = ag3.snp_sites(region=region.contig, field="POS")
+    ref = ag3.snp_sites(region=region.contig, field="REF")
+    loc_region = locate_region(region, pos)
 
     # check types
     assert isinstance(loc_region, slice)
@@ -1476,12 +1566,16 @@ def test_locate_region(region_raw):
         assert region == Region("2L", 24630355, 24633221)
 
 
-def test_aa_frequencies():
+def test_aa_allele_frequencies():
     ag3 = setup_ag3()
-    cohorts = "admin1_year"
-    min_cohort_size = 10
-    sample_sets = ("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C")
+
     expected_fields = [
+        "transcript",
+        "aa_pos",
+        "ref_aa",
+        "alt_aa",
+        "effect",
+        "impact",
         "frq_BF-09_gamb_2012",
         "frq_BF-09_colu_2012",
         "frq_BF-09_colu_2014",
@@ -1492,15 +1586,682 @@ def test_aa_frequencies():
 
     df = ag3.aa_allele_frequencies(
         transcript="AGAP004707-RD",
-        cohorts=cohorts,
+        cohorts="admin1_year",
         cohorts_analysis="20211101",
-        min_cohort_size=min_cohort_size,
+        min_cohort_size=10,
         site_mask="gamb_colu",
-        sample_sets=sample_sets,
+        sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
         drop_invariant=True,
     )
 
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert isinstance(df, pd.DataFrame)
-    assert df.shape == (61, 6)
-    assert df.loc["V402L"].max_af == pytest.approx(0.121951, abs=1e-6)
+    assert df.index.names == ["aa_change", "contig", "position"]
+    assert df.shape == (61, len(expected_fields))
+    assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
+
+
+# noinspection PyDefaultArgument
+def _check_snp_allele_frequencies_advanced(
+    transcript="AGAP004707-RD",
+    area_by="adm1_ISO",
+    period_by="year",
+    sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
+    sample_query=None,
+    min_cohort_size=10,
+    nobs_mode="called",
+    variant_query="max_af > 0.02",
+):
+
+    ag3 = setup_ag3()
+
+    ds = ag3.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        nobs_mode=nobs_mode,
+        variant_query=variant_query,
+    )
+
+    assert isinstance(ds, xr.Dataset)
+
+    # noinspection PyTypeChecker
+    assert sorted(ds.dims) == ["cohorts", "variants"]
+
+    expected_variant_vars = (
+        "variant_label",
+        "variant_contig",
+        "variant_position",
+        "variant_ref_allele",
+        "variant_alt_allele",
+        "variant_max_af",
+        "variant_pass_gamb_colu_arab",
+        "variant_pass_gamb_colu",
+        "variant_pass_arab",
+        "variant_transcript",
+        "variant_effect",
+        "variant_impact",
+        "variant_ref_codon",
+        "variant_alt_codon",
+        "variant_ref_aa",
+        "variant_alt_aa",
+        "variant_aa_pos",
+        "variant_aa_change",
+    )
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    expected_cohort_vars = (
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    )
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    expected_event_vars = (
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    )
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # sanity checks for area values
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+    expected_area = np.unique(df_samples[area_by].dropna().values)
+    area = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area:
+        assert a in expected_area
+
+    # sanity checks for period values
+    period = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # sanity check cohort size
+    size = ds["cohort_size"].values
+    for s in size:
+        assert s >= min_cohort_size
+
+    if area_by == "adm1_ISO" and period_by == "year" and nobs_mode == "called":
+
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler snp_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # check consistency with the basic snp allele frequencies method
+        df_af = ag3.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+        )
+        df_af = df_af.reset_index()  # make sure all variables available to check
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # check cohorts are consistent
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # check variants are consistent
+        assert ds.dims["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            if v == "variant_label":
+                # this is not present in the dataframe, skip check
+                continue
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
+
+        # check frequencies are consistent
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+# noinspection PyDefaultArgument
+def _check_aa_allele_frequencies_advanced(
+    transcript="AGAP004707-RD",
+    area_by="adm1_ISO",
+    period_by="year",
+    sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
+    sample_query=None,
+    min_cohort_size=10,
+    nobs_mode="called",
+    variant_query="max_af > 0.02",
+):
+
+    ag3 = setup_ag3()
+
+    ds = ag3.aa_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        nobs_mode=nobs_mode,
+        variant_query=variant_query,
+    )
+
+    assert isinstance(ds, xr.Dataset)
+
+    # noinspection PyTypeChecker
+    assert sorted(ds.dims) == ["cohorts", "variants"]
+
+    expected_variant_vars = (
+        "variant_label",
+        "variant_contig",
+        "variant_position",
+        "variant_max_af",
+        "variant_transcript",
+        "variant_effect",
+        "variant_impact",
+        "variant_ref_aa",
+        "variant_alt_aa",
+        "variant_aa_pos",
+        "variant_aa_change",
+    )
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    expected_cohort_vars = (
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    )
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    expected_event_vars = (
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    )
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # sanity checks for area values
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+    expected_area = np.unique(df_samples[area_by].dropna().values)
+    area = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area:
+        assert a in expected_area
+
+    # sanity checks for period values
+    period = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # sanity check cohort size
+    size = ds["cohort_size"].values
+    for s in size:
+        assert s >= min_cohort_size
+
+    if area_by == "adm1_ISO" and period_by == "year" and nobs_mode == "called":
+
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler aa_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # check consistency with the basic snp allele frequencies method
+        df_af = ag3.aa_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+        )
+        df_af = df_af.reset_index()  # make sure all variables available to check
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # check cohorts are consistent
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # check variants are consistent
+        assert ds.dims["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            if v == "variant_label":
+                # this is not present in the dataframe, skip check
+                continue
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
+
+        # check frequencies are consistent
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            print(cohort_label)
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+# Here we don't explore the full matrix, but vary one parameter at a time, otherwise
+# the test suite would take too long to run.
+
+
+@pytest.mark.parametrize("transcript", ["AGAP004707-RD", "AGAP006028-RA"])
+def test_allele_frequencies_advanced__transcript(transcript):
+    _check_snp_allele_frequencies_advanced(
+        transcript=transcript,
+    )
+    _check_aa_allele_frequencies_advanced(
+        transcript=transcript,
+    )
+
+
+@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+def test_allele_frequencies_advanced__area_by(area_by):
+    _check_snp_allele_frequencies_advanced(
+        area_by=area_by,
+    )
+    _check_aa_allele_frequencies_advanced(
+        area_by=area_by,
+    )
+
+
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+def test_allele_frequencies_advanced__period_by(period_by):
+    _check_snp_allele_frequencies_advanced(
+        period_by=period_by,
+    )
+    _check_aa_allele_frequencies_advanced(
+        period_by=period_by,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-BF-A", ["AG1000G-BF-A", "AG1000G-ML-A"], "3.0"]
+)
+def test_allele_frequencies_advanced__sample_sets(sample_sets):
+    _check_snp_allele_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
+    _check_aa_allele_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [
+        "taxon in ['gambiae', 'coluzzii'] and country == 'Mali'",
+        "taxon == 'arabiensis' and country in ['Uganda', 'Tanzania']",
+    ],
+)
+def test_allele_frequencies_advanced__sample_query(sample_query):
+    _check_snp_allele_frequencies_advanced(
+        sample_query=sample_query,
+    )
+    _check_aa_allele_frequencies_advanced(
+        sample_query=sample_query,
+    )
+
+
+@pytest.mark.parametrize("min_cohort_size", [10, 100])
+def test_allele_frequencies_advanced__min_cohort_size(min_cohort_size):
+    _check_snp_allele_frequencies_advanced(
+        min_cohort_size=min_cohort_size,
+    )
+    _check_aa_allele_frequencies_advanced(
+        min_cohort_size=min_cohort_size,
+    )
+
+
+@pytest.mark.parametrize(
+    "variant_query",
+    [
+        None,
+        "effect == 'NON_SYNONYMOUS_CODING' and max_af > 0.05",
+    ],
+)
+def test_allele_frequencies_advanced__variant_query(variant_query):
+    _check_snp_allele_frequencies_advanced(
+        variant_query=variant_query,
+    )
+    _check_aa_allele_frequencies_advanced(
+        variant_query=variant_query,
+    )
+
+
+@pytest.mark.parametrize("nobs_mode", ["called", "fixed"])
+def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
+    _check_snp_allele_frequencies_advanced(
+        nobs_mode=nobs_mode,
+    )
+    _check_aa_allele_frequencies_advanced(
+        nobs_mode=nobs_mode,
+    )
+
+
+# noinspection PyDefaultArgument
+def _check_gene_cnv_frequencies_advanced(
+    contig="2L",
+    area_by="adm1_ISO",
+    period_by="year",
+    sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
+    sample_query=None,
+    min_cohort_size=10,
+    variant_query="max_af > 0.02",
+    drop_invariant=True,
+):
+
+    ag3 = setup_ag3()
+
+    ds = ag3.gene_cnv_frequencies_advanced(
+        contig=contig,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        variant_query=variant_query,
+        drop_invariant=drop_invariant,
+    )
+
+    assert isinstance(ds, xr.Dataset)
+
+    # noinspection PyTypeChecker
+    assert sorted(ds.dims) == ["cohorts", "variants"]
+
+    expected_variant_vars = (
+        "variant_label",
+        "variant_contig",
+        "variant_start",
+        "variant_end",
+        "variant_windows",
+        "variant_cnv_type",
+        "variant_gene_id",
+        "variant_gene_name",
+        "variant_gene_strand",
+        "variant_max_af",
+    )
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    expected_cohort_vars = (
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    )
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    expected_event_vars = (
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    )
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # sanity checks for area values
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+    expected_area = np.unique(df_samples[area_by].dropna().values)
+    area = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area:
+        assert a in expected_area
+
+    # sanity checks for period values
+    period = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # sanity check cohort size
+    size = ds["cohort_size"].values
+    for s in size:
+        assert s >= min_cohort_size
+
+    if area_by == "adm1_ISO" and period_by == "year":
+
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler gene_cnv_frequencies()
+        # function with the admin1_year cohorts.
+
+        # check consistency with the basic gene CNV frequencies method
+        df_af = ag3.gene_cnv_frequencies(
+            contig=contig,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            drop_invariant=drop_invariant,
+        )
+        df_af = df_af.reset_index()  # make sure all variables available to check
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # check cohorts are consistent
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # check variants are consistent
+        assert ds.dims["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            if v == "variant_label":
+                # this is not present in the dataframe, skip check
+                continue
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
+
+        # check frequencies are consistent
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+@pytest.mark.parametrize("contig", ["2R", "X"])
+def test_gene_cnv_frequencies_advanced__contig(contig):
+    _check_gene_cnv_frequencies_advanced(
+        contig=contig,
+    )
+
+
+@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+def test_gene_cnv_frequencies_advanced__area_by(area_by):
+    _check_gene_cnv_frequencies_advanced(
+        area_by=area_by,
+    )
+
+
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+def test_gene_cnv_frequencies_advanced__period_by(period_by):
+    _check_gene_cnv_frequencies_advanced(
+        period_by=period_by,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-BF-A", ["AG1000G-BF-A", "AG1000G-ML-A"], "3.0"]
+)
+def test_gene_cnv_frequencies_advanced__sample_sets(sample_sets):
+    _check_gene_cnv_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [
+        "taxon in ['gambiae', 'coluzzii'] and country == 'Mali'",
+        "taxon == 'arabiensis' and country in ['Uganda', 'Tanzania']",
+    ],
+)
+def test_gene_cnv_frequencies_advanced__sample_query(sample_query):
+    _check_gene_cnv_frequencies_advanced(
+        sample_query=sample_query,
+    )
+
+
+@pytest.mark.parametrize("min_cohort_size", [10, 100])
+def test_gene_cnv_frequencies_advanced__min_cohort_size(min_cohort_size):
+    _check_gene_cnv_frequencies_advanced(
+        min_cohort_size=min_cohort_size,
+    )
+
+
+@pytest.mark.parametrize(
+    "variant_query",
+    [
+        None,
+        "cnv_type == 'amp' and max_af > 0.05",
+    ],
+)
+def test_gene_cnv_frequencies_advanced__variant_query(variant_query):
+    _check_gene_cnv_frequencies_advanced(
+        variant_query=variant_query,
+    )
+
+
+@pytest.mark.parametrize(
+    "drop_invariant",
+    [
+        False,
+        True,
+    ],
+)
+def test_gene_cnv_frequencies_advanced__drop_invariant(drop_invariant):
+    # noinspection PyTypeChecker
+    _check_gene_cnv_frequencies_advanced(
+        variant_query=None,
+        drop_invariant=drop_invariant,
+    )
+
+
+# TODO test plot_frequencies...() functions
+
+
+def _compare_series_like(actual, expect):
+
+    # compare pandas series-like objects for equality or floating point
+    # similarity, handling missing values appropriately
+
+    # handle object arrays, these don't get nans compared properly
+    t = actual.dtype
+    if t == object:
+        expect = expect.fillna("NA")
+        actual = actual.fillna("NA")
+
+    if t.kind == "f":
+        assert_allclose(actual.values, expect.values)
+    else:
+        assert_array_equal(actual.values, expect.values)
