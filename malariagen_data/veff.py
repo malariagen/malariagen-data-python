@@ -119,7 +119,6 @@ class Annotator(object):
         feature_stop = feature.end
         feature_strand = feature.strand
         for row in variants.itertuples(index=True):
-
             # some parameters
             chrom = feature_contig
             pos = row.position
@@ -162,6 +161,7 @@ class Annotator(object):
             lalt_aa.append(effect.alt_aa)
             laa_change.append(effect.aa_change)
 
+        variants["transcript"] = transcript
         variants["effect"] = leffect
         variants["impact"] = limpact
         variants["ref_codon"] = lref_codon
@@ -175,7 +175,6 @@ class Annotator(object):
 
 
 def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
-
     # convenience
     ref_start = base_effect.ref_start
     ref_stop = base_effect.ref_stop
@@ -213,7 +212,6 @@ def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
 
 
 def _get_cds_effect(ann, base_effect, cds, cdss):
-
     # setup common effect parameters
     base_effect = base_effect._replace(
         cds_id=cds.ID,
@@ -234,7 +232,6 @@ def _get_cds_effect(ann, base_effect, cds, cdss):
 
 
 def _get_within_cds_effect(ann, base_effect, cds, cdss):
-
     # convenience
     chrom = base_effect.chrom
     pos = base_effect.pos
@@ -383,7 +380,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
 
 
 def _get_aa_change(ann, chrom, pos, ref, alt, cds, cdss):
-
     # obtain codon change
     (
         ref_cds_start,
@@ -411,7 +407,6 @@ def _get_aa_change(ann, chrom, pos, ref, alt, cds, cdss):
 
 
 def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
-
     # obtain reference allele coords relative to coding sequence
     ref_start, ref_stop = ann.get_ref_allele_coords(chrom, pos, ref)
     ref_cds_start, ref_cds_stop = _get_coding_position(ref_start, ref_stop, cds, cdss)
@@ -488,7 +483,6 @@ def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
 
 
 def _get_coding_position(ref_start, ref_stop, cds, cdss):
-
     if cds.strand == "+":
 
         # sort exons
@@ -523,7 +517,6 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
 
 
 def _get_within_intron_effect(base_effect, intron):
-
     # convenience
     ref_start = base_effect.ref_start
     ref_stop = base_effect.ref_stop
