@@ -2582,7 +2582,8 @@ class Ag3:
         df,
         index=None,
         max_len=100,
-        y_label=None,
+        x_label="cohorts",
+        y_label="variants",
         colorbar=True,
         width=None,
         height=None,
@@ -2605,6 +2606,8 @@ class Ag3:
             row labels. The column/s must produce a unique index.
         max_len : int, optional
             Displaying large styled dataframes may cause ipython notebooks to crash.
+        x_label : str, optional
+            This is the x-axis label that will be displayed on the heatmap.
         y_label : str, optional
             This is the y-axis label that will be displayed on the heatmap.
         colorbar : bool, optional
@@ -2675,8 +2678,9 @@ class Ag3:
             **kwargs,
         )
 
-        fig.update_xaxes(side="top", tickangle=270, title="cohorts")
-        # set Y axis title if index_name is given
+        fig.update_xaxes(side="top", tickangle=270)
+        if x_label is not None:
+            fig.update_xaxes(title=x_label)
         if y_label is not None:
             fig.update_yaxes(title=y_label)
         fig.update_layout(
@@ -2688,7 +2692,8 @@ class Ag3:
         )
         if not colorbar:
             fig.update(layout_coloraxis_showscale=False)
-        fig.show()
+
+        return fig
 
     def snp_allele_frequencies_advanced(
         self,
