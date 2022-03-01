@@ -1197,18 +1197,12 @@ class Ag3:
         # build a dataframe with the frequency columns
         df_freqs = pd.DataFrame(freq_cols)
 
+        # compute max_af
+        df_max_af = (pd.DataFrame({"max_af": df_freqs.max(axis=1)}),)
+
         # build the final dataframe
         df_snps.reset_index(drop=True, inplace=True)
-        df_snps = pd.concat([df_snps, df_freqs], axis=1)
-
-        # add max allele freq column (concat here also reduces fragmentation)
-        df_snps = pd.concat(
-            [
-                df_snps,
-                pd.DataFrame({"max_af": df_snps[list(freq_cols.keys())].max(axis=1)}),
-            ],
-            axis=1,
-        )
+        df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
 
         # apply site mask if requested
         if site_mask is not None:
@@ -2132,9 +2126,19 @@ class Ag3:
             expected_cn = 2
 
         # setup output dataframe
-        df = df_genes.copy()
+        n_genes = len(df_genes)
+        df = pd.concat([df_genes, df_genes], axis=0)
         # drop columns we don't need
         df.drop(columns=["source", "type", "score", "phase", "Parent"], inplace=True)
+        # add CNV type column
+        df_cnv_type = pd.DataFrame(
+            {
+                "cnv_type": np.array(
+                    (["amp"] * n_genes) + (["del"] * n_genes), dtype=object
+                )
+            }
+        )
+        df = pd.concat([df, df_cnv_type], axis=1)
 
         # setup intermediates
         cn = ds_cnv["CN_mode"].values
@@ -2164,18 +2168,20 @@ class Ag3:
                 del_count_coh = np.sum(is_del_coh, axis=1)
                 amp_freq_coh = amp_count_coh / n_samples
                 del_freq_coh = del_count_coh / n_samples
-                freq_cols[f"frq_{coh}_amp"] = amp_freq_coh
-                freq_cols[f"frq_{coh}_del"] = del_freq_coh
+                freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
 
         # build a dataframe with the frequency columns
         df_freqs = pd.DataFrame(freq_cols)
 
+        # compute max_af
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+
         # build the final dataframe
         df.reset_index(drop=True, inplace=True)
-        df = pd.concat([df, df_freqs], axis=1)
+        df = pd.concat([df, df_freqs, df_max_af], axis=1)
 
         # set gene ID as index for convenience
-        df.set_index(["ID", "Name"], inplace=True)
+        df.set_index(["ID", "Name", "cnv_type"], inplace=True)
 
         return df
 
