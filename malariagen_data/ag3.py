@@ -2127,9 +2127,22 @@ class Ag3:
 
         # setup output dataframe
         n_genes = len(df_genes)
-        df = pd.concat([df_genes, df_genes], axis=0)
+        df = pd.concat([df_genes, df_genes], axis=0).reset_index(drop=True)
+
         # drop columns we don't need
         df.drop(columns=["source", "type", "score", "phase", "Parent"], inplace=True)
+
+        # rename some columns
+        df.rename(
+            columns={
+                "ID": "gene_id",
+                "Name": "gene_name",
+                "strand": "gene_strand",
+                "description": "gene_description",
+            },
+            inplace=True,
+        )
+
         # add CNV type column
         df_cnv_type = pd.DataFrame(
             {
@@ -2146,7 +2159,6 @@ class Ag3:
         is_del = (cn >= 0) & (cn < expected_cn)
 
         # set up cohort dict
-        # build coh dict
         coh_dict = self._prep_cohorts_arg(
             cohorts=cohorts,
             sample_sets=sample_sets,
@@ -2173,15 +2185,23 @@ class Ag3:
         # build a dataframe with the frequency columns
         df_freqs = pd.DataFrame(freq_cols)
 
-        # compute max_af
-        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+        # compute max_af and additional columns
+        df_extras = pd.DataFrame(
+            {
+                "max_af": df_freqs.max(axis=1),
+                "windows": np.concatenate(
+                    [ds_cnv["gene_windows"].values, ds_cnv["gene_windows"].values]
+                ),
+            }
+        )
 
         # build the final dataframe
         df.reset_index(drop=True, inplace=True)
-        df = pd.concat([df, df_freqs, df_max_af], axis=1)
+        df = pd.concat([df, df_freqs, df_extras], axis=1)
+        df.sort_values(["contig", "start", "cnv_type"], inplace=True)
 
-        # set gene ID as index for convenience
-        df.set_index(["ID", "Name", "cnv_type"], inplace=True)
+        # set index for convenience
+        df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
 
         return df
 

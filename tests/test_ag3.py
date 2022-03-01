@@ -1265,60 +1265,71 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
 )
 def test_gene_cnv_frequencies(contig, cohorts):
 
-    universal_fields = ["contig", "start", "end", "strand", "description"]
+    universal_fields = [
+        "contig",
+        "start",
+        "end",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+    ]
     ag3 = setup_ag3()
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
-    df = ag3.gene_cnv_frequencies(
+    df_cnv_frq = ag3.gene_cnv_frequencies(
         contig=contig, sample_sets="3.0", cohorts=cohorts, min_cohort_size=0
     )
 
-    assert isinstance(df, pd.DataFrame)
-    assert len(df) == len(df_genes)
-    assert df.index.names == ["ID", "Name"]
+    assert isinstance(df_cnv_frq, pd.DataFrame)
+    assert len(df_cnv_frq) == len(df_genes) * 2
+    assert df_cnv_frq.index.names == ["gene_id", "gene_name", "cnv_type"]
 
     # sanity checks
-    cohort_labels = None
+    frq_cols = None
     if isinstance(cohorts, dict):
-        cohort_labels = ["frq_" + s for s in cohorts.keys()]
+        frq_cols = ["frq_" + s for s in cohorts.keys()]
     if isinstance(cohorts, str):
         df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
         coh_nm = "cohort_" + cohorts
-        cohort_labels = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
+        frq_cols = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
 
-    suffixes = ["_amp", "_del"]
-    cnv_freq_cols = [a + b for a in cohort_labels for b in suffixes]
-
-    for f in cnv_freq_cols:
-        x = df[f].values
+    # check frequencies are within sensible range
+    for f in frq_cols:
+        x = df_cnv_frq[f].values
         assert np.all(x >= 0)
         assert np.all(x <= 1)
-    cnv_freq_col_pairs = list(zip(cnv_freq_cols[::2], cnv_freq_cols[1::2]))
-    for fa, fd in cnv_freq_col_pairs:
-        a = df[fa].values
-        d = df[fd].values
-        x = a + d
+
+    # check amp and del frequencies are within sensible range
+    df_frq_amp = df_cnv_frq[frq_cols].xs("amp", level="cnv_type")
+    df_frq_del = df_cnv_frq[frq_cols].xs("del", level="cnv_type")
+    df_frq_sum = df_frq_amp + df_frq_del
+    for f in frq_cols:
+        x = df_frq_sum[f].values
         assert np.all(x >= 0)
         assert np.all(x <= 1)
-    expected_fields = universal_fields + cnv_freq_cols
-    assert df.columns.tolist() == expected_fields
+    expected_fields = universal_fields + frq_cols
+    assert sorted(df_cnv_frq.columns.tolist()) == sorted(expected_fields)
 
 
 def test_gene_cnv_frequencies__query():
+
+    contig = "3L"
 
     expected_columns = [
         "contig",
         "start",
         "end",
-        "strand",
-        "description",
-        "frq_AO-LUA_colu_2009_amp",
-        "frq_AO-LUA_colu_2009_del",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+        "frq_AO-LUA_colu_2009",
     ]
 
     ag3 = setup_ag3()
     df = ag3.gene_cnv_frequencies(
-        contig="3L",
+        contig=contig,
         sample_sets="3.0",
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1327,7 +1338,8 @@ def test_gene_cnv_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    assert df.shape == (2211, 7)
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    assert len(df) == len(df_genes) * 2
 
 
 @pytest.mark.parametrize(
