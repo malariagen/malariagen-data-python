@@ -1445,11 +1445,6 @@ class Ag3:
         # create a dataset
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
-        # # handle region
-        # if region.start or region.end:
-        #     loc_region = locate_region(region, pos_z)
-        #     ds = ds.isel(variants=loc_region)
-
         return ds
 
     def snp_calls(
@@ -1514,14 +1509,7 @@ class Ag3:
                 ly.append(y)
 
             # concatenate data from multiple sample sets
-            x = xarray_concat(
-                ly,
-                dim=DIM_SAMPLE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             # handle region, do this only once - optimisation
             if r.start or r.end:
@@ -1532,14 +1520,7 @@ class Ag3:
             lx.append(x)
 
         # concatenate data from multiple regions
-        ds = xarray_concat(
-            lx,
-            dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         # apply site filters
         if site_mask is not None:
@@ -1680,38 +1661,29 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-
         if isinstance(contig, str):
             contig = [contig]
 
         # concatenate
-        ds = xarray.concat(
-            [
-                xarray.concat(
-                    [
-                        self._cnv_hmm_dataset(
-                            contig=c,
-                            sample_set=s,
-                            inline_array=inline_array,
-                            chunks=chunks,
-                        )
-                        for s in sample_sets
-                    ],
-                    dim=DIM_SAMPLE,
-                    data_vars="minimal",
-                    coords="minimal",
-                    compat="override",
-                    join="override",
+        lx = []
+        for c in contig:
+
+            ly = []
+            for s in sample_sets:
+                y = self._cnv_hmm_dataset(
+                    contig=c,
+                    sample_set=s,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
-                for c in contig
-            ],
-            dim="variants",
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+                ly.append(y)
+
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            lx.append(x)
+
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -1746,36 +1718,15 @@ class Ag3:
             self._cache_cnv_coverage_calls[key] = root
         return root
 
-    def cnv_coverage_calls(
+    def _cnv_coverage_calls_dataset(
         self,
+        *,
         contig,
         sample_set,
         analysis,
-        inline_array=True,
-        chunks="native",
+        inline_array,
+        chunks,
     ):
-        """Access CNV HMM data from genome-wide CNV discovery and filtering.
-
-        Parameters
-        ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
-        sample_set : str
-            Sample set identifier.
-        analysis : {'gamb_colu', 'arab', 'crosses'}
-            Name of CNV analysis.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of CNV alleles and genotypes.
-
-        """
 
         coords = dict()
         data_vars = dict()
@@ -1850,6 +1801,61 @@ class Ag3:
 
         # create a dataset
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def cnv_coverage_calls(
+        self,
+        contig,
+        sample_set,
+        analysis,
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access CNV HMM data from genome-wide CNV discovery and filtering.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        sample_set : str
+            Sample set identifier.
+        analysis : {'gamb_colu', 'arab', 'crosses'}
+            Name of CNV analysis.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset of CNV alleles and genotypes.
+
+        """
+
+        # N.B., we cannot concatenate multiple sample sets here, because
+        # different sample sets may have different sets of alleles, as the
+        # calling is done independently in different sample sets.
+
+        # normalise parameters
+        if isinstance(contig, str):
+            contig = [contig]
+
+        # concatenate
+        lx = []
+        for c in contig:
+            x = self._cnv_coverage_calls_dataset(
+                contig=c,
+                sample_set=sample_set,
+                analysis=analysis,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            lx.append(x)
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -1983,38 +1989,29 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-
         if isinstance(contig, str):
             contig = [contig]
 
         # concatenate
-        ds = xarray.concat(
-            [
-                xarray.concat(
-                    [
-                        self._cnv_discordant_read_calls_dataset(
-                            contig=c,
-                            sample_set=s,
-                            inline_array=inline_array,
-                            chunks=chunks,
-                        )
-                        for s in sample_sets
-                    ],
-                    dim=DIM_SAMPLE,
-                    data_vars="minimal",
-                    coords="minimal",
-                    compat="override",
-                    join="override",
+        lx = []
+        for c in contig:
+
+            ly = []
+            for s in sample_sets:
+                y = self._cnv_discordant_read_calls_dataset(
+                    contig=c,
+                    sample_set=s,
+                    inline_array=inline_array,
+                    chunks=chunks,
                 )
-                for c in contig
-            ],
-            dim="variants",
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+                ly.append(y)
+
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            lx.append(x)
+
+        ds = xarray_concat(lx, dim="variants")
 
         return ds
 
@@ -2137,7 +2134,7 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of CNV amplification (amp) and deletion (del) frequencies in the specified cohorts, 
+            A dataframe of CNV amplification (amp) and deletion (del) frequencies in the specified cohorts,
             one row per gene and CNV type (amp/del).
 
         Notes
@@ -2443,14 +2440,7 @@ class Ag3:
                 return None
 
             # concatenate data from multiple sample sets
-            x = xarray_concat(
-                ly,
-                dim=DIM_SAMPLE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             # handle region
             if r.start or r.end:
@@ -2461,14 +2451,7 @@ class Ag3:
             lx.append(x)
 
         # concatenate data from multiple regions
-        ds = xarray_concat(
-            lx,
-            dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
