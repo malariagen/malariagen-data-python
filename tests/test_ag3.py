@@ -1346,10 +1346,7 @@ def test_haplotypes(sample_sets, region, analysis):
     if analysis == "arab":
         sample_query = "aim_species == 'arabiensis' and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu":
-        sample_query = """
-            aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and
-            sample_set != 'AG1000G-X'
-        """
+        sample_query = "aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and sample_set != 'AG1000G-X'"
     elif analysis == "gamb_colu_arab":
         sample_query = "sample_set != 'AG1000G-X'"
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
