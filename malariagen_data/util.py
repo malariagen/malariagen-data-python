@@ -383,8 +383,24 @@ def locate_region(region, pos):
     return loc_region
 
 
-def xarray_concat(datasets, **kwargs):
-    if len(datasets) == 0:
+def xarray_concat(
+    datasets,
+    dim,
+    data_vars="minimal",
+    coords="minimal",
+    compat="override",
+    join="override",
+    **kwargs,
+):
+    if len(datasets) == 1:
         return datasets[0]
     else:
-        return xr.concat(datasets, **kwargs)
+        return xr.concat(
+            datasets,
+            dim=dim,
+            data_vars=data_vars,
+            coords=coords,
+            compat=compat,
+            join=join,
+            **kwargs,
+        )

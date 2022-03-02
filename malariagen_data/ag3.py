@@ -62,8 +62,9 @@ AA_CHANGE_QUERY = (
 
 
 def _release_to_path(release):
-    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
-    in the public API, and map these internally into storage path segments."""
+    """Compatibility function, allows us to use release identifiers like "3.0"
+    and "3.1" in the public API, and map these internally into storage path
+    segments."""
     if release == "3.0":
         # special case
         return "v3"
@@ -74,8 +75,9 @@ def _release_to_path(release):
 
 
 def _path_to_release(path):
-    """Compatibility function, allows us to use release identifiers like "3.0" and "3.1"
-    in the public API, and map these internally into storage path segments."""
+    """Compatibility function, allows us to use release identifiers like "3.0"
+    and "3.1" in the public API, and map these internally into storage path
+    segments."""
     if path == "v3":
         return "3.0"
     elif path.startswith("v3."):
@@ -90,8 +92,9 @@ class Ag3:
     Parameters
     ----------
     url : str
-        Base path to data. Give "gs://vo_agam_release/" to use Google Cloud Storage,
-        or a local path on your file system if data have been downloaded.
+        Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
+        Storage, or a local path on your file system if data have been
+        downloaded.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -183,7 +186,8 @@ class Ag3:
 
     @property
     def releases(self):
-        """The releases for which data are available at the given storage location."""
+        """The releases for which data are available at the given storage
+        location."""
         if self._cache_releases is None:
             if self._pre:
                 # Here we discover which releases are available, by listing the storage
@@ -222,7 +226,8 @@ class Ag3:
         Parameters
         ----------
         release : str, optional
-            Release identifier. Give "3.0" to access the Ag1000G phase 3 data release.
+            Release identifier. Give "3.0" to access the Ag1000G phase 3 data
+            release.
 
         Returns
         -------
@@ -373,9 +378,9 @@ class Ag3:
             return df
 
     def _prep_sample_sets_arg(self, *, sample_sets):
-        """Common handling for the `sample_sets` parameter. For convenience, we allow this
-        to be a single sample set, or a list of sample sets, or a release identifier, or a
-        list of release identifiers."""
+        """Common handling for the `sample_sets` parameter. For convenience, we
+        allow this to be a single sample set, or a list of sample sets, or a
+        release identifier, or a list of release identifiers."""
 
         if sample_sets is None:
             # all available sample sets
@@ -420,16 +425,17 @@ class Ag3:
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         analysis : {"aim_20200422", "pca_20200422"}
             Species calling analysis.
 
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of species calls for one or more sample sets, one row per sample.
+            A dataframe of species calls for one or more sample sets, one row
+            per sample.
 
         """
 
@@ -469,14 +475,14 @@ class Ag3:
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         cohorts_analysis : str, optional
-            Cohort analysis identifier (date of analysis), optional,  default is the latest version.
-            Includes sample cohort calls in metadata.
+            Cohort analysis identifier (date of analysis), optional,  default is
+            the latest version. Includes sample cohort calls in metadata.
 
         Returns
         -------
@@ -559,10 +565,11 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
         field : str, optional
@@ -572,8 +579,8 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -649,10 +656,11 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         field : {"POS", "REF", "ALT"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -662,15 +670,14 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
         d : dask.array.Array
-            An array of either SNP positions, reference alleles or alternate alleles.
-
-
+            An array of either SNP positions, reference alleles or alternate
+            alleles.
 
         """
 
@@ -756,14 +763,15 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -773,13 +781,14 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
         d : dask.array.Array
-            An array of either genotypes (GT), genotype quality (GQ), allele depths (AD) or mapping quality (MQ) values.
+            An array of either genotypes (GT), genotype quality (GQ), allele
+            depths (AD) or mapping quality (MQ) values.
 
         """
 
@@ -850,19 +859,20 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`.
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
         d : dask.array.Array
-            An array of nucleotides giving the reference genome sequence for the given contig.
+            An array of nucleotides giving the reference genome sequence for the
+            given contig.
 
         """
         genome = self.open_genome()
@@ -888,7 +898,8 @@ class Ag3:
         Parameters
         ----------
         attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all attributes.
+            Attribute keys to unpack into columns. Provide "*" to unpack all
+            attributes.
 
         Returns
         -------
@@ -921,9 +932,9 @@ class Ag3:
         Parameters
         ----------
         region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`.
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str, optional
@@ -1040,7 +1051,8 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of all possible SNP variants and their effects, one row per variant.
+            A dataframe of all possible SNP variants and their effects, one row
+            per variant.
 
         """
 
@@ -1445,11 +1457,6 @@ class Ag3:
         # create a dataset
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
-        # # handle region
-        # if region.start or region.end:
-        #     loc_region = locate_region(region, pos_z)
-        #     ds = ds.isel(variants=loc_region)
-
         return ds
 
     def snp_calls(
@@ -1514,14 +1521,7 @@ class Ag3:
                 ly.append(y)
 
             # concatenate data from multiple sample sets
-            x = xarray_concat(
-                ly,
-                dim=DIM_SAMPLE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             # handle region, do this only once - optimisation
             if r.start or r.end:
@@ -1532,14 +1532,7 @@ class Ag3:
             lx.append(x)
 
         # concatenate data from multiple regions
-        ds = xarray_concat(
-            lx,
-            dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         # apply site filters
         if site_mask is not None:
@@ -1599,6 +1592,7 @@ class Ag3:
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
+
         contig_index = self.contigs.index(contig)
         coords["variant_contig"] = (
             [DIM_VARIANT],
@@ -1660,7 +1654,8 @@ class Ag3:
         Parameters
         ----------
         contig : str
-            Chromosome arm, e.g., "3R".
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1678,26 +1673,29 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        if isinstance(contig, str):
+            contig = [contig]
 
-        # concatenate sample sets along samples dimension
-        datasets = [
-            self._cnv_hmm_dataset(
-                contig=contig,
-                sample_set=s,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            for s in sample_sets
-        ]
-        ds = xarray_concat(
-            datasets,
-            dim=DIM_SAMPLE,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+        # concatenate
+        lx = []
+        for c in contig:
+
+            ly = []
+            for s in sample_sets:
+                y = self._cnv_hmm_dataset(
+                    contig=c,
+                    sample_set=s,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                ly.append(y)
+
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            lx.append(x)
+
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -1732,36 +1730,15 @@ class Ag3:
             self._cache_cnv_coverage_calls[key] = root
         return root
 
-    def cnv_coverage_calls(
+    def _cnv_coverage_calls_dataset(
         self,
+        *,
         contig,
         sample_set,
         analysis,
-        inline_array=True,
-        chunks="native",
+        inline_array,
+        chunks,
     ):
-        """Access CNV HMM data from genome-wide CNV discovery and filtering.
-
-        Parameters
-        ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
-        sample_set : str
-            Sample set identifier.
-        analysis : {'gamb_colu', 'arab', 'crosses'}
-            Name of CNV analysis.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of CNV alleles and genotypes.
-
-        """
 
         coords = dict()
         data_vars = dict()
@@ -1836,6 +1813,61 @@ class Ag3:
 
         # create a dataset
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def cnv_coverage_calls(
+        self,
+        contig,
+        sample_set,
+        analysis,
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access CNV HMM data from genome-wide CNV discovery and filtering.
+
+        Parameters
+        ----------
+        contig : str
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        sample_set : str
+            Sample set identifier.
+        analysis : {'gamb_colu', 'arab', 'crosses'}
+            Name of CNV analysis.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
+            Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset of CNV alleles and genotypes.
+
+        """
+
+        # N.B., we cannot concatenate multiple sample sets here, because
+        # different sample sets may have different sets of alleles, as the
+        # calling is done independently in different sample sets.
+
+        # normalise parameters
+        if isinstance(contig, str):
+            contig = [contig]
+
+        # concatenate
+        lx = []
+        for c in contig:
+            x = self._cnv_coverage_calls_dataset(
+                contig=c,
+                sample_set=sample_set,
+                analysis=analysis,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            lx.append(x)
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -1950,7 +1982,8 @@ class Ag3:
         Parameters
         ----------
         contig : str
-            Chromosome arm, e.g., "3R".
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1968,26 +2001,29 @@ class Ag3:
 
         """
 
+        # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        if isinstance(contig, str):
+            contig = [contig]
 
-        # concatenate sample sets
-        datasets = [
-            self._cnv_discordant_read_calls_dataset(
-                contig=contig,
-                sample_set=s,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            for s in sample_sets
-        ]
-        ds = xarray_concat(
-            datasets,
-            dim=DIM_SAMPLE,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+        # concatenate
+        lx = []
+        for c in contig:
+
+            ly = []
+            for s in sample_sets:
+                y = self._cnv_discordant_read_calls_dataset(
+                    contig=c,
+                    sample_set=s,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                ly.append(y)
+
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            lx.append(x)
+
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -2416,14 +2452,7 @@ class Ag3:
                 return None
 
             # concatenate data from multiple sample sets
-            x = xarray_concat(
-                ly,
-                dim=DIM_SAMPLE,
-                data_vars="minimal",
-                coords="minimal",
-                compat="override",
-                join="override",
-            )
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             # handle region
             if r.start or r.end:
@@ -2434,14 +2463,7 @@ class Ag3:
             lx.append(x)
 
         # concatenate data from multiple regions
-        ds = xarray_concat(
-            lx,
-            dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
-        )
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 

@@ -881,7 +881,7 @@ def test_snp_allele_frequencies__query():
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
 )
-@pytest.mark.parametrize("contig", ["3L", "X"])
+@pytest.mark.parametrize("contig", ["2R", ["3L", "X"]])
 def test_cnv_hmm(sample_sets, contig):
     ag3 = setup_ag3()
     ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
@@ -909,7 +909,15 @@ def test_cnv_hmm(sample_sets, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check dim lengths
-    n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
+    if isinstance(contig, str):
+        n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
+    elif isinstance(contig, (tuple, list)):
+        n_variants = sum(
+            [1 + len(ag3.genome_sequence(region=c)) // 300 for c in contig]
+        )
+    else:
+        raise NotImplementedError
+
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["variants"] == n_variants
@@ -941,7 +949,7 @@ def test_cnv_hmm(sample_sets, contig):
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
-    # check can setup computations
+    # check can set up computations
     d1 = ds["variant_position"] > 10_000
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_CN"].sum(axis=1)
@@ -950,7 +958,7 @@ def test_cnv_hmm(sample_sets, contig):
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])
 @pytest.mark.parametrize("analysis", ["gamb_colu", "arab", "crosses"])
-@pytest.mark.parametrize("contig", ["3L", "X"])
+@pytest.mark.parametrize("contig", ["3L", "X", ["2R", "2L"]])
 def test_cnv_coverage_calls(sample_set, analysis, contig):
 
     ag3 = setup_ag3()
@@ -1016,7 +1024,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
-    # check can setup computations
+    # check can set up computations
     d1 = ds["variant_position"] > 10_000
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_genotype"].sum(axis=1)
@@ -1034,7 +1042,7 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         None,
     ],
 )
-@pytest.mark.parametrize("contig", ["2R", "3R", "X"])
+@pytest.mark.parametrize("contig", ["2R", "3R", "X", ["2R", "3R"]])
 def test_cnv_discordant_read_calls(sample_sets, contig):
 
     ag3 = setup_ag3()
@@ -1075,12 +1083,15 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
 
-    if contig == "2R":
-        assert ds.dims["variants"] == 40
-    if contig == "3R":
-        assert ds.dims["variants"] == 29
-    if contig == "X":
-        assert ds.dims["variants"] == 29
+    expected_variants = {"2R": 40, "3R": 29, "X": 29}
+    if isinstance(contig, str):
+        n_variants = expected_variants[contig]
+    elif isinstance(contig, (list, tuple)):
+        n_variants = sum([expected_variants[c] for c in contig])
+    else:
+        raise NotImplementedError
+
+    assert ds.dims["variants"] == n_variants
 
     # check sample IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
