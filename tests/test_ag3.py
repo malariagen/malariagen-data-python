@@ -1294,8 +1294,9 @@ def test_gene_cnv_frequencies(contig, cohorts):
         contig=contig,
         sample_sets="3.0",
         cohorts=cohorts,
-        min_cohort_size=0,
+        min_cohort_size=1,
         drop_invariant=False,
+        max_coverage_variance=None,
     )
 
     assert isinstance(df_cnv_frq, pd.DataFrame)
@@ -1314,8 +1315,8 @@ def test_gene_cnv_frequencies(contig, cohorts):
     # check frequencies are within sensible range
     for f in frq_cols:
         x = df_cnv_frq[f].values
-        assert np.all(x >= 0)
-        assert np.all(x <= 1)
+        assert np.all(x >= 0), f
+        assert np.all(x <= 1), f
 
     # check amp and del frequencies are within sensible range
     df_frq_amp = df_cnv_frq[frq_cols].xs("amp", level="cnv_type")

@@ -1170,6 +1170,9 @@ class Ag3:
 
         """
 
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
+
         # handle sample_query
         loc_samples = None
         if sample_query is not None:
@@ -2133,22 +2136,22 @@ class Ag3:
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
+            taxon == 'coluzzii'"}`.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
         min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
-            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+            Minimum cohort size, below which cohorts are dropped.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
             If True, drop any rows where there is no evidence of variation.
         max_coverage_variance : float, optional
@@ -2161,6 +2164,9 @@ class Ag3:
             one row per gene and CNV type (amp/del).
 
         """
+
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
 
         # load sample metadata
         df_samples = self.sample_metadata(
@@ -2824,6 +2830,9 @@ class Ag3:
 
         """
 
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
+
         # load sample metadata
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -3209,6 +3218,9 @@ class Ag3:
             calculations.
 
         """
+
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
 
         # load sample metadata
         df_samples = self.sample_metadata(
@@ -3832,3 +3844,14 @@ def _build_cohorts_from_sample_grouping(group_samples_by_cohort, min_cohort_size
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
 
     return df_cohorts
+
+
+def _check_param_min_cohort_size(min_cohort_size):
+    if not isinstance(min_cohort_size, int):
+        raise TypeError(
+            f"Type of parameter min_cohort_size must be int; found {type(min_cohort_size)}."
+        )
+    if min_cohort_size < 1:
+        raise ValueError(
+            f"Value of parameter min_cohort_size must be at least 1; found {min_cohort_size}."
+        )
