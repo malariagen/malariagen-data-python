@@ -174,8 +174,8 @@ def test_sample_metadata():
     assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
     pca_cols = (
-        "pca_species_PC1",
-        "pca_species_PC2",
+        "pca_species_pc1",
+        "pca_species_pc2",
         "pca_species_gambcolu_arabiensis",
         "pca_species_gambiae_coluzzii",
         "pca_species",
@@ -193,10 +193,10 @@ def test_sample_metadata():
     )
 
     cohort_cols = (
-        "country_ISO",
-        "adm1_name",
-        "adm1_ISO",
-        "adm2_name",
+        "country_iso",
+        "admin1_name",
+        "admin1_iso",
+        "admin2_name",
         "taxon",
         "cohort_admin1_year",
         "cohort_admin1_month",
@@ -1572,10 +1572,10 @@ def test_haplotypes(sample_sets, region, analysis):
 def test_sample_cohorts(sample_sets):
     expected_cols = (
         "sample_id",
-        "country_ISO",
-        "adm1_name",
-        "adm1_ISO",
-        "adm2_name",
+        "country_iso",
+        "admin1_name",
+        "admin1_iso",
+        "admin2_name",
         "taxon",
         "cohort_admin1_year",
         "cohort_admin1_month",
@@ -1700,7 +1700,7 @@ def test_aa_allele_frequencies__dup_samples():
 # noinspection PyDefaultArgument
 def _check_snp_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
-    area_by="adm1_ISO",
+    area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
@@ -1814,7 +1814,7 @@ def _check_snp_allele_frequencies_advanced(
     for s in size:
         assert s >= min_cohort_size
 
-    if area_by == "adm1_ISO" and period_by == "year" and nobs_mode == "called":
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
 
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
@@ -1861,7 +1861,7 @@ def _check_snp_allele_frequencies_advanced(
 # noinspection PyDefaultArgument
 def _check_aa_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
-    area_by="adm1_ISO",
+    area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
@@ -1968,7 +1968,7 @@ def _check_aa_allele_frequencies_advanced(
     for s in size:
         assert s >= min_cohort_size
 
-    if area_by == "adm1_ISO" and period_by == "year" and nobs_mode == "called":
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
 
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
@@ -2027,7 +2027,7 @@ def test_allele_frequencies_advanced__transcript(transcript):
     )
 
 
-@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
 def test_allele_frequencies_advanced__area_by(area_by):
     _check_snp_allele_frequencies_advanced(
         area_by=area_by,
@@ -2114,7 +2114,7 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
 # noinspection PyDefaultArgument
 def _check_gene_cnv_frequencies_advanced(
     contig="2L",
-    area_by="adm1_ISO",
+    area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
@@ -2222,7 +2222,7 @@ def _check_gene_cnv_frequencies_advanced(
     for s in size:
         assert s >= min_cohort_size
 
-    if area_by == "adm1_ISO" and period_by == "year":
+    if area_by == "admin1_iso" and period_by == "year":
 
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
@@ -2275,7 +2275,7 @@ def test_gene_cnv_frequencies_advanced__contig(contig):
     )
 
 
-@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
 def test_gene_cnv_frequencies_advanced__area_by(area_by):
     _check_gene_cnv_frequencies_advanced(
         area_by=area_by,
@@ -2362,7 +2362,7 @@ def test_snp_allele_frequencies_advanced__dup_samples():
     with pytest.raises(ValueError):
         ag3.snp_allele_frequencies_advanced(
             transcript="AGAP004707-RD",
-            area_by="adm1_ISO",
+            area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
@@ -2373,7 +2373,7 @@ def test_aa_allele_frequencies_advanced__dup_samples():
     with pytest.raises(ValueError):
         ag3.aa_allele_frequencies_advanced(
             transcript="AGAP004707-RD",
-            area_by="adm1_ISO",
+            area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
@@ -2384,7 +2384,7 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
     with pytest.raises(ValueError):
         ag3.gene_cnv_frequencies_advanced(
             contig="3L",
-            area_by="adm1_ISO",
+            area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )

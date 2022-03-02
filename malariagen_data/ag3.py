@@ -299,6 +299,9 @@ class Ag3:
             with self._fs.open(path) as f:
                 df = pd.read_csv(f, na_values="")
 
+            # ensure all column names are lower case
+            df.columns = [c.lower() for c in df.columns]
+
             # add a couple of columns for convenience
             df["sample_set"] = sample_set
             df["release"] = release
@@ -377,6 +380,9 @@ class Ag3:
                         "species": "pca_species",
                     }
                 )
+
+            # ensure all column names are lower case
+            df.columns = [c.lower() for c in df.columns]
 
             self._cache_species_calls[key] = df
             return df
@@ -2512,6 +2518,19 @@ class Ag3:
             path = f"{path_prefix}/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pd.read_csv(f, na_values="")
+
+            # ensure all column names are lower case
+            df.columns = [c.lower() for c in df.columns]
+
+            # rename some columns for consistent naming
+            df.rename(
+                columns={
+                    "adm1_iso": "admin1_iso",
+                    "adm1_name": "admin1_name",
+                    "adm2_name": "admin2_name",
+                },
+                inplace=True,
+            )
 
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
