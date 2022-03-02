@@ -1170,6 +1170,9 @@ class Ag3:
 
         """
 
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
+
         # handle sample_query
         loc_samples = None
         if sample_query is not None:
@@ -2097,6 +2100,14 @@ class Ag3:
                 "gene_strand": (["genes"], df_genes["strand"].values),
                 "CN_mode": (["genes", "samples"], modes),
                 "CN_mode_count": (["genes", "samples"], counts),
+                "sample_coverage_variance": (
+                    ["samples"],
+                    ds_hmm["sample_coverage_variance"].values,
+                ),
+                "sample_is_high_variance": (
+                    ["samples"],
+                    ds_hmm["sample_is_high_variance"].values,
+                ),
             },
         )
 
@@ -2112,6 +2123,7 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
+        max_coverage_variance=0.2,
     ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
@@ -2124,24 +2136,26 @@ class Ag3:
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
+            taxon == 'coluzzii'"}`.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
         min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
-            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+            Minimum cohort size, below which cohorts are dropped.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
             If True, drop any rows where there is no evidence of variation.
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
 
         Returns
         -------
@@ -2149,35 +2163,41 @@ class Ag3:
             A dataframe of CNV amplification (amp) and deletion (del) frequencies in the specified cohorts,
             one row per gene and CNV type (amp/del).
 
-        Notes
-        -----
-        NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-        these can be removed from the output dataframe using pandas df.dropna(axis='columns').
-
         """
 
-        # handle sample_query
-        loc_samples = None
-        if sample_query is not None:
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                cohorts_analysis=cohorts_analysis,
-                species_analysis=species_analysis,
-            )
-            loc_samples = df_samples.eval(sample_query).values
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
+
+        # load sample metadata
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            cohorts_analysis=cohorts_analysis,
+            species_analysis=species_analysis,
+        )
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
 
-        # get sample metadata
-        df_meta = self.sample_metadata(sample_sets=sample_sets)
+        # handle sample_query
+        loc_samples = None
+        if sample_query is not None:
+            loc_samples = df_samples.eval(sample_query).values
+
+        # handle filtering samples by coverage variance
+        if max_coverage_variance is not None:
+            cov_var = ds_cnv["sample_coverage_variance"].values
+            loc_pass_samples = cov_var <= max_coverage_variance
+            if loc_samples is not None:
+                loc_samples = loc_samples & loc_pass_samples
+            else:
+                loc_samples = loc_pass_samples
 
         # get genes
         df_genes = self.geneset().query(f"type == 'gene' and contig == '{contig}'")
 
         # figure out expected copy number
         if contig == "X":
-            is_male = (df_meta["sex_call"] == "M").values
+            is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
             expected_cn = 2
@@ -2210,7 +2230,7 @@ class Ag3:
         )
         df = pd.concat([df, df_cnv_type], axis=1)
 
-        # setup intermediates
+        # set up intermediates
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
@@ -2810,27 +2830,14 @@ class Ag3:
 
         """
 
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
+
         # load sample metadata
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             species_analysis=species_analysis,
             cohorts_analysis=cohorts_analysis,
-        )
-
-        # prepare sample metadata for cohort grouping
-        loc_samples, df_samples = _prep_samples_for_cohort_grouping(
-            df_samples,
-            sample_query=sample_query,
-            area_by=area_by,
-            period_by=period_by,
-        )
-
-        # group samples to make cohorts
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
-
-        # build cohorts dataframe
-        df_cohorts = _build_cohorts_from_sample_grouping(
-            group_samples_by_cohort, min_cohort_size
         )
 
         # access SNP calls
@@ -2844,9 +2851,30 @@ class Ag3:
         # access genotypes
         gt = ds_snps["call_genotype"].data
 
-        # apply sample query
+        # handle sample query
+        loc_samples = None
         if sample_query is not None:
+            loc_samples = df_samples.eval(sample_query).values
+
+        # filter samples
+        if loc_samples is not None:
+            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
             gt = da.compress(loc_samples, gt, axis=1)
+
+        # prepare sample metadata for cohort grouping
+        df_samples = _prep_samples_for_cohort_grouping(
+            df_samples=df_samples,
+            area_by=area_by,
+            period_by=period_by,
+        )
+
+        # group samples to make cohorts
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+
+        # build cohorts dataframe
+        df_cohorts = _build_cohorts_from_sample_grouping(
+            group_samples_by_cohort, min_cohort_size
+        )
 
         # bring genotypes into memory
         gt = gt.compute()
@@ -3138,6 +3166,7 @@ class Ag3:
         min_cohort_size=10,
         variant_query=None,
         drop_invariant=True,
+        max_coverage_variance=0.2,
         ci_method="wilson",
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -3167,6 +3196,8 @@ class Ag3:
         variant_query : str, optional
         drop_invariant : bool, optional
             If True, drop any rows where there is no evidence of variation.
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
@@ -3188,6 +3219,9 @@ class Ag3:
 
         """
 
+        # check parameters
+        _check_param_min_cohort_size(min_cohort_size)
+
         # load sample metadata
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -3195,10 +3229,31 @@ class Ag3:
             cohorts_analysis=cohorts_analysis,
         )
 
+        # access gene CNV calls
+        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+
+        # handle sample query
+        loc_samples = None
+        if sample_query is not None:
+            loc_samples = df_samples.eval(sample_query).values
+
+        # handle filtering samples by coverage variance
+        if max_coverage_variance is not None:
+            cov_var = ds_cnv["sample_coverage_variance"].values
+            loc_pass_samples = cov_var <= max_coverage_variance
+            if loc_samples is not None:
+                loc_samples = loc_samples & loc_pass_samples
+            else:
+                loc_samples = loc_pass_samples
+
+        # filter samples
+        if loc_samples is not None:
+            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
+            ds_cnv = ds_cnv.isel(samples=loc_samples)
+
         # prepare sample metadata for cohort grouping
-        loc_samples, df_samples = _prep_samples_for_cohort_grouping(
-            df_samples,
-            sample_query=sample_query,
+        df_samples = _prep_samples_for_cohort_grouping(
+            df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
         )
@@ -3211,13 +3266,6 @@ class Ag3:
             group_samples_by_cohort, min_cohort_size
         )
 
-        # access gene CNV calls
-        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
-
-        # apply sample query
-        if sample_query is not None:
-            ds_cnv = ds_cnv.isel(samples=loc_samples)
-
         # figure out expected copy number
         if contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
@@ -3225,12 +3273,12 @@ class Ag3:
         else:
             expected_cn = 2
 
-        # setup intermediates
+        # set up intermediates
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
 
-        # setup main event variables
+        # set up main event variables
         n_genes = ds_cnv.dims["genes"]
         n_variants, n_cohorts = n_genes * 2, len(df_cohorts)
         count = np.zeros((n_variants, n_cohorts), dtype=int)
@@ -3734,13 +3782,7 @@ def _add_frequency_ci(ds, ci_method):
         ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
 
 
-def _prep_samples_for_cohort_grouping(df_samples, sample_query, area_by, period_by):
-
-    # apply sample query
-    loc_samples = None
-    if sample_query is not None:
-        loc_samples = df_samples.eval(sample_query).values
-        df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
+def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
 
     # take a copy, as we will modify the dataframe
     df_samples = df_samples.copy()
@@ -3769,7 +3811,7 @@ def _prep_samples_for_cohort_grouping(df_samples, sample_query, area_by, period_
     # add area column for consistent output
     df_samples["area"] = df_samples[area_by]
 
-    return loc_samples, df_samples
+    return df_samples
 
 
 def _build_cohorts_from_sample_grouping(group_samples_by_cohort, min_cohort_size):
@@ -3802,3 +3844,14 @@ def _build_cohorts_from_sample_grouping(group_samples_by_cohort, min_cohort_size
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
 
     return df_cohorts
+
+
+def _check_param_min_cohort_size(min_cohort_size):
+    if not isinstance(min_cohort_size, int):
+        raise TypeError(
+            f"Type of parameter min_cohort_size must be int; found {type(min_cohort_size)}."
+        )
+    if min_cohort_size < 1:
+        raise ValueError(
+            f"Value of parameter min_cohort_size must be at least 1; found {min_cohort_size}."
+        )

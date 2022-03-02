@@ -1171,6 +1171,8 @@ def test_gene_cnv(contig, sample_sets):
         "gene_windows",
         "gene_name",
         "gene_strand",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
     }
     assert set(ds.data_vars) == expected_data_vars
 
@@ -1292,8 +1294,9 @@ def test_gene_cnv_frequencies(contig, cohorts):
         contig=contig,
         sample_sets="3.0",
         cohorts=cohorts,
-        min_cohort_size=0,
+        min_cohort_size=1,
         drop_invariant=False,
+        max_coverage_variance=None,
     )
 
     assert isinstance(df_cnv_frq, pd.DataFrame)
@@ -1312,8 +1315,8 @@ def test_gene_cnv_frequencies(contig, cohorts):
     # check frequencies are within sensible range
     for f in frq_cols:
         x = df_cnv_frq[f].values
-        assert np.all(x >= 0)
-        assert np.all(x <= 1)
+        assert np.all(x >= 0), f
+        assert np.all(x <= 1), f
 
     # check amp and del frequencies are within sensible range
     df_frq_amp = df_cnv_frq[frq_cols].xs("amp", level="cnv_type")
@@ -1355,6 +1358,62 @@ def test_gene_cnv_frequencies__query():
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    assert len(df) == len(df_genes) * 2
+
+
+def test_gene_cnv_frequencies__max_coverage_variance():
+
+    ag3 = setup_ag3()
+    contig = "3L"
+    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+
+    base_columns = [
+        "contig",
+        "start",
+        "end",
+        "windows",
+        "max_af",
+        "gene_strand",
+        "gene_description",
+    ]
+
+    # run without a threshold on coverage variance
+    df = ag3.gene_cnv_frequencies(
+        contig=contig,
+        sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        max_coverage_variance=None,
+        drop_invariant=False,
+    )
+    expected_frq_columns = [
+        "frq_GM-L_gcx2_2012",
+        "frq_GM-M_gcx2_2012",
+        "frq_GM-N_gcx1_2011",
+    ]
+    expected_columns = base_columns + expected_frq_columns
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert len(df) == len(df_genes) * 2
+
+    # Run with a threshold on coverage variance - this will remove samples,
+    # which in turn will drop one of the cohorts below the min_cohort_size,
+    # and so we can check that we have lost a cohort.
+    df = ag3.gene_cnv_frequencies(
+        contig=contig,
+        sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        max_coverage_variance=0.2,
+        drop_invariant=False,
+    )
+    expected_frq_columns = [
+        "frq_GM-M_gcx2_2012",
+        "frq_GM-N_gcx1_2011",
+    ]
+    expected_columns = base_columns + expected_frq_columns
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
     assert len(df) == len(df_genes) * 2
 
 
@@ -2029,6 +2088,7 @@ def _check_gene_cnv_frequencies_advanced(
     min_cohort_size=10,
     variant_query="max_af > 0.02",
     drop_invariant=True,
+    max_coverage_variance=0.2,
 ):
 
     ag3 = setup_ag3()
@@ -2042,6 +2102,7 @@ def _check_gene_cnv_frequencies_advanced(
         min_cohort_size=min_cohort_size,
         variant_query=variant_query,
         drop_invariant=drop_invariant,
+        max_coverage_variance=max_coverage_variance,
     )
 
     assert isinstance(ds, xr.Dataset)
@@ -2143,6 +2204,7 @@ def _check_gene_cnv_frequencies_advanced(
             sample_query=sample_query,
             min_cohort_size=min_cohort_size,
             drop_invariant=drop_invariant,
+            max_coverage_variance=max_coverage_variance,
         )
         df_af = df_af.reset_index()  # make sure all variables available to check
         if variant_query is not None:
@@ -2248,6 +2310,17 @@ def test_gene_cnv_frequencies_advanced__drop_invariant(drop_invariant):
     _check_gene_cnv_frequencies_advanced(
         variant_query=None,
         drop_invariant=drop_invariant,
+    )
+
+
+@pytest.mark.parametrize(
+    "max_coverage_variance",
+    [None, 0.2],
+)
+def test_gene_cnv_frequencies_advanced__max_coverage_variance(max_coverage_variance):
+    _check_gene_cnv_frequencies_advanced(
+        max_coverage_variance=max_coverage_variance,
+        sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
     )
 
 
