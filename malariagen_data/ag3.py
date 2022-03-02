@@ -1281,15 +1281,26 @@ class Ag3:
 
         # add effects
         if effects:
+
+            # add effect annotations
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
 
+            # add label
+            df_snps["label"] = df_snps.apply(_make_snp_label_effect, axis="columns")
+
+            # set index
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
                 inplace=True,
             )
 
         else:
+
+            # add label
+            df_snps["label"] = df_snps.apply(_make_snp_label, axis="columns")
+
+            # set index
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele"],
                 inplace=True,
@@ -2319,6 +2330,9 @@ class Ag3:
         df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
 
+        # add label
+        df["label"] = df.apply(_make_gene_cnv_label, axis="columns")
+
         # deal with invariants
         if drop_invariant:
             df = df.query("max_af > 0")
@@ -2680,6 +2694,7 @@ class Ag3:
             "contig",
             "transcript",
             "aa_pos",
+            "ref_allele",
             "ref_aa",
             "alt_aa",
             "effect",
@@ -2687,14 +2702,20 @@ class Ag3:
         )
         for c in keep_cols:
             agg[c] = "first"
+        agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
         df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
-        df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
         # compute new max_af
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
+        # add label
+        df_aaf["label"] = df_aaf.apply(_make_snp_label_aa, axis="columns")
+
         # sort by genomic position
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
+
+        # set index
+        df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
         # add metadata
         gene_name = self._transcript_to_gene_name(transcript)
@@ -2709,7 +2730,7 @@ class Ag3:
     @staticmethod
     def plot_frequencies_heatmap(
         df,
-        index=None,
+        index="label",
         max_len=100,
         x_label="cohorts",
         y_label="variants",
@@ -2786,7 +2807,7 @@ class Ag3:
         else:
             raise TypeError("wrong type for index parameter, expected list or str")
 
-        # check that index is unique (otherwise style won't work)
+        # check that index is unique
         if not index_col.is_unique:
             raise ValueError(f"{index} does not produce a unique index")
 
@@ -3827,6 +3848,13 @@ def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
     assert gan_melt.shape == (n_variants * max_allele, n_samples)
 
     return gac_alt_melt, gan_melt
+
+
+def _make_snp_label(row):
+    label = (
+        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
+    )
+    return label
 
 
 def _make_snp_label_effect(row):
