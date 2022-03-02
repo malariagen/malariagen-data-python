@@ -942,6 +942,20 @@ class Ag3:
 
         return df
 
+    def _transcript_to_gene_name(self, transcript):
+        df_geneset = self.geneset().set_index("ID")
+        rec_transcript = df_geneset.loc[transcript]
+        parent = rec_transcript["Parent"]
+        rec_parent = df_geneset.loc[parent]
+
+        # manual overrides
+        if parent == "AGAP004707":
+            parent_name = "Vgsc/para"
+        else:
+            parent_name = rec_parent["Name"]
+
+        return parent_name
+
     def is_accessible(
         self, region, site_mask, site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS
     ):
@@ -1280,6 +1294,14 @@ class Ag3:
                 ["contig", "position", "ref_allele", "alt_allele"],
                 inplace=True,
             )
+
+        # add metadata
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        df_snps.attrs["title"] = title
 
         return df_snps
 
@@ -2304,6 +2326,10 @@ class Ag3:
         # set index for convenience
         df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
 
+        # add metadata
+        title = "Gene CNV frequencies"
+        df.attrs["title"] = title
+
         return df
 
     def open_haplotypes(self, sample_set, analysis):
@@ -2670,6 +2696,14 @@ class Ag3:
         # sort by genomic position
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
 
+        # add metadata
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        df_aaf.attrs["title"] = title
+
         return df_aaf
 
     @staticmethod
@@ -2685,6 +2719,7 @@ class Ag3:
         text_auto=".0%",
         aspect="auto",
         color_continuous_scale="Reds",
+        title=True,
         **kwargs,
     ):
 
@@ -2717,6 +2752,9 @@ class Ag3:
             Control the aspect ratio of the heatmap.
         color_continuous_scale : str, optional
             Color scale to use.
+        title : bool or str, optional
+            If True, attempt to use metadata from input dataset as a plot
+            title. Otherwise, use supplied value as a title.
         **kwargs
             Other parameters are passed through to px.imshow().
 
@@ -2725,6 +2763,10 @@ class Ag3:
         # check len of input
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
+
+        # handle title
+        if title is True:
+            title = df.attrs.get("title", None)
 
         # indexing
         if index is None:
@@ -2770,10 +2812,11 @@ class Ag3:
             text_auto=text_auto,
             aspect=aspect,
             color_continuous_scale=color_continuous_scale,
+            title=title,
             **kwargs,
         )
 
-        fig.update_xaxes(side="top", tickangle=270)
+        fig.update_xaxes(side="bottom", tickangle=30)
         if x_label is not None:
             fig.update_xaxes(title=x_label)
         if y_label is not None:
@@ -3030,6 +3073,14 @@ class Ag3:
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
 
+        # add metadata
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        ds_out.attrs["title"] = title
+
         return ds_out
 
     def aa_allele_frequencies_advanced(
@@ -3186,6 +3237,13 @@ class Ag3:
 
         # tidy up display by sorting variables
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
+
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        ds_aa_frq.attrs["title"] = title
 
         return ds_aa_frq
 
@@ -3398,10 +3456,14 @@ class Ag3:
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
 
+        # add metadata
+        title = "Gene CNV frequencies"
+        ds_out.attrs["title"] = title
+
         return ds_out
 
     @staticmethod
-    def plot_frequencies_time_series(ds, height=None, width=None, **kwargs):
+    def plot_frequencies_time_series(ds, height=None, width=None, title=True, **kwargs):
         """Create a time series plot of variant frequencies using plotly.
 
         Parameters
@@ -3413,6 +3475,9 @@ class Ag3:
             Height of plot in pixels.
         width : int, optional
             Width of plot in pixels
+        title : bool or str, optional
+            If True, attempt to use metadata from input dataset as a plot
+            title. Otherwise, use supplied value as a title.
         **kwargs
             Passed through to `px.line()`.
 
@@ -3424,6 +3489,10 @@ class Ag3:
             area. Markers and lines show frequencies of variants.
 
         """
+
+        # handle title
+        if title is True:
+            title = ds.attrs.get("title", None)
 
         # extract cohorts into a dataframe
         cohort_vars = [v for v in ds if v.startswith("cohort_")]
@@ -3490,6 +3559,7 @@ class Ag3:
             },
             height=height,
             width=width,
+            title=title,
             **kwargs,
         )
 
@@ -3590,7 +3660,7 @@ class Ag3:
         ds,
         center=(-2, 20),
         zoom=3,
-        title="<h2>Map of variant frequencies</h2>",
+        title=True,
         epilogue="""
             Variant frequencies are shown as coloured markers. Opacity of color
             denotes frequency. Click on a marker for more information.
@@ -3608,8 +3678,9 @@ class Ag3:
             Location to center the map.
         zoom : int, optional
             Initial zoom level.
-        title : str, optional
-            Title to display above the map.
+        title : bool or str, optional
+            If True, attempt to use metadata from input dataset as a plot
+            title. Otherwise, use supplied value as a title.
         epilogue : str, optional
             Additional text to display below the map.
 
@@ -3620,6 +3691,10 @@ class Ag3:
             time period to display.
 
         """
+
+        # handle title
+        if title is True:
+            title = ds.attrs.get("title", None)
 
         # create a map
         freq_map = ipyleaflet.Map(center=center, zoom=zoom)
@@ -3641,7 +3716,7 @@ class Ag3:
         # lay out widgets
         components = []
         if title is not None:
-            components.append(ipywidgets.HTML(value=f"{title}"))
+            components.append(ipywidgets.HTML(value=f"<h3>{title}</h3>"))
         components.append(controls)
         components.append(freq_map)
         if epilogue is not None:
