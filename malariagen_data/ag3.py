@@ -1,5 +1,6 @@
 import warnings
 from bisect import bisect_left, bisect_right
+from collections import Counter
 
 import allel
 import dask.array as da
@@ -255,6 +256,13 @@ class Ag3:
                 return df
 
         elif isinstance(release, (list, tuple)):
+
+            # check no duplicates
+            counter = Counter(release)
+            for k, v in counter.items():
+                if v > 1:
+                    raise ValueError(f"Duplicate values: {k!r}.")
+
             # retrieve sample sets from multiple releases
             df = pd.concat(
                 [self.sample_sets(release=r) for r in release],
@@ -417,6 +425,14 @@ class Ag3:
                 f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
             )
 
+        # check all sample sets selected at most once
+        counter = Counter(sample_sets)
+        for k, v in counter.items():
+            if v > 1:
+                raise ValueError(
+                    f"Bad value for sample_sets parameter, {k:!r} selected more than once."
+                )
+
         return sample_sets
 
     def species_calls(self, sample_sets=None, analysis=DEFAULT_SPECIES_ANALYSIS):
@@ -503,12 +519,6 @@ class Ag3:
             for s in sample_sets
         ]
         df = pd.concat(dfs, axis=0, ignore_index=True)
-
-        # check samples have only been selected once
-        if not df["sample_id"].is_unique:
-            raise ValueError(
-                "Problem with sample_sets parameter, some samples are selected more than once."
-            )
 
         return df
 
