@@ -2848,7 +2848,7 @@ class Ag3:
             loc_samples = df_samples.eval(sample_query).values
 
         # filter samples
-        if sample_query is not None:
+        if loc_samples is not None:
             df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
             gt = da.compress(loc_samples, gt, axis=1)
 
