@@ -3215,24 +3215,26 @@ class Ag3:
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
         # apply variant query if given
+        variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
+        df_variants = ds_aa_frq[variant_cols].to_dataframe()
+        df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
         if variant_query is not None:
-            variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
-            df_variants = ds_aa_frq[variant_cols].to_dataframe()
-            df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
             loc_variants = df_variants.eval(variant_query).values
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
+            df_variants = df_variants.loc[loc_variants]
 
         # compute new confidence intervals
         _add_frequency_ci(ds_aa_frq, ci_method)
 
         # assign new variant label
-        contig = ds_aa_frq["variant_contig"].values
-        position = ds_aa_frq["variant_position"].values
-        aa_change = ds_aa_frq["variant_aa_change"].values
-        label = np.array(
-            [f"{a} ({b}:{c:,})" for a, b, c in zip(aa_change, contig, position)],
-            dtype=object,
-        )
+        label = df_variants.apply(_make_snp_label_aa, axis=1)
+        # contig = ds_aa_frq["variant_contig"].values
+        # position = ds_aa_frq["variant_position"].values
+        # aa_change = ds_aa_frq["variant_aa_change"].values
+        # label = np.array(
+        #     [f"{a} ({b}:{c:,})" for a, b, c in zip(aa_change, contig, position)],
+        #     dtype=object,
+        # )
         ds_aa_frq["variant_label"] = "variants", label
 
         # tidy up display by sorting variables
@@ -3837,6 +3839,11 @@ def _make_snp_label_effect(row):
     return label
 
 
+def _make_snp_label_aa(row):
+    label = f"{row['aa_change']} ({row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']})"
+    return label
+
+
 def _make_gene_cnv_label(row):
     label = row["gene_id"]
     gene_name = row["gene_name"]
@@ -3857,6 +3864,7 @@ def _map_snp_to_aa_change_frq_ds(ds):
         "variant_impact",
         "variant_aa_pos",
         "variant_aa_change",
+        "variant_ref_allele",
         "variant_ref_aa",
         "variant_alt_aa",
         "event_nobs",
@@ -3865,7 +3873,7 @@ def _map_snp_to_aa_change_frq_ds(ds):
     if ds.dims["variants"] == 1:
 
         # keep everything as-is, no need for aggregation
-        ds_out = ds[keep_vars + ["event_count"]]
+        ds_out = ds[keep_vars + ["variant_alt_allele", "event_count"]]
 
     else:
 
@@ -3875,6 +3883,10 @@ def _map_snp_to_aa_change_frq_ds(ds):
         # sum event count over variants
         count = ds["event_count"].values.sum(axis=0, keepdims=True)
         ds_out["event_count"] = ("variants", "cohorts"), count
+
+        # collapse alt allele
+        alt_allele = "{" + ",".join(ds["variant_alt_allele"].values) + "}"
+        ds_out["variant_alt_allele"] = "variants", np.array([alt_allele], dtype=object)
 
     return ds_out
 
