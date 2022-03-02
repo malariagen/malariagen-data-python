@@ -877,6 +877,16 @@ def test_snp_allele_frequencies__query():
     assert df.shape == (695, 5)
 
 
+def test_snp_allele_frequencies__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.snp_allele_frequencies(
+            transcript="AGAP004707-RD",
+            cohorts="admin1_year",
+            sample_sets=["AG1000G-FR", "AG1000G-FR"],
+        )
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
@@ -1449,6 +1459,16 @@ def test_gene_cnv_frequencies__drop_invariant():
     assert len(df) < len(df_genes) * 2
 
 
+def test_gene_cnv_frequencies__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.gene_cnv_frequencies(
+            contig="3L",
+            cohorts="admin1_year",
+            sample_sets=["AG1000G-FR", "AG1000G-FR"],
+        )
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
@@ -1662,6 +1682,16 @@ def test_aa_allele_frequencies():
     assert df.index.names == ["aa_change", "contig", "position"]
     assert df.shape == (61, len(expected_fields))
     assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
+
+
+def test_aa_allele_frequencies__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.aa_allele_frequencies(
+            transcript="AGAP004707-RD",
+            cohorts="admin1_year",
+            sample_sets=["AG1000G-FR", "AG1000G-FR"],
+        )
 
 
 # noinspection PyDefaultArgument
@@ -2322,6 +2352,39 @@ def test_gene_cnv_frequencies_advanced__max_coverage_variance(max_coverage_varia
         max_coverage_variance=max_coverage_variance,
         sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
     )
+
+
+def test_snp_allele_frequencies_advanced__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.snp_allele_frequencies_advanced(
+            transcript="AGAP004707-RD",
+            area_by="adm1_ISO",
+            period_by="year",
+            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+        )
+
+
+def test_aa_allele_frequencies_advanced__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.aa_allele_frequencies_advanced(
+            transcript="AGAP004707-RD",
+            area_by="adm1_ISO",
+            period_by="year",
+            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+        )
+
+
+def test_gene_cnv_frequencies_advanced__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.gene_cnv_frequencies_advanced(
+            contig="3L",
+            area_by="adm1_ISO",
+            period_by="year",
+            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+        )
 
 
 # TODO test plot_frequencies...() functions

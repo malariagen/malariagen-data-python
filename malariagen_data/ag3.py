@@ -504,6 +504,12 @@ class Ag3:
         ]
         df = pd.concat(dfs, axis=0, ignore_index=True)
 
+        # check samples have only been selected once
+        if not df["sample_id"].is_unique:
+            raise ValueError(
+                "Problem with sample_sets parameter, some samples are selected more than once."
+            )
+
         return df
 
     def open_site_filters(self, mask, analysis=DEFAULT_SITE_FILTERS_ANALYSIS):
@@ -1173,14 +1179,16 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
+        # access sample metadata
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            cohorts_analysis=cohorts_analysis,
+            species_analysis=species_analysis,
+        )
+
         # handle sample_query
         loc_samples = None
         if sample_query is not None:
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                cohorts_analysis=cohorts_analysis,
-                species_analysis=species_analysis,
-            )
             loc_samples = df_samples.eval(sample_query).values
 
         # setup initial dataframe of SNPs
