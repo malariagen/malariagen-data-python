@@ -1,5 +1,6 @@
 import warnings
 from bisect import bisect_left, bisect_right
+from collections import Counter
 
 import allel
 import dask.array as da
@@ -255,6 +256,13 @@ class Ag3:
                 return df
 
         elif isinstance(release, (list, tuple)):
+
+            # check no duplicates
+            counter = Counter(release)
+            for k, v in counter.items():
+                if v > 1:
+                    raise ValueError(f"Duplicate values: {k!r}.")
+
             # retrieve sample sets from multiple releases
             df = pd.concat(
                 [self.sample_sets(release=r) for r in release],
@@ -416,6 +424,14 @@ class Ag3:
             raise TypeError(
                 f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
             )
+
+        # check all sample sets selected at most once
+        counter = Counter(sample_sets)
+        for k, v in counter.items():
+            if v > 1:
+                raise ValueError(
+                    f"Bad value for sample_sets parameter, {k:!r} selected more than once."
+                )
 
         return sample_sets
 
@@ -1173,14 +1189,16 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
+        # access sample metadata
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            cohorts_analysis=cohorts_analysis,
+            species_analysis=species_analysis,
+        )
+
         # handle sample_query
         loc_samples = None
         if sample_query is not None:
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                cohorts_analysis=cohorts_analysis,
-                species_analysis=species_analysis,
-            )
             loc_samples = df_samples.eval(sample_query).values
 
         # setup initial dataframe of SNPs

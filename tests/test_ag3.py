@@ -56,12 +56,9 @@ def test_sample_sets(url):
     assert len(df_sample_sets_v3) == 28
     assert tuple(df_sample_sets_v3.columns) == ("sample_set", "sample_count", "release")
 
-    # test multiple releases
-    df_multi = ag3.sample_sets(release=["3.0", "3.0"])
-    assert_frame_equal(
-        df_multi,
-        pd.concat([df_sample_sets_v3, df_sample_sets_v3], axis=0, ignore_index=True),
-    )
+    # test duplicates not allowed
+    with pytest.raises(ValueError):
+        ag3.sample_sets(release=["3.0", "3.0"])
 
     # test default is all public releases
     df_default = ag3.sample_sets()
@@ -129,15 +126,23 @@ def test_sample_metadata():
     expected_len = df_sample_sets_v3.loc[loc_sample_sets]["sample_count"].sum()
     assert len(df_samples_bf) == expected_len
 
-    # multiple releases
-    sample_sets = ["3.0", "3.0"]
-    df_samples_mr = ag3.sample_metadata(
-        sample_sets=sample_sets, species_analysis=None, cohorts_analysis=None
-    )
-    assert_frame_equal(
-        df_samples_mr,
-        pd.concat([df_samples_v3, df_samples_v3], axis=0, ignore_index=True),
-    )
+    # duplicate sample sets
+    with pytest.raises(ValueError):
+        ag3.sample_metadata(
+            sample_sets=["3.0", "3.0"], species_analysis=None, cohorts_analysis=None
+        )
+    with pytest.raises(ValueError):
+        ag3.sample_metadata(
+            sample_sets=["AG1000G-UG", "AG1000G-UG"],
+            species_analysis=None,
+            cohorts_analysis=None,
+        )
+    with pytest.raises(ValueError):
+        ag3.sample_metadata(
+            sample_sets=["AG1000G-UG", "3.0"],
+            species_analysis=None,
+            cohorts_analysis=None,
+        )
 
     # default is all public releases
     df_default = ag3.sample_metadata(species_analysis=None, cohorts_analysis=None)
@@ -213,7 +218,6 @@ def test_sample_metadata():
         "AG1000G-X",
         ["AG1000G-BF-A", "AG1000G-BF-B"],
         "3.0",
-        ["3.0", "3.0"],
         None,
     ],
 )
@@ -319,7 +323,7 @@ def test_open_snp_genotypes():
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
-    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
 )
 @pytest.mark.parametrize(
     "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
@@ -379,7 +383,7 @@ def test_snp_genotypes(chunks, sample_sets, region):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
 )
 @pytest.mark.parametrize(
     "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
@@ -517,7 +521,7 @@ def test_site_annotations():
 
 @pytest.mark.parametrize(
     "sample_sets",
-    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0", ["3.0", "3.0"]],
+    [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
 )
 @pytest.mark.parametrize(
     "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
@@ -877,9 +881,19 @@ def test_snp_allele_frequencies__query():
     assert df.shape == (695, 5)
 
 
+def test_snp_allele_frequencies__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.snp_allele_frequencies(
+            transcript="AGAP004707-RD",
+            cohorts="admin1_year",
+            sample_sets=["AG1000G-FR", "AG1000G-FR"],
+        )
+
+
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
+    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", None],
 )
 @pytest.mark.parametrize("contig", ["2R", ["3L", "X"]])
 def test_cnv_hmm(sample_sets, contig):
@@ -1038,7 +1052,6 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
         "AG1000G-UG",
         ["AG1000G-AO", "AG1000G-UG"],
         "3.0",
-        ["3.0", "3.0"],
         None,
     ],
 )
@@ -1126,7 +1139,7 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", ["3.0", "3.0"], None],
+    ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", None],
 )
 @pytest.mark.parametrize("contig", ["2L", "3L"])
 def test_cnv_discordant_read_calls__no_calls(sample_sets, contig):
@@ -1154,7 +1167,7 @@ def test_cn_mode(rows, cols, vmax):
 # noinspection PyArgumentList
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
 @pytest.mark.parametrize("contig", ["2R", "X"])
 def test_gene_cnv(contig, sample_sets):
@@ -1449,9 +1462,19 @@ def test_gene_cnv_frequencies__drop_invariant():
     assert len(df) < len(df_genes) * 2
 
 
+def test_gene_cnv_frequencies__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.gene_cnv_frequencies(
+            contig="3L",
+            cohorts="admin1_year",
+            sample_sets=["AG1000G-FR", "AG1000G-FR"],
+        )
+
+
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", ["3.0", "3.0"], None],
+    ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
 @pytest.mark.parametrize(
     "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
@@ -1544,7 +1567,7 @@ def test_haplotypes(sample_sets, region, analysis):
 # test v3 sample sets
 @pytest.mark.parametrize(
     "sample_sets",
-    ["3.0", ["3.0", "3.0"], "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
+    ["3.0", "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
 )
 def test_sample_cohorts(sample_sets):
     expected_cols = (
@@ -1662,6 +1685,16 @@ def test_aa_allele_frequencies():
     assert df.index.names == ["aa_change", "contig", "position"]
     assert df.shape == (61, len(expected_fields))
     assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
+
+
+def test_aa_allele_frequencies__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.aa_allele_frequencies(
+            transcript="AGAP004707-RD",
+            cohorts="admin1_year",
+            sample_sets=["AG1000G-FR", "AG1000G-FR"],
+        )
 
 
 # noinspection PyDefaultArgument
@@ -2322,6 +2355,39 @@ def test_gene_cnv_frequencies_advanced__max_coverage_variance(max_coverage_varia
         max_coverage_variance=max_coverage_variance,
         sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
     )
+
+
+def test_snp_allele_frequencies_advanced__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.snp_allele_frequencies_advanced(
+            transcript="AGAP004707-RD",
+            area_by="adm1_ISO",
+            period_by="year",
+            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+        )
+
+
+def test_aa_allele_frequencies_advanced__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.aa_allele_frequencies_advanced(
+            transcript="AGAP004707-RD",
+            area_by="adm1_ISO",
+            period_by="year",
+            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+        )
+
+
+def test_gene_cnv_frequencies_advanced__dup_samples():
+    ag3 = setup_ag3()
+    with pytest.raises(ValueError):
+        ag3.gene_cnv_frequencies_advanced(
+            contig="3L",
+            area_by="adm1_ISO",
+            period_by="year",
+            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+        )
 
 
 # TODO test plot_frequencies...() functions
