@@ -146,7 +146,7 @@ class Ag3:
         return (
             f"<MalariaGEN Ag3 data resource API>\n"
             f"Storage URL           : {self._url}\n"
-            f"Releases available    : {','.join(self.releases)}\n"
+            f"Releases available    : {', '.join(self.releases)}\n"
             f"Cohorts analysis      : {DEFAULT_COHORTS_ANALYSIS}\n"
             f"Species analysis      : {DEFAULT_SPECIES_ANALYSIS}\n"
             f"Site filters analysis : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
@@ -173,7 +173,7 @@ class Ag3:
                 </thead>
                 <tbody>
                     <tr><th>Storage URL</th><td>{self._url}</td></tr>
-                    <tr><th>Releases available</th><td>{','.join(self.releases)}</td></tr>
+                    <tr><th>Releases available</th><td>{', '.join(self.releases)}</td></tr>
                     <tr><th>Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
                     <tr><th>Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
                     <tr><th>Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
