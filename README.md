@@ -93,12 +93,33 @@ from the following locations:
   consistent labels for variants
   ([GH145](https://github.com/malariagen/malariagen-data-python/issues/145)).
 
+* `Ag3`: The frequencies plotting functions now automatically set a
+  title based on metadata from the input dataframe or dataset
+  ([GH146](https://github.com/malariagen/malariagen-data-python/issues/146)). The
+  cohorts axis labels have also been moved to the bottom to make room
+  for a title.
+
+* `Ag3`: All column names in sample metadata dataframes are now lower
+  case, and columns starting "adm" (e.g., "adm1_ISO") have been
+  renamed to start with "admin" (e.g., "admin1_iso") to have
+  consistent naming of columns and parameter values relating to
+  administrative units
+  ([GH142](https://github.com/malariagen/malariagen-data-python/issues/142)).
+
+* `Ag3`: Functions `cnv_hmm()`, `cnv_coverage_calls()` and
+  `cnv_discordant_read_calls()` support multiple contigs for the
+  `contig` parameter and automatically concatenate datasets
+  ([GH90](https://github.com/malariagen/malariagen-data-python/issues/90)).
+
 
 #### Bug fixes, maintenance and documentation
 
 * `Ag3`: Function docstrings have been improved to document return
   values
   ([GH84](https://github.com/malariagen/malariagen-data-python/issues/84)).
+
+* `Ag3`: Improve repr methods
+  ([GH138](https://github.com/malariagen/malariagen-data-python/issues/138)).
 
 
 ### 1.0.1
