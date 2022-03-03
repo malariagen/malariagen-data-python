@@ -100,8 +100,8 @@ from the following locations:
   for a title.
 
 * `Ag3`: All column names in sample metadata dataframes are now lower
-  case, and columns starting "adm" (e.g., "adm1_ISO") have been
-  renamed to start with "admin" (e.g., "admin1_iso") to have
+  case, and columns starting "adm" have been renamed to start with
+  "admin" (e.g., "adm1_ISO" has been renamed to "admin1_iso") to have
   consistent naming of columns and parameter values relating to
   administrative units
   ([GH142](https://github.com/malariagen/malariagen-data-python/issues/142)).
