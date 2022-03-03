@@ -3235,10 +3235,16 @@ class Ag3:
             max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
-        # apply variant query if given
+        # set up variant dataframe, useful intermediate
         variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
         df_variants = ds_aa_frq[variant_cols].to_dataframe()
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
+
+        # assign new variant label
+        label = df_variants.apply(_make_snp_label_aa, axis=1)
+        ds_aa_frq["variant_label"] = "variants", label
+
+        # apply variant query if given
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
@@ -3246,17 +3252,6 @@ class Ag3:
 
         # compute new confidence intervals
         _add_frequency_ci(ds_aa_frq, ci_method)
-
-        # assign new variant label
-        label = df_variants.apply(_make_snp_label_aa, axis=1)
-        # contig = ds_aa_frq["variant_contig"].values
-        # position = ds_aa_frq["variant_position"].values
-        # aa_change = ds_aa_frq["variant_aa_change"].values
-        # label = np.array(
-        #     [f"{a} ({b}:{c:,})" for a, b, c in zip(aa_change, contig, position)],
-        #     dtype=object,
-        # )
-        ds_aa_frq["variant_label"] = "variants", label
 
         # tidy up display by sorting variables
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]

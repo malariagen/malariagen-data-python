@@ -2075,8 +2075,10 @@ def test_allele_frequencies_advanced__sample_query(sample_query):
     _check_snp_allele_frequencies_advanced(
         sample_query=sample_query,
     )
+    # noinspection PyTypeChecker
     _check_aa_allele_frequencies_advanced(
         sample_query=sample_query,
+        variant_query=None,
     )
 
 
@@ -2095,6 +2097,7 @@ def test_allele_frequencies_advanced__min_cohort_size(min_cohort_size):
     [
         None,
         "effect == 'NON_SYNONYMOUS_CODING' and max_af > 0.05",
+        "effect == 'foobar'",  # no variants
     ],
 )
 def test_allele_frequencies_advanced__variant_query(variant_query):
