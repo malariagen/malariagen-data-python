@@ -29,6 +29,27 @@ from the following locations:
 ## Release notes
 
 
+### 2.0.0
+
+
+#### New features and API changes
+
+* `Ag3`: New functions have been added for space-time analysis of SNP
+  allele frequencies and gene CNV frequencies
+  ([GH143](https://github.com/malariagen/malariagen-data-python/issues/143)).
+
+  * The function `plot_frequencies_time_series()` creates faceted time
+    series plots of frequencies using plotly.
+
+  * The function `plot_frequencies_interactive_map()` creates an
+    ipyleaflet map with coloured markers representing frequencies in
+    different cohorts, with widgets to select the variant, taxon and
+    time period of interest.
+
+
+
+
+
 ### 1.0.1
 
 * `Ag3`: Expose more plotting parameters through the
