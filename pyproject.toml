@@ -1,8 +1,8 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "1.1.0.RC1"
+version = "2.0.0"
 description = "A package for accessing MalariaGEN public data."
-authors = ["Alistair Miles <alistair.miles@sanger.ac.uk>", "Chris Clarkson <cc28@sanger.ac.uk>"]
+authors = ["Alistair Miles <alistair.miles@sanger.ac.uk>", "Chris Clarkson <cc28@sanger.ac.uk>", "Kathryn Murie <km22@sanger.ac.uk>", "Nace Kranjc <n.kranjc@imperial.ac.uk>"]
 license = "MIT"
 
 [tool.poetry.dependencies]
@@ -22,6 +22,7 @@ plotly = "*"
 statsmodels = "*"
 ipyleaflet = "*"
 ipywidgets = "*"
+importlib_metadata = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
@@ -29,6 +30,7 @@ notebook = "*"
 jupyterlab = "*"
 pre-commit = "*"
 black = "*"
+snakeviz = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

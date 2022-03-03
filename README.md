@@ -29,6 +29,99 @@ from the following locations:
 ## Release notes
 
 
+### 2.0.0
+
+
+#### New features and API changes
+
+* `Ag3`: New functions have been added for space-time analysis of SNP
+  allele frequencies and gene CNV frequencies
+  ([GH143](https://github.com/malariagen/malariagen-data-python/issues/143)).
+
+  * The new function `plot_frequencies_time_series()` creates faceted time
+    series plots of frequencies using plotly.
+
+  * The new function `plot_frequencies_interactive_map()` creates an
+    ipyleaflet map with coloured markers representing frequencies in
+    different cohorts, with widgets to select the variant, taxon and
+    time period of interest.
+
+  * The new function `plot_frequencies_map_markers()` supports plotting
+    frequency markers on an existing ipyleaflet map.
+
+  * The new function `snp_allele_frequencies_advanced()` computes SNP
+    allele frequencies in a transcript of interest and returns an
+    xarray dataset which can be used as input to space and time
+    plotting functions.
+
+  * The new function `aa_allele_frequencies_advanced()` computes amino
+    acid substitution frequencies in a transcript of interest and
+    returns an xarray dataset which can be used as input to space and
+    time plotting functions.
+
+  * The new function `gene_cnv_frequences_advanced()` computes gene
+    CNV frequencies for a given contig and returns an xarray dataset
+    which can be used as input to space and time plotting functions.
+
+  * The function `aa_allele_frequencies()` has been modified
+    to better handle the case where SNPs at different genome positions
+    cause the same amino acid change.
+
+* `Ag3`: The function `gene_cnv_frequencies()` has been modified so
+  that each row now represents a gene and variant (amplification or
+  deletion), and columns are cohorts
+  ([GH139](https://github.com/malariagen/malariagen-data-python/issues/139)). Also
+  a new parameter `drop_invariant` has been added, which is True by
+  default, meaning that only records with some evidence of copy number
+  variation in the given cohorts are returned.
+
+* `Ag3`: Samples with high coverage variance are now removed by
+  default when running the `gene_cnv_frequencies()`, and this can be
+  controlled via a new `max_coverage_variance` parameter
+  ([GH141](https://github.com/malariagen/malariagen-data-python/issues/141)). To
+  support this, the `sample_coverage_variance` variable has been added
+  to the output of the `gene_cnv()` function
+  ([GH128](https://github.com/malariagen/malariagen-data-python/issues/128)).
+
+* `Ag3`: All functions accepting a `sample_sets` parameter now check
+  for the same sample set being selected more than once
+  ([GH144](https://github.com/malariagen/malariagen-data-python/issues/144)).
+
+* `Ag3`: The functions which plot frequencies, including
+  `plot_frequencies_heatmap()`, `plot_frequencies_time_series()`, and
+  `plot_frequencies_interactive_map()`, have been modified to use
+  consistent labels for variants
+  ([GH145](https://github.com/malariagen/malariagen-data-python/issues/145)).
+
+* `Ag3`: The frequencies plotting functions now automatically set a
+  title based on metadata from the input dataframe or dataset
+  ([GH146](https://github.com/malariagen/malariagen-data-python/issues/146)). The
+  cohorts axis labels have also been moved to the bottom to make room
+  for a title.
+
+* `Ag3`: All column names in sample metadata dataframes are now lower
+  case, and columns starting "adm" have been renamed to start with
+  "admin" (e.g., "adm1_ISO" has been renamed to "admin1_iso") to have
+  consistent naming of columns and parameter values relating to
+  administrative units
+  ([GH142](https://github.com/malariagen/malariagen-data-python/issues/142)).
+
+* `Ag3`: Functions `cnv_hmm()`, `cnv_coverage_calls()` and
+  `cnv_discordant_read_calls()` support multiple contigs for the
+  `contig` parameter and automatically concatenate datasets
+  ([GH90](https://github.com/malariagen/malariagen-data-python/issues/90)).
+
+
+#### Bug fixes, maintenance and documentation
+
+* `Ag3`: Function docstrings have been improved to document return
+  values
+  ([GH84](https://github.com/malariagen/malariagen-data-python/issues/84)).
+
+* `Ag3`: Improve repr methods
+  ([GH138](https://github.com/malariagen/malariagen-data-python/issues/138)).
+
+
 ### 1.0.1
 
 * `Ag3`: Expose more plotting parameters through the
@@ -37,9 +130,6 @@ from the following locations:
 
 
 ### 1.0.0
-
-This is a major release which includes new features and makes some
-breaking changes to the public API, see below for more information.
 
 
 #### New features and API changes
