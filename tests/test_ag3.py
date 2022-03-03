@@ -174,8 +174,8 @@ def test_sample_metadata():
     assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
     pca_cols = (
-        "pca_species_PC1",
-        "pca_species_PC2",
+        "pca_species_pc1",
+        "pca_species_pc2",
         "pca_species_gambcolu_arabiensis",
         "pca_species_gambiae_coluzzii",
         "pca_species",
@@ -193,10 +193,10 @@ def test_sample_metadata():
     )
 
     cohort_cols = (
-        "country_ISO",
-        "adm1_name",
-        "adm1_ISO",
-        "adm2_name",
+        "country_iso",
+        "admin1_name",
+        "admin1_iso",
+        "admin2_name",
         "taxon",
         "cohort_admin1_year",
         "cohort_admin1_month",
@@ -731,6 +731,7 @@ def test_snp_allele_frequencies__str_cohorts():
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
+        "label",
     ]
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
@@ -752,7 +753,7 @@ def test_snp_allele_frequencies__str_cohorts():
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == ["contig", "position", "ref_allele", "alt_allele"]
-    assert df.shape == (16526, 64)
+    assert len(df) == 16526
 
 
 def test_snp_allele_frequencies__dict_cohorts():
@@ -765,6 +766,7 @@ def test_snp_allele_frequencies__dict_cohorts():
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
+        "label",
     ]
 
     # test drop invariants
@@ -780,7 +782,7 @@ def test_snp_allele_frequencies__dict_cohorts():
     assert isinstance(df, pd.DataFrame)
     frq_columns = ["frq_" + s for s in list(cohorts.keys())]
     expected_fields = universal_fields + frq_columns + ["max_af"]
-    assert df.columns.tolist() == expected_fields
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.shape == (133, len(expected_fields))
     assert df.iloc[3].frq_ke == 0
     assert df.iloc[4].frq_bf_2012_col == pytest.approx(0.006097, abs=1e-6)
@@ -798,7 +800,7 @@ def test_snp_allele_frequencies__dict_cohorts():
         effects=False,
     )
     assert isinstance(df, pd.DataFrame)
-    assert df.columns.tolist() == expected_fields
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.shape == (132306, len(expected_fields))
     # check invariant positions are still present
     assert np.any(df.max_af == 0)
@@ -812,6 +814,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
         "pass_gamb_colu_arab",
         "pass_gamb_colu",
         "pass_arab",
+        "label",
     ]
     effects_fields = [
         "transcript",
@@ -862,6 +865,7 @@ def test_snp_allele_frequencies__query():
         "pass_arab",
         "frq_AO-LUA_colu_2009",
         "max_af",
+        "label",
     ]
 
     df = ag3.snp_allele_frequencies(
@@ -878,7 +882,7 @@ def test_snp_allele_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    assert df.shape == (695, 5)
+    assert len(df) == 695
 
 
 def test_snp_allele_frequencies__dup_samples():
@@ -1299,6 +1303,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
         "max_af",
         "gene_strand",
         "gene_description",
+        "label",
     ]
     ag3 = setup_ag3()
     df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
@@ -1355,6 +1360,7 @@ def test_gene_cnv_frequencies__query():
         "max_af",
         "gene_strand",
         "gene_description",
+        "label",
         "frq_AO-LUA_colu_2009",
     ]
 
@@ -1388,6 +1394,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
         "max_af",
         "gene_strand",
         "gene_description",
+        "label",
     ]
 
     # run without a threshold on coverage variance
@@ -1442,6 +1449,7 @@ def test_gene_cnv_frequencies__drop_invariant():
         "max_af",
         "gene_strand",
         "gene_description",
+        "label",
         "frq_AO-LUA_colu_2009",
     ]
 
@@ -1572,10 +1580,10 @@ def test_haplotypes(sample_sets, region, analysis):
 def test_sample_cohorts(sample_sets):
     expected_cols = (
         "sample_id",
-        "country_ISO",
-        "adm1_name",
-        "adm1_ISO",
-        "adm2_name",
+        "country_iso",
+        "admin1_name",
+        "admin1_iso",
+        "admin2_name",
         "taxon",
         "cohort_admin1_year",
         "cohort_admin1_month",
@@ -1658,6 +1666,8 @@ def test_aa_allele_frequencies():
     expected_fields = [
         "transcript",
         "aa_pos",
+        "ref_allele",
+        "alt_allele",
         "ref_aa",
         "alt_aa",
         "effect",
@@ -1668,6 +1678,7 @@ def test_aa_allele_frequencies():
         "frq_BF-09_gamb_2014",
         "frq_BF-07_gamb_2004",
         "max_af",
+        "label",
     ]
 
     df = ag3.aa_allele_frequencies(
@@ -1700,7 +1711,7 @@ def test_aa_allele_frequencies__dup_samples():
 # noinspection PyDefaultArgument
 def _check_snp_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
-    area_by="adm1_ISO",
+    area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
@@ -1814,7 +1825,7 @@ def _check_snp_allele_frequencies_advanced(
     for s in size:
         assert s >= min_cohort_size
 
-    if area_by == "adm1_ISO" and period_by == "year" and nobs_mode == "called":
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
 
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
@@ -1843,9 +1854,6 @@ def _check_snp_allele_frequencies_advanced(
         # check variants are consistent
         assert ds.dims["variants"] == len(df_af)
         for v in expected_variant_vars:
-            if v == "variant_label":
-                # this is not present in the dataframe, skip check
-                continue
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
@@ -1861,7 +1869,7 @@ def _check_snp_allele_frequencies_advanced(
 # noinspection PyDefaultArgument
 def _check_aa_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
-    area_by="adm1_ISO",
+    area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
@@ -1968,7 +1976,7 @@ def _check_aa_allele_frequencies_advanced(
     for s in size:
         assert s >= min_cohort_size
 
-    if area_by == "adm1_ISO" and period_by == "year" and nobs_mode == "called":
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
 
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
@@ -1997,9 +2005,6 @@ def _check_aa_allele_frequencies_advanced(
         # check variants are consistent
         assert ds.dims["variants"] == len(df_af)
         for v in expected_variant_vars:
-            if v == "variant_label":
-                # this is not present in the dataframe, skip check
-                continue
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
@@ -2027,7 +2032,7 @@ def test_allele_frequencies_advanced__transcript(transcript):
     )
 
 
-@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
 def test_allele_frequencies_advanced__area_by(area_by):
     _check_snp_allele_frequencies_advanced(
         area_by=area_by,
@@ -2070,8 +2075,10 @@ def test_allele_frequencies_advanced__sample_query(sample_query):
     _check_snp_allele_frequencies_advanced(
         sample_query=sample_query,
     )
+    # noinspection PyTypeChecker
     _check_aa_allele_frequencies_advanced(
         sample_query=sample_query,
+        variant_query=None,
     )
 
 
@@ -2090,6 +2097,7 @@ def test_allele_frequencies_advanced__min_cohort_size(min_cohort_size):
     [
         None,
         "effect == 'NON_SYNONYMOUS_CODING' and max_af > 0.05",
+        "effect == 'foobar'",  # no variants
     ],
 )
 def test_allele_frequencies_advanced__variant_query(variant_query):
@@ -2114,7 +2122,7 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
 # noinspection PyDefaultArgument
 def _check_gene_cnv_frequencies_advanced(
     contig="2L",
-    area_by="adm1_ISO",
+    area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
@@ -2222,7 +2230,7 @@ def _check_gene_cnv_frequencies_advanced(
     for s in size:
         assert s >= min_cohort_size
 
-    if area_by == "adm1_ISO" and period_by == "year":
+    if area_by == "admin1_iso" and period_by == "year":
 
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
@@ -2253,9 +2261,6 @@ def _check_gene_cnv_frequencies_advanced(
         # check variants are consistent
         assert ds.dims["variants"] == len(df_af)
         for v in expected_variant_vars:
-            if v == "variant_label":
-                # this is not present in the dataframe, skip check
-                continue
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
@@ -2275,7 +2280,7 @@ def test_gene_cnv_frequencies_advanced__contig(contig):
     )
 
 
-@pytest.mark.parametrize("area_by", ["country", "adm1_ISO", "adm2_name"])
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
 def test_gene_cnv_frequencies_advanced__area_by(area_by):
     _check_gene_cnv_frequencies_advanced(
         area_by=area_by,
@@ -2362,7 +2367,7 @@ def test_snp_allele_frequencies_advanced__dup_samples():
     with pytest.raises(ValueError):
         ag3.snp_allele_frequencies_advanced(
             transcript="AGAP004707-RD",
-            area_by="adm1_ISO",
+            area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
@@ -2373,7 +2378,7 @@ def test_aa_allele_frequencies_advanced__dup_samples():
     with pytest.raises(ValueError):
         ag3.aa_allele_frequencies_advanced(
             transcript="AGAP004707-RD",
-            area_by="adm1_ISO",
+            area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
@@ -2384,7 +2389,7 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
     with pytest.raises(ValueError):
         ag3.gene_cnv_frequencies_advanced(
             contig="3L",
-            area_by="adm1_ISO",
+            area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )

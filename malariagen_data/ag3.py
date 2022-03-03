@@ -146,43 +146,39 @@ class Ag3:
         return (
             f"<MalariaGEN Ag3 data resource API>\n"
             f"Storage URL           : {self._url}\n"
-            f"Releases available    : {','.join(self.releases)}\n"
+            f"Releases available    : {', '.join(self.releases)}\n"
             f"Cohorts analysis      : {DEFAULT_COHORTS_ANALYSIS}\n"
             f"Species analysis      : {DEFAULT_SPECIES_ANALYSIS}\n"
             f"Site filters analysis : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net.\n"
-            f"---\n"
-            f"For API documentation see https://malariagen.github.io/vector-data/ag3/api.html"
+            f"or contact data@malariagen.net. For API documentation see: "
+            f"https://malariagen.github.io/vector-data/ag3/api.html"
         )
 
     def _repr_html_(self):
         return f"""
-            <style type="text/css">
-                table.malariagen-ag3 th, table.malariagen-ag3 td {{
-                    text-align: left
-                }}
-            </style>
             <table class="malariagen-ag3">
                 <thead>
                     <tr>
-                        <th colspan=2>MalariaGEN Ag3 data resource API</th>
+                        <th style="text-align: left" colspan="2">MalariaGEN Ag3 data resource API</th>
                     </tr>
+                    <tr><td colspan="2" style="text-align: left">
+                        Please note that data are subject to terms of use,
+                        for more information see <a href="https://www.malariagen.net/data">
+                        the MalariaGEN website</a> or contact data@malariagen.net.
+                        See also the <a href="https://malariagen.github.io/vector-data/ag3/api.html">Ag3 API docs</a>.
+                    </td></tr>
                 </thead>
                 <tbody>
-                    <tr><th>Storage URL</th><td>{self._url}</td></tr>
-                    <tr><th>Releases available</th><td>{','.join(self.releases)}</td></tr>
-                    <tr><th>Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
-                    <tr><th>Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
-                    <tr><th>Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
+                    <tr><th style="text-align: left">Storage URL</th><td>{self._url}</td></tr>
+                    <tr><th style="text-align: left">Releases available</th><td>{', '.join(self.releases)}</td></tr>
+                    <tr><th style="text-align: left">Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
+                    <tr><th style="text-align: left">Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
+                    <tr><th style="text-align: left">Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
                 </tbody>
             </table>
-            <p>Please note that data are subject to terms of use,
-            for more information see <a href="https://www.malariagen.net/data">
-            the MalariaGEN website</a> or contact data@malariagen.net.</p>
-            <p>See also the <a href="https://malariagen.github.io/vector-data/ag3/api.html">Ag3 API docs</a>.</p>
         """
 
     @property
@@ -303,6 +299,9 @@ class Ag3:
             with self._fs.open(path) as f:
                 df = pd.read_csv(f, na_values="")
 
+            # ensure all column names are lower case
+            df.columns = [c.lower() for c in df.columns]
+
             # add a couple of columns for convenience
             df["sample_set"] = sample_set
             df["release"] = release
@@ -381,6 +380,9 @@ class Ag3:
                         "species": "pca_species",
                     }
                 )
+
+            # ensure all column names are lower case
+            df.columns = [c.lower() for c in df.columns]
 
             self._cache_species_calls[key] = df
             return df
@@ -940,6 +942,20 @@ class Ag3:
 
         return df
 
+    def _transcript_to_gene_name(self, transcript):
+        df_geneset = self.geneset().set_index("ID")
+        rec_transcript = df_geneset.loc[transcript]
+        parent = rec_transcript["Parent"]
+        rec_parent = df_geneset.loc[parent]
+
+        # manual overrides
+        if parent == "AGAP004707":
+            parent_name = "Vgsc/para"
+        else:
+            parent_name = rec_parent["Name"]
+
+        return parent_name
+
     def is_accessible(
         self, region, site_mask, site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS
     ):
@@ -1265,19 +1281,38 @@ class Ag3:
 
         # add effects
         if effects:
+
+            # add effect annotations
             ann = self._annotator()
             ann.get_effects(transcript=transcript, variants=df_snps)
 
+            # add label
+            df_snps["label"] = df_snps.apply(_make_snp_label_effect, axis="columns")
+
+            # set index
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
                 inplace=True,
             )
 
         else:
+
+            # add label
+            df_snps["label"] = df_snps.apply(_make_snp_label, axis="columns")
+
+            # set index
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele"],
                 inplace=True,
             )
+
+        # add metadata
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        df_snps.attrs["title"] = title
 
         return df_snps
 
@@ -2295,12 +2330,19 @@ class Ag3:
         df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
 
+        # add label
+        df["label"] = df.apply(_make_gene_cnv_label, axis="columns")
+
         # deal with invariants
         if drop_invariant:
             df = df.query("max_af > 0")
 
         # set index for convenience
         df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
+
+        # add metadata
+        title = "Gene CNV frequencies"
+        df.attrs["title"] = title
 
         return df
 
@@ -2517,6 +2559,19 @@ class Ag3:
             with self._fs.open(path) as f:
                 df = pd.read_csv(f, na_values="")
 
+            # ensure all column names are lower case
+            df.columns = [c.lower() for c in df.columns]
+
+            # rename some columns for consistent naming
+            df.rename(
+                columns={
+                    "adm1_iso": "admin1_iso",
+                    "adm1_name": "admin1_name",
+                    "adm2_name": "admin2_name",
+                },
+                inplace=True,
+            )
+
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
             return df
 
@@ -2639,6 +2694,7 @@ class Ag3:
             "contig",
             "transcript",
             "aa_pos",
+            "ref_allele",
             "ref_aa",
             "alt_aa",
             "effect",
@@ -2646,21 +2702,35 @@ class Ag3:
         )
         for c in keep_cols:
             agg[c] = "first"
+        agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
         df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
-        df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
         # compute new max_af
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
+        # add label
+        df_aaf["label"] = df_aaf.apply(_make_snp_label_aa, axis="columns")
+
         # sort by genomic position
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
+
+        # set index
+        df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
+
+        # add metadata
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        df_aaf.attrs["title"] = title
 
         return df_aaf
 
     @staticmethod
     def plot_frequencies_heatmap(
         df,
-        index=None,
+        index="label",
         max_len=100,
         x_label="cohorts",
         y_label="variants",
@@ -2670,6 +2740,7 @@ class Ag3:
         text_auto=".0%",
         aspect="auto",
         color_continuous_scale="Reds",
+        title=True,
         **kwargs,
     ):
 
@@ -2702,6 +2773,9 @@ class Ag3:
             Control the aspect ratio of the heatmap.
         color_continuous_scale : str, optional
             Color scale to use.
+        title : bool or str, optional
+            If True, attempt to use metadata from input dataset as a plot
+            title. Otherwise, use supplied value as a title.
         **kwargs
             Other parameters are passed through to px.imshow().
 
@@ -2710,6 +2784,10 @@ class Ag3:
         # check len of input
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
+
+        # handle title
+        if title is True:
+            title = df.attrs.get("title", None)
 
         # indexing
         if index is None:
@@ -2729,7 +2807,7 @@ class Ag3:
         else:
             raise TypeError("wrong type for index parameter, expected list or str")
 
-        # check that index is unique (otherwise style won't work)
+        # check that index is unique
         if not index_col.is_unique:
             raise ValueError(f"{index} does not produce a unique index")
 
@@ -2755,10 +2833,11 @@ class Ag3:
             text_auto=text_auto,
             aspect=aspect,
             color_continuous_scale=color_continuous_scale,
+            title=title,
             **kwargs,
         )
 
-        fig.update_xaxes(side="top", tickangle=270)
+        fig.update_xaxes(side="bottom", tickangle=30)
         if x_label is not None:
             fig.update_xaxes(title=x_label)
         if y_label is not None:
@@ -2931,16 +3010,16 @@ class Ag3:
             # obtain sample indices for cohort
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
-            # select genotype data for cohort
-            cohort_gac = np.take(gac, sample_indices, axis=1)
-
             # compute cohort allele counts
-            np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
+            # cohort_gac = np.take(gac, sample_indices, axis=1)
+            # np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
+            count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
 
             # compute cohort allele numbers
-            cohort_gan = np.take(gan, sample_indices, axis=1)
             if nobs_mode == "called":
-                np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
+                # cohort_gan = np.take(gan, sample_indices, axis=1)
+                # np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
+                nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
             elif nobs_mode == "fixed":
                 nobs[:, cohort_index] = cohort.size * 2
             else:
@@ -3014,6 +3093,14 @@ class Ag3:
 
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
+
+        # add metadata
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        ds_out.attrs["title"] = title
 
         return ds_out
 
@@ -3148,29 +3235,33 @@ class Ag3:
             max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
+        # set up variant dataframe, useful intermediate
+        variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
+        df_variants = ds_aa_frq[variant_cols].to_dataframe()
+        df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
+
+        # assign new variant label
+        label = df_variants.apply(_make_snp_label_aa, axis=1)
+        ds_aa_frq["variant_label"] = "variants", label
+
         # apply variant query if given
         if variant_query is not None:
-            variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
-            df_variants = ds_aa_frq[variant_cols].to_dataframe()
-            df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
             loc_variants = df_variants.eval(variant_query).values
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
+            # df_variants = df_variants.loc[loc_variants]
 
         # compute new confidence intervals
         _add_frequency_ci(ds_aa_frq, ci_method)
 
-        # assign new variant label
-        contig = ds_aa_frq["variant_contig"].values
-        position = ds_aa_frq["variant_position"].values
-        aa_change = ds_aa_frq["variant_aa_change"].values
-        label = np.array(
-            [f"{a} ({b}:{c:,})" for a, b, c in zip(aa_change, contig, position)],
-            dtype=object,
-        )
-        ds_aa_frq["variant_label"] = "variants", label
-
         # tidy up display by sorting variables
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
+
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        ds_aa_frq.attrs["title"] = title
 
         return ds_aa_frq
 
@@ -3383,10 +3474,14 @@ class Ag3:
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
 
+        # add metadata
+        title = "Gene CNV frequencies"
+        ds_out.attrs["title"] = title
+
         return ds_out
 
     @staticmethod
-    def plot_frequencies_time_series(ds, height=None, width=None, **kwargs):
+    def plot_frequencies_time_series(ds, height=None, width=None, title=True, **kwargs):
         """Create a time series plot of variant frequencies using plotly.
 
         Parameters
@@ -3398,6 +3493,9 @@ class Ag3:
             Height of plot in pixels.
         width : int, optional
             Width of plot in pixels
+        title : bool or str, optional
+            If True, attempt to use metadata from input dataset as a plot
+            title. Otherwise, use supplied value as a title.
         **kwargs
             Passed through to `px.line()`.
 
@@ -3409,6 +3507,10 @@ class Ag3:
             area. Markers and lines show frequencies of variants.
 
         """
+
+        # handle title
+        if title is True:
+            title = ds.attrs.get("title", None)
 
         # extract cohorts into a dataframe
         cohort_vars = [v for v in ds if v.startswith("cohort_")]
@@ -3475,6 +3577,7 @@ class Ag3:
             },
             height=height,
             width=width,
+            title=title,
             **kwargs,
         )
 
@@ -3575,7 +3678,7 @@ class Ag3:
         ds,
         center=(-2, 20),
         zoom=3,
-        title="<h2>Map of variant frequencies</h2>",
+        title=True,
         epilogue="""
             Variant frequencies are shown as coloured markers. Opacity of color
             denotes frequency. Click on a marker for more information.
@@ -3593,8 +3696,9 @@ class Ag3:
             Location to center the map.
         zoom : int, optional
             Initial zoom level.
-        title : str, optional
-            Title to display above the map.
+        title : bool or str, optional
+            If True, attempt to use metadata from input dataset as a plot
+            title. Otherwise, use supplied value as a title.
         epilogue : str, optional
             Additional text to display below the map.
 
@@ -3605,6 +3709,10 @@ class Ag3:
             time period to display.
 
         """
+
+        # handle title
+        if title is True:
+            title = ds.attrs.get("title", None)
 
         # create a map
         freq_map = ipyleaflet.Map(center=center, zoom=zoom)
@@ -3626,7 +3734,7 @@ class Ag3:
         # lay out widgets
         components = []
         if title is not None:
-            components.append(ipywidgets.HTML(value=f"{title}"))
+            components.append(ipywidgets.HTML(value=f"<h3>{title}</h3>"))
         components.append(controls)
         components.append(freq_map)
         if epilogue is not None:
@@ -3710,31 +3818,86 @@ def _make_sample_period_year(row):
         return pd.NaT
 
 
-def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+# def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+#     """Convert a genotype array to an array of alt allele counts, melted to
+#     store one row per alt allele."""
+#
+#     n_variants = gt.shape[0]
+#     n_samples = gt.shape[1]
+#
+#     # convert to genotype allele counts
+#     gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
+#     assert gac.shape == (n_variants, n_samples, max_allele + 1)
+#
+#     # sum total observations over alleles
+#     gan = gac.sum(axis=2)
+#
+#     # keep only alt allele counts
+#     gac_alt = gac[:, :, 1:]
+#     assert gac_alt.shape == (n_variants, n_samples, max_allele)
+#
+#     # use some numpy tricks to melt alleles into rows
+#     gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
+#     assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
+#     gan_melt = np.repeat(gan, max_allele, axis=0)
+#     assert gan_melt.shape == (n_variants * max_allele, n_samples)
+#
+#     return gac_alt_melt, gan_melt
+
+
+@numba.njit
+def _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele):
     """Convert a genotype array to an array of alt allele counts, melted to
     store one row per alt allele."""
 
     n_variants = gt.shape[0]
     n_samples = gt.shape[1]
+    ploidy = gt.shape[2]
 
-    # convert to genotype allele counts
-    gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
-    assert gac.shape == (n_variants, n_samples, max_allele + 1)
+    gac_alt_melt = np.zeros((n_variants * max_allele, n_samples), dtype=np.uint8)
+    gan = np.zeros((n_variants, n_samples), dtype=np.uint8)
 
-    # sum total observations over alleles
-    gan = gac.sum(axis=2)
+    for i in range(n_variants):
+        out_i_offset = (i * max_allele) - 1
+        for j in range(n_samples):
+            for k in range(ploidy):
+                allele = gt[i, j, k]
+                if allele > 0:
+                    out_i = out_i_offset + allele
+                    gac_alt_melt[out_i, j] += 1
+                    gan[i, j] += 1
+                elif allele == 0:
+                    gan[i, j] += 1
 
-    # keep only alt allele counts
-    gac_alt = gac[:, :, 1:]
-    assert gac_alt.shape == (n_variants, n_samples, max_allele)
+    return gac_alt_melt, gan
 
-    # use some numpy tricks to melt alleles into rows
-    gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
-    assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
+
+def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+    gac_alt_melt, gan = _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele)
     gan_melt = np.repeat(gan, max_allele, axis=0)
-    assert gan_melt.shape == (n_variants * max_allele, n_samples)
-
     return gac_alt_melt, gan_melt
+
+
+@numba.njit
+def _take_sum_cols(a, indices):
+    n_variants = a.shape[0]
+    n_indices = indices.shape[0]
+    out = np.zeros(n_variants, dtype=np.int64)
+    for i in range(n_variants):
+        v_sum = 0
+        for j in range(n_indices):
+            ix = indices[j]
+            v = a[i, ix]
+            v_sum += v
+        out[i] = v_sum
+    return out
+
+
+def _make_snp_label(row):
+    label = (
+        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
+    )
+    return label
 
 
 def _make_snp_label_effect(row):
@@ -3744,6 +3907,11 @@ def _make_snp_label_effect(row):
     aa_change = row["aa_change"]
     if isinstance(aa_change, str):
         label += f" ({aa_change})"
+    return label
+
+
+def _make_snp_label_aa(row):
+    label = f"{row['aa_change']} ({row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']})"
     return label
 
 
@@ -3767,6 +3935,7 @@ def _map_snp_to_aa_change_frq_ds(ds):
         "variant_impact",
         "variant_aa_pos",
         "variant_aa_change",
+        "variant_ref_allele",
         "variant_ref_aa",
         "variant_alt_aa",
         "event_nobs",
@@ -3775,7 +3944,7 @@ def _map_snp_to_aa_change_frq_ds(ds):
     if ds.dims["variants"] == 1:
 
         # keep everything as-is, no need for aggregation
-        ds_out = ds[keep_vars + ["event_count"]]
+        ds_out = ds[keep_vars + ["variant_alt_allele", "event_count"]]
 
     else:
 
@@ -3786,6 +3955,10 @@ def _map_snp_to_aa_change_frq_ds(ds):
         count = ds["event_count"].values.sum(axis=0, keepdims=True)
         ds_out["event_count"] = ("variants", "cohorts"), count
 
+        # collapse alt allele
+        alt_allele = "{" + ",".join(ds["variant_alt_allele"].values) + "}"
+        ds_out["variant_alt_allele"] = "variants", np.array([alt_allele], dtype=object)
+
     return ds_out
 
 
@@ -3793,9 +3966,10 @@ def _add_frequency_ci(ds, ci_method):
     if ci_method is not None:
         count = ds["event_count"].values
         nobs = ds["event_nobs"].values
-        frq_ci_low, frq_ci_upp = proportion_confint(
-            count=count, nobs=nobs, method=ci_method
-        )
+        with np.errstate(divide="ignore", invalid="ignore"):
+            frq_ci_low, frq_ci_upp = proportion_confint(
+                count=count, nobs=nobs, method=ci_method
+            )
         ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
         ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
 
