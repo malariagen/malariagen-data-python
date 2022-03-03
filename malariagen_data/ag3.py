@@ -3010,16 +3010,16 @@ class Ag3:
             # obtain sample indices for cohort
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
-            # select genotype data for cohort
-            cohort_gac = np.take(gac, sample_indices, axis=1)
-
             # compute cohort allele counts
-            np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
+            # cohort_gac = np.take(gac, sample_indices, axis=1)
+            # np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
+            count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
 
             # compute cohort allele numbers
-            cohort_gan = np.take(gan, sample_indices, axis=1)
             if nobs_mode == "called":
-                np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
+                # cohort_gan = np.take(gan, sample_indices, axis=1)
+                # np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
+                nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
             elif nobs_mode == "fixed":
                 nobs[:, cohort_index] = cohort.size * 2
             else:
@@ -3248,7 +3248,7 @@ class Ag3:
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
-            df_variants = df_variants.loc[loc_variants]
+            # df_variants = df_variants.loc[loc_variants]
 
         # compute new confidence intervals
         _add_frequency_ci(ds_aa_frq, ci_method)
@@ -3818,31 +3818,79 @@ def _make_sample_period_year(row):
         return pd.NaT
 
 
-def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+# def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+#     """Convert a genotype array to an array of alt allele counts, melted to
+#     store one row per alt allele."""
+#
+#     n_variants = gt.shape[0]
+#     n_samples = gt.shape[1]
+#
+#     # convert to genotype allele counts
+#     gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
+#     assert gac.shape == (n_variants, n_samples, max_allele + 1)
+#
+#     # sum total observations over alleles
+#     gan = gac.sum(axis=2)
+#
+#     # keep only alt allele counts
+#     gac_alt = gac[:, :, 1:]
+#     assert gac_alt.shape == (n_variants, n_samples, max_allele)
+#
+#     # use some numpy tricks to melt alleles into rows
+#     gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
+#     assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
+#     gan_melt = np.repeat(gan, max_allele, axis=0)
+#     assert gan_melt.shape == (n_variants * max_allele, n_samples)
+#
+#     return gac_alt_melt, gan_melt
+
+
+@numba.njit
+def _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele):
     """Convert a genotype array to an array of alt allele counts, melted to
     store one row per alt allele."""
 
     n_variants = gt.shape[0]
     n_samples = gt.shape[1]
+    ploidy = gt.shape[2]
 
-    # convert to genotype allele counts
-    gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
-    assert gac.shape == (n_variants, n_samples, max_allele + 1)
+    gac_alt_melt = np.zeros((n_variants * max_allele, n_samples), dtype=np.uint8)
+    gan = np.zeros((n_variants, n_samples), dtype=np.uint8)
 
-    # sum total observations over alleles
-    gan = gac.sum(axis=2)
+    for i in range(n_variants):
+        out_i_offset = (i * max_allele) - 1
+        for j in range(n_samples):
+            for k in range(ploidy):
+                allele = gt[i, j, k]
+                if allele > 0:
+                    out_i = out_i_offset + allele
+                    gac_alt_melt[out_i, j] += 1
+                    gan[i, j] += 1
+                elif allele == 0:
+                    gan[i, j] += 1
 
-    # keep only alt allele counts
-    gac_alt = gac[:, :, 1:]
-    assert gac_alt.shape == (n_variants, n_samples, max_allele)
+    return gac_alt_melt, gan
 
-    # use some numpy tricks to melt alleles into rows
-    gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
-    assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
+
+def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
+    gac_alt_melt, gan = _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele)
     gan_melt = np.repeat(gan, max_allele, axis=0)
-    assert gan_melt.shape == (n_variants * max_allele, n_samples)
-
     return gac_alt_melt, gan_melt
+
+
+@numba.njit
+def _take_sum_cols(a, indices):
+    n_variants = a.shape[0]
+    n_indices = indices.shape[0]
+    out = np.zeros(n_variants, dtype=np.int64)
+    for i in range(n_variants):
+        v_sum = 0
+        for j in range(n_indices):
+            ix = indices[j]
+            v = a[i, ix]
+            v_sum += v
+        out[i] = v_sum
+    return out
 
 
 def _make_snp_label(row):
@@ -3918,9 +3966,10 @@ def _add_frequency_ci(ds, ci_method):
     if ci_method is not None:
         count = ds["event_count"].values
         nobs = ds["event_nobs"].values
-        frq_ci_low, frq_ci_upp = proportion_confint(
-            count=count, nobs=nobs, method=ci_method
-        )
+        with np.errstate(divide="ignore", invalid="ignore"):
+            frq_ci_low, frq_ci_upp = proportion_confint(
+                count=count, nobs=nobs, method=ci_method
+            )
         ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
         ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
 
