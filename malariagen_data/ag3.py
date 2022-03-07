@@ -2242,47 +2242,6 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
-        # handle multiple contigs
-        if isinstance(contig, str):
-            contig = [contig]
-
-        # concatenate data from multiple contigs
-        df = pd.concat(
-            [
-                self._gene_cnv_frequencies(
-                    contig=c,
-                    cohorts=cohorts,
-                    sample_query=sample_query,
-                    cohorts_analysis=cohorts_analysis,
-                    min_cohort_size=min_cohort_size,
-                    species_analysis=species_analysis,
-                    sample_sets=sample_sets,
-                    drop_invariant=drop_invariant,
-                    max_coverage_variance=max_coverage_variance,
-                )
-                for c in contig
-            ]
-        )
-
-        return df
-
-    def _gene_cnv_frequencies(
-        self,
-        *,
-        contig,
-        cohorts,
-        sample_query,
-        cohorts_analysis,
-        min_cohort_size,
-        species_analysis,
-        sample_sets,
-        drop_invariant,
-        max_coverage_variance,
-    ):
-
-        # sanity check - here we handle one contig at a time
-        assert isinstance(contig, str)
-
         # load sample metadata
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
