@@ -1282,7 +1282,7 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
     assert set(o.dims) == set()
 
 
-@pytest.mark.parametrize("contig", ["2R", "X"])
+@pytest.mark.parametrize("contig", ["2R", "X", ["2R", "3R"]])
 @pytest.mark.parametrize(
     "cohorts",
     [
@@ -1306,7 +1306,12 @@ def test_gene_cnv_frequencies(contig, cohorts):
         "label",
     ]
     ag3 = setup_ag3()
-    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    if isinstance(contig, str):
+        df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    else:
+        df_genes = pd.concat(
+            [ag3.geneset().query(f"type == 'gene' and contig == '{c}'") for c in contig]
+        )
 
     df_cnv_frq = ag3.gene_cnv_frequencies(
         contig=contig,
