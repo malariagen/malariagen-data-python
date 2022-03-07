@@ -4,15 +4,11 @@ from collections import Counter
 
 import allel
 import dask.array as da
-import ipyleaflet
-import ipywidgets
 import numba
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import xarray as xr
 import zarr
-from statsmodels.stats.proportion import proportion_confint
 
 from . import veff
 from .util import (
@@ -2784,6 +2780,8 @@ class Ag3:
 
         """
 
+        import plotly.express as px
+
         # check len of input
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
@@ -3512,6 +3510,8 @@ class Ag3:
 
         """
 
+        import plotly.express as px
+
         # handle title
         if title is True:
             title = ds.attrs.get("title", None)
@@ -3614,6 +3614,9 @@ class Ag3:
 
         """
 
+        import ipyleaflet
+        import ipywidgets
+
         # slice dataset to variant of interest
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
@@ -3713,6 +3716,9 @@ class Ag3:
             time period to display.
 
         """
+
+        import ipyleaflet
+        import ipywidgets
 
         # handle title
         if title is True:
@@ -3967,6 +3973,8 @@ def _map_snp_to_aa_change_frq_ds(ds):
 
 
 def _add_frequency_ci(ds, ci_method):
+    from statsmodels.stats.proportion import proportion_confint
+
     if ci_method is not None:
         count = ds["event_count"].values
         nobs = ds["event_nobs"].values
