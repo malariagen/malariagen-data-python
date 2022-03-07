@@ -1709,7 +1709,7 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
+        contig : str or list of str
             Chromosome arm, e.g., "3R". Multiple values can be provided
             as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str, optional
@@ -1884,7 +1884,7 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
+        contig : str or list of str
             Chromosome arm, e.g., "3R". Multiple values can be provided
             as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_set : str
@@ -2037,7 +2037,7 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
+        contig : str or list of str
             Chromosome arm, e.g., "3R". Multiple values can be provided
             as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str, optional
@@ -2088,8 +2088,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         sample_sets : str or list of str
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -2102,6 +2103,22 @@ class Ag3:
 
         """
 
+        # handle multiple contigs
+        if isinstance(contig, str):
+            contig = [contig]
+
+        ds = xarray_concat(
+            [self._gene_cnv(contig=c, sample_sets=sample_sets) for c in contig],
+            dim="genes",
+        )
+
+        return ds
+
+    def _gene_cnv(self, *, contig, sample_sets):
+
+        # sanity check
+        assert isinstance(contig, str)
+
         # access HMM data
         ds_hmm = self.cnv_hmm(contig=contig, sample_sets=sample_sets)
         pos = ds_hmm["variant_position"].values
@@ -2111,6 +2128,7 @@ class Ag3:
         # access genes
         df_geneset = self.geneset()
         df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
+        n_genes = len(df_genes)
 
         # setup intermediates
         windows = []
@@ -2143,14 +2161,16 @@ class Ag3:
         ds_out = xr.Dataset(
             coords={
                 "gene_id": (["genes"], df_genes["ID"].values),
-                "gene_start": (["genes"], df_genes["start"].values),
-                "gene_end": (["genes"], df_genes["end"].values),
                 "sample_id": (["samples"], ds_hmm["sample_id"].values),
             },
             data_vars={
+                "gene_contig": (["genes"], np.array([contig] * n_genes, dtype=object)),
+                "gene_start": (["genes"], df_genes["start"].values),
+                "gene_end": (["genes"], df_genes["end"].values),
                 "gene_windows": (["genes"], windows),
                 "gene_name": (["genes"], df_genes["Name"].values),
                 "gene_strand": (["genes"], df_genes["strand"].values),
+                "gene_description": (["genes"], df_genes["description"].values),
                 "CN_mode": (["genes", "samples"], modes),
                 "CN_mode_count": (["genes", "samples"], counts),
                 "sample_coverage_variance": (
@@ -2184,7 +2204,8 @@ class Ag3:
         Parameters
         ----------
         contig : str or list of str
-            Chromosome arm, e.g., "3R".
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         cohorts : str or dict
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
@@ -2286,9 +2307,6 @@ class Ag3:
             else:
                 loc_samples = loc_pass_samples
 
-        # get genes
-        df_genes = self.geneset().query(f"type == 'gene' and contig == '{contig}'")
-
         # figure out expected copy number
         if contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
@@ -2296,20 +2314,25 @@ class Ag3:
         else:
             expected_cn = 2
 
-        # setup output dataframe
-        n_genes = len(df_genes)
+        # setup output dataframe - two rows for each gene, one for amplification and one for deletion
+        n_genes = ds_cnv.dims["genes"]
+        df_genes = ds_cnv[
+            [
+                "gene_id",
+                "gene_name",
+                "gene_strand",
+                "gene_description",
+                "gene_contig",
+                "gene_start",
+                "gene_end",
+            ]
+        ].to_dataframe()
         df = pd.concat([df_genes, df_genes], axis=0).reset_index(drop=True)
-
-        # drop columns we don't need
-        df.drop(columns=["source", "type", "score", "phase", "Parent"], inplace=True)
-
-        # rename some columns
         df.rename(
             columns={
-                "ID": "gene_id",
-                "Name": "gene_name",
-                "strand": "gene_strand",
-                "description": "gene_description",
+                "gene_contig": "contig",
+                "gene_start": "start",
+                "gene_end": "end",
             },
             inplace=True,
         )

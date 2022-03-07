@@ -1173,7 +1173,7 @@ def test_cn_mode(rows, cols, vmax):
     "sample_sets",
     ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
-@pytest.mark.parametrize("contig", ["2R", "X"])
+@pytest.mark.parametrize("contig", ["2R", "X", ["2R", "3R"]])
 def test_gene_cnv(contig, sample_sets):
     ag3 = setup_ag3()
 
@@ -1186,7 +1186,11 @@ def test_gene_cnv(contig, sample_sets):
         "CN_mode",
         "CN_mode_count",
         "gene_windows",
+        "gene_contig",
+        "gene_start",
+        "gene_end",
         "gene_name",
+        "gene_description",
         "gene_strand",
         "sample_coverage_variance",
         "sample_is_high_variance",
@@ -1195,8 +1199,6 @@ def test_gene_cnv(contig, sample_sets):
 
     expected_coords = {
         "gene_id",
-        "gene_start",
-        "gene_end",
         "sample_id",
     }
     assert set(ds.coords) == expected_coords
@@ -1209,7 +1211,12 @@ def test_gene_cnv(contig, sample_sets):
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
     df_geneset = ag3.geneset()
-    df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
+    if isinstance(contig, str):
+        df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
+    else:
+        df_genes = pd.concat(
+            [df_geneset.query(f"type == 'gene' and contig == '{c}'") for c in contig]
+        )
     n_genes = len(df_genes)
     assert ds.dims["genes"] == n_genes
 
