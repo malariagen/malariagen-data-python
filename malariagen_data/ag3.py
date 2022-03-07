@@ -10,6 +10,8 @@ import pandas as pd
 import xarray as xr
 import zarr
 
+import malariagen_data
+
 from . import veff
 from .util import (
     DIM_ALLELE,
@@ -141,15 +143,16 @@ class Ag3:
     def __repr__(self):
         return (
             f"<MalariaGEN Ag3 data resource API>\n"
-            f"Storage URL           : {self._url}\n"
-            f"Releases available    : {', '.join(self.releases)}\n"
-            f"Cohorts analysis      : {DEFAULT_COHORTS_ANALYSIS}\n"
-            f"Species analysis      : {DEFAULT_SPECIES_ANALYSIS}\n"
-            f"Site filters analysis : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"Storage URL             : {self._url}\n"
+            f"Data releases available : {', '.join(self.releases)}\n"
+            f"Cohorts analysis        : {DEFAULT_COHORTS_ANALYSIS}\n"
+            f"Species analysis        : {DEFAULT_SPECIES_ANALYSIS}\n"
+            f"Site filters analysis   : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"Software version        : {malariagen_data.__version__}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net. For API documentation see: "
+            f"or contact data@malariagen.net. For API documentation see: \n"
             f"https://malariagen.github.io/vector-data/ag3/api.html"
         )
 
@@ -169,10 +172,11 @@ class Ag3:
                 </thead>
                 <tbody>
                     <tr><th style="text-align: left">Storage URL</th><td>{self._url}</td></tr>
-                    <tr><th style="text-align: left">Releases available</th><td>{', '.join(self.releases)}</td></tr>
+                    <tr><th style="text-align: left">Data releases available</th><td>{', '.join(self.releases)}</td></tr>
                     <tr><th style="text-align: left">Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
                     <tr><th style="text-align: left">Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
                     <tr><th style="text-align: left">Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
+                    <tr><th style="text-align: left">Software version</th><td>{malariagen_data.__version__}</td></tr>
                 </tbody>
             </table>
         """
