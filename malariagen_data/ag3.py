@@ -2918,11 +2918,11 @@ class Ag3:
         -------
         ds : xarray.Dataset
             The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            Variables prefixed with "cohort" are 1-dimensional arrays with data about
             the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            prefixed with "variant" are 1-dimensional arrays with data about the variants,
             such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            with "event" are 2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3164,11 +3164,11 @@ class Ag3:
         -------
         ds : xarray.Dataset
             The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            Variables prefixed with "cohort" are 1-dimensional arrays with data about
             the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            prefixed with "variant" are 1-dimensional arrays with data about the variants,
             such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            with "event" are 2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3319,11 +3319,11 @@ class Ag3:
         -------
         ds : xarray.Dataset
             The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            Variables prefixed with "cohort" are 1-dimensional arrays with data about
             the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            prefixed with "variant" are 1-dimensional arrays with data about the variants,
             such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            with "event" are 2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
