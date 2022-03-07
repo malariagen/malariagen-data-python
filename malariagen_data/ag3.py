@@ -1287,7 +1287,11 @@ class Ag3:
             ann.get_effects(transcript=transcript, variants=df_snps)
 
             # add label
-            df_snps["label"] = df_snps.apply(_make_snp_label_effect, axis="columns")
+            df_snps["label"] = _pandas_apply(
+                _make_snp_label_effect,
+                df_snps,
+                columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+            )
 
             # set index
             df_snps.set_index(
@@ -1298,7 +1302,11 @@ class Ag3:
         else:
 
             # add label
-            df_snps["label"] = df_snps.apply(_make_snp_label, axis="columns")
+            df_snps["label"] = _pandas_apply(
+                _make_snp_label,
+                df_snps,
+                columns=["contig", "position", "ref_allele", "alt_allele"],
+            )
 
             # set index
             df_snps.set_index(
@@ -2331,7 +2339,9 @@ class Ag3:
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
 
         # add label
-        df["label"] = df.apply(_make_gene_cnv_label, axis="columns")
+        df["label"] = _pandas_apply(
+            _make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
+        )
 
         # deal with invariants
         if drop_invariant:
@@ -2709,7 +2719,11 @@ class Ag3:
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         # add label
-        df_aaf["label"] = df_aaf.apply(_make_snp_label_aa, axis="columns")
+        df_aaf["label"] = _pandas_apply(
+            _make_snp_label_aa,
+            df_aaf,
+            columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
+        )
 
         # sort by genomic position
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
@@ -3071,7 +3085,11 @@ class Ag3:
         ann.get_effects(transcript=transcript, variants=df_variants)
 
         # add variant labels
-        df_variants["label"] = df_variants.apply(_make_snp_label_effect, axis="columns")
+        df_variants["label"] = _pandas_apply(
+            _make_snp_label_effect,
+            df_variants,
+            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+        )
 
         # build the output dataset
         ds_out = xr.Dataset()
@@ -3247,7 +3265,11 @@ class Ag3:
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
         # assign new variant label
-        label = df_variants.apply(_make_snp_label_aa, axis=1)
+        label = _pandas_apply(
+            _make_snp_label_aa,
+            df_variants,
+            columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
+        )
         ds_aa_frq["variant_label"] = "variants", label
 
         # apply variant query if given
@@ -3445,7 +3467,11 @@ class Ag3:
         )
 
         # add variant label
-        df_variants["label"] = df_variants.apply(_make_gene_cnv_label, axis="columns")
+        df_variants["label"] = _pandas_apply(
+            _make_gene_cnv_label,
+            df_variants,
+            columns=["gene_id", "gene_name", "cnv_type"],
+        )
 
         # build the output dataset
         ds_out = xr.Dataset()
@@ -3907,34 +3933,58 @@ def _take_sum_cols(a, indices):
     return out
 
 
-def _make_snp_label(row):
-    label = (
-        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-    )
-    return label
+# def _make_snp_label(row):
+#     label = (
+#         f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
+#     )
+#     return label
 
 
-def _make_snp_label_effect(row):
-    label = (
-        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-    )
-    aa_change = row["aa_change"]
+def _make_snp_label(contig, position, ref_allele, alt_allele):
+    return f"{contig}:{position:,} {ref_allele}>{alt_allele}"
+
+
+# def _make_snp_label_effect(row):
+#     label = (
+#         f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
+#     )
+#     aa_change = row["aa_change"]
+#     if isinstance(aa_change, str):
+#         label += f" ({aa_change})"
+#     return label
+
+
+def _make_snp_label_effect(contig, position, ref_allele, alt_allele, aa_change):
+    label = f"{contig}:{position:,} {ref_allele}>{alt_allele}"
     if isinstance(aa_change, str):
         label += f" ({aa_change})"
     return label
 
 
-def _make_snp_label_aa(row):
-    label = f"{row['aa_change']} ({row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']})"
+# def _make_snp_label_aa(row):
+#     label = f"{row['aa_change']} ({row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']})"
+#     return label
+
+
+def _make_snp_label_aa(aa_change, contig, position, ref_allele, alt_allele):
+    label = f"{aa_change} ({contig}:{position:,} {ref_allele}>{alt_allele})"
     return label
 
 
-def _make_gene_cnv_label(row):
-    label = row["gene_id"]
-    gene_name = row["gene_name"]
+# def _make_gene_cnv_label(row):
+#     label = row["gene_id"]
+#     gene_name = row["gene_name"]
+#     if isinstance(gene_name, str):
+#         label += f" ({gene_name})"
+#     label += f" {row['cnv_type']}"
+#     return label
+
+
+def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
+    label = gene_id
     if isinstance(gene_name, str):
         label += f" ({gene_name})"
-    label += f" {row['cnv_type']}"
+    label += f" {cnv_type}"
     return label
 
 
@@ -4063,3 +4113,10 @@ def _check_param_min_cohort_size(min_cohort_size):
         raise ValueError(
             f"Value of parameter min_cohort_size must be at least 1; found {min_cohort_size}."
         )
+
+
+def _pandas_apply(f, df, columns):
+    """Optimised alternative to pandas apply."""
+    iterator = zip(*[df[c] for c in columns])
+    ret = pd.Series((f(*vals) for vals in iterator))
+    return ret
