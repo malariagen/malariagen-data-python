@@ -2337,6 +2337,7 @@ class Ag3:
         df.reset_index(drop=True, inplace=True)
         df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
+        df.reset_index(drop=True, inplace=True)
 
         # add label
         df["label"] = _pandas_apply(
@@ -2996,8 +2997,8 @@ class Ag3:
         # bring genotypes into memory
         gt = gt.compute()
 
-        # convert genotypes to more convenient representation
-        gac, gan = _genotypes_to_alt_allele_counts_melt(gt, max_allele=3)
+        # # convert genotypes to more convenient representation
+        # gac, gan = _genotypes_to_alt_allele_counts_melt(gt, max_allele=3)
 
         # set up variant variables
         contigs = ds_snps.attrs["contigs"]
@@ -3033,13 +3034,18 @@ class Ag3:
             # compute cohort allele counts
             # cohort_gac = np.take(gac, sample_indices, axis=1)
             # np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
-            count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
+            # count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
+            cohort_ac, cohort_an = _cohort_alt_allele_counts_melt(
+                gt, sample_indices, max_allele=3
+            )
+            count[:, cohort_index] = cohort_ac
 
             # compute cohort allele numbers
             if nobs_mode == "called":
                 # cohort_gan = np.take(gan, sample_indices, axis=1)
                 # np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
-                nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
+                # nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
+                nobs[:, cohort_index] = cohort_an
             elif nobs_mode == "fixed":
                 nobs[:, cohort_index] = cohort.size * 2
             else:
@@ -3073,7 +3079,7 @@ class Ag3:
         # deal with SNP alleles not observed
         if drop_invariant:
             loc_variant = max_af > 0
-            df_variants = df_variants.loc[loc_variant]
+            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
             count = np.compress(loc_variant, count, axis=0)
             nobs = np.compress(loc_variant, nobs, axis=0)
             frequency = np.compress(loc_variant, frequency, axis=0)
@@ -3493,7 +3499,7 @@ class Ag3:
         if drop_invariant:
             loc_variant = df_variants["max_af"].values > 0
             ds_out = ds_out.isel(variants=loc_variant)
-            df_variants = df_variants.loc[loc_variant]
+            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
 
         # apply variant query
         if variant_query is not None:
@@ -3858,100 +3864,40 @@ def _make_sample_period_year(row):
         return pd.NaT
 
 
-# def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
-#     """Convert a genotype array to an array of alt allele counts, melted to
-#     store one row per alt allele."""
-#
-#     n_variants = gt.shape[0]
-#     n_samples = gt.shape[1]
-#
-#     # convert to genotype allele counts
-#     gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
-#     assert gac.shape == (n_variants, n_samples, max_allele + 1)
-#
-#     # sum total observations over alleles
-#     gan = gac.sum(axis=2)
-#
-#     # keep only alt allele counts
-#     gac_alt = gac[:, :, 1:]
-#     assert gac_alt.shape == (n_variants, n_samples, max_allele)
-#
-#     # use some numpy tricks to melt alleles into rows
-#     gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
-#     assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
-#     gan_melt = np.repeat(gan, max_allele, axis=0)
-#     assert gan_melt.shape == (n_variants * max_allele, n_samples)
-#
-#     return gac_alt_melt, gan_melt
-
-
 @numba.njit
-def _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele):
-    """Convert a genotype array to an array of alt allele counts, melted to
-    store one row per alt allele."""
+def _cohort_alt_allele_counts_melt_kernel(gt, indices, max_allele):
 
     n_variants = gt.shape[0]
-    n_samples = gt.shape[1]
+    n_indices = indices.shape[0]
     ploidy = gt.shape[2]
 
-    gac_alt_melt = np.zeros((n_variants * max_allele, n_samples), dtype=np.uint8)
-    gan = np.zeros((n_variants, n_samples), dtype=np.uint8)
+    ac_alt_melt = np.zeros(n_variants * max_allele, dtype=np.int64)
+    an = np.zeros(n_variants, dtype=np.int64)
 
     for i in range(n_variants):
         out_i_offset = (i * max_allele) - 1
-        for j in range(n_samples):
-            for k in range(ploidy):
-                allele = gt[i, j, k]
-                if allele > 0:
-                    out_i = out_i_offset + allele
-                    gac_alt_melt[out_i, j] += 1
-                    gan[i, j] += 1
-                elif allele == 0:
-                    gan[i, j] += 1
-
-    return gac_alt_melt, gan
-
-
-def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
-    gac_alt_melt, gan = _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele)
-    gan_melt = np.repeat(gan, max_allele, axis=0)
-    return gac_alt_melt, gan_melt
-
-
-@numba.njit
-def _take_sum_cols(a, indices):
-    n_variants = a.shape[0]
-    n_indices = indices.shape[0]
-    out = np.zeros(n_variants, dtype=np.int64)
-    for i in range(n_variants):
-        v_sum = 0
         for j in range(n_indices):
             ix = indices[j]
-            v = a[i, ix]
-            v_sum += v
-        out[i] = v_sum
-    return out
+            for k in range(ploidy):
+                allele = gt[i, ix, k]
+                if allele > 0:
+                    out_i = out_i_offset + allele
+                    ac_alt_melt[out_i] += 1
+                    an[i] += 1
+                elif allele == 0:
+                    an[i] += 1
+
+    return ac_alt_melt, an
 
 
-# def _make_snp_label(row):
-#     label = (
-#         f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-#     )
-#     return label
+def _cohort_alt_allele_counts_melt(gt, indices, max_allele):
+    ac_alt_melt, an = _cohort_alt_allele_counts_melt_kernel(gt, indices, max_allele)
+    an_melt = np.repeat(an, max_allele, axis=0)
+    return ac_alt_melt, an_melt
 
 
 def _make_snp_label(contig, position, ref_allele, alt_allele):
     return f"{contig}:{position:,} {ref_allele}>{alt_allele}"
-
-
-# def _make_snp_label_effect(row):
-#     label = (
-#         f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-#     )
-#     aa_change = row["aa_change"]
-#     if isinstance(aa_change, str):
-#         label += f" ({aa_change})"
-#     return label
 
 
 def _make_snp_label_effect(contig, position, ref_allele, alt_allele, aa_change):
@@ -3961,23 +3907,9 @@ def _make_snp_label_effect(contig, position, ref_allele, alt_allele, aa_change):
     return label
 
 
-# def _make_snp_label_aa(row):
-#     label = f"{row['aa_change']} ({row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']})"
-#     return label
-
-
 def _make_snp_label_aa(aa_change, contig, position, ref_allele, alt_allele):
     label = f"{aa_change} ({contig}:{position:,} {ref_allele}>{alt_allele})"
     return label
-
-
-# def _make_gene_cnv_label(row):
-#     label = row["gene_id"]
-#     gene_name = row["gene_name"]
-#     if isinstance(gene_name, str):
-#         label += f" ({gene_name})"
-#     label += f" {row['cnv_type']}"
-#     return label
 
 
 def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
@@ -4117,6 +4049,7 @@ def _check_param_min_cohort_size(min_cohort_size):
 
 def _pandas_apply(f, df, columns):
     """Optimised alternative to pandas apply."""
-    iterator = zip(*[df[c] for c in columns])
+    df = df.reset_index(drop=True)
+    iterator = zip(*[df[c].values for c in columns])
     ret = pd.Series((f(*vals) for vals in iterator))
     return ret
