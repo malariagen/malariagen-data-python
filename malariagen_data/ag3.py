@@ -2743,20 +2743,23 @@ class Ag3:
         title=True,
         **kwargs,
     ):
-
-        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
-            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to
-            filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
+        from `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`.
+        It's recommended to filter the input DataFrame to just rows of interest,
+        i.e., fewer rows than `max_len`.
 
         Parameters
         ----------
         df : pandas DataFrame
-           A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+           A DataFrame of frequencies, e.g., output from
+           `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
         index : str or list of str
-            One or more column headers that are present in the input dataframe. This becomes the heatmap y-axis
-            row labels. The column/s must produce a unique index.
+            One or more column headers that are present in the input dataframe.
+            This becomes the heatmap y-axis row labels. The column/s must
+            produce a unique index.
         max_len : int, optional
-            Displaying large styled dataframes may cause ipython notebooks to crash.
+            Displaying large styled dataframes may cause ipython notebooks to
+            crash.
         x_label : str, optional
             This is the x-axis label that will be displayed on the heatmap.
         y_label : str, optional
@@ -2871,39 +2874,40 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
-        """Group samples by taxon, area (space) and period (time), then compute SNP allele counts
-        and frequencies.
+        """Group samples by taxon, area (space) and period (time), then compute
+        SNP allele counts and frequencies.
 
         Parameters
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         area_by : str
-            Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to group by level 2 administrative divisions.
+            Column name in the sample metadata to use to group samples
+            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level 1
+            administrative divisions, or use "admin2_name" to group by level 2
+            administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are dropped from
-            the result.
+            If True, variants with no alternate allele calls in any cohorts are
+            dropped from the result.
         variant_query : str, optional
         site_mask : str, optional
             Site filters mask to apply.
         nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies. If "called"
-            then use the number of called alleles, i.e., number of samples with non-missing
-            genotype calls multiplied by 2. If "fixed" then use the number of samples
-            multiplied by 2.
+            Method for calculating the denominator when computing frequencies.
+            If "called" then use the number of called alleles, i.e., number of
+            samples with non-missing genotype calls multiplied by 2. If "fixed"
+            then use the number of samples multiplied by 2.
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
@@ -3129,8 +3133,8 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to group by level 2 administrative divisions.
+            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
+            or use "admin2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
@@ -3289,8 +3293,8 @@ class Ag3:
             Chromosome arm, e.g., "3R".
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to group by level 2 administrative divisions.
+            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
+            or use "admin2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
