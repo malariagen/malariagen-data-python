@@ -4,15 +4,13 @@ from collections import Counter
 
 import allel
 import dask.array as da
-import ipyleaflet
-import ipywidgets
 import numba
 import numpy as np
 import pandas as pd
-import plotly.express as px
 import xarray as xr
 import zarr
-from statsmodels.stats.proportion import proportion_confint
+
+import malariagen_data
 
 from . import veff
 from .util import (
@@ -145,15 +143,16 @@ class Ag3:
     def __repr__(self):
         return (
             f"<MalariaGEN Ag3 data resource API>\n"
-            f"Storage URL           : {self._url}\n"
-            f"Releases available    : {', '.join(self.releases)}\n"
-            f"Cohorts analysis      : {DEFAULT_COHORTS_ANALYSIS}\n"
-            f"Species analysis      : {DEFAULT_SPECIES_ANALYSIS}\n"
-            f"Site filters analysis : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"Storage URL             : {self._url}\n"
+            f"Data releases available : {', '.join(self.releases)}\n"
+            f"Cohorts analysis        : {DEFAULT_COHORTS_ANALYSIS}\n"
+            f"Species analysis        : {DEFAULT_SPECIES_ANALYSIS}\n"
+            f"Site filters analysis   : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"Software version        : {malariagen_data.__version__}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net. For API documentation see: "
+            f"or contact data@malariagen.net. For API documentation see: \n"
             f"https://malariagen.github.io/vector-data/ag3/api.html"
         )
 
@@ -173,10 +172,11 @@ class Ag3:
                 </thead>
                 <tbody>
                     <tr><th style="text-align: left">Storage URL</th><td>{self._url}</td></tr>
-                    <tr><th style="text-align: left">Releases available</th><td>{', '.join(self.releases)}</td></tr>
+                    <tr><th style="text-align: left">Data releases available</th><td>{', '.join(self.releases)}</td></tr>
                     <tr><th style="text-align: left">Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
                     <tr><th style="text-align: left">Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
                     <tr><th style="text-align: left">Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
+                    <tr><th style="text-align: left">Software version</th><td>{malariagen_data.__version__}</td></tr>
                 </tbody>
             </table>
         """
@@ -1287,7 +1287,11 @@ class Ag3:
             ann.get_effects(transcript=transcript, variants=df_snps)
 
             # add label
-            df_snps["label"] = df_snps.apply(_make_snp_label_effect, axis="columns")
+            df_snps["label"] = _pandas_apply(
+                _make_snp_label_effect,
+                df_snps,
+                columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+            )
 
             # set index
             df_snps.set_index(
@@ -1298,7 +1302,11 @@ class Ag3:
         else:
 
             # add label
-            df_snps["label"] = df_snps.apply(_make_snp_label, axis="columns")
+            df_snps["label"] = _pandas_apply(
+                _make_snp_label,
+                df_snps,
+                columns=["contig", "position", "ref_allele", "alt_allele"],
+            )
 
             # set index
             df_snps.set_index(
@@ -2352,9 +2360,12 @@ class Ag3:
         df.reset_index(drop=True, inplace=True)
         df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
+        df.reset_index(drop=True, inplace=True)
 
         # add label
-        df["label"] = df.apply(_make_gene_cnv_label, axis="columns")
+        df["label"] = _pandas_apply(
+            _make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
+        )
 
         # deal with invariants
         if drop_invariant:
@@ -2732,7 +2743,11 @@ class Ag3:
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         # add label
-        df_aaf["label"] = df_aaf.apply(_make_snp_label_aa, axis="columns")
+        df_aaf["label"] = _pandas_apply(
+            _make_snp_label_aa,
+            df_aaf,
+            columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
+        )
 
         # sort by genomic position
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
@@ -2766,20 +2781,23 @@ class Ag3:
         title=True,
         **kwargs,
     ):
-
-        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output from
-            `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`. It's recommended to
-            filter the input DataFrame to just rows of interest, i.e., fewer rows than `max_len`.
+        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
+        from `Ag3.snp_allele_frequencies()` or `Ag3.gene_cnv_frequencies()`.
+        It's recommended to filter the input DataFrame to just rows of interest,
+        i.e., fewer rows than `max_len`.
 
         Parameters
         ----------
         df : pandas DataFrame
-           A DataFrame of frequencies, e.g., output from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+           A DataFrame of frequencies, e.g., output from
+           `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
         index : str or list of str
-            One or more column headers that are present in the input dataframe. This becomes the heatmap y-axis
-            row labels. The column/s must produce a unique index.
+            One or more column headers that are present in the input dataframe.
+            This becomes the heatmap y-axis row labels. The column/s must
+            produce a unique index.
         max_len : int, optional
-            Displaying large styled dataframes may cause ipython notebooks to crash.
+            Displaying large styled dataframes may cause ipython notebooks to
+            crash.
         x_label : str, optional
             This is the x-axis label that will be displayed on the heatmap.
         y_label : str, optional
@@ -2803,6 +2821,8 @@ class Ag3:
             Other parameters are passed through to px.imshow().
 
         """
+
+        import plotly.express as px
 
         # check len of input
         if len(df) > max_len:
@@ -2894,39 +2914,40 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
-        """Group samples by taxon, area (space) and period (time), then compute SNP allele counts
-        and frequencies.
+        """Group samples by taxon, area (space) and period (time), then compute
+        SNP allele counts and frequencies.
 
         Parameters
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         area_by : str
-            Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to group by level 2 administrative divisions.
+            Column name in the sample metadata to use to group samples
+            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level 1
+            administrative divisions, or use "admin2_name" to group by level 2
+            administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are dropped from
-            the result.
+            If True, variants with no alternate allele calls in any cohorts are
+            dropped from the result.
         variant_query : str, optional
         site_mask : str, optional
             Site filters mask to apply.
         nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies. If "called"
-            then use the number of called alleles, i.e., number of samples with non-missing
-            genotype calls multiplied by 2. If "fixed" then use the number of samples
-            multiplied by 2.
+            Method for calculating the denominator when computing frequencies.
+            If "called" then use the number of called alleles, i.e., number of
+            samples with non-missing genotype calls multiplied by 2. If "fixed"
+            then use the number of samples multiplied by 2.
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
@@ -2941,11 +2962,11 @@ class Ag3:
         -------
         ds : xarray.Dataset
             The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            Variables prefixed with "cohort" are 1-dimensional arrays with data about
             the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            prefixed with "variant" are 1-dimensional arrays with data about the variants,
             such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            with "event" are 2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -2999,8 +3020,8 @@ class Ag3:
         # bring genotypes into memory
         gt = gt.compute()
 
-        # convert genotypes to more convenient representation
-        gac, gan = _genotypes_to_alt_allele_counts_melt(gt, max_allele=3)
+        # # convert genotypes to more convenient representation
+        # gac, gan = _genotypes_to_alt_allele_counts_melt(gt, max_allele=3)
 
         # set up variant variables
         contigs = ds_snps.attrs["contigs"]
@@ -3036,13 +3057,18 @@ class Ag3:
             # compute cohort allele counts
             # cohort_gac = np.take(gac, sample_indices, axis=1)
             # np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
-            count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
+            # count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
+            cohort_ac, cohort_an = _cohort_alt_allele_counts_melt(
+                gt, sample_indices, max_allele=3
+            )
+            count[:, cohort_index] = cohort_ac
 
             # compute cohort allele numbers
             if nobs_mode == "called":
                 # cohort_gan = np.take(gan, sample_indices, axis=1)
                 # np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
-                nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
+                # nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
+                nobs[:, cohort_index] = cohort_an
             elif nobs_mode == "fixed":
                 nobs[:, cohort_index] = cohort.size * 2
             else:
@@ -3076,7 +3102,7 @@ class Ag3:
         # deal with SNP alleles not observed
         if drop_invariant:
             loc_variant = max_af > 0
-            df_variants = df_variants.loc[loc_variant]
+            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
             count = np.compress(loc_variant, count, axis=0)
             nobs = np.compress(loc_variant, nobs, axis=0)
             frequency = np.compress(loc_variant, frequency, axis=0)
@@ -3088,7 +3114,11 @@ class Ag3:
         ann.get_effects(transcript=transcript, variants=df_variants)
 
         # add variant labels
-        df_variants["label"] = df_variants.apply(_make_snp_label_effect, axis="columns")
+        df_variants["label"] = _pandas_apply(
+            _make_snp_label_effect,
+            df_variants,
+            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+        )
 
         # build the output dataset
         ds_out = xr.Dataset()
@@ -3152,8 +3182,8 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to group by level 2 administrative divisions.
+            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
+            or use "admin2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
@@ -3187,11 +3217,11 @@ class Ag3:
         -------
         ds : xarray.Dataset
             The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            Variables prefixed with "cohort" are 1-dimensional arrays with data about
             the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            prefixed with "variant" are 1-dimensional arrays with data about the variants,
             such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            with "event" are 2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3264,7 +3294,11 @@ class Ag3:
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
         # assign new variant label
-        label = df_variants.apply(_make_snp_label_aa, axis=1)
+        label = _pandas_apply(
+            _make_snp_label_aa,
+            df_variants,
+            columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
+        )
         ds_aa_frq["variant_label"] = "variants", label
 
         # apply variant query if given
@@ -3312,8 +3346,8 @@ class Ag3:
             Chromosome arm, e.g., "3R".
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "adm1_ISO" or "adm1_name" to group by level 1 administrative divisions,
-            or use "adm2_name" to group by level 2 administrative divisions.
+            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
+            or use "admin2_name" to group by level 2 administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
@@ -3342,11 +3376,11 @@ class Ag3:
         -------
         ds : xarray.Dataset
             The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort_" are 1-dimensional arrays with data about
+            Variables prefixed with "cohort" are 1-dimensional arrays with data about
             the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant_" are 1-dimensional arrays with data about the variants,
+            prefixed with "variant" are 1-dimensional arrays with data about the variants,
             such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event_" are 2-dimensional arrays with the allele counts and frequency
+            with "event" are 2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3462,7 +3496,11 @@ class Ag3:
         )
 
         # add variant label
-        df_variants["label"] = df_variants.apply(_make_gene_cnv_label, axis="columns")
+        df_variants["label"] = _pandas_apply(
+            _make_gene_cnv_label,
+            df_variants,
+            columns=["gene_id", "gene_name", "cnv_type"],
+        )
 
         # build the output dataset
         ds_out = xr.Dataset()
@@ -3484,7 +3522,7 @@ class Ag3:
         if drop_invariant:
             loc_variant = df_variants["max_af"].values > 0
             ds_out = ds_out.isel(variants=loc_variant)
-            df_variants = df_variants.loc[loc_variant]
+            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
 
         # apply variant query
         if variant_query is not None:
@@ -3530,6 +3568,8 @@ class Ag3:
             area. Markers and lines show frequencies of variants.
 
         """
+
+        import plotly.express as px
 
         # handle title
         if title is True:
@@ -3633,6 +3673,9 @@ class Ag3:
 
         """
 
+        import ipyleaflet
+        import ipywidgets
+
         # slice dataset to variant of interest
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
@@ -3732,6 +3775,9 @@ class Ag3:
             time period to display.
 
         """
+
+        import ipyleaflet
+        import ipywidgets
 
         # handle title
         if title is True:
@@ -3841,109 +3887,59 @@ def _make_sample_period_year(row):
         return pd.NaT
 
 
-# def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
-#     """Convert a genotype array to an array of alt allele counts, melted to
-#     store one row per alt allele."""
-#
-#     n_variants = gt.shape[0]
-#     n_samples = gt.shape[1]
-#
-#     # convert to genotype allele counts
-#     gac = allel.GenotypeArray(gt).to_allele_counts(max_allele=max_allele)
-#     assert gac.shape == (n_variants, n_samples, max_allele + 1)
-#
-#     # sum total observations over alleles
-#     gan = gac.sum(axis=2)
-#
-#     # keep only alt allele counts
-#     gac_alt = gac[:, :, 1:]
-#     assert gac_alt.shape == (n_variants, n_samples, max_allele)
-#
-#     # use some numpy tricks to melt alleles into rows
-#     gac_alt_melt = gac_alt.swapaxes(2, 1).reshape(-1, n_samples)
-#     assert gac_alt_melt.shape == (n_variants * max_allele, n_samples)
-#     gan_melt = np.repeat(gan, max_allele, axis=0)
-#     assert gan_melt.shape == (n_variants * max_allele, n_samples)
-#
-#     return gac_alt_melt, gan_melt
-
-
 @numba.njit
-def _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele):
-    """Convert a genotype array to an array of alt allele counts, melted to
-    store one row per alt allele."""
+def _cohort_alt_allele_counts_melt_kernel(gt, indices, max_allele):
 
     n_variants = gt.shape[0]
-    n_samples = gt.shape[1]
+    n_indices = indices.shape[0]
     ploidy = gt.shape[2]
 
-    gac_alt_melt = np.zeros((n_variants * max_allele, n_samples), dtype=np.uint8)
-    gan = np.zeros((n_variants, n_samples), dtype=np.uint8)
+    ac_alt_melt = np.zeros(n_variants * max_allele, dtype=np.int64)
+    an = np.zeros(n_variants, dtype=np.int64)
 
     for i in range(n_variants):
         out_i_offset = (i * max_allele) - 1
-        for j in range(n_samples):
-            for k in range(ploidy):
-                allele = gt[i, j, k]
-                if allele > 0:
-                    out_i = out_i_offset + allele
-                    gac_alt_melt[out_i, j] += 1
-                    gan[i, j] += 1
-                elif allele == 0:
-                    gan[i, j] += 1
-
-    return gac_alt_melt, gan
-
-
-def _genotypes_to_alt_allele_counts_melt(gt, max_allele):
-    gac_alt_melt, gan = _genotypes_to_alt_allele_counts_melt_kernel(gt, max_allele)
-    gan_melt = np.repeat(gan, max_allele, axis=0)
-    return gac_alt_melt, gan_melt
-
-
-@numba.njit
-def _take_sum_cols(a, indices):
-    n_variants = a.shape[0]
-    n_indices = indices.shape[0]
-    out = np.zeros(n_variants, dtype=np.int64)
-    for i in range(n_variants):
-        v_sum = 0
         for j in range(n_indices):
             ix = indices[j]
-            v = a[i, ix]
-            v_sum += v
-        out[i] = v_sum
-    return out
+            for k in range(ploidy):
+                allele = gt[i, ix, k]
+                if allele > 0:
+                    out_i = out_i_offset + allele
+                    ac_alt_melt[out_i] += 1
+                    an[i] += 1
+                elif allele == 0:
+                    an[i] += 1
+
+    return ac_alt_melt, an
 
 
-def _make_snp_label(row):
-    label = (
-        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-    )
-    return label
+def _cohort_alt_allele_counts_melt(gt, indices, max_allele):
+    ac_alt_melt, an = _cohort_alt_allele_counts_melt_kernel(gt, indices, max_allele)
+    an_melt = np.repeat(an, max_allele, axis=0)
+    return ac_alt_melt, an_melt
 
 
-def _make_snp_label_effect(row):
-    label = (
-        f"{row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']}"
-    )
-    aa_change = row["aa_change"]
+def _make_snp_label(contig, position, ref_allele, alt_allele):
+    return f"{contig}:{position:,} {ref_allele}>{alt_allele}"
+
+
+def _make_snp_label_effect(contig, position, ref_allele, alt_allele, aa_change):
+    label = f"{contig}:{position:,} {ref_allele}>{alt_allele}"
     if isinstance(aa_change, str):
         label += f" ({aa_change})"
     return label
 
 
-def _make_snp_label_aa(row):
-    label = f"{row['aa_change']} ({row['contig']}:{row['position']:,} {row['ref_allele']}>{row['alt_allele']})"
+def _make_snp_label_aa(aa_change, contig, position, ref_allele, alt_allele):
+    label = f"{aa_change} ({contig}:{position:,} {ref_allele}>{alt_allele})"
     return label
 
 
-def _make_gene_cnv_label(row):
-    label = row["gene_id"]
-    gene_name = row["gene_name"]
+def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
+    label = gene_id
     if isinstance(gene_name, str):
         label += f" ({gene_name})"
-    label += f" {row['cnv_type']}"
+    label += f" {cnv_type}"
     return label
 
 
@@ -3986,6 +3982,8 @@ def _map_snp_to_aa_change_frq_ds(ds):
 
 
 def _add_frequency_ci(ds, ci_method):
+    from statsmodels.stats.proportion import proportion_confint
+
     if ci_method is not None:
         count = ds["event_count"].values
         nobs = ds["event_nobs"].values
@@ -4070,3 +4068,11 @@ def _check_param_min_cohort_size(min_cohort_size):
         raise ValueError(
             f"Value of parameter min_cohort_size must be at least 1; found {min_cohort_size}."
         )
+
+
+def _pandas_apply(f, df, columns):
+    """Optimised alternative to pandas apply."""
+    df = df.reset_index(drop=True)
+    iterator = zip(*[df[c].values for c in columns])
+    ret = pd.Series((f(*vals) for vals in iterator))
+    return ret
