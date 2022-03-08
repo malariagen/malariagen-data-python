@@ -29,6 +29,19 @@ from the following locations:
 ## Release notes
 
 
+### 2.1.0
+
+* `Ag3`: Add support for giving a list of contigs to the `contig`
+  parameter in `gene_cnv()` and `gene_cnv_frequencies()`
+  ([GH162](https://github.com/malariagen/malariagen-data-python/issues/162)).
+
+* `Ag3`: Miscellaneous optimisations and documentation fixes
+  ([GH153](https://github.com/malariagen/malariagen-data-python/issues/153),
+  [GH158](https://github.com/malariagen/malariagen-data-python/issues/158),
+  [GH159](https://github.com/malariagen/malariagen-data-python/issues/159),
+  [GH161](https://github.com/malariagen/malariagen-data-python/issues/161)).
+
+
 ### 2.0.0
 
 
