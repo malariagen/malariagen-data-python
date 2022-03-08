@@ -2250,6 +2250,46 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
+        if isinstance(contig, str):
+            contig = [contig]
+
+        df = pd.concat(
+            [
+                self._gene_cnv_frequencies(
+                    contig=c,
+                    cohorts=cohorts,
+                    sample_query=sample_query,
+                    cohorts_analysis=cohorts_analysis,
+                    min_cohort_size=min_cohort_size,
+                    species_analysis=species_analysis,
+                    sample_sets=sample_sets,
+                    drop_invariant=drop_invariant,
+                    max_coverage_variance=max_coverage_variance,
+                )
+                for c in contig
+            ],
+            axis=0,
+        )
+
+        return df
+
+    def _gene_cnv_frequencies(
+        self,
+        *,
+        contig,
+        cohorts,
+        sample_query,
+        cohorts_analysis,
+        min_cohort_size,
+        species_analysis,
+        sample_sets,
+        drop_invariant,
+        max_coverage_variance,
+    ):
+
+        # sanity check - this function is one contig at a time
+        assert isinstance(contig, str)
+
         # load sample metadata
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -3342,8 +3382,9 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str
-            Chromosome arm, e.g., "3R".
+        contig : str or list of str
+            Chromosome arm, e.g., "3R". Multiple values can be provided
+            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
         area_by : str
             Column name in the sample metadata to use to group samples spatially. E.g.,
             use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
@@ -3387,6 +3428,52 @@ class Ag3:
 
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
+
+        if isinstance(contig, str):
+            contig = [contig]
+
+        ds = xarray_concat(
+            [
+                self._gene_cnv_frequencies_advanced(
+                    contig=c,
+                    area_by=area_by,
+                    period_by=period_by,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    min_cohort_size=min_cohort_size,
+                    variant_query=variant_query,
+                    drop_invariant=drop_invariant,
+                    max_coverage_variance=max_coverage_variance,
+                    ci_method=ci_method,
+                    cohorts_analysis=cohorts_analysis,
+                    species_analysis=species_analysis,
+                )
+                for c in contig
+            ],
+            dim="variants",
+        )
+
+        return ds
+
+    def _gene_cnv_frequencies_advanced(
+        self,
+        *,
+        contig,
+        area_by,
+        period_by,
+        sample_sets,
+        sample_query,
+        min_cohort_size,
+        variant_query,
+        drop_invariant,
+        max_coverage_variance,
+        ci_method,
+        cohorts_analysis,
+        species_analysis,
+    ):
+
+        # sanity check - here we deal with one contig only
+        assert isinstance(contig, str)
 
         # load sample metadata
         df_samples = self.sample_metadata(

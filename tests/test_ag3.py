@@ -1492,6 +1492,32 @@ def test_gene_cnv_frequencies__dup_samples():
         )
 
 
+def test_gene_cnv_frequencies__multi_contig_x():
+    # https://github.com/malariagen/malariagen-data-python/issues/166
+
+    ag3 = setup_ag3()
+
+    df1 = ag3.gene_cnv_frequencies(
+        contig="X",
+        sample_sets="AG1000G-BF-B",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        drop_invariant=False,
+        max_coverage_variance=None,
+    )
+
+    df2 = ag3.gene_cnv_frequencies(
+        contig=["2R", "X"],
+        sample_sets="AG1000G-BF-B",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        drop_invariant=False,
+        max_coverage_variance=None,
+    ).query("contig == 'X'")
+
+    assert_frame_equal(df1, df2)
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
@@ -2285,7 +2311,7 @@ def _check_gene_cnv_frequencies_advanced(
             assert_allclose(actual_frq, expect_frq)
 
 
-@pytest.mark.parametrize("contig", ["2R", "X"])
+@pytest.mark.parametrize("contig", ["2R", "X", ["3R", "X"]])
 def test_gene_cnv_frequencies_advanced__contig(contig):
     _check_gene_cnv_frequencies_advanced(
         contig=contig,
@@ -2372,6 +2398,43 @@ def test_gene_cnv_frequencies_advanced__max_coverage_variance(max_coverage_varia
         max_coverage_variance=max_coverage_variance,
         sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
     )
+
+
+def test_gene_cnv_frequencies_advanced__multi_contig_x():
+    # https://github.com/malariagen/malariagen-data-python/issues/166
+
+    ag3 = setup_ag3()
+
+    ds1 = ag3.gene_cnv_frequencies_advanced(
+        contig="X",
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets="AG1000G-BF-B",
+        sample_query=None,
+        min_cohort_size=10,
+        variant_query=None,
+        drop_invariant=False,
+        max_coverage_variance=None,
+    )
+
+    ds2 = ag3.gene_cnv_frequencies_advanced(
+        contig=["2R", "X"],
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets="AG1000G-BF-B",
+        sample_query=None,
+        min_cohort_size=10,
+        variant_query=None,
+        drop_invariant=False,
+        max_coverage_variance=None,
+    )
+    loc_x = ds2["variant_contig"].values == "X"
+    ds2 = ds2.isel(variants=loc_x)
+
+    for v in ds1:
+        a = ds1[v]
+        b = ds2[v]
+        _compare_series_like(a, b)
 
 
 def test_snp_allele_frequencies_advanced__dup_samples():
