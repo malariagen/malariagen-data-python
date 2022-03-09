@@ -3900,6 +3900,248 @@ class Ag3:
 
         return out
 
+    def resolve_region(self, region):
+        """Convert a genome region into a standard data structure.
+
+        Parameters
+        ----------
+        region: str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059").
+
+        Returns
+        -------
+        out : Region
+            A named tuple with attributes contig, start and end.
+
+        """
+
+        return resolve_region(self, region)
+
+    def plot_genes(
+        self,
+        region,
+        width=700,
+        height=120,
+        show=True,
+        toolbar_location="above",
+        x_range=None,
+        title="Genes",
+    ):
+        """@@TODO"""
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # handle region parameter - this determines the genome region to plot
+        region = self.resolve_region(region)
+        contig = region.contig
+        start = region.start
+        end = region.end
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(self.genome_sequence(contig))
+
+        # define x axis range
+        if x_range is None:
+            x_range = bkmod.Range1d(start, end, bounds="auto")
+
+        # select the genes overlapping the requested region
+        df_geneset = self.geneset(attributes=["ID", "Name", "Parent", "description"])
+        # df_geneset = df_geneset.set_index("ID")
+        data = df_geneset.query(
+            f"type == 'gene' and contig == '{contig}' and start < {end} and end > {start}"
+        ).copy()
+
+        # we're going to plot each gene as a rectangle, so add some additional
+        # columns
+        data["bottom"] = np.where(data["strand"] == "+", 1, 0)
+        data["top"] = data["bottom"] + 0.8
+
+        # tidy up some columns for presentation
+        data["Name"].fillna("", inplace=True)
+        data["description"].fillna("", inplace=True)
+
+        # define tooltips for hover
+        tooltips = [
+            ("ID", "@ID"),
+            ("Name", "@Name"),
+            ("Description", "@description"),
+            ("Location", "@contig:@start{,}-@end{,}"),
+        ]
+
+        # make a figure
+        fig = bkplt.figure(
+            title=title,
+            plot_width=width,
+            plot_height=height,
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,tap,hover",
+            toolbar_location=toolbar_location,
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            tooltips=tooltips,
+            x_range=x_range,
+        )
+        fig.toolbar.logo = None
+
+        # add functionality to click through to vectorbase
+        url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
+        taptool = fig.select(type=bkmod.TapTool)
+        taptool.callback = bkmod.OpenURL(url=url)
+
+        # now plot the genes as rectangles
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data,
+            line_width=0.5,
+            fill_alpha=0.5,
+        )
+
+        # tidy up the plot
+        fig.xaxis.axis_label = f"Contig {contig} position (bp)"
+        fig.y_range = bkmod.Range1d(-0.4, 2.2)
+        fig.ygrid.visible = False
+        yticks = [0.4, 1.4]
+        yticklabels = ["-", "+"]
+        fig.yaxis.ticker = yticks
+        fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_transcript(
+        self,
+        transcript,
+        width=700,
+        height=120,
+        show=True,
+        x_range=None,
+        toolbar_location="above",
+        title=True,
+    ):
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # find the transcript annotation
+        df_geneset = self.geneset().set_index("ID")
+        parent = df_geneset.loc[transcript]
+
+        if title is True:
+            title = f"{transcript} ({parent.strand})"
+
+        # define tooltips for hover
+        tooltips = [
+            ("Type", "@type"),
+            ("Location", "@contig:@start{,}-@end{,}"),
+        ]
+
+        # make a figure
+        fig = bkplt.figure(
+            title=title,
+            plot_width=width,
+            plot_height=height,
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,hover",
+            toolbar_location=toolbar_location,
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            tooltips=tooltips,
+            x_range=x_range,
+        )
+        fig.toolbar.logo = None
+
+        # find child components of the transcript
+        data = df_geneset.set_index("Parent").loc[transcript].copy()
+        data["bottom"] = -0.4
+        data["top"] = 0.4
+
+        # plot exons
+        exons = data.query("type == 'exon'")
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=exons,
+            fill_color=None,
+            line_color="black",
+            line_width=0.5,
+            fill_alpha=0,
+        )
+
+        # plot introns
+        for intron_start, intron_end in zip(exons[:-1]["end"], exons[1:]["start"]):
+            intron_midpoint = (intron_start + intron_end) / 2
+            line_data = pd.DataFrame(
+                {
+                    "x": [intron_start, intron_midpoint, intron_end],
+                    "y": [0, 0.1, 0],
+                    "type": "intron",
+                    "contig": parent.contig,
+                    "start": intron_start,
+                    "end": intron_end,
+                }
+            )
+            fig.line(
+                x="x",
+                y="y",
+                source=line_data,
+                line_width=1,
+                line_color="black",
+            )
+
+        # plot UTRs
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data.query("type == 'five_prime_UTR'"),
+            fill_color="green",
+            line_width=0,
+            fill_alpha=0.5,
+        )
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data.query("type == 'three_prime_UTR'"),
+            fill_color="red",
+            line_width=0,
+            fill_alpha=0.5,
+        )
+
+        # plot CDSs
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data.query("type == 'CDS'"),
+            fill_color="blue",
+            line_width=0,
+            fill_alpha=0.5,
+        )
+
+        # tidy up the figure
+        fig.yaxis.ticker = []
+        fig.y_range = bkmod.Range1d(-0.6, 0.6)
+        fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
