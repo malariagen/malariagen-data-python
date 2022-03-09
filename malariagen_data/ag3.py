@@ -3972,7 +3972,7 @@ class Ag3:
 
         # make a figure
         fig = bkplt.figure(
-            title=f"Genes - {region}",
+            title="Genes",
             plot_width=width,
             plot_height=height,
             tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,tap,hover",
