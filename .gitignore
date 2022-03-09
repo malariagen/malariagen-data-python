@@ -9,3 +9,6 @@ gcs_cache
 
 # emacs
 *~
+
+# nbconvert outputs
+*.nbconvert.ipynb

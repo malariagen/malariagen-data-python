@@ -21,5 +21,7 @@ jobs:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Install dependencies
         run: poetry install
+      - name: Run notebooks
+        run: jupyter nbconvert --execute notebooks/*  --inplace
       - name: Run tests
         run: poetry run pytest -v
