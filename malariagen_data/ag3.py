@@ -3921,8 +3921,8 @@ class Ag3:
     def plot_genes(
         self,
         region,
-        width=750,
-        height=150,
+        width=700,
+        height=120,
         show=False,
         x_range=None,
     ):
@@ -4007,7 +4007,7 @@ class Ag3:
         yticklabels = ["rev", "fwd"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        fig.yaxis.axis_label = "Strand"
+        # fig.yaxis.axis_label = "Strand"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
 
         # show the plot
