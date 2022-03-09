@@ -3966,8 +3966,7 @@ class Ag3:
             ("ID", "@ID"),
             ("Name", "@Name"),
             ("Description", "@description"),
-            ("Start", "@start"),
-            ("End", "@end"),
+            ("Location", "@contig:@start{,}-@end{,}"),
         ]
 
         # make a figure
@@ -4011,6 +4010,122 @@ class Ag3:
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
 
         # show the plot
+        if show:
+            bkplt.show(fig)
+        else:
+            # assume will be part of a multi-panel figure, remove toolbar and title
+            fig.toolbar.logo = None
+            fig.toolbar_location = None
+            fig.title = None
+
+        return fig
+
+    def plot_transcript(
+        self,
+        transcript,
+        width=700,
+        height=120,
+        show=True,
+        x_range=None,
+        toolbar_location="above",
+    ):
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # find the transcript annotation
+        df_geneset = self.geneset().set_index("ID")
+        parent = df_geneset.loc[transcript]
+
+        # define tooltips for hover
+        tooltips = [
+            ("Type", "@type"),
+            ("Location", "@contig:@start{,}-@end{,}"),
+        ]
+
+        # make a figure
+        fig = bkplt.figure(
+            title=f"Transcript - {transcript} ({parent.strand})",
+            plot_width=width,
+            plot_height=height,
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,hover",
+            toolbar_location=toolbar_location,
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            tooltips=tooltips,
+            x_range=x_range,
+        )
+
+        # find child components of the transcript
+        data = df_geneset.query(f"Parent == '{transcript}'").copy()
+        data["bottom"] = -0.4
+        data["top"] = 0.4
+
+        # plot exons
+        exons = data.query("type == 'exon'")
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=exons,
+            fill_color=None,
+            line_color="black",
+            line_width=0.5,
+            fill_alpha=0,
+        )
+
+        # plot introns
+        for intron_start, intron_end in zip(exons[:-1]["end"], exons[1:]["start"]):
+            intron_midpoint = (intron_start + intron_end) / 2
+            fig.line(
+                [intron_start, intron_midpoint, intron_end],
+                [0, 0.1, 0],
+                line_width=1,
+                line_color="black",
+            )
+
+        # plot UTRs
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data.query("type == 'five_prime_UTR'"),
+            fill_color="green",
+            line_width=0,
+            fill_alpha=0.5,
+        )
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data.query("type == 'three_prime_UTR'"),
+            fill_color="red",
+            line_width=0,
+            fill_alpha=0.5,
+        )
+
+        # plot CDSs
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data.query("type == 'CDS'"),
+            fill_color="blue",
+            line_width=0,
+            fill_alpha=0.5,
+        )
+
+        # tidy up the figure
+        fig.yaxis.ticker = []
+        fig.y_range = bkmod.Range1d(-0.6, 0.6)
+        fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        # show the figure
         if show:
             bkplt.show(fig)
         else:
