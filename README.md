@@ -29,6 +29,24 @@ from the following locations:
 ## Release notes
 
 
+### 2.2.0
+
+
+* Added a new function `Ag3.plot_genes()` which generates a bokeh plot
+  of gene annotations
+  ([GH154](https://github.com/malariagen/malariagen-data-python/issues/154)).
+
+* Added a new function `Ag3.plot_transcript()` which generates a bokeh
+  plot of a gene model
+  ([GH155](https://github.com/malariagen/malariagen-data-python/issues/155)).
+
+* Fixed a bug in the `Ag3.gene_cnv_frequencies()` function
+  ([GH166](https://github.com/malariagen/malariagen-data-python/issues/166)).
+
+* CI improvements
+  ([GH150](https://github.com/malariagen/malariagen-data-python/issues/150)).
+
+
 ### 2.1.0
 
 * `Ag3`: Add support for giving a list of contigs to the `contig`
