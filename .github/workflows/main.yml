@@ -12,6 +12,12 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v2
+      - name: Cache GCS data
+        id: cache-gcs
+        uses: actions/cache@v2
+        with:
+          path: gcs_cache
+          key: gcs_cache
       - uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
