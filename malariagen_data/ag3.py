@@ -3923,8 +3923,10 @@ class Ag3:
         region,
         width=700,
         height=120,
-        show=False,
+        show=True,
+        toolbar_location="above",
         x_range=None,
+        title="Genes",
     ):
         """@@TODO"""
 
@@ -3971,16 +3973,17 @@ class Ag3:
 
         # make a figure
         fig = bkplt.figure(
-            title="Genes",
+            title=title,
             plot_width=width,
             plot_height=height,
             tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,tap,hover",
-            toolbar_location="above",
+            toolbar_location=toolbar_location,
             active_scroll="xwheel_zoom",
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
         )
+        fig.toolbar.logo = None
 
         # add functionality to click through to vectorbase
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
@@ -4000,23 +4003,16 @@ class Ag3:
 
         # tidy up the plot
         fig.xaxis.axis_label = f"Contig {contig} position (bp)"
-        fig.y_range = bkmod.Range1d(-0.5, 2.3)
+        fig.y_range = bkmod.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
-        yticklabels = ["rev", "fwd"]
+        yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        # fig.yaxis.axis_label = "Strand"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
 
-        # show the plot
         if show:
             bkplt.show(fig)
-        else:
-            # assume will be part of a multi-panel figure, remove toolbar and title
-            fig.toolbar.logo = None
-            fig.toolbar_location = None
-            fig.title = None
 
         return fig
 
@@ -4028,6 +4024,7 @@ class Ag3:
         show=True,
         x_range=None,
         toolbar_location="above",
+        title=True,
     ):
 
         import bokeh.models as bkmod
@@ -4037,6 +4034,9 @@ class Ag3:
         df_geneset = self.geneset().set_index("ID")
         parent = df_geneset.loc[transcript]
 
+        if title is True:
+            title = f"{transcript} ({parent.strand})"
+
         # define tooltips for hover
         tooltips = [
             ("Type", "@type"),
@@ -4045,7 +4045,7 @@ class Ag3:
 
         # make a figure
         fig = bkplt.figure(
-            title=f"Transcript - {transcript} ({parent.strand})",
+            title=title,
             plot_width=width,
             plot_height=height,
             tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,hover",
@@ -4055,9 +4055,10 @@ class Ag3:
             tooltips=tooltips,
             x_range=x_range,
         )
+        fig.toolbar.logo = None
 
         # find child components of the transcript
-        data = df_geneset.query(f"Parent == '{transcript}'").copy()
+        data = df_geneset.set_index("Parent").loc[transcript].copy()
         data["bottom"] = -0.4
         data["top"] = 0.4
 
@@ -4078,9 +4079,20 @@ class Ag3:
         # plot introns
         for intron_start, intron_end in zip(exons[:-1]["end"], exons[1:]["start"]):
             intron_midpoint = (intron_start + intron_end) / 2
+            line_data = pd.DataFrame(
+                {
+                    "x": [intron_start, intron_midpoint, intron_end],
+                    "y": [0, 0.1, 0],
+                    "type": "intron",
+                    "contig": parent.contig,
+                    "start": intron_start,
+                    "end": intron_end,
+                }
+            )
             fig.line(
-                [intron_start, intron_midpoint, intron_end],
-                [0, 0.1, 0],
+                x="x",
+                y="y",
+                source=line_data,
                 line_width=1,
                 line_color="black",
             )
@@ -4125,14 +4137,8 @@ class Ag3:
         fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
 
-        # show the figure
         if show:
             bkplt.show(fig)
-        else:
-            # assume will be part of a multi-panel figure, remove toolbar and title
-            fig.toolbar.logo = None
-            fig.toolbar_location = None
-            fig.title = None
 
         return fig
 
