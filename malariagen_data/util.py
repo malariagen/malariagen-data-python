@@ -404,3 +404,35 @@ def xarray_concat(
             join=join,
             **kwargs,
         )
+
+
+def type_error(
+    name,
+    value,
+    expectation,
+):
+    message = (
+        f"Bad type for parameter {name}; expected {expectation}, "
+        f"found {type(value)}"
+    )
+    raise TypeError(message)
+
+
+def value_error(
+    name,
+    value,
+    expectation,
+):
+    message = (
+        f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
+    )
+    raise ValueError(message)
+
+
+def check_type(
+    name,
+    value,
+    expectation,
+):
+    if not isinstance(value, expectation):
+        type_error(name, value, expectation)

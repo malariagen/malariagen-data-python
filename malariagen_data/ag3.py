@@ -3900,6 +3900,127 @@ class Ag3:
 
         return out
 
+    def resolve_region(self, region):
+        """Convert a genome region into a standard data structure.
+
+        Parameters
+        ----------
+        region: str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059").
+
+        Returns
+        -------
+        out : Region
+            A named tuple with attributes contig, start and end.
+
+        """
+
+        return resolve_region(self, region)
+
+    def plot_genes(
+        self,
+        region,
+        width=750,
+        height=150,
+        show=False,
+        x_range=None,
+    ):
+        """@@TODO"""
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # handle region parameter - this determines the genome region to plot
+        region = self.resolve_region(region)
+        contig = region.contig
+        start = region.start
+        end = region.end
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(self.genome_sequence(contig))
+
+        # define x axis range
+        if x_range is None:
+            x_range = bkmod.Range1d(start, end, bounds="auto")
+
+        # select the genes overlapping the requested region
+        df_geneset = self.geneset(attributes=["ID", "Name", "Parent", "description"])
+        # df_geneset = df_geneset.set_index("ID")
+        data = df_geneset.query(
+            f"type == 'gene' and contig == '{contig}' and start < {end} and end > {start}"
+        ).copy()
+
+        # we're going to plot each gene as a rectangle, so add some additional
+        # columns
+        data["bottom"] = np.where(data["strand"] == "+", 1, 0)
+        data["top"] = data["bottom"] + 0.8
+
+        # tidy up some columns for presentation
+        data["Name"].fillna("", inplace=True)
+        data["description"].fillna("", inplace=True)
+
+        # define tooltips for hover
+        tooltips = [
+            ("ID", "@ID"),
+            ("Name", "@Name"),
+            ("Description", "@description"),
+            ("Start", "@start"),
+            ("End", "@end"),
+        ]
+
+        # make a figure
+        fig = bkplt.figure(
+            title=f"Genes - {region}",
+            plot_width=width,
+            plot_height=height,
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,tap,hover",
+            toolbar_location="above",
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            tooltips=tooltips,
+            x_range=x_range,
+        )
+
+        # add functionality to click through to vectorbase
+        url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
+        taptool = fig.select(type=bkmod.TapTool)
+        taptool.callback = bkmod.OpenURL(url=url)
+
+        # now plot the genes as rectangles
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="start",
+            right="end",
+            source=data,
+            line_width=0.5,
+            fill_alpha=0.5,
+        )
+
+        # tidy up the plot
+        fig.xaxis.axis_label = f"Contig {contig} position (bp)"
+        fig.y_range = bkmod.Range1d(-0.5, 2.3)
+        fig.ygrid.visible = False
+        yticks = [0.4, 1.4]
+        yticklabels = ["rev", "fwd"]
+        fig.yaxis.ticker = yticks
+        fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
+        fig.yaxis.axis_label = "Strand"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        # show the plot
+        if show:
+            bkplt.show(fig)
+        else:
+            # assume will be part of a multi-panel figure, remove toolbar and title
+            fig.toolbar.logo = None
+            fig.toolbar_location = None
+            fig.title = None
+
+        return fig
+
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
