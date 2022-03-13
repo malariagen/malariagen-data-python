@@ -608,7 +608,7 @@ class Ag3:
 
         """
 
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
@@ -700,7 +700,7 @@ class Ag3:
 
         """
 
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
@@ -813,7 +813,7 @@ class Ag3:
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # normalise region to list to simplify concatenation logic
         if isinstance(region, Region):
@@ -895,7 +895,7 @@ class Ag3:
 
         """
         genome = self.open_genome()
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         z = genome[region.contig]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
@@ -1005,7 +1005,7 @@ class Ag3:
         """
 
         # resolve region
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # determine contig sequence length
         seq_length = self.genome_sequence(region).shape[0]
@@ -1451,7 +1451,7 @@ class Ag3:
         root = self.open_site_annotations()
 
         # resolve region
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         if isinstance(region, list):
             raise TypeError("Multiple regions not supported.")
 
@@ -1588,7 +1588,7 @@ class Ag3:
         """
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # normalise to simplify concatenation logic
         if isinstance(region, Region):
@@ -2134,18 +2134,21 @@ class Ag3:
 
         return ds
 
-    def gene_cnv(self, contig, sample_sets=None):
+    def gene_cnv(self, region, sample_sets=None):
         """Compute modal copy number by gene, from HMM data.
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or
+            a release identifier (e.g., "3.0") or a list of release identifiers.
 
         Returns
         -------
@@ -2154,32 +2157,32 @@ class Ag3:
 
         """
 
-        # handle multiple contigs
-        if isinstance(contig, str):
-            contig = [contig]
+        # handle multiple regions
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         ds = xarray_concat(
-            [self._gene_cnv(contig=c, sample_sets=sample_sets) for c in contig],
+            [self._gene_cnv(region=r, sample_sets=sample_sets) for r in region],
             dim="genes",
         )
 
         return ds
 
-    def _gene_cnv(self, *, contig, sample_sets):
+    def _gene_cnv(self, *, region, sample_sets):
 
         # sanity check
-        assert isinstance(contig, str)
+        assert isinstance(region, Region)
 
         # access HMM data
-        ds_hmm = self.cnv_hmm(contig=contig, sample_sets=sample_sets)
+        ds_hmm = self.cnv_hmm(region=region.contig, sample_sets=sample_sets)
         pos = ds_hmm["variant_position"].values
         end = ds_hmm["variant_end"].values
         cn = ds_hmm["call_CN"].values
 
         # access genes
-        df_geneset = self.geneset()
-        df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
-        n_genes = len(df_genes)
+        df_geneset = self.geneset(region=region)
+        df_genes = df_geneset.query("type == 'gene'")
 
         # setup intermediates
         windows = []
@@ -2215,7 +2218,7 @@ class Ag3:
                 "sample_id": (["samples"], ds_hmm["sample_id"].values),
             },
             data_vars={
-                "gene_contig": (["genes"], np.array([contig] * n_genes, dtype=object)),
+                "gene_contig": (["genes"], df_genes["contig"].values),
                 "gene_start": (["genes"], df_genes["start"].values),
                 "gene_end": (["genes"], df_genes["end"].values),
                 "gene_windows": (["genes"], windows),
@@ -2239,7 +2242,7 @@ class Ag3:
 
     def gene_cnv_frequencies(
         self,
-        contig,
+        region,
         cohorts,
         sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
@@ -2254,9 +2257,12 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         cohorts : str or dict
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
@@ -2293,13 +2299,14 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         df = pd.concat(
             [
                 self._gene_cnv_frequencies(
-                    contig=c,
+                    region=r,
                     cohorts=cohorts,
                     sample_query=sample_query,
                     cohorts_analysis=cohorts_analysis,
@@ -2309,17 +2316,21 @@ class Ag3:
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
                 )
-                for c in contig
+                for r in region
             ],
             axis=0,
         )
+
+        # add metadata
+        title = f"Gene CNV frequencies ({_region_str(region)})"
+        df.attrs["title"] = title
 
         return df
 
     def _gene_cnv_frequencies(
         self,
         *,
-        contig,
+        region,
         cohorts,
         sample_query,
         cohorts_analysis,
@@ -2330,8 +2341,8 @@ class Ag3:
         max_coverage_variance,
     ):
 
-        # sanity check - this function is one contig at a time
-        assert isinstance(contig, str)
+        # sanity check - this function is one region at a time
+        assert isinstance(region, Region)
 
         # load sample metadata
         df_samples = self.sample_metadata(
@@ -2341,7 +2352,7 @@ class Ag3:
         )
 
         # get gene copy number data
-        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+        ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
 
         # handle sample_query
         loc_samples = None
@@ -2358,7 +2369,7 @@ class Ag3:
                 loc_samples = loc_pass_samples
 
         # figure out expected copy number
-        if contig == "X":
+        if region.contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
@@ -2456,10 +2467,6 @@ class Ag3:
 
         # set index for convenience
         df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
-
-        # add metadata
-        title = "Gene CNV frequencies"
-        df.attrs["title"] = title
 
         return df
 
@@ -2622,7 +2629,7 @@ class Ag3:
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # normalise to simplify concatenation logic
         if isinstance(region, Region):
@@ -3407,7 +3414,7 @@ class Ag3:
 
     def gene_cnv_frequencies_advanced(
         self,
-        contig,
+        region,
         area_by,
         period_by,
         sample_sets=None,
@@ -3425,22 +3432,26 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         area_by : str
-            Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
-            or use "admin2_name" to group by level 2 administrative divisions.
+            Column name in the sample metadata to use to group samples spatially.
+            E.g., use "admin1_iso" or "admin1_name" to group by level 1
+            administrative divisions, or use "admin2_name" to group by level 2
+            administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
@@ -3459,12 +3470,13 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort" are 1-dimensional arrays with data about
-            the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant" are 1-dimensional arrays with data about the variants,
-            such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event" are 2-dimensional arrays with the allele counts and frequency
+            The resulting dataset contains data has dimensions "cohorts" and
+            "variants". Variables prefixed with "cohort" are 1-dimensional
+            arrays with data about the cohorts, such as the area, period, taxon
+            and cohort size. Variables prefixed with "variant" are 1-dimensional
+            arrays with data about the variants, such as the contig, position,
+            reference and alternate alleles. Variables prefixed with "event" are
+            2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3472,13 +3484,14 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         ds = xarray_concat(
             [
                 self._gene_cnv_frequencies_advanced(
-                    contig=c,
+                    region=r,
                     area_by=area_by,
                     period_by=period_by,
                     sample_sets=sample_sets,
@@ -3491,17 +3504,21 @@ class Ag3:
                     cohorts_analysis=cohorts_analysis,
                     species_analysis=species_analysis,
                 )
-                for c in contig
+                for r in region
             ],
             dim="variants",
         )
+
+        # add metadata
+        title = f"Gene CNV frequencies ({_region_str(region)})"
+        ds.attrs["title"] = title
 
         return ds
 
     def _gene_cnv_frequencies_advanced(
         self,
         *,
-        contig,
+        region,
         area_by,
         period_by,
         sample_sets,
@@ -3515,8 +3532,8 @@ class Ag3:
         species_analysis,
     ):
 
-        # sanity check - here we deal with one contig only
-        assert isinstance(contig, str)
+        # sanity check - here we deal with one region only
+        assert isinstance(region, Region)
 
         # load sample metadata
         df_samples = self.sample_metadata(
@@ -3526,7 +3543,7 @@ class Ag3:
         )
 
         # access gene CNV calls
-        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+        ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
 
         # handle sample query
         loc_samples = None
@@ -3563,7 +3580,7 @@ class Ag3:
         )
 
         # figure out expected copy number
-        if contig == "X":
+        if region.contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
@@ -3612,7 +3629,7 @@ class Ag3:
             max_af = np.nanmax(frequency, axis=1)
         df_variants = pd.DataFrame(
             {
-                "contig": contig,
+                "contig": region.contig,
                 "start": np.repeat(ds_cnv["gene_start"].values, 2),
                 "end": np.repeat(ds_cnv["gene_end"].values, 2),
                 "windows": np.repeat(ds_cnv["gene_windows"].values, 2),
@@ -3664,10 +3681,6 @@ class Ag3:
 
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
-
-        # add metadata
-        title = "Gene CNV frequencies"
-        ds_out.attrs["title"] = title
 
         return ds_out
 
@@ -3964,7 +3977,7 @@ class Ag3:
     def plot_genes(
         self,
         region,
-        width=700,
+        width=800,
         height=120,
         show=True,
         toolbar_location="above",
@@ -4026,7 +4039,6 @@ class Ag3:
             tooltips=tooltips,
             x_range=x_range,
         )
-        fig.toolbar.logo = None
 
         # add functionality to click through to vectorbase
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
@@ -4099,7 +4111,6 @@ class Ag3:
             tooltips=tooltips,
             x_range=x_range,
         )
-        fig.toolbar.logo = None
 
         # find child components of the transcript
         data = df_geneset.set_index("Parent").loc[transcript].copy()
@@ -4654,3 +4665,20 @@ def _pandas_apply(f, df, columns):
     iterator = zip(*[df[c].values for c in columns])
     ret = pd.Series((f(*vals) for vals in iterator))
     return ret
+
+
+def _region_str(region):
+    if isinstance(region, (list, tuple)):
+        if len(region) > 1:
+            return "; ".join([_region_str(r) for r in region])
+        else:
+            region = region[0]
+    out = region.contig
+    if region.start is not None or region.end is not None:
+        out += ":"
+        if region.start is not None:
+            out += f"{region.start:,}"
+        out += "-"
+        if region.end is not None:
+            out += f"{region.end:,}"
+    return out
