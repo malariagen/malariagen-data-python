@@ -911,11 +911,17 @@ class Ag3:
 
         return d[loc_region]
 
-    def geneset(self, attributes=("ID", "Parent", "Name", "description")):
+    def geneset(self, region=None, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations (AgamP4.12).
 
         Parameters
         ----------
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         attributes : list of str, optional
             Attribute keys to unpack into columns. Provide "*" to unpack all
             attributes.
@@ -940,6 +946,24 @@ class Ag3:
             if attributes is not None:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_geneset[attributes] = df
+
+        # handle region
+        if region is not None:
+
+            region = self.resolve_region(region)
+
+            # normalise to list to simplify concatenation logic
+            if isinstance(region, Region):
+                region = [region]
+
+            # apply region query
+            parts = []
+            for r in region:
+                df_part = df.query(
+                    f"contig == '{r.contig}' and start <= {r.end} and end >= {r.start}"
+                )
+                parts.append(df_part)
+            df = pd.concat(parts, axis=0)
 
         return df
 

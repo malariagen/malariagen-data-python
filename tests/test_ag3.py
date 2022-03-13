@@ -454,6 +454,37 @@ def test_geneset():
 
 @pytest.mark.parametrize(
     "region",
+    ["AGAP007280", "3R:28,000,000-29,000,000", "2R", "X", ["3R", "3L"]],
+)
+def test_geneset_region(region):
+
+    ag3 = setup_ag3()
+
+    df = ag3.geneset(region=region)
+    assert isinstance(df, pd.DataFrame)
+    gff3_cols = [
+        "contig",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
+    assert df.columns.tolist() == expected_cols
+
+    # check region
+    region = ag3.resolve_region(region)
+    if isinstance(region, Region):
+        assert np.all(df["contig"].values == region.contig)
+        if region.start and region.end:
+            assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
+
+
+@pytest.mark.parametrize(
+    "region",
     ["AGAP007280", "2R:48714463-48715355", "2R", "X"],
 )
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
