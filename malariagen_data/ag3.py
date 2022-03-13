@@ -27,6 +27,7 @@ from .util import (  # type_error,
     locate_region,
     read_gff3,
     resolve_region,
+    type_error,
     unpack_gff3_attributes,
     xarray_concat,
 )
@@ -4161,38 +4162,210 @@ class Ag3:
 
         return fig
 
-    # def plot_cnv_hmm_coverage(
-    #     self,
-    #     sample,
-    #     sample_set,
-    #     region,
-    #     y_max=6,
-    #     width=750,
-    # ):
-    #     """@@TODO docstring"""
-    #
-    #     # access HMM data
-    #     hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
-    #
-    #     # select data for the given sample - support either sample ID or integer
-    #     # index
-    #     hmm_sample = None
-    #     if isinstance(sample, str):
-    #         hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample)
-    #         sample_id = sample
-    #     elif isinstance(sample, int):
-    #         hmm_sample = hmm.isel(samples=sample)
-    #         sample_id = hmm["sample_id"].values[sample]
-    #     else:
-    #         type_error(name="sample", value=sample, expectation=(str, int))
-    #
-    #     # extract data into a pandas dataframe for easy plotting
-    #     data = hmm_sample[
-    #         ["variant_position", "variant_end", "call_NormCov", "call_CN"]
-    #     ].to_dataframe()
-    #
-    #     # TODO implementation
-    #     pass
+    def plot_cnv_hmm_coverage_track(
+        self,
+        sample,
+        sample_set,
+        region,
+        y_max=6,
+        width=800,
+        height=200,
+        coverage_kwargs=None,
+        hmm_kwargs=None,
+        show=True,
+    ):
+        """Plot CNV HMM data for a single sample, using bokeh.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        sample_set : str
+            Sample set identifier.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059").
+        y_max : int, optional
+            Maximum Y axis value.
+        width : int, optional
+            Plot width.
+        height : int, optional
+            Plot height.
+        coverage_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        hmm_kwargs : dict, optional
+            Passed through to bokeh line() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # resolve region
+        region = self.resolve_region(region)
+
+        # access HMM data
+        hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
+
+        # select data for the given sample - support either sample ID or integer index
+        hmm_sample = None
+        sample_id = None
+        if isinstance(sample, str):
+            hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample)
+            sample_id = sample
+        elif isinstance(sample, int):
+            hmm_sample = hmm.isel(samples=sample)
+            sample_id = hmm["sample_id"].values[sample]
+        else:
+            type_error(name="sample", value=sample, expectation=(str, int))
+
+        # extract data into a pandas dataframe for easy plotting
+        data = hmm_sample[
+            ["variant_position", "variant_end", "call_NormCov", "call_CN"]
+        ].to_dataframe()
+
+        # add window midpoint for plotting accuracy
+        data["variant_midpoint"] = data["variant_position"] + 150
+
+        # remove data where HMM is not called
+        data = data.query("call_CN >= 0")
+
+        # set up x range
+        x_min = data["variant_position"].values[0]
+        x_max = data["variant_end"].values[-1]
+        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure for plotting
+        fig = bkplt.figure(
+            title=f"CNV HMM - {sample_id} ({sample_set})",
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, y_max),
+        )
+
+        # plot the normalised coverage data
+        if coverage_kwargs is None:
+            coverage_kwargs = dict()
+        coverage_kwargs.setdefault("size", 4)
+        coverage_kwargs.setdefault("line_color", "black")
+        coverage_kwargs.setdefault("fill_color", None)
+        coverage_kwargs.setdefault("legend_label", "Coverage")
+        fig.circle(
+            x="variant_midpoint", y="call_NormCov", source=data, **coverage_kwargs
+        )
+
+        # plot the HMM state
+        if hmm_kwargs is None:
+            hmm_kwargs = dict()
+        hmm_kwargs.setdefault("width", 2)
+        hmm_kwargs.setdefault("legend_label", "HMM")
+        fig.line(x="variant_midpoint", y="call_CN", source=data, **hmm_kwargs)
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "Copy number"
+        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.add_layout(fig.legend[0], "right")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_coverage(
+        self,
+        sample,
+        sample_set,
+        region,
+        y_max=6,
+        width=800,
+        track_height=200,
+        genes_height=100,
+        coverage_kwargs=None,
+        hmm_kwargs=None,
+        show=True,
+    ):
+        """Plot CNV HMM data for a single sample, together with a genes track,
+        using bokeh.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        sample_set : str
+            Sample set identifier.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059").
+        y_max : int, optional
+            Maximum Y axis value.
+        width : int, optional
+            Plot width.
+        track_height : int, optional
+            Height of CNV HMM track.
+        genes_height : int, optional
+            Height of genes track.
+        coverage_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        hmm_kwargs : dict, optional
+            Passed through to bokeh line() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # plot the main HMM and coverage trace
+        fig1 = self.plot_cnv_hmm_coverage_track(
+            sample=sample,
+            sample_set=sample_set,
+            region=region,
+            y_max=y_max,
+            width=width,
+            height=track_height,
+            coverage_kwargs=coverage_kwargs,
+            hmm_kwargs=hmm_kwargs,
+            show=False,
+        )
+        fig1.xaxis.visible = False
+
+        # plot genes track
+        fig2 = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
