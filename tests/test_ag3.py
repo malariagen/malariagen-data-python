@@ -899,7 +899,7 @@ def test_snp_allele_frequencies__dup_samples():
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", None],
 )
-@pytest.mark.parametrize("region", ["2R", ["3L", "X"], "2:28,000,000-29,000,000"])
+@pytest.mark.parametrize("region", ["2R", ["3L", "X"], "3R:28,000,000-29,000,000"])
 def test_cnv_hmm(sample_sets, region):
     ag3 = setup_ag3()
     ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets)
@@ -937,13 +937,16 @@ def test_cnv_hmm(sample_sets, region):
         # test part of a contig region
         region = ag3.resolve_region(region)
         variant_contig = ds["variant_contig"].values
-        assert np.all(variant_contig == region.contig)
+        contig_index = ds.attrs["contigs"].index(region.contig)
+        assert np.all(variant_contig == contig_index)
         variant_position = ds["variant_position"].values
         variant_end = ds["variant_end"].values
-        assert variant_position[0] < region.start
-        assert variant_end[0] > region.start
-        assert variant_position[-1] < region.end
-        assert variant_end[-1] > region.end
+        assert variant_position[0] <= region.start
+        assert variant_end[0] >= region.start
+        assert variant_position[-1] <= region.end
+        assert variant_end[-1] >= region.end
+        assert np.all(variant_position <= region.end)
+        assert np.all(variant_end >= region.start)
         n_variants_expected = 1 + (region.end - region.start) // 300
 
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)

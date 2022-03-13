@@ -1769,15 +1769,9 @@ class Ag3:
             if r.start or r.end:
                 start = x["variant_position"].values
                 end = x["variant_end"].values
-                if r.start is not None:
-                    loc_start = bisect_left(start, r.start)
-                else:
-                    loc_start = None
-                if r.end is not None:
-                    loc_end = bisect_right(end, r.end)
-                else:
-                    loc_end = None
-                loc_region = slice(loc_start, loc_end)
+                index = pd.IntervalIndex.from_arrays(start, end, closed="both")
+                other = pd.Interval(r.start, r.end, closed="both")
+                loc_region = index.overlaps(other)
                 x = x.isel(variants=loc_region)
 
             lx.append(x)
