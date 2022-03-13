@@ -899,7 +899,7 @@ def test_snp_allele_frequencies__dup_samples():
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", None],
 )
-@pytest.mark.parametrize("region", ["2R", ["3L", "X"]])
+@pytest.mark.parametrize("region", ["2R", ["3L", "X"], "2:28,000,000-29,000,000"])
 def test_cnv_hmm(sample_sets, region):
     ag3 = setup_ag3()
     ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets)
@@ -928,19 +928,28 @@ def test_cnv_hmm(sample_sets, region):
 
     # check dim lengths
     if region in ag3.contigs:
-        n_variants = 1 + len(ag3.genome_sequence(region=region)) // 300
+        n_variants_expected = 1 + len(ag3.genome_sequence(region=region)) // 300
     elif isinstance(region, (tuple, list)) and all([r in ag3.contigs for r in region]):
-        n_variants = sum(
+        n_variants_expected = sum(
             [1 + len(ag3.genome_sequence(region=c)) // 300 for c in region]
         )
     else:
-        # TODO test part of a contig region
-        raise NotImplementedError
+        # test part of a contig region
+        region = ag3.resolve_region(region)
+        variant_contig = ds["variant_contig"].values
+        assert np.all(variant_contig == region.contig)
+        variant_position = ds["variant_position"].values
+        variant_end = ds["variant_end"].values
+        assert variant_position[0] < region.start
+        assert variant_end[0] > region.start
+        assert variant_position[-1] < region.end
+        assert variant_end[-1] > region.end
+        n_variants_expected = 1 + (region.end - region.start) // 300
 
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
-    n_samples = len(df_samples)
-    assert ds.dims["variants"] == n_variants
-    assert ds.dims["samples"] == n_samples
+    n_samples_expected = len(df_samples)
+    assert ds.dims["variants"] == n_variants_expected
+    assert ds.dims["samples"] == n_samples_expected
 
     # check sample IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
@@ -953,16 +962,16 @@ def test_cnv_hmm(sample_sets, region):
 
         if f.startswith("variant_"):
             assert x.ndim, f == 1
-            assert x.shape == (n_variants,)
+            assert x.shape == (n_variants_expected,)
             assert x.dims == ("variants",)
         elif f.startswith("call_"):
             assert x.ndim, f == 2
             assert x.dims == ("variants", "samples")
-            assert x.shape == (n_variants, n_samples)
+            assert x.shape == (n_variants_expected, n_samples_expected)
         elif f.startswith("sample_"):
             assert x.ndim == 1
             assert x.dims == ("samples",)
-            assert x.shape == (n_samples,)
+            assert x.shape == (n_samples_expected,)
 
     # check attributes
     assert "contigs" in ds.attrs
