@@ -899,10 +899,10 @@ def test_snp_allele_frequencies__dup_samples():
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", None],
 )
-@pytest.mark.parametrize("contig", ["2R", ["3L", "X"]])
-def test_cnv_hmm(sample_sets, contig):
+@pytest.mark.parametrize("region", ["2R", ["3L", "X"]])
+def test_cnv_hmm(sample_sets, region):
     ag3 = setup_ag3()
-    ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
+    ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets)
     assert isinstance(ds, xr.Dataset)
 
     # check fields
@@ -927,13 +927,14 @@ def test_cnv_hmm(sample_sets, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check dim lengths
-    if isinstance(contig, str):
-        n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
-    elif isinstance(contig, (tuple, list)):
+    if region in ag3.contigs:
+        n_variants = 1 + len(ag3.genome_sequence(region=region)) // 300
+    elif isinstance(region, (tuple, list)) and all([r in ag3.contigs for r in region]):
         n_variants = sum(
-            [1 + len(ag3.genome_sequence(region=c)) // 300 for c in contig]
+            [1 + len(ag3.genome_sequence(region=c)) // 300 for c in region]
         )
     else:
+        # TODO test part of a contig region
         raise NotImplementedError
 
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)

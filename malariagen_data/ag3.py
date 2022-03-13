@@ -13,7 +13,7 @@ import zarr
 import malariagen_data
 
 from . import veff
-from .util import (
+from .util import (  # type_error,
     DIM_ALLELE,
     DIM_PLOIDY,
     DIM_SAMPLE,
@@ -1708,7 +1708,7 @@ class Ag3:
 
     def cnv_hmm(
         self,
-        contig,
+        region,
         sample_sets=None,
         inline_array=True,
         chunks="native",
@@ -1717,18 +1717,21 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "AGAP005958"].
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1739,26 +1742,47 @@ class Ag3:
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+
+        # normalise to simplify concatenation logic
+        if isinstance(region, Region):
+            region = [region]
 
         # concatenate
         lx = []
-        for c in contig:
+        for r in region:
 
             ly = []
             for s in sample_sets:
                 y = self._cnv_hmm_dataset(
-                    contig=c,
+                    contig=r.contig,
                     sample_set=s,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
                 ly.append(y)
 
+            # concatenate data from multiple sample sets
             x = xarray_concat(ly, dim=DIM_SAMPLE)
+
+            # handle region, do this only once - optimisation
+            if r.start or r.end:
+                start = x["variant_position"].values
+                end = x["variant_end"].values
+                if r.start is not None:
+                    loc_start = bisect_left(start, r.start)
+                else:
+                    loc_start = None
+                if r.end is not None:
+                    loc_end = bisect_right(end, r.end)
+                else:
+                    loc_end = None
+                loc_region = slice(loc_start, loc_end)
+                x = x.isel(variants=loc_region)
+
             lx.append(x)
 
+        # concatenate data from multiple regions
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
@@ -4026,6 +4050,7 @@ class Ag3:
         toolbar_location="above",
         title=True,
     ):
+        """@@TODO docstring"""
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
@@ -4141,6 +4166,39 @@ class Ag3:
             bkplt.show(fig)
 
         return fig
+
+    # def plot_cnv_hmm_coverage(
+    #     self,
+    #     sample,
+    #     sample_set,
+    #     region,
+    #     y_max=6,
+    #     width=750,
+    # ):
+    #     """@@TODO docstring"""
+    #
+    #     # access HMM data
+    #     hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
+    #
+    #     # select data for the given sample - support either sample ID or integer
+    #     # index
+    #     hmm_sample = None
+    #     if isinstance(sample, str):
+    #         hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample)
+    #         sample_id = sample
+    #     elif isinstance(sample, int):
+    #         hmm_sample = hmm.isel(samples=sample)
+    #         sample_id = hmm["sample_id"].values[sample]
+    #     else:
+    #         type_error(name="sample", value=sample, expectation=(str, int))
+    #
+    #     # extract data into a pandas dataframe for easy plotting
+    #     data = hmm_sample[
+    #         ["variant_position", "variant_end", "call_NormCov", "call_CN"]
+    #     ].to_dataframe()
+    #
+    #     # TODO implementation
+    #     pass
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
