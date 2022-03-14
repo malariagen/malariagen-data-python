@@ -1830,7 +1830,7 @@ class Ag3:
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             # handle region, do this only once - optimisation
-            if r.start or r.end:
+            if r.start is not None or r.end is not None:
                 start = x["variant_position"].values
                 end = x["variant_end"].values
                 index = pd.IntervalIndex.from_arrays(start, end, closed="both")
@@ -1965,7 +1965,7 @@ class Ag3:
 
     def cnv_coverage_calls(
         self,
-        contig,
+        region,
         sample_set,
         analysis,
         inline_array=True,
@@ -1975,9 +1975,12 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_set : str
             Sample set identifier.
         analysis : {'gamb_colu', 'arab', 'crosses'}
@@ -2000,19 +2003,33 @@ class Ag3:
         # calling is done independently in different sample sets.
 
         # normalise parameters
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         # concatenate
         lx = []
-        for c in contig:
+        for r in region:
+
+            # obtain coverage calls for the contig
             x = self._cnv_coverage_calls_dataset(
-                contig=c,
+                contig=r.contig,
                 sample_set=sample_set,
                 analysis=analysis,
                 inline_array=inline_array,
                 chunks=chunks,
             )
+
+            # select region
+            if r.start is not None or r.end is not None:
+                start = x["variant_position"].values
+                end = x["variant_end"].values
+                index = pd.IntervalIndex.from_arrays(start, end, closed="both")
+                # noinspection PyArgumentList
+                other = pd.Interval(r.start, r.end, closed="both")
+                loc_region = index.overlaps(other)
+                x = x.isel(variants=loc_region)
+
             lx.append(x)
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 

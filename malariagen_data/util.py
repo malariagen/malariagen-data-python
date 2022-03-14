@@ -145,7 +145,7 @@ class SiteClass(Enum):
 def da_from_zarr(z, inline_array, chunks="auto"):
     """Utility function for turning a zarr array into a dask array.
 
-    N.B., dask does have it's own from_zarr() function but we roll
+    N.B., dask does have its own from_zarr() function, but we roll
     our own here to get a little more control.
 
     """
@@ -164,7 +164,7 @@ def da_from_zarr(z, inline_array, chunks="auto"):
 
 def dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
-    index an xarray dataset with a Boolean array.
+    index a xarray dataset with a Boolean array.
 
     See also: https://github.com/pydata/xarray/issues/5054
 
@@ -260,7 +260,7 @@ def da_compress(indexer, data, axis):
 
 
 def init_filesystem(url, **kwargs):
-    """Initialise an fsspec filesystem from a given base URL and parameters."""
+    """Initialise a fsspec filesystem from a given base URL and parameters."""
 
     # special case Google Cloud Storage, use anonymous access, avoids a delay
     if url.startswith("gs://") or url.startswith("gcs://"):
@@ -294,7 +294,7 @@ def init_zarr_store(fs, path):
 
 
 class Region:
-    """A genomic region."""
+    """A region of a reference genome, i.e., a contig or contig interval."""
 
     def __init__(self, contig, start=None, end=None):
         self._contig = contig
@@ -312,6 +312,14 @@ class Region:
     @property
     def end(self):
         return self._end
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, Region)
+            and (self.contig == other.contig)
+            and (self.start == other.start)
+            and (self.end == other.end)
+        )
 
 
 def _handle_region_coords(resource, region):
@@ -392,7 +400,7 @@ def locate_region(region, pos):
     Parameters
     ----------
     region : Region
-        Region to locate.
+        The region to locate.
     pos : array-like
         Positions to be searched.
 

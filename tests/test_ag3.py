@@ -1021,8 +1021,10 @@ def test_cnv_hmm(sample_sets, region):
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])
 @pytest.mark.parametrize("analysis", ["gamb_colu", "arab", "crosses"])
-@pytest.mark.parametrize("contig", ["3L", "X", ["2R", "2L"]])
-def test_cnv_coverage_calls(sample_set, analysis, contig):
+@pytest.mark.parametrize(
+    "region", ["3L", "X", ["2R", "2L"], "3R:28,000,000-29,000,000"]
+)
+def test_cnv_coverage_calls(sample_set, analysis, region):
 
     ag3 = setup_ag3()
 
@@ -1034,11 +1036,11 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     if analysis not in expected_analyses[sample_set]:
         with pytest.raises(ValueError):
             ag3.cnv_coverage_calls(
-                contig=contig, analysis=analysis, sample_set=sample_set
+                region=region, analysis=analysis, sample_set=sample_set
             )
         return
 
-    ds = ag3.cnv_coverage_calls(contig=contig, analysis=analysis, sample_set=sample_set)
+    ds = ag3.cnv_coverage_calls(region=region, analysis=analysis, sample_set=sample_set)
     assert isinstance(ds, xr.Dataset)
 
     # check fields
@@ -1086,6 +1088,18 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     # check attributes
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
+
+    # check region
+    region = ag3.resolve_region(region)
+    if (
+        isinstance(region, Region)
+        and region.start is not None
+        and region.end is not None
+    ):
+        variant_position = ds["variant_position"].values
+        variant_end = ds["variant_end"].values
+        assert np.all(variant_position <= region.end)
+        assert np.all(variant_end >= region.start)
 
     # check can set up computations
     d1 = ds["variant_position"] > 10_000
@@ -1699,7 +1713,7 @@ def test_sample_cohorts(sample_sets):
 def test_locate_region(region_raw):
 
     ag3 = setup_ag3()
-    gene_annotation = ag3.geneset(["ID"])
+    gene_annotation = ag3.geneset(attributes=["ID"])
     region = resolve_region(ag3, region_raw)
     pos = ag3.snp_sites(region=region.contig, field="POS")
     ref = ag3.snp_sites(region=region.contig, field="REF")
