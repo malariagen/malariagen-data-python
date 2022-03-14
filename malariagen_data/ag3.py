@@ -87,7 +87,7 @@ def _path_to_release(path):
 
 
 class Ag3:
-    """Provides access to data from Ag 3 releases.
+    """Provides access to data from Ag3.x releases.
 
     Parameters
     ----------
@@ -108,6 +108,11 @@ class Ag3:
     Access data downloaded to a local file system:
 
         >>> ag3 = malariagen_data.Ag3("/local/path/to/vo_agam_release/")
+        
+    Access data from Google Cloud Storage, with caching on the local file system 
+    in a directory named "gcs_cache":
+    
+        >>> ag3 = malariagen_data.Ag3("simplecache::gs://vo_agam_release", simplecache=dict(cache_storage="gcs_cache"))
 
     """
 
