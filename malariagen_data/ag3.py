@@ -2165,6 +2165,9 @@ class Ag3:
 
         """
 
+        # N.B., we cannot support region instead of contig here, because some
+        # CNV alleles have unknown start or end coordinates.
+
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         if isinstance(contig, str):
@@ -4263,8 +4266,8 @@ class Ag3:
         y_max=6,
         width=800,
         height=200,
-        coverage_kwargs=None,
-        hmm_kwargs=None,
+        circle_kwargs=None,
+        line_kwargs=None,
         show=True,
     ):
         """Plot CNV HMM data for a single sample, using bokeh.
@@ -4284,9 +4287,9 @@ class Ag3:
             Plot width.
         height : int, optional
             Plot height.
-        coverage_kwargs : dict, optional
+        circle_kwargs : dict, optional
             Passed through to bokeh circle() function.
-        hmm_kwargs : dict, optional
+        line_kwargs : dict, optional
             Passed through to bokeh line() function.
         show : bool, optional
             If true, show the plot.
@@ -4349,22 +4352,20 @@ class Ag3:
         )
 
         # plot the normalised coverage data
-        if coverage_kwargs is None:
-            coverage_kwargs = dict()
-        coverage_kwargs.setdefault("size", 4)
-        coverage_kwargs.setdefault("line_color", "black")
-        coverage_kwargs.setdefault("fill_color", None)
-        coverage_kwargs.setdefault("legend_label", "Coverage")
-        fig.circle(
-            x="variant_midpoint", y="call_NormCov", source=data, **coverage_kwargs
-        )
+        if circle_kwargs is None:
+            circle_kwargs = dict()
+        circle_kwargs.setdefault("size", 4)
+        circle_kwargs.setdefault("line_color", "black")
+        circle_kwargs.setdefault("fill_color", None)
+        circle_kwargs.setdefault("legend_label", "Coverage")
+        fig.circle(x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs)
 
         # plot the HMM state
-        if hmm_kwargs is None:
-            hmm_kwargs = dict()
-        hmm_kwargs.setdefault("width", 2)
-        hmm_kwargs.setdefault("legend_label", "HMM")
-        fig.line(x="variant_midpoint", y="call_CN", source=data, **hmm_kwargs)
+        if line_kwargs is None:
+            line_kwargs = dict()
+        line_kwargs.setdefault("width", 2)
+        line_kwargs.setdefault("legend_label", "HMM")
+        fig.line(x="variant_midpoint", y="call_CN", source=data, **line_kwargs)
 
         # tidy up the plot
         fig.yaxis.axis_label = "Copy number"
@@ -4386,8 +4387,8 @@ class Ag3:
         width=800,
         track_height=200,
         genes_height=100,
-        coverage_kwargs=None,
-        hmm_kwargs=None,
+        circle_kwargs=None,
+        line_kwargs=None,
         show=True,
     ):
         """Plot CNV HMM data for a single sample, together with a genes track,
@@ -4410,9 +4411,9 @@ class Ag3:
             Height of CNV HMM track.
         genes_height : int, optional
             Height of genes track.
-        coverage_kwargs : dict, optional
+        circle_kwargs : dict, optional
             Passed through to bokeh circle() function.
-        hmm_kwargs : dict, optional
+        line_kwargs : dict, optional
             Passed through to bokeh line() function.
         show : bool, optional
             If true, show the plot.
@@ -4427,7 +4428,7 @@ class Ag3:
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt
 
-        # plot the main HMM and coverage trace
+        # plot the main track
         fig1 = self.plot_cnv_hmm_coverage_track(
             sample=sample,
             sample_set=sample_set,
@@ -4435,9 +4436,168 @@ class Ag3:
             y_max=y_max,
             width=width,
             height=track_height,
-            coverage_kwargs=coverage_kwargs,
-            hmm_kwargs=hmm_kwargs,
+            circle_kwargs=circle_kwargs,
+            line_kwargs=line_kwargs,
             show=False,
+        )
+        fig1.xaxis.visible = False
+
+        # plot genes track
+        fig2 = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_heatmap_track(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        width=800,
+        row_height=5,
+        height=None,
+        show=True,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+    ):
+
+        import bokeh.models as bkmod
+        import bokeh.palettes as bkpal
+        import bokeh.plotting as bkplt
+
+        region = self.resolve_region(region)
+
+        # access HMM data
+        hmm = self.cnv_hmm(region=region, sample_sets=sample_sets)
+
+        # handle sample query
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                species_analysis=species_analysis,
+                cohorts_analysis=cohorts_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
+            hmm = hmm.isel(samples=loc_samples)
+
+        # access copy number data
+        cn = hmm["call_CN"].values
+        start = hmm["variant_position"].values
+        end = hmm["variant_end"].values
+        n_windows, n_samples = cn.shape
+
+        # figure out X axis limits from data
+        x_min = start[0]
+        x_max = end[-1]
+
+        # set up plot title
+        title = "HMM copy number"
+        if sample_sets is not None:
+            title += f" - {sample_sets}"
+        if sample_query is not None:
+            title += f" ({sample_query})"
+
+        # figure out plot height
+        if height is None:
+            if show:
+                # assume X axis visible
+                fixed_height = 100
+            else:
+                # assume X axis not visible
+                fixed_height = 30
+            plot_height = fixed_height + row_height * n_samples
+        else:
+            plot_height = height
+
+        # setup figure
+        fig = bkplt.figure(
+            title=title,
+            plot_width=width,
+            plot_height=plot_height,
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            toolbar_location="above",
+            x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
+            y_range=(0, n_samples),
+        )
+
+        # set up palette and color mapping
+        palette = ("#cccccc",) + bkpal.PuOr5
+        color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
+
+        # plot the HMM copy number data as an image
+        fig.image(
+            image=[cn.T],
+            x=x_min,
+            y=0,
+            dw=n_windows * 300,
+            dh=n_samples,
+            color_mapper=color_mapper,
+        )
+
+        # tidy
+        fig.yaxis.axis_label = "Samples"
+        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        # add color bar
+        color_bar = bkmod.ColorBar(
+            color_mapper=color_mapper,
+            major_label_overrides={
+                -1: "missing",
+                4: "4+",
+            },
+        )
+        fig.add_layout(color_bar, "right")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_heatmap(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        width=800,
+        row_height=5,
+        track_height=None,
+        genes_height=100,
+        show=True,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+    ):
+        """@@TODO"""
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # plot the main track
+        fig1 = self.plot_cnv_hmm_heatmap_track(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            width=width,
+            row_height=row_height,
+            height=track_height,
+            show=False,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
         )
         fig1.xaxis.visible = False
 
