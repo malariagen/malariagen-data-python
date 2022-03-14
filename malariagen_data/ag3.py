@@ -172,12 +172,42 @@ class Ag3:
                     </td></tr>
                 </thead>
                 <tbody>
-                    <tr><th style="text-align: left">Storage URL</th><td>{self._url}</td></tr>
-                    <tr><th style="text-align: left">Data releases available</th><td>{', '.join(self.releases)}</td></tr>
-                    <tr><th style="text-align: left">Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
-                    <tr><th style="text-align: left">Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
-                    <tr><th style="text-align: left">Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
-                    <tr><th style="text-align: left">Software version</th><td>{malariagen_data.__version__}</td></tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Storage URL
+                        </th>
+                        <td>{self._url}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data releases available
+                        </th>
+                        <td>{', '.join(self.releases)}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Cohorts analysis
+                        </th>
+                        <td>{DEFAULT_COHORTS_ANALYSIS}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Species analysis
+                        </th>
+                        <td>{DEFAULT_SPECIES_ANALYSIS}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Site filters analysis
+                        </th>
+                        <td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Software version
+                        </th>
+                        <td>{malariagen_data.__version__}</td>
+                    </tr>
                 </tbody>
             </table>
         """
@@ -583,12 +613,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
         field : str, optional
@@ -674,12 +704,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         field : {"POS", "REF", "ALT"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -781,12 +811,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -877,10 +907,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -916,12 +948,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         attributes : list of str, optional
             Attribute keys to unpack into columns. Provide "*" to unpack all
             attributes.
@@ -988,10 +1020,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str, optional
@@ -1013,7 +1047,7 @@ class Ag3:
         # setup output
         is_accessible = np.zeros(seq_length, dtype=bool)
 
-        pos = self.snp_sites(region, field="POS").compute()
+        pos = self.snp_sites(region=region, field="POS").compute()
         if region.start:
             offset = region.start
         else:
@@ -1423,10 +1457,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`.
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         field : str
             One of "codon_degeneracy", "codon_nonsyn", "codon_position", "seq_cls",
             "seq_flen", "seq_relpos_start", "seq_relpos_stop".
@@ -1561,11 +1597,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1742,12 +1779,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -1795,6 +1832,7 @@ class Ag3:
                 start = x["variant_position"].values
                 end = x["variant_end"].values
                 index = pd.IntervalIndex.from_arrays(start, end, closed="both")
+                # noinspection PyArgumentList
                 other = pd.Interval(r.start, r.end, closed="both")
                 loc_region = index.overlaps(other)
                 x = x.isel(variants=loc_region)
@@ -2139,7 +2177,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
@@ -2257,7 +2295,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
@@ -2601,11 +2639,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
@@ -3432,12 +3471,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         area_by : str
             Column name in the sample metadata to use to group samples spatially.
             E.g., use "admin1_iso" or "admin1_name" to group by level 1
@@ -4668,6 +4707,18 @@ def _pandas_apply(f, df, columns):
 
 
 def _region_str(region):
+    """Convert a region to a string representation.
+
+    Parameters
+    ----------
+    region : Region or list of Region
+        Region to display.
+
+    Returns
+    -------
+    out : str
+
+    """
     if isinstance(region, (list, tuple)):
         if len(region) > 1:
             return "; ".join([_region_str(r) for r in region])
