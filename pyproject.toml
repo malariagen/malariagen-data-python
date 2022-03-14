@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "2.2.0"
+version = "3.0.0"
 description = "A package for accessing MalariaGEN public data."
 authors = ["Alistair Miles <alistair.miles@sanger.ac.uk>", "Chris Clarkson <cc28@sanger.ac.uk>", "Kathryn Murie <km22@sanger.ac.uk>", "Nace Kranjc <n.kranjc@imperial.ac.uk>", "Kelly Bennett <kb25@sanger.ac.uk>"]
 license = "MIT"

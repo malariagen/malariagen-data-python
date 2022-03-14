@@ -29,6 +29,34 @@ from the following locations:
 ## Release notes
 
 
+### 3.0.0
+
+* Added a new function `Ag3.plot_cnv_hmm_coverage()` which generates a
+  bokeh plot showing normalised coverage and HMM copy number for an
+  individual sample.
+
+* Added a new function `Ag3.plot_cnv_hmm_heatmap()` which generates a
+  bokeh plot showing the HMM copy number for multiple samples as a
+  heatmap.
+
+* Added support for accessing genome regions to the CNV data access
+  functions `Ag3.cnv_hmm()`, `Ag3.gene_cnv()`,
+  `Ag3.gene_cnv_frequencies()` and `Ag3.cnv_coverage_calls()`
+  ([GH113](https://github.com/malariagen/malariagen-data-python/issues/113)). Please
+  use the `region` parameter to specify a contig or contig region. The
+  previous `contig` parameter is no longer supported.
+
+* Added support for a `region` parameter to the `Ag3.geneset()`
+  function.
+
+* Added docstrings for `Ag3.plot_genes()` and `Ag3.plot_transcript()`
+  ([GH170](https://github.com/malariagen/malariagen-data-python/issues/170)).
+
+* Set plot width and height automatically in
+  `Ag3.plot_frequencies_heatmap()` based on the number of rows and
+  columns.
+
+
 ### 2.2.0
 
 
