@@ -991,9 +991,11 @@ class Ag3:
             # apply region query
             parts = []
             for r in region:
-                df_part = df.query(
-                    f"contig == '{r.contig}' and start <= {r.end} and end >= {r.start}"
-                )
+                df_part = df.query(f"contig == '{r.contig}'")
+                if r.end is not None:
+                    df_part = df_part.query(f"start <= {r.end}")
+                if r.start is not None:
+                    df_part = df_part.query(f"end >= {r.start}")
                 parts.append(df_part)
             df = pd.concat(parts, axis=0)
 
@@ -1474,7 +1476,7 @@ class Ag3:
             Passed through to dask.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1615,7 +1617,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2137,7 +2139,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2334,13 +2336,13 @@ class Ag3:
 
         """
 
-        # check parameters
+        # check and normalise parameters
         _check_param_min_cohort_size(min_cohort_size)
-
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
+        # concatenate data from regions
         df = pd.concat(
             [
                 self._gene_cnv_frequencies(
@@ -2648,7 +2650,7 @@ class Ag3:
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise use the "gamb_colu_arab" analysis.
+            best. Otherwise, use the "gamb_colu_arab" analysis.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -2657,7 +2659,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2797,7 +2799,7 @@ class Ag3:
             A pandas query string which will be evaluated against the sample metadata e.g.,
             "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis identifier (date of analysis), default is the latest version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
             Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
@@ -4712,18 +4714,23 @@ def _region_str(region):
     Parameters
     ----------
     region : Region or list of Region
-        Region to display.
+        The region to display.
 
     Returns
     -------
     out : str
 
     """
-    if isinstance(region, (list, tuple)):
+    if isinstance(region, list):
         if len(region) > 1:
             return "; ".join([_region_str(r) for r in region])
         else:
             region = region[0]
+
+    # sanity check
+    assert isinstance(region, Region)
+
+    # build string representation
     out = region.contig
     if region.start is not None or region.end is not None:
         out += ":"
@@ -4732,4 +4739,5 @@ def _region_str(region):
         out += "-"
         if region.end is not None:
             out += f"{region.end:,}"
+
     return out

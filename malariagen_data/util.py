@@ -1,5 +1,4 @@
 import re
-from collections import namedtuple
 from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import unquote_plus
@@ -91,6 +90,7 @@ def unpack_gff3_attributes(df, attributes):
 
 try:
     # zarr >= 2.11.0
+    # noinspection PyUnresolvedReferences
     from zarr.storage import KVStore
 
     class SafeStore(KVStore):
@@ -288,12 +288,35 @@ def init_zarr_store(fs, path):
     return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))
 
 
-Region = namedtuple("Region", ["contig", "start", "end"])
+# N.B., previously Region was defined as a named tuple. However, this led to
+# some subtle bugs where instances where treated as normal tuples. So to avoid
+# confusion, create a dedicated class.
+
+
+class Region:
+    """A genomic region."""
+
+    def __init__(self, contig, start=None, end=None):
+        self._contig = contig
+        self._start = start
+        self._end = end
+
+    @property
+    def contig(self):
+        return self._contig
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
 
 
 def _handle_region_coords(resource, region):
 
-    region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
+    region_pattern_match = re.search("([a-zA-Z0-9]+):(.+)-(.+)", region)
     if region_pattern_match:
         # parse region string that contains genomic coordinates
         region_split = region_pattern_match.groups()
