@@ -2921,10 +2921,12 @@ class Ag3:
         df,
         index="label",
         max_len=100,
-        x_label="cohorts",
-        y_label="variants",
+        x_label="Cohorts",
+        y_label="Variants",
         colorbar=True,
+        col_width=40,
         width=None,
+        row_height=20,
         height=None,
         text_auto=".0%",
         aspect="auto",
@@ -2955,10 +2957,14 @@ class Ag3:
             This is the y-axis label that will be displayed on the heatmap.
         colorbar : bool, optional
             If False, colorbar is not output.
+        col_width : int, optional
+            Plot width per column in pixels (px).
         width : int, optional
-            Plot width in pixels.
+            Plot width in pixels (px), overrides col_width.
+        row_height : int, optional
+            Plot height per row in pixels (px).
         height : int, optional
-            Plot height in pixels.
+            Plot height in pixels (px), overrides row_height.
         text_auto : str, optional
             Formatting for frequency values.
         aspect : str, optional
@@ -3017,6 +3023,16 @@ class Ag3:
         # clean column names
         heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
 
+        # deal with width and height
+        if width is None:
+            width = 400 + col_width * len(heatmap_df.columns)
+            if colorbar:
+                width += 40
+        if height is None:
+            height = 200 + row_height * len(heatmap_df)
+            if title is not None:
+                height += 40
+
         # plotly heatmap styling
         fig = px.imshow(
             img=heatmap_df,
@@ -3038,7 +3054,7 @@ class Ag3:
             fig.update_yaxes(title=y_label)
         fig.update_layout(
             coloraxis_colorbar=dict(
-                title="frequency",
+                title="Frequency",
                 tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
                 ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
             )
