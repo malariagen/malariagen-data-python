@@ -4263,7 +4263,7 @@ class Ag3:
         sample,
         sample_set,
         region,
-        y_max=6,
+        y_max="auto",
         width=800,
         height=200,
         circle_kwargs=None,
@@ -4281,7 +4281,7 @@ class Ag3:
         region : str
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
             region defined with coordinates (e.g., "2L:44989425-44998059").
-        y_max : int, optional
+        y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
             Plot width.
@@ -4333,6 +4333,10 @@ class Ag3:
         # remove data where HMM is not called
         data = data.query("call_CN >= 0")
 
+        # set up y range
+        if y_max == "auto":
+            y_max = data["call_CN"].max() + 2
+
         # set up x range
         x_min = data["variant_position"].values[0]
         x_max = data["variant_end"].values[-1]
@@ -4354,7 +4358,8 @@ class Ag3:
         # plot the normalised coverage data
         if circle_kwargs is None:
             circle_kwargs = dict()
-        circle_kwargs.setdefault("size", 4)
+        circle_kwargs.setdefault("size", 3)
+        circle_kwargs.setdefault("line_width", 0.5)
         circle_kwargs.setdefault("line_color", "black")
         circle_kwargs.setdefault("fill_color", None)
         circle_kwargs.setdefault("legend_label", "Coverage")
@@ -4369,6 +4374,7 @@ class Ag3:
 
         # tidy up the plot
         fig.yaxis.axis_label = "Copy number"
+        fig.yaxis.ticker = list(range(y_max + 1))
         fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
         fig.add_layout(fig.legend[0], "right")
@@ -4383,9 +4389,9 @@ class Ag3:
         sample,
         sample_set,
         region,
-        y_max=6,
+        y_max="auto",
         width=800,
-        track_height=200,
+        track_height=170,
         genes_height=100,
         circle_kwargs=None,
         line_kwargs=None,
@@ -4403,7 +4409,7 @@ class Ag3:
         region : str
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
             region defined with coordinates (e.g., "2L:44989425-44998059").
-        y_max : int, optional
+        y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
             Plot width.
@@ -4467,12 +4473,47 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         width=800,
-        row_height=5,
+        row_height=3,
         height=None,
         show=True,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
     ):
+        """Plot CNV HMM data for multiple samples as a heatmap, using bokeh.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        width : int, optional
+            Plot width in pixels.
+        row_height : int, optional
+            Plot height per row (sample) in pixels.
+        height : int, optional
+            Absolute plot height in pixels, overrides row_height.
+        show : bool, optional
+            If true, show the plot.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
+            Include species calls in metadata.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         import bokeh.models as bkmod
         import bokeh.palettes as bkpal
@@ -4504,7 +4545,7 @@ class Ag3:
         x_max = end[-1]
 
         # set up plot title
-        title = "HMM copy number"
+        title = "CNV HMM"
         if sample_sets is not None:
             title += f" - {sample_sets}"
         if sample_query is not None:
@@ -4512,13 +4553,7 @@ class Ag3:
 
         # figure out plot height
         if height is None:
-            if show:
-                # assume X axis visible
-                fixed_height = 100
-            else:
-                # assume X axis not visible
-                fixed_height = 30
-            plot_height = fixed_height + row_height * n_samples
+            plot_height = 100 + row_height * n_samples
         else:
             plot_height = height
 
@@ -4556,11 +4591,13 @@ class Ag3:
 
         # add color bar
         color_bar = bkmod.ColorBar(
+            title="Copy number",
             color_mapper=color_mapper,
             major_label_overrides={
-                -1: "missing",
+                -1: "unknown",
                 4: "4+",
             },
+            major_label_policy=bkmod.AllLabels(),
         )
         fig.add_layout(color_bar, "right")
 
@@ -4575,14 +4612,51 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         width=800,
-        row_height=5,
+        row_height=3,
         track_height=None,
         genes_height=100,
         show=True,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
     ):
-        """@@TODO"""
+        """Plot CNV HMM data for multiple samples as a heatmap, with a genes
+        track, using bokeh.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        width : int, optional
+            Plot width in pixels.
+        row_height : int, optional
+            Plot height per row (sample) in pixels.
+        track_height : int, optional
+            Absolute plot height for HMM track in pixels, overrides row_height.
+        genes_height : int, optional
+            Height of genes track.
+        show : bool, optional
+            If true, show the plot.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
+            Include species calls in metadata.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt
