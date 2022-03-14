@@ -454,6 +454,38 @@ def test_geneset():
 
 @pytest.mark.parametrize(
     "region",
+    ["AGAP007280", "3R:28,000,000-29,000,000", "2R", "X", ["3R", "3L"]],
+)
+def test_geneset_region(region):
+
+    ag3 = setup_ag3()
+
+    df = ag3.geneset(region=region)
+    assert isinstance(df, pd.DataFrame)
+    gff3_cols = [
+        "contig",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
+    assert df.columns.tolist() == expected_cols
+    assert len(df) > 0
+
+    # check region
+    region = ag3.resolve_region(region)
+    if isinstance(region, Region):
+        assert np.all(df["contig"].values == region.contig)
+        if region.start and region.end:
+            assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
+
+
+@pytest.mark.parametrize(
+    "region",
     ["AGAP007280", "2R:48714463-48715355", "2R", "X"],
 )
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
@@ -607,7 +639,7 @@ def test_snp_calls(sample_sets, region, site_mask):
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
-    # check can setup computations
+    # check can set up computations
     d1 = ds["variant_position"] > 10_000
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_AD"].sum(axis=(1, 2))
@@ -703,8 +735,8 @@ def test_snp_effects():
     assert df.iloc[2828].effect == "THREE_PRIME_UTR"
 
     # check 5' utr intron and the different intron effects
-    utrintron5 = "AGAP004679-RB"
-    df = ag3.snp_effects(transcript=utrintron5, site_mask=site_mask)
+    utr_intron5 = "AGAP004679-RB"
+    df = ag3.snp_effects(transcript=utr_intron5, site_mask=site_mask)
     assert isinstance(df, pd.DataFrame)
     assert df.columns.tolist() == expected_fields
     assert df.shape == (7686, len(expected_fields))
@@ -713,8 +745,8 @@ def test_snp_effects():
     assert df.iloc[202].effect == "INTRONIC"
 
     # check 3' utr intron
-    utrintron3 = "AGAP000689-RA"
-    df = ag3.snp_effects(transcript=utrintron3, site_mask=site_mask)
+    utr_intron3 = "AGAP000689-RA"
+    df = ag3.snp_effects(transcript=utr_intron3, site_mask=site_mask)
     assert isinstance(df, pd.DataFrame)
     assert df.columns.tolist() == expected_fields
     assert df.shape == (5397, len(expected_fields))
@@ -899,10 +931,10 @@ def test_snp_allele_frequencies__dup_samples():
     "sample_sets",
     ["AG1000G-AO", ["AG1000G-AO", "AG1000G-UG"], "3.0", None],
 )
-@pytest.mark.parametrize("contig", ["2R", ["3L", "X"]])
-def test_cnv_hmm(sample_sets, contig):
+@pytest.mark.parametrize("region", ["2R", ["3L", "X"], "3R:28,000,000-29,000,000"])
+def test_cnv_hmm(sample_sets, region):
     ag3 = setup_ag3()
-    ds = ag3.cnv_hmm(contig=contig, sample_sets=sample_sets)
+    ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets)
     assert isinstance(ds, xr.Dataset)
 
     # check fields
@@ -927,19 +959,32 @@ def test_cnv_hmm(sample_sets, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check dim lengths
-    if isinstance(contig, str):
-        n_variants = 1 + len(ag3.genome_sequence(region=contig)) // 300
-    elif isinstance(contig, (tuple, list)):
-        n_variants = sum(
-            [1 + len(ag3.genome_sequence(region=c)) // 300 for c in contig]
+    if region in ag3.contigs:
+        n_variants_expected = 1 + len(ag3.genome_sequence(region=region)) // 300
+    elif isinstance(region, (tuple, list)) and all([r in ag3.contigs for r in region]):
+        n_variants_expected = sum(
+            [1 + len(ag3.genome_sequence(region=c)) // 300 for c in region]
         )
     else:
-        raise NotImplementedError
+        # test part of a contig region
+        region = ag3.resolve_region(region)
+        variant_contig = ds["variant_contig"].values
+        contig_index = ds.attrs["contigs"].index(region.contig)
+        assert np.all(variant_contig == contig_index)
+        variant_position = ds["variant_position"].values
+        variant_end = ds["variant_end"].values
+        assert variant_position[0] <= region.start
+        assert variant_end[0] >= region.start
+        assert variant_position[-1] <= region.end
+        assert variant_end[-1] >= region.end
+        assert np.all(variant_position <= region.end)
+        assert np.all(variant_end >= region.start)
+        n_variants_expected = 1 + (region.end - region.start) // 300
 
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
-    n_samples = len(df_samples)
-    assert ds.dims["variants"] == n_variants
-    assert ds.dims["samples"] == n_samples
+    n_samples_expected = len(df_samples)
+    assert ds.dims["variants"] == n_variants_expected
+    assert ds.dims["samples"] == n_samples_expected
 
     # check sample IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
@@ -952,16 +997,16 @@ def test_cnv_hmm(sample_sets, contig):
 
         if f.startswith("variant_"):
             assert x.ndim, f == 1
-            assert x.shape == (n_variants,)
+            assert x.shape == (n_variants_expected,)
             assert x.dims == ("variants",)
         elif f.startswith("call_"):
             assert x.ndim, f == 2
             assert x.dims == ("variants", "samples")
-            assert x.shape == (n_variants, n_samples)
+            assert x.shape == (n_variants_expected, n_samples_expected)
         elif f.startswith("sample_"):
             assert x.ndim == 1
             assert x.dims == ("samples",)
-            assert x.shape == (n_samples,)
+            assert x.shape == (n_samples_expected,)
 
     # check attributes
     assert "contigs" in ds.attrs
@@ -976,8 +1021,10 @@ def test_cnv_hmm(sample_sets, contig):
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])
 @pytest.mark.parametrize("analysis", ["gamb_colu", "arab", "crosses"])
-@pytest.mark.parametrize("contig", ["3L", "X", ["2R", "2L"]])
-def test_cnv_coverage_calls(sample_set, analysis, contig):
+@pytest.mark.parametrize(
+    "region", ["3L", "X", ["2R", "2L"], "3R:28,000,000-29,000,000"]
+)
+def test_cnv_coverage_calls(sample_set, analysis, region):
 
     ag3 = setup_ag3()
 
@@ -989,11 +1036,11 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     if analysis not in expected_analyses[sample_set]:
         with pytest.raises(ValueError):
             ag3.cnv_coverage_calls(
-                contig=contig, analysis=analysis, sample_set=sample_set
+                region=region, analysis=analysis, sample_set=sample_set
             )
         return
 
-    ds = ag3.cnv_coverage_calls(contig=contig, analysis=analysis, sample_set=sample_set)
+    ds = ag3.cnv_coverage_calls(region=region, analysis=analysis, sample_set=sample_set)
     assert isinstance(ds, xr.Dataset)
 
     # check fields
@@ -1041,6 +1088,18 @@ def test_cnv_coverage_calls(sample_set, analysis, contig):
     # check attributes
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
+
+    # check region
+    region = ag3.resolve_region(region)
+    if (
+        isinstance(region, Region)
+        and region.start is not None
+        and region.end is not None
+    ):
+        variant_position = ds["variant_position"].values
+        variant_end = ds["variant_end"].values
+        assert np.all(variant_position <= region.end)
+        assert np.all(variant_end >= region.start)
 
     # check can set up computations
     d1 = ds["variant_position"] > 10_000
@@ -1173,11 +1232,13 @@ def test_cn_mode(rows, cols, vmax):
     "sample_sets",
     ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
-@pytest.mark.parametrize("contig", ["2R", "X", ["2R", "3R"]])
-def test_gene_cnv(contig, sample_sets):
+@pytest.mark.parametrize(
+    "region", ["2R", "X", ["2R", "3R"], "3R:28,000,000-29,000,000"]
+)
+def test_gene_cnv(region, sample_sets):
     ag3 = setup_ag3()
 
-    ds = ag3.gene_cnv(contig=contig, sample_sets=sample_sets)
+    ds = ag3.gene_cnv(region=region, sample_sets=sample_sets)
 
     assert isinstance(ds, xr.Dataset)
 
@@ -1210,13 +1271,8 @@ def test_gene_cnv(contig, sample_sets):
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
-    df_geneset = ag3.geneset()
-    if isinstance(contig, str):
-        df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
-    else:
-        df_genes = pd.concat(
-            [df_geneset.query(f"type == 'gene' and contig == '{c}'") for c in contig]
-        )
+    df_geneset = ag3.geneset(region=region)
+    df_genes = df_geneset.query("type == 'gene'")
     n_genes = len(df_genes)
     assert ds.dims["genes"] == n_genes
 
@@ -1260,19 +1316,19 @@ def test_gene_cnv(contig, sample_sets):
     "sample_sets",
     ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
-@pytest.mark.parametrize("contig", ["2R", "X"])
-def test_gene_cnv_xarray_indexing(contig, sample_sets):
+@pytest.mark.parametrize("region", ["2R", "X", "3R:28,000,000-29,000,000"])
+def test_gene_cnv_xarray_indexing(region, sample_sets):
     ag3 = setup_ag3()
 
-    ds = ag3.gene_cnv(contig=contig, sample_sets=sample_sets)
+    ds = ag3.gene_cnv(region=region, sample_sets=sample_sets)
 
     # check label-based indexing
     # pick a random gene and sample ID
 
     # check dim lengths
     df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
-    df_geneset = ag3.geneset()
-    df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
+    df_geneset = ag3.geneset(region=region)
+    df_genes = df_geneset.query("type == 'gene'")
     gene = random.choice(df_genes["ID"].tolist())
     sample = random.choice(df_samples["sample_id"].tolist())
     ds = ds.set_index(genes="gene_id", samples="sample_id")
@@ -1289,7 +1345,9 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
     assert set(o.dims) == set()
 
 
-@pytest.mark.parametrize("contig", ["2R", "X", ["2R", "3R"]])
+@pytest.mark.parametrize(
+    "region", ["2R", "X", ["2R", "3R"], "3R:28,000,000-29,000,000"]
+)
 @pytest.mark.parametrize(
     "cohorts",
     [
@@ -1300,7 +1358,7 @@ def test_gene_cnv_xarray_indexing(contig, sample_sets):
         "admin1_month",
     ],
 )
-def test_gene_cnv_frequencies(contig, cohorts):
+def test_gene_cnv_frequencies(region, cohorts):
 
     universal_fields = [
         "contig",
@@ -1313,15 +1371,10 @@ def test_gene_cnv_frequencies(contig, cohorts):
         "label",
     ]
     ag3 = setup_ag3()
-    if isinstance(contig, str):
-        df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
-    else:
-        df_genes = pd.concat(
-            [ag3.geneset().query(f"type == 'gene' and contig == '{c}'") for c in contig]
-        )
+    df_genes = ag3.geneset(region=region).query("type == 'gene'")
 
     df_cnv_frq = ag3.gene_cnv_frequencies(
-        contig=contig,
+        region=region,
         sample_sets="3.0",
         cohorts=cohorts,
         min_cohort_size=1,
@@ -1362,7 +1415,7 @@ def test_gene_cnv_frequencies(contig, cohorts):
 
 def test_gene_cnv_frequencies__query():
 
-    contig = "3L"
+    region = "3L"
 
     expected_columns = [
         "contig",
@@ -1378,7 +1431,7 @@ def test_gene_cnv_frequencies__query():
 
     ag3 = setup_ag3()
     df = ag3.gene_cnv_frequencies(
-        contig=contig,
+        region=region,
         sample_sets="3.0",
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1388,15 +1441,15 @@ def test_gene_cnv_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    df_genes = ag3.geneset(region=region).query("type == 'gene'")
     assert len(df) == len(df_genes) * 2
 
 
 def test_gene_cnv_frequencies__max_coverage_variance():
 
     ag3 = setup_ag3()
-    contig = "3L"
-    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    region = "3L"
+    df_genes = ag3.geneset(region=region).query("type == 'gene'")
 
     base_columns = [
         "contig",
@@ -1411,7 +1464,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
 
     # run without a threshold on coverage variance
     df = ag3.gene_cnv_frequencies(
-        contig=contig,
+        region=region,
         sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1432,7 +1485,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
     # which in turn will drop one of the cohorts below the min_cohort_size,
     # and so we can check that we have lost a cohort.
     df = ag3.gene_cnv_frequencies(
-        contig=contig,
+        region=region,
         sample_sets=["AG1000G-GM-A", "AG1000G-GM-B", "AG1000G-GM-C"],
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1451,7 +1504,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
 
 def test_gene_cnv_frequencies__drop_invariant():
 
-    contig = "3L"
+    region = "3L"
 
     expected_columns = [
         "contig",
@@ -1467,7 +1520,7 @@ def test_gene_cnv_frequencies__drop_invariant():
 
     ag3 = setup_ag3()
     df = ag3.gene_cnv_frequencies(
-        contig=contig,
+        region=region,
         sample_sets="3.0",
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1478,7 +1531,7 @@ def test_gene_cnv_frequencies__drop_invariant():
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
     assert np.all(df["max_af"] > 0)
-    df_genes = ag3.geneset().query(f"type == 'gene' and contig == '{contig}'")
+    df_genes = ag3.geneset(region=region).query("type == 'gene'")
     assert len(df) < len(df_genes) * 2
 
 
@@ -1486,7 +1539,7 @@ def test_gene_cnv_frequencies__dup_samples():
     ag3 = setup_ag3()
     with pytest.raises(ValueError):
         ag3.gene_cnv_frequencies(
-            contig="3L",
+            region="3L",
             cohorts="admin1_year",
             sample_sets=["AG1000G-FR", "AG1000G-FR"],
         )
@@ -1498,7 +1551,7 @@ def test_gene_cnv_frequencies__multi_contig_x():
     ag3 = setup_ag3()
 
     df1 = ag3.gene_cnv_frequencies(
-        contig="X",
+        region="X",
         sample_sets="AG1000G-BF-B",
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1507,7 +1560,7 @@ def test_gene_cnv_frequencies__multi_contig_x():
     )
 
     df2 = ag3.gene_cnv_frequencies(
-        contig=["2R", "X"],
+        region=["2R", "X"],
         sample_sets="AG1000G-BF-B",
         cohorts="admin1_year",
         min_cohort_size=10,
@@ -1603,7 +1656,7 @@ def test_haplotypes(sample_sets, region, analysis):
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
-    # check can setup computations
+    # check can set up computations
     d1 = ds["variant_position"] > 10_000
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_genotype"].sum(axis=(1, 2))
@@ -1660,7 +1713,7 @@ def test_sample_cohorts(sample_sets):
 def test_locate_region(region_raw):
 
     ag3 = setup_ag3()
-    gene_annotation = ag3.geneset(["ID"])
+    gene_annotation = ag3.geneset(attributes=["ID"])
     region = resolve_region(ag3, region_raw)
     pos = ag3.snp_sites(region=region.contig, field="POS")
     ref = ag3.snp_sites(region=region.contig, field="REF")
@@ -2159,7 +2212,7 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
 
 # noinspection PyDefaultArgument
 def _check_gene_cnv_frequencies_advanced(
-    contig="2L",
+    region="2L",
     area_by="admin1_iso",
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
@@ -2173,7 +2226,7 @@ def _check_gene_cnv_frequencies_advanced(
     ag3 = setup_ag3()
 
     ds = ag3.gene_cnv_frequencies_advanced(
-        contig=contig,
+        region=region,
         area_by=area_by,
         period_by=period_by,
         sample_sets=sample_sets,
@@ -2277,7 +2330,7 @@ def _check_gene_cnv_frequencies_advanced(
 
         # check consistency with the basic gene CNV frequencies method
         df_af = ag3.gene_cnv_frequencies(
-            contig=contig,
+            region=region,
             cohorts="admin1_year",
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -2311,10 +2364,10 @@ def _check_gene_cnv_frequencies_advanced(
             assert_allclose(actual_frq, expect_frq)
 
 
-@pytest.mark.parametrize("contig", ["2R", "X", ["3R", "X"]])
-def test_gene_cnv_frequencies_advanced__contig(contig):
+@pytest.mark.parametrize("region", ["2R", "X", ["3R", "X"], "3R:28,000,000-29,000,000"])
+def test_gene_cnv_frequencies_advanced__region(region):
     _check_gene_cnv_frequencies_advanced(
-        contig=contig,
+        region=region,
     )
 
 
@@ -2406,7 +2459,7 @@ def test_gene_cnv_frequencies_advanced__multi_contig_x():
     ag3 = setup_ag3()
 
     ds1 = ag3.gene_cnv_frequencies_advanced(
-        contig="X",
+        region="X",
         area_by="admin1_iso",
         period_by="year",
         sample_sets="AG1000G-BF-B",
@@ -2418,7 +2471,7 @@ def test_gene_cnv_frequencies_advanced__multi_contig_x():
     )
 
     ds2 = ag3.gene_cnv_frequencies_advanced(
-        contig=["2R", "X"],
+        region=["2R", "X"],
         area_by="admin1_iso",
         period_by="year",
         sample_sets="AG1000G-BF-B",
@@ -2463,14 +2516,11 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
     ag3 = setup_ag3()
     with pytest.raises(ValueError):
         ag3.gene_cnv_frequencies_advanced(
-            contig="3L",
+            region="3L",
             area_by="admin1_iso",
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
-
-
-# TODO test plot_frequencies...() functions
 
 
 def _compare_series_like(actual, expect):

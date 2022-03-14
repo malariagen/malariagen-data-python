@@ -1,5 +1,4 @@
 import re
-from collections import namedtuple
 from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import unquote_plus
@@ -91,6 +90,7 @@ def unpack_gff3_attributes(df, attributes):
 
 try:
     # zarr >= 2.11.0
+    # noinspection PyUnresolvedReferences
     from zarr.storage import KVStore
 
     class SafeStore(KVStore):
@@ -145,7 +145,7 @@ class SiteClass(Enum):
 def da_from_zarr(z, inline_array, chunks="auto"):
     """Utility function for turning a zarr array into a dask array.
 
-    N.B., dask does have it's own from_zarr() function but we roll
+    N.B., dask does have its own from_zarr() function, but we roll
     our own here to get a little more control.
 
     """
@@ -164,7 +164,7 @@ def da_from_zarr(z, inline_array, chunks="auto"):
 
 def dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
-    index an xarray dataset with a Boolean array.
+    index a xarray dataset with a Boolean array.
 
     See also: https://github.com/pydata/xarray/issues/5054
 
@@ -260,7 +260,7 @@ def da_compress(indexer, data, axis):
 
 
 def init_filesystem(url, **kwargs):
-    """Initialise an fsspec filesystem from a given base URL and parameters."""
+    """Initialise a fsspec filesystem from a given base URL and parameters."""
 
     # special case Google Cloud Storage, use anonymous access, avoids a delay
     if url.startswith("gs://") or url.startswith("gcs://"):
@@ -288,12 +288,43 @@ def init_zarr_store(fs, path):
     return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))
 
 
-Region = namedtuple("Region", ["contig", "start", "end"])
+# N.B., previously Region was defined as a named tuple. However, this led to
+# some subtle bugs where instances where treated as normal tuples. So to avoid
+# confusion, create a dedicated class.
+
+
+class Region:
+    """A region of a reference genome, i.e., a contig or contig interval."""
+
+    def __init__(self, contig, start=None, end=None):
+        self._contig = contig
+        self._start = start
+        self._end = end
+
+    @property
+    def contig(self):
+        return self._contig
+
+    @property
+    def start(self):
+        return self._start
+
+    @property
+    def end(self):
+        return self._end
+
+    def __eq__(self, other):
+        return (
+            isinstance(other, Region)
+            and (self.contig == other.contig)
+            and (self.start == other.start)
+            and (self.end == other.end)
+        )
 
 
 def _handle_region_coords(resource, region):
 
-    region_pattern_match = re.search(r"([a-zA-Z0-9]+)\:(.+)\-(.+)", region)
+    region_pattern_match = re.search("([a-zA-Z0-9]+):(.+)-(.+)", region)
     if region_pattern_match:
         # parse region string that contains genomic coordinates
         region_split = region_pattern_match.groups()
@@ -369,7 +400,7 @@ def locate_region(region, pos):
     Parameters
     ----------
     region : Region
-        Region to locate.
+        The region to locate.
     pos : array-like
         Positions to be searched.
 

@@ -13,7 +13,7 @@ import zarr
 import malariagen_data
 
 from . import veff
-from .util import (
+from .util import (  # type_error,
     DIM_ALLELE,
     DIM_PLOIDY,
     DIM_SAMPLE,
@@ -27,6 +27,7 @@ from .util import (
     locate_region,
     read_gff3,
     resolve_region,
+    type_error,
     unpack_gff3_attributes,
     xarray_concat,
 )
@@ -171,12 +172,42 @@ class Ag3:
                     </td></tr>
                 </thead>
                 <tbody>
-                    <tr><th style="text-align: left">Storage URL</th><td>{self._url}</td></tr>
-                    <tr><th style="text-align: left">Data releases available</th><td>{', '.join(self.releases)}</td></tr>
-                    <tr><th style="text-align: left">Cohorts analysis</th><td>{DEFAULT_COHORTS_ANALYSIS}</td></tr>
-                    <tr><th style="text-align: left">Species analysis</th><td>{DEFAULT_SPECIES_ANALYSIS}</td></tr>
-                    <tr><th style="text-align: left">Site filters analysis</th><td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td></tr>
-                    <tr><th style="text-align: left">Software version</th><td>{malariagen_data.__version__}</td></tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Storage URL
+                        </th>
+                        <td>{self._url}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data releases available
+                        </th>
+                        <td>{', '.join(self.releases)}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Cohorts analysis
+                        </th>
+                        <td>{DEFAULT_COHORTS_ANALYSIS}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Species analysis
+                        </th>
+                        <td>{DEFAULT_SPECIES_ANALYSIS}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Site filters analysis
+                        </th>
+                        <td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Software version
+                        </th>
+                        <td>{malariagen_data.__version__}</td>
+                    </tr>
                 </tbody>
             </table>
         """
@@ -582,12 +613,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
         field : str, optional
@@ -607,7 +638,7 @@ class Ag3:
 
         """
 
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
@@ -673,12 +704,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         field : {"POS", "REF", "ALT"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -699,7 +730,7 @@ class Ag3:
 
         """
 
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
@@ -780,12 +811,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "AGAP005958"].
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -812,7 +843,7 @@ class Ag3:
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # normalise region to list to simplify concatenation logic
         if isinstance(region, Region):
@@ -876,10 +907,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -894,7 +927,7 @@ class Ag3:
 
         """
         genome = self.open_genome()
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         z = genome[region.contig]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
@@ -910,11 +943,17 @@ class Ag3:
 
         return d[loc_region]
 
-    def geneset(self, attributes=("ID", "Parent", "Name", "description")):
+    def geneset(self, region=None, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations (AgamP4.12).
 
         Parameters
         ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         attributes : list of str, optional
             Attribute keys to unpack into columns. Provide "*" to unpack all
             attributes.
@@ -940,6 +979,26 @@ class Ag3:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_geneset[attributes] = df
 
+        # handle region
+        if region is not None:
+
+            region = self.resolve_region(region)
+
+            # normalise to list to simplify concatenation logic
+            if isinstance(region, Region):
+                region = [region]
+
+            # apply region query
+            parts = []
+            for r in region:
+                df_part = df.query(f"contig == '{r.contig}'")
+                if r.end is not None:
+                    df_part = df_part.query(f"start <= {r.end}")
+                if r.start is not None:
+                    df_part = df_part.query(f"end >= {r.start}")
+                parts.append(df_part)
+            df = pd.concat(parts, axis=0)
+
         return df
 
     def _transcript_to_gene_name(self, transcript):
@@ -963,10 +1022,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
+        region: str or list of str or Region or list of Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
             region defined with coordinates (e.g., "2L:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str, optional
@@ -980,7 +1041,7 @@ class Ag3:
         """
 
         # resolve region
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # determine contig sequence length
         seq_length = self.genome_sequence(region).shape[0]
@@ -988,7 +1049,7 @@ class Ag3:
         # setup output
         is_accessible = np.zeros(seq_length, dtype=bool)
 
-        pos = self.snp_sites(region, field="POS").compute()
+        pos = self.snp_sites(region=region, field="POS").compute()
         if region.start:
             offset = region.start
         else:
@@ -1398,10 +1459,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`.
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         field : str
             One of "codon_degeneracy", "codon_nonsyn", "codon_position", "seq_cls",
             "seq_flen", "seq_relpos_start", "seq_relpos_stop".
@@ -1413,7 +1476,7 @@ class Ag3:
             Passed through to dask.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1426,7 +1489,7 @@ class Ag3:
         root = self.open_site_annotations()
 
         # resolve region
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
         if isinstance(region, list):
             raise TypeError("Multiple regions not supported.")
 
@@ -1536,11 +1599,12 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -1553,7 +1617,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1563,7 +1627,7 @@ class Ag3:
         """
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # normalise to simplify concatenation logic
         if isinstance(region, Region):
@@ -1708,7 +1772,7 @@ class Ag3:
 
     def cnv_hmm(
         self,
-        contig,
+        region,
         sample_sets=None,
         inline_array=True,
         chunks="native",
@@ -1717,18 +1781,21 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1739,26 +1806,42 @@ class Ag3:
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+
+        # normalise to simplify concatenation logic
+        if isinstance(region, Region):
+            region = [region]
 
         # concatenate
         lx = []
-        for c in contig:
+        for r in region:
 
             ly = []
             for s in sample_sets:
                 y = self._cnv_hmm_dataset(
-                    contig=c,
+                    contig=r.contig,
                     sample_set=s,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
                 ly.append(y)
 
+            # concatenate data from multiple sample sets
             x = xarray_concat(ly, dim=DIM_SAMPLE)
+
+            # handle region, do this only once - optimisation
+            if r.start is not None or r.end is not None:
+                start = x["variant_position"].values
+                end = x["variant_end"].values
+                index = pd.IntervalIndex.from_arrays(start, end, closed="both")
+                # noinspection PyArgumentList
+                other = pd.Interval(r.start, r.end, closed="both")
+                loc_region = index.overlaps(other)
+                x = x.isel(variants=loc_region)
+
             lx.append(x)
 
+        # concatenate data from multiple regions
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
@@ -1882,7 +1965,7 @@ class Ag3:
 
     def cnv_coverage_calls(
         self,
-        contig,
+        region,
         sample_set,
         analysis,
         inline_array=True,
@@ -1892,9 +1975,12 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_set : str
             Sample set identifier.
         analysis : {'gamb_colu', 'arab', 'crosses'}
@@ -1917,19 +2003,33 @@ class Ag3:
         # calling is done independently in different sample sets.
 
         # normalise parameters
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         # concatenate
         lx = []
-        for c in contig:
+        for r in region:
+
+            # obtain coverage calls for the contig
             x = self._cnv_coverage_calls_dataset(
-                contig=c,
+                contig=r.contig,
                 sample_set=sample_set,
                 analysis=analysis,
                 inline_array=inline_array,
                 chunks=chunks,
             )
+
+            # select region
+            if r.start is not None or r.end is not None:
+                start = x["variant_position"].values
+                end = x["variant_end"].values
+                index = pd.IntervalIndex.from_arrays(start, end, closed="both")
+                # noinspection PyArgumentList
+                other = pd.Interval(r.start, r.end, closed="both")
+                loc_region = index.overlaps(other)
+                x = x.isel(variants=loc_region)
+
             lx.append(x)
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
@@ -2056,7 +2156,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2064,6 +2164,9 @@ class Ag3:
             A dataset of CNV alleles and genotypes.
 
         """
+
+        # N.B., we cannot support region instead of contig here, because some
+        # CNV alleles have unknown start or end coordinates.
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
@@ -2091,18 +2194,21 @@ class Ag3:
 
         return ds
 
-    def gene_cnv(self, contig, sample_sets=None):
+    def gene_cnv(self, region, sample_sets=None):
         """Compute modal copy number by gene, from HMM data.
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or
+            a release identifier (e.g., "3.0") or a list of release identifiers.
 
         Returns
         -------
@@ -2111,32 +2217,32 @@ class Ag3:
 
         """
 
-        # handle multiple contigs
-        if isinstance(contig, str):
-            contig = [contig]
+        # handle multiple regions
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         ds = xarray_concat(
-            [self._gene_cnv(contig=c, sample_sets=sample_sets) for c in contig],
+            [self._gene_cnv(region=r, sample_sets=sample_sets) for r in region],
             dim="genes",
         )
 
         return ds
 
-    def _gene_cnv(self, *, contig, sample_sets):
+    def _gene_cnv(self, *, region, sample_sets):
 
         # sanity check
-        assert isinstance(contig, str)
+        assert isinstance(region, Region)
 
         # access HMM data
-        ds_hmm = self.cnv_hmm(contig=contig, sample_sets=sample_sets)
+        ds_hmm = self.cnv_hmm(region=region.contig, sample_sets=sample_sets)
         pos = ds_hmm["variant_position"].values
         end = ds_hmm["variant_end"].values
         cn = ds_hmm["call_CN"].values
 
         # access genes
-        df_geneset = self.geneset()
-        df_genes = df_geneset.query(f"type == 'gene' and contig == '{contig}'")
-        n_genes = len(df_genes)
+        df_geneset = self.geneset(region=region)
+        df_genes = df_geneset.query("type == 'gene'")
 
         # setup intermediates
         windows = []
@@ -2172,7 +2278,7 @@ class Ag3:
                 "sample_id": (["samples"], ds_hmm["sample_id"].values),
             },
             data_vars={
-                "gene_contig": (["genes"], np.array([contig] * n_genes, dtype=object)),
+                "gene_contig": (["genes"], df_genes["contig"].values),
                 "gene_start": (["genes"], df_genes["start"].values),
                 "gene_end": (["genes"], df_genes["end"].values),
                 "gene_windows": (["genes"], windows),
@@ -2196,7 +2302,7 @@ class Ag3:
 
     def gene_cnv_frequencies(
         self,
-        contig,
+        region,
         cohorts,
         sample_query=None,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
@@ -2211,9 +2317,12 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         cohorts : str or dict
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
@@ -2247,16 +2356,17 @@ class Ag3:
 
         """
 
-        # check parameters
+        # check and normalise parameters
         _check_param_min_cohort_size(min_cohort_size)
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
-        if isinstance(contig, str):
-            contig = [contig]
-
+        # concatenate data from regions
         df = pd.concat(
             [
                 self._gene_cnv_frequencies(
-                    contig=c,
+                    region=r,
                     cohorts=cohorts,
                     sample_query=sample_query,
                     cohorts_analysis=cohorts_analysis,
@@ -2266,17 +2376,21 @@ class Ag3:
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
                 )
-                for c in contig
+                for r in region
             ],
             axis=0,
         )
+
+        # add metadata
+        title = f"Gene CNV frequencies ({_region_str(region)})"
+        df.attrs["title"] = title
 
         return df
 
     def _gene_cnv_frequencies(
         self,
         *,
-        contig,
+        region,
         cohorts,
         sample_query,
         cohorts_analysis,
@@ -2287,8 +2401,8 @@ class Ag3:
         max_coverage_variance,
     ):
 
-        # sanity check - this function is one contig at a time
-        assert isinstance(contig, str)
+        # sanity check - this function is one region at a time
+        assert isinstance(region, Region)
 
         # load sample metadata
         df_samples = self.sample_metadata(
@@ -2298,7 +2412,7 @@ class Ag3:
         )
 
         # get gene copy number data
-        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+        ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
 
         # handle sample_query
         loc_samples = None
@@ -2315,7 +2429,7 @@ class Ag3:
                 loc_samples = loc_pass_samples
 
         # figure out expected copy number
-        if contig == "X":
+        if region.contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
@@ -2413,10 +2527,6 @@ class Ag3:
 
         # set index for convenience
         df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
-
-        # add metadata
-        title = "Gene CNV frequencies"
-        df.attrs["title"] = title
 
         return df
 
@@ -2551,15 +2661,16 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic region
-            defined with coordinates (e.g., "2L:44989425-44998059") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["3R", "AGAP005958"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
             is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise use the "gamb_colu_arab" analysis.
+            best. Otherwise, use the "gamb_colu_arab" analysis.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
             identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
@@ -2568,7 +2679,7 @@ class Ag3:
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
+            Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2579,7 +2690,7 @@ class Ag3:
 
         # normalise parameters
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = resolve_region(self, region)
+        region = self.resolve_region(region)
 
         # normalise to simplify concatenation logic
         if isinstance(region, Region):
@@ -2708,7 +2819,7 @@ class Ag3:
             A pandas query string which will be evaluated against the sample metadata e.g.,
             "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is latest version.
+            Cohort analysis identifier (date of analysis), default is the latest version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not calculated for cohorts.
             Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
@@ -2810,10 +2921,12 @@ class Ag3:
         df,
         index="label",
         max_len=100,
-        x_label="cohorts",
-        y_label="variants",
+        x_label="Cohorts",
+        y_label="Variants",
         colorbar=True,
+        col_width=40,
         width=None,
+        row_height=20,
         height=None,
         text_auto=".0%",
         aspect="auto",
@@ -2844,10 +2957,14 @@ class Ag3:
             This is the y-axis label that will be displayed on the heatmap.
         colorbar : bool, optional
             If False, colorbar is not output.
+        col_width : int, optional
+            Plot width per column in pixels (px).
         width : int, optional
-            Plot width in pixels.
+            Plot width in pixels (px), overrides col_width.
+        row_height : int, optional
+            Plot height per row in pixels (px).
         height : int, optional
-            Plot height in pixels.
+            Plot height in pixels (px), overrides row_height.
         text_auto : str, optional
             Formatting for frequency values.
         aspect : str, optional
@@ -2906,6 +3023,16 @@ class Ag3:
         # clean column names
         heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
 
+        # deal with width and height
+        if width is None:
+            width = 400 + col_width * len(heatmap_df.columns)
+            if colorbar:
+                width += 40
+        if height is None:
+            height = 200 + row_height * len(heatmap_df)
+            if title is not None:
+                height += 40
+
         # plotly heatmap styling
         fig = px.imshow(
             img=heatmap_df,
@@ -2927,7 +3054,7 @@ class Ag3:
             fig.update_yaxes(title=y_label)
         fig.update_layout(
             coloraxis_colorbar=dict(
-                title="frequency",
+                title="Frequency",
                 tickvals=[0, 0.2, 0.4, 0.6, 0.8, 1.0],
                 ticktext=["0%", "20%", "40%", "60%", "80%", "100%"],
             )
@@ -3364,7 +3491,7 @@ class Ag3:
 
     def gene_cnv_frequencies_advanced(
         self,
-        contig,
+        region,
         area_by,
         period_by,
         sample_sets=None,
@@ -3382,22 +3509,26 @@ class Ag3:
 
         Parameters
         ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
         area_by : str
-            Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
-            or use "admin2_name" to group by level 2 administrative divisions.
+            Column name in the sample metadata to use to group samples spatially.
+            E.g., use "admin1_iso" or "admin1_name" to group by level 1
+            administrative divisions, or use "admin2_name" to group by level 2
+            administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
@@ -3416,12 +3547,13 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort" are 1-dimensional arrays with data about
-            the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant" are 1-dimensional arrays with data about the variants,
-            such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event" are 2-dimensional arrays with the allele counts and frequency
+            The resulting dataset contains data has dimensions "cohorts" and
+            "variants". Variables prefixed with "cohort" are 1-dimensional
+            arrays with data about the cohorts, such as the area, period, taxon
+            and cohort size. Variables prefixed with "variant" are 1-dimensional
+            arrays with data about the variants, such as the contig, position,
+            reference and alternate alleles. Variables prefixed with "event" are
+            2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3429,13 +3561,14 @@ class Ag3:
         # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
-        if isinstance(contig, str):
-            contig = [contig]
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
 
         ds = xarray_concat(
             [
                 self._gene_cnv_frequencies_advanced(
-                    contig=c,
+                    region=r,
                     area_by=area_by,
                     period_by=period_by,
                     sample_sets=sample_sets,
@@ -3448,17 +3581,21 @@ class Ag3:
                     cohorts_analysis=cohorts_analysis,
                     species_analysis=species_analysis,
                 )
-                for c in contig
+                for r in region
             ],
             dim="variants",
         )
+
+        # add metadata
+        title = f"Gene CNV frequencies ({_region_str(region)})"
+        ds.attrs["title"] = title
 
         return ds
 
     def _gene_cnv_frequencies_advanced(
         self,
         *,
-        contig,
+        region,
         area_by,
         period_by,
         sample_sets,
@@ -3472,8 +3609,8 @@ class Ag3:
         species_analysis,
     ):
 
-        # sanity check - here we deal with one contig only
-        assert isinstance(contig, str)
+        # sanity check - here we deal with one region only
+        assert isinstance(region, Region)
 
         # load sample metadata
         df_samples = self.sample_metadata(
@@ -3483,7 +3620,7 @@ class Ag3:
         )
 
         # access gene CNV calls
-        ds_cnv = self.gene_cnv(contig=contig, sample_sets=sample_sets)
+        ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
 
         # handle sample query
         loc_samples = None
@@ -3520,7 +3657,7 @@ class Ag3:
         )
 
         # figure out expected copy number
-        if contig == "X":
+        if region.contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
@@ -3569,7 +3706,7 @@ class Ag3:
             max_af = np.nanmax(frequency, axis=1)
         df_variants = pd.DataFrame(
             {
-                "contig": contig,
+                "contig": region.contig,
                 "start": np.repeat(ds_cnv["gene_start"].values, 2),
                 "end": np.repeat(ds_cnv["gene_end"].values, 2),
                 "windows": np.repeat(ds_cnv["gene_windows"].values, 2),
@@ -3621,10 +3758,6 @@ class Ag3:
 
         # tidy up display by sorting variables
         ds_out = ds_out[sorted(ds_out)]
-
-        # add metadata
-        title = "Gene CNV frequencies"
-        ds_out.attrs["title"] = title
 
         return ds_out
 
@@ -3921,14 +4054,40 @@ class Ag3:
     def plot_genes(
         self,
         region,
-        width=700,
+        width=800,
         height=120,
         show=True,
         toolbar_location="above",
         x_range=None,
         title="Genes",
     ):
-        """@@TODO"""
+        """Plot a genes track, using bokeh.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If true, show the plot.
+        toolbar_location : str, optional
+            Location of bokeh toolbar.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        title : str, optional
+            Plot title.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
@@ -3983,7 +4142,6 @@ class Ag3:
             tooltips=tooltips,
             x_range=x_range,
         )
-        fig.toolbar.logo = None
 
         # add functionality to click through to vectorbase
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
@@ -4026,6 +4184,31 @@ class Ag3:
         toolbar_location="above",
         title=True,
     ):
+        """Plot a transcript, using bokeh.
+
+        Parameters
+        ----------
+        transcript : str
+            Transcript identifier, e.g., "AGAP004707-RD".
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If true, show the plot.
+        toolbar_location : str, optional
+            Location of bokeh toolbar.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        title : str, optional
+            Plot title.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
@@ -4055,7 +4238,6 @@ class Ag3:
             tooltips=tooltips,
             x_range=x_range,
         )
-        fig.toolbar.logo = None
 
         # find child components of the transcript
         data = df_geneset.set_index("Parent").loc[transcript].copy()
@@ -4136,6 +4318,442 @@ class Ag3:
         fig.y_range = bkmod.Range1d(-0.6, 0.6)
         fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_coverage_track(
+        self,
+        sample,
+        sample_set,
+        region,
+        y_max="auto",
+        width=800,
+        height=200,
+        circle_kwargs=None,
+        line_kwargs=None,
+        show=True,
+    ):
+        """Plot CNV HMM data for a single sample, using bokeh.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        sample_set : str
+            Sample set identifier.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059").
+        y_max : str or int, optional
+            Maximum Y axis value.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        line_kwargs : dict, optional
+            Passed through to bokeh line() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # resolve region
+        region = self.resolve_region(region)
+
+        # access HMM data
+        hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
+
+        # select data for the given sample - support either sample ID or integer index
+        hmm_sample = None
+        sample_id = None
+        if isinstance(sample, str):
+            hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample)
+            sample_id = sample
+        elif isinstance(sample, int):
+            hmm_sample = hmm.isel(samples=sample)
+            sample_id = hmm["sample_id"].values[sample]
+        else:
+            type_error(name="sample", value=sample, expectation=(str, int))
+
+        # extract data into a pandas dataframe for easy plotting
+        data = hmm_sample[
+            ["variant_position", "variant_end", "call_NormCov", "call_CN"]
+        ].to_dataframe()
+
+        # add window midpoint for plotting accuracy
+        data["variant_midpoint"] = data["variant_position"] + 150
+
+        # remove data where HMM is not called
+        data = data.query("call_CN >= 0")
+
+        # set up y range
+        if y_max == "auto":
+            y_max = data["call_CN"].max() + 2
+
+        # set up x range
+        x_min = data["variant_position"].values[0]
+        x_max = data["variant_end"].values[-1]
+        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure for plotting
+        fig = bkplt.figure(
+            title=f"CNV HMM - {sample_id} ({sample_set})",
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, y_max),
+        )
+
+        # plot the normalised coverage data
+        if circle_kwargs is None:
+            circle_kwargs = dict()
+        circle_kwargs.setdefault("size", 3)
+        circle_kwargs.setdefault("line_width", 0.5)
+        circle_kwargs.setdefault("line_color", "black")
+        circle_kwargs.setdefault("fill_color", None)
+        circle_kwargs.setdefault("legend_label", "Coverage")
+        fig.circle(x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs)
+
+        # plot the HMM state
+        if line_kwargs is None:
+            line_kwargs = dict()
+        line_kwargs.setdefault("width", 2)
+        line_kwargs.setdefault("legend_label", "HMM")
+        fig.line(x="variant_midpoint", y="call_CN", source=data, **line_kwargs)
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "Copy number"
+        fig.yaxis.ticker = list(range(y_max + 1))
+        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.add_layout(fig.legend[0], "right")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_coverage(
+        self,
+        sample,
+        sample_set,
+        region,
+        y_max="auto",
+        width=800,
+        track_height=170,
+        genes_height=100,
+        circle_kwargs=None,
+        line_kwargs=None,
+        show=True,
+    ):
+        """Plot CNV HMM data for a single sample, together with a genes track,
+        using bokeh.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        sample_set : str
+            Sample set identifier.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059").
+        y_max : str or int, optional
+            Maximum Y axis value.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int, optional
+            Height of CNV HMM track in pixels (px).
+        genes_height : int, optional
+            Height of genes track in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        line_kwargs : dict, optional
+            Passed through to bokeh line() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # plot the main track
+        fig1 = self.plot_cnv_hmm_coverage_track(
+            sample=sample,
+            sample_set=sample_set,
+            region=region,
+            y_max=y_max,
+            width=width,
+            height=track_height,
+            circle_kwargs=circle_kwargs,
+            line_kwargs=line_kwargs,
+            show=False,
+        )
+        fig1.xaxis.visible = False
+
+        # plot genes track
+        fig2 = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_heatmap_track(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        width=800,
+        row_height=3,
+        height=None,
+        show=True,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+    ):
+        """Plot CNV HMM data for multiple samples as a heatmap, using bokeh.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        width : int, optional
+            Plot width in pixels (px).
+        row_height : int, optional
+            Plot height per row (sample) in pixels (px).
+        height : int, optional
+            Absolute plot height in pixels (px), overrides row_height.
+        show : bool, optional
+            If true, show the plot.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
+            Include species calls in metadata.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.palettes as bkpal
+        import bokeh.plotting as bkplt
+
+        region = self.resolve_region(region)
+
+        # access HMM data
+        hmm = self.cnv_hmm(region=region, sample_sets=sample_sets)
+
+        # handle sample query
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                species_analysis=species_analysis,
+                cohorts_analysis=cohorts_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
+            hmm = hmm.isel(samples=loc_samples)
+
+        # access copy number data
+        cn = hmm["call_CN"].values
+        start = hmm["variant_position"].values
+        end = hmm["variant_end"].values
+        n_windows, n_samples = cn.shape
+
+        # figure out X axis limits from data
+        x_min = start[0]
+        x_max = end[-1]
+
+        # set up plot title
+        title = "CNV HMM"
+        if sample_sets is not None:
+            title += f" - {sample_sets}"
+        if sample_query is not None:
+            title += f" ({sample_query})"
+
+        # figure out plot height
+        if height is None:
+            plot_height = 100 + row_height * n_samples
+        else:
+            plot_height = height
+
+        # setup figure
+        fig = bkplt.figure(
+            title=title,
+            plot_width=width,
+            plot_height=plot_height,
+            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
+            active_scroll="xwheel_zoom",
+            active_drag="xpan",
+            toolbar_location="above",
+            x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
+            y_range=(0, n_samples),
+        )
+
+        # set up palette and color mapping
+        palette = ("#cccccc",) + bkpal.PuOr5
+        color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
+
+        # plot the HMM copy number data as an image
+        fig.image(
+            image=[cn.T],
+            x=x_min,
+            y=0,
+            dw=n_windows * 300,
+            dh=n_samples,
+            color_mapper=color_mapper,
+        )
+
+        # tidy
+        fig.yaxis.axis_label = "Samples"
+        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        # add color bar
+        color_bar = bkmod.ColorBar(
+            title="Copy number",
+            color_mapper=color_mapper,
+            major_label_overrides={
+                -1: "unknown",
+                4: "4+",
+            },
+            major_label_policy=bkmod.AllLabels(),
+        )
+        fig.add_layout(color_bar, "right")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_cnv_hmm_heatmap(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        width=800,
+        row_height=3,
+        track_height=None,
+        genes_height=100,
+        show=True,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+    ):
+        """Plot CNV HMM data for multiple samples as a heatmap, with a genes
+        track, using bokeh.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        width : int, optional
+            Plot width in pixels (px).
+        row_height : int, optional
+            Plot height per row (sample) in pixels (px).
+        track_height : int, optional
+            Absolute plot height for HMM track in pixels (px), overrides row_height.
+        genes_height : int, optional
+            Height of genes track in pixels (px).
+        show : bool, optional
+            If true, show the plot.
+        species_analysis : {"aim_20200422", "pca_20200422"}, optional
+            Include species calls in metadata.
+        cohorts_analysis : str
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # plot the main track
+        fig1 = self.plot_cnv_hmm_heatmap_track(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            width=width,
+            row_height=row_height,
+            height=track_height,
+            show=False,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
+        )
+        fig1.xaxis.visible = False
+
+        # plot genes track
+        fig2 = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
 
         if show:
             bkplt.show(fig)
@@ -4405,3 +5023,38 @@ def _pandas_apply(f, df, columns):
     iterator = zip(*[df[c].values for c in columns])
     ret = pd.Series((f(*vals) for vals in iterator))
     return ret
+
+
+def _region_str(region):
+    """Convert a region to a string representation.
+
+    Parameters
+    ----------
+    region : Region or list of Region
+        The region to display.
+
+    Returns
+    -------
+    out : str
+
+    """
+    if isinstance(region, list):
+        if len(region) > 1:
+            return "; ".join([_region_str(r) for r in region])
+        else:
+            region = region[0]
+
+    # sanity check
+    assert isinstance(region, Region)
+
+    # build string representation
+    out = region.contig
+    if region.start is not None or region.end is not None:
+        out += ":"
+        if region.start is not None:
+            out += f"{region.start:,}"
+        out += "-"
+        if region.end is not None:
+            out += f"{region.end:,}"
+
+    return out
