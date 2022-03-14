@@ -4045,7 +4045,33 @@ class Ag3:
         x_range=None,
         title="Genes",
     ):
-        """@@TODO"""
+        """Plot a genes track, using bokeh.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If true, show the plot.
+        toolbar_location : str, optional
+            Location of bokeh toolbar.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        title : str, optional
+            Plot title.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
@@ -4142,7 +4168,31 @@ class Ag3:
         toolbar_location="above",
         title=True,
     ):
-        """@@TODO docstring"""
+        """Plot a transcript, using bokeh.
+
+        Parameters
+        ----------
+        transcript : str
+            Transcript identifier, e.g., "AGAP004707-RD".
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If true, show the plot.
+        toolbar_location : str, optional
+            Location of bokeh toolbar.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        title : str, optional
+            Plot title.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
@@ -4284,9 +4334,9 @@ class Ag3:
         y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
-            Plot width.
+            Plot width in pixels (px).
         height : int, optional
-            Plot height.
+            Plot height in pixels (px).
         circle_kwargs : dict, optional
             Passed through to bokeh circle() function.
         line_kwargs : dict, optional
@@ -4412,11 +4462,11 @@ class Ag3:
         y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
-            Plot width.
+            Plot width in pixels (px).
         track_height : int, optional
-            Height of CNV HMM track.
+            Height of CNV HMM track in pixels (px).
         genes_height : int, optional
-            Height of genes track.
+            Height of genes track in pixels (px).
         circle_kwargs : dict, optional
             Passed through to bokeh circle() function.
         line_kwargs : dict, optional
@@ -4495,11 +4545,11 @@ class Ag3:
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         width : int, optional
-            Plot width in pixels.
+            Plot width in pixels (px).
         row_height : int, optional
-            Plot height per row (sample) in pixels.
+            Plot height per row (sample) in pixels (px).
         height : int, optional
-            Absolute plot height in pixels, overrides row_height.
+            Absolute plot height in pixels (px), overrides row_height.
         show : bool, optional
             If true, show the plot.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
@@ -4636,13 +4686,13 @@ class Ag3:
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         width : int, optional
-            Plot width in pixels.
+            Plot width in pixels (px).
         row_height : int, optional
-            Plot height per row (sample) in pixels.
+            Plot height per row (sample) in pixels (px).
         track_height : int, optional
-            Absolute plot height for HMM track in pixels, overrides row_height.
+            Absolute plot height for HMM track in pixels (px), overrides row_height.
         genes_height : int, optional
-            Height of genes track.
+            Height of genes track in pixels (px).
         show : bool, optional
             If true, show the plot.
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
