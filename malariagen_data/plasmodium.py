@@ -44,16 +44,14 @@ class PlasmodiumTools:
             config_content = json.load(json_conf)
         return config_content
 
-    def open_sample_metadata(self):
+    def sample_metadata(self):
         """Access sample metadata and return as pandas dataframe.
-
         Returns
         -------
         df : pandas.DataFrame
             A dataframe of sample metadata on the samples that were sequenced as part of this resource.
             Includes the time and place of collection, quality metrics, and accesion numbers.
             One row per sample.
-
         """
         if self._cache_sample_metadata is None:
             path = os.path.join(self._path, self.CONF["metadata_path"])
@@ -61,7 +59,7 @@ class PlasmodiumTools:
                 self._cache_sample_metadata = pd.read_csv(f, sep="\t", na_values="")
         return self._cache_sample_metadata
 
-    def open_variant_calls_zarr(self):
+    def _open_variant_calls_zarr(self):
         """Open variant calls zarr.
 
         Returns
@@ -148,7 +146,7 @@ class PlasmodiumTools:
             )
         return data_vars
 
-    def load_variant_calls(self, extended=False, inline_array=True, chunks="native"):
+    def variant_calls(self, extended=False, inline_array=True, chunks="native"):
         """Access variant sites, site filters and genotype calls.
 
         Parameters
@@ -167,7 +165,7 @@ class PlasmodiumTools:
             Dataset containing either default or extended variables from the variant calls Zarr.
         """
         # setup
-        root = self.open_variant_calls_zarr()
+        root = self._open_variant_calls_zarr()
         var_names_for_outputs = {
             "POS": "position",
             "CHROM": "chrom",

@@ -156,21 +156,21 @@ class TestPlasmodiumTools(unittest.TestCase):
         open.assert_called_once_with(self.test_config_path)
 
     def test_sample_metadata_returns_extpected_df(self):
-        metadata_df = self.test_plasmodium_class.open_sample_metadata()
+        metadata_df = self.test_plasmodium_class.sample_metadata()
         pd.testing.assert_frame_equal(metadata_df, self.test_metadata_df)
 
     def test_sample_metadata_returns_expected_df_with_cache_set(
         self,
     ):
-        self.test_plasmodium_class.open_sample_metadata()
-        metadata_df = self.test_plasmodium_class.open_sample_metadata()
+        self.test_plasmodium_class.sample_metadata()
+        metadata_df = self.test_plasmodium_class.sample_metadata()
         pd.testing.assert_frame_equal(metadata_df, self.test_metadata_df)
 
     @patch("builtins.open", new_callable=mock_open)
     @patch("malariagen_data.plasmodium.pd.read_csv", return_value=pd.DataFrame())
     def test_sample_metadata_uses_cache_when_set(self, mock_read_csv, mock_open):
-        self.test_plasmodium_class.open_sample_metadata()
-        self.test_plasmodium_class.open_sample_metadata()
+        self.test_plasmodium_class.sample_metadata()
+        self.test_plasmodium_class.sample_metadata()
         mock_open.assert_called_once()
         mock_read_csv.assert_called_once()
 
@@ -186,8 +186,8 @@ class TestPlasmodiumTools(unittest.TestCase):
             plas_mock_fs = PlasmodiumTools(
                 self.test_config_path, url=self.test_data_path
             )
-        plas_mock_fs.open_variant_calls_zarr()
-        plas_mock_fs.open_variant_calls_zarr()
+        plas_mock_fs._open_variant_calls_zarr()
+        plas_mock_fs._open_variant_calls_zarr()
         test_zarr_path = os.path.join(self.test_data_path, "test_plasmodium.zarr/")
         mock_safestore.assert_called_once_with(fs="fs", path=test_zarr_path)
         mock_zarr.assert_called_once_with(store="Safe store object")
@@ -285,10 +285,10 @@ class TestPlasmodiumTools(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.plasmodium.PlasmodiumTools.open_variant_calls_zarr")
+    @patch("malariagen_data.plasmodium.PlasmodiumTools._open_variant_calls_zarr")
     def test_variant_calls_default(self, mock_open_variant_calls_zarr):
         mock_open_variant_calls_zarr.return_value = self.test_zarr_root
-        ds = self.test_plasmodium_class.load_variant_calls(
+        ds = self.test_plasmodium_class.variant_calls(
             inline_array=True, chunks="native"
         )
         mock_open_variant_calls_zarr.assert_called_once_with()
@@ -308,7 +308,7 @@ class TestPlasmodiumTools(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.plasmodium.PlasmodiumTools.open_variant_calls_zarr")
+    @patch("malariagen_data.plasmodium.PlasmodiumTools._open_variant_calls_zarr")
     def test_variant_calls_extended(self, mock_open_variant_calls_zarr):
         mock_open_variant_calls_zarr.return_value = self.test_zarr_root
         test_plasmodium_class_extended = PlasmodiumTools(
@@ -319,7 +319,7 @@ class TestPlasmodiumTools(unittest.TestCase):
         test_plasmodium_class_extended.extended_calldata_variables = {
             "GQ": [DIM_VARIANT, DIM_SAMPLE]
         }
-        ds = test_plasmodium_class_extended.load_variant_calls(
+        ds = test_plasmodium_class_extended.variant_calls(
             extended=True,
             inline_array=True,
             chunks="native",
