@@ -2445,6 +2445,7 @@ class Ag3:
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
+        is_called = cn >= 0
 
         # set up cohort dict
         coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
@@ -2457,15 +2458,29 @@ class Ag3:
             if loc_samples is not None:
                 loc_coh = loc_coh & loc_samples
 
-            # compute frequencies
+            # check cohort size
             n_samples = np.count_nonzero(loc_coh)
             if n_samples >= min_cohort_size:
+
+                # subset data to cohort
                 is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
                 is_del_coh = np.compress(loc_coh, is_del, axis=1)
+                is_called_coh = np.compress(loc_coh, is_called, axis=1)
+
+                # count amplifications and deletions
                 amp_count_coh = np.sum(is_amp_coh, axis=1)
                 del_count_coh = np.sum(is_del_coh, axis=1)
-                amp_freq_coh = amp_count_coh / n_samples
-                del_freq_coh = del_count_coh / n_samples
+                called_count_coh = np.sum(is_called_coh, axis=1)
+
+                # compute frequencies, taking accessibility into account
+                with np.errstate(divide="ignore", invalid="ignore"):
+                    amp_freq_coh = np.where(
+                        called_count_coh > 0, amp_count_coh / called_count_coh, np.nan
+                    )
+                    del_freq_coh = np.where(
+                        called_count_coh > 0, del_count_coh / called_count_coh, np.nan
+                    )
+
                 freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
 
         # build a dataframe with the frequency columns
@@ -3593,6 +3608,10 @@ class Ag3:
         # access gene CNV calls
         ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
 
+        # align sample metadata
+        sample_id = ds_cnv["sample_id"].values
+        df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
+
         # handle sample query
         loc_samples = None
         if sample_query is not None:
@@ -3638,6 +3657,7 @@ class Ag3:
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
+        is_called = cn >= 0
 
         # set up main event variables
         n_genes = ds_cnv.dims["genes"]
@@ -3657,18 +3677,20 @@ class Ag3:
             # select genotype data for cohort
             cohort_is_amp = np.take(is_amp, sample_indices, axis=1)
             cohort_is_del = np.take(is_del, sample_indices, axis=1)
+            cohort_is_called = np.take(is_called, sample_indices, axis=1)
 
             # compute cohort allele counts
             np.sum(cohort_is_amp, axis=1, out=count[::2, cohort_index])
             np.sum(cohort_is_del, axis=1, out=count[1::2, cohort_index])
 
             # compute cohort allele numbers
-            nobs[:, cohort_index] = cohort.size
+            cohort_n_called = np.sum(cohort_is_called, axis=1)
+            nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
 
         # compute frequency
         with np.errstate(divide="ignore", invalid="ignore"):
             # ignore division warnings
-            frequency = count / nobs
+            frequency = np.where(nobs > 0, count / nobs, np.nan)
 
         # make dataframe of variants
         with warnings.catch_warnings():
