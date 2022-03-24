@@ -108,11 +108,14 @@ class Ag3:
     Access data downloaded to a local file system:
 
         >>> ag3 = malariagen_data.Ag3("/local/path/to/vo_agam_release/")
-        
-    Access data from Google Cloud Storage, with caching on the local file system 
+
+    Access data from Google Cloud Storage, with caching on the local file system
     in a directory named "gcs_cache":
-    
-        >>> ag3 = malariagen_data.Ag3("simplecache::gs://vo_agam_release", simplecache=dict(cache_storage="gcs_cache"))
+
+        >>> ag3 = malariagen_data.Ag3(
+        ...     "simplecache::gs://vo_agam_release",
+        ...     simplecache=dict(cache_storage="gcs_cache"),
+        ... )
 
     """
 
@@ -1175,40 +1178,6 @@ class Ag3:
 
         return df_snps
 
-    def _prep_cohorts_arg(
-        self, *, cohorts, sample_sets, species_analysis, cohorts_analysis
-    ):
-
-        # build cohort dictionary where key=cohort_id, value=loc_coh
-        coh_dict = {}
-        if isinstance(cohorts, dict):
-            # get sample metadata
-            df_meta = self.sample_metadata(
-                sample_sets=sample_sets, species_analysis=species_analysis
-            )
-            for coh, query in cohorts.items():
-                # locate samples
-                loc_coh = df_meta.eval(query).values
-                coh_dict[coh] = loc_coh
-        if isinstance(cohorts, str):
-            # grab the cohorts dataframe
-            df_coh = self.sample_cohorts(
-                sample_sets=sample_sets, cohorts_analysis=cohorts_analysis
-            )
-            # fix the string to match columns
-            cohorts = "cohort_" + cohorts
-            # check the given cohort set exists
-            if cohorts not in df_coh.columns:
-                raise ValueError(f"{cohorts!r} is not a known cohort set")
-            cohort_labels = df_coh[cohorts].unique()
-            # remove the nans and sort
-            cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
-            for coh in cohort_labels:
-                loc_coh = df_coh[cohorts] == coh
-                coh_dict[coh] = loc_coh.values
-
-        return coh_dict
-
     def snp_allele_frequencies(
         self,
         transcript,
@@ -1299,12 +1268,7 @@ class Ag3:
         gt = gt.compute()
 
         # build coh dict
-        coh_dict = self._prep_cohorts_arg(
-            cohorts=cohorts,
-            sample_sets=sample_sets,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
-        )
+        coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
 
         # count alleles
         freq_cols = dict()
@@ -2419,6 +2383,10 @@ class Ag3:
         # get gene copy number data
         ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
 
+        # align sample metadata with samples in CNV data
+        sample_id = ds_cnv["sample_id"].values
+        df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
+
         # handle sample_query
         loc_samples = None
         if sample_query is not None:
@@ -2479,19 +2447,17 @@ class Ag3:
         is_del = (cn >= 0) & (cn < expected_cn)
 
         # set up cohort dict
-        coh_dict = self._prep_cohorts_arg(
-            cohorts=cohorts,
-            sample_sets=sample_sets,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
-        )
+        coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
 
         # compute cohort frequencies
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
+
             # handle sample query
             if loc_samples is not None:
                 loc_coh = loc_coh & loc_samples
+
+            # compute frequencies
             n_samples = np.count_nonzero(loc_coh)
             if n_samples >= min_cohort_size:
                 is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
@@ -4764,6 +4730,41 @@ class Ag3:
             bkplt.show(fig)
 
         return fig
+
+
+def _locate_cohorts(*, cohorts, df_samples):
+
+    # build cohort dictionary where key=cohort_id, value=loc_coh
+    coh_dict = {}
+
+    if isinstance(cohorts, dict):
+        # user has supplied a custom dictionary mapping cohort identifiers
+        # to pandas queries
+
+        for coh, query in cohorts.items():
+            # locate samples
+            loc_coh = df_samples.eval(query).values
+            coh_dict[coh] = loc_coh
+
+    if isinstance(cohorts, str):
+        # user has supplied one of the predefined cohort sets
+
+        # fix the string to match columns
+        if not cohorts.startswith("cohort_"):
+            cohorts = "cohort_" + cohorts
+
+        # check the given cohort set exists
+        if cohorts not in df_samples.columns:
+            raise ValueError(f"{cohorts!r} is not a known cohort set")
+        cohort_labels = df_samples[cohorts].unique()
+
+        # remove the nans and sort
+        cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
+        for coh in cohort_labels:
+            loc_coh = df_samples[cohorts] == coh
+            coh_dict[coh] = loc_coh.values
+
+    return coh_dict
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")

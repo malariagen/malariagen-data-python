@@ -1571,6 +1571,19 @@ def test_gene_cnv_frequencies__multi_contig_x():
     assert_frame_equal(df1, df2)
 
 
+def test_gene_cnv_frequencies__missing_samples():
+    # https://github.com/malariagen/malariagen-data-python/issues/183
+
+    ag3 = setup_ag3(pre=True)
+
+    df = ag3.gene_cnv_frequencies(
+        region="3L",
+        sample_sets="1190-VO-GH-AMENGA-ETEGO-VMF00013",
+        cohorts="admin1_year",
+    )
+    assert isinstance(df, pd.DataFrame)
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
