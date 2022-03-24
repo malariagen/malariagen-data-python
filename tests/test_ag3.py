@@ -1345,6 +1345,12 @@ def test_gene_cnv_xarray_indexing(region, sample_sets):
     assert set(o.dims) == set()
 
 
+def _check_frequency(x):
+    loc_nan = np.isnan(x)
+    assert np.all(x[~loc_nan] >= 0)
+    assert np.all(x[~loc_nan] <= 1)
+
+
 @pytest.mark.parametrize(
     "region", ["2R", "X", ["2R", "3R"], "3R:28,000,000-29,000,000"]
 )
@@ -1397,18 +1403,14 @@ def test_gene_cnv_frequencies(region, cohorts):
 
     # check frequencies are within sensible range
     for f in frq_cols:
-        x = df_cnv_frq[f].values
-        assert np.all(x >= 0), f
-        assert np.all(x <= 1), f
+        _check_frequency(df_cnv_frq[f].values)
 
     # check amp and del frequencies are within sensible range
     df_frq_amp = df_cnv_frq[frq_cols].xs("amp", level="cnv_type")
     df_frq_del = df_cnv_frq[frq_cols].xs("del", level="cnv_type")
     df_frq_sum = df_frq_amp + df_frq_del
     for f in frq_cols:
-        x = df_frq_sum[f].values
-        assert np.all(x >= 0)
-        assert np.all(x <= 1)
+        _check_frequency(df_frq_sum[f].values)
     expected_fields = universal_fields + frq_cols
     assert sorted(df_cnv_frq.columns.tolist()) == sorted(expected_fields)
 
@@ -1569,6 +1571,19 @@ def test_gene_cnv_frequencies__multi_contig_x():
     ).query("contig == 'X'")
 
     assert_frame_equal(df1, df2)
+
+
+def test_gene_cnv_frequencies__missing_samples():
+    # https://github.com/malariagen/malariagen-data-python/issues/183
+
+    ag3 = setup_ag3(pre=True)
+
+    df = ag3.gene_cnv_frequencies(
+        region="3L",
+        sample_sets="1190-VO-GH-AMENGA-ETEGO-VMF00013",
+        cohorts="admin1_year",
+    )
+    assert isinstance(df, pd.DataFrame)
 
 
 @pytest.mark.parametrize(
@@ -2488,6 +2503,20 @@ def test_gene_cnv_frequencies_advanced__multi_contig_x():
         a = ds1[v]
         b = ds2[v]
         _compare_series_like(a, b)
+
+
+def test_gene_cnv_frequencies_advanced__missing_samples():
+    # https://github.com/malariagen/malariagen-data-python/issues/183
+
+    ag3 = setup_ag3(pre=True)
+
+    ds = ag3.gene_cnv_frequencies_advanced(
+        region="3L",
+        sample_sets="1190-VO-GH-AMENGA-ETEGO-VMF00013",
+        area_by="admin1_iso",
+        period_by="year",
+    )
+    assert isinstance(ds, xr.Dataset)
 
 
 def test_snp_allele_frequencies_advanced__dup_samples():
