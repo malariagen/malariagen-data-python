@@ -17,7 +17,7 @@ from malariagen_data.util import (
 )
 
 
-class PlasmodiumTools:
+class PlasmodiumDataResource:
     def __init__(
         self,
         data_config,

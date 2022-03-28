@@ -1,10 +1,11 @@
 import os
 
-from malariagen_data.plasmodium import PlasmodiumTools
+from malariagen_data.plasmodium import PlasmodiumDataResource
 
 
-class Pf7(PlasmodiumTools):
+class Pf7(PlasmodiumDataResource):
     """Provides access to data from the Pf7 release.
+
     Parameters
     ----------
     url : str, optional

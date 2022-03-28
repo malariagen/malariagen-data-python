@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import zarr
 
-from malariagen_data.plasmodium import PlasmodiumTools
+from malariagen_data.plasmodium import PlasmodiumDataResource
 from malariagen_data.util import DIM_PLOIDY, DIM_SAMPLE, DIM_VARIANT
 
 DIM_ALT_ALLELE = "alt_alleles"
@@ -15,14 +15,14 @@ DIM_STATISTICS = "sb_statistics"
 DIM_GENOTYPES = "genotypes"
 
 
-class TestPlasmodiumTools(unittest.TestCase):
+class TestPlasmodiumDataResource(unittest.TestCase):
     def setUp(self):
         self.working_dir = os.path.dirname(os.path.abspath(__file__))
         self.test_config_path = os.path.join(
             self.working_dir, "test_plasmodium_config.json"
         )
         self.test_data_path = os.path.join(self.working_dir, "plasmodium_test_data")
-        self.test_plasmodium_class = PlasmodiumTools(
+        self.test_plasmodium_class = PlasmodiumDataResource(
             self.test_config_path,
             url=self.test_data_path,
         )
@@ -104,7 +104,7 @@ class TestPlasmodiumTools(unittest.TestCase):
         }
 
     def test_setup_returns_config_correctly(self):
-        plasmodium = PlasmodiumTools(self.test_config_path)
+        plasmodium = PlasmodiumDataResource(self.test_config_path)
         self.assertEqual(
             plasmodium.CONF,
             {
@@ -142,10 +142,12 @@ class TestPlasmodiumTools(unittest.TestCase):
         )
         self.assertEqual(plasmodium._path, "test_plasmodium_release")
 
-    @patch("malariagen_data.plasmodium.PlasmodiumTools._load_config")
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource._load_config")
     def test_setup_overrides_default_url(self, mock_load_config):
         url_starts_with_gs = "gs://test_url"
-        plasmodium = PlasmodiumTools(self.test_config_path, url=url_starts_with_gs)
+        plasmodium = PlasmodiumDataResource(
+            self.test_config_path, url=url_starts_with_gs
+        )
         self.assertEqual(plasmodium._path, "test_url")
         mock_load_config.assert_called_once_with(self.test_config_path)
 
@@ -183,7 +185,7 @@ class TestPlasmodiumTools(unittest.TestCase):
             "malariagen_data.plasmodium.init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
-            plas_mock_fs = PlasmodiumTools(
+            plas_mock_fs = PlasmodiumDataResource(
                 self.test_config_path, url=self.test_data_path
             )
         plas_mock_fs._open_variant_calls_zarr()
@@ -254,7 +256,7 @@ class TestPlasmodiumTools(unittest.TestCase):
         )
 
     def test_add_extended_data(self):
-        test_plasmodium_extended = PlasmodiumTools(
+        test_plasmodium_extended = PlasmodiumDataResource(
             self.test_config_path,
             url=self.test_data_path,
         )
@@ -285,7 +287,7 @@ class TestPlasmodiumTools(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.plasmodium.PlasmodiumTools._open_variant_calls_zarr")
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource._open_variant_calls_zarr")
     def test_variant_calls_default(self, mock_open_variant_calls_zarr):
         mock_open_variant_calls_zarr.return_value = self.test_zarr_root
         ds = self.test_plasmodium_class.variant_calls(
@@ -308,10 +310,10 @@ class TestPlasmodiumTools(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.plasmodium.PlasmodiumTools._open_variant_calls_zarr")
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource._open_variant_calls_zarr")
     def test_variant_calls_extended(self, mock_open_variant_calls_zarr):
         mock_open_variant_calls_zarr.return_value = self.test_zarr_root
-        test_plasmodium_class_extended = PlasmodiumTools(
+        test_plasmodium_class_extended = PlasmodiumDataResource(
             self.test_config_path,
             url=self.test_data_path,
         )

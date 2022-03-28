@@ -1,10 +1,11 @@
 import os
 
-from malariagen_data.plasmodium import PlasmodiumTools
+from malariagen_data.plasmodium import PlasmodiumDataResource
 
 
-class Pv4(PlasmodiumTools):
+class Pv4(PlasmodiumDataResource):
     """Provides access to data from the Pv4 release.
+
     Parameters
     ----------
     url : str, optional
