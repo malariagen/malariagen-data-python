@@ -1217,10 +1217,11 @@ class Ag3:
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
+            taxon == 'coluzzii'"}`.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
             Cohort analysis version, default is the latest version.
         min_cohort_size : int
@@ -1232,12 +1233,12 @@ class Ag3:
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Species calls analysis version.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are dropped from
-            the result.
+            If True, variants with no alternate allele calls in any cohorts are
+            dropped from the result.
         effects : bool, optional
             If True, add SNP effect columns.
 
@@ -1248,7 +1249,8 @@ class Ag3:
 
         Notes
         -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from output.
+        Cohorts with fewer samples than min_cohort_size will be excluded from
+        output.
 
         """
 
@@ -1370,8 +1372,8 @@ class Ag3:
         return df_snps
 
     def cross_metadata(self):
-        """Load a dataframe containing metadata about samples in colony crosses, including
-        which samples are parents or progeny in which crosses.
+        """Load a dataframe containing metadata about samples in colony crosses,
+        including which samples are parents or progeny in which crosses.
 
         Returns
         -------
@@ -1450,8 +1452,8 @@ class Ag3:
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
         field : str
-            One of "codon_degeneracy", "codon_nonsyn", "codon_position", "seq_cls",
-            "seq_flen", "seq_relpos_start", "seq_relpos_stop".
+            One of "codon_degeneracy", "codon_nonsyn", "codon_position",
+            "seq_cls", "seq_flen", "seq_relpos_start", "seq_relpos_stop".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str
@@ -1459,8 +1461,8 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1590,9 +1592,9 @@ class Ag3:
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str
@@ -1600,8 +1602,8 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -1972,8 +1974,8 @@ class Ag3:
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2131,16 +2133,17 @@ class Ag3:
         ----------
         contig : str or list of str
             Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R", "3R"].
+            as a list, in which case data will be concatenated, e.g., ["2R",
+            "3R"].
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2335,8 +2338,9 @@ class Ag3:
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of CNV amplification (amp) and deletion (del) frequencies in the specified cohorts,
-            one row per gene and CNV type (amp/del).
+            A dataframe of CNV amplification (amp) and deletion (del)
+            frequencies in the specified cohorts, one row per gene and CNV type
+            (amp/del).
 
         """
 
@@ -2539,9 +2543,10 @@ class Ag3:
         sample_set : str
             Sample set identifier, e.g., "AG1000G-AO".
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
-            Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
-            is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise, use the "gamb_colu_arab" analysis.
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
 
         Returns
         -------
@@ -2569,9 +2574,10 @@ class Ag3:
         Parameters
         ----------
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
-            Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
-            is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise, use the "gamb_colu_arab" analysis.
+            Which phasing analysis to use. If analysing only An. arabiensis,
+            the "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
 
         Returns
         -------
@@ -2669,18 +2675,19 @@ class Ag3:
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
-            Which phasing analysis to use. If analysing only An. arabiensis, the "arab" analysis
-            is best. If analysing only An. gambiae and An. coluzzii, the "gamb_colu" analysis is
-            best. Otherwise, use the "gamb_colu_arab" analysis.
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also, can be a target size, e.g., '200 MiB'.
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
 
         Returns
         -------
@@ -2769,11 +2776,12 @@ class Ag3:
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest version.
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
 
         Returns
         -------
@@ -2815,16 +2823,17 @@ class Ag3:
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and taxon == 'coluzzii'"}`.
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
+            taxon == 'coluzzii'"}`.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest version.
+            Cohort analysis identifier (date of analysis), default is the latest
+            version.
         min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not calculated for cohorts.
-            Please note, NaNs will be returned for any cohorts with fewer samples than min_cohort_size,
-            these can be removed from the output dataframe using pandas df.dropna(axis='columns').
+            Minimum cohort size, below which allele frequencies are not
+            calculated for cohorts.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         site_filters_analysis : str, optional
@@ -2832,21 +2841,23 @@ class Ag3:
         species_analysis : {"aim_20200422", "pca_20200422"}, optional
             Include species calls in metadata.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are dropped from
-            the result.
+            If True, variants with no alternate allele calls in any cohorts are
+            dropped from the result.
 
         Returns
         -------
         df : pandas.DataFrame
-            A dataframe of amino acid allele frequencies, one row per replacement.
+            A dataframe of amino acid allele frequencies, one row per
+            replacement.
 
         Notes
         -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from output.
+        Cohorts with fewer samples than min_cohort_size will be excluded from
+        output.
 
         """
 
@@ -3091,8 +3102,8 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         area_by : str
             Column name in the sample metadata to use to group samples
-            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level 1
-            administrative divisions, or use "admin2_name" to group by level 2
+            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level
+            1 administrative divisions, or use "admin2_name" to group by level 2
             administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
@@ -3129,13 +3140,14 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort" are 1-dimensional arrays with data about
-            the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant" are 1-dimensional arrays with data about the variants,
-            such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event" are 2-dimensional arrays with the allele counts and frequency
-            calculations.
+            The resulting dataset contains data has dimensions "cohorts" and
+            "variants". Variables prefixed with "cohort" are 1-dimensional
+            arrays with data about the cohorts, such as the area, period, taxon
+            and cohort size. Variables prefixed with "variant" are
+            1-dimensional arrays with data about the variants, such as the
+            contig, position, reference and alternate alleles. Variables
+            prefixed with "event" are 2-dimensional arrays with the allele
+            counts and frequency calculations.
 
         """
 
@@ -3341,36 +3353,37 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
-        """Group samples by taxon, area (space) and period (time), then compute amino acid
-        change allele counts and frequencies.
+        """Group samples by taxon, area (space) and period (time), then compute
+        amino acid change allele counts and frequencies.
 
         Parameters
         ----------
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
         area_by : str
-            Column name in the sample metadata to use to group samples spatially. E.g.,
-            use "admin1_iso" or "admin1_name" to group by level 1 administrative divisions,
-            or use "admin2_name" to group by level 2 administrative divisions.
+            Column name in the sample metadata to use to group samples spatially.
+            E.g., use "admin1_iso" or "admin1_name" to group by level 1
+            administrative divisions, or use "admin2_name" to group by level 2
+            administrative divisions.
         period_by : {"year", "quarter", "month"}
             Length of time to group samples temporally.
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of sample set
-            identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a release identifier (e.g.,
-            "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
-            A pandas query string which will be evaluated against the sample metadata e.g.,
-            "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
         site_mask : str, optional
             Site filters mask to apply.
         nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies. If "called"
-            then use the number of called alleles, i.e., number of samples with non-missing
-            genotype calls multiplied by 2. If "fixed" then use the number of samples
-            multiplied by 2.
+            Method for calculating the denominator when computing frequencies.
+            If "called" then use the number of called alleles, i.e., number of
+            samples with non-missing genotype calls multiplied by 2. If "fixed"
+            then use the number of samples multiplied by 2.
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
@@ -3384,12 +3397,13 @@ class Ag3:
         Returns
         -------
         ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and "variants".
-            Variables prefixed with "cohort" are 1-dimensional arrays with data about
-            the cohorts, such as the area, period, taxon and cohort size. Variables
-            prefixed with "variant" are 1-dimensional arrays with data about the variants,
-            such as the contig, position, reference and alternate alleles. Variables prefixed
-            with "event" are 2-dimensional arrays with the allele counts and frequency
+            The resulting dataset contains data has dimensions "cohorts" and
+            "variants". Variables prefixed with "cohort" are 1-dimensional
+            arrays with data about the cohorts, such as the area, period, taxon
+            and cohort size. Variables prefixed with "variant" are 1-dimensional
+            arrays with data about the variants, such as the contig, position,
+            reference and alternate alleles. Variables prefixed with "event" are
+            2-dimensional arrays with the allele counts and frequency
             calculations.
 
         """
@@ -3505,8 +3519,8 @@ class Ag3:
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
     ):
-        """Group samples by taxon, area (space) and period (time), then compute gene CNV counts
-        and frequencies.
+        """Group samples by taxon, area (space) and period (time), then compute
+        gene CNV counts and frequencies.
 
         Parameters
         ----------
@@ -3776,8 +3790,10 @@ class Ag3:
         Parameters
         ----------
         ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
-            `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
+            A dataset of variant frequencies, such as returned by
+            `Ag3.snp_allele_frequencies_advanced()`,
+            `Ag3.aa_allele_frequencies_advanced()` or
+            `Ag3.gene_cnv_frequencies_advanced()`.
         height : int, optional
             Height of plot in pixels.
         width : int, optional
@@ -3791,9 +3807,10 @@ class Ag3:
         Returns
         -------
         fig : plotly.graph_objects.Figure
-            A plotly figure containing line graphs. The resulting figure will have one
-            panel per cohort, grouped into columns by taxon, and grouped into rows by
-            area. Markers and lines show frequencies of variants.
+            A plotly figure containing line graphs. The resulting figure will
+            have one panel per cohort, grouped into columns by taxon, and
+            grouped into rows by area. Markers and lines show frequencies of
+            variants.
 
         """
 
@@ -3896,8 +3913,10 @@ class Ag3:
         m : ipyleaflet.Map
             The map on which to add the markers.
         ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
-            `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
+            A dataset of variant frequencies, such as returned by
+            `Ag3.snp_allele_frequencies_advanced()`,
+            `Ag3.aa_allele_frequencies_advanced()` or
+            `Ag3.gene_cnv_frequencies_advanced()`.
         variant : int or str
             Index or label of variant to plot.
         taxon : str
@@ -3905,8 +3924,8 @@ class Ag3:
         period : pd.Period
             Time period to show markers for.
         clear : bool, optional
-            If True, clear all layers (except the base layer) from the map before
-            adding new markers.
+            If True, clear all layers (except the base layer) from the map
+            before adding new markers.
 
         """
 
@@ -3984,14 +4003,16 @@ class Ag3:
         title=True,
         epilogue=True,
     ):
-        """Create an interactive map with markers showing variant frequencies for cohorts
-        grouped by area (space), period (time) and taxon.
+        """Create an interactive map with markers showing variant frequencies or
+        cohorts grouped by area (space), period (time) and taxon.
 
         Parameters
         ----------
         ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by `Ag3.snp_allele_frequencies_advanced()`,
-            `Ag3.aa_allele_frequencies_advanced()` or `Ag3.gene_cnv_frequencies_advanced()`.
+            A dataset of variant frequencies, such as returned by
+            `Ag3.snp_allele_frequencies_advanced()`,
+            `Ag3.aa_allele_frequencies_advanced()` or
+            `Ag3.gene_cnv_frequencies_advanced()`.
         center : tuple of int, optional
             Location to center the map.
         zoom : int, optional
@@ -4005,8 +4026,8 @@ class Ag3:
         Returns
         -------
         out : ipywidgets.Widget
-            An interactive map with widgets for selecting which variant, taxon and
-            time period to display.
+            An interactive map with widgets for selecting which variant, taxon
+            and time period to display.
 
         """
 
@@ -4058,8 +4079,9 @@ class Ag3:
         Parameters
         ----------
         region: str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059").
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
 
         Returns
         -------
@@ -4374,8 +4396,9 @@ class Ag3:
         sample_set : str
             Sample set identifier.
         region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059").
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
         y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
@@ -4503,8 +4526,9 @@ class Ag3:
         sample_set : str
             Sample set identifier.
         region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059").
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
         y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
@@ -4787,7 +4811,8 @@ class Ag3:
         row_height : int, optional
             Plot height per row (sample) in pixels (px).
         track_height : int, optional
-            Absolute plot height for HMM track in pixels (px), overrides row_height.
+            Absolute plot height for HMM track in pixels (px), overrides
+            row_height.
         genes_height : int, optional
             Height of genes track in pixels (px).
         show : bool, optional
