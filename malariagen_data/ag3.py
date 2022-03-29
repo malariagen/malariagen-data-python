@@ -4568,7 +4568,7 @@ class Ag3:
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
-        row_height=3,
+        row_height=7,
         height=None,
         show=True,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -4622,13 +4622,13 @@ class Ag3:
         ds_cnv = self.cnv_hmm(region=region, sample_sets=sample_sets)
 
         # handle sample query
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
+        )
         loc_samples = None
         if sample_query is not None:
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                species_analysis=species_analysis,
-                cohorts_analysis=cohorts_analysis,
-            )
             loc_samples = df_samples.eval(sample_query).values
 
         # handle filtering samples by coverage variance
@@ -4643,10 +4643,12 @@ class Ag3:
         if loc_samples is not None:
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError("No samples selected.")
+            df_samples = df_samples.loc[loc_samples].reset_index()
             ds_cnv = ds_cnv.isel(samples=loc_samples)
 
         # access copy number data
         cn = ds_cnv["call_CN"].values
+        ncov = ds_cnv["call_NormCov"].values
         start = ds_cnv["variant_position"].values
         end = ds_cnv["variant_end"].values
         n_windows, n_samples = cn.shape
@@ -4674,6 +4676,12 @@ class Ag3:
 
         # setup figure
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        tooltips = [
+            ("Position", "$x{0,0}"),
+            ("Sample ID", "@sample_id"),
+            ("HMM state", "@hmm_state"),
+            ("Normalised coverage", "@norm_cov"),
+        ]
         fig = bkplt.figure(
             title=title,
             plot_width=width,
@@ -4683,7 +4691,8 @@ class Ag3:
             active_drag="xpan",
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
-            y_range=(0, n_samples),
+            y_range=(-0.5, n_samples - 0.5),
+            tooltips=tooltips,
         )
 
         # set up palette and color mapping
@@ -4691,12 +4700,24 @@ class Ag3:
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
 
         # plot the HMM copy number data as an image
+        sample_id = df_samples["sample_id"].values
+        sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
+        data = dict(
+            hmm_state=[cn.T],
+            norm_cov=[ncov.T],
+            sample_id=[sample_id_tiled.T],
+            x=[x_min],
+            y=[-0.5],
+            dw=[n_windows * 300],
+            dh=[n_samples],
+        )
         fig.image(
-            image=[cn.T],
-            x=x_min,
-            y=0,
-            dw=n_windows * 300,
-            dh=n_samples,
+            source=data,
+            image="hmm_state",
+            x="x",
+            y="y",
+            dw="dw",
+            dh="dh",
             color_mapper=color_mapper,
         )
 
@@ -4704,6 +4725,11 @@ class Ag3:
         fig.yaxis.axis_label = "Samples"
         fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.yaxis.ticker = bkmod.FixedTicker(
+            ticks=np.arange(len(sample_id)),
+        )
+        fig.yaxis.major_label_overrides = df_samples["sample_id"].to_dict()
+        fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         # add color bar
         color_bar = bkmod.ColorBar(
@@ -4729,7 +4755,7 @@ class Ag3:
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
-        row_height=3,
+        row_height=7,
         track_height=None,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
