@@ -3860,8 +3860,10 @@ class Ag3:
             **kwargs,
         )
 
-        # set Y axis limits
+        # tidy plot
         fig.update_layout(yaxis_range=[-0.05, 1.05])
+        fig.update_xaxes(title="Date")
+        fig.update_yaxes(title="Frequency")
 
         return fig
 
@@ -3943,11 +3945,11 @@ class Ag3:
             marker.fill_opacity = x.event_frequency
             popup_html = f"""
                 <strong>{variant_label}</strong> <br/>
-                taxon: {x.cohort_taxon} <br/>
-                area: {x.cohort_area} <br/>
-                period: {x.cohort_period} <br/>
-                sample size: {x.cohort_size} <br/>
-                frequency: {x.event_frequency:.0%}
+                Taxon: {x.cohort_taxon} <br/>
+                Area: {x.cohort_area} <br/>
+                Period: {x.cohort_period} <br/>
+                Sample size: {x.cohort_size} <br/>
+                Frequency: {x.event_frequency:.0%}
                 (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})
             """
             marker.popup = ipyleaflet.Popup(
@@ -3961,10 +3963,7 @@ class Ag3:
         center=(-2, 20),
         zoom=3,
         title=True,
-        epilogue="""
-            Variant frequencies are shown as coloured markers. Opacity of color
-            denotes frequency. Click on a marker for more information.
-        """,
+        epilogue=True,
     ):
         """Create an interactive map with markers showing variant frequencies for cohorts
         grouped by area (space), period (time) and taxon.
@@ -3981,7 +3980,7 @@ class Ag3:
         title : bool or str, optional
             If True, attempt to use metadata from input dataset as a plot
             title. Otherwise, use supplied value as a title.
-        epilogue : str, optional
+        epilogue : bool or str, optional
             Additional text to display below the map.
 
         Returns
@@ -4010,9 +4009,9 @@ class Ag3:
             Ag3.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
-            variant=ipywidgets.Dropdown(options=variants, description="variant: "),
-            taxon=ipywidgets.Dropdown(options=taxa, description="taxon: "),
-            period=ipywidgets.Dropdown(options=periods, description="period: "),
+            variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
+            taxon=ipywidgets.Dropdown(options=taxa, description="Taxon: "),
+            period=ipywidgets.Dropdown(options=periods, description="Period: "),
             clear=ipywidgets.fixed(True),
         )
 
@@ -4022,7 +4021,12 @@ class Ag3:
             components.append(ipywidgets.HTML(value=f"<h3>{title}</h3>"))
         components.append(controls)
         components.append(freq_map)
-        if epilogue is not None:
+        if epilogue is True:
+            epilogue = """
+                Variant frequencies are shown as coloured markers. Opacity of color
+                denotes frequency. Click on a marker for more information.
+            """
+        if epilogue:
             components.append(ipywidgets.HTML(value=f"{epilogue}"))
 
         out = ipywidgets.VBox(components)
