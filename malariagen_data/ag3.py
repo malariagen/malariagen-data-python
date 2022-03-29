@@ -160,7 +160,7 @@ class Ag3:
         if bokeh_output_notebook:
             import bokeh.io as bkio
 
-            bkio.output_notebook()
+            bkio.output_notebook(hide_banner=True)
 
     def __repr__(self):
         return (
@@ -3867,13 +3867,20 @@ class Ag3:
             height=height,
             width=width,
             title=title,
+            labels={
+                "date": "Date",
+                "frequency": "Frequency",
+                "variant": "Variant",
+                "taxon": "Taxon",
+                "area": "Area",
+                "period": "Period",
+                "sample_size": "Sample size",
+            },
             **kwargs,
         )
 
         # tidy plot
         fig.update_layout(yaxis_range=[-0.05, 1.05])
-        fig.update_xaxes(title="Date")
-        fig.update_yaxes(title="Frequency")
 
         return fig
 
@@ -4141,7 +4148,7 @@ class Ag3:
         ]
 
         # make a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
@@ -4246,7 +4253,7 @@ class Ag3:
         ]
 
         # make a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
@@ -4429,7 +4436,7 @@ class Ag3:
         x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure for plotting
-        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
@@ -4666,7 +4673,7 @@ class Ag3:
             plot_height = height
 
         # setup figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
