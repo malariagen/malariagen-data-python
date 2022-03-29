@@ -44,6 +44,9 @@ DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
+DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
+DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
+
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
@@ -4047,8 +4050,8 @@ class Ag3:
     def plot_genes(
         self,
         region,
-        width=800,
-        height=120,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
         toolbar_location="above",
         x_range=None,
@@ -4170,8 +4173,8 @@ class Ag3:
     def plot_transcript(
         self,
         transcript,
-        width=700,
-        height=120,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
         x_range=None,
         toolbar_location="above",
@@ -4323,7 +4326,7 @@ class Ag3:
         sample_set,
         region,
         y_max="auto",
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         circle_kwargs=None,
         line_kwargs=None,
@@ -4449,9 +4452,9 @@ class Ag3:
         sample_set,
         region,
         y_max="auto",
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=170,
-        genes_height=100,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
@@ -4531,7 +4534,7 @@ class Ag3:
         region,
         sample_sets=None,
         sample_query=None,
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         row_height=3,
         height=None,
         show=True,
@@ -4670,10 +4673,10 @@ class Ag3:
         region,
         sample_sets=None,
         sample_query=None,
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         row_height=3,
         track_height=None,
-        genes_height=100,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
