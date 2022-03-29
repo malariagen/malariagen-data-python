@@ -1022,7 +1022,7 @@ class Ag3:
                 parts.append(df_part)
             df = pd.concat(parts, axis=0)
 
-        return df.reset_index().copy()
+        return df.reset_index(drop=True).copy()
 
     def _transcript_to_gene_name(self, transcript):
         df_geneset = self.geneset().set_index("ID")
