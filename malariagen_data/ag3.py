@@ -44,6 +44,10 @@ DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
+DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
+DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
+DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
+
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
@@ -95,6 +99,8 @@ class Ag3:
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
         Storage, or a local path on your file system if data have been
         downloaded.
+    bokeh_output_notebook : bool
+        If True (default), configure bokeh to output plots to the notebook.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -121,7 +127,7 @@ class Ag3:
 
     contigs = CONTIGS
 
-    def __init__(self, url=DEFAULT_URL, **kwargs):
+    def __init__(self, url=DEFAULT_URL, bokeh_output_notebook=True, **kwargs):
 
         self._url = url
         self._pre = kwargs.pop("pre", False)
@@ -148,6 +154,13 @@ class Ag3:
         self._cache_haplotypes = dict()
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
+
+        # get bokeh to output plots to the notebook - this is a common gotcha,
+        # users forget to do this and wonder why bokeh plots don't show
+        if bokeh_output_notebook:
+            import bokeh.io as bkio
+
+            bkio.output_notebook(hide_banner=True)
 
     def __repr__(self):
         return (
@@ -2279,7 +2292,7 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
-        max_coverage_variance=0.2,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
     ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
@@ -3485,7 +3498,7 @@ class Ag3:
         min_cohort_size=10,
         variant_query=None,
         drop_invariant=True,
-        max_coverage_variance=0.2,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         ci_method="wilson",
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -3854,10 +3867,19 @@ class Ag3:
             height=height,
             width=width,
             title=title,
+            labels={
+                "date": "Date",
+                "frequency": "Frequency",
+                "variant": "Variant",
+                "taxon": "Taxon",
+                "area": "Area",
+                "period": "Period",
+                "sample_size": "Sample size",
+            },
             **kwargs,
         )
 
-        # set Y axis limits
+        # tidy plot
         fig.update_layout(yaxis_range=[-0.05, 1.05])
 
         return fig
@@ -3940,11 +3962,11 @@ class Ag3:
             marker.fill_opacity = x.event_frequency
             popup_html = f"""
                 <strong>{variant_label}</strong> <br/>
-                taxon: {x.cohort_taxon} <br/>
-                area: {x.cohort_area} <br/>
-                period: {x.cohort_period} <br/>
-                sample size: {x.cohort_size} <br/>
-                frequency: {x.event_frequency:.0%}
+                Taxon: {x.cohort_taxon} <br/>
+                Area: {x.cohort_area} <br/>
+                Period: {x.cohort_period} <br/>
+                Sample size: {x.cohort_size} <br/>
+                Frequency: {x.event_frequency:.0%}
                 (95% CI: {x.event_frequency_ci_low:.0%} - {x.event_frequency_ci_upp:.0%})
             """
             marker.popup = ipyleaflet.Popup(
@@ -3958,10 +3980,7 @@ class Ag3:
         center=(-2, 20),
         zoom=3,
         title=True,
-        epilogue="""
-            Variant frequencies are shown as coloured markers. Opacity of color
-            denotes frequency. Click on a marker for more information.
-        """,
+        epilogue=True,
     ):
         """Create an interactive map with markers showing variant frequencies for cohorts
         grouped by area (space), period (time) and taxon.
@@ -3978,7 +3997,7 @@ class Ag3:
         title : bool or str, optional
             If True, attempt to use metadata from input dataset as a plot
             title. Otherwise, use supplied value as a title.
-        epilogue : str, optional
+        epilogue : bool or str, optional
             Additional text to display below the map.
 
         Returns
@@ -4007,9 +4026,9 @@ class Ag3:
             Ag3.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
-            variant=ipywidgets.Dropdown(options=variants, description="variant: "),
-            taxon=ipywidgets.Dropdown(options=taxa, description="taxon: "),
-            period=ipywidgets.Dropdown(options=periods, description="period: "),
+            variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
+            taxon=ipywidgets.Dropdown(options=taxa, description="Taxon: "),
+            period=ipywidgets.Dropdown(options=periods, description="Period: "),
             clear=ipywidgets.fixed(True),
         )
 
@@ -4019,7 +4038,12 @@ class Ag3:
             components.append(ipywidgets.HTML(value=f"<h3>{title}</h3>"))
         components.append(controls)
         components.append(freq_map)
-        if epilogue is not None:
+        if epilogue is True:
+            epilogue = """
+                Variant frequencies are shown as coloured markers. Opacity of color
+                denotes frequency. Click on a marker for more information.
+            """
+        if epilogue:
             components.append(ipywidgets.HTML(value=f"{epilogue}"))
 
         out = ipywidgets.VBox(components)
@@ -4047,8 +4071,8 @@ class Ag3:
     def plot_genes(
         self,
         region,
-        width=800,
-        height=120,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
         toolbar_location="above",
         x_range=None,
@@ -4124,13 +4148,22 @@ class Ag3:
         ]
 
         # make a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
             plot_height=height,
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,tap,hover",
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "tap",
+                "hover",
+            ],
             toolbar_location=toolbar_location,
-            active_scroll="xwheel_zoom",
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
@@ -4170,8 +4203,8 @@ class Ag3:
     def plot_transcript(
         self,
         transcript,
-        width=700,
-        height=120,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
         x_range=None,
         toolbar_location="above",
@@ -4220,13 +4253,14 @@ class Ag3:
         ]
 
         # make a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
             plot_height=height,
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,hover",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "hover"],
             toolbar_location=toolbar_location,
-            active_scroll="xwheel_zoom",
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
@@ -4323,7 +4357,7 @@ class Ag3:
         sample_set,
         region,
         y_max="auto",
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         circle_kwargs=None,
         line_kwargs=None,
@@ -4402,10 +4436,11 @@ class Ag3:
         x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure for plotting
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
-            active_scroll="xwheel_zoom",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             plot_width=width,
             plot_height=height,
@@ -4449,9 +4484,9 @@ class Ag3:
         sample_set,
         region,
         y_max="auto",
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=170,
-        genes_height=100,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
@@ -4531,8 +4566,9 @@ class Ag3:
         region,
         sample_sets=None,
         sample_query=None,
-        width=800,
-        row_height=3,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        row_height=7,
         height=None,
         show=True,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -4553,6 +4589,8 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
         width : int, optional
             Plot width in pixels (px).
         row_height : int, optional
@@ -4581,22 +4619,38 @@ class Ag3:
         region = self.resolve_region(region)
 
         # access HMM data
-        hmm = self.cnv_hmm(region=region, sample_sets=sample_sets)
+        ds_cnv = self.cnv_hmm(region=region, sample_sets=sample_sets)
 
         # handle sample query
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
+        )
+        loc_samples = None
         if sample_query is not None:
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                species_analysis=species_analysis,
-                cohorts_analysis=cohorts_analysis,
-            )
             loc_samples = df_samples.eval(sample_query).values
-            hmm = hmm.isel(samples=loc_samples)
+
+        # handle filtering samples by coverage variance
+        if max_coverage_variance is not None:
+            cov_var = ds_cnv["sample_coverage_variance"].values
+            loc_pass_samples = cov_var <= max_coverage_variance
+            if loc_samples is not None:
+                loc_samples = loc_samples & loc_pass_samples
+            else:
+                loc_samples = loc_pass_samples
+
+        if loc_samples is not None:
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError("No samples selected.")
+            df_samples = df_samples.loc[loc_samples].reset_index()
+            ds_cnv = ds_cnv.isel(samples=loc_samples)
 
         # access copy number data
-        cn = hmm["call_CN"].values
-        start = hmm["variant_position"].values
-        end = hmm["variant_end"].values
+        cn = ds_cnv["call_CN"].values
+        ncov = ds_cnv["call_NormCov"].values
+        start = ds_cnv["variant_position"].values
+        end = ds_cnv["variant_end"].values
         n_windows, n_samples = cn.shape
 
         # figure out X axis limits from data
@@ -4606,7 +4660,11 @@ class Ag3:
         # set up plot title
         title = "CNV HMM"
         if sample_sets is not None:
-            title += f" - {sample_sets}"
+            if isinstance(sample_sets, (list, tuple)):
+                sample_sets_text = ", ".join(sample_sets)
+            else:
+                sample_sets_text = sample_sets
+            title += f" - {sample_sets_text}"
         if sample_query is not None:
             title += f" ({sample_query})"
 
@@ -4617,16 +4675,24 @@ class Ag3:
             plot_height = height
 
         # setup figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        tooltips = [
+            ("Position", "$x{0,0}"),
+            ("Sample ID", "@sample_id"),
+            ("HMM state", "@hmm_state"),
+            ("Normalised coverage", "@norm_cov"),
+        ]
         fig = bkplt.figure(
             title=title,
             plot_width=width,
             plot_height=plot_height,
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
-            active_scroll="xwheel_zoom",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
-            y_range=(0, n_samples),
+            y_range=(-0.5, n_samples - 0.5),
+            tooltips=tooltips,
         )
 
         # set up palette and color mapping
@@ -4634,12 +4700,24 @@ class Ag3:
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
 
         # plot the HMM copy number data as an image
+        sample_id = df_samples["sample_id"].values
+        sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
+        data = dict(
+            hmm_state=[cn.T],
+            norm_cov=[ncov.T],
+            sample_id=[sample_id_tiled.T],
+            x=[x_min],
+            y=[-0.5],
+            dw=[n_windows * 300],
+            dh=[n_samples],
+        )
         fig.image(
-            image=[cn.T],
-            x=x_min,
-            y=0,
-            dw=n_windows * 300,
-            dh=n_samples,
+            source=data,
+            image="hmm_state",
+            x="x",
+            y="y",
+            dw="dw",
+            dh="dh",
             color_mapper=color_mapper,
         )
 
@@ -4647,6 +4725,11 @@ class Ag3:
         fig.yaxis.axis_label = "Samples"
         fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.yaxis.ticker = bkmod.FixedTicker(
+            ticks=np.arange(len(sample_id)),
+        )
+        fig.yaxis.major_label_overrides = df_samples["sample_id"].to_dict()
+        fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         # add color bar
         color_bar = bkmod.ColorBar(
@@ -4670,10 +4753,11 @@ class Ag3:
         region,
         sample_sets=None,
         sample_query=None,
-        width=800,
-        row_height=3,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        row_height=7,
         track_height=None,
-        genes_height=100,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
@@ -4694,6 +4778,8 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
         width : int, optional
             Plot width in pixels (px).
         row_height : int, optional
@@ -4725,6 +4811,7 @@ class Ag3:
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            max_coverage_variance=max_coverage_variance,
             width=width,
             row_height=row_height,
             height=track_height,
