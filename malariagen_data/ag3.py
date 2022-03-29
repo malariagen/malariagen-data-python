@@ -46,6 +46,7 @@ DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
+DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
 
 AA_CHANGE_QUERY = (
@@ -2282,7 +2283,7 @@ class Ag3:
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
-        max_coverage_variance=0.2,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
     ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
@@ -3488,7 +3489,7 @@ class Ag3:
         min_cohort_size=10,
         variant_query=None,
         drop_invariant=True,
-        max_coverage_variance=0.2,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         ci_method="wilson",
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
@@ -4131,13 +4132,22 @@ class Ag3:
         ]
 
         # make a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
             plot_height=height,
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,tap,hover",
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "tap",
+                "hover",
+            ],
             toolbar_location=toolbar_location,
-            active_scroll="xwheel_zoom",
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
@@ -4227,13 +4237,14 @@ class Ag3:
         ]
 
         # make a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
             plot_height=height,
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset,hover",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "hover"],
             toolbar_location=toolbar_location,
-            active_scroll="xwheel_zoom",
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
@@ -4409,10 +4420,11 @@ class Ag3:
         x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure for plotting
+        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
-            active_scroll="xwheel_zoom",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             plot_width=width,
             plot_height=height,
@@ -4538,6 +4550,7 @@ class Ag3:
         region,
         sample_sets=None,
         sample_query=None,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         row_height=3,
         height=None,
@@ -4560,6 +4573,8 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
         width : int, optional
             Plot width in pixels (px).
         row_height : int, optional
@@ -4588,9 +4603,10 @@ class Ag3:
         region = self.resolve_region(region)
 
         # access HMM data
-        hmm = self.cnv_hmm(region=region, sample_sets=sample_sets)
+        ds_cnv = self.cnv_hmm(region=region, sample_sets=sample_sets)
 
         # handle sample query
+        loc_samples = None
         if sample_query is not None:
             df_samples = self.sample_metadata(
                 sample_sets=sample_sets,
@@ -4598,12 +4614,25 @@ class Ag3:
                 cohorts_analysis=cohorts_analysis,
             )
             loc_samples = df_samples.eval(sample_query).values
-            hmm = hmm.isel(samples=loc_samples)
+
+        # handle filtering samples by coverage variance
+        if max_coverage_variance is not None:
+            cov_var = ds_cnv["sample_coverage_variance"].values
+            loc_pass_samples = cov_var <= max_coverage_variance
+            if loc_samples is not None:
+                loc_samples = loc_samples & loc_pass_samples
+            else:
+                loc_samples = loc_pass_samples
+
+        if loc_samples is not None:
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError("No samples selected.")
+            ds_cnv = ds_cnv.isel(samples=loc_samples)
 
         # access copy number data
-        cn = hmm["call_CN"].values
-        start = hmm["variant_position"].values
-        end = hmm["variant_end"].values
+        cn = ds_cnv["call_CN"].values
+        start = ds_cnv["variant_position"].values
+        end = ds_cnv["variant_end"].values
         n_windows, n_samples = cn.shape
 
         # figure out X axis limits from data
@@ -4628,12 +4657,13 @@ class Ag3:
             plot_height = height
 
         # setup figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimension="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
             plot_width=width,
             plot_height=plot_height,
-            tools="xpan,xzoom_in,xzoom_out,xwheel_zoom,reset",
-            active_scroll="xwheel_zoom",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
             active_drag="xpan",
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
@@ -4681,6 +4711,7 @@ class Ag3:
         region,
         sample_sets=None,
         sample_query=None,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         row_height=3,
         track_height=None,
@@ -4705,6 +4736,8 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
         width : int, optional
             Plot width in pixels (px).
         row_height : int, optional
