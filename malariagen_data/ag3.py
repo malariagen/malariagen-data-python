@@ -4769,6 +4769,7 @@ class Ag3:
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            max_coverage_variance=max_coverage_variance,
             width=width,
             row_height=row_height,
             height=track_height,
