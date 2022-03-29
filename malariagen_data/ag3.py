@@ -99,6 +99,8 @@ class Ag3:
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
         Storage, or a local path on your file system if data have been
         downloaded.
+    bokeh_output_notebook : bool
+        If True (default), configure bokeh to output plots to the notebook.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -125,7 +127,7 @@ class Ag3:
 
     contigs = CONTIGS
 
-    def __init__(self, url=DEFAULT_URL, **kwargs):
+    def __init__(self, url=DEFAULT_URL, bokeh_output_notebook=True, **kwargs):
 
         self._url = url
         self._pre = kwargs.pop("pre", False)
@@ -152,6 +154,13 @@ class Ag3:
         self._cache_haplotypes = dict()
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
+
+        # get bokeh to output plots to the notebook - this is a common gotcha,
+        # users forget to do this and wonder why bokeh plots don't show
+        if bokeh_output_notebook:
+            import bokeh.io as bkio
+
+            bkio.output_notebook()
 
     def __repr__(self):
         return (
