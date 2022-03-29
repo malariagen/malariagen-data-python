@@ -296,12 +296,11 @@ class Ag3:
                 raise ValueError(f"Release not available: {release!r}")
 
             try:
-                return self._cache_sample_sets[release]
+                df = self._cache_sample_sets[release]
 
             except KeyError:
                 df = self._read_sample_sets(release=release)
                 self._cache_sample_sets[release] = df
-                return df
 
         elif isinstance(release, (list, tuple)):
 
@@ -317,10 +316,11 @@ class Ag3:
                 axis=0,
                 ignore_index=True,
             )
-            return df
 
         else:
             raise TypeError
+
+        return df.copy()
 
     @property
     def v3_wild(self):
@@ -343,7 +343,7 @@ class Ag3:
     def _read_general_metadata(self, *, sample_set):
         """Read metadata for a single sample set."""
         try:
-            return self._cache_general_metadata[sample_set]
+            df = self._cache_general_metadata[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
@@ -359,13 +359,14 @@ class Ag3:
             df["release"] = release
 
             self._cache_general_metadata[sample_set] = df
-            return df
+        return df.copy()
 
     def _read_species_calls(self, *, sample_set, analysis):
         """Read species calls for a single sample set."""
         key = (sample_set, analysis)
         try:
-            return self._cache_species_calls[key]
+            df = self._cache_species_calls[key]
+
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
@@ -437,7 +438,8 @@ class Ag3:
             df.columns = [c.lower() for c in df.columns]
 
             self._cache_species_calls[key] = df
-            return df
+
+        return df.copy()
 
     def _prep_sample_sets_arg(self, *, sample_sets):
         """Common handling for the `sample_sets` parameter. For convenience, we
@@ -1020,7 +1022,7 @@ class Ag3:
                 parts.append(df_part)
             df = pd.concat(parts, axis=0)
 
-        return df
+        return df.reset_index(drop=True).copy()
 
     def _transcript_to_gene_name(self, transcript):
         df_geneset = self.geneset().set_index("ID")
@@ -1411,7 +1413,7 @@ class Ag3:
 
             self._cache_cross_metadata = df
 
-        return self._cache_cross_metadata
+        return self._cache_cross_metadata.copy()
 
     def open_site_annotations(self):
         """Open site annotations zarr.
@@ -2734,7 +2736,7 @@ class Ag3:
     def _read_cohort_metadata(self, *, sample_set, cohorts_analysis):
         """Read cohort metadata for a single sample set."""
         try:
-            return self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
+            df = self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
@@ -2757,7 +2759,7 @@ class Ag3:
             )
 
             self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
-            return df
+        return df.copy()
 
     def sample_cohorts(
         self, sample_sets=None, cohorts_analysis=DEFAULT_COHORTS_ANALYSIS
