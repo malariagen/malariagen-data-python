@@ -4613,7 +4613,11 @@ class Ag3:
         # set up plot title
         title = "CNV HMM"
         if sample_sets is not None:
-            title += f" - {sample_sets}"
+            if isinstance(sample_sets, (list, tuple)):
+                sample_sets_text = ", ".join(sample_sets)
+            else:
+                sample_sets_text = sample_sets
+            title += f" - {sample_sets_text}"
         if sample_query is not None:
             title += f" ({sample_query})"
 
