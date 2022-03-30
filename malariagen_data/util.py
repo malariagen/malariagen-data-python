@@ -1,3 +1,5 @@
+import hashlib
+import json
 import re
 from collections.abc import Mapping
 from enum import Enum
@@ -320,6 +322,24 @@ class Region:
             and (self.end == other.end)
         )
 
+    def __str__(self):
+        out = self._contig
+        if self._start is not None or self._end is not None:
+            out += ":"
+            if self._start is not None:
+                out += f"{self._start:,}"
+            out += "-"
+            if self.end is not None:
+                out += f"{self._end:,}"
+        return out
+
+    def to_dict(self):
+        return dict(
+            contig=self.contig,
+            start=self.start,
+            end=self.end,
+        )
+
 
 def _handle_region_coords(resource, region):
 
@@ -365,6 +385,13 @@ def resolve_region(resource, region):
     if isinstance(region, Region):
         # region is already Region tuple, nothing to do
         return region
+
+    if isinstance(region, dict):
+        return Region(
+            contig=region.get("contig"),
+            start=region.get("start"),
+            end=region.get("end"),
+        )
 
     if isinstance(region, (list, tuple)):
         # multiple regions, normalise to list and resolve components
@@ -466,3 +493,20 @@ def check_type(
 ):
     if not isinstance(value, expectation):
         type_error(name, value, expectation)
+
+
+def hash_params(params):
+    """Helper function to hash function parameters."""
+    s = json.dumps(params, sort_keys=True, indent=4)
+    h = hashlib.md5(s.encode()).hexdigest()
+    return h, s
+
+
+def jitter(a, fraction):
+    """Jitter data in `a` using the fraction `f`."""
+    r = a.max() - a.min()
+    return a + fraction * np.random.uniform(-r, r, a.shape)
+
+
+class CacheMiss(Exception):
+    pass

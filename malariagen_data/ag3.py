@@ -1,6 +1,8 @@
+import sys
 import warnings
 from bisect import bisect_left, bisect_right
 from collections import Counter
+from pathlib import Path
 
 import allel
 import dask.array as da
@@ -9,6 +11,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
+from dask.diagnostics import ProgressBar
 
 import malariagen_data
 
@@ -18,10 +21,12 @@ from .util import (  # type_error,
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    CacheMiss,
     Region,
     da_compress,
     da_from_zarr,
     dask_compress_dataset,
+    hash_params,
     init_filesystem,
     init_zarr_store,
     locate_region,
@@ -127,10 +132,18 @@ class Ag3:
 
     contigs = CONTIGS
 
-    def __init__(self, url=DEFAULT_URL, bokeh_output_notebook=True, **kwargs):
+    def __init__(
+        self,
+        url=DEFAULT_URL,
+        bokeh_output_notebook=True,
+        results_cache=None,
+        log=sys.stdout,
+        **kwargs,
+    ):
 
         self._url = url
         self._pre = kwargs.pop("pre", False)
+        self._log = log
 
         # setup filesystem
         self._fs, self._base_path = init_filesystem(url, **kwargs)
@@ -155,6 +168,11 @@ class Ag3:
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
 
+        if results_cache is not None:
+            results_cache = Path(results_cache).expanduser().resolve()
+            results_cache.mkdir(parents=True, exist_ok=True)
+        self._results_cache = results_cache
+
         # get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show
         if bokeh_output_notebook:
@@ -167,6 +185,7 @@ class Ag3:
             f"<MalariaGEN Ag3 data resource API>\n"
             f"Storage URL             : {self._url}\n"
             f"Data releases available : {', '.join(self.releases)}\n"
+            f"Results cache           : {self._results_cache}\n"
             f"Cohorts analysis        : {DEFAULT_COHORTS_ANALYSIS}\n"
             f"Species analysis        : {DEFAULT_SPECIES_ANALYSIS}\n"
             f"Site filters analysis   : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
@@ -207,6 +226,12 @@ class Ag3:
                     </tr>
                     <tr>
                         <th style="text-align: left">
+                            Results cache
+                        </th>
+                        <td>{self._results_cache}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
                             Cohorts analysis
                         </th>
                         <td>{DEFAULT_COHORTS_ANALYSIS}</td>
@@ -232,6 +257,11 @@ class Ag3:
                 </tbody>
             </table>
         """
+
+    def info(self, *msg):
+        if self._log is not None:
+            print("[INFO]", *msg, file=self._log)
+            self._log.flush()
 
     @property
     def releases(self):
@@ -4867,6 +4897,112 @@ class Ag3:
 
         return fig
 
+    def results_cache_get(self, *, name, params):
+        if self._results_cache is None:
+            raise CacheMiss
+        cache_key, _ = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        results_path = cache_path / "results.npz"
+        if not results_path.exists():
+            raise CacheMiss
+        results = np.load(results_path)
+        return results
+
+    def results_cache_set(self, *, name, params, results):
+        if self._results_cache is None:
+            # no results cache has been configured, do nothing
+            return
+        cache_key, params_json = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        cache_path.mkdir(exist_ok=True, parents=True)
+        params_path = cache_path / "params.json"
+        results_path = cache_path / "results.npz"
+        with params_path.open(mode="w") as f:
+            f.write(params_json)
+        np.savez_compressed(results_path, **results)
+
+    def _snp_allele_counts(
+        self,
+        region,
+        sample_sets,
+        sample_query,
+        site_mask,
+        species_analysis,
+        cohorts_analysis,
+        site_filters_analysis,
+    ):
+
+        # access SNP calls
+        ds_snps = self.snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            site_filters_analysis=site_filters_analysis,
+        )
+        gt = ds_snps["call_genotype"]
+
+        # handle sample query
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                species_analysis=species_analysis,
+                cohorts_analysis=cohorts_analysis,
+            )
+            loc_samples = df_samples.eval(sample_query).values
+            gt = gt.isel(samples=loc_samples)
+
+        # set up and run allele counts computation
+        gt = allel.GenotypeDaskArray(gt.data)
+        ac = gt.count_alleles(max_allele=3)
+        self.info("Computing SNP allele counts ...")
+        with ProgressBar():
+            ac = ac.compute()
+
+        return ac
+
+    def snp_allele_counts(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask=None,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+        cache=True,
+    ):
+        """TODO"""
+
+        name = "snp_allele_counts_1"  # change this to invalidate any previously cached data
+        # normalize params for consistent hash value
+        params = dict(
+            region=self.resolve_region(region).to_dict(),
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            site_mask=site_mask,
+            species_analysis=species_analysis,
+            cohorts_analysis=cohorts_analysis,
+            site_filters_analysis=site_filters_analysis,
+        )
+
+        # try to retrieve results from the cache
+        if cache:
+            try:
+                results = self.results_cache_get(name=name, params=params)
+                return allel.AlleleCountsArray(results["ac"])
+            except CacheMiss:
+                pass
+
+        # compute the results
+        ac = self._snp_allele_counts(**params)
+
+        # save the results to the cache
+        if cache:
+            results = dict(ac=ac.values)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        return ac
+
 
 def _locate_cohorts(*, cohorts, df_samples):
 
@@ -5189,14 +5325,4 @@ def _region_str(region):
     # sanity check
     assert isinstance(region, Region)
 
-    # build string representation
-    out = region.contig
-    if region.start is not None or region.end is not None:
-        out += ":"
-        if region.start is not None:
-            out += f"{region.start:,}"
-        out += "-"
-        if region.end is not None:
-            out += f"{region.end:,}"
-
-    return out
+    return str(region)
