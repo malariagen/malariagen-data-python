@@ -2567,3 +2567,21 @@ def _compare_series_like(actual, expect):
         assert_allclose(actual.values, expect.values)
     else:
         assert_array_equal(actual.values, expect.values)
+
+
+def test_run_pca():
+    ag3 = setup_ag3()
+
+    sample_set = "AG1000G-FR"
+    samset = ag3.sample_sets()
+    d_len = samset[samset.sample_set == sample_set].sample_count.values[0]
+    n_components = 8
+
+    data, evr = ag3.run_pca(
+        region="3L", sample_sets=sample_set, n_components=n_components
+    )
+
+    assert isinstance(data, pd.core.frame.DataFrame)
+    assert data.shape == (d_len, 26 + n_components)
+    assert isinstance(evr, np.ndarray)
+    assert len(evr) == n_components

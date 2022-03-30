@@ -1,3 +1,6 @@
+import hashlib
+import json
+import os
 import warnings
 from bisect import bisect_left, bisect_right
 from collections import Counter
@@ -4866,6 +4869,160 @@ class Ag3:
             bkplt.show(fig)
 
         return fig
+
+    def _hash_params(self, *args, **kwargs):
+        """Helper function to hash analysis parameters."""
+        o = {"args": args, "kwargs": kwargs}
+        s = json.dumps(o, sort_keys=True).encode()
+        h = hashlib.md5(s).hexdigest()
+        return h
+
+    def run_pca(
+        self,
+        region,
+        results_dir="ag3-pca-results",
+        sample_sets=PUBLIC_RELEASES,
+        sample_query=None,
+        site_mask="gamb_colu_arab",
+        min_minor_ac=3,
+        max_an_missing=0,
+        n_snps=100_000,
+        snp_offset=0,
+        n_components=10,
+    ):
+        """Main function to run a PCA.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm, e.g., '3L', or region, e.g., '3L:1000000-37000000'.
+        sample_sets : str or list of str, optional
+            Sample sets to analyse.
+        sample_query : str, optional
+            A pandas query string to select specific samples.
+        site_mask : {'gamb_colu_arab', 'gamb_colu', 'arab'}
+            Which site mask to apply.
+        min_minor_ac : int
+            Minimum minor allele count.
+        max_an_missing : int
+            Maximum number of missing allele calls.
+        n_snps : int
+            Approximate number of SNPs to use.
+        snp_offset : int
+            Offset when thinning SNPs.
+        n_components : int
+            Number of PCA components to retain.
+
+        Returns
+        -------
+        data : pandas DataFrame
+            Data frame with one row per sample, including columns "PC1", "PC2", etc.
+        evr : numpy array
+            Explained variance ratio per principal component.
+
+        """
+
+        # set results dir
+        os.makedirs(results_dir, exist_ok=True)
+
+        # construct a key to save the results under
+        results_key = self._hash_params(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+            min_minor_ac=min_minor_ac,
+            max_an_missing=max_an_missing,
+            n_snps=n_snps,
+            snp_offset=snp_offset,
+            n_components=n_components,
+        )
+
+        # define paths for results files
+        data_path = f"{results_dir}/{results_key}-data.csv"
+        evr_path = f"{results_dir}/{results_key}-evr.npy"
+
+        try:
+            # try to load previously generated results
+            data = pd.read_csv(data_path)
+            evr = np.load(evr_path)
+            return data, evr
+        except FileNotFoundError:
+            # no previous results available, need to run analysis
+            print(f"running analysis: {results_key}")
+
+        print("setting up inputs")
+
+        # load sample metadata
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+        # access SNP calls
+        ds_snps = self.snp_calls(
+            region=region, sample_sets=sample_sets, site_mask=site_mask
+        )
+
+        if sample_query:
+            # locate selected samples
+            loc_samples = df_samples.eval(sample_query).values
+            df_samples = df_samples.loc[loc_samples, :]
+            ds_snps = ds_snps.isel(samples=loc_samples)
+
+        # access SNP genotypes
+        gt = ds_snps["call_genotype"].data
+
+        print("locating segregating sites within desired frequency range")
+
+        # perform allele count
+        ac = allel.GenotypeDaskArray(gt).count_alleles(max_allele=3).compute()
+
+        # calculate some convenience variables
+        n_chroms = gt.shape[1] * 2
+        an_called = ac.sum(axis=1)
+        an_missing = n_chroms - an_called
+        min_ref_ac = min_minor_ac
+        max_ref_ac = n_chroms - min_minor_ac
+
+        # here we choose biallelic sites involving the reference allele
+        loc_seg = np.nonzero(
+            ac.is_biallelic()
+            & (ac[:, 0] >= min_ref_ac)
+            & (ac[:, 0] <= max_ref_ac)
+            & (an_missing <= max_an_missing)
+        )[0]
+
+        print("preparing PCA input data")
+
+        # thin SNPs to approximately the desired number
+        snp_step = loc_seg.shape[0] // n_snps
+        loc_seg_ds = loc_seg[snp_offset::snp_step]
+
+        # subset genotypes to selected sites
+        gt_seg = da.take(gt, loc_seg_ds, axis=0)
+
+        # convert to genotype alt counts
+        gn_seg = allel.GenotypeDaskArray(gt_seg).to_n_alt().compute()
+
+        # remove any edge-case variants where all genotypes are identical
+        loc_var = np.any(gn_seg != gn_seg[:, 0, np.newaxis], axis=1)
+        gn_var = np.compress(loc_var, gn_seg, axis=0)
+
+        print("running PCA")
+
+        # run the PCA
+        coords, model = allel.pca(gn_var, n_components=n_components)
+
+        # add PCs to dataframe
+        data = df_samples.copy()
+        for i in range(n_components):
+            data[f"PC{i + 1}"] = coords[:, i]
+
+        # save results
+        evr = model.explained_variance_ratio_
+        data.to_csv(data_path, index=False)
+        np.save(evr_path, evr)
+        print(f"saved results: {results_key}")
+
+        return data, evr
 
 
 def _locate_cohorts(*, cohorts, df_samples):
