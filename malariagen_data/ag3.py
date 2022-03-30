@@ -4973,6 +4973,9 @@ class Ag3:
     ):
         """TODO"""
 
+        # N.B., this is potentially a longer-running computation, especially
+        # if running on colab, and so we will try to cache the results.
+
         name = "snp_allele_counts_1"  # change this to invalidate any previously cached data
         # normalize params for consistent hash value
         params = dict(
