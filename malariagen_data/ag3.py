@@ -6,6 +6,7 @@ from collections import Counter
 from pathlib import Path
 
 import allel
+import dask
 import dask.array as da
 import numba
 import numpy as np
@@ -17,7 +18,7 @@ from dask.diagnostics import ProgressBar
 import malariagen_data
 
 from . import veff
-from .util import (  # type_error,
+from .util import (
     DIM_ALLELE,
     DIM_PLOIDY,
     DIM_SAMPLE,
@@ -30,6 +31,7 @@ from .util import (  # type_error,
     hash_params,
     init_filesystem,
     init_zarr_store,
+    jitter,
     locate_region,
     read_gff3,
     resolve_region,
@@ -38,9 +40,12 @@ from .util import (  # type_error,
     xarray_concat,
 )
 
+# silence dask performance warnings
+dask.config.set(**{"array.slicing.split_large_chunks": False})
+
+# set up a logger for the module
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
-
 
 PUBLIC_RELEASES = ("3.0",)
 DEFAULT_URL = "gs://vo_agam_release/"
@@ -120,7 +125,7 @@ class Ag3:
     results_cache : str, optional
         Path to directory on local file system to save results.
     log : str or stream, optional
-        Output for logging messages.
+        File path or stream output for logging messages.
     log_level : int, optional
         Logging level.
     **kwargs
@@ -144,6 +149,11 @@ class Ag3:
         ...     "simplecache::gs://vo_agam_release",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
+
+    Set up caching of some longer-running computations on the local file system,
+    in a directory named "results_cache":
+
+        >>> ag3 = malariagen_data.Ag3(results_cache="results_cache")
 
     """
 
@@ -4838,10 +4848,41 @@ class Ag3:
         sample_query=None,
         site_mask=None,
     ):
-        """TODO"""
+        """Compute SNP allele counts. This returns the number of times each
+        SNP allele was observed in the selected samples.
 
-        # N.B., this is potentially a longer-running computation, especially
-        # if running on colab, and so we will try to cache the results.
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+
+        Returns
+        -------
+        ac : np.ndarray
+            A numpy array of shape (n_variants, 4), where the first column has
+            the reference allele (0) counts, the second column has the first
+            alternate allele (1) counts, the third column has the second
+            alternate allele (2) counts, and the fourth column has the third
+            alternate allele (3) counts.
+
+        Notes
+        -----
+        This computation may take some time to run, depending on your computing
+        environment. Results of this computation will be cached and re-used if
+        the `results_cache` parameter was set when instantiating the Ag3 class.
+
+        """
 
         name = "snp_allele_counts_1"  # change this to invalidate any previously cached data
         # normalize params for consistent hash value
@@ -4900,14 +4941,59 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         site_mask="gamb_colu_arab",
-        min_mac=2,
-        max_missing=0,
+        min_minor_ac=2,
+        max_missing_an=0,
         n_components=20,
     ):
-        """TODO"""
+        """Run a principal components analysis (PCA) using biallelic SNPs from
+        the selected genome region and samples.
 
-        # N.B., this is potentially a longer-running computation, especially
-        # if running on colab, and so we will try to cache the results.
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        n_snps : int
+            The desired number of SNPs to use when running the analysis.
+            SNPs will be evenly thinned to approximately this number.
+        thin_offset : int, optional
+            Starting index for SNP thinning. Change this to repeat the analysis
+            using a different set of SNPs.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        min_minor_ac : int, optional
+            The minimum minor allele count. SNPs with a minor allele count
+            below this value will be excluded prior to thinning.
+        max_missing_an : int, optional
+            The maximum number of missing allele calls to accept. SNPs with
+            more than this value will be excluded prior to thinning. Set to 0
+            (default) to require no missingness.
+        n_components : int, optional
+            Number of components to return.
+
+        Returns
+        -------
+        df_pca : pandas.DataFrame
+            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+            etc., added.
+        evr : np.ndarray
+            An array of explained variance ratios, one per component.
+
+        Notes
+        -----
+        This computation may take some time to run, depending on your computing
+        environment. Results of this computation will be cached and re-used if
+        the `results_cache` parameter was set when instantiating the Ag3 class.
+
+        """
 
         name = "pca_1"  # change this to invalidate any previously cached data
         # normalize params for consistent hash value
@@ -4918,8 +5004,8 @@ class Ag3:
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
-            min_mac=min_mac,
-            max_missing=max_missing,
+            min_mac=min_minor_ac,
+            max_missing=max_missing_an,
             n_components=n_components,
         )
 
@@ -4941,7 +5027,7 @@ class Ag3:
             sample_query=sample_query,
         )
         df_coords = pd.DataFrame(
-            {f"pc{i + 1}": coords[:, i] for i in range(n_components)}
+            {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
         )
         df_pca = pd.concat([df_samples, df_coords], axis="columns")
 
@@ -4956,8 +5042,8 @@ class Ag3:
         sample_sets,
         sample_query,
         site_mask,
-        min_mac,
-        max_missing,
+        min_minor_ac,
+        max_missing_an,
         n_components,
     ):
 
@@ -4985,14 +5071,14 @@ class Ag3:
 
         self.debug("ascertain sites")
         ac = allel.AlleleCountsArray(ac)
-        min_ref_ac = min_mac
-        max_ref_ac = n_chroms - min_mac
+        min_ref_ac = min_minor_ac
+        max_ref_ac = n_chroms - min_minor_ac
         # here we choose biallelic sites involving the reference allele
         loc_sites = (
             ac.is_biallelic()
             & (ac[:, 0] >= min_ref_ac)
             & (ac[:, 0] <= max_ref_ac)
-            & (an_missing <= max_missing)
+            & (an_missing <= max_missing_an)
         )
         self.debug(f"ascertained {np.count_nonzero(loc_sites):,} sites")
 
@@ -5020,6 +5106,221 @@ class Ag3:
 
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
+
+    @staticmethod
+    def plot_pca_variance(evr, width=900, height=400, **kwargs):
+        """Make a bar plot showing explained variance ratios from a principal
+        components analysis (PCA) using plotly.
+
+        Parameters
+        ----------
+        evr : np.ndarray
+            An array of explained variance ratios, one per component.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        **kwargs
+            Passed through to px.bar().
+
+        Returns
+        -------
+        fig : Figure
+            A plotly figure.
+
+        """
+
+        import plotly.express as px
+
+        # prepare plotting variables
+        y = evr * 100  # convert to percent
+        x = [str(i + 1) for i in range(len(y))]
+
+        # setup plotting options
+        plot_kwargs = dict(
+            labels={
+                "x": "Principal component",
+                "y": "Explained variance (%)",
+            },
+            template="simple_white",
+            width=width,
+            height=height,
+        )
+        # apply any user overrides
+        plot_kwargs.update(kwargs)
+
+        # make a bar plot
+        fig = px.bar(x=x, y=y, **plot_kwargs)
+
+        return fig
+
+    @staticmethod
+    def plot_pca_coords(
+        data,
+        x="PC1",
+        y="PC2",
+        jitter_frac=0.02,
+        random_seed=42,
+        width=900,
+        height=600,
+        marker_size=10,
+        color=None,
+        **kwargs,
+    ):
+        """TODO"""
+
+        import plotly.express as px
+
+        # setup data - copy and shuffle so that we don't get systematic over-plotting
+        data = (
+            data.copy().sample(frac=1, random_state=random_seed).reset_index(drop=True)
+        )
+
+        # apply jitter if desired - helps spread out points when tightly clustered
+        if jitter_frac:
+            np.random.seed(random_seed)
+            data[x] = jitter(data[x], jitter_frac)
+            data[y] = jitter(data[y], jitter_frac)
+
+        # convenience variables
+        data["country_location"] = data["country"] + " - " + data["location"]
+
+        # setup plotting options
+        hover_data = [
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+        plot_kwargs = dict(
+            width=width,
+            height=height,
+            template="simple_white",
+            hover_name="sample_id",
+            hover_data=hover_data,
+            opacity=0.9,
+            render_mode="svg",
+        )
+
+        # special handling for taxon color
+        if color == "taxon":
+            taxon_palette = px.colors.qualitative.Plotly
+            taxon_color_map = {
+                "gambiae": taxon_palette[0],
+                "coluzzii": taxon_palette[1],
+                "arabiensis": taxon_palette[2],
+                "gcx1": taxon_palette[3],
+                "gcx2": taxon_palette[4],
+                "gcx3": taxon_palette[5],
+                "intermediate_gambiae_coluzzii": taxon_palette[6],
+                "intermediate_arabiensis_gambiae": taxon_palette[7],
+            }
+            plot_kwargs["color_discrete_map"] = taxon_color_map
+            plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
+
+        # apply any user overrides
+        plot_kwargs.update(kwargs)
+
+        # 2D scatter plot
+        fig = px.scatter(data, x=x, y=y, color=color, **plot_kwargs)
+
+        # tidy
+        fig.update_layout(
+            legend=dict(itemsizing="constant"),
+        )
+        fig.update_traces(marker={"size": marker_size})
+
+        return fig
+
+    @staticmethod
+    def plot_pca_coords_3d(
+        data,
+        x="PC1",
+        y="PC2",
+        z="PC3",
+        jitter_frac=0.02,
+        random_seed=42,
+        width=900,
+        height=600,
+        marker_size=5,
+        color=None,
+        **kwargs,
+    ):
+        """TODO"""
+
+        import plotly.express as px
+
+        # setup data - copy and shuffle so that we don't get systematic over-plotting
+        data = (
+            data.copy().sample(frac=1, random_state=random_seed).reset_index(drop=True)
+        )
+
+        # apply jitter if desired - helps spread out points when tightly clustered
+        if jitter_frac:
+            np.random.seed(random_seed)
+            data[x] = jitter(data[x], jitter_frac)
+            data[y] = jitter(data[y], jitter_frac)
+            data[z] = jitter(data[z], jitter_frac)
+
+        # convenience variables
+        data["country_location"] = data["country"] + " - " + data["location"]
+
+        # setup plotting options
+        hover_data = [
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+        plot_kwargs = dict(
+            width=width,
+            height=height,
+            hover_name="sample_id",
+            hover_data=hover_data,
+        )
+
+        # special handling for taxon color
+        if color == "taxon":
+            taxon_palette = px.colors.qualitative.Plotly
+            taxon_color_map = {
+                "gambiae": taxon_palette[0],
+                "coluzzii": taxon_palette[1],
+                "arabiensis": taxon_palette[2],
+                "gcx1": taxon_palette[3],
+                "gcx2": taxon_palette[4],
+                "gcx3": taxon_palette[5],
+                "intermediate_gambiae_coluzzii": taxon_palette[6],
+                "intermediate_arabiensis_gambiae": taxon_palette[7],
+            }
+            plot_kwargs["color_discrete_map"] = taxon_color_map
+            plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
+
+        # apply any user overrides
+        plot_kwargs.update(kwargs)
+
+        # 3D scatter plot
+        fig = px.scatter_3d(data, x=x, y=y, z=z, color=color, **plot_kwargs)
+
+        # tidy
+        fig.update_layout(
+            scene=dict(aspectmode="cube"),
+            legend=dict(itemsizing="constant"),
+        )
+        fig.update_traces(marker={"size": marker_size})
+
+        return fig
 
 
 def _locate_cohorts(*, cohorts, df_samples):
