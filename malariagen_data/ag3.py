@@ -5013,10 +5013,9 @@ class Ag3:
         self.debug("remove any sites where all genotypes are identical")
         loc_var = np.any(gn_asc != gn_asc[:, 0, np.newaxis], axis=1)
         gn_var = np.compress(loc_var, gn_asc, axis=0)
+        self.debug(f"final shape {gn_var.shape}")
 
-        self.debug(
-            "run the PCA with {gn_var.shape[0]:,} sites and {gn_var.shape[1]} samples"
-        )
+        self.debug("run the PCA")
         coords, model = allel.pca(gn_var, n_components=n_components)
 
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
