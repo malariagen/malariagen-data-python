@@ -104,8 +104,18 @@ class Ag3:
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
         Storage, or a local path on your file system if data have been
         downloaded.
-    bokeh_output_notebook : bool
+    cohorts_analysis : str
+        Cohort analysis version.
+    species_analysis : {"aim_20200422", "pca_20200422"}, optional
+        Species analysis version.
+    site_filters_analysis : str, optional
+        Site filters analysis version.
+    bokeh_output_notebook : bool, optional
         If True (default), configure bokeh to output plots to the notebook.
+    results_cache : str, optional
+        Path to directory on local file system to save results.
+    log : file-like, optional
+        Log messages here.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -135,6 +145,9 @@ class Ag3:
     def __init__(
         self,
         url=DEFAULT_URL,
+        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        species_analysis=DEFAULT_SPECIES_ANALYSIS,
+        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -144,6 +157,9 @@ class Ag3:
         self._url = url
         self._pre = kwargs.pop("pre", False)
         self._log = log
+        self._cohorts_analysis = cohorts_analysis
+        self._species_analysis = species_analysis
+        self._site_filters_analysis = site_filters_analysis
 
         # setup filesystem
         self._fs, self._base_path = init_filesystem(url, **kwargs)
@@ -186,9 +202,9 @@ class Ag3:
             f"Storage URL             : {self._url}\n"
             f"Data releases available : {', '.join(self.releases)}\n"
             f"Results cache           : {self._results_cache}\n"
-            f"Cohorts analysis        : {DEFAULT_COHORTS_ANALYSIS}\n"
-            f"Species analysis        : {DEFAULT_SPECIES_ANALYSIS}\n"
-            f"Site filters analysis   : {DEFAULT_SITE_FILTERS_ANALYSIS}\n"
+            f"Cohorts analysis        : {self._cohorts_analysis}\n"
+            f"Species analysis        : {self._species_analysis}\n"
+            f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : {malariagen_data.__version__}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
@@ -234,19 +250,19 @@ class Ag3:
                         <th style="text-align: left">
                             Cohorts analysis
                         </th>
-                        <td>{DEFAULT_COHORTS_ANALYSIS}</td>
+                        <td>{self._cohorts_analysis}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
                             Species analysis
                         </th>
-                        <td>{DEFAULT_SPECIES_ANALYSIS}</td>
+                        <td>{self._species_analysis}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
                             Site filters analysis
                         </th>
-                        <td>{DEFAULT_SITE_FILTERS_ANALYSIS}</td>
+                        <td>{self._site_filters_analysis}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -391,9 +407,9 @@ class Ag3:
             self._cache_general_metadata[sample_set] = df
         return df.copy()
 
-    def _read_species_calls(self, *, sample_set, analysis):
+    def _read_species_calls(self, *, sample_set):
         """Read species calls for a single sample set."""
-        key = (sample_set, analysis)
+        key = sample_set
         try:
             df = self._cache_species_calls[key]
 
@@ -401,12 +417,14 @@ class Ag3:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
-            if analysis == "aim_20200422":
+            if self._species_analysis == "aim_20200422":
                 path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_aim.csv"
-            elif analysis == "pca_20200422":
+            elif self._species_analysis == "pca_20200422":
                 path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_pca.csv"
             else:
-                raise ValueError(f"Unknown species calling analysis: {analysis!r}")
+                raise ValueError(
+                    f"Unknown species calling analysis: {self._species_analysis!r}"
+                )
             with self._fs.open(path) as f:
                 df = pd.read_csv(
                     f,
@@ -440,7 +458,7 @@ class Ag3:
 
             df["species"] = df.apply(consolidate_species, axis=1)
 
-            if analysis == "aim_20200422":
+            if self._species_analysis == "aim_20200422":
                 # normalise column prefixes
                 df = df.rename(
                     columns={
@@ -451,7 +469,7 @@ class Ag3:
                         "species": "aim_species",
                     }
                 )
-            elif analysis == "pca_20200422":
+            elif self._species_analysis == "pca_20200422":
                 # normalise column prefixes
                 df = df.rename(
                     # normalise column prefixes
@@ -521,7 +539,7 @@ class Ag3:
 
         return sample_sets
 
-    def species_calls(self, sample_sets=None, analysis=DEFAULT_SPECIES_ANALYSIS):
+    def species_calls(self, sample_sets=None):
         """Access species calls for one or more sample sets.
 
         Parameters
@@ -530,8 +548,6 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        analysis : {"aim_20200422", "pca_20200422"}
-            Species calling analysis.
 
         Returns
         -------
@@ -544,33 +560,23 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
-        dfs = [
-            self._read_species_calls(sample_set=s, analysis=analysis)
-            for s in sample_sets
-        ]
+        dfs = [self._read_species_calls(sample_set=s) for s in sample_sets]
         df = pd.concat(dfs, axis=0, ignore_index=True)
 
         return df
 
-    def _sample_metadata(self, *, sample_set, species_analysis, cohorts_analysis):
+    def _sample_metadata(self, *, sample_set):
         df = self._read_general_metadata(sample_set=sample_set)
-        if species_analysis is not None:
-            df_species = self._read_species_calls(
-                sample_set=sample_set, analysis=species_analysis
-            )
-            df = df.merge(df_species, on="sample_id", sort=False)
-        if cohorts_analysis is not None:
-            df_cohorts = self.sample_cohorts(
-                sample_sets=sample_set, cohorts_analysis=cohorts_analysis
-            )
-            df = df.merge(df_cohorts, on="sample_id", sort=False)
+        df_species = self._read_species_calls(sample_set=sample_set)
+        df = df.merge(df_species, on="sample_id", sort=False)
+        df_cohorts = self.sample_cohorts(sample_sets=sample_set)
+        df = df.merge(df_cohorts, on="sample_id", sort=False)
         return df
 
     def sample_metadata(
         self,
         sample_sets=None,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
+        sample_query=None,
     ):
         """Access sample metadata for one or more sample sets.
 
@@ -580,11 +586,9 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Include species calls in metadata.
-        cohorts_analysis : str, optional
-            Cohort analysis identifier (date of analysis), optional,  default is
-            the latest version. Includes sample cohort calls in metadata.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
 
         Returns
         -------
@@ -596,41 +600,35 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
-        dfs = [
-            self._sample_metadata(
-                sample_set=s,
-                species_analysis=species_analysis,
-                cohorts_analysis=cohorts_analysis,
-            )
-            for s in sample_sets
-        ]
+        dfs = [self._sample_metadata(sample_set=s) for s in sample_sets]
         df = pd.concat(dfs, axis=0, ignore_index=True)
+
+        # for convenience, apply a query
+        if sample_query is not None:
+            df = df.query(sample_query).reset_index(drop=True)
 
         return df
 
-    def open_site_filters(self, mask, analysis=DEFAULT_SITE_FILTERS_ANALYSIS):
+    def open_site_filters(self, mask):
         """Open site filters zarr.
 
         Parameters
         ----------
         mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Mask to use.
-        analysis : str, optional
-            Site filters analysis version.
 
         Returns
         -------
         root : zarr.hierarchy.Group
 
         """
-        key = mask, analysis
         try:
-            return self._cache_site_filters[key]
+            return self._cache_site_filters[mask]
         except KeyError:
-            path = f"{self._base_path}/v3/site_filters/{analysis}/{mask}/"
+            path = f"{self._base_path}/v3/site_filters/{self._site_filters_analysis}/{mask}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
-            self._cache_site_filters[key] = root
+            self._cache_site_filters[mask] = root
             return root
 
     def _site_filters(
@@ -639,12 +637,11 @@ class Ag3:
         region,
         mask,
         field,
-        analysis,
         inline_array,
         chunks,
     ):
         assert isinstance(region, Region)
-        root = self.open_site_filters(mask=mask, analysis=analysis)
+        root = self.open_site_filters(mask=mask)
         z = root[f"{region.contig}/variants/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
@@ -658,7 +655,6 @@ class Ag3:
         region,
         mask,
         field="filter_pass",
-        analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -676,8 +672,6 @@ class Ag3:
             Mask to use.
         field : str, optional
             Array to access.
-        analysis : str, optional
-            Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.from_array().
         chunks : str, optional
@@ -701,7 +695,6 @@ class Ag3:
                     region=r,
                     mask=mask,
                     field=field,
-                    analysis=analysis,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
@@ -749,7 +742,6 @@ class Ag3:
         region,
         field,
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -767,8 +759,6 @@ class Ag3:
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str
-            Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -805,7 +795,6 @@ class Ag3:
             loc_sites = self.site_filters(
                 region=region,
                 mask=site_mask,
-                analysis=site_filters_analysis,
                 chunks=chunks,
                 inline_array=inline_array,
             )
@@ -856,7 +845,6 @@ class Ag3:
         sample_sets=None,
         field="GT",
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -878,8 +866,6 @@ class Ag3:
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -934,7 +920,8 @@ class Ag3:
         # apply site filters if requested
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region, mask=site_mask, analysis=site_filters_analysis
+                region=region,
+                mask=site_mask,
             )
             d = da_compress(loc_sites, d, axis=0)
 
@@ -1069,7 +1056,9 @@ class Ag3:
         return parent_name
 
     def is_accessible(
-        self, region, site_mask, site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS
+        self,
+        region,
+        site_mask,
     ):
         """Compute genome accessibility array.
 
@@ -1083,8 +1072,6 @@ class Ag3:
             be concatenated, e.g., ["3R", "3L"].
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
 
         Returns
         -------
@@ -1110,7 +1097,8 @@ class Ag3:
 
         # access site filters
         filter_pass = self.site_filters(
-            region=region, mask=site_mask, analysis=site_filters_analysis
+            region=region,
+            mask=site_mask,
         ).compute()
 
         # assign values from site filters
@@ -1118,14 +1106,13 @@ class Ag3:
 
         return is_accessible
 
-    @staticmethod
-    def _site_mask_ids(*, site_filters_analysis):
-        if site_filters_analysis == "dt_20200416":
+    def _site_mask_ids(self):
+        if self._site_filters_analysis == "dt_20200416":
             return "gamb_colu_arab", "gamb_colu", "arab"
         else:
             raise ValueError
 
-    def _snp_df(self, *, transcript, site_filters_analysis):
+    def _snp_df(self, *, transcript):
         """Set up a dataframe with SNP site and filter columns."""
 
         # get feature direct from geneset
@@ -1145,9 +1132,9 @@ class Ag3:
 
         # access site filters
         filter_pass = dict()
-        masks = self._site_mask_ids(site_filters_analysis=site_filters_analysis)
+        masks = self._site_mask_ids()
         for m in masks:
-            x = self.site_filters(region=contig, mask=m, analysis=site_filters_analysis)
+            x = self.site_filters(region=contig, mask=m)
             x = x[loc_feature].compute()
             filter_pass[m] = x
 
@@ -1181,7 +1168,6 @@ class Ag3:
         self,
         transcript,
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
         """Compute variant effects for a gene transcript.
 
@@ -1191,8 +1177,6 @@ class Ag3:
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
 
         Returns
         -------
@@ -1203,9 +1187,7 @@ class Ag3:
         """
 
         # setup initial dataframe of SNPs
-        _, df_snps = self._snp_df(
-            transcript=transcript, site_filters_analysis=site_filters_analysis
-        )
+        _, df_snps = self._snp_df(transcript=transcript)
 
         # setup variant effect annotator
         ann = self._annotator()
@@ -1228,11 +1210,8 @@ class Ag3:
         transcript,
         cohorts,
         sample_query=None,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
         effects=True,
@@ -1252,16 +1231,10 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohorts_analysis : str
-            Cohort analysis version, default is the latest version.
         min_cohort_size : int
             Minimum cohort size. Any cohorts below this size are omitted.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
-        species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Species calls analysis version.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -1288,11 +1261,7 @@ class Ag3:
         _check_param_min_cohort_size(min_cohort_size)
 
         # access sample metadata
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            cohorts_analysis=cohorts_analysis,
-            species_analysis=species_analysis,
-        )
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
 
         # handle sample_query
         loc_samples = None
@@ -1300,9 +1269,7 @@ class Ag3:
             loc_samples = df_samples.eval(sample_query).values
 
         # setup initial dataframe of SNPs
-        region, df_snps = self._snp_df(
-            transcript=transcript, site_filters_analysis=site_filters_analysis
-        )
+        region, df_snps = self._snp_df(transcript=transcript)
 
         # get genotypes
         gt = self.snp_genotypes(
@@ -1467,7 +1434,6 @@ class Ag3:
         region,
         field,
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1486,8 +1452,6 @@ class Ag3:
             "seq_cls", "seq_flen", "seq_relpos_start", "seq_relpos_stop".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str
-            Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.from_array().
         chunks : str, optional
@@ -1518,15 +1482,12 @@ class Ag3:
             region=region,
             field="POS",
             site_mask=site_mask,
-            site_filters_analysis=site_filters_analysis,
         )
         d = da.take(d, pos - 1)
 
         return d
 
-    def _snp_calls_dataset(
-        self, *, contig, sample_set, site_filters_analysis, inline_array, chunks
-    ):
+    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
 
         # assert isinstance(region, Region)
         # contig = region.contig
@@ -1558,10 +1519,8 @@ class Ag3:
         coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
         # site filters arrays
-        for mask in "gamb_colu_arab", "gamb_colu", "arab":
-            filters_root = self.open_site_filters(
-                mask=mask, analysis=site_filters_analysis
-            )
+        for mask in self._site_mask_ids():
+            filters_root = self.open_site_filters(mask=mask)
             z = filters_root[f"{contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
@@ -1606,8 +1565,8 @@ class Ag3:
         self,
         region,
         sample_sets=None,
+        sample_query=None,
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         inline_array=True,
         chunks="native",
     ):
@@ -1625,10 +1584,11 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str
-            Site filters analysis version.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1658,7 +1618,6 @@ class Ag3:
                 y = self._snp_calls_dataset(
                     contig=r.contig,
                     sample_set=s,
-                    site_filters_analysis=site_filters_analysis,
                     inline_array=inline_array,
                     chunks=chunks,
                 )
@@ -1686,6 +1645,12 @@ class Ag3:
 
         # add call_genotype_mask
         ds["call_genotype_mask"] = ds["call_genotype"] < 0
+
+        # handle sample query
+        if sample_query is not None:
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            ds = ds.isel(samples=loc_samples)
 
         return ds
 
@@ -2322,9 +2287,7 @@ class Ag3:
         region,
         cohorts,
         sample_query=None,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -2349,13 +2312,8 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest
-            version.
         min_cohort_size : int
             Minimum cohort size, below which cohorts are dropped.
-        species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -2387,9 +2345,7 @@ class Ag3:
                     region=r,
                     cohorts=cohorts,
                     sample_query=sample_query,
-                    cohorts_analysis=cohorts_analysis,
                     min_cohort_size=min_cohort_size,
-                    species_analysis=species_analysis,
                     sample_sets=sample_sets,
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
@@ -2411,9 +2367,7 @@ class Ag3:
         region,
         cohorts,
         sample_query,
-        cohorts_analysis,
         min_cohort_size,
-        species_analysis,
         sample_sets,
         drop_invariant,
         max_coverage_variance,
@@ -2423,11 +2377,7 @@ class Ag3:
         assert isinstance(region, Region)
 
         # load sample metadata
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            cohorts_analysis=cohorts_analysis,
-            species_analysis=species_analysis,
-        )
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
 
         # get gene copy number data
         ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
@@ -2770,15 +2720,15 @@ class Ag3:
 
         return ds
 
-    def _read_cohort_metadata(self, *, sample_set, cohorts_analysis):
+    def _read_cohort_metadata(self, *, sample_set):
         """Read cohort metadata for a single sample set."""
         try:
-            df = self._cache_cohort_metadata[(sample_set, cohorts_analysis)]
+            df = self._cache_cohort_metadata[sample_set]
         except KeyError:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
-            path = f"{path_prefix}/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+            path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
             with self._fs.open(path) as f:
                 df = pd.read_csv(f, na_values="")
 
@@ -2795,12 +2745,10 @@ class Ag3:
                 inplace=True,
             )
 
-            self._cache_cohort_metadata[(sample_set, cohorts_analysis)] = df
+            self._cache_cohort_metadata[sample_set] = df
         return df.copy()
 
-    def sample_cohorts(
-        self, sample_sets=None, cohorts_analysis=DEFAULT_COHORTS_ANALYSIS
-    ):
+    def sample_cohorts(self, sample_sets=None):
         """Access cohorts metadata for one or more sample sets.
 
         Parameters
@@ -2809,9 +2757,6 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest
-            version.
 
         Returns
         -------
@@ -2822,10 +2767,7 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
-        dfs = [
-            self._read_cohort_metadata(sample_set=s, cohorts_analysis=cohorts_analysis)
-            for s in sample_sets
-        ]
+        dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
         df = pd.concat(dfs, axis=0, ignore_index=True)
 
         return df
@@ -2835,11 +2777,8 @@ class Ag3:
         transcript,
         cohorts,
         sample_query=None,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         min_cohort_size=10,
         site_mask=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
         sample_sets=None,
         drop_invariant=True,
     ):
@@ -2858,18 +2797,11 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest
-            version.
         min_cohort_size : int
             Minimum cohort size, below which allele frequencies are not
             calculated for cohorts.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
-        species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Include species calls in metadata.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -2895,11 +2827,8 @@ class Ag3:
             transcript=transcript,
             cohorts=cohorts,
             sample_query=sample_query,
-            cohorts_analysis=cohorts_analysis,
             min_cohort_size=min_cohort_size,
             site_mask=site_mask,
-            site_filters_analysis=site_filters_analysis,
-            species_analysis=species_analysis,
             sample_sets=sample_sets,
             drop_invariant=drop_invariant,
             effects=True,
@@ -3119,9 +3048,6 @@ class Ag3:
         site_mask=None,
         nobs_mode="called",  # or "fixed"
         ci_method="wilson",
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
         """Group samples by taxon, area (space) and period (time), then compute
         SNP allele counts and frequencies.
@@ -3160,12 +3086,6 @@ class Ag3:
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
-        cohorts_analysis : str, optional
-            Cohort analysis version, default is the latest version.
-        species_analysis : str, optional
-            Species calls analysis version.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
 
         Returns
         -------
@@ -3185,18 +3105,13 @@ class Ag3:
         _check_param_min_cohort_size(min_cohort_size)
 
         # load sample metadata
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
-        )
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
 
         # access SNP calls
         ds_snps = self.snp_calls(
             region=transcript,
             sample_sets=sample_sets,
             site_mask=site_mask,
-            site_filters_analysis=site_filters_analysis,
         )
 
         # access genotypes
@@ -3379,9 +3294,6 @@ class Ag3:
         site_mask=None,
         nobs_mode="called",  # or "fixed"
         ci_method="wilson",
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
     ):
         """Group samples by taxon, area (space) and period (time), then compute
         amino acid change allele counts and frequencies.
@@ -3417,12 +3329,6 @@ class Ag3:
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
-        cohorts_analysis : str, optional
-            Cohort analysis version, default is the latest version.
-        species_analysis : str, optional
-            Species calls analysis version.
-        site_filters_analysis : str, optional
-            Site filters analysis version.
 
         Returns
         -------
@@ -3451,9 +3357,6 @@ class Ag3:
             site_mask=site_mask,
             nobs_mode=nobs_mode,
             ci_method=None,  # we will recompute confidence intervals later
-            cohorts_analysis=cohorts_analysis,
-            species_analysis=species_analysis,
-            site_filters_analysis=site_filters_analysis,
         )
 
         # N.B., we need to worry about the possibility of the
@@ -3546,8 +3449,6 @@ class Ag3:
         drop_invariant=True,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         ci_method="wilson",
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
     ):
         """Group samples by taxon, area (space) and period (time), then compute
         gene CNV counts and frequencies.
@@ -3584,10 +3485,6 @@ class Ag3:
         ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
             Method to use for computing confidence intervals, passed through to
             `statsmodels.stats.proportion.proportion_confint`.
-        cohorts_analysis : str, optional
-            Cohort analysis version, default is the latest version.
-        species_analysis : str, optional
-            Species calls analysis version.
 
         Returns
         -------
@@ -3623,8 +3520,6 @@ class Ag3:
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
                     ci_method=ci_method,
-                    cohorts_analysis=cohorts_analysis,
-                    species_analysis=species_analysis,
                 )
                 for r in region
             ],
@@ -3650,19 +3545,13 @@ class Ag3:
         drop_invariant,
         max_coverage_variance,
         ci_method,
-        cohorts_analysis,
-        species_analysis,
     ):
 
         # sanity check - here we deal with one region only
         assert isinstance(region, Region)
 
         # load sample metadata
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
-        )
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
 
         # access gene CNV calls
         ds_cnv = self.gene_cnv(region=region, sample_sets=sample_sets)
@@ -4627,8 +4516,6 @@ class Ag3:
         row_height=7,
         height=None,
         show=True,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
     ):
         """Plot CNV HMM data for multiple samples as a heatmap, using bokeh.
 
@@ -4655,11 +4542,6 @@ class Ag3:
             Absolute plot height in pixels (px), overrides row_height.
         show : bool, optional
             If true, show the plot.
-        species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Include species calls in metadata.
-        cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest
-            version.
 
         Returns
         -------
@@ -4678,11 +4560,7 @@ class Ag3:
         ds_cnv = self.cnv_hmm(region=region, sample_sets=sample_sets)
 
         # handle sample query
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
-        )
+        df_samples = self.sample_metadata(sample_sets=sample_sets)
         loc_samples = None
         if sample_query is not None:
             loc_samples = df_samples.eval(sample_query).values
@@ -4815,8 +4693,6 @@ class Ag3:
         track_height=None,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
     ):
         """Plot CNV HMM data for multiple samples as a heatmap, with a genes
         track, using bokeh.
@@ -4847,11 +4723,6 @@ class Ag3:
             Height of genes track in pixels (px).
         show : bool, optional
             If true, show the plot.
-        species_analysis : {"aim_20200422", "pca_20200422"}, optional
-            Include species calls in metadata.
-        cohorts_analysis : str
-            Cohort analysis identifier (date of analysis), default is the latest
-            version.
 
         Returns
         -------
@@ -4873,8 +4744,6 @@ class Ag3:
             row_height=row_height,
             height=track_height,
             show=False,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
         )
         fig1.xaxis.visible = False
 
@@ -4900,6 +4769,10 @@ class Ag3:
     def results_cache_get(self, *, name, params):
         if self._results_cache is None:
             raise CacheMiss
+        params = params.copy()
+        params["cohorts_analysis"] = self._cohorts_analysis
+        params["species_analysis"] = self._species_analysis
+        params["site_filters_analysis"] = self._site_filters_analysis
         cache_key, _ = hash_params(params)
         cache_path = self._results_cache / name / cache_key
         results_path = cache_path / "results.npz"
@@ -4912,6 +4785,10 @@ class Ag3:
         if self._results_cache is None:
             # no results cache has been configured, do nothing
             return
+        params = params.copy()
+        params["cohorts_analysis"] = self._cohorts_analysis
+        params["species_analysis"] = self._species_analysis
+        params["site_filters_analysis"] = self._site_filters_analysis
         cache_key, params_json = hash_params(params)
         cache_path = self._results_cache / name / cache_key
         cache_path.mkdir(exist_ok=True, parents=True)
@@ -4921,55 +4798,12 @@ class Ag3:
             f.write(params_json)
         np.savez_compressed(results_path, **results)
 
-    def _snp_allele_counts(
-        self,
-        region,
-        sample_sets,
-        sample_query,
-        site_mask,
-        species_analysis,
-        cohorts_analysis,
-        site_filters_analysis,
-    ):
-
-        # access SNP calls
-        ds_snps = self.snp_calls(
-            region=region,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            site_filters_analysis=site_filters_analysis,
-        )
-        gt = ds_snps["call_genotype"]
-
-        # handle sample query
-        if sample_query is not None:
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets,
-                species_analysis=species_analysis,
-                cohorts_analysis=cohorts_analysis,
-            )
-            loc_samples = df_samples.eval(sample_query).values
-            gt = gt.isel(samples=loc_samples)
-
-        # set up and run allele counts computation
-        gt = allel.GenotypeDaskArray(gt.data)
-        ac = gt.count_alleles(max_allele=3)
-        self.info("Computing SNP allele counts ...")
-        with ProgressBar():
-            ac = ac.compute()
-
-        return ac
-
     def snp_allele_counts(
         self,
         region,
         sample_sets=None,
         sample_query=None,
         site_mask=None,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
-        cache=True,
     ):
         """TODO"""
 
@@ -4983,28 +4817,165 @@ class Ag3:
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
-            species_analysis=species_analysis,
-            cohorts_analysis=cohorts_analysis,
-            site_filters_analysis=site_filters_analysis,
         )
 
         # try to retrieve results from the cache
-        if cache:
-            try:
-                results = self.results_cache_get(name=name, params=params)
-                return allel.AlleleCountsArray(results["ac"])
-            except CacheMiss:
-                pass
+        try:
+            results = self.results_cache_get(name=name, params=params)
+            ac = results["ac"]
 
-        # compute the results
-        ac = self._snp_allele_counts(**params)
+        except CacheMiss:
 
-        # save the results to the cache
-        if cache:
-            results = dict(ac=ac.values)
+            # compute the results
+            ac = self._snp_allele_counts(**params)
+
+            # save the results to the cache
+            results = dict(ac=ac)
             self.results_cache_set(name=name, params=params, results=results)
 
         return ac
+
+    def _snp_allele_counts(
+        self,
+        *,
+        region,
+        sample_sets,
+        sample_query,
+        site_mask,
+    ):
+
+        # access SNP calls
+        ds_snps = self.snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+        )
+        gt = ds_snps["call_genotype"]
+
+        # set up and run allele counts computation
+        gt = allel.GenotypeDaskArray(gt.data)
+        ac = gt.count_alleles(max_allele=3)
+        self.info("Compute SNP allele counts ...")
+        with ProgressBar():
+            ac = ac.compute()
+
+        # return plain numpy array
+        return ac.values
+
+    def pca(
+        self,
+        region,
+        n_snps,
+        thin_offset=0,
+        sample_sets=None,
+        sample_query=None,
+        site_mask="gamb_colu_arab",
+        min_mac=2,
+        max_missing=0,
+        n_components=20,
+    ):
+        """TODO"""
+
+        name = "pca_1"  # change this to invalidate any previously cached data
+        # normalize params for consistent hash value
+        params = dict(
+            region=self.resolve_region(region).to_dict(),
+            n_snps=n_snps,
+            thin_offset=thin_offset,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            site_mask=site_mask,
+            min_mac=min_mac,
+            max_missing=max_missing,
+            n_components=n_components,
+        )
+
+        # try to retrieve results from the cache
+        try:
+            results = self.results_cache_get(name=name, params=params)
+            coords = results["coords"]
+            evr = results["evr"]
+
+        except CacheMiss:
+
+            # compute the PCA
+            coords, evr = self._pca(**params)
+
+            # save the results to the cache
+            results = dict(coords=coords, evr=evr)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        # add PCs to sample metadata dataframe
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+        )
+        df_coords = pd.DataFrame(
+            {f"pc{i + 1}": coords[:, i] for i in range(n_components)}
+        )
+        df_pca = pd.concat([df_samples, df_coords], axis="columns")
+
+        return df_pca, evr
+
+    def _pca(
+        self,
+        *,
+        region,
+        n_snps,
+        thin_offset,
+        sample_sets,
+        sample_query,
+        site_mask,
+        min_mac,
+        max_missing,
+        n_components,
+    ):
+
+        # access SNP calls
+        ds_snps = self.snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+        )
+
+        # perform allele count
+        ac = self.snp_allele_counts(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+        )
+        n_chroms = ds_snps.dims["samples"] * 2
+        an_called = ac.sum(axis=1)
+        an_missing = n_chroms - an_called
+
+        # ascertain sites
+        ac = allel.AlleleCountsArray(ac)
+        loc_sites = ac.is_biallelic_01(min_mac=min_mac) & (an_missing <= max_missing)
+
+        # thin sites to approximately desired number
+        loc_sites = np.nonzero(loc_sites)[0]
+        thin_step = max(loc_sites.shape[0] // n_snps, 1)
+        loc_sites_thinned = loc_sites[thin_offset::thin_step]
+
+        # access genotypes
+        gt = ds_snps["call_genotype"].data
+        gt_asc = da.take(gt, loc_sites_thinned, axis=0)
+        gn_asc = allel.GenotypeDaskArray(gt_asc).to_n_alt()
+        self.info("Load SNP genotypes ...")
+        with ProgressBar():
+            gn_asc = gn_asc.compute()
+
+        # remove any edge-case variants where all genotypes are identical
+        loc_var = np.any(gn_asc != gn_asc[:, 0, np.newaxis], axis=1)
+        gn_var = np.compress(loc_var, gn_asc, axis=0)
+
+        # run the PCA
+        coords, model = allel.pca(gn_var, n_components=n_components)
+
+        return coords, model.explained_variance_ratio_
 
 
 def _locate_cohorts(*, cohorts, df_samples):
