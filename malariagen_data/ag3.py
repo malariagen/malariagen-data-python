@@ -4880,7 +4880,7 @@ class Ag3:
     def run_pca(
         self,
         region,
-        results_dir="ag3-pca-results",
+        results_dir=None,
         sample_sets=PUBLIC_RELEASES,
         sample_query=None,
         site_mask="gamb_colu_arab",
@@ -4896,6 +4896,8 @@ class Ag3:
         ----------
         region : str
             Chromosome arm, e.g., '3L', or region, e.g., '3L:1000000-37000000'.
+        results_dir : filepath, optional
+            A filepath to store pca results, allows fast re-running of pca.
         sample_sets : str or list of str, optional
             Sample sets to analyse.
         sample_query : str, optional
@@ -4921,35 +4923,38 @@ class Ag3:
             Explained variance ratio per principal component.
 
         """
+        if results_dir:
+            # set results dir
+            os.makedirs(results_dir, exist_ok=True)
 
-        # set results dir
-        os.makedirs(results_dir, exist_ok=True)
+            # construct a key to save the results under
+            results_key = self._hash_params(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                site_mask=site_mask,
+                min_minor_ac=min_minor_ac,
+                max_an_missing=max_an_missing,
+                n_snps=n_snps,
+                snp_offset=snp_offset,
+                n_components=n_components,
+            )
 
-        # construct a key to save the results under
-        results_key = self._hash_params(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-            min_minor_ac=min_minor_ac,
-            max_an_missing=max_an_missing,
-            n_snps=n_snps,
-            snp_offset=snp_offset,
-            n_components=n_components,
-        )
+            # define paths for results files
+            data_path = f"{results_dir}/{results_key}-data.csv"
+            evr_path = f"{results_dir}/{results_key}-evr.npy"
 
-        # define paths for results files
-        data_path = f"{results_dir}/{results_key}-data.csv"
-        evr_path = f"{results_dir}/{results_key}-evr.npy"
+            try:
+                # try to load previously generated results
+                data = pd.read_csv(data_path)
+                evr = np.load(evr_path)
+                return data, evr
+            except FileNotFoundError:
+                # no previous results available, need to run analysis
+                print(f"running analysis: {results_key}")
 
-        try:
-            # try to load previously generated results
-            data = pd.read_csv(data_path)
-            evr = np.load(evr_path)
-            return data, evr
-        except FileNotFoundError:
-            # no previous results available, need to run analysis
-            print(f"running analysis: {results_key}")
+        else:
+            print("running analysis")
 
         print("setting up inputs")
 
@@ -5018,9 +5023,10 @@ class Ag3:
 
         # save results
         evr = model.explained_variance_ratio_
-        data.to_csv(data_path, index=False)
-        np.save(evr_path, evr)
-        print(f"saved results: {results_key}")
+        if results_dir:
+            data.to_csv(data_path, index=False)
+            np.save(evr_path, evr)
+            print(f"saved results: {results_key}")
 
         return data, evr
 
