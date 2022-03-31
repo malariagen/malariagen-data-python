@@ -2573,12 +2573,16 @@ def test_run_pca():
     ag3 = setup_ag3()
 
     sample_set = "AG1000G-FR"
+    sample_query = "taxon == 'gambiae'"
     samset = ag3.sample_sets()
     d_len = samset[samset.sample_set == sample_set].sample_count.values[0]
     n_components = 8
 
     data, evr = ag3.run_pca(
-        region="3L", sample_sets=sample_set, n_components=n_components
+        region="3L",
+        sample_sets=sample_set,
+        sample_query=sample_query,
+        n_components=n_components,
     )
 
     assert isinstance(data, pd.core.frame.DataFrame)
