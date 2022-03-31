@@ -1,3 +1,4 @@
+import logging
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
@@ -36,6 +37,10 @@ from .util import (  # type_error,
     unpack_gff3_attributes,
     xarray_concat,
 )
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+
 
 PUBLIC_RELEASES = ("3.0",)
 DEFAULT_URL = "gs://vo_agam_release/"
@@ -114,8 +119,10 @@ class Ag3:
         If True (default), configure bokeh to output plots to the notebook.
     results_cache : str, optional
         Path to directory on local file system to save results.
-    log : file-like, optional
-        Log messages here.
+    log : str or stream, optional
+        Output for logging messages.
+    log_level : int, optional
+        Logging level.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -151,20 +158,33 @@ class Ag3:
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
+        log_level=logging.INFO,
         **kwargs,
     ):
 
         self._url = url
         self._pre = kwargs.pop("pre", False)
-        self._log = log
         self._cohorts_analysis = cohorts_analysis
         self._species_analysis = species_analysis
         self._site_filters_analysis = site_filters_analysis
 
-        # setup filesystem
+        # set up logging
+        handler = None
+        if isinstance(log, str):
+            handler = logging.FileHandler(log)
+        elif hasattr(log, "write"):
+            handler = logging.StreamHandler(log)
+        self._log_handler = handler
+        if handler is not None:
+            handler.setLevel(log_level)
+            formatter = logging.Formatter(fmt="[%(levelname)s] %(message)s")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+        # set up filesystem
         self._fs, self._base_path = init_filesystem(url, **kwargs)
 
-        # setup caches
+        # set up caches
         self._cache_releases = None
         self._cache_sample_sets = dict()
         self._cache_general_metadata = dict()
@@ -274,10 +294,21 @@ class Ag3:
             </table>
         """
 
-    def info(self, *msg):
-        if self._log is not None:
-            print("[INFO]", *msg, file=self._log)
-            self._log.flush()
+    def set_log_level(self, level):
+        if self._log_handler is not None:
+            self._log_handler.setLevel(level)
+
+    def debug(self, msg):
+        caller_name = sys._getframe().f_back.f_code.co_name
+        msg = f"{caller_name}: {msg}"
+        logger.debug(msg)
+        if self._log_handler is not None:
+            self._log_handler.flush()
+
+    def info(self, msg):
+        logger.info(msg)
+        if self._log_handler is not None:
+            self._log_handler.flush()
 
     @property
     def releases(self):
@@ -4779,6 +4810,7 @@ class Ag3:
         if not results_path.exists():
             raise CacheMiss
         results = np.load(results_path)
+        self.debug(f"loaded {name}/{cache_key}")
         return results
 
     def results_cache_set(self, *, name, params, results):
@@ -4797,6 +4829,7 @@ class Ag3:
         with params_path.open(mode="w") as f:
             f.write(params_json)
         np.savez_compressed(results_path, **results)
+        self.debug(f"saved {name}/{cache_key}")
 
     def snp_allele_counts(
         self,
@@ -4856,7 +4889,7 @@ class Ag3:
         # set up and run allele counts computation
         gt = allel.GenotypeDaskArray(gt.data)
         ac = gt.count_alleles(max_allele=3)
-        self.info("Compute SNP allele counts ...")
+        self.info("compute SNP allele counts")
         with ProgressBar():
             ac = ac.compute()
 
@@ -4932,15 +4965,18 @@ class Ag3:
         n_components,
     ):
 
-        # access SNP calls
+        self.debug("access SNP calls")
         ds_snps = self.snp_calls(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
         )
+        self.debug(
+            f"{ds_snps.dims['variants']:,} variants, {ds_snps.dims['samples']:,} samples"
+        )
 
-        # perform allele count
+        self.debug("perform allele count")
         ac = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
@@ -4951,28 +4987,38 @@ class Ag3:
         an_called = ac.sum(axis=1)
         an_missing = n_chroms - an_called
 
-        # ascertain sites
+        self.debug("ascertain sites")
         ac = allel.AlleleCountsArray(ac)
-        loc_sites = ac.is_biallelic_01(min_mac=min_mac) & (an_missing <= max_missing)
+        min_ref_ac = min_mac
+        max_ref_ac = n_chroms - min_mac
+        # here we choose biallelic sites involving the reference allele
+        loc_sites = (
+            ac.is_biallelic()
+            & (ac[:, 0] >= min_ref_ac)
+            & (ac[:, 0] <= max_ref_ac)
+            & (an_missing <= max_missing)
+        )
+        self.debug(f"ascertained {np.count_nonzero(loc_sites):,} sites")
 
-        # thin sites to approximately desired number
+        self.debug("thin sites to approximately desired number")
         loc_sites = np.nonzero(loc_sites)[0]
         thin_step = max(loc_sites.shape[0] // n_snps, 1)
         loc_sites_thinned = loc_sites[thin_offset::thin_step]
+        self.debug(f"thinned to {np.count_nonzero(loc_sites_thinned):,} sites")
 
-        # access genotypes
+        self.debug("access genotypes")
         gt = ds_snps["call_genotype"].data
         gt_asc = da.take(gt, loc_sites_thinned, axis=0)
         gn_asc = allel.GenotypeDaskArray(gt_asc).to_n_alt()
-        self.info("Load SNP genotypes ...")
+        self.info("load SNP genotypes")
         with ProgressBar():
             gn_asc = gn_asc.compute()
 
-        # remove any edge-case variants where all genotypes are identical
+        self.debug("remove any edge-case variants where all genotypes are identical")
         loc_var = np.any(gn_asc != gn_asc[:, 0, np.newaxis], axis=1)
         gn_var = np.compress(loc_var, gn_asc, axis=0)
 
-        # run the PCA
+        self.debug("run the PCA")
         coords, model = allel.pca(gn_var, n_components=n_components)
 
         return coords, model.explained_variance_ratio_
