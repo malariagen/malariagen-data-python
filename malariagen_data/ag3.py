@@ -4852,20 +4852,14 @@ class Ag3:
             site_mask=site_mask,
         )
 
-        # try to retrieve results from the cache
         try:
             results = self.results_cache_get(name=name, params=params)
-            ac = results["ac"]
 
         except CacheMiss:
-
-            # compute the results
-            ac = self._snp_allele_counts(**params)
-
-            # save the results to the cache
-            results = dict(ac=ac)
+            results = self._snp_allele_counts(**params)
             self.results_cache_set(name=name, params=params, results=results)
 
+        ac = results["ac"]
         return ac
 
     def _snp_allele_counts(
@@ -4894,7 +4888,9 @@ class Ag3:
             ac = ac.compute()
 
         # return plain numpy array
-        return ac.values
+        results = dict(ac=ac.values)
+
+        return results
 
     def pca(
         self,
@@ -4909,6 +4905,9 @@ class Ag3:
         n_components=20,
     ):
         """TODO"""
+
+        # N.B., this is potentially a longer-running computation, especially
+        # if running on colab, and so we will try to cache the results.
 
         name = "pca_1"  # change this to invalidate any previously cached data
         # normalize params for consistent hash value
@@ -4927,19 +4926,16 @@ class Ag3:
         # try to retrieve results from the cache
         try:
             results = self.results_cache_get(name=name, params=params)
-            coords = results["coords"]
-            evr = results["evr"]
 
         except CacheMiss:
-
-            # compute the PCA
-            coords, evr = self._pca(**params)
-
-            # save the results to the cache
-            results = dict(coords=coords, evr=evr)
+            results = self._pca(**params)
             self.results_cache_set(name=name, params=params, results=results)
 
-        # add PCs to sample metadata dataframe
+        # unpack results
+        coords = results["coords"]
+        evr = results["evr"]
+
+        # add coords to sample metadata dataframe
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -5014,14 +5010,17 @@ class Ag3:
         with ProgressBar():
             gn_asc = gn_asc.compute()
 
-        self.debug("remove any edge-case variants where all genotypes are identical")
+        self.debug("remove any sites where all genotypes are identical")
         loc_var = np.any(gn_asc != gn_asc[:, 0, np.newaxis], axis=1)
         gn_var = np.compress(loc_var, gn_asc, axis=0)
 
-        self.debug("run the PCA")
+        self.debug(
+            "run the PCA with {gn_var.shape[0]:,} sites and {gn_var.shape[1]} samples"
+        )
         coords, model = allel.pca(gn_var, n_components=n_components)
 
-        return coords, model.explained_variance_ratio_
+        results = dict(coords=coords, evr=model.explained_variance_ratio_)
+        return results
 
 
 def _locate_cohorts(*, cohorts, df_samples):
