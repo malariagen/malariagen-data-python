@@ -5004,8 +5004,8 @@ class Ag3:
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
-            min_mac=min_minor_ac,
-            max_missing=max_missing_an,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
             n_components=n_components,
         )
 
@@ -5109,8 +5109,8 @@ class Ag3:
 
     @staticmethod
     def plot_pca_variance(evr, width=900, height=400, **kwargs):
-        """Make a bar plot showing explained variance ratios from a principal
-        components analysis (PCA) using plotly.
+        """Plot explained variance ratios from a principal components analysis
+        (PCA) using a plotly bar plot.
 
         Parameters
         ----------
@@ -5159,15 +5159,48 @@ class Ag3:
         data,
         x="PC1",
         y="PC2",
+        color=None,
+        symbol=None,
         jitter_frac=0.02,
         random_seed=42,
         width=900,
         height=600,
         marker_size=10,
-        color=None,
         **kwargs,
     ):
-        """TODO"""
+        """Plot sample coordinates from a principal components analysis (PCA)
+        as a plotly scatter plot.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame
+            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+            etc., added.
+        x : str, optional
+            Name of principal component to plot on the X axis.
+        y : str, optional
+            Name of principal component to plot on the Y axis.
+        color : str, optional
+            Name of column in the input dataframe to use to color the markers.
+        symbol : str, optional
+            Name of column in the input dataframe to use to choose marker symbols.
+        jitter_frac : float, optional
+            Randomly jitter points by this fraction of their range.
+        random_seed : int, optional
+            Random seed for jitter.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        marker_size : int, optional
+            Marker size.
+
+        Returns
+        -------
+        fig : Figure
+            A plotly figure.
+
+        """
 
         import plotly.express as px
 
@@ -5201,6 +5234,8 @@ class Ag3:
         plot_kwargs = dict(
             width=width,
             height=height,
+            color=color,
+            symbol=symbol,
             template="simple_white",
             hover_name="sample_id",
             hover_data=hover_data,
@@ -5210,27 +5245,15 @@ class Ag3:
 
         # special handling for taxon color
         if color == "taxon":
-            taxon_palette = px.colors.qualitative.Plotly
-            taxon_color_map = {
-                "gambiae": taxon_palette[0],
-                "coluzzii": taxon_palette[1],
-                "arabiensis": taxon_palette[2],
-                "gcx1": taxon_palette[3],
-                "gcx2": taxon_palette[4],
-                "gcx3": taxon_palette[5],
-                "intermediate_gambiae_coluzzii": taxon_palette[6],
-                "intermediate_arabiensis_gambiae": taxon_palette[7],
-            }
-            plot_kwargs["color_discrete_map"] = taxon_color_map
-            plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
+            _setup_taxon_colors(plot_kwargs)
 
         # apply any user overrides
         plot_kwargs.update(kwargs)
 
         # 2D scatter plot
-        fig = px.scatter(data, x=x, y=y, color=color, **plot_kwargs)
+        fig = px.scatter(data, x=x, y=y, **plot_kwargs)
 
-        # tidy
+        # tidy up
         fig.update_layout(
             legend=dict(itemsizing="constant"),
         )
@@ -5244,15 +5267,50 @@ class Ag3:
         x="PC1",
         y="PC2",
         z="PC3",
+        color=None,
+        symbol=None,
         jitter_frac=0.02,
         random_seed=42,
         width=900,
         height=600,
         marker_size=5,
-        color=None,
         **kwargs,
     ):
-        """TODO"""
+        """Plot sample coordinates from a principal components analysis (PCA)
+        as a plotly 3D scatter plot.
+
+        Parameters
+        ----------
+        data : pandas.DataFrame
+            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+            etc., added.
+        x : str, optional
+            Name of principal component to plot on the X axis.
+        y : str, optional
+            Name of principal component to plot on the Y axis.
+        z : str, optional
+            Name of principal component to plot on the Z axis.
+        color : str, optional
+            Name of column in the input dataframe to use to color the markers.
+        symbol : str, optional
+            Name of column in the input dataframe to use to choose marker symbols.
+        jitter_frac : float, optional
+            Randomly jitter points by this fraction of their range.
+        random_seed : int, optional
+            Random seed for jitter.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        marker_size : int, optional
+            Marker size.
+
+        Returns
+        -------
+        fig : Figure
+            A plotly figure.
+
+        """
 
         import plotly.express as px
 
@@ -5289,31 +5347,21 @@ class Ag3:
             height=height,
             hover_name="sample_id",
             hover_data=hover_data,
+            color=color,
+            symbol=symbol,
         )
 
         # special handling for taxon color
         if color == "taxon":
-            taxon_palette = px.colors.qualitative.Plotly
-            taxon_color_map = {
-                "gambiae": taxon_palette[0],
-                "coluzzii": taxon_palette[1],
-                "arabiensis": taxon_palette[2],
-                "gcx1": taxon_palette[3],
-                "gcx2": taxon_palette[4],
-                "gcx3": taxon_palette[5],
-                "intermediate_gambiae_coluzzii": taxon_palette[6],
-                "intermediate_arabiensis_gambiae": taxon_palette[7],
-            }
-            plot_kwargs["color_discrete_map"] = taxon_color_map
-            plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
+            _setup_taxon_colors(plot_kwargs)
 
         # apply any user overrides
         plot_kwargs.update(kwargs)
 
         # 3D scatter plot
-        fig = px.scatter_3d(data, x=x, y=y, z=z, color=color, **plot_kwargs)
+        fig = px.scatter_3d(data, x=x, y=y, z=z, **plot_kwargs)
 
-        # tidy
+        # tidy up
         fig.update_layout(
             scene=dict(aspectmode="cube"),
             legend=dict(itemsizing="constant"),
@@ -5321,6 +5369,24 @@ class Ag3:
         fig.update_traces(marker={"size": marker_size})
 
         return fig
+
+
+def _setup_taxon_colors(plot_kwargs):
+    import plotly.express as px
+
+    taxon_palette = px.colors.qualitative.Plotly
+    taxon_color_map = {
+        "gambiae": taxon_palette[0],
+        "coluzzii": taxon_palette[1],
+        "arabiensis": taxon_palette[2],
+        "gcx1": taxon_palette[3],
+        "gcx2": taxon_palette[4],
+        "gcx3": taxon_palette[5],
+        "intermediate_gambiae_coluzzii": taxon_palette[6],
+        "intermediate_arabiensis_gambiae": taxon_palette[7],
+    }
+    plot_kwargs["color_discrete_map"] = taxon_color_map
+    plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
 
 
 def _locate_cohorts(*, cohorts, df_samples):
