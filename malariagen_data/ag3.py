@@ -126,8 +126,8 @@ class Ag3:
         Path to directory on local file system to save results.
     log : str or stream, optional
         File path or stream output for logging messages.
-    log_level : int, optional
-        Logging level.
+    debug : bool, optional
+        Set to True to enable debug level logging.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -168,7 +168,7 @@ class Ag3:
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
-        log_level=logging.INFO,
+        debug=False,
         **kwargs,
     ):
 
@@ -186,7 +186,10 @@ class Ag3:
             handler = logging.StreamHandler(log)
         self._log_handler = handler
         if handler is not None:
-            handler.setLevel(log_level)
+            if debug:
+                handler.setLevel(logging.DEBUG)
+            else:
+                handler.setLevel(logging.INFO)
             formatter = logging.Formatter(fmt="[%(levelname)s] %(message)s")
             handler.setFormatter(formatter)
             logger.addHandler(handler)
@@ -309,14 +312,17 @@ class Ag3:
             self._log_handler.setLevel(level)
 
     def debug(self, msg):
+        # get the name of the calling function, helps with debugging
         caller_name = sys._getframe().f_back.f_code.co_name
         msg = f"{caller_name}: {msg}"
         logger.debug(msg)
+        # flush messages immediately
         if self._log_handler is not None:
             self._log_handler.flush()
 
     def info(self, msg):
         logger.info(msg)
+        # flush messages immediately
         if self._log_handler is not None:
             self._log_handler.flush()
 
