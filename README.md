@@ -29,6 +29,40 @@ from the following locations:
 ## Release notes
 
 
+### 3.1.0
+
+* `Ag3`: Limit docstring widths for better wrapping in colab help tabs
+  ([GH186](https://github.com/malariagen/malariagen-data-python/issues/186)).
+
+* `Ag3`: Return a copy of cached DataFrames to any subsequent user
+  modifications do not affect the cached data
+  ([GH184](https://github.com/malariagen/malariagen-data-python/issues/184)).
+
+* `Ag3`: Improving zooming behaviour of bokeh genome plots
+  ([GH189](https://github.com/malariagen/malariagen-data-python/issues/189)).
+
+* `Ag3`: Add sample identifiers to CNV HMM heatmap plots
+  ([GH191](https://github.com/malariagen/malariagen-data-python/issues/191)).
+
+* `Ag3`: Exclude high coverage variance samples by default in CNV HMM
+  heatmap plots
+  ([GH178](https://github.com/malariagen/malariagen-data-python/issues/178)).
+
+* `Ag3`: Standardise default width of bokeh genome plots
+  ([GH174](https://github.com/malariagen/malariagen-data-python/issues/174)).
+
+* `Ag3`: Consistently capitalise plot labels
+  ([GH176](https://github.com/malariagen/malariagen-data-python/issues/176)).
+
+* `Ag3`: Tidy title for CNV HMM heatmap plots when using multiple
+  sample sets
+  ([GH175](https://github.com/malariagen/malariagen-data-python/issues/175)).
+
+* `Ag3`: Fix a bug in loading of gene CNV frequencies where
+  intermediate species samples are missing
+  ([GH183](https://github.com/malariagen/malariagen-data-python/issues/183)).
+
+
 ### 3.0.0
 
 * Added a new function `Ag3.plot_cnv_hmm_coverage()` which generates a
