@@ -1268,7 +1268,7 @@ def test_gene_cnv(region, sample_sets):
     assert set(ds.dims) == {"samples", "genes"}
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
     df_geneset = ag3.geneset(region=region)
