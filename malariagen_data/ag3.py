@@ -5110,6 +5110,12 @@ class Ag3:
         self.debug("run the PCA")
         coords, model = allel.pca(gn_var, n_components=n_components)
 
+        self.debug("work around sign indeterminacy")
+        for i in range(n_components):
+            c = coords[:, i]
+            if np.abs(c.min()) > np.abs(c.max()):
+                coords[:, i] = c * -1
+
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
 
