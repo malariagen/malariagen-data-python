@@ -4867,6 +4867,69 @@ class Ag3:
 
         return fig
 
+    def view_alignments(
+        self,
+        region,
+        sample,
+    ):
+        """Launch IGV and view sequence read alignments from the given sample.
+
+        Parameters
+        ----------
+        region: str
+            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
+        sample : str
+            Sample identifier, e.g., "AR0001-C".
+
+        Notes
+        -----
+        Only samples from the Ag3.0 release are currently available.
+
+        """
+
+        sample = self.sample_metadata().set_index("sample_id").loc[sample]
+        sample_set = sample["sample_set"]
+        release = sample["release"]
+        if release != "3.0":
+            raise NotImplementedError(
+                "Only samples from the Ag3.0 release are currently supported."
+            )
+        # TODO support other releases
+
+        import igv_notebook
+
+        igv_notebook.init()
+
+        browser = igv_notebook.Browser(
+            {
+                "reference": {
+                    "id": "AgamP4",
+                    "name": "Anopheles gambiae (PEST)",
+                    "fastaURL": "gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa",
+                    "indexURL": "gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa.fai",
+                    "tracks": [
+                        {
+                            "name": "Genes",
+                            "url": "gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz",
+                            "indexed": False,
+                        }
+                    ],
+                },
+                "locus": region,
+            }
+        )
+
+        release_path = _release_to_path(release)
+        browser.load_track(
+            {
+                "name": sample,
+                "path": f"gs://vo_agam_release/{release_path}/alignments/{sample_set}/{sample}.bam",
+                "indexPath": f"gs://vo_agam_release/{release_path}/alignments/{sample_set}/{sample}.bam.bai",
+                "format": "bam",
+                "type": "alignment",
+            }
+        )
+
 
 def _locate_cohorts(*, cohorts, df_samples):
 
