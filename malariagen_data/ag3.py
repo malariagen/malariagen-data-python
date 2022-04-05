@@ -1697,6 +1697,8 @@ class Ag3:
         if sample_query is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError("No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
 
         return ds

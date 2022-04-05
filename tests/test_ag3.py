@@ -654,6 +654,32 @@ def test_snp_calls(sample_sets, region, site_mask):
     assert pos.shape == pos.compute().shape
 
 
+@pytest.mark.parametrize(
+    "sample_query",
+    [None, "taxon == 'coluzzii'", "taxon == 'robot'"],
+)
+def test_snp_calls__sample_query(sample_query):
+    ag3 = setup_ag3()
+
+    sample_sets = "AG1000G-BF-A"
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3.snp_calls(
+                region="3L", sample_sets=sample_sets, sample_query=sample_query
+            )
+
+    else:
+        ds = ag3.snp_calls(
+            region="3L", sample_sets=sample_sets, sample_query=sample_query
+        )
+        assert ds.dims["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
 def test_snp_effects():
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
@@ -2550,7 +2576,7 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
 
 @pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
 @pytest.mark.parametrize(
-    "sample_sets", ["AG1000G-FR", ["AG1000G-BF-A", "AG1000G-BF-B"]]
+    "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
 )
 @pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
@@ -2577,6 +2603,55 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
         site_mask=site_mask,
     )
     assert_array_equal(ac, ac2)
+
+
+@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
+def test_pca(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    ag3 = setup_ag3(results_cache=results_cache)
+
+    n_components = 8
+    df_pca, evr = ag3.pca(
+        region=region,
+        n_snps=100,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        n_components=n_components,
+    )
+
+    df_samples = ag3.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+    )
+
+    assert isinstance(df_pca, pd.DataFrame)
+    assert len(df_pca) == len(df_samples)
+    expected_columns = df_samples.columns.tolist() + [
+        f"PC{n+1}" for n in range(n_components)
+    ]
+    assert df_pca.columns.tolist() == expected_columns
+    assert_frame_equal(df_samples, df_pca[df_samples.columns.tolist()])
+    assert isinstance(evr, np.ndarray)
+    assert evr.shape == (n_components,)
+
+    df_pca2, evr2 = ag3.pca(
+        region=region,
+        n_snps=100,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        n_components=n_components,
+    )
+    assert_frame_equal(df_pca, df_pca2)
+    assert_array_equal(evr, evr2)
 
 
 def _compare_series_like(actual, expect):
