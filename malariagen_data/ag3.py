@@ -4869,9 +4869,9 @@ class Ag3:
 
         """
 
-        sample = self.sample_metadata().set_index("sample_id").loc[sample]
-        sample_set = sample["sample_set"]
-        release = sample["release"]
+        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        sample_set = sample_rec["sample_set"]
+        release = sample_rec["release"]
         if release != "3.0":
             raise NotImplementedError(
                 "Only samples from the Ag3.0 release are currently supported."
