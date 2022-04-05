@@ -33,9 +33,15 @@ from .util import (  # type_error,
 )
 
 PUBLIC_RELEASES = ("3.0",)
-DEFAULT_URL = "gs://vo_agam_release/"
+GCS_URL = "gs://vo_agam_release/"
 GENESET_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+)
+GENOME_FASTA_PATH = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa"
+)
+GENOME_FAI_PATH = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa.fai"
 )
 GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
@@ -127,7 +133,7 @@ class Ag3:
 
     contigs = CONTIGS
 
-    def __init__(self, url=DEFAULT_URL, bokeh_output_notebook=True, **kwargs):
+    def __init__(self, url=GCS_URL, bokeh_output_notebook=True, **kwargs):
 
         self._url = url
         self._pre = kwargs.pop("pre", False)
@@ -4867,6 +4873,34 @@ class Ag3:
 
         return fig
 
+    @staticmethod
+    def igv(region):
+
+        import igv_notebook
+
+        igv_notebook.init()
+
+        browser = igv_notebook.Browser(
+            {
+                "reference": {
+                    "id": "AgamP4",
+                    "name": "Anopheles gambiae (PEST)",
+                    "fastaURL": f"{GCS_URL}{GENOME_FASTA_PATH}",
+                    "indexURL": f"{GCS_URL}{GENOME_FAI_PATH}",
+                    "tracks": [
+                        {
+                            "name": "Genes",
+                            "url": f"{GCS_URL}{GENESET_GFF3_PATH}",
+                            "indexed": False,
+                        }
+                    ],
+                },
+                "locus": region,
+            }
+        )
+
+        return browser
+
     def view_alignments(
         self,
         region,
@@ -4896,35 +4930,13 @@ class Ag3:
             )
         # TODO support other releases
 
-        import igv_notebook
-
-        igv_notebook.init()
-
-        browser = igv_notebook.Browser(
-            {
-                "reference": {
-                    "id": "AgamP4",
-                    "name": "Anopheles gambiae (PEST)",
-                    "fastaURL": "gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa",
-                    "indexURL": "gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa.fai",
-                    "tracks": [
-                        {
-                            "name": "Genes",
-                            "url": "gs://vo_agam_release/reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz",
-                            "indexed": False,
-                        }
-                    ],
-                },
-                "locus": region,
-            }
-        )
-
+        browser = self.igv(region=region)
         release_path = _release_to_path(release)
         browser.load_track(
             {
                 "name": sample,
-                "path": f"gs://vo_agam_release/{release_path}/alignments/{sample_set}/{sample}.bam",
-                "indexPath": f"gs://vo_agam_release/{release_path}/alignments/{sample_set}/{sample}.bam.bai",
+                "path": f"{GCS_URL}{release_path}/alignments/{sample_set}/{sample}.bam",
+                "indexPath": f"{GCS_URL}{release_path}/alignments/{sample_set}/{sample}.bam.bai",
                 "format": "bam",
                 "type": "alignment",
             }
