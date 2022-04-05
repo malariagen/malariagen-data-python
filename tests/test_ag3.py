@@ -1,4 +1,5 @@
 import random
+import shutil
 
 import dask.array as da
 import numpy as np
@@ -99,18 +100,14 @@ def test_sample_metadata():
     )
 
     # all v3
-    df_samples_v3 = ag3.sample_metadata(
-        sample_sets="3.0", species_analysis=None, cohorts_analysis=None
-    )
-    assert tuple(df_samples_v3.columns) == expected_cols
+    df_samples_v3 = ag3.sample_metadata(sample_sets="3.0")
+    assert tuple(df_samples_v3.columns[: len(expected_cols)]) == expected_cols
     expected_len = df_sample_sets_v3["sample_count"].sum()
     assert len(df_samples_v3) == expected_len
 
     # single sample set
-    df_samples_x = ag3.sample_metadata(
-        sample_sets="AG1000G-X", species_analysis=None, cohorts_analysis=None
-    )
-    assert tuple(df_samples_x.columns) == expected_cols
+    df_samples_x = ag3.sample_metadata(sample_sets="AG1000G-X")
+    assert tuple(df_samples_x.columns[: len(expected_cols)]) == expected_cols
     expected_len = df_sample_sets_v3.query("sample_set == 'AG1000G-X'")[
         "sample_count"
     ].sum()
@@ -118,40 +115,42 @@ def test_sample_metadata():
 
     # multiple sample sets
     sample_sets = ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"]
-    df_samples_bf = ag3.sample_metadata(
-        sample_sets=sample_sets, species_analysis=None, cohorts_analysis=None
-    )
-    assert tuple(df_samples_bf) == expected_cols
+    df_samples_bf = ag3.sample_metadata(sample_sets=sample_sets)
+    assert tuple(df_samples_bf.columns[: len(expected_cols)]) == expected_cols
     loc_sample_sets = df_sample_sets_v3["sample_set"].isin(sample_sets)
     expected_len = df_sample_sets_v3.loc[loc_sample_sets]["sample_count"].sum()
     assert len(df_samples_bf) == expected_len
 
     # duplicate sample sets
     with pytest.raises(ValueError):
-        ag3.sample_metadata(
-            sample_sets=["3.0", "3.0"], species_analysis=None, cohorts_analysis=None
-        )
+        ag3.sample_metadata(sample_sets=["3.0", "3.0"])
     with pytest.raises(ValueError):
-        ag3.sample_metadata(
-            sample_sets=["AG1000G-UG", "AG1000G-UG"],
-            species_analysis=None,
-            cohorts_analysis=None,
-        )
+        ag3.sample_metadata(sample_sets=["AG1000G-UG", "AG1000G-UG"])
     with pytest.raises(ValueError):
-        ag3.sample_metadata(
-            sample_sets=["AG1000G-UG", "3.0"],
-            species_analysis=None,
-            cohorts_analysis=None,
-        )
+        ag3.sample_metadata(sample_sets=["AG1000G-UG", "3.0"])
 
     # default is all public releases
-    df_default = ag3.sample_metadata(species_analysis=None, cohorts_analysis=None)
-    df_all = ag3.sample_metadata(
-        sample_sets=ag3.releases, species_analysis=None, cohorts_analysis=None
-    )
+    df_default = ag3.sample_metadata()
+    df_all = ag3.sample_metadata(sample_sets=ag3.releases)
     assert_frame_equal(df_default, df_all)
 
-    aim_cols = (
+
+def test_sample_metadata_with_aim_species():
+    ag3 = setup_ag3(species_analysis="aim_20200422")
+
+    expected_cols = (
+        "sample_id",
+        "partner_sample_id",
+        "contributor",
+        "country",
+        "location",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "sex_call",
+        "sample_set",
+        "release",
         "aim_species_fraction_colu",
         "aim_species_fraction_arab",
         "aim_species_gambcolu_arabiensis",
@@ -160,20 +159,27 @@ def test_sample_metadata():
     )
 
     # AIM species calls, included by default
-    df_samples_aim = ag3.sample_metadata(sample_sets="3.0", cohorts_analysis=None)
-    assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
-    assert len(df_samples_aim) == len(df_samples_v3)
+    df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
+    assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
     assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
-    # AIM species calls, explicit
-    df_samples_aim = ag3.sample_metadata(
-        sample_sets="3.0", species_analysis="aim_20200422", cohorts_analysis=None
-    )
-    assert tuple(df_samples_aim.columns) == expected_cols + aim_cols
-    assert len(df_samples_aim) == len(df_samples_v3)
-    assert set(df_samples_aim["aim_species"].dropna()) == expected_species
 
-    pca_cols = (
+def test_sample_metadata_with_pca_species():
+    ag3 = setup_ag3(species_analysis="pca_20200422")
+
+    expected_cols = (
+        "sample_id",
+        "partner_sample_id",
+        "contributor",
+        "country",
+        "location",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "sex_call",
+        "sample_set",
+        "release",
         "pca_species_pc1",
         "pca_species_pc2",
         "pca_species_gambcolu_arabiensis",
@@ -182,15 +188,16 @@ def test_sample_metadata():
     )
 
     # PCA species calls
-    df_samples_pca = ag3.sample_metadata(
-        sample_sets="3.0", species_analysis="pca_20200422", cohorts_analysis=None
-    )
-    assert tuple(df_samples_pca.columns) == expected_cols + pca_cols
-    assert len(df_samples_pca) == len(df_samples_v3)
+    df_samples_pca = ag3.sample_metadata(sample_sets="3.0")
+    assert tuple(df_samples_pca.columns[: len(expected_cols)]) == expected_cols
     assert (
         set(df_samples_pca["pca_species"].dropna()).difference(expected_species)
         == set()
     )
+
+
+def test_sample_metadata_with_cohorts():
+    ag3 = setup_ag3()
 
     cohort_cols = (
         "country_iso",
@@ -203,12 +210,9 @@ def test_sample_metadata():
         "cohort_admin2_year",
         "cohort_admin2_month",
     )
-    # cohort calls
-    df_samples_coh = ag3.sample_metadata(
-        sample_sets="3.0", species_analysis=None, cohorts_analysis="20211101"
-    )
-    assert tuple(df_samples_coh.columns) == expected_cols + cohort_cols
-    assert len(df_samples_coh) == len(df_samples_v3)
+    df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
+    for c in cohort_cols:
+        assert c in df_samples_coh
 
 
 @pytest.mark.parametrize(
@@ -223,9 +227,9 @@ def test_sample_metadata():
 )
 @pytest.mark.parametrize("analysis", ["aim_20200422", "pca_20200422"])
 def test_species_calls(sample_sets, analysis):
-    ag3 = setup_ag3()
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
-    df_species = ag3.species_calls(sample_sets=sample_sets, analysis=analysis)
+    ag3 = setup_ag3(species_analysis=analysis)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    df_species = ag3.species_calls(sample_sets=sample_sets)
     assert len(df_species) == len(df_samples)
     if analysis.startswith("aim_"):
         assert (
@@ -332,7 +336,7 @@ def test_snp_genotypes(chunks, sample_sets, region):
 
     ag3 = setup_ag3()
 
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     gt = ag3.snp_genotypes(region=region, sample_sets=sample_sets, chunks=chunks)
     assert isinstance(gt, da.Array)
     assert gt.ndim == 3
@@ -508,7 +512,7 @@ def test_cross_metadata():
     assert df_crosses.columns.tolist() == expected_cols
 
     # check samples are in AG1000G-X
-    df_samples = ag3.sample_metadata(sample_sets="AG1000G-X", species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets="AG1000G-X")
     assert set(df_crosses["sample_id"]) == set(df_samples["sample_id"])
 
     # check values
@@ -593,7 +597,7 @@ def test_snp_calls(sample_sets, region, site_mask):
     # check dim lengths
     pos = ag3.snp_sites(region=region, field="POS", site_mask=site_mask)
     n_variants = len(pos)
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     assert ds.dims["variants"] == n_variants
     assert ds.dims["samples"] == n_samples
@@ -648,6 +652,32 @@ def test_snp_calls(sample_sets, region, site_mask):
     # check compress bug
     pos = ds["variant_position"].data
     assert pos.shape == pos.compute().shape
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [None, "taxon == 'coluzzii'", "taxon == 'robot'"],
+)
+def test_snp_calls__sample_query(sample_query):
+    ag3 = setup_ag3()
+
+    sample_sets = "AG1000G-BF-A"
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3.snp_calls(
+                region="3L", sample_sets=sample_sets, sample_query=sample_query
+            )
+
+    else:
+        ds = ag3.snp_calls(
+            region="3L", sample_sets=sample_sets, sample_query=sample_query
+        )
+        assert ds.dims["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
 def test_snp_effects():
@@ -756,7 +786,7 @@ def test_snp_effects():
 
 
 def test_snp_allele_frequencies__str_cohorts():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
@@ -768,14 +798,13 @@ def test_snp_allele_frequencies__str_cohorts():
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
         cohorts=cohorts,
-        cohorts_analysis="20211101",
         min_cohort_size=min_cohort_size,
         site_mask="gamb_colu",
         sample_sets="3.0",
         drop_invariant=True,
         effects=False,
     )
-    df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
+    df_coh = ag3.sample_cohorts(sample_sets="3.0")
     coh_nm = "cohort_" + cohorts
     coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
     cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
@@ -789,7 +818,7 @@ def test_snp_allele_frequencies__str_cohorts():
 
 
 def test_snp_allele_frequencies__dict_cohorts():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = {
         "ke": "country == 'Kenya'",
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
@@ -839,7 +868,7 @@ def test_snp_allele_frequencies__dict_cohorts():
 
 
 def test_snp_allele_frequencies__str_cohorts__effects():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
@@ -861,14 +890,13 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     df = ag3.snp_allele_frequencies(
         transcript="AGAP004707-RD",
         cohorts=cohorts,
-        cohorts_analysis="20211101",
         min_cohort_size=min_cohort_size,
         site_mask="gamb_colu",
         sample_sets="3.0",
         drop_invariant=True,
         effects=True,
     )
-    df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
+    df_coh = ag3.sample_cohorts(sample_sets="3.0")
     coh_nm = "cohort_" + cohorts
     coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
     cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
@@ -888,7 +916,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
 
 
 def test_snp_allele_frequencies__query():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = "admin1_year"
     min_cohort_size = 10
     expected_columns = [
@@ -904,7 +932,6 @@ def test_snp_allele_frequencies__query():
         transcript="AGAP004707-RD",
         cohorts=cohorts,
         sample_query="country == 'Angola'",
-        cohorts_analysis="20211101",
         min_cohort_size=min_cohort_size,
         site_mask="gamb_colu",
         sample_sets="3.0",
@@ -981,7 +1008,7 @@ def test_cnv_hmm(sample_sets, region):
         assert np.all(variant_end >= region.start)
         n_variants_expected = 1 + (region.end - region.start) // 300
 
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples_expected = len(df_samples)
     assert ds.dims["variants"] == n_variants_expected
     assert ds.dims["samples"] == n_samples_expected
@@ -1065,7 +1092,7 @@ def test_cnv_coverage_calls(sample_set, analysis, region):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check sample IDs
-    df_samples = ag3.sample_metadata(sample_sets=sample_set, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_set)
     sample_id = pd.Series(ds["sample_id"].values)
     assert sample_id.isin(df_samples["sample_id"]).all()
 
@@ -1155,7 +1182,7 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
     assert set(ds.dims) == {"samples", "variants"}
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
 
@@ -1268,7 +1295,7 @@ def test_gene_cnv(region, sample_sets):
     assert set(ds.dims) == {"samples", "genes"}
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
     df_geneset = ag3.geneset(region=region)
@@ -1326,7 +1353,7 @@ def test_gene_cnv_xarray_indexing(region, sample_sets):
     # pick a random gene and sample ID
 
     # check dim lengths
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets, species_analysis=None)
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     df_geneset = ag3.geneset(region=region)
     df_genes = df_geneset.query("type == 'gene'")
     gene = random.choice(df_genes["ID"].tolist())
@@ -1365,6 +1392,7 @@ def _check_frequency(x):
     ],
 )
 def test_gene_cnv_frequencies(region, cohorts):
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     universal_fields = [
         "contig",
@@ -1376,7 +1404,6 @@ def test_gene_cnv_frequencies(region, cohorts):
         "gene_description",
         "label",
     ]
-    ag3 = setup_ag3()
     df_genes = ag3.geneset(region=region).query("type == 'gene'")
 
     df_cnv_frq = ag3.gene_cnv_frequencies(
@@ -1397,7 +1424,7 @@ def test_gene_cnv_frequencies(region, cohorts):
     if isinstance(cohorts, dict):
         frq_cols = ["frq_" + s for s in cohorts.keys()]
     if isinstance(cohorts, str):
-        df_coh = ag3.sample_cohorts(sample_sets="3.0", cohorts_analysis="20211101")
+        df_coh = ag3.sample_cohorts(sample_sets="3.0")
         coh_nm = "cohort_" + cohorts
         frq_cols = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
 
@@ -1416,6 +1443,7 @@ def test_gene_cnv_frequencies(region, cohorts):
 
 
 def test_gene_cnv_frequencies__query():
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     region = "3L"
 
@@ -1431,7 +1459,6 @@ def test_gene_cnv_frequencies__query():
         "frq_AO-LUA_colu_2009",
     ]
 
-    ag3 = setup_ag3()
     df = ag3.gene_cnv_frequencies(
         region=region,
         sample_sets="3.0",
@@ -1448,8 +1475,7 @@ def test_gene_cnv_frequencies__query():
 
 
 def test_gene_cnv_frequencies__max_coverage_variance():
-
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     region = "3L"
     df_genes = ag3.geneset(region=region).query("type == 'gene'")
 
@@ -1505,7 +1531,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
 
 
 def test_gene_cnv_frequencies__drop_invariant():
-
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     region = "3L"
 
     expected_columns = [
@@ -1520,7 +1546,6 @@ def test_gene_cnv_frequencies__drop_invariant():
         "frq_AO-LUA_colu_2009",
     ]
 
-    ag3 = setup_ag3()
     df = ag3.gene_cnv_frequencies(
         region=region,
         sample_sets="3.0",
@@ -1538,7 +1563,7 @@ def test_gene_cnv_frequencies__drop_invariant():
 
 
 def test_gene_cnv_frequencies__dup_samples():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     with pytest.raises(ValueError):
         ag3.gene_cnv_frequencies(
             region="3L",
@@ -1550,7 +1575,7 @@ def test_gene_cnv_frequencies__dup_samples():
 def test_gene_cnv_frequencies__multi_contig_x():
     # https://github.com/malariagen/malariagen-data-python/issues/166
 
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     df1 = ag3.gene_cnv_frequencies(
         region="X",
@@ -1576,7 +1601,7 @@ def test_gene_cnv_frequencies__multi_contig_x():
 def test_gene_cnv_frequencies__missing_samples():
     # https://github.com/malariagen/malariagen-data-python/issues/183
 
-    ag3 = setup_ag3(pre=True)
+    ag3 = setup_ag3(cohorts_analysis="20211101", pre=True)
 
     df = ag3.gene_cnv_frequencies(
         region="3L",
@@ -1684,6 +1709,8 @@ def test_haplotypes(sample_sets, region, analysis):
     ["3.0", "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
 )
 def test_sample_cohorts(sample_sets):
+    ag3 = setup_ag3(cohorts_analysis="20211101")
+
     expected_cols = (
         "sample_id",
         "country_iso",
@@ -1697,8 +1724,7 @@ def test_sample_cohorts(sample_sets):
         "cohort_admin2_month",
     )
 
-    ag3 = setup_ag3()
-    df_coh = ag3.sample_cohorts(sample_sets=sample_sets, cohorts_analysis="20211101")
+    df_coh = ag3.sample_cohorts(sample_sets=sample_sets)
     df_meta = ag3.sample_metadata(sample_sets=sample_sets)
 
     assert tuple(df_coh.columns) == expected_cols
@@ -1767,7 +1793,7 @@ def test_locate_region(region_raw):
 
 
 def test_aa_allele_frequencies():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     expected_fields = [
         "transcript",
@@ -1790,7 +1816,6 @@ def test_aa_allele_frequencies():
     df = ag3.aa_allele_frequencies(
         transcript="AGAP004707-RD",
         cohorts="admin1_year",
-        cohorts_analysis="20211101",
         min_cohort_size=10,
         site_mask="gamb_colu",
         sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
@@ -1805,7 +1830,7 @@ def test_aa_allele_frequencies():
 
 
 def test_aa_allele_frequencies__dup_samples():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     with pytest.raises(ValueError):
         ag3.aa_allele_frequencies(
             transcript="AGAP004707-RD",
@@ -1825,8 +1850,7 @@ def _check_snp_allele_frequencies_advanced(
     nobs_mode="called",
     variant_query="max_af > 0.02",
 ):
-
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     ds = ag3.snp_allele_frequencies_advanced(
         transcript=transcript,
@@ -1983,8 +2007,7 @@ def _check_aa_allele_frequencies_advanced(
     nobs_mode="called",
     variant_query="max_af > 0.02",
 ):
-
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     ds = ag3.aa_allele_frequencies_advanced(
         transcript=transcript,
@@ -2237,8 +2260,7 @@ def _check_gene_cnv_frequencies_advanced(
     drop_invariant=True,
     max_coverage_variance=0.2,
 ):
-
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     ds = ag3.gene_cnv_frequencies_advanced(
         region=region,
@@ -2471,7 +2493,7 @@ def test_gene_cnv_frequencies_advanced__max_coverage_variance(max_coverage_varia
 def test_gene_cnv_frequencies_advanced__multi_contig_x():
     # https://github.com/malariagen/malariagen-data-python/issues/166
 
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
 
     ds1 = ag3.gene_cnv_frequencies_advanced(
         region="X",
@@ -2508,7 +2530,7 @@ def test_gene_cnv_frequencies_advanced__multi_contig_x():
 def test_gene_cnv_frequencies_advanced__missing_samples():
     # https://github.com/malariagen/malariagen-data-python/issues/183
 
-    ag3 = setup_ag3(pre=True)
+    ag3 = setup_ag3(cohorts_analysis="20211101", pre=True)
 
     ds = ag3.gene_cnv_frequencies_advanced(
         region="3L",
@@ -2520,7 +2542,7 @@ def test_gene_cnv_frequencies_advanced__missing_samples():
 
 
 def test_snp_allele_frequencies_advanced__dup_samples():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     with pytest.raises(ValueError):
         ag3.snp_allele_frequencies_advanced(
             transcript="AGAP004707-RD",
@@ -2531,7 +2553,7 @@ def test_snp_allele_frequencies_advanced__dup_samples():
 
 
 def test_aa_allele_frequencies_advanced__dup_samples():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     with pytest.raises(ValueError):
         ag3.aa_allele_frequencies_advanced(
             transcript="AGAP004707-RD",
@@ -2542,7 +2564,7 @@ def test_aa_allele_frequencies_advanced__dup_samples():
 
 
 def test_gene_cnv_frequencies_advanced__dup_samples():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20211101")
     with pytest.raises(ValueError):
         ag3.gene_cnv_frequencies_advanced(
             region="3L",
@@ -2550,6 +2572,86 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
+
+
+@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
+def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    ag3 = setup_ag3(results_cache=results_cache)
+
+    ac = ag3.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert isinstance(ac, np.ndarray)
+    pos = ag3.snp_sites(region=region, field="POS", site_mask=site_mask)
+    assert ac.shape == (pos.shape[0], 4)
+
+    ac2 = ag3.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert_array_equal(ac, ac2)
+
+
+@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
+def test_pca(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    ag3 = setup_ag3(results_cache=results_cache)
+
+    n_components = 8
+    df_pca, evr = ag3.pca(
+        region=region,
+        n_snps=100,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        n_components=n_components,
+    )
+
+    df_samples = ag3.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+    )
+
+    assert isinstance(df_pca, pd.DataFrame)
+    assert len(df_pca) == len(df_samples)
+    expected_columns = df_samples.columns.tolist() + [
+        f"PC{n+1}" for n in range(n_components)
+    ]
+    assert df_pca.columns.tolist() == expected_columns
+    assert_frame_equal(df_samples, df_pca[df_samples.columns.tolist()])
+    assert isinstance(evr, np.ndarray)
+    assert evr.shape == (n_components,)
+
+    df_pca2, evr2 = ag3.pca(
+        region=region,
+        n_snps=100,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        n_components=n_components,
+    )
+    assert_frame_equal(df_pca, df_pca2)
+    assert_array_equal(evr, evr2)
 
 
 def _compare_series_like(actual, expect):
