@@ -1,4 +1,5 @@
 import random
+import shutil
 
 import dask.array as da
 import numpy as np
@@ -2545,6 +2546,37 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
             period_by="year",
             sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
         )
+
+
+@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "sample_sets", ["AG1000G-FR", ["AG1000G-BF-A", "AG1000G-BF-B"]]
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
+def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    ag3 = setup_ag3(results_cache=results_cache)
+
+    ac = ag3.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert isinstance(ac, np.ndarray)
+    pos = ag3.snp_sites(region=region, field="POS", site_mask=site_mask)
+    assert ac.shape == (pos.shape[0], 4)
+
+    ac2 = ag3.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert_array_equal(ac, ac2)
 
 
 def _compare_series_like(actual, expect):

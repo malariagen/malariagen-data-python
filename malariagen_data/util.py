@@ -373,7 +373,7 @@ def _handle_region_feature(resource, region):
     if not results.empty:
         # region is a feature ID
         feature = results.squeeze()
-        return Region(feature.contig, feature.start, feature.end)
+        return Region(feature.contig, int(feature.start), int(feature.end))
     else:
         return None
 
