@@ -33,7 +33,6 @@ statsmodels = "*"
 ipyleaflet = "*"
 ipywidgets = "*"
 importlib_metadata = "*"
-igv-notebook = {git="https://github.com/igvteam/igv-notebook.git", branch="main"}
 ipinfo = "*"
 
 [tool.poetry.dev-dependencies]
@@ -43,6 +42,7 @@ jupyterlab = "*"
 pre-commit = "*"
 black = "*"
 snakeviz = "*"
+igv-notebook = {git="https://github.com/igvteam/igv-notebook.git", branch="main"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
