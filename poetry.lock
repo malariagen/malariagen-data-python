@@ -665,6 +665,19 @@ optional = false
 python-versions = "*"
 
 [[package]]
+name = "ipinfo"
+version = "4.2.1"
+description = "Official Python library for IPInfo"
+category = "main"
+optional = false
+python-versions = "*"
+
+[package.dependencies]
+aiohttp = "<=4"
+cachetools = "*"
+requests = "*"
+
+[[package]]
 name = "ipykernel"
 version = "6.12.1"
 description = "IPython Kernel for Jupyter"
@@ -1969,7 +1982,7 @@ testing = ["pytest (>=6)", "pytest-checkdocs (>=2.4)", "pytest-flake8", "pytest-
 [metadata]
 lock-version = "1.1"
 python-versions = ">=3.7,<3.10"
-content-hash = "4eed0a2717c96f806fa216752e7bfc2fe78da120990e1ce21ad3f6d735a553ca"
+content-hash = "42388488d7792c26c4756df26f19f176bfd99c343a230b9511a7ccd9e58ca1bd"
 
 [metadata.files]
 aiohttp = [
@@ -2471,6 +2484,10 @@ importlib-resources = [
 iniconfig = [
     {file = "iniconfig-1.1.1-py2.py3-none-any.whl", hash = "sha256:011e24c64b7f47f6ebd835bb12a743f2fbe9a26d4cecaa7f53bc4f35ee9da8b3"},
     {file = "iniconfig-1.1.1.tar.gz", hash = "sha256:bc3af051d7d14b2ee5ef9969666def0cd1a000e121eaea580d4a313df4b37f32"},
+]
+ipinfo = [
+    {file = "ipinfo-4.2.1-py3-none-any.whl", hash = "sha256:a4ec65647e7f973586090bac286b624f1fba496cda8cd94ae9a1c3ec239d0948"},
+    {file = "ipinfo-4.2.1.tar.gz", hash = "sha256:dae3421ceb8bb76f3ec85fa06c195afcae6fbca2faf7df87246bada6a4d909d8"},
 ]
 ipykernel = [
     {file = "ipykernel-6.12.1-py3-none-any.whl", hash = "sha256:d840e3bf1c4b23bf6939f78dcdae639c9f6962e41d17e1c084a18c3c7f972d3a"},

@@ -34,6 +34,7 @@ ipyleaflet = "*"
 ipywidgets = "*"
 importlib_metadata = "*"
 igv-notebook = {git="https://github.com/igvteam/igv-notebook.git", branch="main"}
+ipinfo = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

@@ -4,16 +4,24 @@ import warnings
 from bisect import bisect_left, bisect_right
 from collections import Counter
 from pathlib import Path
+from textwrap import dedent
 
 import allel
 import dask
 import dask.array as da
+import ipinfo
 import numba
 import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
 from dask.diagnostics import ProgressBar
+
+try:
+    # noinspection PyPackageRequirements
+    from google import colab
+except ImportError:
+    colab = None
 
 import malariagen_data
 
@@ -235,29 +243,69 @@ class Ag3:
 
             bkio.output_notebook(hide_banner=True)
 
+        # Occasionally, colab will allocate a VM outside the US, e.g., in
+        # Europe or Asia. Because the MalariaGEN data GCS bucket is located
+        # in the US, this is usually bad for performance, because of
+        # increased latency and lower bandwidth. Add a check for this and
+        # issue a warning if not in the US.
+        try:
+            client_details = ipinfo.getHandler().getDetails()
+            if GCS_URL in url and colab and client_details.country != "US":
+                warnings.warn(
+                    dedent(
+                        """
+                    Your currently allocated Google Colab VM is not located in the US.
+                    This usually means that data access will be substantially slower.
+                    If possible, select "Runtime > Factory reset runtime" from the menu
+                    to request a new VM and try again.
+                """
+                    )
+                )
+
+        except ConnectionError:
+            client_details = None
+        self._client_details = client_details
+
+    @property
+    def _client_location(self):
+        details = self._client_details
+        if details is not None:
+            region = details.region
+            country = details.country
+            location = f"{region}, {country}"
+            if hasattr(details, "hostname"):
+                hostname = details.hostname
+                if hostname.endswith("googleusercontent.com"):
+                    location += " (Google Cloud)"
+        else:
+            location = "offline"
+        return location
+
     def __repr__(self):
-        return (
-            f"<MalariaGEN Ag3 data resource API>\n"
+        text = (
+            f"<MalariaGEN Ag3 API>\n"
             f"Storage URL             : {self._url}\n"
             f"Data releases available : {', '.join(self.releases)}\n"
             f"Results cache           : {self._results_cache}\n"
             f"Cohorts analysis        : {self._cohorts_analysis}\n"
             f"Species analysis        : {self._species_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
-            f"Software version        : {malariagen_data.__version__}\n"
+            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
+            f"Client location         : {self._client_location}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net. For API documentation see: \n"
+            f"or contact data@malariagen.net. For API documentation see \n"
             f"https://malariagen.github.io/vector-data/ag3/api.html"
         )
+        return text
 
     def _repr_html_(self):
-        return f"""
+        html = f"""
             <table class="malariagen-ag3">
                 <thead>
                     <tr>
-                        <th style="text-align: left" colspan="2">MalariaGEN Ag3 data resource API</th>
+                        <th style="text-align: left" colspan="2">MalariaGEN Ag3 API</th>
                     </tr>
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
@@ -307,11 +355,18 @@ class Ag3:
                         <th style="text-align: left">
                             Software version
                         </th>
-                        <td>{malariagen_data.__version__}</td>
+                        <td>malariagen_data {malariagen_data.__version__}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Client location
+                        </th>
+                        <td>{self._client_location}</td>
                     </tr>
                 </tbody>
             </table>
         """
+        return html
 
     def set_log_level(self, level):
         if self._log_handler is not None:
