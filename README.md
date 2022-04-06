@@ -29,6 +29,12 @@ from the following locations:
 ## Release notes
 
 
+### 4.0.1
+
+* Make igv-notebook an optional dependency while it is still only
+  available from GitHub.
+
+
 ### 4.0.0
 
 * `Ag3`: A new `pca()` function has been added for performing
