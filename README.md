@@ -29,6 +29,45 @@ from the following locations:
 ## Release notes
 
 
+### 4.0.0
+
+* `Ag3`: A new `pca()` function has been added for performing
+  principal components analysis
+  ([GH187](https://github.com/malariagen/malariagen-data-python/issues/187)).
+
+* `Ag3`: Functions `plot_pca_variance()` and `plot_pca_coords()` have
+  been added for plotting PCA results
+  ([GH197](https://github.com/malariagen/malariagen-data-python/issues/197)).
+
+* `Ag3`: A new `snp_allele_counts()` function has been added for
+  computing SNP allele counts, which is required for various analyses
+  such as PCA (locating segregating variants).
+
+* `Ag3`: A new `view_alignments()` function has been added which
+  creates an IGV browser in the notebook and adds a track with the
+  sequence read alignments from a given sample
+  ([GH202](https://github.com/malariagen/malariagen-data-python/issues/202)). There
+  is also an `igv()` function for initialising an IGV browser with
+  just reference genome and gene tracks.
+
+* `Ag3`: The way that analysis version parameters like
+  `cohorts_analysis`, `species_analysis` and `site_filters_analysis`
+  are exposed in the API has been simplified
+  ([GH203](https://github.com/malariagen/malariagen-data-python/issues/203)). Now
+  these parameters are set when the `Ag3` class is instantiated,
+  rather than at each method.
+
+* `Ag3`: A check has been added for the location of the machine from
+  which requests are being made, and in particular to raise a warning
+  in the case where colab allocates a VM outside the US region, which
+  results in poor data retrieval performance
+  ([GH201](https://github.com/malariagen/malariagen-data-python/issues/201)).
+
+* `Ag3`: By default, bokeh is now automatically configured to output
+  plots to the notebook
+  ([GH193](https://github.com/malariagen/malariagen-data-python/issues/193)).
+
+
 ### 3.1.0
 
 * `Ag3`: Limit docstring widths for better wrapping in colab help tabs
