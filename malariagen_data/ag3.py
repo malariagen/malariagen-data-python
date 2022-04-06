@@ -273,7 +273,9 @@ class Ag3:
             region = details.region
             country = details.country
             location = f"{region}, {country}"
-            if hasattr(details, "hostname"):
+            if colab:
+                location += " (colab)"
+            elif hasattr(details, "hostname"):
                 hostname = details.hostname
                 if hostname.endswith("googleusercontent.com"):
                     location += " (Google Cloud)"
