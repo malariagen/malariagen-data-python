@@ -1,15 +1,24 @@
 [tool.poetry]
 name = "malariagen_data"
 version = "3.1.0"
-description = "A package for accessing MalariaGEN public data."
-authors = ["Alistair Miles <alistair.miles@sanger.ac.uk>", "Chris Clarkson <cc28@sanger.ac.uk>", "Kathryn Murie <km22@sanger.ac.uk>", "Nace Kranjc <n.kranjc@imperial.ac.uk>", "Kelly Bennett <kb25@sanger.ac.uk>"]
+description = "A package for accessing and analysing MalariaGEN data."
+authors = [
+    "Alistair Miles <alistair.miles@sanger.ac.uk>",
+    "Chris Clarkson <cc28@sanger.ac.uk>",
+    "Kathryn Murie <km22@sanger.ac.uk>",
+    "Nace Kranjc <n.kranjc@imperial.ac.uk>",
+    "Kelly Bennett <kb25@sanger.ac.uk>"
+]
 license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.7,<3.10"
 numpy = "*"
 scipy = "*"
-pandas = "*"
+pandas = [
+    {version="<1.4.0", python="~3.7"},
+    {version="*", python=">3.7,<3.10"}
+]
 zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
@@ -24,6 +33,7 @@ statsmodels = "*"
 ipyleaflet = "*"
 ipywidgets = "*"
 importlib_metadata = "*"
+igv-notebook = {git="https://github.com/igvteam/igv-notebook.git", branch="main"}
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

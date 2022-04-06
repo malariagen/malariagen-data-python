@@ -48,9 +48,15 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
 PUBLIC_RELEASES = ("3.0",)
-DEFAULT_URL = "gs://vo_agam_release/"
+GCS_URL = "gs://vo_agam_release/"
 GENESET_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
+)
+GENOME_FASTA_PATH = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa"
+)
+GENOME_FAI_PATH = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa.fai"
 )
 GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
@@ -161,7 +167,7 @@ class Ag3:
 
     def __init__(
         self,
-        url=DEFAULT_URL,
+        url=GCS_URL,
         cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
         species_analysis=DEFAULT_SPECIES_ANALYSIS,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
@@ -4814,6 +4820,75 @@ class Ag3:
             bkplt.show(fig)
 
         return fig
+
+    @staticmethod
+    def igv(region):
+
+        import igv_notebook
+
+        igv_notebook.init()
+
+        browser = igv_notebook.Browser(
+            {
+                "reference": {
+                    "id": "AgamP4",
+                    "name": "Anopheles gambiae (PEST)",
+                    "fastaURL": f"{GCS_URL}{GENOME_FASTA_PATH}",
+                    "indexURL": f"{GCS_URL}{GENOME_FAI_PATH}",
+                    "tracks": [
+                        {
+                            "name": "Genes",
+                            "url": f"{GCS_URL}{GENESET_GFF3_PATH}",
+                            "indexed": False,
+                        }
+                    ],
+                },
+                "locus": region,
+            }
+        )
+
+        return browser
+
+    def view_alignments(
+        self,
+        region,
+        sample,
+    ):
+        """Launch IGV and view sequence read alignments from the given sample.
+
+        Parameters
+        ----------
+        region: str
+            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
+        sample : str
+            Sample identifier, e.g., "AR0001-C".
+
+        Notes
+        -----
+        Only samples from the Ag3.0 release are currently available.
+
+        """
+
+        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        sample_set = sample_rec["sample_set"]
+        release = sample_rec["release"]
+        if release != "3.0":
+            raise NotImplementedError(
+                "Only samples from the Ag3.0 release are currently supported."
+            )
+        # TODO support other releases
+
+        browser = self.igv(region=region)
+        release_path = _release_to_path(release)
+        browser.load_track(
+            {
+                "name": sample,
+                "path": f"{GCS_URL}{release_path}/alignments/{sample_set}/{sample}.bam",
+                "indexPath": f"{GCS_URL}{release_path}/alignments/{sample_set}/{sample}.bam.bai",
+                "format": "bam",
+                "type": "alignment",
+            }
+        )
 
     def results_cache_get(self, *, name, params):
         if self._results_cache is None:
