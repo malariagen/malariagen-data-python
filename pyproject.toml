@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "4.0.0"
+version = "4.0.1"
 description = "A package for accessing and analysing MalariaGEN data."
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
@@ -33,7 +33,6 @@ statsmodels = "*"
 ipyleaflet = "*"
 ipywidgets = "*"
 importlib_metadata = "*"
-igv-notebook = {git="https://github.com/igvteam/igv-notebook.git", branch="main"}
 ipinfo = "*"
 
 [tool.poetry.dev-dependencies]
@@ -43,6 +42,7 @@ jupyterlab = "*"
 pre-commit = "*"
 black = "*"
 snakeviz = "*"
+igv-notebook = {git="https://github.com/igvteam/igv-notebook.git", branch="main"}
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

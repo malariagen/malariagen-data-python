@@ -4881,7 +4881,25 @@ class Ag3:
     @staticmethod
     def igv(region):
 
-        import igv_notebook
+        try:
+            # The igv-notebook package is not currently available from PyPI so
+            # we cannot have this as an automatically installed dependency yet.
+            # So for the time being, provide a message to the user with
+            # information about how to install.
+            import igv_notebook
+        except ImportError:
+            # re-raise with a more helpful message
+            raise ImportError(
+                dedent(
+                    """
+                This function requires the igv-notebook package to be installed.
+                Please install this package by running the following system
+                command:
+
+                pip install git+https://github.com/igvteam/igv-notebook.git
+            """
+                )
+            )
 
         igv_notebook.init()
 
