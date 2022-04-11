@@ -1,5 +1,0 @@
-{
-  "default_url": "gs://test_pf7_release/",
-  "metadata_path": "metadata/test_metadata.txt",
-  "variant_calls_zarr_path": "test_pf7.zarr/"
-}

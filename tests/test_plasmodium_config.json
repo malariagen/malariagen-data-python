@@ -1,0 +1,32 @@
+{
+  "default_url": "gs://test_plasmodium_release/",
+  "metadata_path": "metadata/test_metadata.txt",
+  "variant_calls_zarr_path": "test_plasmodium.zarr/",
+  "default_variant_variables": {
+    "FILTER_PASS": ["variants"],
+    "is_snp": ["variants"],
+    "numalt": ["variants"],
+    "CDS": ["variants"]
+  },
+  "extended_calldata_variables": {
+    "DP": ["variants", "samples"],
+    "GQ": ["variants", "samples"],
+    "MIN_DP": ["variants", "samples"],
+    "PGT": ["variants", "samples"],
+    "PID": ["variants", "samples"],
+    "PS": ["variants", "samples"],
+    "RGQ": ["variants", "samples"],
+    "PL": ["variants", "samples", "genotypes"],
+    "SB": ["variants", "samples", "sb_statistics"]
+  },
+  "extended_variant_fields": {
+    "AC": ["variants", "alt_alleles"],
+    "AF": ["variants", "alt_alleles"],
+    "AN": ["variants"],
+    "ANN_AA_length": ["variants", "alt_alleles"],
+    "ANN_AA_pos": ["variants", "alt_alleles"],
+    "ANN_Allele": ["variants", "alt_alleles"],
+    "ANN_Annotation": ["variants", "alt_alleles"],
+    "RAW_MQandDP": ["variants", "ploidy"]
+  }
+}

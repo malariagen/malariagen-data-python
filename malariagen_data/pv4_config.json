@@ -1,0 +1,50 @@
+{
+  "default_url": "gs://pv4_release/",
+  "metadata_path": "metadata/Pv4_samples.txt",
+  "variant_calls_zarr_path": "Pv4.zarr/",
+  "default_variant_variables": {
+    "FILTER_PASS": ["variants"],
+    "is_snp": ["variants"],
+    "numalt": ["variants"],
+    "CDS": ["variants"]
+  },
+  "extended_calldata_variables": {
+    "DP": ["variants", "samples"],
+    "GQ": ["variants", "samples"],
+    "PGT": ["variants", "samples"],
+    "PID": ["variants", "samples"],
+    "PL": ["variants", "samples", "genotypes"]
+  },
+  "extended_variant_fields": {
+    "AC": ["variants", "alt_alleles"],
+    "AF": ["variants", "alt_alleles"],
+    "AN": ["variants"],
+    "DP": ["variants"],
+    "FILTER_Apicoplast": ["variants"],
+    "FILTER_Centromere": ["variants"],
+    "FILTER_InternalHypervariable": ["variants"],
+    "FILTER_Low_VQSLOD": ["variants"],
+    "FILTER_Mitochondrion": ["variants"],
+    "FILTER_ShortContig": ["variants"],
+    "FILTER_SubtelomericHypervariable": ["variants"],
+    "FS": ["variants"],
+    "ID": ["variants"],
+    "MQ": ["variants"],
+    "MULTIALLELIC": ["variants"],
+    "QD": ["variants"],
+    "QUAL": ["variants"],
+    "RegionType": ["variants"],
+    "SNPEFF_AMINO_ACID_CHANGE": ["variants"],
+    "SNPEFF_CODON_CHANGE": ["variants"],
+    "SNPEFF_EFFECT": ["variants"],
+    "SNPEFF_EXON_ID": ["variants"],
+    "SNPEFF_FUNCTIONAL_CLASS": ["variants"],
+    "SNPEFF_GENE_NAME": ["variants"],
+    "SNPEFF_IMPACT": ["variants"],
+    "SNPEFF_TRANSCRIPT_ID": ["variants"],
+    "SOR": ["variants"],
+    "VQSLOD": ["variants"],
+    "VariantType": ["variants"],
+    "altlen": ["variants", "alt_alleles"]
+  }
+}
