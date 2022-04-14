@@ -1358,7 +1358,9 @@ def test_cn_mode(rows, cols, vmax):
 def test_gene_cnv(region, sample_sets):
     ag3 = setup_ag3()
 
-    ds = ag3.gene_cnv(region=region, sample_sets=sample_sets)
+    ds = ag3.gene_cnv(
+        region=region, sample_sets=sample_sets, max_coverage_variance=None
+    )
 
     assert isinstance(ds, xr.Dataset)
 
@@ -1440,7 +1442,9 @@ def test_gene_cnv(region, sample_sets):
 def test_gene_cnv_xarray_indexing(region, sample_sets):
     ag3 = setup_ag3()
 
-    ds = ag3.gene_cnv(region=region, sample_sets=sample_sets)
+    ds = ag3.gene_cnv(
+        region=region, sample_sets=sample_sets, max_coverage_variance=None
+    )
 
     # check label-based indexing
     # pick a random gene and sample ID
