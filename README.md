@@ -29,6 +29,19 @@ from the following locations:
 ## Release notes
 
 
+### 4.1.0
+
+* Use pypi for igv-notebook dependency
+  ([GH209](https://github.com/malariagen/malariagen-data-python/issues/209)).
+
+* Add `sample_query` parameter to `Ag3.haplotypes()`
+  ([GH210](https://github.com/malariagen/malariagen-data-python/issues/210)).
+
+* Add `sample_query` and `max_coverage_variance` parameters to
+  `Ag3.cnv_hmm()` and `Ag3.gene_cnv()`
+  ([GH213](https://github.com/malariagen/malariagen-data-python/issues/213)).
+
+
 ### 4.0.1
 
 * Make igv-notebook an optional dependency while it is still only
