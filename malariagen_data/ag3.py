@@ -2753,6 +2753,7 @@ class Ag3:
         region,
         analysis,
         sample_sets=None,
+        sample_query=None,
         inline_array=True,
         chunks="native",
     ):
@@ -2775,6 +2776,9 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -2829,6 +2833,24 @@ class Ag3:
 
         # concatenate data from multiple regions
         ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        # handle sample query
+        if sample_query is not None:
+
+            # load sample metadata
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+            # align sample metadata with haplotypes
+            phased_samples = ds["sample_id"].values.tolist()
+            df_samples_phased = (
+                df_samples.set_index("sample_id").loc[phased_samples].reset_index()
+            )
+
+            # apply the query
+            loc_samples = df_samples_phased.eval(sample_query).values
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError("No samples found for query {sample_query!r}")
+            ds = ds.isel(samples=loc_samples)
 
         return ds
 
@@ -4672,6 +4694,9 @@ class Ag3:
         ds_cnv = self.cnv_hmm(region=region, sample_sets=sample_sets)
 
         # handle sample query
+        # TODO this is probably broken, because need to align sample metadata
+        # with samples included in the CNV HMM data
+        # TODO migrate handling of sample_query into cnv_hmm function
         df_samples = self.sample_metadata(sample_sets=sample_sets)
         loc_samples = None
         if sample_query is not None:
