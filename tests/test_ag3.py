@@ -961,7 +961,7 @@ def test_snp_allele_frequencies__dup_samples():
 @pytest.mark.parametrize("region", ["2R", ["3L", "X"], "3R:28,000,000-29,000,000"])
 def test_cnv_hmm(sample_sets, region):
     ag3 = setup_ag3()
-    ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets)
+    ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets, max_coverage_variance=None)
     assert isinstance(ds, xr.Dataset)
 
     # check fields
@@ -1044,6 +1044,99 @@ def test_cnv_hmm(sample_sets, region):
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_CN"].sum(axis=1)
     assert isinstance(d2, xr.DataArray)
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [
+        "taxon == 'coluzzii' and location == 'Bana Village'",
+        "taxon == 'gambiae' and location == 'Pala'",
+    ],
+)
+def test_cnv_hmm__sample_query(sample_query):
+
+    sample_sets = "AG1000G-BF-B"
+    region = "3L"
+    ag3 = setup_ag3()
+    ds = ag3.cnv_hmm(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        max_coverage_variance=None,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "call_CN",
+        "call_NormCov",
+        "call_RawCov",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"samples", "variants"}
+
+    # check expected samples
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets).query(sample_query)
+    expected_samples = df_samples["sample_id"].tolist()
+    n_samples_expected = len(expected_samples)
+    assert ds.dims["samples"] == n_samples_expected
+
+    # check sample IDs
+    assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+
+
+@pytest.mark.parametrize(
+    "max_coverage_variance",
+    [0, 0.1, 0.2, 1],
+)
+def test_cnv_hmm__max_coverage_variance(max_coverage_variance):
+
+    sample_sets = "AG1000G-CI"
+    region = "3L"
+    ag3 = setup_ag3()
+    ds = ag3.cnv_hmm(
+        region=region,
+        sample_sets=sample_sets,
+        max_coverage_variance=max_coverage_variance,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "call_CN",
+        "call_NormCov",
+        "call_RawCov",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"samples", "variants"}
+
+    # check expected samples
+    cov_var = ds["sample_coverage_variance"].values
+    assert np.all(cov_var <= max_coverage_variance)
 
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])

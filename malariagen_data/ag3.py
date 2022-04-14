@@ -1867,6 +1867,8 @@ class Ag3:
         self,
         region,
         sample_sets=None,
+        sample_query=None,
+        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         inline_array=True,
         chunks="native",
     ):
@@ -1884,6 +1886,11 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_coverage_variance : float, optional
+            Remove samples if coverage variance exceeds this value.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1936,6 +1943,31 @@ class Ag3:
 
         # concatenate data from multiple regions
         ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        # handle sample query
+        if sample_query is not None:
+
+            # load sample metadata
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+            # align sample metadata with CNV data
+            cnv_samples = ds["sample_id"].values.tolist()
+            df_samples_cnv = (
+                df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
+            )
+
+            # apply the query
+            loc_query_samples = df_samples_cnv.eval(sample_query).values
+            if np.count_nonzero(loc_query_samples) == 0:
+                raise ValueError("No samples found for query {sample_query!r}")
+
+            ds = ds.isel(samples=loc_query_samples)
+
+        # handle coverage variance filter
+        if max_coverage_variance is not None:
+            cov_var = ds["sample_coverage_variance"].values
+            loc_pass_samples = cov_var <= max_coverage_variance
+            ds = ds.isel(samples=loc_pass_samples)
 
         return ds
 
@@ -4691,31 +4723,12 @@ class Ag3:
         region = self.resolve_region(region)
 
         # access HMM data
-        ds_cnv = self.cnv_hmm(region=region, sample_sets=sample_sets)
-
-        # handle sample query
-        # TODO this is probably broken, because need to align sample metadata
-        # with samples included in the CNV HMM data
-        # TODO migrate handling of sample_query into cnv_hmm function
-        df_samples = self.sample_metadata(sample_sets=sample_sets)
-        loc_samples = None
-        if sample_query is not None:
-            loc_samples = df_samples.eval(sample_query).values
-
-        # handle filtering samples by coverage variance
-        if max_coverage_variance is not None:
-            cov_var = ds_cnv["sample_coverage_variance"].values
-            loc_pass_samples = cov_var <= max_coverage_variance
-            if loc_samples is not None:
-                loc_samples = loc_samples & loc_pass_samples
-            else:
-                loc_samples = loc_pass_samples
-
-        if loc_samples is not None:
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError("No samples selected.")
-            df_samples = df_samples.loc[loc_samples].reset_index()
-            ds_cnv = ds_cnv.isel(samples=loc_samples)
+        ds_cnv = self.cnv_hmm(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            max_coverage_variance=max_coverage_variance,
+        )
 
         # access copy number data
         cn = ds_cnv["call_CN"].values
@@ -4771,7 +4784,7 @@ class Ag3:
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
 
         # plot the HMM copy number data as an image
-        sample_id = df_samples["sample_id"].values
+        sample_id = ds_cnv["sample_id"].values
         sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
         data = dict(
             hmm_state=[cn.T],
@@ -4799,7 +4812,7 @@ class Ag3:
         fig.yaxis.ticker = bkmod.FixedTicker(
             ticks=np.arange(len(sample_id)),
         )
-        fig.yaxis.major_label_overrides = df_samples["sample_id"].to_dict()
+        fig.yaxis.major_label_overrides = {i: s for i, s in enumerate(sample_id)}
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         # add color bar
