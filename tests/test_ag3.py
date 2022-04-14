@@ -961,7 +961,7 @@ def test_snp_allele_frequencies__dup_samples():
 @pytest.mark.parametrize("region", ["2R", ["3L", "X"], "3R:28,000,000-29,000,000"])
 def test_cnv_hmm(sample_sets, region):
     ag3 = setup_ag3()
-    ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets)
+    ds = ag3.cnv_hmm(region=region, sample_sets=sample_sets, max_coverage_variance=None)
     assert isinstance(ds, xr.Dataset)
 
     # check fields
@@ -1044,6 +1044,99 @@ def test_cnv_hmm(sample_sets, region):
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_CN"].sum(axis=1)
     assert isinstance(d2, xr.DataArray)
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [
+        "taxon == 'coluzzii' and location == 'Bana Village'",
+        "taxon == 'gambiae' and location == 'Pala'",
+    ],
+)
+def test_cnv_hmm__sample_query(sample_query):
+
+    sample_sets = "AG1000G-BF-B"
+    region = "3L"
+    ag3 = setup_ag3()
+    ds = ag3.cnv_hmm(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        max_coverage_variance=None,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "call_CN",
+        "call_NormCov",
+        "call_RawCov",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"samples", "variants"}
+
+    # check expected samples
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets).query(sample_query)
+    expected_samples = df_samples["sample_id"].tolist()
+    n_samples_expected = len(expected_samples)
+    assert ds.dims["samples"] == n_samples_expected
+
+    # check sample IDs
+    assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+
+
+@pytest.mark.parametrize(
+    "max_coverage_variance",
+    [0, 0.1, 0.2, 1],
+)
+def test_cnv_hmm__max_coverage_variance(max_coverage_variance):
+
+    sample_sets = "AG1000G-CI"
+    region = "3L"
+    ag3 = setup_ag3()
+    ds = ag3.cnv_hmm(
+        region=region,
+        sample_sets=sample_sets,
+        max_coverage_variance=max_coverage_variance,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "call_CN",
+        "call_NormCov",
+        "call_RawCov",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "variant_end",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"samples", "variants"}
+
+    # check expected samples
+    cov_var = ds["sample_coverage_variance"].values
+    assert np.all(cov_var <= max_coverage_variance)
 
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-UG", "AG1000G-X"])
@@ -1265,7 +1358,9 @@ def test_cn_mode(rows, cols, vmax):
 def test_gene_cnv(region, sample_sets):
     ag3 = setup_ag3()
 
-    ds = ag3.gene_cnv(region=region, sample_sets=sample_sets)
+    ds = ag3.gene_cnv(
+        region=region, sample_sets=sample_sets, max_coverage_variance=None
+    )
 
     assert isinstance(ds, xr.Dataset)
 
@@ -1347,7 +1442,9 @@ def test_gene_cnv(region, sample_sets):
 def test_gene_cnv_xarray_indexing(region, sample_sets):
     ag3 = setup_ag3()
 
-    ds = ag3.gene_cnv(region=region, sample_sets=sample_sets)
+    ds = ag3.gene_cnv(
+        region=region, sample_sets=sample_sets, max_coverage_variance=None
+    )
 
     # check label-based indexing
     # pick a random gene and sample ID
@@ -1624,18 +1721,20 @@ def test_haplotypes(sample_sets, region, analysis):
     ag3 = setup_ag3()
 
     # check expected samples
-    sample_query = None
+    phased_samples_query = None
     if analysis == "arab":
-        sample_query = "aim_species == 'arabiensis' and sample_set != 'AG1000G-X'"
+        phased_samples_query = (
+            "aim_species == 'arabiensis' and sample_set != 'AG1000G-X'"
+        )
     elif analysis == "gamb_colu":
-        sample_query = (
+        phased_samples_query = (
             "aim_species in ['gambiae', 'coluzzii', 'intermediate_gambiae_coluzzii'] and "
             "sample_set != 'AG1000G-X'"
         )
     elif analysis == "gamb_colu_arab":
-        sample_query = "sample_set != 'AG1000G-X'"
+        phased_samples_query = "sample_set != 'AG1000G-X'"
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
-    expected_samples = df_samples.query(sample_query)["sample_id"].tolist()
+    expected_samples = df_samples.query(phased_samples_query)["sample_id"].tolist()
     n_samples = len(expected_samples)
 
     # check if any samples
@@ -1701,6 +1800,84 @@ def test_haplotypes(sample_sets, region, analysis):
     assert isinstance(d1, xr.DataArray)
     d2 = ds["call_genotype"].sum(axis=(1, 2))
     assert isinstance(d2, xr.DataArray)
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [
+        "taxon == 'coluzzii' and location == 'Bana Village'",
+        "taxon == 'gambiae' and location == 'Pala'",
+    ],
+)
+def test_haplotypes__sample_query(sample_query):
+
+    sample_sets = "AG1000G-BF-B"
+    region = "3L"
+    analysis = "gamb_colu_arab"
+
+    ag3 = setup_ag3()
+
+    # check expected samples
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
+    expected_samples = df_samples.query(sample_query)["sample_id"].tolist()
+    n_samples = len(expected_samples)
+
+    ds = ag3.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        analysis=analysis,
+        sample_query=sample_query,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check samples
+    samples = ds["sample_id"].values
+    assert set(samples) == set(expected_samples)
+
+    # check dim lengths
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 2
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim, f == 2
+            assert x.shape[1] == 2
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim, f == 1
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape[1] == n_samples
+            assert x.shape[2] == 2
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
 
 # test v3 sample sets
