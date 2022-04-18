@@ -15,7 +15,8 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
-from dask.diagnostics import ProgressBar
+from tqdm.auto import tqdm
+from tqdm.dask import TqdmCallback
 
 try:
     # noinspection PyPackageRequirements
@@ -142,6 +143,8 @@ class Ag3:
         File path or stream output for logging messages.
     debug : bool, optional
         Set to True to enable debug level logging.
+    show_progress : bool, optional
+        If True, show a progress bar during longer-running computations.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -183,6 +186,7 @@ class Ag3:
         results_cache=None,
         log=sys.stdout,
         debug=False,
+        show_progress=True,
         **kwargs,
     ):
 
@@ -191,6 +195,7 @@ class Ag3:
         self._cohorts_analysis = cohorts_analysis
         self._species_analysis = species_analysis
         self._site_filters_analysis = site_filters_analysis
+        self._show_progress = show_progress
 
         # set up logging
         handler = None
@@ -369,6 +374,14 @@ class Ag3:
             </table>
         """
         return html
+
+    def _progress(self, iterable, **kwargs):
+        disable = not self._show_progress
+        return tqdm(iterable, disable=disable, **kwargs)
+
+    def _dask_progress(self, **kwargs):
+        disable = not self._show_progress
+        return TqdmCallback(disable=disable, **kwargs)
 
     def set_log_level(self, level):
         if self._log_handler is not None:
@@ -702,7 +715,7 @@ class Ag3:
 
         Returns
         -------
-        df : pandas.DataFrame
+        df_samples : pandas.DataFrame
             A dataframe of sample metadata, one row per sample.
 
         """
@@ -710,14 +723,17 @@ class Ag3:
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
-        dfs = [self._sample_metadata(sample_set=s) for s in sample_sets]
-        df = pd.concat(dfs, axis=0, ignore_index=True)
+        dfs = []
+        for s in sample_sets:
+            df = self._sample_metadata(sample_set=s)
+            dfs.append(df)
+        df_samples = pd.concat(dfs, axis=0, ignore_index=True)
 
         # for convenience, apply a query
         if sample_query is not None:
-            df = df.query(sample_query).reset_index(drop=True)
+            df_samples = df_samples.query(sample_query).reset_index(drop=True)
 
-        return df
+        return df_samples
 
     def open_site_filters(self, mask):
         """Open site filters zarr.
@@ -1389,14 +1405,16 @@ class Ag3:
         )
 
         # slice to feature location
-        gt = gt.compute()
+        with self._dask_progress(desc="Load SNP genotypes"):
+            gt = gt.compute()
 
         # build coh dict
         coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
 
         # count alleles
         freq_cols = dict()
-        for coh, loc_coh in coh_dict.items():
+        iterator = self._progress(coh_dict.items(), desc="Compute allele frequencies")
+        for coh, loc_coh in iterator:
             # handle sample query
             if loc_samples is not None:
                 loc_coh = loc_coh & loc_samples
@@ -2376,6 +2394,8 @@ class Ag3:
 
     def _gene_cnv(self, *, region, sample_sets, sample_query, max_coverage_variance):
 
+        # TODO consider using progress here?
+
         # sanity check
         assert isinstance(region, Region)
 
@@ -2607,6 +2627,8 @@ class Ag3:
 
         # set up cohort dict
         coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
+
+        # TODO consider using progress here?
 
         # compute cohort frequencies
         freq_cols = dict()
@@ -3320,10 +3342,8 @@ class Ag3:
         )
 
         # bring genotypes into memory
-        gt = gt.compute()
-
-        # # convert genotypes to more convenient representation
-        # gac, gan = _genotypes_to_alt_allele_counts_melt(gt, max_allele=3)
+        with self._dask_progress(desc="Load SNP genotypes"):
+            gt = gt.compute()
 
         # set up variant variables
         contigs = ds_snps.attrs["contigs"]
@@ -3348,7 +3368,12 @@ class Ag3:
         nobs = np.zeros((n_variants, n_cohorts), dtype=int)
 
         # build event count and nobs for each cohort
-        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
+        iterator = self._progress(
+            enumerate(df_cohorts.itertuples()),
+            total=len(df_cohorts),
+            desc="Compute SNP allele frequencies",
+        )
+        for cohort_index, cohort in iterator:
 
             # construct grouping key
             cohort_key = cohort.taxon, cohort.area, cohort.period
@@ -5117,8 +5142,7 @@ class Ag3:
         # set up and run allele counts computation
         gt = allel.GenotypeDaskArray(gt.data)
         ac = gt.count_alleles(max_allele=3)
-        self.info("compute SNP allele counts")
-        with ProgressBar():
+        with self._dask_progress(desc="Compute SNP allele counts"):
             ac = ac.compute()
 
         # return plain numpy array
@@ -5285,8 +5309,7 @@ class Ag3:
         gt = ds_snps["call_genotype"].data
         gt_asc = da.take(gt, loc_sites_thinned, axis=0)
         gn_asc = allel.GenotypeDaskArray(gt_asc).to_n_alt()
-        self.info("load SNP genotypes")
-        with ProgressBar():
+        with self._dask_progress(desc="Load SNP genotypes"):
             gn_asc = gn_asc.compute()
 
         self.debug("remove any sites where all genotypes are identical")
