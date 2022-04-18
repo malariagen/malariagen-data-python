@@ -15,10 +15,7 @@ license = "MIT"
 python = ">=3.7,<3.10"
 numpy = "*"
 scipy = "*"
-pandas = [
-    {version="<1.4.0", python="~3.7"},
-    {version="*", python=">3.7,<3.10"}
-]
+pandas = "*"
 zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
@@ -35,6 +32,7 @@ ipywidgets = "*"
 importlib_metadata = "*"
 ipinfo = "*"
 igv-notebook = "*"
+tqdm = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
