@@ -235,6 +235,7 @@ class Ag3:
         self._cache_haplotypes = dict()
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
+        self._cache_sample_metadata = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -721,19 +722,31 @@ class Ag3:
         """
 
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        cache_key = tuple(sample_sets)
 
-        # concatenate multiple sample sets
-        dfs = []
-        for s in sample_sets:
-            df = self._sample_metadata(sample_set=s)
-            dfs.append(df)
-        df_samples = pd.concat(dfs, axis=0, ignore_index=True)
+        try:
+
+            df_samples = self._cache_sample_metadata[cache_key]
+
+        except KeyError:
+
+            # concatenate multiple sample sets
+            dfs = []
+            # there can be some delay here due to network latency, so show progress
+            sample_sets_iterator = self._progress(
+                sample_sets, desc="Load sample metadata"
+            )
+            for s in sample_sets_iterator:
+                df = self._sample_metadata(sample_set=s)
+                dfs.append(df)
+            df_samples = pd.concat(dfs, axis=0, ignore_index=True)
+            self._cache_sample_metadata[cache_key] = df_samples
 
         # for convenience, apply a query
         if sample_query is not None:
             df_samples = df_samples.query(sample_query).reset_index(drop=True)
 
-        return df_samples
+        return df_samples.copy()
 
     def open_site_filters(self, mask):
         """Open site filters zarr.
@@ -1413,8 +1426,10 @@ class Ag3:
 
         # count alleles
         freq_cols = dict()
-        iterator = self._progress(coh_dict.items(), desc="Compute allele frequencies")
-        for coh, loc_coh in iterator:
+        cohorts_iterator = self._progress(
+            coh_dict.items(), desc="Compute allele frequencies"
+        )
+        for coh, loc_coh in cohorts_iterator:
             # handle sample query
             if loc_samples is not None:
                 loc_coh = loc_coh & loc_samples
@@ -1456,7 +1471,9 @@ class Ag3:
 
             # add effect annotations
             ann = self._annotator()
-            ann.get_effects(transcript=transcript, variants=df_snps)
+            ann.get_effects(
+                transcript=transcript, variants=df_snps, progress=self._progress
+            )
 
             # add label
             df_snps["label"] = _pandas_apply(
@@ -2394,8 +2411,6 @@ class Ag3:
 
     def _gene_cnv(self, *, region, sample_sets, sample_query, max_coverage_variance):
 
-        # TODO consider using progress here?
-
         # sanity check
         assert isinstance(region, Region)
 
@@ -2406,9 +2421,11 @@ class Ag3:
             sample_query=sample_query,
             max_coverage_variance=max_coverage_variance,
         )
-        pos = ds_hmm["variant_position"].values
-        end = ds_hmm["variant_end"].values
-        cn = ds_hmm["call_CN"].values
+        pos = ds_hmm["variant_position"].data
+        end = ds_hmm["variant_end"].data
+        cn = ds_hmm["call_CN"].data
+        with self._dask_progress(desc="Load CNV HMM data"):
+            pos, end, cn = dask.compute(pos, end, cn)
 
         # access genes
         df_geneset = self.geneset(region=region)
@@ -2420,7 +2437,12 @@ class Ag3:
         counts = []
 
         # iterate over genes
-        for gene in df_genes.itertuples():
+        genes_iterator = self._progress(
+            df_genes.itertuples(),
+            desc="Compute modal gene copy number",
+            total=len(df_genes),
+        )
+        for gene in genes_iterator:
 
             # locate windows overlapping the gene
             loc_gene_start = bisect_left(end, gene.start)
@@ -2627,8 +2649,6 @@ class Ag3:
 
         # set up cohort dict
         coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
-
-        # TODO consider using progress here?
 
         # compute cohort frequencies
         freq_cols = dict()
@@ -3368,12 +3388,12 @@ class Ag3:
         nobs = np.zeros((n_variants, n_cohorts), dtype=int)
 
         # build event count and nobs for each cohort
-        iterator = self._progress(
+        cohorts_iterator = self._progress(
             enumerate(df_cohorts.itertuples()),
             total=len(df_cohorts),
             desc="Compute SNP allele frequencies",
         )
-        for cohort_index, cohort in iterator:
+        for cohort_index, cohort in cohorts_iterator:
 
             # construct grouping key
             cohort_key = cohort.taxon, cohort.area, cohort.period
@@ -3438,7 +3458,9 @@ class Ag3:
         ann = self._annotator()
 
         # add effects to the dataframe
-        ann.get_effects(transcript=transcript, variants=df_variants)
+        ann.get_effects(
+            transcript=transcript, variants=df_variants, progress=self._progress
+        )
 
         # add variant labels
         df_variants["label"] = _pandas_apply(
