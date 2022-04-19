@@ -4930,52 +4930,62 @@ class Ag3:
         return fig
 
     @staticmethod
-    def igv(region):
+    def igv(region, tracks=None):
+        """Create an IGV browser and display it within the notebook.
 
-        try:
-            # The igv-notebook package is not currently available from PyPI, so
-            # we cannot have this as an automatically installed dependency yet.
-            # So for the time being, provide a message to the user with
-            # information about how to install.
-            import igv_notebook
-        except ImportError:
-            # re-raise with a more helpful message
-            raise ImportError(
-                dedent(
-                    """
-                This function requires the igv-notebook package to be installed.
-                Please install this package by running the following system
-                command:
+        Parameters
+        ----------
+        region: str
+            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
+        tracks : list of dict, optional
+            Configuration for any additional tracks.
 
-                pip install git+https://github.com/igvteam/igv-notebook.git
-            """
-                )
-            )
+        Returns
+        -------
+        browser : igv_notebook.Browser
+
+        """
+        import igv_notebook
+
+        config = {
+            "reference": {
+                "id": "AgamP4",
+                "name": "Anopheles gambiae (PEST)",
+                "fastaURL": f"{GCS_URL}{GENOME_FASTA_PATH}",
+                "indexURL": f"{GCS_URL}{GENOME_FAI_PATH}",
+                "tracks": [
+                    {
+                        "name": "Genes",
+                        "url": f"{GCS_URL}{GENESET_GFF3_PATH}",
+                        "indexed": False,
+                    }
+                ],
+            },
+            "locus": region,
+        }
+        if tracks:
+            config["tracks"] = tracks
 
         igv_notebook.init()
-
-        browser = igv_notebook.Browser(
-            {
-                "reference": {
-                    "id": "AgamP4",
-                    "name": "Anopheles gambiae (PEST)",
-                    "fastaURL": f"{GCS_URL}{GENOME_FASTA_PATH}",
-                    "indexURL": f"{GCS_URL}{GENOME_FAI_PATH}",
-                    "tracks": [
-                        {
-                            "name": "Genes",
-                            "url": f"{GCS_URL}{GENESET_GFF3_PATH}",
-                            "indexed": False,
-                        }
-                    ],
-                },
-                "locus": region,
-            }
-        )
+        browser = igv_notebook.Browser(config)
 
         return browser
 
     def data_catalog(self, sample_set):
+        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
+        files for samples in a given sample set.
+
+        Parameters
+        ----------
+        sample_set : str
+            Sample set identifier.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            One row per sample, columns provide URLs.
+
+        """
         debug = self._log.debug
 
         debug("look up release for sample set")
@@ -5041,7 +5051,8 @@ class Ag3:
         region,
         sample,
     ):
-        """Launch IGV and view sequence read alignments from the given sample.
+        """Launch IGV and view sequence read alignments and SNP genotypes from
+        the given sample.
 
         Parameters
         ----------
@@ -5052,7 +5063,7 @@ class Ag3:
 
         Notes
         -----
-        Only samples from the Ag3.0 release are currently available.
+        Only samples from the Ag3.0 release are currently supported.
 
         """
         debug = self._log.debug
@@ -5066,36 +5077,32 @@ class Ag3:
 
         debug("locate record for sample")
         cat_rec = df_cat.set_index("sample_id").loc[sample]
-        bam_path = cat_rec["alignments_bam"]
-        vcf_path = cat_rec["snp_genotypes_vcf"]
-        debug(bam_path)
-        debug(vcf_path)
+        bam_url = cat_rec["alignments_bam"]
+        vcf_url = cat_rec["snp_genotypes_vcf"]
+        debug(bam_url)
+        debug(vcf_url)
 
-        debug("create IGV browser")
-        browser = self.igv(region=region)
-
-        debug("add variant track")
-        browser.load_track(
+        debug("set up tracks config")
+        tracks = [
             {
                 "name": "SNPs",
-                "path": vcf_path,
-                "indexPath": f"{vcf_path}.tbi",
+                "url": vcf_url,
+                "indexURL": f"{vcf_url}.tbi",
                 "format": "vcf",
                 "type": "variant",
-                "displayMode": "EXPANDED",
-            }
-        )
-
-        debug("add alignment track")
-        browser.load_track(
+                "visibilityWindow": 35_000,  # (bp) match visibility of alignments
+            },
             {
                 "name": "Alignments",
-                "path": bam_path,
-                "indexPath": f"{bam_path}.bai",
+                "url": bam_url,
+                "indexURL": f"{bam_url}.bai",
                 "format": "bam",
                 "type": "alignment",
-            }
-        )
+            },
+        ]
+
+        debug("create IGV browser")
+        self.igv(region=region, tracks=tracks)
 
     def results_cache_get(self, *, name, params):
         debug = self._log.debug
