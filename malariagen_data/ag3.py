@@ -145,6 +145,8 @@ class Ag3:
         Set to True to enable debug level logging.
     show_progress : bool, optional
         If True, show a progress bar during longer-running computations.
+    check_location : bool, optional
+        If True, use ipinfo to check the location of the client system.
     **kwargs
         Passed through to fsspec when setting up file system access.
 
@@ -187,6 +189,7 @@ class Ag3:
         log=sys.stdout,
         debug=False,
         show_progress=True,
+        check_location=True,
         **kwargs,
     ):
 
@@ -254,22 +257,24 @@ class Ag3:
         # in the US, this is usually bad for performance, because of
         # increased latency and lower bandwidth. Add a check for this and
         # issue a warning if not in the US.
-        try:
-            client_details = ipinfo.getHandler().getDetails()
-            if GCS_URL in url and colab and client_details.country != "US":
-                warnings.warn(
-                    dedent(
-                        """
-                    Your currently allocated Google Colab VM is not located in the US.
-                    This usually means that data access will be substantially slower.
-                    If possible, select "Runtime > Factory reset runtime" from the menu
-                    to request a new VM and try again.
-                """
+        client_details = None
+        if check_location:
+            try:
+                client_details = ipinfo.getHandler().getDetails()
+                if GCS_URL in url and colab and client_details.country != "US":
+                    warnings.warn(
+                        dedent(
+                            """
+                        Your currently allocated Google Colab VM is not located in the US.
+                        This usually means that data access will be substantially slower.
+                        If possible, select "Runtime > Factory reset runtime" from the menu
+                        to request a new VM and try again.
+                    """
+                        )
                     )
-                )
 
-        except ConnectionError:
-            client_details = None
+            except OSError:
+                pass
         self._client_details = client_details
 
     @property
@@ -286,7 +291,7 @@ class Ag3:
                 if hostname.endswith("googleusercontent.com"):
                     location += " (Google Cloud)"
         else:
-            location = "offline"
+            location = "unknown"
         return location
 
     def __repr__(self):
@@ -4964,7 +4969,7 @@ class Ag3:
     def igv(region):
 
         try:
-            # The igv-notebook package is not currently available from PyPI so
+            # The igv-notebook package is not currently available from PyPI, so
             # we cannot have this as an automatically installed dependency yet.
             # So for the time being, provide a message to the user with
             # information about how to install.
@@ -5214,7 +5219,7 @@ class Ag3:
         max_missing_an : int, optional
             The maximum number of missing allele calls to accept. SNPs with
             more than this value will be excluded prior to thinning. Set to 0
-            (default) to require no missingness.
+            (default) to require no missing calls.
         n_components : int, optional
             Number of components to return.
 
