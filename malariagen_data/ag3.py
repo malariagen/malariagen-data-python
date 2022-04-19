@@ -1,4 +1,3 @@
-import logging
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
@@ -32,6 +31,7 @@ from .util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     CacheMiss,
+    LoggingHelper,
     Region,
     da_compress,
     da_from_zarr,
@@ -50,10 +50,6 @@ from .util import (
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_large_chunks": False})
-
-# set up a logger for the module
-logger = logging.getLogger(__name__)
-logger.setLevel(logging.DEBUG)
 
 PUBLIC_RELEASES = ("3.0",)
 GCS_URL = "gs://vo_agam_release/"
@@ -193,20 +189,7 @@ class Ag3:
         self._site_filters_analysis = site_filters_analysis
 
         # set up logging
-        handler = None
-        if isinstance(log, str):
-            handler = logging.FileHandler(log)
-        elif hasattr(log, "write"):
-            handler = logging.StreamHandler(log)
-        self._log_handler = handler
-        if handler is not None:
-            if debug:
-                handler.setLevel(logging.DEBUG)
-            else:
-                handler.setLevel(logging.INFO)
-            formatter = logging.Formatter(fmt="[%(levelname)s] %(message)s")
-            handler.setFormatter(formatter)
-            logger.addHandler(handler)
+        self._log = LoggingHelper(name=__name__, out=log, debug=debug)
 
         # set up filesystem
         self._fs, self._base_path = init_filesystem(url, **kwargs)
@@ -369,25 +352,6 @@ class Ag3:
             </table>
         """
         return html
-
-    def set_log_level(self, level):
-        if self._log_handler is not None:
-            self._log_handler.setLevel(level)
-
-    def debug(self, msg):
-        # get the name of the calling function, helps with debugging
-        caller_name = sys._getframe().f_back.f_code.co_name
-        msg = f"{caller_name}: {msg}"
-        logger.debug(msg)
-        # flush messages immediately
-        if self._log_handler is not None:
-            self._log_handler.flush()
-
-    def info(self, msg):
-        logger.info(msg)
-        # flush messages immediately
-        if self._log_handler is not None:
-            self._log_handler.flush()
 
     @property
     def releases(self):
@@ -4959,6 +4923,67 @@ class Ag3:
 
         return browser
 
+    def data_catalog(self, sample_set):
+        debug = self._log.debug
+
+        debug("look up release for sample set")
+        release = self._lookup_release(sample_set=sample_set)
+        release_path = _release_to_path(release=release)
+
+        if release == "3.0":
+
+            debug("special handling for 3.0 as data catalogs have a different format")
+
+            debug("load alignments catalog")
+            alignments_path = f"{self._base_path}/{release_path}/alignments/catalog.csv"
+            with self._fs.open(alignments_path) as f:
+                alignments_df = pd.read_csv(f, na_values="").query(
+                    f"sample_set == '{sample_set}'"
+                )
+
+            debug("load SNP genotypes catalog")
+            genotypes_path = (
+                f"{self._base_path}/{release_path}/snp_genotypes/per_sample/catalog.csv"
+            )
+            with self._fs.open(genotypes_path) as f:
+                genotypes_df = pd.read_csv(f, na_values="").query(
+                    f"sample_set == '{sample_set}'"
+                )
+
+            debug("join catalogs")
+            df = pd.merge(
+                left=alignments_df, right=genotypes_df, on="sample_id", how="inner"
+            )
+
+            debug("normalise columns")
+            df = df[["sample_id", "bam_path", "vcf_path", "zarr_path"]]
+            df = df.rename(
+                columns={
+                    "bam_path": "alignments_bam",
+                    "vcf_path": "snp_genotypes_vcf",
+                    "zarr_path": "snp_genotypes_zarr",
+                }
+            )
+
+        else:
+
+            debug("load data catalog")
+            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
+            with self._fs.open(path) as f:
+                df = pd.read_csv(f, na_values="")
+
+            debug("normalise columns")
+            df = df[
+                [
+                    "sample_id",
+                    "alignments_bam",
+                    "snp_genotypes_vcf",
+                    "snp_genotypes_zarr",
+                ]
+            ]
+
+        return df
+
     def view_alignments(
         self,
         region,
@@ -4978,29 +5003,50 @@ class Ag3:
         Only samples from the Ag3.0 release are currently available.
 
         """
+        debug = self._log.debug
 
+        debug("look up sample set for sample")
         sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
         sample_set = sample_rec["sample_set"]
-        release = sample_rec["release"]
-        if release != "3.0":
-            raise NotImplementedError(
-                "Only samples from the Ag3.0 release are currently supported."
-            )
-        # TODO support other releases
 
+        debug("load data catalog")
+        df_cat = self.data_catalog(sample_set=sample_set)
+
+        debug("locate record for sample")
+        cat_rec = df_cat.set_index("sample_id").loc[sample]
+        bam_path = cat_rec["alignments_bam"]
+        vcf_path = cat_rec["snp_genotypes_vcf"]
+        debug(bam_path)
+        debug(vcf_path)
+
+        debug("create IGV browser")
         browser = self.igv(region=region)
-        release_path = _release_to_path(release)
+
+        debug("add variant track")
         browser.load_track(
             {
-                "name": sample,
-                "path": f"{GCS_URL}{release_path}/alignments/{sample_set}/{sample}.bam",
-                "indexPath": f"{GCS_URL}{release_path}/alignments/{sample_set}/{sample}.bam.bai",
+                "name": "SNPs",
+                "path": vcf_path,
+                "indexPath": f"{vcf_path}.tbi",
+                "format": "vcf",
+                "type": "variant",
+                "displayMode": "EXPANDED",
+            }
+        )
+
+        debug("add alignment track")
+        browser.load_track(
+            {
+                "name": "Alignments",
+                "path": bam_path,
+                "indexPath": f"{bam_path}.bai",
                 "format": "bam",
                 "type": "alignment",
             }
         )
 
     def results_cache_get(self, *, name, params):
+        debug = self._log.debug
         if self._results_cache is None:
             raise CacheMiss
         params = params.copy()
@@ -5013,10 +5059,11 @@ class Ag3:
         if not results_path.exists():
             raise CacheMiss
         results = np.load(results_path)
-        self.debug(f"loaded {name}/{cache_key}")
+        debug(f"loaded {name}/{cache_key}")
         return results
 
     def results_cache_set(self, *, name, params, results):
+        debug = self._log.debug
         if self._results_cache is None:
             # no results cache has been configured, do nothing
             return
@@ -5032,7 +5079,7 @@ class Ag3:
         with params_path.open(mode="w") as f:
             f.write(params_json)
         np.savez_compressed(results_path, **results)
-        self.debug(f"saved {name}/{cache_key}")
+        debug(f"saved {name}/{cache_key}")
 
     def snp_allele_counts(
         self,
@@ -5117,7 +5164,6 @@ class Ag3:
         # set up and run allele counts computation
         gt = allel.GenotypeDaskArray(gt.data)
         ac = gt.count_alleles(max_allele=3)
-        self.info("compute SNP allele counts")
         with ProgressBar():
             ac = ac.compute()
 
@@ -5239,19 +5285,20 @@ class Ag3:
         max_missing_an,
         n_components,
     ):
+        debug = self._log.debug
 
-        self.debug("access SNP calls")
+        debug("access SNP calls")
         ds_snps = self.snp_calls(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
         )
-        self.debug(
+        debug(
             f"{ds_snps.dims['variants']:,} variants, {ds_snps.dims['samples']:,} samples"
         )
 
-        self.debug("perform allele count")
+        debug("perform allele count")
         ac = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
@@ -5262,7 +5309,7 @@ class Ag3:
         an_called = ac.sum(axis=1)
         an_missing = n_chroms - an_called
 
-        self.debug("ascertain sites")
+        debug("ascertain sites")
         ac = allel.AlleleCountsArray(ac)
         min_ref_ac = min_minor_ac
         max_ref_ac = n_chroms - min_minor_ac
@@ -5273,31 +5320,30 @@ class Ag3:
             & (ac[:, 0] <= max_ref_ac)
             & (an_missing <= max_missing_an)
         )
-        self.debug(f"ascertained {np.count_nonzero(loc_sites):,} sites")
+        debug(f"ascertained {np.count_nonzero(loc_sites):,} sites")
 
-        self.debug("thin sites to approximately desired number")
+        debug("thin sites to approximately desired number")
         loc_sites = np.nonzero(loc_sites)[0]
         thin_step = max(loc_sites.shape[0] // n_snps, 1)
         loc_sites_thinned = loc_sites[thin_offset::thin_step]
-        self.debug(f"thinned to {np.count_nonzero(loc_sites_thinned):,} sites")
+        debug(f"thinned to {np.count_nonzero(loc_sites_thinned):,} sites")
 
-        self.debug("access genotypes")
+        debug("access genotypes")
         gt = ds_snps["call_genotype"].data
         gt_asc = da.take(gt, loc_sites_thinned, axis=0)
         gn_asc = allel.GenotypeDaskArray(gt_asc).to_n_alt()
-        self.info("load SNP genotypes")
         with ProgressBar():
             gn_asc = gn_asc.compute()
 
-        self.debug("remove any sites where all genotypes are identical")
+        debug("remove any sites where all genotypes are identical")
         loc_var = np.any(gn_asc != gn_asc[:, 0, np.newaxis], axis=1)
         gn_var = np.compress(loc_var, gn_asc, axis=0)
-        self.debug(f"final shape {gn_var.shape}")
+        debug(f"final shape {gn_var.shape}")
 
-        self.debug("run the PCA")
+        debug("run the PCA")
         coords, model = allel.pca(gn_var, n_components=n_components)
 
-        self.debug("work around sign indeterminacy")
+        debug("work around sign indeterminacy")
         for i in range(n_components):
             c = coords[:, i]
             if np.abs(c.min()) > np.abs(c.max()):
