@@ -1,6 +1,8 @@
 import hashlib
 import json
+import logging
 import re
+import sys
 from collections.abc import Mapping
 from enum import Enum
 from urllib.parse import unquote_plus
@@ -510,3 +512,54 @@ def jitter(a, fraction):
 
 class CacheMiss(Exception):
     pass
+
+
+class LoggingHelper:
+    def __init__(self, name, out, debug=False):
+
+        # set up a logger
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.DEBUG)
+        self._logger = logger
+
+        # set up handler
+        handler = None
+        if isinstance(out, str):
+            handler = logging.FileHandler(out)
+        elif hasattr(out, "write"):
+            handler = logging.StreamHandler(out)
+        self._handler = handler
+
+        # configure handler
+        if handler is not None:
+            if debug:
+                handler.setLevel(logging.DEBUG)
+            else:
+                handler.setLevel(logging.INFO)
+            formatter = logging.Formatter(fmt="[%(levelname)s] %(message)s")
+            handler.setFormatter(formatter)
+            logger.addHandler(handler)
+
+    def flush(self):
+        if self._handler is not None:
+            self._handler.flush()
+
+    def debug(self, msg):
+
+        # get the name of the calling function, helps with debugging
+        caller_name = sys._getframe().f_back.f_code.co_name
+        msg = f"{caller_name}: {msg}"
+        self._logger.debug(msg)
+
+        # flush messages immediately
+        self.flush()
+
+    def info(self, msg):
+        self._logger.info(msg)
+
+        # flush messages immediately
+        self.flush()
+
+    def set_level(self, level):
+        if self._handler is not None:
+            self._handler.setLevel(level)
