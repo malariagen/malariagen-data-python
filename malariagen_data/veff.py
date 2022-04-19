@@ -88,7 +88,7 @@ class Annotator(object):
 
         return ref_start, ref_stop
 
-    def get_effects(self, transcript, variants):
+    def get_effects(self, transcript, variants, progress=None):
 
         children = self.get_children(transcript).sort_values("start")
         feature = self.get_feature(transcript)
@@ -104,21 +104,27 @@ class Annotator(object):
         utr3 = list(children[children.type == "three_prime_UTR"].itertuples())
         introns = [(x.end + 1, y.start - 1) for x, y in zip(exons[:-1], exons[1:])]
 
-        leffect = []
-        limpact = []
-        lref_codon = []
-        lalt_codon = []
-        laa_pos = []
-        lref_aa = []
-        lalt_aa = []
-        laa_change = []
+        effect_values = []
+        impact_values = []
+        ref_codon_values = []
+        alt_codon_values = []
+        aa_pos_values = []
+        ref_aa_values = []
+        alt_aa_values = []
+        aa_change_values = []
 
-        # Now iterate over the transcript alt alleles
         feature_contig = feature.contig
         feature_start = feature.start
         feature_stop = feature.end
         feature_strand = feature.strand
-        for row in variants.itertuples(index=True):
+
+        variant_iterator = variants.itertuples(index=True)
+        if progress:
+            variant_iterator = progress(
+                variant_iterator, desc="Compute SNP effects", total=len(variants)
+            )
+
+        for row in variant_iterator:
             # some parameters
             chrom = feature_contig
             pos = row.position
@@ -128,7 +134,7 @@ class Annotator(object):
             # obtain start and stop coordinates of the reference allele
             ref_start, ref_stop = self.get_ref_allele_coords(chrom, pos, ref)
 
-            # setup the common effect parameters
+            # set up the common effect parameters
             base_effect = null_effect._replace(
                 chrom=chrom,
                 pos=pos,
@@ -152,24 +158,24 @@ class Annotator(object):
                 introns=introns,
             )
 
-            leffect.append(effect.effect)
-            limpact.append(effect.impact)
-            lref_codon.append(effect.ref_codon)
-            lalt_codon.append(effect.alt_codon)
-            laa_pos.append(effect.aa_pos)
-            lref_aa.append(effect.ref_aa)
-            lalt_aa.append(effect.alt_aa)
-            laa_change.append(effect.aa_change)
+            effect_values.append(effect.effect)
+            impact_values.append(effect.impact)
+            ref_codon_values.append(effect.ref_codon)
+            alt_codon_values.append(effect.alt_codon)
+            aa_pos_values.append(effect.aa_pos)
+            ref_aa_values.append(effect.ref_aa)
+            alt_aa_values.append(effect.alt_aa)
+            aa_change_values.append(effect.aa_change)
 
         variants["transcript"] = transcript
-        variants["effect"] = leffect
-        variants["impact"] = limpact
-        variants["ref_codon"] = lref_codon
-        variants["alt_codon"] = lalt_codon
-        variants["aa_pos"] = laa_pos
-        variants["ref_aa"] = lref_aa
-        variants["alt_aa"] = lalt_aa
-        variants["aa_change"] = laa_change
+        variants["effect"] = effect_values
+        variants["impact"] = impact_values
+        variants["ref_codon"] = ref_codon_values
+        variants["alt_codon"] = alt_codon_values
+        variants["aa_pos"] = aa_pos_values
+        variants["ref_aa"] = ref_aa_values
+        variants["alt_aa"] = alt_aa_values
+        variants["aa_change"] = aa_change_values
 
         return variants
 
