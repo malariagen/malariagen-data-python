@@ -3364,19 +3364,14 @@ class Ag3:
         )
         for cohort_index, cohort in cohorts_iterator:
 
-            debug("construct grouping key")
             cohort_key = cohort.taxon, cohort.area, cohort.period
-
-            debug("obtain sample indices for cohort")
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
-            debug("compute cohort allele counts")
             cohort_ac, cohort_an = _cohort_alt_allele_counts_melt(
                 gt, sample_indices, max_allele=3
             )
             count[:, cohort_index] = cohort_ac
 
-            debug("compute cohort allele numbers")
             if nobs_mode == "called":
                 nobs[:, cohort_index] = cohort_an
             elif nobs_mode == "fixed":
