@@ -206,6 +206,7 @@ class Ag3:
         # set up caches
         self._cache_releases = None
         self._cache_sample_sets = dict()
+        self._cache_sample_set_to_release = None
         self._cache_general_metadata = dict()
         self._cache_species_calls = dict()
         self._cache_site_filters = dict()
@@ -465,8 +466,8 @@ class Ag3:
 
     @property
     def v3_wild(self):
-        # legacy, convenience property to access sample sets from the
-        # 3.0 release, excluding the lab crosses
+        """Legacy, convenience property to access sample sets from the
+        3.0 release, excluding the lab crosses."""
         return [
             x
             for x in self.sample_sets(release="3.0")["sample_set"].tolist()
@@ -475,9 +476,13 @@ class Ag3:
 
     def _lookup_release(self, *, sample_set):
         """Find which release a sample set was included in."""
-        df_sample_sets = self.sample_sets().set_index("sample_set")
+
+        if self._cache_sample_set_to_release is None:
+            df_sample_sets = self.sample_sets().set_index("sample_set")
+            self._cache_sample_set_to_release = df_sample_sets["release"].to_dict()
+
         try:
-            return df_sample_sets.loc[sample_set]["release"]
+            return self._cache_sample_set_to_release[sample_set]
         except KeyError:
             raise ValueError(f"No release found for sample set {sample_set!r}")
 
@@ -596,8 +601,7 @@ class Ag3:
         elif isinstance(sample_sets, str):
 
             if sample_sets.startswith("3."):
-                # convenience, can use a release identifier to denote all sample sets
-                # in a release
+                # convenience, can use a release identifier to denote all sample sets in a release
                 sample_sets = self.sample_sets(release=sample_sets)[
                     "sample_set"
                 ].tolist()
@@ -610,8 +614,10 @@ class Ag3:
             # list or tuple of sample sets or releases
             prepped_sample_sets = []
             for s in sample_sets:
+
                 # make a recursive call to handle the case where s is a release identifier
                 sp = self._prep_sample_sets_arg(sample_sets=s)
+
                 # make sure we end up with a flat list of sample sets
                 if isinstance(sp, str):
                     prepped_sample_sets.append(sp)
@@ -664,7 +670,7 @@ class Ag3:
         df = self._read_general_metadata(sample_set=sample_set)
         df_species = self._read_species_calls(sample_set=sample_set)
         df = df.merge(df_species, on="sample_id", sort=False)
-        df_cohorts = self.sample_cohorts(sample_sets=sample_set)
+        df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
         df = df.merge(df_cohorts, on="sample_id", sort=False)
         return df
 
@@ -882,12 +888,13 @@ class Ag3:
             alleles.
 
         """
+        debug = self._log.debug
 
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
-        # concatenate
+        debug("access SNP sites and concatenate over regions")
         ret = da.concatenate(
             [
                 self._snp_sites(
@@ -901,6 +908,7 @@ class Ag3:
             axis=0,
         )
 
+        debug("apply site mask if requested")
         if site_mask is not None:
             loc_sites = self.site_filters(
                 region=region,
@@ -936,7 +944,7 @@ class Ag3:
             return root
 
     def _snp_genotypes(self, *, region, sample_set, field, inline_array, chunks):
-        # single contig, single sample set
+        """Access SNP genotypes for a single contig and a single sample set."""
         assert isinstance(region, Region)
         assert isinstance(sample_set, str)
         root = self.open_snp_genotypes(sample_set=sample_set)
@@ -1125,6 +1133,7 @@ class Ag3:
             A dataframe of genome annotations, one row per feature.
 
         """
+        debug = self._log.debug
 
         if attributes is not None:
             attributes = tuple(attributes)
@@ -1140,16 +1149,16 @@ class Ag3:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_geneset[attributes] = df
 
-        # handle region
+        debug("handle region")
         if region is not None:
 
             region = self.resolve_region(region)
 
-            # normalise to list to simplify concatenation logic
+            debug("normalise to list to simplify concatenation logic")
             if isinstance(region, Region):
                 region = [region]
 
-            # apply region query
+            debug("apply region query")
             parts = []
             for r in region:
                 df_part = df.query(f"contig == '{r.contig}'")
@@ -1200,14 +1209,15 @@ class Ag3:
             An array of boolean values identifying accessible genome sites.
 
         """
+        debug = self._log.debug
 
-        # resolve region
+        debug("resolve region")
         region = self.resolve_region(region)
 
-        # determine contig sequence length
+        debug("determine contig sequence length")
         seq_length = self.genome_sequence(region).shape[0]
 
-        # setup output
+        debug("set up output")
         is_accessible = np.zeros(seq_length, dtype=bool)
 
         pos = self.snp_sites(region=region, field="POS").compute()
@@ -1216,13 +1226,13 @@ class Ag3:
         else:
             offset = 1
 
-        # access site filters
+        debug("access site filters")
         filter_pass = self.site_filters(
             region=region,
             mask=site_mask,
         ).compute()
 
-        # assign values from site filters
+        debug("assign values from site filters")
         is_accessible[pos - offset] = filter_pass
 
         return is_accessible
@@ -1235,14 +1245,15 @@ class Ag3:
 
     def _snp_df(self, *, transcript):
         """Set up a dataframe with SNP site and filter columns."""
+        debug = self._log.debug
 
-        # get feature direct from geneset
+        debug("get feature direct from geneset")
         gs = self.geneset()
         feature = gs[gs["ID"] == transcript].squeeze()
         contig = feature.contig
         region = Region(contig, feature.start, feature.end)
 
-        # grab pos, ref and alt for chrom arm from snp_sites
+        debug("grab pos, ref and alt for chrom arm from snp_sites")
         pos = self.snp_sites(region=contig, field="POS")
         ref = self.snp_sites(region=contig, field="REF")
         alt = self.snp_sites(region=contig, field="ALT")
@@ -1251,7 +1262,7 @@ class Ag3:
         ref = ref[loc_feature].compute()
         alt = alt[loc_feature].compute()
 
-        # access site filters
+        debug("access site filters")
         filter_pass = dict()
         masks = self._site_mask_ids()
         for m in masks:
@@ -1259,7 +1270,7 @@ class Ag3:
             x = x[loc_feature].compute()
             filter_pass[m] = x
 
-        # setup columns with contig, pos, ref, alt columns
+        debug("set up columns with contig, pos, ref, alt columns")
         cols = {
             "contig": contig,
             "position": np.repeat(pos, 3),
@@ -1267,18 +1278,18 @@ class Ag3:
             "alt_allele": alt.astype("U1").flatten(),
         }
 
-        # add mask columns
+        debug("add mask columns")
         for m in masks:
             x = filter_pass[m]
             cols[f"pass_{m}"] = np.repeat(x, 3)
 
-        # construct dataframe
+        debug("construct dataframe")
         df_snps = pd.DataFrame(cols)
 
         return region, df_snps
 
     def _annotator(self):
-        # setup variant effect annotator
+        """Set up variant effect annotator."""
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
                 genome=self.open_genome(), geneset=self.geneset()
@@ -1306,22 +1317,23 @@ class Ag3:
             per variant.
 
         """
+        debug = self._log.debug
 
-        # setup initial dataframe of SNPs
+        debug("setup initial dataframe of SNPs")
         _, df_snps = self._snp_df(transcript=transcript)
 
-        # setup variant effect annotator
+        debug("setup variant effect annotator")
         ann = self._annotator()
 
-        # apply mask if requested
+        debug("apply mask if requested")
         if site_mask is not None:
             loc_sites = df_snps[f"pass_{site_mask}"]
             df_snps = df_snps.loc[loc_sites]
 
-        # reset index after filtering
+        debug("reset index after filtering")
         df_snps.reset_index(inplace=True, drop=True)
 
-        # add effects to the dataframe
+        debug("add effects to the dataframe")
         ann.get_effects(transcript=transcript, variants=df_snps)
 
         return df_snps
@@ -1498,6 +1510,7 @@ class Ag3:
             A dataframe of sample metadata for colony crosses.
 
         """
+        debug = self._log.debug
 
         if self._cache_cross_metadata is None:
 
@@ -1519,15 +1532,15 @@ class Ag3:
                     dtype={"sex": str},
                 )
 
-            # convert "sex" column for consistency with sample metadata
+            debug("convert 'sex' column for consistency with sample metadata")
             df.loc[df["sex"] == "1", "sex"] = "M"
             df.loc[df["sex"] == "2", "sex"] = "F"
 
-            # add a "role" column for convenience
+            debug("add a 'role' column for convenience")
             df["role"] = "progeny"
             df.loc[df["mother_id"].isna(), "role"] = "parent"
 
-            # drop "phenotype" column, not used
+            debug("drop 'phenotype' column, not used")
             df.drop("phenotype", axis="columns", inplace=True)
 
             self._cache_cross_metadata = df
@@ -1584,11 +1597,12 @@ class Ag3:
             An array of site annotations.
 
         """
+        debug = self._log.debug
 
-        # access the array of values for all genome positions
+        debug("access the array of values for all genome positions")
         root = self.open_site_annotations()
 
-        # resolve region
+        debug("resolve region")
         region = self.resolve_region(region)
         if isinstance(region, list):
             raise TypeError("Multiple regions not supported.")
@@ -1597,7 +1611,7 @@ class Ag3:
             root[field][region.contig], inline_array=inline_array, chunks=chunks
         )
 
-        # access and subset to SNP positions
+        debug("access and subset to SNP positions")
         pos = self.snp_sites(
             region=region,
             field="POS",
@@ -1608,22 +1622,20 @@ class Ag3:
         return d
 
     def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
-
-        # assert isinstance(region, Region)
-        # contig = region.contig
+        debug = self._log.debug
 
         coords = dict()
         data_vars = dict()
 
-        # variant arrays
+        debug("variant arrays")
         sites_root = self.open_snp_sites()
 
-        # variant_position
+        debug("variant_position")
         pos_z = sites_root[f"{contig}/variants/POS"]
         variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
-        # variant_allele
+        debug("variant_allele")
         ref_z = sites_root[f"{contig}/variants/REF"]
         alt_z = sites_root[f"{contig}/variants/ALT"]
         ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
@@ -1631,21 +1643,21 @@ class Ag3:
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
-        # variant_contig
+        debug("variant_contig")
         contig_index = self.contigs.index(contig)
         variant_contig = da.full_like(
             variant_position, fill_value=contig_index, dtype="u1"
         )
         coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
-        # site filters arrays
+        debug("site filters arrays")
         for mask in self._site_mask_ids():
             filters_root = self.open_site_filters(mask=mask)
             z = filters_root[f"{contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
-        # call arrays
+        debug("call arrays")
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
         gt_z = calls_root[f"{contig}/calldata/GT"]
         call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
@@ -1666,17 +1678,17 @@ class Ag3:
             call_ad,
         )
 
-        # sample arrays
+        debug("sample arrays")
         z = calls_root["samples"]
         sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         # decode to str, as it is stored as bytes objects
         sample_id = sample_id.astype("U")
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
-        # setup attributes
+        debug("set up attributes")
         attrs = {"contigs": self.contigs}
 
-        # create a dataset
+        debug("create a dataset")
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
@@ -1721,15 +1733,15 @@ class Ag3:
             A dataset containing SNP sites, site filters and genotype calls.
 
         """
+        debug = self._log.debug
 
+        debug("normalise parameters")
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         region = self.resolve_region(region)
-
-        # normalise to simplify concatenation logic
         if isinstance(region, Region):
             region = [region]
 
-        # concatenate multiple sample sets and/or regions
+        debug("access SNP calls and concatenate multiple sample sets and/or regions")
         lx = []
         for r in region:
 
@@ -1743,10 +1755,10 @@ class Ag3:
                 )
                 ly.append(y)
 
-            # concatenate data from multiple sample sets
+            debug("concatenate data from multiple sample sets")
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
-            # handle region, do this only once - optimisation
+            debug("handle region, do this only once - optimisation")
             if r.start or r.end:
                 pos = x["variant_position"].values
                 loc_region = locate_region(r, pos)
@@ -1754,19 +1766,19 @@ class Ag3:
 
             lx.append(x)
 
-        # concatenate data from multiple regions
+        debug("concatenate data from multiple regions")
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
-        # apply site filters
+        debug("apply site filters")
         if site_mask is not None:
             ds = dask_compress_dataset(
                 ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
             )
 
-        # add call_genotype_mask
+        debug("add call_genotype_mask")
         ds["call_genotype_mask"] = ds["call_genotype"] < 0
 
-        # handle sample query
+        debug("handle sample query")
         if sample_query is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
@@ -1777,7 +1789,7 @@ class Ag3:
         return ds
 
     def snp_dataset(self, *args, **kwargs):
-        # backwards compatibility, this method has been renamed to snp_calls()
+        """Deprecated, this method has been renamed to snp_calls()."""
         return self.snp_calls(*args, **kwargs)
 
     def open_cnv_hmm(self, sample_set):
@@ -1804,14 +1816,15 @@ class Ag3:
         return root
 
     def _cnv_hmm_dataset(self, *, contig, sample_set, inline_array, chunks):
+        debug = self._log.debug
 
         coords = dict()
         data_vars = dict()
 
-        # open zarr
+        debug("open zarr")
         root = self.open_cnv_hmm(sample_set=sample_set)
 
-        # variant arrays
+        debug("variant arrays")
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
@@ -1830,7 +1843,7 @@ class Ag3:
             da.full_like(pos, fill_value=contig_index, dtype="u1"),
         )
 
-        # call arrays
+        debug("call arrays")
         data_vars["call_CN"] = (
             [DIM_VARIANT, DIM_SAMPLE],
             da_from_zarr(
@@ -1854,7 +1867,7 @@ class Ag3:
             ),
         )
 
-        # sample arrays
+        debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
             da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
@@ -1865,10 +1878,10 @@ class Ag3:
                 da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
-        # setup attributes
+        debug("set up attributes")
         attrs = {"contigs": self.contigs}
 
-        # create a dataset
+        debug("create a dataset")
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
@@ -1913,16 +1926,15 @@ class Ag3:
             A dataset of CNV HMM calls and associated data.
 
         """
+        debug = self._log.debug
 
-        # normalise parameters
+        debug("normalise parameters")
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         region = self.resolve_region(region)
-
-        # normalise to simplify concatenation logic
         if isinstance(region, Region):
             region = [region]
 
-        # concatenate
+        debug("access CNV HMM data and concatenate as needed")
         lx = []
         for r in region:
 
@@ -1936,10 +1948,10 @@ class Ag3:
                 )
                 ly.append(y)
 
-            # concatenate data from multiple sample sets
+            debug("concatenate data from multiple sample sets")
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
-            # handle region, do this only once - optimisation
+            debug("handle region, do this only once - optimisation")
             if r.start is not None or r.end is not None:
                 start = x["variant_position"].values
                 end = x["variant_end"].values
@@ -1951,29 +1963,29 @@ class Ag3:
 
             lx.append(x)
 
-        # concatenate data from multiple regions
+        debug("concatenate data from multiple regions")
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
-        # handle sample query
+        debug("handle sample query")
         if sample_query is not None:
 
-            # load sample metadata
+            debug("load sample metadata")
             df_samples = self.sample_metadata(sample_sets=sample_sets)
 
-            # align sample metadata with CNV data
+            debug("align sample metadata with CNV data")
             cnv_samples = ds["sample_id"].values.tolist()
             df_samples_cnv = (
                 df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
             )
 
-            # apply the query
+            debug("apply the query")
             loc_query_samples = df_samples_cnv.eval(sample_query).values
             if np.count_nonzero(loc_query_samples) == 0:
                 raise ValueError("No samples found for query {sample_query!r}")
 
             ds = ds.isel(samples=loc_query_samples)
 
-        # handle coverage variance filter
+        debug("handle coverage variance filter")
         if max_coverage_variance is not None:
             cov_var = ds["sample_coverage_variance"].values
             loc_pass_samples = cov_var <= max_coverage_variance
@@ -2021,14 +2033,15 @@ class Ag3:
         inline_array,
         chunks,
     ):
+        debug = self._log.debug
 
         coords = dict()
         data_vars = dict()
 
-        # open zarr
+        debug("open zarr")
         root = self.open_cnv_coverage_calls(sample_set=sample_set, analysis=analysis)
 
-        # variant arrays
+        debug("variant arrays")
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
@@ -2076,7 +2089,7 @@ class Ag3:
             ),
         )
 
-        # call arrays
+        debug("call arrays")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
             da_from_zarr(
@@ -2084,16 +2097,16 @@ class Ag3:
             ),
         )
 
-        # sample arrays
+        debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
             da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
-        # setup attributes
+        debug("set up attributes")
         attrs = {"contigs": self.contigs}
 
-        # create a dataset
+        debug("create a dataset")
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
@@ -2132,21 +2145,22 @@ class Ag3:
             A dataset of CNV alleles and genotypes.
 
         """
+        debug = self._log.debug
 
         # N.B., we cannot concatenate multiple sample sets here, because
         # different sample sets may have different sets of alleles, as the
         # calling is done independently in different sample sets.
 
-        # normalise parameters
+        debug("normalise parameters")
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
-        # concatenate
+        debug("access data and concatenate as needed")
         lx = []
         for r in region:
 
-            # obtain coverage calls for the contig
+            debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
                 sample_set=sample_set,
@@ -2155,7 +2169,7 @@ class Ag3:
                 chunks=chunks,
             )
 
-            # select region
+            debug("select region")
             if r.start is not None or r.end is not None:
                 start = x["variant_position"].values
                 end = x["variant_end"].values
@@ -2196,11 +2210,12 @@ class Ag3:
     def _cnv_discordant_read_calls_dataset(
         self, *, contig, sample_set, inline_array, chunks
     ):
+        debug = self._log.debug
 
         coords = dict()
         data_vars = dict()
 
-        # open zarr
+        debug("open zarr")
         root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
 
         # not all contigs have CNVs, need to check
@@ -2209,7 +2224,7 @@ class Ag3:
         if contig not in root:
             raise ValueError(f"no CNVs available for contig {contig!r}")
 
-        # variant arrays
+        debug("variant arrays")
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
@@ -2242,7 +2257,7 @@ class Ag3:
                 ),
             )
 
-        # call arrays
+        debug("call arrays")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
             da_from_zarr(
@@ -2250,7 +2265,7 @@ class Ag3:
             ),
         )
 
-        # sample arrays
+        debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
             da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
@@ -2261,10 +2276,10 @@ class Ag3:
                 da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
-        # setup attributes
+        debug("set up attributes")
         attrs = {"contigs": self.contigs}
 
-        # create a dataset
+        debug("create a dataset")
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
@@ -2300,16 +2315,17 @@ class Ag3:
             A dataset of CNV alleles and genotypes.
 
         """
+        debug = self._log.debug
 
         # N.B., we cannot support region instead of contig here, because some
         # CNV alleles have unknown start or end coordinates.
 
-        # normalise parameters
+        debug("normalise parameters")
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         if isinstance(contig, str):
             contig = [contig]
 
-        # concatenate
+        debug("access data and concatenate as needed")
         lx = []
         for c in contig:
 
@@ -2364,7 +2380,6 @@ class Ag3:
 
         """
 
-        # handle multiple regions
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -2385,11 +2400,12 @@ class Ag3:
         return ds
 
     def _gene_cnv(self, *, region, sample_sets, sample_query, max_coverage_variance):
+        debug = self._log.debug
 
-        # sanity check
+        debug("sanity check")
         assert isinstance(region, Region)
 
-        # access HMM data
+        debug("access HMM data")
         ds_hmm = self.cnv_hmm(
             region=region.contig,
             sample_sets=sample_sets,
@@ -2402,16 +2418,16 @@ class Ag3:
         with self._dask_progress(desc="Load CNV HMM data"):
             pos, end, cn = dask.compute(pos, end, cn)
 
-        # access genes
+        debug("access genes")
         df_geneset = self.geneset(region=region)
         df_genes = df_geneset.query("type == 'gene'")
 
-        # setup intermediates
+        debug("setup intermediates")
         windows = []
         modes = []
         counts = []
 
-        # iterate over genes
+        debug("iterate over genes")
         genes_iterator = self._progress(
             df_genes.itertuples(),
             desc="Compute modal gene copy number",
@@ -2433,12 +2449,12 @@ class Ag3:
             modes.append(m)
             counts.append(c)
 
-        # combine results
+        debug("combine results")
         windows = np.array(windows)
         modes = np.vstack(modes)
         counts = np.vstack(counts)
 
-        # build dataset
+        debug("build dataset")
         ds_out = xr.Dataset(
             coords={
                 "gene_id": (["genes"], df_genes["ID"].values),
@@ -2516,14 +2532,15 @@ class Ag3:
             (amp/del).
 
         """
+        debug = self._log.debug
 
-        # check and normalise parameters
+        debug("check and normalise parameters")
         _check_param_min_cohort_size(min_cohort_size)
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
 
-        # concatenate data from regions
+        debug("access and concatenate data from regions")
         df = pd.concat(
             [
                 self._gene_cnv_frequencies(
@@ -2540,7 +2557,7 @@ class Ag3:
             axis=0,
         )
 
-        # add metadata
+        debug("add metadata")
         title = f"Gene CNV frequencies ({_region_str(region)})"
         df.attrs["title"] = title
 
@@ -2557,11 +2574,12 @@ class Ag3:
         drop_invariant,
         max_coverage_variance,
     ):
+        debug = self._log.debug
 
-        # sanity check - this function is one region at a time
+        debug("sanity check - this function is one region at a time")
         assert isinstance(region, Region)
 
-        # get gene copy number data
+        debug("get gene copy number data")
         ds_cnv = self.gene_cnv(
             region=region,
             sample_sets=sample_sets,
@@ -2569,21 +2587,23 @@ class Ag3:
             max_coverage_variance=max_coverage_variance,
         )
 
-        # load sample metadata
+        debug("load sample metadata")
         df_samples = self.sample_metadata(sample_sets=sample_sets)
 
-        # align sample metadata with samples in CNV data
+        debug("align sample metadata with samples in CNV data")
         sample_id = ds_cnv["sample_id"].values
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
-        # figure out expected copy number
+        debug("figure out expected copy number")
         if region.contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
             expected_cn = 2
 
-        # setup output dataframe - two rows for each gene, one for amplification and one for deletion
+        debug(
+            "setup output dataframe - two rows for each gene, one for amplification and one for deletion"
+        )
         n_genes = ds_cnv.dims["genes"]
         df_genes = ds_cnv[
             [
@@ -2606,7 +2626,7 @@ class Ag3:
             inplace=True,
         )
 
-        # add CNV type column
+        debug("add CNV type column")
         df_cnv_type = pd.DataFrame(
             {
                 "cnv_type": np.array(
@@ -2616,21 +2636,22 @@ class Ag3:
         )
         df = pd.concat([df, df_cnv_type], axis=1)
 
-        # set up intermediates
+        debug("set up intermediates")
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
         is_called = cn >= 0
 
-        # set up cohort dict
+        debug("set up cohort dict")
         coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
 
-        # compute cohort frequencies
+        debug("compute cohort frequencies")
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
 
-            # check cohort size
             n_samples = np.count_nonzero(loc_coh)
+            debug(f"{coh}, {n_samples} samples")
+
             if n_samples >= min_cohort_size:
 
                 # subset data to cohort
@@ -2654,10 +2675,10 @@ class Ag3:
 
                 freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
 
-        # build a dataframe with the frequency columns
+        debug("build a dataframe with the frequency columns")
         df_freqs = pd.DataFrame(freq_cols)
 
-        # compute max_af and additional columns
+        debug("compute max_af and additional columns")
         df_extras = pd.DataFrame(
             {
                 "max_af": df_freqs.max(axis=1),
@@ -2667,22 +2688,22 @@ class Ag3:
             }
         )
 
-        # build the final dataframe
+        debug("build the final dataframe")
         df.reset_index(drop=True, inplace=True)
         df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
         df.reset_index(drop=True, inplace=True)
 
-        # add label
+        debug("add label")
         df["label"] = _pandas_apply(
             _make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
         )
 
-        # deal with invariants
+        debug("deal with invariants")
         if drop_invariant:
             df = df.query("max_af > 0")
 
-        # set index for convenience
+        debug("set index for convenience")
         df.set_index(["gene_id", "gene_name", "cnv_type"], inplace=True)
 
         return df
@@ -2748,8 +2769,9 @@ class Ag3:
     def _haplotypes_dataset(
         self, *, contig, sample_set, analysis, inline_array, chunks
     ):
+        debug = self._log.debug
 
-        # open zarr
+        debug("open zarr")
         root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
         sites = self.open_haplotype_sites(analysis=analysis)
 
@@ -2762,21 +2784,21 @@ class Ag3:
         coords = dict()
         data_vars = dict()
 
-        # variant_position
+        debug("variant_position")
         pos = sites[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
             da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
 
-        # variant_contig
+        debug("variant_contig")
         contig_index = self.contigs.index(contig)
         coords["variant_contig"] = (
             [DIM_VARIANT],
             da.full_like(pos, fill_value=contig_index, dtype="u1"),
         )
 
-        # variant_allele
+        debug("variant_allele")
         ref = da_from_zarr(
             sites[f"{contig}/variants/REF"], inline_array=inline_array, chunks=chunks
         )
@@ -2786,7 +2808,7 @@ class Ag3:
         variant_allele = da.hstack([ref[:, None], alt[:, None]])
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
-        # call_genotype
+        debug("call_genotype")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             da_from_zarr(
@@ -2794,16 +2816,16 @@ class Ag3:
             ),
         )
 
-        # sample arrays
+        debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
             da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
-        # setup attributes
+        debug("set up attributes")
         attrs = {"contigs": self.contigs}
 
-        # create a dataset
+        debug("create a dataset")
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
@@ -2851,16 +2873,15 @@ class Ag3:
             A dataset of haplotypes and associated data.
 
         """
+        debug = self._log.debug
 
-        # normalise parameters
+        debug("normalise parameters")
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         region = self.resolve_region(region)
-
-        # normalise to simplify concatenation logic
         if isinstance(region, Region):
             region = [region]
 
-        # build dataset
+        debug("build dataset")
         lx = []
         for r in region:
             ly = []
@@ -2877,13 +2898,13 @@ class Ag3:
                     ly.append(y)
 
             if len(ly) == 0:
-                # early out, no data for given sample sets and analysis
+                debug("early out, no data for given sample sets and analysis")
                 return None
 
-            # concatenate data from multiple sample sets
+            debug("concatenate data from multiple sample sets")
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
-            # handle region
+            debug("handle region")
             if r.start or r.end:
                 pos = x["variant_position"].values
                 loc_region = locate_region(r, pos)
@@ -2891,22 +2912,22 @@ class Ag3:
 
             lx.append(x)
 
-        # concatenate data from multiple regions
+        debug("concatenate data from multiple regions")
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
-        # handle sample query
+        debug("handle sample query")
         if sample_query is not None:
 
-            # load sample metadata
+            debug("load sample metadata")
             df_samples = self.sample_metadata(sample_sets=sample_sets)
 
-            # align sample metadata with haplotypes
+            debug("align sample metadata with haplotypes")
             phased_samples = ds["sample_id"].values.tolist()
             df_samples_phased = (
                 df_samples.set_index("sample_id").loc[phased_samples].reset_index()
             )
 
-            # apply the query
+            debug("apply the query")
             loc_samples = df_samples_phased.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError("No samples found for query {sample_query!r}")
@@ -3016,6 +3037,7 @@ class Ag3:
         output.
 
         """
+        debug = self._log.debug
 
         df_snps = self.snp_allele_frequencies(
             transcript=transcript,
@@ -3037,7 +3059,7 @@ class Ag3:
         # sum frequencies of SNPs at different genomic positions. This
         # is why we group by position and aa_change, not just aa_change.
 
-        # group and sum to collapse multi variant allele changes
+        debug("group and sum to collapse multi variant allele changes")
         freq_cols = [col for col in df_ns_snps if col.startswith("frq")]
         agg = {c: np.nansum for c in freq_cols}
         keep_cols = (
@@ -3055,23 +3077,23 @@ class Ag3:
         agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
         df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
 
-        # compute new max_af
+        debug("compute new max_af")
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
-        # add label
+        debug("add label")
         df_aaf["label"] = _pandas_apply(
             _make_snp_label_aa,
             df_aaf,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
         )
 
-        # sort by genomic position
+        debug("sort by genomic position")
         df_aaf = df_aaf.sort_values(["position", "aa_change"])
 
-        # set index
+        debug("set index")
         df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
-        # add metadata
+        debug("add metadata")
         gene_name = self._transcript_to_gene_name(transcript)
         title = transcript
         if gene_name:
@@ -3081,8 +3103,8 @@ class Ag3:
 
         return df_aaf
 
-    @staticmethod
     def plot_frequencies_heatmap(
+        self,
         df,
         index="label",
         max_len=100,
@@ -3143,18 +3165,19 @@ class Ag3:
             Other parameters are passed through to px.imshow().
 
         """
+        debug = self._log.debug
 
         import plotly.express as px
 
-        # check len of input
+        debug("check len of input")
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
 
-        # handle title
+        debug("handle title")
         if title is True:
             title = df.attrs.get("title", None)
 
-        # indexing
+        debug("indexing")
         if index is None:
             index = list(df.index.names)
         df = df.reset_index().copy()
@@ -3172,23 +3195,23 @@ class Ag3:
         else:
             raise TypeError("wrong type for index parameter, expected list or str")
 
-        # check that index is unique
+        debug("check that index is unique")
         if not index_col.is_unique:
             raise ValueError(f"{index} does not produce a unique index")
 
-        # drop and re-order columns
+        debug("drop and re-order columns")
         frq_cols = [col for col in df.columns if col.startswith("frq_")]
 
-        # keep only freq cols
+        debug("keep only freq cols")
         heatmap_df = df[frq_cols].copy()
 
-        # set index
+        debug("set index")
         heatmap_df.set_index(index_col, inplace=True)
 
-        # clean column names
+        debug("clean column names")
         heatmap_df.columns = heatmap_df.columns.str.lstrip("frq_")
 
-        # deal with width and height
+        debug("deal with width and height")
         if width is None:
             width = 400 + col_width * len(heatmap_df.columns)
             if colorbar:
@@ -3198,7 +3221,7 @@ class Ag3:
             if title is not None:
                 height += 40
 
-        # plotly heatmap styling
+        debug("plotly heatmap styling")
         fig = px.imshow(
             img=heatmap_df,
             zmin=0,
@@ -3525,8 +3548,9 @@ class Ag3:
             calculations.
 
         """
+        debug = self._log.debug
 
-        # begin by computing SNP allele frequencies
+        debug("begin by computing SNP allele frequencies")
         ds_snp_frq = self.snp_allele_frequencies_advanced(
             transcript=transcript,
             area_by=area_by,
@@ -3556,41 +3580,40 @@ class Ag3:
         )
         ds_snp_frq["variant_position_aa_change"] = "variants", grouper_var
 
-        # group by position and amino acid change
+        debug("group by position and amino acid change")
         group_by_aa_change = ds_snp_frq.groupby("variant_position_aa_change")
 
-        # apply aggregation
+        debug("apply aggregation")
         ds_aa_frq = group_by_aa_change.map(_map_snp_to_aa_change_frq_ds)
 
-        # add back in cohort variables, unaffected by aggregation
+        debug("add back in cohort variables, unaffected by aggregation")
         cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
         for v in cohort_vars:
             ds_aa_frq[v] = ds_snp_frq[v]
 
-        # sort by genomic position
+        debug("sort by genomic position")
         ds_aa_frq = ds_aa_frq.sortby(["variant_position", "variant_aa_change"])
 
-        # recompute frequency
+        debug("recompute frequency")
         count = ds_aa_frq["event_count"].values
         nobs = ds_aa_frq["event_nobs"].values
         with np.errstate(divide="ignore", invalid="ignore"):
-            # ignore division warnings
-            frequency = count / nobs
+            frequency = count / nobs  # ignore division warnings
         ds_aa_frq["event_frequency"] = ("variants", "cohorts"), frequency
 
-        # recompute max frequency over cohorts
+        debug("recompute max frequency over cohorts")
         with warnings.catch_warnings():
             # ignore "All-NaN slice encountered" warnings
             warnings.simplefilter("ignore", category=RuntimeWarning)
             max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
         ds_aa_frq["variant_max_af"] = "variants", max_af
 
-        # set up variant dataframe, useful intermediate
+        debug("set up variant dataframe, useful intermediate")
         variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
         df_variants = ds_aa_frq[variant_cols].to_dataframe()
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
-        # assign new variant label
+        debug("assign new variant label")
         label = _pandas_apply(
             _make_snp_label_aa,
             df_variants,
@@ -3598,16 +3621,15 @@ class Ag3:
         )
         ds_aa_frq["variant_label"] = "variants", label
 
-        # apply variant query if given
+        debug("apply variant query if given")
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
-            # df_variants = df_variants.loc[loc_variants]
 
-        # compute new confidence intervals
+        debug("compute new confidence intervals")
         _add_frequency_ci(ds_aa_frq, ci_method)
 
-        # tidy up display by sorting variables
+        debug("tidy up display by sorting variables")
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
 
         gene_name = self._transcript_to_gene_name(transcript)
@@ -3682,7 +3704,6 @@ class Ag3:
 
         """
 
-        # check parameters
         _check_param_min_cohort_size(min_cohort_size)
 
         region = self.resolve_region(region)
@@ -3708,7 +3729,6 @@ class Ag3:
             dim="variants",
         )
 
-        # add metadata
         title = f"Gene CNV frequencies ({_region_str(region)})"
         ds.attrs["title"] = title
 
@@ -3728,11 +3748,12 @@ class Ag3:
         max_coverage_variance,
         ci_method,
     ):
+        debug = self._log.debug
 
-        # sanity check - here we deal with one region only
+        debug("sanity check - here we deal with one region only")
         assert isinstance(region, Region)
 
-        # access gene CNV calls
+        debug("access gene CNV calls")
         ds_cnv = self.gene_cnv(
             region=region,
             sample_sets=sample_sets,
@@ -3740,48 +3761,48 @@ class Ag3:
             max_coverage_variance=max_coverage_variance,
         )
 
-        # load sample metadata
+        debug("load sample metadata")
         df_samples = self.sample_metadata(sample_sets=sample_sets)
 
-        # align sample metadata
+        debug("align sample metadata")
         sample_id = ds_cnv["sample_id"].values
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
-        # prepare sample metadata for cohort grouping
+        debug("prepare sample metadata for cohort grouping")
         df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
         )
 
-        # group samples to make cohorts
+        debug("group samples to make cohorts")
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
-        # build cohorts dataframe
+        debug("build cohorts dataframe")
         df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort, min_cohort_size
         )
 
-        # figure out expected copy number
+        debug("figure out expected copy number")
         if region.contig == "X":
             is_male = (df_samples["sex_call"] == "M").values
             expected_cn = np.where(is_male, 1, 2)[np.newaxis, :]
         else:
             expected_cn = 2
 
-        # set up intermediates
+        debug("set up intermediates")
         cn = ds_cnv["CN_mode"].values
         is_amp = cn > expected_cn
         is_del = (cn >= 0) & (cn < expected_cn)
         is_called = cn >= 0
 
-        # set up main event variables
+        debug("set up main event variables")
         n_genes = ds_cnv.dims["genes"]
         n_variants, n_cohorts = n_genes * 2, len(df_cohorts)
         count = np.zeros((n_variants, n_cohorts), dtype=int)
         nobs = np.zeros((n_variants, n_cohorts), dtype=int)
 
-        # build event count and nobs for each cohort
+        debug("build event count and nobs for each cohort")
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
 
             # construct grouping key
@@ -3803,12 +3824,12 @@ class Ag3:
             cohort_n_called = np.sum(cohort_is_called, axis=1)
             nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
 
-        # compute frequency
+        debug("compute frequency")
         with np.errstate(divide="ignore", invalid="ignore"):
             # ignore division warnings
             frequency = np.where(nobs > 0, count / nobs, np.nan)
 
-        # make dataframe of variants
+        debug("make dataframe of variants")
         with warnings.catch_warnings():
             # ignore "All-NaN slice encountered" warnings
             warnings.simplefilter("ignore", category=RuntimeWarning)
@@ -3828,50 +3849,51 @@ class Ag3:
             }
         )
 
-        # add variant label
+        debug("add variant label")
         df_variants["label"] = _pandas_apply(
             _make_gene_cnv_label,
             df_variants,
             columns=["gene_id", "gene_name", "cnv_type"],
         )
 
-        # build the output dataset
+        debug("build the output dataset")
         ds_out = xr.Dataset()
 
-        # cohort variables
+        debug("cohort variables")
         for coh_col in df_cohorts.columns:
             ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
-        # variant variables
+        debug("variant variables")
         for snp_col in df_variants.columns:
             ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
 
-        # event variables
+        debug("event variables")
         ds_out["event_count"] = ("variants", "cohorts"), count
         ds_out["event_nobs"] = ("variants", "cohorts"), nobs
         ds_out["event_frequency"] = ("variants", "cohorts"), frequency
 
-        # deal with invariants
+        debug("deal with invariants")
         if drop_invariant:
             loc_variant = df_variants["max_af"].values > 0
             ds_out = ds_out.isel(variants=loc_variant)
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
 
-        # apply variant query
+        debug("apply variant query")
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
             ds_out = ds_out.isel(variants=loc_variants)
 
-        # add confidence intervals
+        debug("add confidence intervals")
         _add_frequency_ci(ds_out, ci_method)
 
-        # tidy up display by sorting variables
+        debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]
 
         return ds_out
 
-    @staticmethod
-    def plot_frequencies_time_series(ds, height=None, width=None, title=True, **kwargs):
+    def plot_frequencies_time_series(
+        self, ds, height=None, width=None, title=True, **kwargs
+    ):
         """Create a time series plot of variant frequencies using plotly.
 
         Parameters
@@ -3900,22 +3922,23 @@ class Ag3:
             variants.
 
         """
+        debug = self._log.debug
 
         import plotly.express as px
 
-        # handle title
+        debug("handle title")
         if title is True:
             title = ds.attrs.get("title", None)
 
-        # extract cohorts into a dataframe
+        debug("extract cohorts into a dataframe")
         cohort_vars = [v for v in ds if v.startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
 
-        # extract variant labels
+        debug("extract variant labels")
         variant_labels = ds["variant_label"].values
 
-        # build a long-form dataframe from the dataset
+        debug("build a long-form dataframe from the dataset")
         dfs = []
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
             ds_cohort = ds.isel(cohorts=cohort_index)
@@ -3939,17 +3962,17 @@ class Ag3:
             dfs.append(df)
         df_events = pd.concat(dfs, axis=0).reset_index(drop=True)
 
-        # remove events with no observations
+        debug("remove events with no observations")
         df_events = df_events.query("nobs > 0")
 
-        # calculate error bars
+        debug("calculate error bars")
         frq = df_events["frequency"]
         frq_ci_low = df_events["frequency_ci_low"]
         frq_ci_upp = df_events["frequency_ci_upp"]
         df_events["frequency_error"] = frq_ci_upp - frq
         df_events["frequency_error_minus"] = frq - frq_ci_low
 
-        # make a plot
+        debug("make a plot")
         fig = px.line(
             df_events,
             facet_col="taxon",
@@ -3985,13 +4008,12 @@ class Ag3:
             **kwargs,
         )
 
-        # tidy plot
+        debug("tidy plot")
         fig.update_layout(yaxis_range=[-0.05, 1.05])
 
         return fig
 
-    @staticmethod
-    def plot_frequencies_map_markers(m, ds, variant, taxon, period, clear=True):
+    def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
         """Plot markers on a map showing variant frequencies for cohorts grouped
         by area (space), period (time) and taxon.
 
@@ -4015,11 +4037,12 @@ class Ag3:
             before adding new markers.
 
         """
+        debug = self._log.debug
 
         import ipyleaflet
         import ipywidgets
 
-        # slice dataset to variant of interest
+        debug("slice dataset to variant of interest")
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
             variant_label = ds["variant_label"].values[variant]
@@ -4031,7 +4054,7 @@ class Ag3:
                 f"Bad type for variant parameter; expected int or str, found {type(variant)}."
             )
 
-        # convert to a dataframe for convenience
+        debug("convert to a dataframe for convenience")
         df_markers = ds_variant[
             [
                 "cohort_taxon",
@@ -4046,7 +4069,7 @@ class Ag3:
             ]
         ].to_dataframe()
 
-        # select data matching taxon and period parameters
+        debug("select data matching taxon and period parameters")
         df_markers = df_markers.loc[
             (
                 (df_markers["cohort_taxon"] == taxon)
@@ -4054,12 +4077,12 @@ class Ag3:
             )
         ]
 
-        # clear existing layers in the map
+        debug("clear existing layers in the map")
         if clear:
             for layer in m.layers[1:]:
                 m.remove_layer(layer)
 
-        # add markers
+        debug("add markers")
         for x in df_markers.itertuples():
             marker = ipyleaflet.CircleMarker()
             marker.location = (x.cohort_lat_mean, x.cohort_lon_mean)
@@ -4082,8 +4105,8 @@ class Ag3:
             )
             m.add_layer(marker)
 
-    @staticmethod
     def plot_frequencies_interactive_map(
+        self,
         ds,
         center=(-2, 20),
         zoom=3,
@@ -4117,23 +4140,24 @@ class Ag3:
             and time period to display.
 
         """
+        debug = self._log.debug
 
         import ipyleaflet
         import ipywidgets
 
-        # handle title
+        debug("handle title")
         if title is True:
             title = ds.attrs.get("title", None)
 
-        # create a map
+        debug("create a map")
         freq_map = ipyleaflet.Map(center=center, zoom=zoom)
 
-        # setup interactive controls
+        debug("set up interactive controls")
         variants = ds["variant_label"].values
         taxa = np.unique(ds["cohort_taxon"].values)
         periods = np.unique(ds["cohort_period"].values)
         controls = ipywidgets.interactive(
-            Ag3.plot_frequencies_map_markers,
+            self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
             variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
@@ -4142,7 +4166,7 @@ class Ag3:
             clear=ipywidgets.fixed(True),
         )
 
-        # lay out widgets
+        debug("lay out widgets")
         components = []
         if title is not None:
             components.append(ipywidgets.HTML(value=f"<h3>{title}</h3>"))
@@ -4216,11 +4240,12 @@ class Ag3:
             Bokeh figure.
 
         """
+        debug = self._log.debug
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
 
-        # handle region parameter - this determines the genome region to plot
+        debug("handle region parameter - this determines the genome region to plot")
         region = self.resolve_region(region)
         contig = region.contig
         start = region.start
@@ -4230,27 +4255,27 @@ class Ag3:
         if end is None:
             end = len(self.genome_sequence(contig))
 
-        # define x axis range
+        debug("define x axis range")
         if x_range is None:
             x_range = bkmod.Range1d(start, end, bounds="auto")
 
-        # select the genes overlapping the requested region
+        debug("select the genes overlapping the requested region")
         df_geneset = self.geneset(attributes=["ID", "Name", "Parent", "description"])
-        # df_geneset = df_geneset.set_index("ID")
         data = df_geneset.query(
             f"type == 'gene' and contig == '{contig}' and start < {end} and end > {start}"
         ).copy()
 
-        # we're going to plot each gene as a rectangle, so add some additional
-        # columns
+        debug(
+            "we're going to plot each gene as a rectangle, so add some additional columns"
+        )
         data["bottom"] = np.where(data["strand"] == "+", 1, 0)
         data["top"] = data["bottom"] + 0.8
 
-        # tidy up some columns for presentation
+        debug("tidy up some columns for presentation")
         data["Name"].fillna("", inplace=True)
         data["description"].fillna("", inplace=True)
 
-        # define tooltips for hover
+        debug("define tooltips for hover")
         tooltips = [
             ("ID", "@ID"),
             ("Name", "@Name"),
@@ -4258,7 +4283,7 @@ class Ag3:
             ("Location", "@contig:@start{,}-@end{,}"),
         ]
 
-        # make a figure
+        debug("make a figure")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
@@ -4280,12 +4305,12 @@ class Ag3:
             x_range=x_range,
         )
 
-        # add functionality to click through to vectorbase
+        debug("add functionality to click through to vectorbase")
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
         taptool = fig.select(type=bkmod.TapTool)
         taptool.callback = bkmod.OpenURL(url=url)
 
-        # now plot the genes as rectangles
+        debug("now plot the genes as rectangles")
         fig.quad(
             bottom="bottom",
             top="top",
@@ -4296,7 +4321,7 @@ class Ag3:
             fill_alpha=0.5,
         )
 
-        # tidy up the plot
+        debug("tidy up the plot")
         fig.xaxis.axis_label = f"Contig {contig} position (bp)"
         fig.y_range = bkmod.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
@@ -4346,24 +4371,25 @@ class Ag3:
             Bokeh figure.
 
         """
+        debug = self._log.debug
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
 
-        # find the transcript annotation
+        debug("find the transcript annotation")
         df_geneset = self.geneset().set_index("ID")
         parent = df_geneset.loc[transcript]
 
         if title is True:
             title = f"{transcript} ({parent.strand})"
 
-        # define tooltips for hover
+        debug("define tooltips for hover")
         tooltips = [
             ("Type", "@type"),
             ("Location", "@contig:@start{,}-@end{,}"),
         ]
 
-        # make a figure
+        debug("make a figure")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
@@ -4377,12 +4403,12 @@ class Ag3:
             x_range=x_range,
         )
 
-        # find child components of the transcript
+        debug("find child components of the transcript")
         data = df_geneset.set_index("Parent").loc[transcript].copy()
         data["bottom"] = -0.4
         data["top"] = 0.4
 
-        # plot exons
+        debug("plot exons")
         exons = data.query("type == 'exon'")
         fig.quad(
             bottom="bottom",
@@ -4396,7 +4422,7 @@ class Ag3:
             fill_alpha=0,
         )
 
-        # plot introns
+        debug("plot introns")
         for intron_start, intron_end in zip(exons[:-1]["end"], exons[1:]["start"]):
             intron_midpoint = (intron_start + intron_end) / 2
             line_data = pd.DataFrame(
@@ -4417,7 +4443,7 @@ class Ag3:
                 line_color="black",
             )
 
-        # plot UTRs
+        debug("plot UTRs")
         fig.quad(
             bottom="bottom",
             top="top",
@@ -4439,7 +4465,7 @@ class Ag3:
             fill_alpha=0.5,
         )
 
-        # plot CDSs
+        debug("plot CDSs")
         fig.quad(
             bottom="bottom",
             top="top",
@@ -4451,7 +4477,7 @@ class Ag3:
             fill_alpha=0.5,
         )
 
-        # tidy up the figure
+        debug("tidy up the figure")
         fig.yaxis.ticker = []
         fig.y_range = bkmod.Range1d(-0.6, 0.6)
         fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
@@ -4505,17 +4531,20 @@ class Ag3:
             Bokeh figure.
 
         """
+        debug = self._log.debug
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
 
-        # resolve region
+        debug("resolve region")
         region = self.resolve_region(region)
 
-        # access HMM data
+        debug("access HMM data")
         hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
 
-        # select data for the given sample - support either sample ID or integer index
+        debug(
+            "select data for the given sample - support either sample ID or integer index"
+        )
         hmm_sample = None
         sample_id = None
         if isinstance(sample, str):
@@ -4527,27 +4556,27 @@ class Ag3:
         else:
             type_error(name="sample", value=sample, expectation=(str, int))
 
-        # extract data into a pandas dataframe for easy plotting
+        debug("extract data into a pandas dataframe for easy plotting")
         data = hmm_sample[
             ["variant_position", "variant_end", "call_NormCov", "call_CN"]
         ].to_dataframe()
 
-        # add window midpoint for plotting accuracy
+        debug("add window midpoint for plotting accuracy")
         data["variant_midpoint"] = data["variant_position"] + 150
 
-        # remove data where HMM is not called
+        debug("remove data where HMM is not called")
         data = data.query("call_CN >= 0")
 
-        # set up y range
+        debug("set up y range")
         if y_max == "auto":
             y_max = data["call_CN"].max() + 2
 
-        # set up x range
+        debug("set up x range")
         x_min = data["variant_position"].values[0]
         x_max = data["variant_end"].values[-1]
         x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
-        # create a figure for plotting
+        debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
@@ -4561,7 +4590,7 @@ class Ag3:
             y_range=(0, y_max),
         )
 
-        # plot the normalised coverage data
+        debug("plot the normalised coverage data")
         if circle_kwargs is None:
             circle_kwargs = dict()
         circle_kwargs.setdefault("size", 3)
@@ -4571,14 +4600,14 @@ class Ag3:
         circle_kwargs.setdefault("legend_label", "Coverage")
         fig.circle(x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs)
 
-        # plot the HMM state
+        debug("plot the HMM state")
         if line_kwargs is None:
             line_kwargs = dict()
         line_kwargs.setdefault("width", 2)
         line_kwargs.setdefault("legend_label", "HMM")
         fig.line(x="variant_midpoint", y="call_CN", source=data, **line_kwargs)
 
-        # tidy up the plot
+        debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
         fig.yaxis.ticker = list(range(y_max + 1))
         fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
@@ -4637,11 +4666,12 @@ class Ag3:
             Bokeh figure.
 
         """
+        debug = self._log.debug
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt
 
-        # plot the main track
+        debug("plot the main track")
         fig1 = self.plot_cnv_hmm_coverage_track(
             sample=sample,
             sample_set=sample_set,
@@ -4655,7 +4685,7 @@ class Ag3:
         )
         fig1.xaxis.visible = False
 
-        # plot genes track
+        debug("plot genes track")
         fig2 = self.plot_genes(
             region=region,
             width=width,
@@ -4664,7 +4694,7 @@ class Ag3:
             show=False,
         )
 
-        # combine plots into a single figure
+        debug("combine plots into a single figure")
         fig = bklay.gridplot(
             [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
         )
@@ -4717,6 +4747,7 @@ class Ag3:
             Bokeh figure.
 
         """
+        debug = self._log.debug
 
         import bokeh.models as bkmod
         import bokeh.palettes as bkpal
@@ -4724,7 +4755,7 @@ class Ag3:
 
         region = self.resolve_region(region)
 
-        # access HMM data
+        debug("access HMM data")
         ds_cnv = self.cnv_hmm(
             region=region,
             sample_sets=sample_sets,
@@ -4732,18 +4763,18 @@ class Ag3:
             max_coverage_variance=max_coverage_variance,
         )
 
-        # access copy number data
+        debug("access copy number data")
         cn = ds_cnv["call_CN"].values
         ncov = ds_cnv["call_NormCov"].values
         start = ds_cnv["variant_position"].values
         end = ds_cnv["variant_end"].values
         n_windows, n_samples = cn.shape
 
-        # figure out X axis limits from data
+        debug("figure out X axis limits from data")
         x_min = start[0]
         x_max = end[-1]
 
-        # set up plot title
+        debug("set up plot title")
         title = "CNV HMM"
         if sample_sets is not None:
             if isinstance(sample_sets, (list, tuple)):
@@ -4754,13 +4785,13 @@ class Ag3:
         if sample_query is not None:
             title += f" ({sample_query})"
 
-        # figure out plot height
+        debug("figure out plot height")
         if height is None:
             plot_height = 100 + row_height * n_samples
         else:
             plot_height = height
 
-        # setup figure
+        debug("set up figure")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         tooltips = [
             ("Position", "$x{0,0}"),
@@ -4781,11 +4812,11 @@ class Ag3:
             tooltips=tooltips,
         )
 
-        # set up palette and color mapping
+        debug("set up palette and color mapping")
         palette = ("#cccccc",) + bkpal.PuOr5
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
 
-        # plot the HMM copy number data as an image
+        debug("plot the HMM copy number data as an image")
         sample_id = ds_cnv["sample_id"].values
         sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
         data = dict(
@@ -4807,7 +4838,7 @@ class Ag3:
             color_mapper=color_mapper,
         )
 
-        # tidy
+        debug("tidy")
         fig.yaxis.axis_label = "Samples"
         fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
         fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
@@ -4817,7 +4848,7 @@ class Ag3:
         fig.yaxis.major_label_overrides = {i: s for i, s in enumerate(sample_id)}
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
-        # add color bar
+        debug("add color bar")
         color_bar = bkmod.ColorBar(
             title="Copy number",
             color_mapper=color_mapper,
@@ -4882,11 +4913,12 @@ class Ag3:
             Bokeh figure.
 
         """
+        debug = self._log.debug
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt
 
-        # plot the main track
+        debug("plot the main track")
         fig1 = self.plot_cnv_hmm_heatmap_track(
             region=region,
             sample_sets=sample_sets,
@@ -4899,7 +4931,7 @@ class Ag3:
         )
         fig1.xaxis.visible = False
 
-        # plot genes track
+        debug("plot genes track")
         fig2 = self.plot_genes(
             region=region,
             width=width,
@@ -4908,7 +4940,7 @@ class Ag3:
             show=False,
         )
 
-        # combine plots into a single figure
+        debug("combine plots into a single figure")
         fig = bklay.gridplot(
             [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
         )
@@ -5113,7 +5145,7 @@ class Ag3:
     def results_cache_set(self, *, name, params, results):
         debug = self._log.debug
         if self._results_cache is None:
-            # no results cache has been configured, do nothing
+            debug("no results cache has been configured, do nothing")
             return
         params = params.copy()
         params["cohorts_analysis"] = self._cohorts_analysis
@@ -5172,7 +5204,10 @@ class Ag3:
 
         """
 
-        name = "snp_allele_counts_1"  # change this to invalidate any previously cached data
+        # change this name if you ever change the behaviour of this function,
+        # to invalidate any previously cached data
+        name = "ag3_snp_allele_counts_v1"
+
         # normalize params for consistent hash value
         params = dict(
             region=self.resolve_region(region).to_dict(),
@@ -5199,8 +5234,9 @@ class Ag3:
         sample_query,
         site_mask,
     ):
+        debug = self._log.debug
 
-        # access SNP calls
+        debug("access SNP calls")
         ds_snps = self.snp_calls(
             region=region,
             sample_sets=sample_sets,
@@ -5209,13 +5245,13 @@ class Ag3:
         )
         gt = ds_snps["call_genotype"]
 
-        # set up and run allele counts computation
+        debug("set up and run allele counts computation")
         gt = allel.GenotypeDaskArray(gt.data)
         ac = gt.count_alleles(max_allele=3)
         with self._dask_progress(desc="Compute SNP allele counts"):
             ac = ac.compute()
 
-        # return plain numpy array
+        debug("return plain numpy array")
         results = dict(ac=ac.values)
 
         return results
@@ -5281,9 +5317,13 @@ class Ag3:
         the `results_cache` parameter was set when instantiating the Ag3 class.
 
         """
+        debug = self._log.debug
 
-        name = "pca_1"  # change this to invalidate any previously cached data
-        # normalize params for consistent hash value
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_pca_v1"
+
+        debug("normalize params for consistent hash value")
         params = dict(
             region=self.resolve_region(region).to_dict(),
             n_snps=n_snps,
@@ -5296,7 +5336,7 @@ class Ag3:
             n_components=n_components,
         )
 
-        # try to retrieve results from the cache
+        debug("try to retrieve results from the cache")
         try:
             results = self.results_cache_get(name=name, params=params)
 
@@ -5304,11 +5344,11 @@ class Ag3:
             results = self._pca(**params)
             self.results_cache_set(name=name, params=params, results=results)
 
-        # unpack results
+        debug("unpack results")
         coords = results["coords"]
         evr = results["evr"]
 
-        # add coords to sample metadata dataframe
+        debug("add coords to sample metadata dataframe")
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -5400,8 +5440,7 @@ class Ag3:
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
 
-    @staticmethod
-    def plot_pca_variance(evr, width=900, height=400, **kwargs):
+    def plot_pca_variance(self, evr, width=900, height=400, **kwargs):
         """Plot explained variance ratios from a principal components analysis
         (PCA) using a plotly bar plot.
 
@@ -5422,14 +5461,15 @@ class Ag3:
             A plotly figure.
 
         """
+        debug = self._log.debug
 
         import plotly.express as px
 
-        # prepare plotting variables
+        debug("prepare plotting variables")
         y = evr * 100  # convert to percent
         x = [str(i + 1) for i in range(len(y))]
 
-        # setup plotting options
+        debug("set up plotting options")
         plot_kwargs = dict(
             labels={
                 "x": "Principal component",
@@ -5439,16 +5479,16 @@ class Ag3:
             width=width,
             height=height,
         )
-        # apply any user overrides
+        debug("apply any user overrides")
         plot_kwargs.update(kwargs)
 
-        # make a bar plot
+        debug("make a bar plot")
         fig = px.bar(x=x, y=y, **plot_kwargs)
 
         return fig
 
-    @staticmethod
     def plot_pca_coords(
+        self,
         data,
         x="PC1",
         y="PC2",
@@ -5494,24 +5534,30 @@ class Ag3:
             A plotly figure.
 
         """
+        debug = self._log.debug
 
         import plotly.express as px
 
-        # setup data - copy and shuffle so that we don't get systematic over-plotting
+        debug(
+            "set up data - copy and shuffle so that we don't get systematic over-plotting"
+        )
+        # TODO does the shuffling actually work?
         data = (
             data.copy().sample(frac=1, random_state=random_seed).reset_index(drop=True)
         )
 
-        # apply jitter if desired - helps spread out points when tightly clustered
+        debug(
+            "apply jitter if desired - helps spread out points when tightly clustered"
+        )
         if jitter_frac:
             np.random.seed(random_seed)
             data[x] = jitter(data[x], jitter_frac)
             data[y] = jitter(data[y], jitter_frac)
 
-        # convenience variables
+        debug("convenience variables")
         data["country_location"] = data["country"] + " - " + data["location"]
 
-        # setup plotting options
+        debug("set up plotting options")
         hover_data = [
             "partner_sample_id",
             "sample_set",
@@ -5536,17 +5582,17 @@ class Ag3:
             render_mode="svg",
         )
 
-        # special handling for taxon color
+        debug("special handling for taxon color")
         if color == "taxon":
             _setup_taxon_colors(plot_kwargs)
 
-        # apply any user overrides
+        debug("apply any user overrides")
         plot_kwargs.update(kwargs)
 
-        # 2D scatter plot
+        debug("2D scatter plot")
         fig = px.scatter(data, x=x, y=y, **plot_kwargs)
 
-        # tidy up
+        debug("tidy up")
         fig.update_layout(
             legend=dict(itemsizing="constant"),
         )
@@ -5554,8 +5600,8 @@ class Ag3:
 
         return fig
 
-    @staticmethod
     def plot_pca_coords_3d(
+        self,
         data,
         x="PC1",
         y="PC2",
@@ -5604,25 +5650,31 @@ class Ag3:
             A plotly figure.
 
         """
+        debug = self._log.debug
 
         import plotly.express as px
 
-        # setup data - copy and shuffle so that we don't get systematic over-plotting
+        debug(
+            "set up data - copy and shuffle so that we don't get systematic over-plotting"
+        )
+        # TODO does this actually work?
         data = (
             data.copy().sample(frac=1, random_state=random_seed).reset_index(drop=True)
         )
 
-        # apply jitter if desired - helps spread out points when tightly clustered
+        debug(
+            "apply jitter if desired - helps spread out points when tightly clustered"
+        )
         if jitter_frac:
             np.random.seed(random_seed)
             data[x] = jitter(data[x], jitter_frac)
             data[y] = jitter(data[y], jitter_frac)
             data[z] = jitter(data[z], jitter_frac)
 
-        # convenience variables
+        debug("convenience variables")
         data["country_location"] = data["country"] + " - " + data["location"]
 
-        # setup plotting options
+        debug("set up plotting options")
         hover_data = [
             "partner_sample_id",
             "sample_set",
@@ -5644,17 +5696,17 @@ class Ag3:
             symbol=symbol,
         )
 
-        # special handling for taxon color
+        debug("special handling for taxon color")
         if color == "taxon":
             _setup_taxon_colors(plot_kwargs)
 
-        # apply any user overrides
+        debug("apply any user overrides")
         plot_kwargs.update(kwargs)
 
-        # 3D scatter plot
+        debug("3D scatter plot")
         fig = px.scatter_3d(data, x=x, y=y, z=z, **plot_kwargs)
 
-        # tidy up
+        debug("tidy up")
         fig.update_layout(
             scene=dict(aspectmode="cube"),
             legend=dict(itemsizing="constant"),
