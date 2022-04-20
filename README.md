@@ -29,6 +29,15 @@ from the following locations:
 ## Release notes
 
 
+### 4.2.0
+
+* Add progress bars for longer-running computations using tqdm
+  ([GH217](https://github.com/malariagen/malariagen-data-python/issues/217)).
+
+* Add SNP genotypes to `Ag3.view_alignments()`
+  ([GH216](https://github.com/malariagen/malariagen-data-python/issues/216)).
+
+
 ### 4.1.0
 
 * Use pypi for igv-notebook dependency
