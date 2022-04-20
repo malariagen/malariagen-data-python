@@ -194,6 +194,7 @@ class Ag3:
         self._cohorts_analysis = cohorts_analysis
         self._species_analysis = species_analysis
         self._site_filters_analysis = site_filters_analysis
+        self._debug = debug
         self._show_progress = show_progress
 
         # set up logging
@@ -365,7 +366,8 @@ class Ag3:
         return html
 
     def _progress(self, iterable, **kwargs):
-        disable = not self._show_progress
+        # progress doesn't mix well with debug logging
+        disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
 
     def _dask_progress(self, **kwargs):
@@ -951,6 +953,7 @@ class Ag3:
         self,
         region,
         sample_sets=None,
+        sample_query=None,
         field="GT",
         site_mask=None,
         inline_array=True,
@@ -970,6 +973,9 @@ class Ag3:
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
@@ -987,16 +993,17 @@ class Ag3:
             depths (AD) or mapping quality (MQ) values.
 
         """
+        debug = self._log.debug
 
-        # normalise parameters
+        debug("normalise parameters")
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         region = self.resolve_region(region)
 
-        # normalise region to list to simplify concatenation logic
+        debug("normalise region to list to simplify concatenation logic")
         if isinstance(region, Region):
             region = [region]
 
-        # concatenate multiple sample sets and/or contigs
+        debug("concatenate multiple sample sets and/or contigs")
         lx = []
         for r in region:
             ly = []
@@ -1011,10 +1018,10 @@ class Ag3:
                 )
                 ly.append(y)
 
-            # concatenate data from multiple sample sets
+            debug("concatenate data from multiple sample sets")
             x = da.concatenate(ly, axis=1)
 
-            # locate region - do this only once, optimisation
+            debug("locate region - do this only once, optimisation")
             if r.start or r.end:
                 pos = self.snp_sites(region=r.contig, field="POS")
                 loc_region = locate_region(r, pos)
@@ -1022,16 +1029,22 @@ class Ag3:
 
             lx.append(x)
 
-        # concatenate data from multiple regions
+        debug("concatenate data from multiple regions")
         d = da.concatenate(lx, axis=0)
 
-        # apply site filters if requested
+        debug("apply site filters if requested")
         if site_mask is not None:
             loc_sites = self.site_filters(
                 region=region,
                 mask=site_mask,
             )
             d = da_compress(loc_sites, d, axis=0)
+
+        debug("apply sample query if requested")
+        if sample_query is not None:
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            d = da.compress(loc_samples, d, axis=1)
 
         return d
 
@@ -1364,94 +1377,87 @@ class Ag3:
         output.
 
         """
+        debug = self._log.debug
 
-        # check parameters
+        debug("check parameters")
         _check_param_min_cohort_size(min_cohort_size)
 
-        # access sample metadata
-        df_samples = self.sample_metadata(sample_sets=sample_sets)
+        debug("access sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
 
-        # handle sample_query
-        loc_samples = None
-        if sample_query is not None:
-            loc_samples = df_samples.eval(sample_query).values
-
-        # setup initial dataframe of SNPs
+        debug("setup initial dataframe of SNPs")
         region, df_snps = self._snp_df(transcript=transcript)
 
-        # get genotypes
+        debug("get genotypes")
         gt = self.snp_genotypes(
             region=region,
             sample_sets=sample_sets,
+            sample_query=sample_query,
             field="GT",
         )
 
-        # slice to feature location
+        debug("slice to feature location")
         with self._dask_progress(desc="Load SNP genotypes"):
             gt = gt.compute()
 
-        # build coh dict
+        debug("build coh dict")
         coh_dict = _locate_cohorts(cohorts=cohorts, df_samples=df_samples)
 
-        # count alleles
+        debug("count alleles")
         freq_cols = dict()
         cohorts_iterator = self._progress(
             coh_dict.items(), desc="Compute allele frequencies"
         )
         for coh, loc_coh in cohorts_iterator:
-            # handle sample query
-            if loc_samples is not None:
-                loc_coh = loc_coh & loc_samples
             n_samples = np.count_nonzero(loc_coh)
+            debug(f"{coh}, {n_samples} samples")
             if n_samples >= min_cohort_size:
                 gt_coh = np.compress(loc_coh, gt, axis=1)
-                # count alleles
                 ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
-                # compute allele frequencies
                 af_coh = ac_coh.to_frequencies()
-                # add column to dict
                 freq_cols["frq_" + coh] = af_coh[:, 1:].flatten()
 
-        # build a dataframe with the frequency columns
+        debug("build a dataframe with the frequency columns")
         df_freqs = pd.DataFrame(freq_cols)
 
-        # compute max_af
+        debug("compute max_af")
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
 
-        # build the final dataframe
+        debug("build the final dataframe")
         df_snps.reset_index(drop=True, inplace=True)
         df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
 
-        # apply site mask if requested
+        debug("apply site mask if requested")
         if site_mask is not None:
             loc_sites = df_snps[f"pass_{site_mask}"]
             df_snps = df_snps.loc[loc_sites]
 
-        # drop invariants
+        debug("drop invariants")
         if drop_invariant:
             loc_variant = df_snps["max_af"] > 0
             df_snps = df_snps.loc[loc_variant]
 
-        # reset index after filtering
+        debug("reset index after filtering")
         df_snps.reset_index(inplace=True, drop=True)
 
-        # add effects
         if effects:
 
-            # add effect annotations
+            debug("add effect annotations")
             ann = self._annotator()
             ann.get_effects(
                 transcript=transcript, variants=df_snps, progress=self._progress
             )
 
-            # add label
+            debug("add label")
             df_snps["label"] = _pandas_apply(
                 _make_snp_label_effect,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
             )
 
-            # set index
+            debug("set index")
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
                 inplace=True,
@@ -1459,20 +1465,20 @@ class Ag3:
 
         else:
 
-            # add label
+            debug("add label")
             df_snps["label"] = _pandas_apply(
                 _make_snp_label,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele"],
             )
 
-            # set index
+            debug("set index")
             df_snps.set_index(
                 ["contig", "position", "ref_allele", "alt_allele"],
                 inplace=True,
             )
 
-        # add metadata
+        debug("add dataframe metadata")
         gene_name = self._transcript_to_gene_name(transcript)
         title = transcript
         if gene_name:
@@ -3288,53 +3294,47 @@ class Ag3:
             counts and frequency calculations.
 
         """
+        debug = self._log.debug
 
-        # check parameters
+        debug("check parameters")
         _check_param_min_cohort_size(min_cohort_size)
 
-        # load sample metadata
-        df_samples = self.sample_metadata(sample_sets=sample_sets)
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
 
-        # access SNP calls
+        debug("access SNP calls")
         ds_snps = self.snp_calls(
             region=transcript,
             sample_sets=sample_sets,
+            sample_query=sample_query,
             site_mask=site_mask,
         )
 
-        # access genotypes
+        debug("access genotypes")
         gt = ds_snps["call_genotype"].data
 
-        # handle sample query
-        loc_samples = None
-        if sample_query is not None:
-            loc_samples = df_samples.eval(sample_query).values
-
-        # filter samples
-        if loc_samples is not None:
-            df_samples = df_samples.loc[loc_samples].reset_index(drop=True).copy()
-            gt = da.compress(loc_samples, gt, axis=1)
-
-        # prepare sample metadata for cohort grouping
+        debug("prepare sample metadata for cohort grouping")
         df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
         )
 
-        # group samples to make cohorts
+        debug("group samples to make cohorts")
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
-        # build cohorts dataframe
+        debug("build cohorts dataframe")
         df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort, min_cohort_size
         )
 
-        # bring genotypes into memory
+        debug("bring genotypes into memory")
         with self._dask_progress(desc="Load SNP genotypes"):
             gt = gt.compute()
 
-        # set up variant variables
+        debug("set up variant variables")
         contigs = ds_snps.attrs["contigs"]
         variant_contig = np.repeat(
             [contigs[i] for i in ds_snps["variant_contig"].values], 3
@@ -3351,12 +3351,12 @@ class Ag3:
         )
         variant_pass_arab = np.repeat(ds_snps["variant_filter_pass_arab"].values, 3)
 
-        # setup main event variables
+        debug("setup main event variables")
         n_variants, n_cohorts = len(variant_position), len(df_cohorts)
         count = np.zeros((n_variants, n_cohorts), dtype=int)
         nobs = np.zeros((n_variants, n_cohorts), dtype=int)
 
-        # build event count and nobs for each cohort
+        debug("build event count and nobs for each cohort")
         cohorts_iterator = self._progress(
             enumerate(df_cohorts.itertuples()),
             total=len(df_cohorts),
@@ -3364,44 +3364,33 @@ class Ag3:
         )
         for cohort_index, cohort in cohorts_iterator:
 
-            # construct grouping key
             cohort_key = cohort.taxon, cohort.area, cohort.period
-
-            # obtain sample indices for cohort
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
-            # compute cohort allele counts
-            # cohort_gac = np.take(gac, sample_indices, axis=1)
-            # np.sum(cohort_gac, axis=1, out=count[:, cohort_index])
-            # count[:, cohort_index] = _take_sum_cols(gac, sample_indices)
             cohort_ac, cohort_an = _cohort_alt_allele_counts_melt(
                 gt, sample_indices, max_allele=3
             )
             count[:, cohort_index] = cohort_ac
 
-            # compute cohort allele numbers
             if nobs_mode == "called":
-                # cohort_gan = np.take(gan, sample_indices, axis=1)
-                # np.sum(cohort_gan, axis=1, out=nobs[:, cohort_index])
-                # nobs[:, cohort_index] = _take_sum_cols(gan, sample_indices)
                 nobs[:, cohort_index] = cohort_an
             elif nobs_mode == "fixed":
                 nobs[:, cohort_index] = cohort.size * 2
             else:
                 raise ValueError(f"Bad nobs_mode: {nobs_mode!r}")
 
-        # compute frequency
+        debug("compute frequency")
         with np.errstate(divide="ignore", invalid="ignore"):
             # ignore division warnings
             frequency = count / nobs
 
-        # compute maximum frequency over cohorts
+        debug("compute maximum frequency over cohorts")
         with warnings.catch_warnings():
             # ignore "All-NaN slice encountered" warnings
             warnings.simplefilter("ignore", category=RuntimeWarning)
             max_af = np.nanmax(frequency, axis=1)
 
-        # make dataframe of SNPs
+        debug("make dataframe of SNPs")
         df_variants = pd.DataFrame(
             {
                 "contig": variant_contig,
@@ -3415,7 +3404,7 @@ class Ag3:
             }
         )
 
-        # deal with SNP alleles not observed
+        debug("deal with SNP alleles not observed")
         if drop_invariant:
             loc_variant = max_af > 0
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
@@ -3423,49 +3412,49 @@ class Ag3:
             nobs = np.compress(loc_variant, nobs, axis=0)
             frequency = np.compress(loc_variant, frequency, axis=0)
 
-        # setup variant effect annotator
+        debug("set up variant effect annotator")
         ann = self._annotator()
 
-        # add effects to the dataframe
+        debug("add effects to the dataframe")
         ann.get_effects(
             transcript=transcript, variants=df_variants, progress=self._progress
         )
 
-        # add variant labels
+        debug("add variant labels")
         df_variants["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_variants,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
         )
 
-        # build the output dataset
+        debug("build the output dataset")
         ds_out = xr.Dataset()
 
-        # cohort variables
+        debug("cohort variables")
         for coh_col in df_cohorts.columns:
             ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
-        # variant variables
+        debug("variant variables")
         for snp_col in df_variants.columns:
             ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
 
-        # event variables
+        debug("event variables")
         ds_out["event_count"] = ("variants", "cohorts"), count
         ds_out["event_nobs"] = ("variants", "cohorts"), nobs
         ds_out["event_frequency"] = ("variants", "cohorts"), frequency
 
-        # apply variant query
+        debug("apply variant query")
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
             ds_out = ds_out.isel(variants=loc_variants)
 
-        # add confidence intervals
+        debug("add confidence intervals")
         _add_frequency_ci(ds_out, ci_method)
 
-        # tidy up display by sorting variables
+        debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]
 
-        # add metadata
+        debug("add metadata")
         gene_name = self._transcript_to_gene_name(transcript)
         title = transcript
         if gene_name:
