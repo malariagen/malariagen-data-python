@@ -206,6 +206,7 @@ class Ag3:
         # set up caches
         self._cache_releases = None
         self._cache_sample_sets = dict()
+        self._cache_sample_set_to_release = None
         self._cache_general_metadata = dict()
         self._cache_species_calls = dict()
         self._cache_site_filters = dict()
@@ -425,14 +426,13 @@ class Ag3:
             A dataframe of sample sets, one row per sample set.
 
         """
-        debug = self._log.debug
 
         if release is None:
-            debug("retrieve sample sets from all available releases")
+            # retrieve sample sets from all available releases
             release = self.releases
 
         if isinstance(release, str):
-            debug("retrieve sample sets for a single release")
+            # retrieve sample sets for a single release
 
             if release not in self.releases:
                 raise ValueError(f"Release not available: {release!r}")
@@ -446,13 +446,13 @@ class Ag3:
 
         elif isinstance(release, (list, tuple)):
 
-            debug("check no duplicates")
+            # check no duplicates
             counter = Counter(release)
             for k, v in counter.items():
                 if v > 1:
                     raise ValueError(f"Duplicate values: {k!r}.")
 
-            debug("retrieve sample sets from multiple releases")
+            # retrieve sample sets from multiple releases
             df = pd.concat(
                 [self.sample_sets(release=r) for r in release],
                 axis=0,
@@ -476,9 +476,13 @@ class Ag3:
 
     def _lookup_release(self, *, sample_set):
         """Find which release a sample set was included in."""
-        df_sample_sets = self.sample_sets().set_index("sample_set")
+
+        if self._cache_sample_set_to_release is None:
+            df_sample_sets = self.sample_sets().set_index("sample_set")
+            self._cache_sample_set_to_release = df_sample_sets["release"].to_dict()
+
         try:
-            return df_sample_sets.loc[sample_set]["release"]
+            return self._cache_sample_set_to_release[sample_set]
         except KeyError:
             raise ValueError(f"No release found for sample set {sample_set!r}")
 
@@ -589,35 +593,32 @@ class Ag3:
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
-        debug = self._log.debug
 
         if sample_sets is None:
-            debug("all available sample sets")
+            # all available sample sets
             sample_sets = self.sample_sets()["sample_set"].tolist()
 
         elif isinstance(sample_sets, str):
 
             if sample_sets.startswith("3."):
-                debug(
-                    "convenience, can use a release identifier to denote all sample sets in a release"
-                )
+                # convenience, can use a release identifier to denote all sample sets in a release
                 sample_sets = self.sample_sets(release=sample_sets)[
                     "sample_set"
                 ].tolist()
 
             else:
-                debug("single sample set, normalise to always return a list")
+                # single sample set, normalise to always return a list
                 sample_sets = [sample_sets]
 
         elif isinstance(sample_sets, (list, tuple)):
-            debug("list or tuple of sample sets or releases")
+            # list or tuple of sample sets or releases
             prepped_sample_sets = []
             for s in sample_sets:
-                debug(
-                    "make a recursive call to handle the case where s is a release identifier"
-                )
+
+                # make a recursive call to handle the case where s is a release identifier
                 sp = self._prep_sample_sets_arg(sample_sets=s)
-                debug("make sure we end up with a flat list of sample sets")
+
+                # make sure we end up with a flat list of sample sets
                 if isinstance(sp, str):
                     prepped_sample_sets.append(sp)
                 else:
@@ -629,7 +630,7 @@ class Ag3:
                 f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
             )
 
-        debug("check all sample sets selected at most once")
+        # check all sample sets selected at most once
         counter = Counter(sample_sets)
         for k, v in counter.items():
             if v > 1:
@@ -669,7 +670,7 @@ class Ag3:
         df = self._read_general_metadata(sample_set=sample_set)
         df_species = self._read_species_calls(sample_set=sample_set)
         df = df.merge(df_species, on="sample_id", sort=False)
-        df_cohorts = self.sample_cohorts(sample_sets=sample_set)
+        df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
         df = df.merge(df_cohorts, on="sample_id", sort=False)
         return df
 
@@ -1734,10 +1735,9 @@ class Ag3:
         """
         debug = self._log.debug
 
+        debug("normalise parameters")
         sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
         region = self.resolve_region(region)
-
-        debug("normalise parameters to simplify concatenation logic")
         if isinstance(region, Region):
             region = [region]
 
@@ -4157,7 +4157,7 @@ class Ag3:
         taxa = np.unique(ds["cohort_taxon"].values)
         periods = np.unique(ds["cohort_period"].values)
         controls = ipywidgets.interactive(
-            Ag3.plot_frequencies_map_markers,
+            self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
             ds=ipywidgets.fixed(ds),
             variant=ipywidgets.Dropdown(options=variants, description="Variant: "),
