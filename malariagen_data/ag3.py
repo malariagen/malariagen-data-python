@@ -1621,7 +1621,7 @@ class Ag3:
 
         return d
 
-    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -1657,6 +1657,20 @@ class Ag3:
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
+        debug("set up attributes")
+        attrs = {"contigs": self.contigs}
+
+        debug("create a dataset")
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+        debug = self._log.debug
+
+        coords = dict()
+        data_vars = dict()
+
         debug("call arrays")
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
         gt_z = calls_root[f"{contig}/calldata/GT"]
@@ -1685,11 +1699,76 @@ class Ag3:
         sample_id = sample_id.astype("U")
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
-        debug("set up attributes")
-        attrs = {"contigs": self.contigs}
-
         debug("create a dataset")
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords)
+
+        return ds
+
+    def snp_variants(
+        self,
+        region,
+        site_mask=None,
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access SNP sites and site filters.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing SNP sites and site filters.
+
+        """
+        debug = self._log.debug
+
+        debug("normalise parameters")
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
+
+        debug("access SNP data and concatenate multiple regions")
+        lx = []
+        for r in region:
+
+            debug("access variants")
+            x = self._snp_variants_dataset(
+                contig=r.contig,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+            debug("handle region")
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        debug("concatenate data from multiple regions")
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        debug("apply site filters")
+        if site_mask is not None:
+            ds = dask_compress_dataset(
+                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+            )
 
         return ds
 
@@ -1757,6 +1836,12 @@ class Ag3:
 
             debug("concatenate data from multiple sample sets")
             x = xarray_concat(ly, dim=DIM_SAMPLE)
+
+            debug("add variants variables")
+            v = self._snp_variants_dataset(
+                contig=r.contig, inline_array=inline_array, chunks=chunks
+            )
+            x = xr.merge([v, x], compat="override", join="override")
 
             debug("handle region, do this only once - optimisation")
             if r.start or r.end:
@@ -4950,13 +5035,12 @@ class Ag3:
 
         return fig
 
-    @staticmethod
-    def igv(region, tracks=None):
+    def igv(self, region, tracks=None):
         """Create an IGV browser and display it within the notebook.
 
         Parameters
         ----------
-        region: str
+        region: str or Region
             Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
         tracks : list of dict, optional
             Configuration for any additional tracks.
@@ -4966,6 +5050,11 @@ class Ag3:
         browser : igv_notebook.Browser
 
         """
+        debug = self._log.debug
+
+        debug("resolve region")
+        region = self.resolve_region(region)
+
         import igv_notebook
 
         config = {
@@ -4982,10 +5071,12 @@ class Ag3:
                     }
                 ],
             },
-            "locus": region,
+            "locus": str(region),
         }
         if tracks:
             config["tracks"] = tracks
+
+        debug(config)
 
         igv_notebook.init()
         browser = igv_notebook.Browser(config)
@@ -5077,7 +5168,7 @@ class Ag3:
 
         Parameters
         ----------
-        region: str
+        region: str or Region
             Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
         sample : str
             Sample identifier, e.g., "AR0001-C".
@@ -5103,24 +5194,55 @@ class Ag3:
         debug(bam_url)
         debug(vcf_url)
 
-        debug("set up tracks config")
-        tracks = [
+        tracks = []
+
+        debug("set up site filters tracks")
+        region = self.resolve_region(region)
+        contig = region.contig
+        for site_mask in self._site_mask_ids():
+            site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"
+            debug(site_filters_vcf_url)
+            track_config = {
+                "name": f"Filters - {site_mask}",
+                "url": site_filters_vcf_url,
+                "indexURL": f"{site_filters_vcf_url}.tbi",
+                "format": "vcf",
+                "type": "variant",
+                "visibilityWindow": 20_000,  # bp
+                "height": 30,
+                "colorBy": "FILTER",
+                "colorTable": {
+                    "PASS": "#00cc96",
+                    "*": "#ef553b",
+                },
+            }
+            tracks.append(track_config)
+
+        debug("add SNPs track")
+        tracks.append(
             {
                 "name": "SNPs",
                 "url": vcf_url,
                 "indexURL": f"{vcf_url}.tbi",
                 "format": "vcf",
                 "type": "variant",
-                "visibilityWindow": 35_000,  # (bp) match visibility of alignments
-            },
+                "visibilityWindow": 20_000,  # bp
+                "height": 50,
+            }
+        )
+
+        debug("add alignments track")
+        tracks.append(
             {
                 "name": "Alignments",
                 "url": bam_url,
                 "indexURL": f"{bam_url}.bai",
                 "format": "bam",
                 "type": "alignment",
-            },
-        ]
+                "visibilityWindow": 20_000,  # bp
+                "height": 500,
+            }
+        )
 
         debug("create IGV browser")
         self.igv(region=region, tracks=tracks)
