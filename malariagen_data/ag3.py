@@ -4407,14 +4407,13 @@ class Ag3:
         )
 
         debug("tidy up the plot")
-        fig.xaxis.axis_label = f"Contig {contig} position (bp)"
         fig.y_range = bkmod.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
         yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
             bkplt.show(fig)
@@ -4565,8 +4564,7 @@ class Ag3:
         debug("tidy up the figure")
         fig.yaxis.ticker = []
         fig.y_range = bkmod.Range1d(-0.6, 0.6)
-        fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, parent.contig)
 
         if show:
             bkplt.show(fig)
@@ -4695,8 +4693,7 @@ class Ag3:
         debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
         fig.yaxis.ticker = list(range(y_max + 1))
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, region.contig)
         fig.add_layout(fig.legend[0], "right")
 
         if show:
@@ -4925,8 +4922,7 @@ class Ag3:
 
         debug("tidy")
         fig.yaxis.axis_label = "Samples"
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, region.contig)
         fig.yaxis.ticker = bkmod.FixedTicker(
             ticks=np.arange(len(sample_id)),
         )
@@ -6178,3 +6174,13 @@ def _region_str(region):
     assert isinstance(region, Region)
 
     return str(region)
+
+
+def _bokeh_style_genome_xaxis(fig, contig):
+    """Standard styling for X axis of genome plots."""
+    import bokeh.models as bkmod
+
+    fig.xaxis.axis_label = f"Contig {contig} position (bp)"
+    fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+    fig.xaxis.minor_tick_line_color = None
+    fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
