@@ -594,9 +594,11 @@ class Ag3:
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
 
+        all_sample_sets = self.sample_sets()["sample_set"].tolist()
+
         if sample_sets is None:
-            # all available sample sets
-            sample_sets = self.sample_sets()["sample_set"].tolist()
+            # use all available sample sets
+            sample_sets = all_sample_sets
 
         elif isinstance(sample_sets, str):
 
@@ -619,16 +621,19 @@ class Ag3:
                 sp = self._prep_sample_sets_arg(sample_sets=s)
 
                 # make sure we end up with a flat list of sample sets
-                if isinstance(sp, str):
-                    prepped_sample_sets.append(sp)
-                else:
-                    prepped_sample_sets.extend(sp)
+                prepped_sample_sets.extend(sp)
+
             sample_sets = prepped_sample_sets
 
         else:
             raise TypeError(
                 f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
             )
+
+        # check for bad sample sets
+        for s in sample_sets:
+            if s not in all_sample_sets:
+                raise ValueError(f"Unknown sample set {s!r}.")
 
         # check all sample sets selected at most once
         counter = Counter(sample_sets)
