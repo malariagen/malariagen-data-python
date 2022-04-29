@@ -5848,7 +5848,7 @@ class Ag3:
         site_mask="gamb_colu_arab",
         width=800,
         height=120,
-        max_snps=1_000_000,
+        max_snps=200_000,
         show=True,
     ):
         # TODO docstring
@@ -5982,6 +5982,7 @@ class Ag3:
             source=data,
             name="snps",
         )
+        # TODO add legend?
 
         debug("tidy plot")
         fig.yaxis.ticker = bkmod.FixedTicker(
