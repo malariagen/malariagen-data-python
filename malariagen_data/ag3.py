@@ -589,7 +589,7 @@ class Ag3:
 
         return df.copy()
 
-    def _prep_sample_sets_arg(self, *, sample_sets):
+    def _prep_sample_sets_arg(self, *, sample_sets, sample_query=None):
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
@@ -637,6 +637,15 @@ class Ag3:
                 raise ValueError(
                     f"Bad value for sample_sets parameter, {k:!r} selected more than once."
                 )
+
+        # prune sample sets with no samples after applying a query
+        if sample_query is not None:
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=sample_query
+            )
+            if len(df_samples) == 0:
+                raise ValueError("No samples found for query {sample_query!r}")
+            sample_sets = df_samples["sample_set"].unique().tolist()
 
         return sample_sets
 
@@ -1004,7 +1013,9 @@ class Ag3:
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_arg(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
         region = self.resolve_region(region)
 
         debug("normalise region to list to simplify concatenation logic")
@@ -1815,7 +1826,9 @@ class Ag3:
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_arg(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -1867,8 +1880,6 @@ class Ag3:
         if sample_query is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError("No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
 
         return ds
@@ -2014,7 +2025,9 @@ class Ag3:
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_arg(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -2428,6 +2441,8 @@ class Ag3:
             lx.append(x)
 
         ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        # TODO support sample_query parameter?
 
         return ds
 
@@ -2961,7 +2976,9 @@ class Ag3:
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_arg(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -5334,9 +5351,13 @@ class Ag3:
         name = "ag3_snp_allele_counts_v1"
 
         # normalize params for consistent hash value
+        sample_sets = self._prep_sample_sets_arg(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+        region = self.resolve_region(region).to_dict()
         params = dict(
-            region=self.resolve_region(region).to_dict(),
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            region=region,
+            sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
         )
@@ -5449,11 +5470,15 @@ class Ag3:
         name = "ag3_pca_v1"
 
         debug("normalize params for consistent hash value")
+        sample_sets = self._prep_sample_sets_arg(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+        region = self.resolve_region(region).to_dict()
         params = dict(
-            region=self.resolve_region(region).to_dict(),
+            region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
             min_minor_ac=min_minor_ac,
