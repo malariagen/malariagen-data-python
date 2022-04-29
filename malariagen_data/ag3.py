@@ -1621,7 +1621,7 @@ class Ag3:
 
         return d
 
-    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -1657,6 +1657,20 @@ class Ag3:
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
+        debug("set up attributes")
+        attrs = {"contigs": self.contigs}
+
+        debug("create a dataset")
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+        debug = self._log.debug
+
+        coords = dict()
+        data_vars = dict()
+
         debug("call arrays")
         calls_root = self.open_snp_genotypes(sample_set=sample_set)
         gt_z = calls_root[f"{contig}/calldata/GT"]
@@ -1685,11 +1699,76 @@ class Ag3:
         sample_id = sample_id.astype("U")
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
-        debug("set up attributes")
-        attrs = {"contigs": self.contigs}
-
         debug("create a dataset")
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+        ds = xr.Dataset(data_vars=data_vars, coords=coords)
+
+        return ds
+
+    def snp_variants(
+        self,
+        region,
+        site_mask=None,
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access SNP sites and site filters.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing SNP sites and site filters.
+
+        """
+        debug = self._log.debug
+
+        debug("normalise parameters")
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
+
+        debug("access SNP data and concatenate multiple regions")
+        lx = []
+        for r in region:
+
+            debug("access variants")
+            x = self._snp_variants_dataset(
+                contig=r.contig,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+            debug("handle region")
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        debug("concatenate data from multiple regions")
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        debug("apply site filters")
+        if site_mask is not None:
+            ds = dask_compress_dataset(
+                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+            )
 
         return ds
 
@@ -1757,6 +1836,12 @@ class Ag3:
 
             debug("concatenate data from multiple sample sets")
             x = xarray_concat(ly, dim=DIM_SAMPLE)
+
+            debug("add variants variables")
+            v = self._snp_variants_dataset(
+                contig=r.contig, inline_array=inline_array, chunks=chunks
+            )
+            x = xr.merge([v, x], compat="override", join="override")
 
             debug("handle region, do this only once - optimisation")
             if r.start or r.end:
@@ -4322,14 +4407,13 @@ class Ag3:
         )
 
         debug("tidy up the plot")
-        fig.xaxis.axis_label = f"Contig {contig} position (bp)"
         fig.y_range = bkmod.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
         yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
             bkplt.show(fig)
@@ -4480,8 +4564,7 @@ class Ag3:
         debug("tidy up the figure")
         fig.yaxis.ticker = []
         fig.y_range = bkmod.Range1d(-0.6, 0.6)
-        fig.xaxis.axis_label = f"Contig {parent.contig} position (bp)"
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, parent.contig)
 
         if show:
             bkplt.show(fig)
@@ -4610,8 +4693,7 @@ class Ag3:
         debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
         fig.yaxis.ticker = list(range(y_max + 1))
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, region.contig)
         fig.add_layout(fig.legend[0], "right")
 
         if show:
@@ -4840,8 +4922,7 @@ class Ag3:
 
         debug("tidy")
         fig.yaxis.axis_label = "Samples"
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        _bokeh_style_genome_xaxis(fig, region.contig)
         fig.yaxis.ticker = bkmod.FixedTicker(
             ticks=np.arange(len(sample_id)),
         )
@@ -4950,13 +5031,12 @@ class Ag3:
 
         return fig
 
-    @staticmethod
-    def igv(region, tracks=None):
+    def igv(self, region, tracks=None):
         """Create an IGV browser and display it within the notebook.
 
         Parameters
         ----------
-        region: str
+        region: str or Region
             Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
         tracks : list of dict, optional
             Configuration for any additional tracks.
@@ -4966,6 +5046,11 @@ class Ag3:
         browser : igv_notebook.Browser
 
         """
+        debug = self._log.debug
+
+        debug("resolve region")
+        region = self.resolve_region(region)
+
         import igv_notebook
 
         config = {
@@ -4982,17 +5067,19 @@ class Ag3:
                     }
                 ],
             },
-            "locus": region,
+            "locus": str(region),
         }
         if tracks:
             config["tracks"] = tracks
+
+        debug(config)
 
         igv_notebook.init()
         browser = igv_notebook.Browser(config)
 
         return browser
 
-    def data_catalog(self, sample_set):
+    def wgs_data_catalog(self, sample_set):
         """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
         files for samples in a given sample set.
 
@@ -5071,16 +5158,20 @@ class Ag3:
         self,
         region,
         sample,
+        visibility_window=20_000,
     ):
         """Launch IGV and view sequence read alignments and SNP genotypes from
         the given sample.
 
         Parameters
         ----------
-        region: str
+        region: str or Region
             Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
         sample : str
             Sample identifier, e.g., "AR0001-C".
+        visibility_window : int, optional
+            Zoom level in base pairs at which alignment and SNP data will become
+            visible.
 
         Notes
         -----
@@ -5094,7 +5185,7 @@ class Ag3:
         sample_set = sample_rec["sample_set"]
 
         debug("load data catalog")
-        df_cat = self.data_catalog(sample_set=sample_set)
+        df_cat = self.wgs_data_catalog(sample_set=sample_set)
 
         debug("locate record for sample")
         cat_rec = df_cat.set_index("sample_id").loc[sample]
@@ -5103,24 +5194,58 @@ class Ag3:
         debug(bam_url)
         debug(vcf_url)
 
-        debug("set up tracks config")
-        tracks = [
+        tracks = []
+
+        # TODO reinstate this when igv.js supports color by FILTER
+        # https://github.com/igvteam/igv-notebook/issues/3
+        #
+        # debug("set up site filters tracks")
+        # region = self.resolve_region(region)
+        # contig = region.contig
+        # for site_mask in self._site_mask_ids():
+        #     site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"
+        #     debug(site_filters_vcf_url)
+        #     track_config = {
+        #         "name": f"Filters - {site_mask}",
+        #         "url": site_filters_vcf_url,
+        #         "indexURL": f"{site_filters_vcf_url}.tbi",
+        #         "format": "vcf",
+        #         "type": "variant",
+        #         "visibilityWindow": visibility_window,  # bp
+        #         "height": 30,
+        #         "colorBy": "FILTER",
+        #         "colorTable": {
+        #             "PASS": "#00cc96",
+        #             "*": "#ef553b",
+        #         },
+        #     }
+        #     tracks.append(track_config)
+
+        debug("add SNPs track")
+        tracks.append(
             {
                 "name": "SNPs",
                 "url": vcf_url,
                 "indexURL": f"{vcf_url}.tbi",
                 "format": "vcf",
                 "type": "variant",
-                "visibilityWindow": 35_000,  # (bp) match visibility of alignments
-            },
+                "visibilityWindow": visibility_window,  # bp
+                "height": 50,
+            }
+        )
+
+        debug("add alignments track")
+        tracks.append(
             {
                 "name": "Alignments",
                 "url": bam_url,
                 "indexURL": f"{bam_url}.bai",
                 "format": "bam",
                 "type": "alignment",
-            },
-        ]
+                "visibilityWindow": visibility_window,  # bp
+                "height": 500,
+            }
+        )
 
         debug("create IGV browser")
         self.igv(region=region, tracks=tracks)
@@ -5173,7 +5298,7 @@ class Ag3:
 
         Parameters
         ----------
-        region : str
+        region : str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
@@ -5715,6 +5840,215 @@ class Ag3:
 
         return fig
 
+    def plot_snps_track(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask="gamb_colu_arab",
+        width=800,
+        height=120,
+        max_snps=200_000,
+        show=True,
+    ):
+        # TODO docstring
+        debug = self._log.debug
+
+        import bokeh.models as bkmod
+        import bokeh.palettes as bkpal
+        import bokeh.plotting as bkplt
+
+        debug("resolve and check region")
+        region = self.resolve_region(region)
+        if (
+            (region.start is None)
+            or (region.end is None)
+            or ((region.end - region.start) > max_snps)
+        ):
+            raise ValueError("Region is too large, please provide a smaller region.")
+
+        debug("compute allele counts")
+        ac = allel.AlleleCountsArray(
+            self.snp_allele_counts(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+            )
+        )
+        an = ac.sum(axis=1)
+        is_seg = ac.is_segregating()
+        is_var = ac.is_variant()
+        allelism = ac.allelism()
+
+        debug("obtain SNP variants data")
+        ds_sites = self.snp_variants(
+            region=region,
+        ).compute()
+
+        debug("build a dataframe")
+        pos = ds_sites["variant_position"].values
+        alleles = ds_sites["variant_allele"].values.astype("U")
+        cols = {
+            "pos": pos,
+            "allele_0": alleles[:, 0],
+            "allele_1": alleles[:, 1],
+            "allele_2": alleles[:, 2],
+            "allele_3": alleles[:, 3],
+            "ac_0": ac[:, 0],
+            "ac_1": ac[:, 1],
+            "ac_2": ac[:, 2],
+            "ac_3": ac[:, 3],
+            "an": an,
+            "is_seg": is_seg,
+            "is_var": is_var,
+            "allelism": allelism,
+            "pass_gamb_colu_arab": ds_sites[
+                "variant_filter_pass_gamb_colu_arab"
+            ].values,
+            "pass_gamb_colu": ds_sites["variant_filter_pass_gamb_colu"].values,
+            "pass_arab": ds_sites["variant_filter_pass_arab"].values,
+        }
+        data = pd.DataFrame(cols)
+
+        debug("create figure")
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        pos = data["pos"].values
+        x_min = pos[0]
+        x_max = pos[-1]
+        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        tooltips = [
+            ("Position", "$x{0,0}"),
+            (
+                "Alleles",
+                "@allele_0 (@ac_0), @allele_1 (@ac_1), @allele_2 (@ac_2), @allele_3 (@ac_3)",
+            ),
+            ("No. alleles", "@allelism"),
+            ("Allele calls", "@an"),
+            ("Pass gamb_colu_arab", "@pass_gamb_colu_arab"),
+            ("Pass gamb_colu", "@pass_gamb_colu"),
+            ("Pass arab", "@pass_arab"),
+        ]
+
+        fig = bkplt.figure(
+            title="SNPs",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0.5, 2.5),
+            tooltips=tooltips,
+        )
+        hover_tool = fig.select(type=bkmod.HoverTool)
+        hover_tool.names = ["snps"]
+
+        debug("plot gaps in the reference genome")
+        seq = self.genome_sequence(region=region.contig).compute()
+        is_n = (seq == b"N") | (seq == b"n")
+        loc_n_start = ~is_n[:-1] & is_n[1:]
+        loc_n_stop = is_n[:-1] & ~is_n[1:]
+        n_starts = np.nonzero(loc_n_start)[0]
+        n_stops = np.nonzero(loc_n_stop)[0]
+        df_n_runs = pd.DataFrame(
+            {"left": n_starts + 1.6, "right": n_stops + 1.4, "top": 2.5, "bottom": 0.5}
+        )
+        fig.quad(
+            top="top",
+            bottom="bottom",
+            left="left",
+            right="right",
+            color="#cccccc",
+            source=df_n_runs,
+            name="gaps",
+        )
+
+        debug("plot SNPs")
+        color_pass = bkpal.Colorblind6[3]
+        color_fail = bkpal.Colorblind6[5]
+        data["left"] = data["pos"] - 0.4
+        data["right"] = data["pos"] + 0.4
+        data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
+        data["top"] = data["bottom"] + 0.8
+        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
+        fig.quad(
+            top="top",
+            bottom="bottom",
+            left="left",
+            right="right",
+            color="color",
+            source=data,
+            name="snps",
+        )
+        # TODO add legend?
+
+        debug("tidy plot")
+        fig.yaxis.ticker = bkmod.FixedTicker(
+            ticks=[1, 2],
+        )
+        fig.yaxis.major_label_overrides = {
+            1: "Non-segregating",
+            2: "Segregating",
+        }
+        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+        fig.xaxis.minor_tick_line_color = None
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_snps(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask="gamb_colu_arab",
+        width=800,
+        track_height=80,
+        genes_height=120,
+        show=True,
+    ):
+        # TODO docstring
+        debug = self._log.debug
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        debug("plot SNPs track")
+        fig1 = self.plot_snps_track(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+        fig1.xaxis.visible = False
+
+        debug("plot genes track")
+        fig2 = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
 
 def _setup_taxon_colors(plot_kwargs):
     import plotly.express as px
@@ -6056,3 +6390,13 @@ def _region_str(region):
     assert isinstance(region, Region)
 
     return str(region)
+
+
+def _bokeh_style_genome_xaxis(fig, contig):
+    """Standard styling for X axis of genome plots."""
+    import bokeh.models as bkmod
+
+    fig.xaxis.axis_label = f"Contig {contig} position (bp)"
+    fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+    fig.xaxis.minor_tick_line_color = None
+    fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
