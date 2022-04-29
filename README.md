@@ -29,6 +29,13 @@ from the following locations:
 ## Release notes
 
 
+### 4.3.0
+
+* Add Ag3.plot_snps() to plot segregating and non-segregating SNPs and
+  visualise site filters
+  ([GH226](https://github.com/malariagen/malariagen-data-python/issues/226)).
+
+
 ### 4.2.0
 
 * Add progress bars for longer-running computations using tqdm
