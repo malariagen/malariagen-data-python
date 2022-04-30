@@ -281,7 +281,7 @@ class Ag3:
 
     def __repr__(self):
         text = (
-            f"<MalariaGEN Ag3 API>\n"
+            f"<MalariaGEN Ag3 API client>\n"
             f"Storage URL             : {self._url}\n"
             f"Data releases available : {', '.join(self.releases)}\n"
             f"Results cache           : {self._results_cache}\n"
@@ -303,7 +303,7 @@ class Ag3:
             <table class="malariagen-ag3">
                 <thead>
                     <tr>
-                        <th style="text-align: left" colspan="2">MalariaGEN Ag3 API</th>
+                        <th style="text-align: left" colspan="2">MalariaGEN Ag3 API client</th>
                     </tr>
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
