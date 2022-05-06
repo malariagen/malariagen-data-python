@@ -102,6 +102,85 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             "ANN_Annotation": [DIM_VARIANT, DIM_ALT_ALLELE],
             "RAW_MQandDP": [DIM_VARIANT, DIM_PLOIDY],
         }
+        self.permanent_annotation_columns = [
+            "contig",
+            "source",
+            "type",
+            "start",
+            "end",
+            "score",
+            "strand",
+            "phase",
+        ]
+        self.default_columns = [
+            "ID",
+            "Parent",
+            "Name",
+            "alias",
+        ]
+        self.non_default_columns = [
+            "comment",
+            "literature",
+        ]
+        d = {
+            "contig": [
+                "Pf3D7_01_v3",
+                "Pf3D7_02_v3",
+                "Pf3D7_03_v3",
+                "Pf3D7_04_v3",
+                "Pf3D7_05_v3",
+            ],
+            "source": ["chado"] * 5,
+            "type": ["repeat_region", "CDS", "gene", "mRNA", "rRNA"],
+            "start": [0] * 5,
+            "end": [0] * 5,
+            "score": ["nan"] * 5,
+            "strand": ["+", "+", "-", "-", "+"],
+            "phase": ["nan", 0.0, 2.0, 1.0, 2.0],
+            "attributes": [
+                {
+                    "ID": "id1",
+                    "Name": "name1",
+                    "Parent": "parent1",
+                    "alias": "alias1",
+                    "comment": "comment1",
+                    "literature": "lit1",
+                },
+                {
+                    "ID": "id2",
+                    "Name": "name2",
+                    "Parent": "parent2",
+                    "alias": "alias2",
+                    "comment": "comment2",
+                    "literature": "lit2",
+                },
+                {
+                    "ID": "id3",
+                    "Name": "name3",
+                    "Parent": "parent3",
+                    "alias": "alias3",
+                    "comment": "comment3",
+                    "literature": "lit3",
+                },
+                {
+                    "ID": "id4",
+                    "Name": "name4",
+                    "Parent": "parent4",
+                    "alias": "alias4",
+                    "comment": "comment4",
+                    "literature": "lit4",
+                },
+                {
+                    "ID": "id5",
+                    "Name": "name5",
+                    "Parent": "parent5",
+                    "alias": "alias5",
+                    "comment": "comment5",
+                    "literature": "lit5",
+                },
+            ],
+        }
+        self.test_annotations_df = pd.DataFrame(data=d)
 
     def test_setup_returns_config_correctly(self):
         plasmodium = PlasmodiumDataResource(self.test_config_path)
@@ -110,6 +189,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             {
                 "default_url": "gs://test_plasmodium_release/",
                 "metadata_path": "metadata/test_metadata.txt",
+                "annotations_path": "annotations/test_annotation_file.gff.gz",
                 "variant_calls_zarr_path": "test_plasmodium.zarr/",
                 "default_variant_variables": {
                     "FILTER_PASS": ["variants"],
@@ -155,7 +235,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
     @patch("json.load")
     def test_load_config_calls_path(self, mock_load_json, mock_open):
         self.test_plasmodium_class._load_config(self.test_config_path)
-        open.assert_called_once_with(self.test_config_path)
+        mock_open.assert_called_once_with(self.test_config_path)
 
     def test_sample_metadata_returns_extpected_df(self):
         metadata_df = self.test_plasmodium_class.sample_metadata()
@@ -344,6 +424,122 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                 "variant_AN",
             ],
         )
+
+    @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
+    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_genome_features(self, mock_open, mock_read_gff, mock_unpack):
+        mock_read_gff.return_value = self.test_annotations_df
+        self.test_plasmodium_class.genome_features()
+        # Assertions
+        mock_open.assert_called_once()
+        mock_read_gff.assert_called_once_with(
+            mock_open.return_value, compression="gzip"
+        )
+        mock_unpack.assert_called_once_with(
+            self.test_annotations_df,
+            attributes=tuple(["ID", "Parent", "Name", "alias"]),
+        )
+
+    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_genome_features_with_default_attributes_no_cache(
+        self, mock_open, mock_read_gff
+    ):
+        mock_read_gff.return_value = self.test_annotations_df
+        annotations = self.test_plasmodium_class.genome_features()
+        expected_columns = self.permanent_annotation_columns + self.default_columns
+        # Assertions
+        mock_open.assert_called_once()
+        self.assertEqual(
+            set(list(annotations.columns)),
+            set(expected_columns),
+        )
+        self.assertEqual(annotations.shape, (5, len(expected_columns)))
+        mock_read_gff.assert_called_once_with(
+            mock_open.return_value, compression="gzip"
+        )
+
+    def test_genome_features_wrong_attribute_type(self):
+        self.assertRaises(TypeError, self.test_plasmodium_class.genome_features, None)
+
+    def test_genome_features_wrong_attribute_not_in_df(self):
+        self.assertRaises(
+            TypeError, self.test_plasmodium_class.genome_features, "bad_attribute"
+        )
+
+    @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
+    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_genome_features_uses_cache(self, mock_open, mock_read_gff, mock_unpack):
+        mock_read_gff.return_value = self.test_annotations_df
+        self.test_plasmodium_class.genome_features()
+        self.test_plasmodium_class.genome_features()
+        # Assertions
+        mock_open.assert_called_once()
+        mock_read_gff.assert_called_once()
+        mock_unpack.assert_called_once()
+
+    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_genome_features_with_all_attributes(self, mock_open, mock_read_gff):
+        mock_read_gff.return_value = self.test_annotations_df
+        annotations = self.test_plasmodium_class.genome_features(attributes="*")
+        # Assertions
+        mock_open.assert_called_once()
+        mock_read_gff.assert_called_once_with(
+            mock_open.return_value, compression="gzip"
+        )
+        expected_columns = (
+            self.permanent_annotation_columns
+            + self.default_columns
+            + self.non_default_columns
+        )
+        self.assertEqual(
+            set(list(annotations.columns)),
+            set(expected_columns),
+        )
+        self.assertEqual(annotations.shape, (5, len(expected_columns)))
+
+    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_genome_features_with_attribute_list(self, mock_open, mock_read_gff):
+        mock_read_gff.return_value = self.test_annotations_df
+        attribute_list = ["ID", "Name", "comment"]
+        annotations = self.test_plasmodium_class.genome_features(
+            attributes=attribute_list
+        )
+        # Assertions
+        mock_open.assert_called_once()
+        mock_read_gff.assert_called_once_with(
+            mock_open.return_value, compression="gzip"
+        )
+        expected_columns = self.permanent_annotation_columns + attribute_list
+        self.assertEqual(
+            set(list(annotations.columns)),
+            set(expected_columns),
+        )
+        self.assertEqual(annotations.shape, (5, len(expected_columns)))
+
+    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("builtins.open", new_callable=mock_open)
+    def test_genome_features_with_attribute_tuple(self, mock_open, mock_read_gff):
+        mock_read_gff.return_value = self.test_annotations_df
+        attribute_tuple = ("ID", "Name", "comment")
+        annotations = self.test_plasmodium_class.genome_features(
+            attributes=attribute_tuple
+        )
+        # Assertions
+        mock_open.assert_called_once()
+        mock_read_gff.assert_called_once_with(
+            mock_open.return_value, compression="gzip"
+        )
+        expected_columns = self.permanent_annotation_columns + list(attribute_tuple)
+        self.assertEqual(
+            set(list(annotations.columns)),
+            set(expected_columns),
+        )
+        self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 {
   "default_url": "gs://pf7_release/",
   "metadata_path": "metadata/Pf_7_samples_20210630.txt",
-  "annotations_path": "annotations/Pfalciparum_replace_Pf3D7_MIT_v3_with_Pf_M76611.gff",
+  "annotations_path": "annotations/Pfalciparum_replace_Pf3D7_MIT_v3_with_Pf_M76611.gff.gz",
   "variant_calls_zarr_path": "pf7.zarr/",
   "default_variant_variables": {
     "FILTER_PASS": ["variants"],

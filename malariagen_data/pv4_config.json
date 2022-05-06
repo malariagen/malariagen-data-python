@@ -1,6 +1,7 @@
 {
   "default_url": "gs://pv4_release/",
   "metadata_path": "metadata/Pv4_samples.txt",
+  "annotations_path": "annotations/PvivaxP01.noseq.gff3.gz",
   "variant_calls_zarr_path": "Pv4.zarr/",
   "default_variant_variables": {
     "FILTER_PASS": ["variants"],

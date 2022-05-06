@@ -71,15 +71,19 @@ def unpack_gff3_attributes(df, attributes):
 
     df = df.copy()
 
-    if attributes == "*":
-        # discover all attribute keys
-        attributes = set()
-        for a in df["attributes"]:
-            attributes.update(a.keys())
-        attributes = sorted(attributes)
+    # discover all attribute keys
+    all_attributes = set()
+    for a in df["attributes"]:
+        all_attributes.update(a.keys())
+    all_attributes = sorted(all_attributes)
+
+    if attributes == tuple("*"):
+        attributes = all_attributes
 
     # unpack attributes into columns
     for key in attributes:
+        if key not in all_attributes:
+            raise ValueError(f"'{key}' not in attributes set. Options {all_attributes}")
         df[key] = df["attributes"].apply(lambda v: v.get(key, np.nan))
     del df["attributes"]
 

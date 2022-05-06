@@ -192,8 +192,8 @@ class PlasmodiumDataResource:
 
         return ds
 
-    def geneset(self, attributes=("ID", "Parent", "Name", "description")):
-        """Access genome feature annotations (AgamP4.12).
+    def genome_features(self, attributes=("ID", "Parent", "Name", "alias")):
+        """Access genome feature annotations.
 
         Parameters
         ----------
@@ -205,17 +205,18 @@ class PlasmodiumDataResource:
         df : pandas.DataFrame
 
         """
-
+        # Attributes
+        if type(attributes) not in [tuple, list] and attributes != "*":
+            raise TypeError("'attributes' must be a list, tuple, or '*'")
         if attributes is not None:
             attributes = tuple(attributes)
 
         try:
             df = self._cache_geneset[attributes]
-
         except KeyError:
             path = os.path.join(self._path, self.CONF["annotations_path"])
             with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression=None)  # - Might want to gzip this?
+                df = read_gff3(f, compression="gzip")
             if attributes is not None:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_geneset[attributes] = df
