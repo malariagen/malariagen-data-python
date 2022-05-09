@@ -1,6 +1,6 @@
 import os
 
-from malariagen_data.plasmodium import PlasmodiumDataResource
+from .plasmodium import PlasmodiumDataResource
 
 
 class Pf7(PlasmodiumDataResource):
