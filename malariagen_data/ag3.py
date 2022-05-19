@@ -224,6 +224,7 @@ class Ag3:
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
         self._cache_sample_metadata = dict()
+        self._cache_aims = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -6048,6 +6049,36 @@ class Ag3:
             bkplt.show(fig)
 
         return fig
+
+    def aim_sites(self, aims):
+        """Open ancestry informative marker sites.
+
+        Parameters
+        ----------
+        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing aim positions and discriminating alleles.
+
+        """
+        try:
+            ds = self._cache_aims[aims]
+        except KeyError:
+            path_prefix = f"{self._base_path}/reference/aim_defs/"
+            path = f"{path_prefix}/{aims}.zarr"
+            with self._fs.open(path) as f:
+                ds = xr.open_zarr(f, concat_characters=False)
+
+            self._cache_aims[aims] = ds
+        return self._cache_aims[aims]
+
+        # if self._cache_aims[aims] is None:
+        #     path = f"{self._base_path}/reference/aim_defs/{aims}.zarr"}"
+        #     store = init_zarr_store(fs=self._fs, path=path)
+        #     self._cache_aims = xr.open_zarr(store, concat_characters=False)
+        # return self._cache_aims[aims]
 
 
 def _setup_taxon_colors(plot_kwargs):
