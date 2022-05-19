@@ -6066,19 +6066,12 @@ class Ag3:
         try:
             ds = self._cache_aims[aims]
         except KeyError:
-            path_prefix = f"{self._base_path}/reference/aim_defs/"
-            path = f"{path_prefix}/{aims}.zarr"
-            with self._fs.open(path) as f:
-                ds = xr.open_zarr(f, concat_characters=False)
-
+            # TODO - point at release bucket once PR is merged and data moved
+            path = f"vo_agam_staging/reference/aim_defs/{aims}.zarr"
+            store = init_zarr_store(fs=self._fs, path=path)
+            ds = xr.open_zarr(store, concat_characters=False)
             self._cache_aims[aims] = ds
-        return self._cache_aims[aims]
-
-        # if self._cache_aims[aims] is None:
-        #     path = f"{self._base_path}/reference/aim_defs/{aims}.zarr"}"
-        #     store = init_zarr_store(fs=self._fs, path=path)
-        #     self._cache_aims = xr.open_zarr(store, concat_characters=False)
-        # return self._cache_aims[aims]
+        return ds
 
 
 def _setup_taxon_colors(plot_kwargs):
