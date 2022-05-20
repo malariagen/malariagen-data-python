@@ -2850,18 +2850,18 @@ def _compare_series_like(actual, expect):
         assert_array_equal(actual.values, expect.values)
 
 
-def test_aim_sites():
+@pytest.mark.parametrize("aims", ["gamb_vs_colu", "gambcolu_vs_arab"])
+def test_aim_sites(aims):
     ag3 = setup_ag3()
-    dsgc = ag3.aim_sites("gamb_vs_colu")
-    assert isinstance(dsgc, xr.core.dataset.Dataset)
-    assert isinstance(dsgc["variant_allele"].values, np.ndarray)
-    assert dsgc["variant_allele"].shape == (729, 2)
-    assert dsgc["variant_allele"][:1].values.dtype == "S1"
-    assert dsgc["variant_contig"].shape == (729,)
-    assert dsgc["variant_contig"][:1].values.dtype == "uint8"
-    assert dsgc["variant_position"].shape == (729,)
-    assert dsgc["variant_position"][:1].values.dtype == "int64"
-    assert dsgc.attrs == {"contigs": ["2R", "2L", "3R", "3L", "X"]}
-    dsga = ag3.aim_sites("gambcolu_vs_arab")
-    assert isinstance(dsga, xr.core.dataset.Dataset)
-    assert dsga["variant_allele"].shape == (565329, 2)
+    ds = ag3.aim_sites(aims)
+    assert isinstance(ds, xr.core.dataset.Dataset)
+    assert isinstance(ds["variant_allele"].values, np.ndarray)
+    assert ds["variant_allele"][:1].values.dtype == "S1"
+    assert ds["variant_contig"][:1].values.dtype == "uint8"
+    assert ds.attrs == {"contigs": ["2R", "2L", "3R", "3L", "X"]}
+    if aims == "gamb_vs_colu":
+        assert ds["variant_allele"].shape == (729, 2)
+        assert ds["variant_contig"].shape == (729,)
+        assert ds["variant_position"].shape == (729,)
+    if aims == "gambcolu_vs_arab":
+        assert ds["variant_allele"].shape == (565329, 2)

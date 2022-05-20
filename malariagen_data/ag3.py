@@ -66,6 +66,7 @@ GENOME_FAI_PATH = (
 GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
 )
+
 DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
@@ -6066,8 +6067,7 @@ class Ag3:
         try:
             ds = self._cache_aims[aims]
         except KeyError:
-            # TODO - point at release bucket once PR is merged and data moved
-            path = f"vo_agam_staging/reference/aim_defs/{aims}.zarr"
+            path = f"{self._base_path}/reference/aim_defs/{aims}.zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             self._cache_aims[aims] = ds
