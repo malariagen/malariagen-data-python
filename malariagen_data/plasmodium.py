@@ -36,7 +36,7 @@ class PlasmodiumDataResource:
         # setup caches
         self._cache_sample_metadata = None
         self._cache_variant_calls_zarr = None
-        self._cache_geneset = dict()
+        self._cache_genome_features = dict()
 
         self.extended_calldata_variables = self.CONF["extended_calldata_variables"]
         self.extended_variant_fields = self.CONF["extended_variant_fields"]
@@ -212,13 +212,13 @@ class PlasmodiumDataResource:
             attributes = tuple(attributes)
 
         try:
-            df = self._cache_geneset[attributes]
+            df = self._cache_genome_features[attributes]
         except KeyError:
             path = os.path.join(self._path, self.CONF["annotations_path"])
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
                 df = unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_geneset[attributes] = df
+            self._cache_genome_features[attributes] = df
 
         return df
