@@ -1,3 +1,4 @@
+import os
 import random
 import shutil
 
@@ -23,8 +24,19 @@ expected_species = {
     "intermediate_gambiae_coluzzii",
 }
 
-
 contigs = "2R", "2L", "3R", "3L", "X"
+
+cohort_cols = (
+    "country_iso",
+    "admin1_name",
+    "admin1_iso",
+    "admin2_name",
+    "taxon",
+    "cohort_admin1_year",
+    "cohort_admin1_month",
+    "cohort_admin2_year",
+    "cohort_admin2_month",
+)
 
 
 def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
@@ -200,21 +212,19 @@ def test_sample_metadata_with_pca_species():
 
 def test_sample_metadata_with_cohorts():
     ag3 = setup_ag3()
-
-    cohort_cols = (
-        "country_iso",
-        "admin1_name",
-        "admin1_iso",
-        "admin2_name",
-        "taxon",
-        "cohort_admin1_year",
-        "cohort_admin1_month",
-        "cohort_admin2_year",
-        "cohort_admin2_month",
-    )
     df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
     for c in cohort_cols:
         assert c in df_samples_coh
+
+
+def test_sample_metadata_without_cohorts():
+    working_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data_path = os.path.join(working_dir, "anopheles_test_data")
+    ag3 = Ag3(test_data_path)
+    df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
+    for c in cohort_cols:
+        assert c in df_samples_coh
+        assert df_samples_coh[c].isnull().all()
 
 
 @pytest.mark.parametrize(
