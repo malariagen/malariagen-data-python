@@ -345,11 +345,10 @@ class Region:
 
 def _handle_region_coords(resource, region):
 
-    region_pattern_match = re.search("([a-zA-Z0-9]+):(.+)-(.+)", region)
+    region_pattern_match = re.search("([a-zA-Z0-9_]+):(.+)-(.+)", region)
     if region_pattern_match:
         # parse region string that contains genomic coordinates
         region_split = region_pattern_match.groups()
-
         contig = region_split[0]
         start = int(region_split[1].replace(",", ""))
         end = int(region_split[2].replace(",", ""))
