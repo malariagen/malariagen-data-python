@@ -15,6 +15,8 @@ from malariagen_data.util import (
     init_filesystem,
     init_zarr_store,
     resolve_region,
+    read_gff3,
+    unpack_gff3_attributes,
 )
 
 
@@ -36,10 +38,10 @@ class PlasmodiumDataResource:
         self._cache_sample_metadata = None
         self._cache_variant_calls_zarr = None
         self._cache_genome = None
+        self._cache_genome_features = dict()
 
         self.extended_calldata_variables = self.CONF["extended_calldata_variables"]
         self.extended_variant_fields = self.CONF["extended_variant_fields"]
-        self.contigs = self.CONF["contigs"]
 
     def _load_config(self, data_config):
         """Load the config for data structure on the cloud into json format."""
@@ -229,35 +231,10 @@ class PlasmodiumDataResource:
     def _subset_genome_sequence_region(
         self, genome, region, inline_array=True, chunks="native"
     ):
-        """Access the reference genome sequence.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
-            An array of nucleotides giving the reference genome sequence for the
-            given contig.
-
-        """
+        """Sebset reference genome sequence."""
+        # TODO: do we need to do this or can call resolve region directly from util
         region = self.resolve_region(region)
-        # contig_name = region.contig
-        # if contig_name not in self.contigs:
-        #     raise ValueError(
-        #         f"{contig_name} not found. Please choose from {self.contigs}"
-        #     )
+        # region = resolve_region(self, region)
         z = genome[region.contig]
 
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -274,17 +251,16 @@ class PlasmodiumDataResource:
 
         return d[loc_region]
 
-    def genome_sequence(self, region=None, inline_array=True, chunks="native"):
+    def genome_sequence(self, region="*", inline_array=True, chunks="native"):
         """Access the reference genome sequence.
 
         Parameters
         ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
+        region: str or list of str or Region or list of Region. Defaults to '*'
+            Chromosome (e.g., "Pf3D7_01_v3"), gene name (e.g., "PF3D7_0114100.1:5UTR"), genomic
+            region defined with coordinates (e.g., "Pf3D7_01_v3:1-500").
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
+            be concatenated, e.g., ["Pf3D7_01_v3:1-5000","Pf3D7_02_v3:15-20","Pf3D7_03_v3:40-50"].
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -295,11 +271,11 @@ class PlasmodiumDataResource:
         -------
         d : dask.array.Array
             An array of nucleotides giving the reference genome sequence for the
-            given contig.
+            given region/gene/contig.
 
         """
         genome = self.open_genome()
-        # If only one asked for
+        self.contigs = self.genome_features().contig.unique()
         if type(region) not in [tuple, list] and region != "*" and region is not None:
             d = self._subset_genome_sequence_region(
                 genome=genome,
@@ -307,16 +283,10 @@ class PlasmodiumDataResource:
                 inline_array=inline_array,
                 chunks=chunks,
             )
-            print("just one")  # Why is this printed twice
         else:
-            # if type(region) not in [tuple, list] and region != "*" and region != None:
-            #     raise TypeError(
-            #         f"'region' must be one or multiple in a list from {self.contigs}"
-            #     )
-            if not region:
-                region = self.contigs
             region = tuple(region)
             if region == tuple("*"):
+                # TODO: cache this?
                 region = self.contigs
 
             d = da.concatenate(
@@ -330,6 +300,40 @@ class PlasmodiumDataResource:
                     for r in region
                 ]
             )
-            for r in region:
-                print(r)
         return d
+
+    def geneset(self, attributes):
+        # Figure out better way to do this????
+        features_df = self.genome_features(attributes=attributes)
+        return features_df
+
+    def genome_features(self, attributes=("ID", "Parent", "Name", "alias")):
+        """Access genome feature annotations.
+
+        Parameters
+        ----------
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. Provide "*" to unpack all attributes.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+        # Attributes
+        if type(attributes) not in [tuple, list] and attributes != "*":
+            raise TypeError("'attributes' must be a list, tuple, or '*'")
+        if attributes is not None:
+            attributes = tuple(attributes)
+
+        try:
+            df = self._cache_genome_features[attributes]
+        except KeyError:
+            path = os.path.join(self._path, self.CONF["annotations_path"])
+            with self._fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_genome_features[attributes] = df
+
+        return df
