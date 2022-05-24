@@ -29,6 +29,12 @@ from the following locations:
 ## Release notes
 
 
+### 4.3.1
+
+* Handle sample sets with missing cohorts metadata
+  ([GH235](https://github.com/malariagen/malariagen-data-python/pull/235).
+
+
 ### 4.3.0
 
 * Add Ag3.plot_snps() to plot segregating and non-segregating SNPs and
