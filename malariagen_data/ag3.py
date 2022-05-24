@@ -3029,9 +3029,8 @@ class Ag3:
             release_path = _release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohorts metadata exist, need to check
-            if self._fs.exists(path):
-
+            # N.B., not all cohorts metadata exist, need to handle FileNotFoundError
+            try:
                 with self._fs.open(path) as f:
                     df = pd.read_csv(f, na_values="")
 
@@ -3047,9 +3046,7 @@ class Ag3:
                     },
                     inplace=True,
                 )
-
-            else:
-
+            except FileNotFoundError:
                 # Specify cohort_cols
                 cohort_cols = (
                     "country_iso",
