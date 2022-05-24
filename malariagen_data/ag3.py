@@ -3029,21 +3029,46 @@ class Ag3:
             release_path = _release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="")
+            # N.B., not all cohorts metadata exist, need to handle FileNotFoundError
+            try:
+                with self._fs.open(path) as f:
+                    df = pd.read_csv(f, na_values="")
 
-            # ensure all column names are lower case
-            df.columns = [c.lower() for c in df.columns]
+                # ensure all column names are lower case
+                df.columns = [c.lower() for c in df.columns]
 
-            # rename some columns for consistent naming
-            df.rename(
-                columns={
-                    "adm1_iso": "admin1_iso",
-                    "adm1_name": "admin1_name",
-                    "adm2_name": "admin2_name",
-                },
-                inplace=True,
-            )
+                # rename some columns for consistent naming
+                df.rename(
+                    columns={
+                        "adm1_iso": "admin1_iso",
+                        "adm1_name": "admin1_name",
+                        "adm2_name": "admin2_name",
+                    },
+                    inplace=True,
+                )
+            except FileNotFoundError:
+                # Specify cohort_cols
+                cohort_cols = (
+                    "country_iso",
+                    "admin1_name",
+                    "admin1_iso",
+                    "admin2_name",
+                    "taxon",
+                    "cohort_admin1_year",
+                    "cohort_admin1_month",
+                    "cohort_admin2_year",
+                    "cohort_admin2_month",
+                )
+
+                # Get sample ids as an index via general metadata (has caching)
+                df_general = self._read_general_metadata(sample_set=sample_set)
+                df_general.set_index("sample_id", inplace=True)
+
+                # Create a blank DataFrame with cohort_cols and sample_id index
+                df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
+
+                # Revert sample_id index to column
+                df.reset_index(inplace=True)
 
             self._cache_cohort_metadata[sample_set] = df
         return df.copy()
