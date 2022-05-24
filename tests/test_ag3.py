@@ -2854,14 +2854,43 @@ def _compare_series_like(actual, expect):
 def test_aim_sites(aims):
     ag3 = setup_ag3()
     ds = ag3.aim_sites(aims)
+
+    # check dataset
     assert isinstance(ds, xr.core.dataset.Dataset)
-    assert isinstance(ds["variant_allele"].values, np.ndarray)
-    assert ds["variant_allele"][:1].values.dtype == "S1"
-    assert ds["variant_contig"][:1].values.dtype == "uint8"
+
+    # check variables
+    expected_data_vars = {"variant_allele"}
+    assert set(ds.data_vars) == expected_data_vars
+
+    # check coordinates
+    expected_coords = {"variant_contig", "variant_position"}
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    expected_dims = {"variants", "alleles"}
+    assert set(ds.dims) == expected_dims
+
+    # check variant_contig
+    x = ds["variant_contig"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "uint8"
+
+    # check variant_position
+    x = ds["variant_position"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "int64" or "int32"
+
+    # check variant_allele
+    x = ds["variant_allele"]
+    assert x.dims == ("variants", "alleles")
+    assert x.dtype == "S1"
+
+    # check atttributes
     assert ds.attrs == {"contigs": ["2R", "2L", "3R", "3L", "X"]}
+
+    # check dimension lengths
+    assert ds.dims["alleles"] == 2
     if aims == "gamb_vs_colu":
-        assert ds["variant_allele"].shape == (729, 2)
-        assert ds["variant_contig"].shape == (729,)
-        assert ds["variant_position"].shape == (729,)
-    if aims == "gambcolu_vs_arab":
-        assert ds["variant_allele"].shape == (565329, 2)
+        assert ds.dims["variants"] == 729
+    elif aims == "gambcolu_vs_arab":
+        assert ds.dims["variants"] == 565329

@@ -6071,7 +6071,7 @@ class Ag3:
             store = init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             self._cache_aims[aims] = ds
-        return ds
+        return ds.copy(deep=False)
 
 
 def _setup_taxon_colors(plot_kwargs):
