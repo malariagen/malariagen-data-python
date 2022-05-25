@@ -29,6 +29,13 @@ from the following locations:
 ## Release notes
 
 
+### 4.3.2
+
+* Enable plotting high coverage variance samples with
+  `Ag3.plot_cnv_hmm_coverage()`
+  ([GH240](https://github.com/malariagen/malariagen-data-python/issues/240)).
+
+
 ### 4.3.1
 
 * Handle sample sets with missing cohorts metadata
@@ -599,10 +606,38 @@ Run tests:
 $ pytest -v
 ```
 
-Bump version, build and publish to PyPI:
+## Release process
 
-```bash
-$ poetry version prerelease
-$ poetry build
-$ poetry publish
+To create a new release...
+
+1. From master, create a new local branch named "vX.X.X-prep"
+replacing "X.X.X" with the new version number.
+
+2. Open pyproject.toml in a text editor and change the `version`
+property to the new version number.
+
+3. Open README.md in a text editor and add a new subsection in the
+release notes section with some information about the changes in the
+new release.
+
+4. Commit the changes to pyproject.toml and README.md, open a pull
+request with the title "vX.X.X release prep", and request a review.
+
+5. Once the PR is approved, merge to master, then create a GitHub
+release, using the new version number as the release tag.
+
+6. Back on your local system, run git pull to update your master
+branch and fetch remote tags, then run `git checkout vX.X.X` to check
+out the release tag locally.
+
+7. Run:
+
 ```
+poetry build
+poetry publish
+```
+
+You will need a PyPI username and password, and will need to be added
+as a maintained of the malariagen_data package on PyPI.
+
+N.B., release numbers should follow semantic versioning.
