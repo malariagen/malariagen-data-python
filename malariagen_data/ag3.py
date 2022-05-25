@@ -4599,8 +4599,8 @@ class Ag3:
     def plot_cnv_hmm_coverage_track(
         self,
         sample,
-        sample_set,
         region,
+        sample_set=None,
         y_max="auto",
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
@@ -4614,12 +4614,12 @@ class Ag3:
         ----------
         sample : str or int
             Sample identifier or index within sample set.
-        sample_set : str
-            Sample set identifier.
         region : str
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
+        sample_set : str, optional
+            Sample set identifier.
         y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
@@ -4646,6 +4646,11 @@ class Ag3:
 
         debug("resolve region")
         region = self.resolve_region(region)
+
+        if sample_set is None:
+            debug("look up sample set for sample")
+            sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+            sample_set = sample_rec["sample_set"]
 
         debug("access HMM data")
         hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
@@ -4729,8 +4734,8 @@ class Ag3:
     def plot_cnv_hmm_coverage(
         self,
         sample,
-        sample_set,
         region,
+        sample_set=None,
         y_max="auto",
         width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=170,
@@ -4746,12 +4751,12 @@ class Ag3:
         ----------
         sample : str or int
             Sample identifier or index within sample set.
-        sample_set : str
-            Sample set identifier.
         region : str
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
+        sample_set : str, optional
+            Sample set identifier.
         y_max : str or int, optional
             Maximum Y axis value.
         width : int, optional
