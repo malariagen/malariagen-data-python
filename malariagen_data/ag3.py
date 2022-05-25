@@ -66,6 +66,7 @@ GENOME_FAI_PATH = (
 GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
 )
+
 DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
@@ -224,6 +225,7 @@ class Ag3:
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
         self._cache_sample_metadata = dict()
+        self._cache_aims = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -6080,6 +6082,28 @@ class Ag3:
             bkplt.show(fig)
 
         return fig
+
+    def aim_sites(self, aims):
+        """Open ancestry informative marker sites.
+
+        Parameters
+        ----------
+        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing aim positions and discriminating alleles.
+
+        """
+        try:
+            ds = self._cache_aims[aims]
+        except KeyError:
+            path = f"{self._base_path}/reference/aim_defs/{aims}.zarr"
+            store = init_zarr_store(fs=self._fs, path=path)
+            ds = xr.open_zarr(store, concat_characters=False)
+            self._cache_aims[aims] = ds
+        return ds.copy(deep=False)
 
 
 def _setup_taxon_colors(plot_kwargs):

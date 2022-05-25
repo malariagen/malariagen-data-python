@@ -2858,3 +2858,49 @@ def _compare_series_like(actual, expect):
         assert_allclose(actual.values, expect.values)
     else:
         assert_array_equal(actual.values, expect.values)
+
+
+@pytest.mark.parametrize("aims", ["gamb_vs_colu", "gambcolu_vs_arab"])
+def test_aim_sites(aims):
+    ag3 = setup_ag3()
+    ds = ag3.aim_sites(aims)
+
+    # check dataset
+    assert isinstance(ds, xr.core.dataset.Dataset)
+
+    # check variables
+    expected_data_vars = {"variant_allele"}
+    assert set(ds.data_vars) == expected_data_vars
+
+    # check coordinates
+    expected_coords = {"variant_contig", "variant_position"}
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    expected_dims = {"variants", "alleles"}
+    assert set(ds.dims) == expected_dims
+
+    # check variant_contig
+    x = ds["variant_contig"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "uint8"
+
+    # check variant_position
+    x = ds["variant_position"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "int64" or "int32"
+
+    # check variant_allele
+    x = ds["variant_allele"]
+    assert x.dims == ("variants", "alleles")
+    assert x.dtype == "S1"
+
+    # check atttributes
+    assert ds.attrs == {"contigs": ["2R", "2L", "3R", "3L", "X"]}
+
+    # check dimension lengths
+    assert ds.dims["alleles"] == 2
+    if aims == "gamb_vs_colu":
+        assert ds.dims["variants"] == 729
+    elif aims == "gambcolu_vs_arab":
+        assert ds.dims["variants"] == 565329
