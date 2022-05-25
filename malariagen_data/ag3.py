@@ -4653,7 +4653,9 @@ class Ag3:
             sample_set = sample_rec["sample_set"]
 
         debug("access HMM data")
-        hmm = self.cnv_hmm(region=region, sample_sets=sample_set)
+        hmm = self.cnv_hmm(
+            region=region, sample_sets=sample_set, max_coverage_variance=None
+        )
 
         debug(
             "select data for the given sample - support either sample ID or integer index"
