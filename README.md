@@ -29,7 +29,10 @@ from the following locations:
 ## Release notes
 
 
-### 4.3.2
+### 4.4.0
+
+* Add `Ag3.aim_sites()` function
+  ([GH233](https://github.com/malariagen/malariagen-data-python/issues/233)).
 
 * Enable plotting high coverage variance samples with
   `Ag3.plot_cnv_hmm_coverage()`
