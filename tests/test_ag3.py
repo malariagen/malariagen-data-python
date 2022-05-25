@@ -2894,3 +2894,12 @@ def test_aim_sites(aims):
         assert ds.dims["variants"] == 729
     elif aims == "gambcolu_vs_arab":
         assert ds.dims["variants"] == 565329
+
+
+def test_aim_calls():
+
+    ag3 = setup_ag3()
+    ds = ag3.aim_calls(aims="gamb_vs_colu", sample_sets="AG1000G-UG", sample_query=None)
+
+    # check dataset
+    assert isinstance(ds, xr.core.dataset.Dataset)

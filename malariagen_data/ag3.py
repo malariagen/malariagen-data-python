@@ -6073,6 +6073,91 @@ class Ag3:
             self._cache_aims[aims] = ds
         return ds.copy(deep=False)
 
+    def _contig_map_aims(self, idx, aim_sites, sample_sets=None, sample_query=None):
+        """map ancestry informative marker alleles for a single contig to sample genotypes.
+
+        Parameters
+        ----------
+        idx : int, the index of a chromosome arm xarray attribute
+
+        aim_sites : xarray dataset, output of ag3.aim_sites()
+
+        Returns
+        -------
+        gt_map : GenotypeDaskArray
+            A scikit allel genotype array containing sample genotypes mapped to aim alleles.
+
+        """
+        arm = aim_sites.attrs["contigs"][idx]
+        print(f"collecting {arm} aim calls")
+
+        # aim alleles and positions
+        aim_arm_sites = aim_sites.sel(variants=idx)
+        aim_pos = aim_arm_sites["variant_position"].values
+        aim_alleles = aim_arm_sites["variant_allele"].values
+
+        # snp alleles and positions
+        snp_calls = self.snp_calls(
+            region=arm, sample_sets=sample_sets, sample_query=sample_query
+        )
+        snp_calls = snp_calls.set_index(variants="variant_position")
+        snp_aim_calls = snp_calls.sel(variants=aim_pos)
+        snp_alleles = snp_aim_calls["variant_allele"][:].values
+
+        # mapping alleles
+        snp_ref = snp_alleles[:, 0]
+        snp_alt = snp_alleles[:, 1:]
+        mapping = allel.create_allele_mapping(snp_ref, snp_alt, aim_alleles)
+        gt = allel.GenotypeDaskArray(snp_aim_calls["call_genotype"].data)
+        gt_map = gt.map_alleles(mapping)
+
+        return gt_map
+
+    def aim_calls(self, aims, sample_sets=None, sample_query=None):
+        """map ancestry informative marker alleles to sample genotypes.
+
+        Parameters
+        ----------
+        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
+
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+
+          Returns
+          -------
+          gt_map : GenotypeDaskArray
+              A scikit allel genotype array containing sample genotypes mapped to aim alleles.
+
+        """
+        # dask dict
+        dask_dict = {}
+
+        # aim_calls
+        aim_sites = self.aim_sites(aims=aims)
+        aim_sites = aim_sites.set_index(variants="variant_contig")
+        num_contigs = len(aim_sites.attrs["contigs"])
+
+        # get calls for each aim
+        for idx in range(num_contigs):
+            gt_map = self._contig_map_aims(
+                idx=idx,
+                aim_sites=aim_sites,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+            )
+
+            dask_dict[idx] = gt_map.values
+
+        dask_cat = da.concatenate([dask_dict[i] for i in range(num_contigs)], axis=0)
+        aim_sites["call_genotype"] = (("variants", "samples", "ploidy"), dask_cat)
+
+        return aim_sites
+
 
 def _setup_taxon_colors(plot_kwargs):
     import plotly.express as px
