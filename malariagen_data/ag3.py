@@ -6079,7 +6079,6 @@ class Ag3:
         Parameters
         ----------
         idx : int, the index of a chromosome arm xarray attribute
-
         aim_sites : xarray dataset, output of ag3.aim_sites()
 
         Returns
@@ -6119,7 +6118,6 @@ class Ag3:
         Parameters
         ----------
         aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -6155,6 +6153,9 @@ class Ag3:
 
         dask_cat = da.concatenate([dask_dict[i] for i in range(num_contigs)], axis=0)
         aim_sites["call_genotype"] = (("variants", "samples", "ploidy"), dask_cat)
+        aim_sites = aim_sites.reset_index("variants").rename(
+            {"variants_": "variant_contig"}
+        )
 
         return aim_sites
 

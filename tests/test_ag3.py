@@ -2896,10 +2896,54 @@ def test_aim_sites(aims):
         assert ds.dims["variants"] == 565329
 
 
-def test_aim_calls():
-
+@pytest.mark.parametrize("aims", ["gamb_vs_colu", "gambcolu_vs_arab"])
+def test_aim_calls(aims):
     ag3 = setup_ag3()
-    ds = ag3.aim_calls(aims="gamb_vs_colu", sample_sets="AG1000G-UG", sample_query=None)
+    ds = ag3.aim_calls(
+        aims=aims, sample_sets="AG1000G-UG", sample_query="taxon == 'gambiae'"
+    )
 
     # check dataset
     assert isinstance(ds, xr.core.dataset.Dataset)
+
+    # check variables
+    expected_data_vars = {"variant_allele", "call_genotype"}
+    assert set(ds.data_vars) == expected_data_vars
+
+    # check coordinates
+    expected_coords = {"variant_contig", "variant_position"}
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    expected_dims = {"variants", "alleles", "samples", "ploidy"}
+    assert set(ds.dims) == expected_dims
+
+    # check variant_contig
+    x = ds["variant_contig"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "uint64"
+
+    # check variant_position
+    x = ds["variant_position"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "int64" or "int32"
+
+    # check variant_allele
+    x = ds["variant_allele"]
+    assert x.dims == ("variants", "alleles")
+    assert x.dtype == "S1"
+
+    # check variant_allele
+    x = ds["call_genotype"]
+    assert x.dims == ("variants", "samples", "ploidy")
+    assert x.dtype == "int8"
+
+    # check atttributes
+    assert ds.attrs == {"contigs": ["2R", "2L", "3R", "3L", "X"]}
+
+    # check dimension lengths
+    assert ds.dims["alleles"] == 2
+    if aims == "gamb_vs_colu":
+        assert ds.dims["variants"] == 729
+    elif aims == "gambcolu_vs_arab":
+        assert ds.dims["variants"] == 565329
