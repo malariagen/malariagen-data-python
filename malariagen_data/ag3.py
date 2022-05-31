@@ -6198,6 +6198,7 @@ class Ag3:
         sample_query=None,
         sort=True,
         row_height=4,
+        colors="T10",
     ):
         """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
 
@@ -6217,6 +6218,8 @@ class Ag3:
             alleles for the second species in the comparison.
         row_height : int, optional
             Height per sample in px.
+        colors : str, optional
+            Choose your favourite color palette.
 
         Returns
         -------
@@ -6227,6 +6230,7 @@ class Ag3:
         debug = self._log.debug
 
         import allel
+        import plotly.express as px
         import plotly.graph_objects as go
         from plotly.subplots import make_subplots
 
@@ -6260,11 +6264,50 @@ class Ag3:
             gn = np.take(gn, ix_sorted, axis=1)
             samples = np.take(samples, ix_sorted, axis=0)
 
-        debug("setup colors")
-        if aims == "gambcolu_vs_arab":
-            colors = ["white", "purple", "orange", "green"]
+        debug("set up colors")
+        # https://en.wiktionary.org/wiki/abandon_hope_all_ye_who_enter_here
+        if colors.lower() == "plotly":
+            palette = px.colors.qualitative.Plotly
+            color_gc = palette[3]
+            color_gc_a = palette[9]
+            color_a = palette[2]
+            color_g = palette[0]
+            color_g_c = palette[9]
+            color_c = palette[1]
+            color_m = "white"
+        elif colors.lower() == "set1":
+            palette = px.colors.qualitative.Set1
+            color_gc = palette[3]
+            color_gc_a = palette[4]
+            color_a = palette[2]
+            color_g = palette[1]
+            color_g_c = palette[5]
+            color_c = palette[0]
+            color_m = "white"
+        elif colors.lower() == "g10":
+            palette = px.colors.qualitative.G10
+            color_gc = palette[4]
+            color_gc_a = palette[2]
+            color_a = palette[3]
+            color_g = palette[0]
+            color_g_c = palette[2]
+            color_c = palette[8]
+            color_m = "white"
+        elif colors.lower() == "t10":
+            palette = px.colors.qualitative.T10
+            color_gc = palette[6]
+            color_gc_a = palette[5]
+            color_a = palette[4]
+            color_g = palette[0]
+            color_g_c = palette[5]
+            color_c = palette[2]
+            color_m = "white"
         else:
-            colors = ["white", "blue", "yellow", "red"]
+            raise ValueError("unsupported colors")
+        if aims == "gambcolu_vs_arab":
+            colors = [color_m, color_gc, color_gc_a, color_a]
+        else:
+            colors = [color_m, color_g, color_g_c, color_c]
         species = aims.split("_vs_")
 
         debug("create subplots")
