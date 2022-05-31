@@ -5251,7 +5251,7 @@ class Ag3:
 
         tracks = []
 
-        # https://github.com/igvteam/igv-notebook/issues/3
+        # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
         debug("set up site filters tracks")
         region = self.resolve_region(region)
         contig = region.contig
