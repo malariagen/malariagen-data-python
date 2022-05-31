@@ -67,7 +67,8 @@ GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
 )
 
-DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
+# DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
+DEFAULT_SPECIES_ANALYSIS = "aim_20220528"
 DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20211101"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
@@ -519,10 +520,27 @@ class Ag3:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
-            if self._species_analysis == "aim_20200422":
+            if self._species_analysis == "aim_20220528":
+                path = f"{path_prefix}/species_calls_aim_20220528/{sample_set}/samples.species_aim.csv"
+                dtype = {
+                    "aim_species_gambcolu_arabiensis": object,
+                    "aim_species_gambiae_coluzzii": object,
+                    "aim_species": object,
+                }
+            elif self._species_analysis == "aim_20200422":
+                # TODO this is legacy, deprecate at some point
                 path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_aim.csv"
+                dtype = {
+                    "species_gambcolu_arabiensis": object,
+                    "species_gambiae_coluzzii": object,
+                }
             elif self._species_analysis == "pca_20200422":
+                # TODO this is legacy, deprecate at some point
                 path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_pca.csv"
+                dtype = {
+                    "species_gambcolu_arabiensis": object,
+                    "species_gambiae_coluzzii": object,
+                }
             else:
                 raise ValueError(
                     f"Unknown species calling analysis: {self._species_analysis!r}"
@@ -530,12 +548,9 @@ class Ag3:
             with self._fs.open(path) as f:
                 df = pd.read_csv(
                     f,
-                    na_values="",
+                    na_values=["", "NA"],
                     # ensure correct dtype even where all values are missing
-                    dtype={
-                        "species_gambcolu_arabiensis": object,
-                        "species_gambiae_coluzzii": object,
-                    },
+                    dtype=dtype,
                 )
 
             # add a single species call column, for convenience
@@ -558,9 +573,9 @@ class Ag3:
                     # some individuals, e.g., crosses, have a missing species call
                     return np.nan
 
-            df["species"] = df.apply(consolidate_species, axis=1)
-
             if self._species_analysis == "aim_20200422":
+                # TODO this is legacy, deprecate at some point
+                df["species"] = df.apply(consolidate_species, axis=1)
                 # normalise column prefixes
                 df = df.rename(
                     columns={
@@ -572,6 +587,8 @@ class Ag3:
                     }
                 )
             elif self._species_analysis == "pca_20200422":
+                # TODO this is legacy, deprecate at some point
+                df["species"] = df.apply(consolidate_species, axis=1)
                 # normalise column prefixes
                 df = df.rename(
                     # normalise column prefixes

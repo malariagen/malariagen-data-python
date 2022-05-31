@@ -16,11 +16,19 @@ from malariagen_data import Ag3, Region
 from malariagen_data.ag3 import _cn_mode
 from malariagen_data.util import locate_region, resolve_region
 
-expected_species = {
+expected_species_legacy = {
     "gambiae",
     "coluzzii",
     "arabiensis",
     "intermediate_arabiensis_gambiae",
+    "intermediate_gambiae_coluzzii",
+}
+
+expected_species = {
+    "gambiae",
+    "coluzzii",
+    "arabiensis",
+    "intermediate_gambcolu_arabiensis",
     "intermediate_gambiae_coluzzii",
 }
 
@@ -150,6 +158,37 @@ def test_sample_metadata():
 
 
 def test_sample_metadata_with_aim_species():
+    ag3 = setup_ag3(species_analysis="aim_20220528")
+
+    expected_cols = (
+        "sample_id",
+        "partner_sample_id",
+        "contributor",
+        "country",
+        "location",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "sex_call",
+        "sample_set",
+        "release",
+        "aim_species_fraction_arab",
+        "aim_species_fraction_colu",
+        "aim_species_fraction_colu_no2l",
+        "aim_species_gambcolu_arabiensis",
+        "aim_species_gambiae_coluzzii",
+        "aim_species",
+    )
+
+    # AIM species calls, included by default
+    df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
+    assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
+    assert set(df_samples_aim["aim_species"].dropna()) == expected_species
+
+
+def test_sample_metadata_with_aim_species_legacy():
+    # TODO this is legacy, deprecate at some point
     ag3 = setup_ag3(species_analysis="aim_20200422")
 
     expected_cols = (
@@ -175,10 +214,11 @@ def test_sample_metadata_with_aim_species():
     # AIM species calls, included by default
     df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
     assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
-    assert set(df_samples_aim["aim_species"].dropna()) == expected_species
+    assert set(df_samples_aim["aim_species"].dropna()) == expected_species_legacy
 
 
 def test_sample_metadata_with_pca_species():
+    # TODO this is legacy, deprecate at some point
     ag3 = setup_ag3(species_analysis="pca_20200422")
 
     expected_cols = (
@@ -205,7 +245,7 @@ def test_sample_metadata_with_pca_species():
     df_samples_pca = ag3.sample_metadata(sample_sets="3.0")
     assert tuple(df_samples_pca.columns[: len(expected_cols)]) == expected_cols
     assert (
-        set(df_samples_pca["pca_species"].dropna()).difference(expected_species)
+        set(df_samples_pca["pca_species"].dropna()).difference(expected_species_legacy)
         == set()
     )
 
@@ -237,20 +277,26 @@ def test_sample_metadata_without_cohorts():
         None,
     ],
 )
-@pytest.mark.parametrize("analysis", ["aim_20200422", "pca_20200422"])
+@pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_species_calls(sample_sets, analysis):
     ag3 = setup_ag3(species_analysis=analysis)
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     df_species = ag3.species_calls(sample_sets=sample_sets)
     assert len(df_species) == len(df_samples)
-    if analysis.startswith("aim_"):
+    assert_array_equal(df_samples["sample_id"], df_species["sample_id"])
+    if analysis == "aim_20220528":
         assert (
             set(df_species["aim_species"].dropna()).difference(expected_species)
             == set()
         )
-    if analysis.startswith("pca_"):
+    if analysis == "aim_20200422":
         assert (
-            set(df_species["pca_species"].dropna()).difference(expected_species)
+            set(df_species["aim_species"].dropna()).difference(expected_species_legacy)
+            == set()
+        )
+    if analysis == "pca_20200422":
+        assert (
+            set(df_species["pca_species"].dropna()).difference(expected_species_legacy)
             == set()
         )
 
@@ -2866,7 +2912,7 @@ def test_aim_sites(aims):
     ds = ag3.aim_sites(aims)
 
     # check dataset
-    assert isinstance(ds, xr.core.dataset.Dataset)
+    assert isinstance(ds, xr.Dataset)
 
     # check variables
     expected_data_vars = {"variant_allele"}
