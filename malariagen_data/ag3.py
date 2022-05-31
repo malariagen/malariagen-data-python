@@ -5251,30 +5251,28 @@ class Ag3:
 
         tracks = []
 
-        # TODO reinstate this when igv.js supports color by FILTER
         # https://github.com/igvteam/igv-notebook/issues/3
-        #
-        # debug("set up site filters tracks")
-        # region = self.resolve_region(region)
-        # contig = region.contig
-        # for site_mask in self._site_mask_ids():
-        #     site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"
-        #     debug(site_filters_vcf_url)
-        #     track_config = {
-        #         "name": f"Filters - {site_mask}",
-        #         "url": site_filters_vcf_url,
-        #         "indexURL": f"{site_filters_vcf_url}.tbi",
-        #         "format": "vcf",
-        #         "type": "variant",
-        #         "visibilityWindow": visibility_window,  # bp
-        #         "height": 30,
-        #         "colorBy": "FILTER",
-        #         "colorTable": {
-        #             "PASS": "#00cc96",
-        #             "*": "#ef553b",
-        #         },
-        #     }
-        #     tracks.append(track_config)
+        debug("set up site filters tracks")
+        region = self.resolve_region(region)
+        contig = region.contig
+        for site_mask in self._site_mask_ids():
+            site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"
+            debug(site_filters_vcf_url)
+            track_config = {
+                "name": f"Filters - {site_mask}",
+                "url": site_filters_vcf_url,
+                "indexURL": f"{site_filters_vcf_url}.tbi",
+                "format": "vcf",
+                "type": "variant",
+                "visibilityWindow": visibility_window,  # bp
+                "height": 30,
+                "colorBy": "FILTER",
+                "colorTable": {
+                    "PASS": "#00cc96",
+                    "*": "#ef553b",
+                },
+            }
+            tracks.append(track_config)
 
         debug("add SNPs track")
         tracks.append(
