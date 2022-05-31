@@ -669,11 +669,11 @@ def test_snp_calls(sample_sets, region, site_mask):
         assert isinstance(x.data, da.Array)
 
         if f == "variant_allele":
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.shape == (n_variants, 4)
             assert x.dims == ("variants", "alleles")
         elif f.startswith("variant_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.shape == (n_variants,)
             assert x.dims == ("variants",)
         elif f in {"call_genotype", "call_genotype_mask"}:
@@ -685,7 +685,7 @@ def test_snp_calls(sample_sets, region, site_mask):
             assert x.dims == ("variants", "samples", "alleles")
             assert x.shape == (n_variants, n_samples, 4)
         elif f.startswith("call_"):
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.dims == ("variants", "samples")
             assert x.shape == (n_variants, n_samples)
         elif f.startswith("sample_"):
@@ -1081,11 +1081,11 @@ def test_cnv_hmm(sample_sets, region):
         assert isinstance(x.data, da.Array)
 
         if f.startswith("variant_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.shape == (n_variants_expected,)
             assert x.dims == ("variants",)
         elif f.startswith("call_"):
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.dims == ("variants", "samples")
             assert x.shape == (n_variants_expected, n_samples_expected)
         elif f.startswith("sample_"):
@@ -1254,13 +1254,13 @@ def test_cnv_coverage_calls(sample_set, analysis, region):
         assert isinstance(x.data, da.Array)
 
         if f.startswith("variant_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.dims == ("variants",)
         elif f.startswith("call_"):
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.dims == ("variants", "samples")
         elif f.startswith("sample_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.dims == ("samples",)
 
     # check attributes
@@ -1357,10 +1357,10 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
         assert isinstance(x.data, da.Array)
 
         if f.startswith("variant_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.dims == ("variants",)
         elif f.startswith("call_"):
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.dims == ("variants", "samples")
         elif f.startswith("sample_"):
             assert x.ndim == 1
@@ -1467,10 +1467,10 @@ def test_gene_cnv(region, sample_sets):
         assert isinstance(x.data, np.ndarray)
 
         if f.startswith("gene_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.dims == ("genes",)
         elif f.startswith("CN"):
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.dims == ("genes", "samples")
         elif f.startswith("sample_"):
             assert x.ndim == 1
@@ -1837,11 +1837,11 @@ def test_haplotypes(sample_sets, region, analysis):
         assert isinstance(x.data, da.Array)
 
         if f == "variant_allele":
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.shape[1] == 2
             assert x.dims == ("variants", "alleles")
         elif f.startswith("variant_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.dims == ("variants",)
         elif f == "call_genotype":
             assert x.ndim == 3
@@ -1921,11 +1921,11 @@ def test_haplotypes__sample_query(sample_query):
         assert isinstance(x.data, da.Array)
 
         if f == "variant_allele":
-            assert x.ndim, f == 2
+            assert x.ndim == 2
             assert x.shape[1] == 2
             assert x.dims == ("variants", "alleles")
         elif f.startswith("variant_"):
-            assert x.ndim, f == 1
+            assert x.ndim == 1
             assert x.dims == ("variants",)
         elif f == "call_genotype":
             assert x.ndim == 3

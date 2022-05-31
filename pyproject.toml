@@ -32,7 +32,7 @@ ipyleaflet = "*"
 ipywidgets = "*"
 importlib_metadata = "*"
 ipinfo = "*"
-igv-notebook = "*"
+igv-notebook = ">=0.2.3"
 tqdm = "*"
 
 [tool.poetry.dev-dependencies]
