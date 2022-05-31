@@ -1887,7 +1887,7 @@ class Ag3:
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError("No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
 
         return ds
@@ -2085,7 +2085,7 @@ class Ag3:
             debug("apply the query")
             loc_query_samples = df_samples_cnv.eval(sample_query).values
             if np.count_nonzero(loc_query_samples) == 0:
-                raise ValueError("No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query!r}")
 
             ds = ds.isel(samples=loc_query_samples)
 
@@ -3034,7 +3034,7 @@ class Ag3:
             debug("apply the query")
             loc_samples = df_samples_phased.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError("No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
 
         return ds
@@ -6186,7 +6186,7 @@ class Ag3:
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError("No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
 
         return ds
