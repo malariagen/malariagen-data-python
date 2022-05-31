@@ -2950,3 +2950,66 @@ def test_aim_variants(aims):
         assert ds.dims["variants"] == 700
     elif aims == "gambcolu_vs_arab":
         assert ds.dims["variants"] == 2612
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    [None, "AG1000G-UG", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
+)
+@pytest.mark.parametrize(
+    "sample_query",
+    [None, "aim_species != 'arabiensis'"],
+)
+@pytest.mark.parametrize("aims", ["gamb_vs_colu", "gambcolu_vs_arab"])
+def test_aim_calls(sample_sets, sample_query, aims):
+    ag3 = setup_ag3()
+    ds = ag3.aim_calls(aims=aims, sample_sets=sample_sets, sample_query=sample_query)
+
+    # check dataset
+    assert isinstance(ds, xr.Dataset)
+
+    # check variables
+    expected_data_vars = {"variant_allele", "call_genotype"}
+    assert set(ds.data_vars) == expected_data_vars
+
+    # check coordinates
+    expected_coords = {"variant_contig", "variant_position", "sample_id"}
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    expected_dims = {"variants", "alleles", "samples", "ploidy"}
+    assert set(ds.dims) == expected_dims
+
+    # check variant_contig
+    x = ds["variant_contig"]
+    assert x.dims == ("variants",)
+    assert x.dtype == "uint8"
+
+    # check variant_position
+    x = ds["variant_position"]
+    assert x.dims == ("variants",)
+    assert (x.dtype == "int32") or (x.dtype == "int64")
+
+    # check variant_allele
+    x = ds["variant_allele"]
+    assert x.dims == ("variants", "alleles")
+    assert x.dtype == "S1"
+
+    # check variant_allele
+    x = ds["call_genotype"]
+    assert x.dims == ("variants", "samples", "ploidy")
+    assert x.dtype == "int8"
+
+    # check attributes
+    assert ds.attrs["contigs"] == ["2R", "2L", "3R", "3L", "X"]
+
+    # check dimension lengths
+    df_samples = ag3.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    assert_array_equal(df_samples["sample_id"].values, ds["sample_id"].values)
+    assert ds.dims["samples"] == len(df_samples)
+    assert ds.dims["alleles"] == 2
+    assert ds.dims["ploidy"] == 2
+    if aims == "gamb_vs_colu":
+        assert ds.dims["variants"] == 700
+    elif aims == "gambcolu_vs_arab":
+        assert ds.dims["variants"] == 2612

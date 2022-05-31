@@ -226,7 +226,7 @@ class Ag3:
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
         self._cache_sample_metadata = dict()
-        self._cache_aims = dict()
+        self._cache_aim_variants = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -6106,22 +6106,86 @@ class Ag3:
         Parameters
         ----------
         aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
+            Which ancestry informative markers to use.
 
         Returns
         -------
         ds : xarray.Dataset
-            A dataset containing aim positions and discriminating alleles.
+            A dataset containing AIM positions and discriminating alleles.
 
         """
         try:
-            ds = self._cache_aims[aims]
+            ds = self._cache_aim_variants[aims]
         except KeyError:
             path = f"{self._base_path}/reference/aim_defs_20220528/{aims}.zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             ds = ds.set_coords(["variant_contig", "variant_position"])
-            self._cache_aims[aims] = ds
+            self._cache_aim_variants[aims] = ds
         return ds.copy(deep=False)
+
+    def _aim_calls_dataset(self, *, aims, sample_set):
+        release = self._lookup_release(sample_set=sample_set)
+        release_path = _release_to_path(release)
+        path = f"gs://vo_agam_release/{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
+        store = init_zarr_store(fs=self._fs, path=path)
+        ds = xr.open_zarr(store=store, concat_characters=False)
+        ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
+        return ds
+
+    def aim_calls(
+        self,
+        aims,
+        sample_sets=None,
+        sample_query=None,
+    ):
+        """Access ancestry informative marker SNP sites, alleles and genotype
+        calls.
+
+        Parameters
+        ----------
+        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
+            Which ancestry informative markers to use.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing AIM SNP sites, alleles and genotype calls.
+
+        """
+        debug = self._log.debug
+
+        debug("normalise parameters")
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        debug("access SNP calls and concatenate multiple sample sets and/or regions")
+        ly = []
+        for s in sample_sets:
+            y = self._aim_calls_dataset(
+                aims=aims,
+                sample_set=s,
+            )
+            ly.append(y)
+
+        debug("concatenate data from multiple sample sets")
+        ds = xarray_concat(ly, dim=DIM_SAMPLE)
+
+        debug("handle sample query")
+        if sample_query is not None:
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError("No samples found for query {sample_query!r}")
+            ds = ds.isel(samples=loc_samples)
+
+        return ds
 
 
 def _setup_taxon_colors(plot_kwargs):
