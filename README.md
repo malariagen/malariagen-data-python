@@ -29,9 +29,26 @@ from the following locations:
 ## Release notes
 
 
+### 5.0.0
+
+* Upgrade the default species analysis in the `Ag3` class to use a new
+  set of improved ancestry-informative markers (AIMs). Note that this
+  includes a small change to the values in the `aim_species` column of
+  the sample metadata: the value "intermediate_arabiensis_gambiae" has
+  been replaced by "intermediate_gambcolu_arabiensis" for consistency
+  with AIM naming conventions used elsewhere.
+
+* Add `Ag3.aim_calls()` and `Ag3.plot_aim_heatmap()` functions for
+  accessing and plotting ancestry-informative marker (AIM) genotypes
+  ([GH236](https://github.com/malariagen/malariagen-data-python/issues/236)).
+
+* Add site filters tracks to IGV via `Ag3.view_alignments()`
+  ([GH246](https://github.com/malariagen/malariagen-data-python/issues/246)).
+
+
 ### 4.4.0
 
-* Add `Ag3.aim_sites()` function
+* Add `Ag3.aim_variants()` function
   ([GH233](https://github.com/malariagen/malariagen-data-python/issues/233)).
 
 * Enable plotting high coverage variance samples with
@@ -42,7 +59,7 @@ from the following locations:
 ### 4.3.1
 
 * Handle sample sets with missing cohorts metadata
-  ([GH235](https://github.com/malariagen/malariagen-data-python/pull/235).
+  ([GH235](https://github.com/malariagen/malariagen-data-python/pull/235)).
 
 
 ### 4.3.0
