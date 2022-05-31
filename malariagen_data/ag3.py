@@ -3293,6 +3293,10 @@ class Ag3:
         **kwargs
             Other parameters are passed through to px.imshow().
 
+        Returns
+        -------
+        fig : plotly.graph_objects.Figure
+
         """
         debug = self._log.debug
 
@@ -6186,6 +6190,167 @@ class Ag3:
             ds = ds.isel(samples=loc_samples)
 
         return ds
+
+    def plot_aims_heatmap(
+        self,
+        aims,
+        sample_sets=None,
+        sample_query=None,
+        sort=True,
+        row_height=4,
+    ):
+        """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
+
+        Parameters
+        ----------
+        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
+            Which ancestry informative markers to use.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sort : bool, optional
+            If true (default), sort the samples by the total fraction of AIM
+            alleles for the second species in the comparison.
+        row_height : int, optional
+            Height per sample in px.
+
+        Returns
+        -------
+        fig : plotly.graph_objects.Figure
+
+        """
+
+        debug = self._log.debug
+
+        import allel
+        import plotly.graph_objects as go
+        from plotly.subplots import make_subplots
+
+        debug("load AIM calls")
+        ds = self.aim_calls(
+            aims=aims,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+        ).compute()
+        samples = ds["sample_id"].values
+        variant_contig = ds["variant_contig"].values
+
+        debug("count variants per contig")
+        contigs = ds.attrs["contigs"]
+        col_widths = [
+            np.count_nonzero(variant_contig == contigs.index(contig))
+            for contig in contigs
+        ]
+        debug(col_widths)
+
+        debug("access and transform genotypes")
+        gt = allel.GenotypeArray(ds["call_genotype"].values)
+        gn = gt.to_n_alt(fill=-1)
+
+        if sort:
+            debug("sort by AIM fraction")
+            ac = np.sum(gt == 1, axis=(0, 2))
+            an = np.sum(gt >= 0, axis=(0, 2))
+            af = ac / an
+            ix_sorted = np.argsort(af)
+            gn = np.take(gn, ix_sorted, axis=1)
+            samples = np.take(samples, ix_sorted, axis=0)
+
+        debug("setup colors")
+        if aims == "gambcolu_vs_arab":
+            colors = ["white", "purple", "orange", "green"]
+        else:
+            colors = ["white", "blue", "yellow", "red"]
+        species = aims.split("_vs_")
+
+        debug("create subplots")
+        fig = make_subplots(
+            rows=1,
+            cols=len(contigs),
+            shared_yaxes=True,
+            column_titles=contigs,
+            row_titles=None,
+            column_widths=col_widths,
+            x_title="Markers",
+            y_title="Samples",
+            horizontal_spacing=0.01,
+            vertical_spacing=0.01,
+        )
+
+        for j, contig in enumerate(contigs):
+            debug(f"plot {contig}")
+            loc_contig = variant_contig == j
+            gn_contig = np.compress(loc_contig, gn, axis=0)
+            fig.add_trace(
+                go.Heatmap(
+                    y=samples,
+                    z=gn_contig.T,
+                    # construct a discrete color scale
+                    # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
+                    colorscale=[
+                        [0 / 4, colors[0]],
+                        [1 / 4, colors[0]],
+                        [1 / 4, colors[1]],
+                        [2 / 4, colors[1]],
+                        [2 / 4, colors[2]],
+                        [3 / 4, colors[2]],
+                        [3 / 4, colors[3]],
+                        [4 / 4, colors[3]],
+                    ],
+                    zmin=-1.5,
+                    zmax=2.5,
+                    xgap=0,
+                    ygap=0.5,  # this creates faint lines between rows
+                    colorbar=dict(
+                        title="AIM genotype",
+                        tickmode="array",
+                        tickvals=[-1, 0, 1, 2],
+                        ticktext=[
+                            "missing",
+                            f"{species[0]}/{species[0]}",
+                            f"{species[0]}/{species[1]}",
+                            f"{species[1]}/{species[1]}",
+                        ],
+                        len=100,
+                        lenmode="pixels",
+                        y=1,
+                        yanchor="top",
+                        outlinewidth=1,
+                        outlinecolor="black",
+                    ),
+                    hovertemplate=dedent(
+                        """
+                        Marker index: %{x}<br>
+                        Sample: %{y}<br>
+                        Genotype: %{z}
+                        <extra></extra>
+                    """
+                    ),
+                ),
+                row=1,
+                col=j + 1,
+            )
+
+        fig.update_xaxes(
+            tickmode="array",
+            tickvals=[],
+        )
+
+        fig.update_yaxes(
+            tickmode="array",
+            tickvals=[],
+        )
+
+        fig.update_layout(
+            title=f"AIMs - {aims}",
+            height=max(300, row_height * len(samples) + 100),
+        )
+
+        return fig
 
 
 def _setup_taxon_colors(plot_kwargs):
