@@ -2907,9 +2907,9 @@ def _compare_series_like(actual, expect):
 
 
 @pytest.mark.parametrize("aims", ["gamb_vs_colu", "gambcolu_vs_arab"])
-def test_aim_sites(aims):
+def test_aim_variants(aims):
     ag3 = setup_ag3()
-    ds = ag3.aim_sites(aims)
+    ds = ag3.aim_variants(aims=aims)
 
     # check dataset
     assert isinstance(ds, xr.Dataset)
@@ -2941,12 +2941,12 @@ def test_aim_sites(aims):
     assert x.dims == ("variants", "alleles")
     assert x.dtype == "S1"
 
-    # check atttributes
-    assert ds.attrs == {"contigs": ["2R", "2L", "3R", "3L", "X"]}
+    # check attributes
+    assert ds.attrs["contigs"] == ["2R", "2L", "3R", "3L", "X"]
 
     # check dimension lengths
     assert ds.dims["alleles"] == 2
     if aims == "gamb_vs_colu":
-        assert ds.dims["variants"] == 729
+        assert ds.dims["variants"] == 700
     elif aims == "gambcolu_vs_arab":
-        assert ds.dims["variants"] == 565329
+        assert ds.dims["variants"] == 2612

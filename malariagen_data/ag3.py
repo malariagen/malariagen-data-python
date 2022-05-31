@@ -6100,8 +6100,8 @@ class Ag3:
 
         return fig
 
-    def aim_sites(self, aims):
-        """Open ancestry informative marker sites.
+    def aim_variants(self, aims):
+        """Open ancestry informative marker variants.
 
         Parameters
         ----------
@@ -6116,9 +6116,10 @@ class Ag3:
         try:
             ds = self._cache_aims[aims]
         except KeyError:
-            path = f"{self._base_path}/reference/aim_defs/{aims}.zarr"
+            path = f"{self._base_path}/reference/aim_defs_20220528/{aims}.zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
+            ds = ds.set_coords(["variant_contig", "variant_position"])
             self._cache_aims[aims] = ds
         return ds.copy(deep=False)
 
