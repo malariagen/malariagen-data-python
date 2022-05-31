@@ -6191,7 +6191,7 @@ class Ag3:
 
         return ds
 
-    def plot_aims_heatmap(
+    def plot_aim_heatmap(
         self,
         aims,
         sample_sets=None,
@@ -6275,7 +6275,7 @@ class Ag3:
             column_titles=contigs,
             row_titles=None,
             column_widths=col_widths,
-            x_title="Markers",
+            x_title="Variants",
             y_title="Samples",
             horizontal_spacing=0.01,
             vertical_spacing=0.01,
@@ -6324,7 +6324,7 @@ class Ag3:
                     ),
                     hovertemplate=dedent(
                         """
-                        Marker index: %{x}<br>
+                        Variant index: %{x}<br>
                         Sample: %{y}<br>
                         Genotype: %{z}
                         <extra></extra>
