@@ -527,6 +527,15 @@ class Ag3:
                     "aim_species_gambiae_coluzzii": object,
                     "aim_species": object,
                 }
+                # Specify species_cols in case the file is missing
+                species_cols = (
+                    "aim_species_fraction_arab",
+                    "aim_species_fraction_colu",
+                    "aim_species_fraction_colu_no2L",
+                    "aim_species_gambcolu_arabiensis",
+                    "aim_species_gambiae_coluzzii",
+                    "aim_species",
+                )
             elif self._species_analysis == "aim_20200422":
                 # TODO this is legacy, deprecate at some point
                 path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_aim.csv"
@@ -534,6 +543,14 @@ class Ag3:
                     "species_gambcolu_arabiensis": object,
                     "species_gambiae_coluzzii": object,
                 }
+                # Specify species_cols in case the file is missing
+                # N.B., these legacy column prefixes will be normalised downstream
+                species_cols = (
+                    "aim_fraction_colu",
+                    "aim_fraction_arab",
+                    "species_gambcolu_arabiensis",
+                    "species_gambiae_coluzzii",
+                )
             elif self._species_analysis == "pca_20200422":
                 # TODO this is legacy, deprecate at some point
                 path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_pca.csv"
@@ -541,17 +558,38 @@ class Ag3:
                     "species_gambcolu_arabiensis": object,
                     "species_gambiae_coluzzii": object,
                 }
+                # Specify species_cols in case the file is missing
+                # N.B., these legacy column prefixes will be normalised downstream
+                species_cols = (
+                    "PC1",
+                    "PC2",
+                    "species_gambcolu_arabiensis",
+                    "species_gambiae_coluzzii",
+                )
             else:
                 raise ValueError(
                     f"Unknown species calling analysis: {self._species_analysis!r}"
                 )
-            with self._fs.open(path) as f:
-                df = pd.read_csv(
-                    f,
-                    na_values=["", "NA"],
-                    # ensure correct dtype even where all values are missing
-                    dtype=dtype,
-                )
+
+            # N.B., species calls do not always exist, need to handle FileNotFoundError
+            try:
+                with self._fs.open(path) as f:
+                    df = pd.read_csv(
+                        f,
+                        na_values=["", "NA"],
+                        # ensure correct dtype even where all values are missing
+                        dtype=dtype,
+                    )
+            except FileNotFoundError:
+                # Get sample ids as an index via general metadata (has caching)
+                df_general = self._read_general_metadata(sample_set=sample_set)
+                df_general.set_index("sample_id", inplace=True)
+
+                # Create a blank DataFrame with species_cols and sample_id index
+                df = pd.DataFrame(columns=species_cols, index=df_general.index.copy())
+
+                # Revert sample_id index to column
+                df.reset_index(inplace=True)
 
             # add a single species call column, for convenience
             def consolidate_species(s):
