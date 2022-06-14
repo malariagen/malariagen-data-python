@@ -34,7 +34,7 @@ expected_species = {
 
 contigs = "2R", "2L", "3R", "3L", "X"
 
-cohort_cols = (
+expected_cohort_cols = (
     "country_iso",
     "admin1_name",
     "admin1_iso",
@@ -44,6 +44,31 @@ cohort_cols = (
     "cohort_admin1_month",
     "cohort_admin2_year",
     "cohort_admin2_month",
+)
+
+expected_aim_species_cols = (
+    "aim_species_fraction_arab",
+    "aim_species_fraction_colu",
+    "aim_species_fraction_colu_no2l",
+    "aim_species_gambcolu_arabiensis",
+    "aim_species_gambiae_coluzzii",
+    "aim_species",
+)
+
+expected_aim_species_cols_legacy = (
+    "aim_species_fraction_colu",
+    "aim_species_fraction_arab",
+    "aim_species_gambcolu_arabiensis",
+    "aim_species_gambiae_coluzzii",
+    "aim_species",
+)
+
+expected_pca_species_cols_legacy = (
+    "pca_species_pc1",
+    "pca_species_pc2",
+    "pca_species_gambcolu_arabiensis",
+    "pca_species_gambiae_coluzzii",
+    "pca_species",
 )
 
 
@@ -253,18 +278,42 @@ def test_sample_metadata_with_pca_species():
 def test_sample_metadata_with_cohorts():
     ag3 = setup_ag3()
     df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
-    for c in cohort_cols:
+    for c in expected_cohort_cols:
         assert c in df_samples_coh
 
 
 def test_sample_metadata_without_cohorts():
     working_dir = os.path.dirname(os.path.abspath(__file__))
-    test_data_path = os.path.join(working_dir, "anopheles_test_data")
+    test_data_path = os.path.join(
+        working_dir, "anopheles_test_data", "test_missing_cohorts"
+    )
     ag3 = Ag3(test_data_path)
     df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
-    for c in cohort_cols:
+    for c in expected_cohort_cols:
         assert c in df_samples_coh
         assert df_samples_coh[c].isnull().all()
+
+
+@pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
+def test_sample_metadata_without_species_calls(analysis):
+
+    if analysis == "aim_20220528":
+        expected_cols = expected_aim_species_cols
+    if analysis == "aim_20200422":
+        expected_cols = expected_aim_species_cols_legacy
+    if analysis == "pca_20200422":
+        expected_cols = expected_pca_species_cols_legacy
+
+    working_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data_path = os.path.join(
+        working_dir, "anopheles_test_data", "test_missing_species_calls"
+    )
+    ag3 = Ag3(test_data_path, species_analysis=analysis)
+    df_samples = ag3.sample_metadata(sample_sets="3.0")
+
+    for c in expected_cols:
+        assert c in df_samples
+        assert df_samples[c].isnull().all()
 
 
 @pytest.mark.parametrize(
@@ -299,6 +348,28 @@ def test_species_calls(sample_sets, analysis):
             set(df_species["pca_species"].dropna()).difference(expected_species_legacy)
             == set()
         )
+
+
+@pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
+def test_missing_species_calls(analysis):
+
+    if analysis == "aim_20220528":
+        expected_cols = expected_aim_species_cols
+    if analysis == "aim_20200422":
+        expected_cols = expected_aim_species_cols_legacy
+    if analysis == "pca_20200422":
+        expected_cols = expected_pca_species_cols_legacy
+
+    working_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data_path = os.path.join(
+        working_dir, "anopheles_test_data", "test_missing_species_calls"
+    )
+    ag3 = Ag3(test_data_path, species_analysis=analysis)
+    df_species = ag3.species_calls(sample_sets="3.0")
+
+    for c in expected_cols:
+        assert c in df_species
+        assert df_species[c].isnull().all()
 
 
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
