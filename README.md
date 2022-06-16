@@ -29,6 +29,12 @@ from the following locations:
 ## Release notes
 
 
+### 5.0.1
+
+* Handle sample sets with missing species calls
+  ([GH251](https://github.com/malariagen/malariagen-data-python/pull/251)).
+
+
 ### 5.0.0
 
 * Upgrade the default species analysis in the `Ag3` class to use a new
