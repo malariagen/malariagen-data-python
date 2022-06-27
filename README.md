@@ -29,6 +29,12 @@ from the following locations:
 ## Release notes
 
 
+### 5.1.0
+
+* Upgrade the default cohorts analysis in the `Ag3` class to `20220608`
+  ([GH256](https://github.com/malariagen/malariagen-data-python/pull/256)).
+
+
 ### 5.0.1
 
 * Handle sample sets with missing species calls
