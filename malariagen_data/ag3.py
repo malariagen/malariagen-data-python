@@ -818,7 +818,8 @@ class Ag3:
         z = root[f"{region.contig}/variants/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
-            pos = self.snp_sites(region=region.contig, field="POS")
+            root = self.open_snp_sites()
+            pos = root[f"{region.contig}/variants/POS"][:]
             loc_region = locate_region(region, pos)
             d = d[loc_region]
         return d
@@ -905,7 +906,10 @@ class Ag3:
         z = root[f"{region.contig}/variants/{field}"]
         ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
-            pos = root[f"{region.contig}/variants/POS"]
+            if field == "POS":
+                pos = z[:]
+            else:
+                pos = root[f"{region.contig}/variants/POS"][:]
             loc_region = locate_region(region, pos)
             ret = ret[loc_region]
         return ret
