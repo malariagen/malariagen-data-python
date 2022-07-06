@@ -1841,6 +1841,8 @@ class Ag3:
         site_mask=None,
         inline_array=True,
         chunks="native",
+        cohort_size=None,
+        random_seed=42,
     ):
         """Access SNP sites, site filters and genotype calls.
 
@@ -1866,6 +1868,10 @@ class Ag3:
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr
             chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -1931,6 +1937,18 @@ class Ag3:
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
+
+        debug("handle cohort size")
+        if cohort_size is not None:
+            n_samples = ds.dims["samples"]
+            if n_samples < cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                )
+            rng = np.random.default_rng(seed=random_seed)
+            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
+            loc_downsample.sort()
+            ds = ds.isel(samples=loc_downsample)
 
         return ds
 
@@ -5387,6 +5405,8 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         site_mask=None,
+        cohort_size=None,
+        random_seed=42,
     ):
         """Compute SNP allele counts. This returns the number of times each
         SNP allele was observed in the selected samples.
@@ -5406,6 +5426,11 @@ class Ag3:
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size before
+            computing allele counts.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -5426,7 +5451,7 @@ class Ag3:
 
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
-        name = "ag3_snp_allele_counts_v1"
+        name = "ag3_snp_allele_counts_v2"
 
         # normalize params for consistent hash value
         params = dict(
@@ -5434,6 +5459,8 @@ class Ag3:
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
         )
 
         try:
@@ -5453,6 +5480,8 @@ class Ag3:
         sample_sets,
         sample_query,
         site_mask,
+        cohort_size,
+        random_seed,
     ):
         debug = self._log.debug
 
@@ -5462,6 +5491,8 @@ class Ag3:
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
         )
         gt = ds_snps["call_genotype"]
 
