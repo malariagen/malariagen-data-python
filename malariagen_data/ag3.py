@@ -1954,10 +1954,14 @@ class Ag3:
 
         debug("handle sample query")
         if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+            if isinstance(sample_query, str):
+                df_samples = self.sample_metadata(sample_sets=sample_sets)
+                loc_samples = df_samples.eval(sample_query).values
+                if np.count_nonzero(loc_samples) == 0:
+                    raise ValueError(f"No samples found for query {sample_query!r}")
+            else:
+                # assume sample query is an indexer, e.g., a list of integers
+                loc_samples = sample_query
             ds = ds.isel(samples=loc_samples)
 
         debug("handle cohort size")
@@ -5476,6 +5480,11 @@ class Ag3:
         name = "ag3_snp_allele_counts_v2"
 
         # normalize params for consistent hash value
+        if isinstance(sample_query, str):
+            # resolve query to a list of integers for more cache hits
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            sample_query = np.nonzero(loc_samples)[0].tolist()
         params = dict(
             region=self.resolve_region(region).to_dict(),
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
