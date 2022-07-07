@@ -6858,7 +6858,7 @@ class Ag3:
                 raise ValueError(f"{cohorts_col!r} is not a known cohort set")
 
             # find cohort labels and build queries dictionary
-            cohort_labels = sorted(df_samples[cohorts_col].unique())
+            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
             cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
 
         else:
