@@ -40,6 +40,7 @@ from .util import (
     hash_params,
     init_filesystem,
     init_zarr_store,
+    jackknife_ci,
     jitter,
     locate_region,
     read_gff3,
@@ -6485,6 +6486,331 @@ class Ag3:
         )
 
         return fig
+
+    def _block_jackknife_cohort_diversity_stats(
+        self, *, cohort, ac, n_jack, confidence_level
+    ):
+        debug = self._log.debug
+
+        debug("set up for diversity calculations")
+        n_sites = ac.shape[0]
+        ac = allel.AlleleCountsArray(ac)
+        n = ac.sum(axis=1).max()  # number of chromosomes sampled
+        n_sites = min(n_sites, ac.shape[0])  # number of sites
+        block_length = n_sites // n_jack  # number of sites in each block
+        n_sites_j = n_sites - block_length  # number of sites in each jackknife resample
+
+        debug("compute scaling constants")
+        a1 = np.sum(1 / np.arange(1, n))
+        a2 = np.sum(1 / (np.arange(1, n) ** 2))
+        b1 = (n + 1) / (3 * (n - 1))
+        b2 = 2 * (n**2 + n + 3) / (9 * n * (n - 1))
+        c1 = b1 - (1 / a1)
+        c2 = b2 - ((n + 2) / (a1 * n)) + (a2 / (a1**2))
+        e1 = c1 / a1
+        e2 = c2 / (a1**2 + a2)
+
+        debug(
+            "compute some intermediates ahead of time, to minimise computation during jackknife resampling"
+        )
+        mpd_data = allel.mean_pairwise_difference(ac, fill=0)
+        # N.B., here we compute the number of segregating sites as the number
+        # of alleles minus 1. This follows the sgkit and tskit implementations,
+        # and is different from scikit-allel.
+        seg_data = ac.allelism() - 1
+
+        debug("compute estimates from all data")
+        theta_pi_abs_data = np.sum(mpd_data)
+        theta_pi_data = theta_pi_abs_data / n_sites
+        S_data = np.sum(seg_data)
+        theta_w_abs_data = S_data / a1
+        theta_w_data = theta_w_abs_data / n_sites
+        d_data = theta_pi_abs_data - theta_w_abs_data
+        d_stdev_data = np.sqrt((e1 * S_data) + (e2 * S_data * (S_data - 1)))
+        tajima_d_data = d_data / d_stdev_data
+
+        debug("set up for jackknife resampling")
+        jack_theta_pi = []
+        jack_theta_w = []
+        jack_tajima_d = []
+        iterator = self._progress(range(n_jack), desc="Estimating confidence interval")
+
+        debug("begin jackknife resampling")
+        for i in iterator:
+
+            # locate block to delete
+            block_start = i * block_length
+            block_stop = block_start + block_length
+            loc_j = np.ones(n_sites, dtype=bool)
+            loc_j[block_start:block_stop] = False
+            assert np.count_nonzero(loc_j) == n_sites_j
+
+            # resample data and compute statistics
+
+            # theta_pi
+            mpd_j = mpd_data[loc_j]
+            theta_pi_abs_j = np.sum(mpd_j)
+            theta_pi_j = theta_pi_abs_j / n_sites_j
+            jack_theta_pi.append(theta_pi_j)
+
+            # theta_w
+            seg_j = seg_data[loc_j]
+            S_j = np.sum(seg_j)
+            theta_w_abs_j = S_j / a1
+            theta_w_j = theta_w_abs_j / n_sites_j
+            jack_theta_w.append(theta_w_j)
+
+            # tajima_d
+            d_j = theta_pi_abs_j - theta_w_abs_j
+            d_stdev_j = np.sqrt((e1 * S_j) + (e2 * S_j * (S_j - 1)))
+            tajima_d_j = d_j / d_stdev_j
+            jack_tajima_d.append(tajima_d_j)
+
+        # calculate jackknife stats
+        (
+            theta_pi_estimate,
+            theta_pi_bias,
+            theta_pi_std_err,
+            theta_pi_ci_low,
+            theta_pi_ci_upp,
+        ) = jackknife_ci(
+            stat_data=theta_pi_data,
+            jack_stat=jack_theta_pi,
+            confidence_level=confidence_level,
+        )
+        (
+            theta_w_estimate,
+            theta_w_bias,
+            theta_w_std_err,
+            theta_w_ci_low,
+            theta_w_ci_upp,
+        ) = jackknife_ci(
+            stat_data=theta_w_data,
+            jack_stat=jack_theta_w,
+            confidence_level=confidence_level,
+        )
+        (
+            tajima_d_estimate,
+            tajima_d_bias,
+            tajima_d_std_err,
+            tajima_d_ci_low,
+            tajima_d_ci_upp,
+        ) = jackknife_ci(
+            stat_data=tajima_d_data,
+            jack_stat=jack_tajima_d,
+            confidence_level=confidence_level,
+        )
+
+        return pd.Series(
+            data=dict(
+                cohort=cohort,
+                theta_pi=theta_pi_data,
+                theta_pi_estimate=theta_pi_estimate,
+                theta_pi_bias=theta_pi_bias,
+                theta_pi_std_err=theta_pi_std_err,
+                theta_pi_ci_low=theta_pi_ci_low,
+                theta_pi_ci_upp=theta_pi_ci_upp,
+                theta_w=theta_w_data,
+                theta_w_estimate=theta_w_estimate,
+                theta_w_bias=theta_w_bias,
+                theta_w_std_err=theta_w_std_err,
+                theta_w_ci_low=theta_w_ci_low,
+                theta_w_ci_upp=theta_w_ci_upp,
+                tajima_d=tajima_d_data,
+                tajima_d_estimate=tajima_d_estimate,
+                tajima_d_bias=tajima_d_bias,
+                tajima_d_std_err=tajima_d_std_err,
+                tajima_d_ci_low=tajima_d_ci_low,
+                tajima_d_ci_upp=tajima_d_ci_upp,
+            )
+        )
+
+    def _locate_site_class(
+        self,
+        *,
+        region,
+        site_mask,
+        site_class,
+    ):
+        debug = self._log.debug
+
+        debug("access site annotations data")
+        ds_ann = self.site_annotations(
+            region=region,
+            site_mask=site_mask,
+        )
+        codon_pos = ds_ann["codon_position"].data
+        codon_deg = ds_ann["codon_degeneracy"].data
+        seq_cls = ds_ann["seq_cls"].data
+        seq_flen = ds_ann["seq_flen"].data
+        seq_relpos_start = ds_ann["seq_relpos_start"].data
+        seq_relpos_stop = ds_ann["seq_relpos_stop"].data
+        site_class = site_class.upper()
+
+        debug("define constants used in site annotations data")
+        SEQ_CLS_UNKNOWN = 0  # noqa
+        SEQ_CLS_UPSTREAM = 1
+        SEQ_CLS_DOWNSTREAM = 2
+        SEQ_CLS_5UTR = 3
+        SEQ_CLS_3UTR = 4
+        SEQ_CLS_CDS_FIRST = 5
+        SEQ_CLS_CDS_MID = 6
+        SEQ_CLS_CDS_LAST = 7
+        SEQ_CLS_INTRON_FIRST = 8
+        SEQ_CLS_INTRON_MID = 9
+        SEQ_CLS_INTRON_LAST = 10
+        CODON_DEG_UNKNOWN = 0  # noqa
+        CODON_DEG_0 = 1
+        CODON_DEG_2_SIMPLE = 2
+        CODON_DEG_2_COMPLEX = 3  # noqa
+        CODON_DEG_4 = 4
+
+        debug("set up site selection")
+
+        if site_class == "CDS_DEG_4":
+            # 4-fold degenerate coding sites
+            loc_ann = (
+                (
+                    (seq_cls == SEQ_CLS_CDS_FIRST)
+                    | (seq_cls == SEQ_CLS_CDS_MID)
+                    | (seq_cls == SEQ_CLS_CDS_LAST)
+                )
+                & (codon_pos == 2)
+                & (codon_deg == CODON_DEG_4)
+            )
+
+        elif site_class == "CDS_DEG_2_SIMPLE":
+            # 2-fold degenerate coding sites
+            loc_ann = (
+                (
+                    (seq_cls == SEQ_CLS_CDS_FIRST)
+                    | (seq_cls == SEQ_CLS_CDS_MID)
+                    | (seq_cls == SEQ_CLS_CDS_LAST)
+                )
+                & (codon_pos == 2)
+                & (codon_deg == CODON_DEG_2_SIMPLE)
+            )
+
+        elif site_class == "CDS_DEG_0":
+            # non-degenerate coding sites
+            loc_ann = (
+                (seq_cls == SEQ_CLS_CDS_FIRST)
+                | (seq_cls == SEQ_CLS_CDS_MID)
+                | (seq_cls == SEQ_CLS_CDS_LAST)
+            ) & (codon_deg == CODON_DEG_0)
+
+        elif site_class == "INTRON_SHORT":
+            # short introns, excluding splice regions
+            loc_ann = (
+                (
+                    (seq_cls == SEQ_CLS_INTRON_FIRST)
+                    | (seq_cls == SEQ_CLS_INTRON_MID)
+                    | (seq_cls == SEQ_CLS_INTRON_LAST)
+                )
+                & (seq_flen < 100)
+                & (seq_relpos_start > 10)
+                & (seq_relpos_stop > 10)
+            )
+
+        elif site_class == "INTRON_LONG":
+            # long introns, excluding splice regions
+            loc_ann = (
+                (
+                    (seq_cls == SEQ_CLS_INTRON_FIRST)
+                    | (seq_cls == SEQ_CLS_INTRON_MID)
+                    | (seq_cls == SEQ_CLS_INTRON_LAST)
+                )
+                & (seq_flen > 200)
+                & (seq_relpos_start > 10)
+                & (seq_relpos_stop > 10)
+            )
+
+        elif site_class == "INTRON_SPLICE_5PRIME":
+            # 5' intron splice regions
+            loc_ann = (
+                (seq_cls == SEQ_CLS_INTRON_FIRST)
+                | (seq_cls == SEQ_CLS_INTRON_MID)
+                | (seq_cls == SEQ_CLS_INTRON_LAST)
+            ) & (seq_relpos_start < 2)
+
+        elif site_class == "INTRON_SPLICE_3PRIME":
+            # 3' intron splice regions
+            loc_ann = (
+                (seq_cls == SEQ_CLS_INTRON_FIRST)
+                | (seq_cls == SEQ_CLS_INTRON_MID)
+                | (seq_cls == SEQ_CLS_INTRON_LAST)
+            ) & (seq_relpos_stop < 2)
+
+        elif site_class == "UTR_5PRIME":
+            # 5' UTR
+            loc_ann = seq_cls == SEQ_CLS_5UTR
+
+        elif site_class == "UTR_3PRIME":
+            # 3' UTR
+            loc_ann = seq_cls == SEQ_CLS_3UTR
+
+        elif site_class == "INTERGENIC":
+            # intergenic regions, distant from a gene
+            loc_ann = ((seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)) | (
+                (seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000)
+            )
+
+        else:
+            raise NotImplementedError(site_class)
+
+        debug("compute site selection")
+        with self._dask_progress(desc="Locate sites"):
+            loc_ann = loc_ann.compute()
+
+        return loc_ann
+
+    def cohort_diversity_stats(
+        self,
+        cohort_label,
+        cohort_query,
+        cohort_size,
+        region,
+        site_mask,
+        site_class,
+        sample_sets=None,
+        random_seed=42,
+        n_jack=200,
+        confidence_level=0.95,
+    ):
+        """TODO doc me"""
+
+        debug = self._log.debug
+
+        debug("access allele counts")
+        ac = self.snp_allele_counts(
+            region=region,
+            site_mask=site_mask,
+            sample_query=cohort_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        debug("locate sites for analysis")
+        loc_ann = self._locate_site_class(
+            region=region,
+            site_mask=site_mask,
+            site_class=site_class,
+        )
+        assert ac.shape[0] == loc_ann.shape[0]
+
+        debug(f"filter to {np.count_nonzero(loc_ann)} sites")
+        ac_ann = np.compress(loc_ann, ac, axis=0)
+
+        debug("compute diversity stats")
+        stats = self._block_jackknife_cohort_diversity_stats(
+            cohort=cohort_label,
+            ac=ac_ann,
+            n_jack=n_jack,
+            confidence_level=confidence_level,
+        )
+
+        return stats
 
 
 def _setup_taxon_colors(plot_kwargs):
