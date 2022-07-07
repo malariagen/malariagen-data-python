@@ -228,6 +228,7 @@ class Ag3:
         self._cache_cohort_metadata = dict()
         self._cache_sample_metadata = dict()
         self._cache_aim_variants = dict()
+        self._cache_locate_site_class = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -6533,7 +6534,7 @@ class Ag3:
         jack_theta_pi = []
         jack_theta_w = []
         jack_tajima_d = []
-        iterator = self._progress(range(n_jack), desc="Estimate confidence interval")
+        iterator = self._progress(range(n_jack), desc="Compute diversity stats")
 
         debug("begin jackknife resampling")
         for i in iterator:
@@ -6604,31 +6605,29 @@ class Ag3:
             confidence_level=confidence_level,
         )
 
-        return pd.Series(
-            data=dict(
-                cohort=cohort_label,
-                theta_pi=theta_pi_data,
-                theta_pi_estimate=theta_pi_estimate,
-                theta_pi_bias=theta_pi_bias,
-                theta_pi_std_err=theta_pi_std_err,
-                theta_pi_ci_err=theta_pi_ci_err,
-                theta_pi_ci_low=theta_pi_ci_low,
-                theta_pi_ci_upp=theta_pi_ci_upp,
-                theta_w=theta_w_data,
-                theta_w_estimate=theta_w_estimate,
-                theta_w_bias=theta_w_bias,
-                theta_w_std_err=theta_w_std_err,
-                theta_w_ci_err=theta_w_ci_err,
-                theta_w_ci_low=theta_w_ci_low,
-                theta_w_ci_upp=theta_w_ci_upp,
-                tajima_d=tajima_d_data,
-                tajima_d_estimate=tajima_d_estimate,
-                tajima_d_bias=tajima_d_bias,
-                tajima_d_std_err=tajima_d_std_err,
-                tajima_d_ci_err=tajima_d_ci_err,
-                tajima_d_ci_low=tajima_d_ci_low,
-                tajima_d_ci_upp=tajima_d_ci_upp,
-            )
+        return dict(
+            cohort=cohort_label,
+            theta_pi=theta_pi_data,
+            theta_pi_estimate=theta_pi_estimate,
+            theta_pi_bias=theta_pi_bias,
+            theta_pi_std_err=theta_pi_std_err,
+            theta_pi_ci_err=theta_pi_ci_err,
+            theta_pi_ci_low=theta_pi_ci_low,
+            theta_pi_ci_upp=theta_pi_ci_upp,
+            theta_w=theta_w_data,
+            theta_w_estimate=theta_w_estimate,
+            theta_w_bias=theta_w_bias,
+            theta_w_std_err=theta_w_std_err,
+            theta_w_ci_err=theta_w_ci_err,
+            theta_w_ci_low=theta_w_ci_low,
+            theta_w_ci_upp=theta_w_ci_upp,
+            tajima_d=tajima_d_data,
+            tajima_d_estimate=tajima_d_estimate,
+            tajima_d_bias=tajima_d_bias,
+            tajima_d_std_err=tajima_d_std_err,
+            tajima_d_ci_err=tajima_d_ci_err,
+            tajima_d_ci_low=tajima_d_ci_low,
+            tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
     def _locate_site_class(
@@ -6640,133 +6639,142 @@ class Ag3:
     ):
         debug = self._log.debug
 
-        debug("access site annotations data")
-        ds_ann = self.site_annotations(
-            region=region,
-            site_mask=site_mask,
-        )
-        codon_pos = ds_ann["codon_position"].data
-        codon_deg = ds_ann["codon_degeneracy"].data
-        seq_cls = ds_ann["seq_cls"].data
-        seq_flen = ds_ann["seq_flen"].data
-        seq_relpos_start = ds_ann["seq_relpos_start"].data
-        seq_relpos_stop = ds_ann["seq_relpos_stop"].data
-        site_class = site_class.upper()
+        # cache these data in memory to avoid repeated computation
+        cache_key = (region, site_mask, site_class)
 
-        debug("define constants used in site annotations data")
-        SEQ_CLS_UNKNOWN = 0  # noqa
-        SEQ_CLS_UPSTREAM = 1
-        SEQ_CLS_DOWNSTREAM = 2
-        SEQ_CLS_5UTR = 3
-        SEQ_CLS_3UTR = 4
-        SEQ_CLS_CDS_FIRST = 5
-        SEQ_CLS_CDS_MID = 6
-        SEQ_CLS_CDS_LAST = 7
-        SEQ_CLS_INTRON_FIRST = 8
-        SEQ_CLS_INTRON_MID = 9
-        SEQ_CLS_INTRON_LAST = 10
-        CODON_DEG_UNKNOWN = 0  # noqa
-        CODON_DEG_0 = 1
-        CODON_DEG_2_SIMPLE = 2
-        CODON_DEG_2_COMPLEX = 3  # noqa
-        CODON_DEG_4 = 4
+        try:
+            loc_ann = self._cache_locate_site_class[cache_key]
 
-        debug("set up site selection")
+        except KeyError:
+            debug("access site annotations data")
+            ds_ann = self.site_annotations(
+                region=region,
+                site_mask=site_mask,
+            )
+            codon_pos = ds_ann["codon_position"].data
+            codon_deg = ds_ann["codon_degeneracy"].data
+            seq_cls = ds_ann["seq_cls"].data
+            seq_flen = ds_ann["seq_flen"].data
+            seq_relpos_start = ds_ann["seq_relpos_start"].data
+            seq_relpos_stop = ds_ann["seq_relpos_stop"].data
+            site_class = site_class.upper()
 
-        if site_class == "CDS_DEG_4":
-            # 4-fold degenerate coding sites
-            loc_ann = (
-                (
+            debug("define constants used in site annotations data")
+            SEQ_CLS_UNKNOWN = 0  # noqa
+            SEQ_CLS_UPSTREAM = 1
+            SEQ_CLS_DOWNSTREAM = 2
+            SEQ_CLS_5UTR = 3
+            SEQ_CLS_3UTR = 4
+            SEQ_CLS_CDS_FIRST = 5
+            SEQ_CLS_CDS_MID = 6
+            SEQ_CLS_CDS_LAST = 7
+            SEQ_CLS_INTRON_FIRST = 8
+            SEQ_CLS_INTRON_MID = 9
+            SEQ_CLS_INTRON_LAST = 10
+            CODON_DEG_UNKNOWN = 0  # noqa
+            CODON_DEG_0 = 1
+            CODON_DEG_2_SIMPLE = 2
+            CODON_DEG_2_COMPLEX = 3  # noqa
+            CODON_DEG_4 = 4
+
+            debug("set up site selection")
+
+            if site_class == "CDS_DEG_4":
+                # 4-fold degenerate coding sites
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_CDS_FIRST)
+                        | (seq_cls == SEQ_CLS_CDS_MID)
+                        | (seq_cls == SEQ_CLS_CDS_LAST)
+                    )
+                    & (codon_pos == 2)
+                    & (codon_deg == CODON_DEG_4)
+                )
+
+            elif site_class == "CDS_DEG_2_SIMPLE":
+                # 2-fold degenerate coding sites
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_CDS_FIRST)
+                        | (seq_cls == SEQ_CLS_CDS_MID)
+                        | (seq_cls == SEQ_CLS_CDS_LAST)
+                    )
+                    & (codon_pos == 2)
+                    & (codon_deg == CODON_DEG_2_SIMPLE)
+                )
+
+            elif site_class == "CDS_DEG_0":
+                # non-degenerate coding sites
+                loc_ann = (
                     (seq_cls == SEQ_CLS_CDS_FIRST)
                     | (seq_cls == SEQ_CLS_CDS_MID)
                     | (seq_cls == SEQ_CLS_CDS_LAST)
+                ) & (codon_deg == CODON_DEG_0)
+
+            elif site_class == "INTRON_SHORT":
+                # short introns, excluding splice regions
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_INTRON_FIRST)
+                        | (seq_cls == SEQ_CLS_INTRON_MID)
+                        | (seq_cls == SEQ_CLS_INTRON_LAST)
+                    )
+                    & (seq_flen < 100)
+                    & (seq_relpos_start > 10)
+                    & (seq_relpos_stop > 10)
                 )
-                & (codon_pos == 2)
-                & (codon_deg == CODON_DEG_4)
-            )
 
-        elif site_class == "CDS_DEG_2_SIMPLE":
-            # 2-fold degenerate coding sites
-            loc_ann = (
-                (
-                    (seq_cls == SEQ_CLS_CDS_FIRST)
-                    | (seq_cls == SEQ_CLS_CDS_MID)
-                    | (seq_cls == SEQ_CLS_CDS_LAST)
+            elif site_class == "INTRON_LONG":
+                # long introns, excluding splice regions
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_INTRON_FIRST)
+                        | (seq_cls == SEQ_CLS_INTRON_MID)
+                        | (seq_cls == SEQ_CLS_INTRON_LAST)
+                    )
+                    & (seq_flen > 200)
+                    & (seq_relpos_start > 10)
+                    & (seq_relpos_stop > 10)
                 )
-                & (codon_pos == 2)
-                & (codon_deg == CODON_DEG_2_SIMPLE)
-            )
 
-        elif site_class == "CDS_DEG_0":
-            # non-degenerate coding sites
-            loc_ann = (
-                (seq_cls == SEQ_CLS_CDS_FIRST)
-                | (seq_cls == SEQ_CLS_CDS_MID)
-                | (seq_cls == SEQ_CLS_CDS_LAST)
-            ) & (codon_deg == CODON_DEG_0)
-
-        elif site_class == "INTRON_SHORT":
-            # short introns, excluding splice regions
-            loc_ann = (
-                (
+            elif site_class == "INTRON_SPLICE_5PRIME":
+                # 5' intron splice regions
+                loc_ann = (
                     (seq_cls == SEQ_CLS_INTRON_FIRST)
                     | (seq_cls == SEQ_CLS_INTRON_MID)
                     | (seq_cls == SEQ_CLS_INTRON_LAST)
-                )
-                & (seq_flen < 100)
-                & (seq_relpos_start > 10)
-                & (seq_relpos_stop > 10)
-            )
+                ) & (seq_relpos_start < 2)
 
-        elif site_class == "INTRON_LONG":
-            # long introns, excluding splice regions
-            loc_ann = (
-                (
+            elif site_class == "INTRON_SPLICE_3PRIME":
+                # 3' intron splice regions
+                loc_ann = (
                     (seq_cls == SEQ_CLS_INTRON_FIRST)
                     | (seq_cls == SEQ_CLS_INTRON_MID)
                     | (seq_cls == SEQ_CLS_INTRON_LAST)
-                )
-                & (seq_flen > 200)
-                & (seq_relpos_start > 10)
-                & (seq_relpos_stop > 10)
-            )
+                ) & (seq_relpos_stop < 2)
 
-        elif site_class == "INTRON_SPLICE_5PRIME":
-            # 5' intron splice regions
-            loc_ann = (
-                (seq_cls == SEQ_CLS_INTRON_FIRST)
-                | (seq_cls == SEQ_CLS_INTRON_MID)
-                | (seq_cls == SEQ_CLS_INTRON_LAST)
-            ) & (seq_relpos_start < 2)
+            elif site_class == "UTR_5PRIME":
+                # 5' UTR
+                loc_ann = seq_cls == SEQ_CLS_5UTR
 
-        elif site_class == "INTRON_SPLICE_3PRIME":
-            # 3' intron splice regions
-            loc_ann = (
-                (seq_cls == SEQ_CLS_INTRON_FIRST)
-                | (seq_cls == SEQ_CLS_INTRON_MID)
-                | (seq_cls == SEQ_CLS_INTRON_LAST)
-            ) & (seq_relpos_stop < 2)
+            elif site_class == "UTR_3PRIME":
+                # 3' UTR
+                loc_ann = seq_cls == SEQ_CLS_3UTR
 
-        elif site_class == "UTR_5PRIME":
-            # 5' UTR
-            loc_ann = seq_cls == SEQ_CLS_5UTR
+            elif site_class == "INTERGENIC":
+                # intergenic regions, distant from a gene
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)
+                ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
 
-        elif site_class == "UTR_3PRIME":
-            # 3' UTR
-            loc_ann = seq_cls == SEQ_CLS_3UTR
+            else:
+                raise NotImplementedError(site_class)
 
-        elif site_class == "INTERGENIC":
-            # intergenic regions, distant from a gene
-            loc_ann = ((seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)) | (
-                (seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000)
-            )
+            debug("compute site selection")
+            with self._dask_progress(desc=f"Locate {site_class} sites"):
+                loc_ann = loc_ann.compute()
 
-        else:
-            raise NotImplementedError(site_class)
-
-        debug("compute site selection")
-        with self._dask_progress(desc=f"Locate {site_class} sites"):
-            loc_ann = loc_ann.compute()
+            self._cache_locate_site_class[cache_key] = loc_ann
 
         return loc_ann
 
@@ -6816,7 +6824,28 @@ class Ag3:
             confidence_level=confidence_level,
         )
 
-        return stats
+        debug("compute some extra cohort variables")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=cohort_query
+        )
+        extra_fields = [
+            "taxon",
+            "year",
+            "month",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+        ]
+        for field in extra_fields:
+            vals = df_samples[field].sort_values().unique()
+            if len(vals) == 0:
+                vals = np.nan
+            elif len(vals) == 1:
+                vals = vals[0]
+            stats[field] = vals
+
+        return pd.Series(stats)
 
     def diversity_stats(
         self,
