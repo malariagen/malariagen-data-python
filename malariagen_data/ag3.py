@@ -7001,7 +7001,7 @@ class Ag3:
 
         debug("create a map")
         if basemap is None:
-            basemap = (ipyleaflet.basemaps.Esri.WorldImagery,)
+            basemap = ipyleaflet.basemaps.Esri.WorldImagery
         samples_map = ipyleaflet.Map(
             center=center,
             zoom=zoom,
