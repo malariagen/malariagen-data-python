@@ -6895,8 +6895,6 @@ class Ag3:
         """TODO doc me"""
         debug = self._log.debug
 
-        debug("access sample metadata")
-
         debug("set up cohorts")
         if isinstance(cohorts, dict):
             # user has supplied a custom dictionary mapping cohort identifiers
@@ -6966,6 +6964,60 @@ class Ag3:
         df_stats = pd.DataFrame(all_stats)
 
         return df_stats
+
+    def plot_samples_interactive_map(
+        self,
+        sample_sets=None,
+        sample_query=None,
+        basemap=None,
+        center=(-2, 20),
+        zoom=3,
+    ):
+        debug = self._log.debug
+
+        import ipyleaflet
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        debug("compute locations")
+        pivot_location_taxon = df_samples.pivot_table(
+            index=["country", "location", "latitude", "longitude"],
+            columns=["taxon"],
+            values="sample_id",
+            aggfunc="count",
+            fill_value=0,
+        )
+
+        debug("create a map")
+        if basemap is None:
+            basemap = (ipyleaflet.basemaps.Esri.WorldImagery,)
+        samples_map = ipyleaflet.Map(
+            center=center,
+            zoom=zoom,
+            basemap=basemap,
+        )
+        samples_map.add_control(ipyleaflet.ScaleControl(position="bottomleft"))
+
+        debug("add markers")
+        taxa = df_samples["taxon"].dropna().sort_values().unique()
+        for _, row in pivot_location_taxon.reset_index().iterrows():
+            title = f"Location: {row.location}, {row.country} ({row.latitude:.3f}, {row.longitude:.3f})"
+            title += "\nNo. specimens: "
+            for taxon in taxa:
+                n = row[taxon]
+                if n > 0:
+                    title += f"{n} {taxon}; "
+            marker = ipyleaflet.Marker(
+                location=(row.latitude, row.longitude),
+                draggable=False,
+                title=title,
+            )
+            samples_map.add_layer(marker)
+
+        return samples_map
 
 
 def _setup_taxon_colors(plot_kwargs):
