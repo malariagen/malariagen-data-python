@@ -585,6 +585,8 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
         Jackknife bias.
     std_err
         Standard error.
+    ci_err
+        Size of the confidence interval.
     ci_low
         Lower limit of confidence interval.
     ci_upp
@@ -616,6 +618,7 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
 
     # confidence interval
     z_score = np.sqrt(2.0) * erfinv(confidence_level)
+    ci_err = 2 * z_score * std_err
     ci_low, ci_upp = estimate + z_score * np.array((-std_err, std_err))
 
-    return estimate, bias, std_err, ci_low, ci_upp
+    return estimate, bias, std_err, ci_err, ci_low, ci_upp

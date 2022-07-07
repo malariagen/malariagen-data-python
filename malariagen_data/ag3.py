@@ -6571,6 +6571,7 @@ class Ag3:
             theta_pi_estimate,
             theta_pi_bias,
             theta_pi_std_err,
+            theta_pi_ci_err,
             theta_pi_ci_low,
             theta_pi_ci_upp,
         ) = jackknife_ci(
@@ -6582,6 +6583,7 @@ class Ag3:
             theta_w_estimate,
             theta_w_bias,
             theta_w_std_err,
+            theta_w_ci_err,
             theta_w_ci_low,
             theta_w_ci_upp,
         ) = jackknife_ci(
@@ -6593,6 +6595,7 @@ class Ag3:
             tajima_d_estimate,
             tajima_d_bias,
             tajima_d_std_err,
+            tajima_d_ci_err,
             tajima_d_ci_low,
             tajima_d_ci_upp,
         ) = jackknife_ci(
@@ -6608,18 +6611,21 @@ class Ag3:
                 theta_pi_estimate=theta_pi_estimate,
                 theta_pi_bias=theta_pi_bias,
                 theta_pi_std_err=theta_pi_std_err,
+                theta_pi_ci_err=theta_pi_ci_err,
                 theta_pi_ci_low=theta_pi_ci_low,
                 theta_pi_ci_upp=theta_pi_ci_upp,
                 theta_w=theta_w_data,
                 theta_w_estimate=theta_w_estimate,
                 theta_w_bias=theta_w_bias,
                 theta_w_std_err=theta_w_std_err,
+                theta_w_ci_err=theta_w_ci_err,
                 theta_w_ci_low=theta_w_ci_low,
                 theta_w_ci_upp=theta_w_ci_upp,
                 tajima_d=tajima_d_data,
                 tajima_d_estimate=tajima_d_estimate,
                 tajima_d_bias=tajima_d_bias,
                 tajima_d_std_err=tajima_d_std_err,
+                tajima_d_ci_err=tajima_d_ci_err,
                 tajima_d_ci_low=tajima_d_ci_low,
                 tajima_d_ci_upp=tajima_d_ci_upp,
             )
@@ -6759,7 +6765,7 @@ class Ag3:
             raise NotImplementedError(site_class)
 
         debug("compute site selection")
-        with self._dask_progress(desc="Locate sites"):
+        with self._dask_progress(desc=f"Locate {site_class} sites"):
             loc_ann = loc_ann.compute()
 
         return loc_ann
