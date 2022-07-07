@@ -1626,10 +1626,9 @@ class Ag3:
     def site_annotations(
         self,
         region,
-        field,
         site_mask=None,
         inline_array=True,
-        chunks="native",
+        chunks="auto",
     ):
         """Load site annotations.
 
@@ -1641,9 +1640,6 @@ class Ag3:
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
-        field : str
-            One of "codon_degeneracy", "codon_nonsyn", "codon_position",
-            "seq_cls", "seq_flen", "seq_relpos_start", "seq_relpos_stop".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
         inline_array : bool, optional
@@ -1654,33 +1650,57 @@ class Ag3:
 
         Returns
         -------
-        d : dask.Array
-            An array of site annotations.
+        ds : xarray.Dataset
+            A dataset of site annotations.
 
         """
-        debug = self._log.debug
+        # N.B., we default to chunks="auto" here for performance reasons
 
-        debug("access the array of values for all genome positions")
-        root = self.open_site_annotations()
+        debug = self._log.debug
 
         debug("resolve region")
         region = self.resolve_region(region)
         if isinstance(region, list):
             raise TypeError("Multiple regions not supported.")
+        contig = region.contig
 
-        d = da_from_zarr(
-            root[field][region.contig], inline_array=inline_array, chunks=chunks
-        )
+        debug("open site annotations zarr")
+        root = self.open_site_annotations()
 
-        debug("access and subset to SNP positions")
+        debug("build a dataset")
+        ds = xr.Dataset()
+        for field in (
+            "codon_degeneracy",
+            "codon_nonsyn",
+            "codon_position",
+            "seq_cls",
+            "seq_flen",
+            "seq_relpos_start",
+            "seq_relpos_stop",
+        ):
+            data = da_from_zarr(
+                root[field][contig],
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            ds[field] = "variants", data
+
+        debug("subset to SNP positions")
         pos = self.snp_sites(
-            region=region,
+            region=contig,
             field="POS",
             site_mask=site_mask,
+            inline_array=inline_array,
+            chunks=chunks,
         )
-        d = da.take(d, pos - 1)
+        pos = pos.compute()
+        if region.start or region.end:
+            loc_region = locate_region(region, pos)
+            pos = pos[loc_region]
+        idx = pos - 1
+        ds = ds.isel(variants=idx)
 
-        return d
+        return ds
 
     def _snp_variants_dataset(self, *, contig, inline_array, chunks):
         debug = self._log.debug
