@@ -6984,7 +6984,15 @@ class Ag3:
 
         debug("compute locations")
         pivot_location_taxon = df_samples.pivot_table(
-            index=["country", "location", "latitude", "longitude"],
+            index=[
+                "country",
+                "admin1_iso",
+                "admin1_name",
+                "admin2_name",
+                "location",
+                "latitude",
+                "longitude",
+            ],
             columns=["taxon"],
             values="sample_id",
             aggfunc="count",
@@ -7004,7 +7012,12 @@ class Ag3:
         debug("add markers")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
         for _, row in pivot_location_taxon.reset_index().iterrows():
-            title = f"Location: {row.location}, {row.country} ({row.latitude:.3f}, {row.longitude:.3f})"
+            title = (
+                f"Location: {row.location} ({row.latitude:.3f}, {row.longitude:.3f})"
+            )
+            title += f"\nAdmin level 2: {row.admin2_name}"
+            title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
+            title += f"\nCountry: {row.country}"
             title += "\nNo. specimens: "
             for taxon in taxa:
                 n = row[taxon]
