@@ -6725,10 +6725,9 @@ class Ag3:
         jack_theta_pi = []
         jack_theta_w = []
         jack_tajima_d = []
-        iterator = self._progress(range(n_jack), desc="Compute diversity stats")
 
         debug("begin jackknife resampling")
-        for i in iterator:
+        for i in range(n_jack):
 
             # locate block to delete
             block_start = i * block_length
