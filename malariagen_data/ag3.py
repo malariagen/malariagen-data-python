@@ -6488,7 +6488,7 @@ class Ag3:
         return fig
 
     def _block_jackknife_cohort_diversity_stats(
-        self, *, cohort, ac, n_jack, confidence_level
+        self, *, cohort_label, ac, n_jack, confidence_level
     ):
         debug = self._log.debug
 
@@ -6603,7 +6603,7 @@ class Ag3:
 
         return pd.Series(
             data=dict(
-                cohort=cohort,
+                cohort=cohort_label,
                 theta_pi=theta_pi_data,
                 theta_pi_estimate=theta_pi_estimate,
                 theta_pi_bias=theta_pi_bias,
@@ -6804,13 +6804,100 @@ class Ag3:
 
         debug("compute diversity stats")
         stats = self._block_jackknife_cohort_diversity_stats(
-            cohort=cohort_label,
+            cohort_label=cohort_label,
             ac=ac_ann,
             n_jack=n_jack,
             confidence_level=confidence_level,
         )
 
         return stats
+
+    def diversity_stats(
+        self,
+        cohorts,
+        cohort_size,
+        region,
+        site_mask,
+        site_class,
+        sample_query=None,
+        sample_sets=None,
+        random_seed=42,
+        n_jack=200,
+        confidence_level=0.95,
+    ):
+        """TODO doc me"""
+        debug = self._log.debug
+
+        debug("access sample metadata")
+
+        debug("set up cohorts")
+        if isinstance(cohorts, dict):
+            # user has supplied a custom dictionary mapping cohort identifiers
+            # to pandas queries
+            cohort_queries = cohorts
+
+        elif isinstance(cohorts, str):
+            # user has supplied one of the predefined cohort sets
+
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=sample_query
+            )
+
+            # determine column in dataframe - allow abbreviation
+            if cohorts.startswith("cohort_"):
+                cohorts_col = cohorts
+            else:
+                cohorts_col = "cohort_" + cohorts
+            if cohorts_col not in df_samples.columns:
+                raise ValueError(f"{cohorts_col!r} is not a known cohort set")
+
+            # find cohort labels and build queries dictionary
+            cohort_labels = sorted(df_samples[cohorts_col].unique())
+            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
+
+        else:
+            raise TypeError("cohorts parameter should be dict or str")
+
+        debug("handle sample_query parameter")
+        if sample_query is not None:
+            cohort_queries = {
+                coh: f"({cohort_query}) and ({sample_query})"
+                for coh, cohort_query in cohort_queries.items()
+            }
+
+        debug("check cohort sizes, drop any cohorts which are too small")
+        cohort_queries_checked = cohort_queries.copy()
+        for coh, cohort_query in cohort_queries.items():
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=cohort_query
+            )
+            if len(df_cohort_samples) < cohort_size:
+                warnings.warn(
+                    message=f"cohort {coh} has insufficient samples for requested cohort size {cohort_size}, dropping",
+                    category=UserWarning,
+                )
+            else:
+                cohort_queries_checked[coh] = cohort_query
+
+        debug("compute diversity stats for cohorts")
+        all_stats = []
+        for coh, cohort_query in cohort_queries_checked.items():
+            stats = self.cohort_diversity_stats(
+                cohort_label=coh,
+                cohort_query=cohort_query,
+                cohort_size=cohort_size,
+                region=region,
+                site_mask=site_mask,
+                site_class=site_class,
+                sample_sets=sample_sets,
+                random_seed=random_seed,
+                n_jack=n_jack,
+                confidence_level=confidence_level,
+            )
+            all_stats.append(stats)
+        df_stats = pd.DataFrame(all_stats)
+
+        return df_stats
 
 
 def _setup_taxon_colors(plot_kwargs):
