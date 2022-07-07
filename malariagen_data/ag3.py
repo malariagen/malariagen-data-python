@@ -1704,6 +1704,154 @@ class Ag3:
 
         return ds
 
+    def _locate_site_class(
+        self,
+        *,
+        region,
+        site_mask,
+        site_class,
+    ):
+        debug = self._log.debug
+
+        # cache these data in memory to avoid repeated computation
+        cache_key = (region, site_mask, site_class)
+
+        try:
+            loc_ann = self._cache_locate_site_class[cache_key]
+
+        except KeyError:
+            debug("access site annotations data")
+            ds_ann = self.site_annotations(
+                region=region,
+                site_mask=site_mask,
+            )
+            codon_pos = ds_ann["codon_position"].data
+            codon_deg = ds_ann["codon_degeneracy"].data
+            seq_cls = ds_ann["seq_cls"].data
+            seq_flen = ds_ann["seq_flen"].data
+            seq_relpos_start = ds_ann["seq_relpos_start"].data
+            seq_relpos_stop = ds_ann["seq_relpos_stop"].data
+            site_class = site_class.upper()
+
+            debug("define constants used in site annotations data")
+            SEQ_CLS_UNKNOWN = 0  # noqa
+            SEQ_CLS_UPSTREAM = 1
+            SEQ_CLS_DOWNSTREAM = 2
+            SEQ_CLS_5UTR = 3
+            SEQ_CLS_3UTR = 4
+            SEQ_CLS_CDS_FIRST = 5
+            SEQ_CLS_CDS_MID = 6
+            SEQ_CLS_CDS_LAST = 7
+            SEQ_CLS_INTRON_FIRST = 8
+            SEQ_CLS_INTRON_MID = 9
+            SEQ_CLS_INTRON_LAST = 10
+            CODON_DEG_UNKNOWN = 0  # noqa
+            CODON_DEG_0 = 1
+            CODON_DEG_2_SIMPLE = 2
+            CODON_DEG_2_COMPLEX = 3  # noqa
+            CODON_DEG_4 = 4
+
+            debug("set up site selection")
+
+            if site_class == "CDS_DEG_4":
+                # 4-fold degenerate coding sites
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_CDS_FIRST)
+                        | (seq_cls == SEQ_CLS_CDS_MID)
+                        | (seq_cls == SEQ_CLS_CDS_LAST)
+                    )
+                    & (codon_pos == 2)
+                    & (codon_deg == CODON_DEG_4)
+                )
+
+            elif site_class == "CDS_DEG_2_SIMPLE":
+                # 2-fold degenerate coding sites
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_CDS_FIRST)
+                        | (seq_cls == SEQ_CLS_CDS_MID)
+                        | (seq_cls == SEQ_CLS_CDS_LAST)
+                    )
+                    & (codon_pos == 2)
+                    & (codon_deg == CODON_DEG_2_SIMPLE)
+                )
+
+            elif site_class == "CDS_DEG_0":
+                # non-degenerate coding sites
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_CDS_FIRST)
+                    | (seq_cls == SEQ_CLS_CDS_MID)
+                    | (seq_cls == SEQ_CLS_CDS_LAST)
+                ) & (codon_deg == CODON_DEG_0)
+
+            elif site_class == "INTRON_SHORT":
+                # short introns, excluding splice regions
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_INTRON_FIRST)
+                        | (seq_cls == SEQ_CLS_INTRON_MID)
+                        | (seq_cls == SEQ_CLS_INTRON_LAST)
+                    )
+                    & (seq_flen < 100)
+                    & (seq_relpos_start > 10)
+                    & (seq_relpos_stop > 10)
+                )
+
+            elif site_class == "INTRON_LONG":
+                # long introns, excluding splice regions
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_INTRON_FIRST)
+                        | (seq_cls == SEQ_CLS_INTRON_MID)
+                        | (seq_cls == SEQ_CLS_INTRON_LAST)
+                    )
+                    & (seq_flen > 200)
+                    & (seq_relpos_start > 10)
+                    & (seq_relpos_stop > 10)
+                )
+
+            elif site_class == "INTRON_SPLICE_5PRIME":
+                # 5' intron splice regions
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_INTRON_FIRST)
+                    | (seq_cls == SEQ_CLS_INTRON_MID)
+                    | (seq_cls == SEQ_CLS_INTRON_LAST)
+                ) & (seq_relpos_start < 2)
+
+            elif site_class == "INTRON_SPLICE_3PRIME":
+                # 3' intron splice regions
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_INTRON_FIRST)
+                    | (seq_cls == SEQ_CLS_INTRON_MID)
+                    | (seq_cls == SEQ_CLS_INTRON_LAST)
+                ) & (seq_relpos_stop < 2)
+
+            elif site_class == "UTR_5PRIME":
+                # 5' UTR
+                loc_ann = seq_cls == SEQ_CLS_5UTR
+
+            elif site_class == "UTR_3PRIME":
+                # 3' UTR
+                loc_ann = seq_cls == SEQ_CLS_3UTR
+
+            elif site_class == "INTERGENIC":
+                # intergenic regions, distant from a gene
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)
+                ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
+
+            else:
+                raise NotImplementedError(site_class)
+
+            debug("compute site selection")
+            with self._dask_progress(desc=f"Locate {site_class} sites"):
+                loc_ann = loc_ann.compute()
+
+            self._cache_locate_site_class[cache_key] = loc_ann
+
+        return loc_ann
+
     def _snp_variants_dataset(self, *, contig, inline_array, chunks):
         debug = self._log.debug
 
@@ -1861,6 +2009,7 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         site_mask=None,
+        site_class=None,
         inline_array=True,
         chunks="native",
         cohort_size=None,
@@ -1885,6 +2034,16 @@ class Ag3:
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1931,6 +2090,15 @@ class Ag3:
                 contig=r.contig, inline_array=inline_array, chunks=chunks
             )
             x = xr.merge([v, x], compat="override", join="override")
+
+            debug("handle site class")
+            if site_class is not None:
+                loc_ann = self._locate_site_class(
+                    region=r.contig,
+                    site_class=site_class,
+                    site_mask=None,
+                )
+                x = x.isel(variants=loc_ann)
 
             debug("handle region, do this only once - optimisation")
             if r.start or r.end:
@@ -5431,6 +5599,7 @@ class Ag3:
         sample_sets=None,
         sample_query=None,
         site_mask=None,
+        site_class=None,
         cohort_size=None,
         random_seed=42,
     ):
@@ -5452,6 +5621,16 @@ class Ag3:
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size before
             computing allele counts.
@@ -5490,6 +5669,7 @@ class Ag3:
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
+            site_class=site_class,
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
@@ -5511,6 +5691,7 @@ class Ag3:
         sample_sets,
         sample_query,
         site_mask,
+        site_class,
         cohort_size,
         random_seed,
     ):
@@ -5522,6 +5703,7 @@ class Ag3:
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
+            site_class=site_class,
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
@@ -6638,154 +6820,6 @@ class Ag3:
             tajima_d_ci_low=tajima_d_ci_low,
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
-
-    def _locate_site_class(
-        self,
-        *,
-        region,
-        site_mask,
-        site_class,
-    ):
-        debug = self._log.debug
-
-        # cache these data in memory to avoid repeated computation
-        cache_key = (region, site_mask, site_class)
-
-        try:
-            loc_ann = self._cache_locate_site_class[cache_key]
-
-        except KeyError:
-            debug("access site annotations data")
-            ds_ann = self.site_annotations(
-                region=region,
-                site_mask=site_mask,
-            )
-            codon_pos = ds_ann["codon_position"].data
-            codon_deg = ds_ann["codon_degeneracy"].data
-            seq_cls = ds_ann["seq_cls"].data
-            seq_flen = ds_ann["seq_flen"].data
-            seq_relpos_start = ds_ann["seq_relpos_start"].data
-            seq_relpos_stop = ds_ann["seq_relpos_stop"].data
-            site_class = site_class.upper()
-
-            debug("define constants used in site annotations data")
-            SEQ_CLS_UNKNOWN = 0  # noqa
-            SEQ_CLS_UPSTREAM = 1
-            SEQ_CLS_DOWNSTREAM = 2
-            SEQ_CLS_5UTR = 3
-            SEQ_CLS_3UTR = 4
-            SEQ_CLS_CDS_FIRST = 5
-            SEQ_CLS_CDS_MID = 6
-            SEQ_CLS_CDS_LAST = 7
-            SEQ_CLS_INTRON_FIRST = 8
-            SEQ_CLS_INTRON_MID = 9
-            SEQ_CLS_INTRON_LAST = 10
-            CODON_DEG_UNKNOWN = 0  # noqa
-            CODON_DEG_0 = 1
-            CODON_DEG_2_SIMPLE = 2
-            CODON_DEG_2_COMPLEX = 3  # noqa
-            CODON_DEG_4 = 4
-
-            debug("set up site selection")
-
-            if site_class == "CDS_DEG_4":
-                # 4-fold degenerate coding sites
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_CDS_FIRST)
-                        | (seq_cls == SEQ_CLS_CDS_MID)
-                        | (seq_cls == SEQ_CLS_CDS_LAST)
-                    )
-                    & (codon_pos == 2)
-                    & (codon_deg == CODON_DEG_4)
-                )
-
-            elif site_class == "CDS_DEG_2_SIMPLE":
-                # 2-fold degenerate coding sites
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_CDS_FIRST)
-                        | (seq_cls == SEQ_CLS_CDS_MID)
-                        | (seq_cls == SEQ_CLS_CDS_LAST)
-                    )
-                    & (codon_pos == 2)
-                    & (codon_deg == CODON_DEG_2_SIMPLE)
-                )
-
-            elif site_class == "CDS_DEG_0":
-                # non-degenerate coding sites
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_CDS_FIRST)
-                    | (seq_cls == SEQ_CLS_CDS_MID)
-                    | (seq_cls == SEQ_CLS_CDS_LAST)
-                ) & (codon_deg == CODON_DEG_0)
-
-            elif site_class == "INTRON_SHORT":
-                # short introns, excluding splice regions
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_INTRON_FIRST)
-                        | (seq_cls == SEQ_CLS_INTRON_MID)
-                        | (seq_cls == SEQ_CLS_INTRON_LAST)
-                    )
-                    & (seq_flen < 100)
-                    & (seq_relpos_start > 10)
-                    & (seq_relpos_stop > 10)
-                )
-
-            elif site_class == "INTRON_LONG":
-                # long introns, excluding splice regions
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_INTRON_FIRST)
-                        | (seq_cls == SEQ_CLS_INTRON_MID)
-                        | (seq_cls == SEQ_CLS_INTRON_LAST)
-                    )
-                    & (seq_flen > 200)
-                    & (seq_relpos_start > 10)
-                    & (seq_relpos_stop > 10)
-                )
-
-            elif site_class == "INTRON_SPLICE_5PRIME":
-                # 5' intron splice regions
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_INTRON_FIRST)
-                    | (seq_cls == SEQ_CLS_INTRON_MID)
-                    | (seq_cls == SEQ_CLS_INTRON_LAST)
-                ) & (seq_relpos_start < 2)
-
-            elif site_class == "INTRON_SPLICE_3PRIME":
-                # 3' intron splice regions
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_INTRON_FIRST)
-                    | (seq_cls == SEQ_CLS_INTRON_MID)
-                    | (seq_cls == SEQ_CLS_INTRON_LAST)
-                ) & (seq_relpos_stop < 2)
-
-            elif site_class == "UTR_5PRIME":
-                # 5' UTR
-                loc_ann = seq_cls == SEQ_CLS_5UTR
-
-            elif site_class == "UTR_3PRIME":
-                # 3' UTR
-                loc_ann = seq_cls == SEQ_CLS_3UTR
-
-            elif site_class == "INTERGENIC":
-                # intergenic regions, distant from a gene
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)
-                ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
-
-            else:
-                raise NotImplementedError(site_class)
-
-            debug("compute site selection")
-            with self._dask_progress(desc=f"Locate {site_class} sites"):
-                loc_ann = loc_ann.compute()
-
-            self._cache_locate_site_class[cache_key] = loc_ann
-
-        return loc_ann
 
     def cohort_diversity_stats(
         self,
