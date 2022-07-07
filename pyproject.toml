@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "6.0.0.dev1"
+version = "6.0.0.dev2"
 description = "A package for accessing and analysing MalariaGEN data."
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
