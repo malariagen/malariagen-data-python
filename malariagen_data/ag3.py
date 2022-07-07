@@ -5337,7 +5337,7 @@ class Ag3:
         region = self.resolve_region(region)
         contig = region.contig
         for site_mask in self._site_mask_ids():
-            site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"
+            site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             debug(site_filters_vcf_url)
             track_config = {
                 "name": f"Filters - {site_mask}",
@@ -6533,7 +6533,7 @@ class Ag3:
         jack_theta_pi = []
         jack_theta_w = []
         jack_tajima_d = []
-        iterator = self._progress(range(n_jack), desc="Estimating confidence interval")
+        iterator = self._progress(range(n_jack), desc="Estimate confidence interval")
 
         debug("begin jackknife resampling")
         for i in iterator:
@@ -6872,14 +6872,15 @@ class Ag3:
             }
 
         debug("check cohort sizes, drop any cohorts which are too small")
-        cohort_queries_checked = cohort_queries.copy()
+        cohort_queries_checked = dict()
         for coh, cohort_query in cohort_queries.items():
             df_cohort_samples = self.sample_metadata(
                 sample_sets=sample_sets, sample_query=cohort_query
             )
-            if len(df_cohort_samples) < cohort_size:
+            n_samples = len(df_cohort_samples)
+            if n_samples < cohort_size:
                 warnings.warn(
-                    message=f"cohort {coh} has insufficient samples for requested cohort size {cohort_size}, dropping",
+                    message=f"cohort ({coh}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping",  # noqa
                     category=UserWarning,
                 )
             else:
