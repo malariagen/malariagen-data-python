@@ -6973,6 +6973,7 @@ class Ag3:
         center=(-2, 20),
         zoom=3,
     ):
+        """TODO doc me"""
         debug = self._log.debug
 
         import ipyleaflet
@@ -7008,6 +7009,8 @@ class Ag3:
             basemap=basemap,
         )
         samples_map.add_control(ipyleaflet.ScaleControl(position="bottomleft"))
+        # make the map a bit taller than the default
+        samples_map.layout.height = "500px"
 
         debug("add markers")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
@@ -7031,6 +7034,38 @@ class Ag3:
             samples_map.add_layer(marker)
 
         return samples_map
+
+    def count_samples(
+        self,
+        sample_sets=None,
+        sample_query=None,
+        index=(
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "year",
+        ),
+        columns="taxon",
+    ):
+        """TODO doc me"""
+        debug = self._log.debug
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        debug("create pivot table")
+        df_pivot = df_samples.pivot_table(
+            index=index,
+            columns=columns,
+            values="sample_id",
+            aggfunc="count",
+            fill_value=0,
+        )
+
+        return df_pivot
 
 
 def _setup_taxon_colors(plot_kwargs):
