@@ -6842,27 +6842,17 @@ class Ag3:
         ac = self.snp_allele_counts(
             region=region,
             site_mask=site_mask,
+            site_class=site_class,
             sample_query=cohort_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
 
-        debug("locate sites for analysis")
-        loc_ann = self._locate_site_class(
-            region=region,
-            site_mask=site_mask,
-            site_class=site_class,
-        )
-        assert ac.shape[0] == loc_ann.shape[0]
-
-        debug(f"filter to {np.count_nonzero(loc_ann)} sites")
-        ac_ann = np.compress(loc_ann, ac, axis=0)
-
         debug("compute diversity stats")
         stats = self._block_jackknife_cohort_diversity_stats(
             cohort_label=cohort_label,
-            ac=ac_ann,
+            ac=ac,
             n_jack=n_jack,
             confidence_level=confidence_level,
         )
