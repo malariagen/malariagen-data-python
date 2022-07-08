@@ -6821,8 +6821,7 @@ class Ag3:
 
     def cohort_diversity_stats(
         self,
-        cohort_label,
-        cohort_query,
+        cohort,
         cohort_size,
         region,
         site_mask,
@@ -6835,6 +6834,26 @@ class Ag3:
         """TODO doc me"""
 
         debug = self._log.debug
+
+        debug("process cohort parameter")
+        cohort_query = None
+        if isinstance(cohort, str):
+            # assume it is one of the predefined cohorts
+            cohort_label = cohort
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            cohort_cols = [c for c in df_samples.columns if c.startswith("cohort_")]
+            for c in cohort_cols:
+                if cohort in set(df_samples[c]):
+                    cohort_query = f"{c} == '{cohort}'"
+                    break
+            if cohort_query is None:
+                raise ValueError(f"unknown cohort: {cohort}")
+
+        elif isinstance(cohort, (list, tuple)) and len(cohort) == 2:
+            cohort_label, cohort_query = cohort
+
+        else:
+            raise TypeError(r"invalid cohort parameter: {cohort!r}")
 
         debug("access allele counts")
         ac = self.snp_allele_counts(
@@ -6925,31 +6944,30 @@ class Ag3:
         debug("handle sample_query parameter")
         if sample_query is not None:
             cohort_queries = {
-                coh: f"({cohort_query}) and ({sample_query})"
-                for coh, cohort_query in cohort_queries.items()
+                cohort_label: f"({cohort_query}) and ({sample_query})"
+                for cohort_label, cohort_query in cohort_queries.items()
             }
 
         debug("check cohort sizes, drop any cohorts which are too small")
         cohort_queries_checked = dict()
-        for coh, cohort_query in cohort_queries.items():
+        for cohort_label, cohort_query in cohort_queries.items():
             df_cohort_samples = self.sample_metadata(
                 sample_sets=sample_sets, sample_query=cohort_query
             )
             n_samples = len(df_cohort_samples)
             if n_samples < cohort_size:
                 warnings.warn(
-                    message=f"cohort ({coh}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping",  # noqa
+                    message=f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping",  # noqa
                     category=UserWarning,
                 )
             else:
-                cohort_queries_checked[coh] = cohort_query
+                cohort_queries_checked[cohort_label] = cohort_query
 
         debug("compute diversity stats for cohorts")
         all_stats = []
-        for coh, cohort_query in cohort_queries_checked.items():
+        for cohort_label, cohort_query in cohort_queries_checked.items():
             stats = self.cohort_diversity_stats(
-                cohort_label=coh,
-                cohort_query=cohort_query,
+                cohort=(cohort_label, cohort_query),
                 cohort_size=cohort_size,
                 region=region,
                 site_mask=site_mask,
