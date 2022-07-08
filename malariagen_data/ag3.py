@@ -232,7 +232,6 @@ class Ag3:
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
-            results_cache.mkdir(parents=True, exist_ok=True)
         self._results_cache = results_cache
 
         # get bokeh to output plots to the notebook - this is a common gotcha,
