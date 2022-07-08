@@ -6912,6 +6912,7 @@ class Ag3:
     ):
         """TODO doc me"""
         debug = self._log.debug
+        info = self._log.info
 
         debug("set up cohorts")
         if isinstance(cohorts, dict):
@@ -6956,10 +6957,9 @@ class Ag3:
             )
             n_samples = len(df_cohort_samples)
             if n_samples < cohort_size:
-                warnings.warn(
-                    message=f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping",  # noqa
-                    category=UserWarning,
-                )
+                info(
+                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"
+                )  # noqa
             else:
                 cohort_queries_checked[cohort_label] = cohort_query
 
