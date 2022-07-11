@@ -4925,7 +4925,7 @@ class Ag3:
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
-        sample_id = sample_rec["sample_id"]
+        sample_id = sample_rec.name  # sample_id
         sample_set = sample_rec["sample_set"]
 
         debug("access HMM data")
@@ -7074,10 +7074,10 @@ class Ag3:
         return df_pivot
 
     def _lookup_sample(self, sample, sample_set=None):
-        df_samples = self.sample_metadata(sample_sets=sample_set)
+        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
         sample_rec = None
         if isinstance(sample, str):
-            sample_rec = df_samples.set_index("sample_id").loc[sample]
+            sample_rec = df_samples.loc[sample]
         elif isinstance(sample, int):
             sample_rec = df_samples.iloc[sample]
         else:
@@ -7108,7 +7108,7 @@ class Ag3:
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
-        sample_id = sample_rec["sample_id"]
+        sample_id = sample_rec.name  # sample_id
         sample_set = sample_rec["sample_set"]
 
         debug("access SNPs, select data for sample")
