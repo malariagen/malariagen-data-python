@@ -7084,14 +7084,14 @@ class Ag3:
             type_error(name="sample", value=sample, expectation=(str, int))
         return sample_rec
 
-    def plot_sample_heterozygosity_track(
+    def plot_heterozygosity_track(
         self,
         sample,
         region,
         site_mask,
         window_size,
         sample_set=None,
-        y_max="auto",
+        y_max=0.03,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         circle_kwargs=None,
@@ -7155,7 +7155,7 @@ class Ag3:
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
-            title=f"Heterozygosity - {sample_id} ({sample_set})",
+            title=f"{sample_id} ({sample_set})",
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
@@ -7176,11 +7176,10 @@ class Ag3:
         if circle_kwargs is None:
             circle_kwargs = dict()
         circle_kwargs.setdefault("size", 3)
-        circle_kwargs.setdefault("legend_label", "Heterozygosity")
         fig.circle(x="position", y="heterozygosity", source=data, **circle_kwargs)
 
         debug("tidy up the plot")
-        fig.yaxis.axis_label = "Heterozygosity"
+        fig.yaxis.axis_label = "Heterozygosity (bp⁻¹)"
         _bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
@@ -7188,14 +7187,14 @@ class Ag3:
 
         return fig
 
-    def plot_sample_heterozygosity(
+    def plot_heterozygosity(
         self,
         sample,
         region,
         site_mask,
         window_size,
         sample_set=None,
-        y_max="auto",
+        y_max=0.03,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=170,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
@@ -7216,7 +7215,7 @@ class Ag3:
             samples = [sample]
 
         debug("plot first sample track")
-        fig1 = self.plot_sample_heterozygosity_track(
+        fig1 = self.plot_heterozygosity_track(
             sample=samples[0],
             sample_set=sample_set,
             region=region,
@@ -7233,7 +7232,7 @@ class Ag3:
 
         debug("plot remaining sample tracks")
         for sample in samples[1:]:
-            fig_het = self.plot_sample_heterozygosity_track(
+            fig_het = self.plot_heterozygosity_track(
                 sample=sample,
                 sample_set=sample_set,
                 region=region,
