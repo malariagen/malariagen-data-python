@@ -4923,29 +4923,18 @@ class Ag3:
         debug("resolve region")
         region = self.resolve_region(region)
 
-        if sample_set is None:
-            debug("look up sample set for sample")
-            sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
-            sample_set = sample_rec["sample_set"]
+        debug("access sample metadata, look up sample")
+        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_id = sample_rec["sample_id"]
+        sample_set = sample_rec["sample_set"]
 
         debug("access HMM data")
         hmm = self.cnv_hmm(
             region=region, sample_sets=sample_set, max_coverage_variance=None
         )
 
-        debug(
-            "select data for the given sample - support either sample ID or integer index"
-        )
-        hmm_sample = None
-        sample_id = None
-        if isinstance(sample, str):
-            hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample)
-            sample_id = sample
-        elif isinstance(sample, int):
-            hmm_sample = hmm.isel(samples=sample)
-            sample_id = hmm["sample_id"].values[sample]
-        else:
-            type_error(name="sample", value=sample, expectation=(str, int))
+        debug("select data for the given sample")
+        hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample_id)
 
         debug("extract data into a pandas dataframe for easy plotting")
         data = hmm_sample[
@@ -7083,6 +7072,202 @@ class Ag3:
         )
 
         return df_pivot
+
+    def _lookup_sample(self, sample, sample_set=None):
+        df_samples = self.sample_metadata(sample_sets=sample_set)
+        sample_rec = None
+        if isinstance(sample, str):
+            sample_rec = df_samples.set_index("sample_id").loc[sample]
+        elif isinstance(sample, int):
+            sample_rec = df_samples.iloc[sample]
+        else:
+            type_error(name="sample", value=sample, expectation=(str, int))
+        return sample_rec
+
+    def plot_sample_heterozygosity_track(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        y_max="auto",
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        circle_kwargs=None,
+        show=False,
+        x_range=None,
+    ):
+        """TODO doc me"""
+        debug = self._log.debug
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        region = self.resolve_region(region)
+
+        debug("access sample metadata, look up sample")
+        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_id = sample_rec["sample_id"]
+        sample_set = sample_rec["sample_set"]
+
+        debug("access SNPs, select data for sample")
+        ds_snps = self.snp_calls(
+            region=region, sample_sets=sample_set, site_mask=site_mask
+        )
+        ds_snps_sample = ds_snps.set_index(samples="sample_id").sel(samples=sample_id)
+
+        # snp positions
+        pos = ds_snps_sample["variant_position"].values
+
+        # access genotypes
+        gt = allel.GenotypeVector(ds_snps_sample["call_genotype"].values)
+
+        # get het
+        is_het = gt.is_het()
+
+        # pos axis
+        window_pos = allel.moving_statistic(
+            values=pos,
+            statistic=np.mean,
+            size=window_size,
+        )
+
+        # het axis
+        window_het = allel.moving_statistic(
+            values=is_het,
+            statistic=np.mean,
+            size=window_size,
+        )
+
+        # determine plotting limits
+        if x_range is None:
+            if region.start is not None:
+                x_min = region.start
+            else:
+                x_min = 0
+            if region.end is not None:
+                x_max = region.end
+            else:
+                x_max = len(self.genome_sequence(region.contig))
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        debug("create a figure for plotting")
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        fig = bkplt.figure(
+            title=f"Heterozygosity - {sample_id} ({sample_set})",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, y_max),
+        )
+
+        debug("plot heterozygosity")
+        data = pd.DataFrame(
+            {
+                "position": window_pos,
+                "heterozygosity": window_het,
+            }
+        )
+        if circle_kwargs is None:
+            circle_kwargs = dict()
+        circle_kwargs.setdefault("size", 3)
+        circle_kwargs.setdefault("legend_label", "Heterozygosity")
+        fig.circle(x="position", y="heterozygosity", source=data, **circle_kwargs)
+
+        debug("tidy up the plot")
+        fig.yaxis.axis_label = "Heterozygosity"
+        _bokeh_style_genome_xaxis(fig, region.contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_sample_heterozygosity(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        y_max="auto",
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=170,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        circle_kwargs=None,
+        show=True,
+    ):
+        """TODO doc me"""
+
+        debug = self._log.debug
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # normalise to support multiple samples
+        if isinstance(sample, (list, tuple)):
+            samples = sample
+        else:
+            samples = [sample]
+
+        debug("plot first sample track")
+        fig1 = self.plot_sample_heterozygosity_track(
+            sample=samples[0],
+            sample_set=sample_set,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            y_max=y_max,
+            width=width,
+            height=track_height,
+            circle_kwargs=circle_kwargs,
+            show=False,
+        )
+        fig1.xaxis.visible = False
+        figs = [fig1]
+
+        debug("plot remaining sample tracks")
+        for sample in samples[1:]:
+            fig_het = self.plot_sample_heterozygosity_track(
+                sample=sample,
+                sample_set=sample_set,
+                region=region,
+                site_mask=site_mask,
+                window_size=window_size,
+                y_max=y_max,
+                width=width,
+                height=track_height,
+                circle_kwargs=circle_kwargs,
+                show=False,
+                x_range=fig1.x_range,
+            )
+            fig_het.xaxis.visible = False
+            figs.append(fig_het)
+
+        debug("plot genes track")
+        fig_genes = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+        figs.append(fig_genes)
+
+        debug("combine plots into a single figure")
+        fig_all = bklay.gridplot(
+            figs, ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig_all)
+
+        return fig_all
 
 
 def _setup_taxon_colors(plot_kwargs):
