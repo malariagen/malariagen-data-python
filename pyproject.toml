@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "5.1.0"
+version = "6.0.0.dev12"
 description = "A package for accessing and analysing MalariaGEN data."
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
@@ -28,7 +28,7 @@ numba = "*"
 plotly = "*"
 bokeh = "*"
 statsmodels = "*"
-ipyleaflet = "*"
+ipyleaflet = "<0.17"  # 0.17.0 appears to be broken on colab
 ipywidgets = "*"
 importlib_metadata = "*"
 ipinfo = "*"

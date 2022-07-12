@@ -563,3 +563,62 @@ class LoggingHelper:
     def set_level(self, level):
         if self._handler is not None:
             self._handler.setLevel(level)
+
+
+def jackknife_ci(stat_data, jack_stat, confidence_level):
+    """Compute a confidence interval from jackknife resampling.
+
+    Parameters
+    ----------
+    stat_data : scalar
+        Value of the statistic computed on all data.
+    jack_stat : ndarray
+        Values of the statistic computed for each jackknife resample.
+    confidence_level : float
+        Desired confidence level (e.g., 0.95).
+
+    Returns
+    -------
+    estimate
+        Bias-corrected "jackknifed estimate".
+    bias
+        Jackknife bias.
+    std_err
+        Standard error.
+    ci_err
+        Size of the confidence interval.
+    ci_low
+        Lower limit of confidence interval.
+    ci_upp
+        Upper limit of confidence interval.
+
+    Notes
+    -----
+    N.B., this implementation is based on code from astropy, see:
+
+    https://github.com/astropy/astropy/blob/8aba9632597e6bb489488109222bf2feff5835a6/astropy/stats/jackknife.py#L55
+
+    """
+    from scipy.special import erfinv
+
+    n = len(jack_stat)
+
+    mean_jack_stat = np.mean(jack_stat)
+
+    # jackknife bias
+    bias = (n - 1) * (mean_jack_stat - stat_data)
+
+    # jackknife standard error
+    std_err = np.sqrt(
+        (n - 1) * np.mean((jack_stat - mean_jack_stat) * (jack_stat - mean_jack_stat))
+    )
+
+    # bias-corrected "jackknifed estimate"
+    estimate = stat_data - bias
+
+    # confidence interval
+    z_score = np.sqrt(2.0) * erfinv(confidence_level)
+    ci_err = 2 * z_score * std_err
+    ci_low, ci_upp = estimate + z_score * np.array((-std_err, std_err))
+
+    return estimate, bias, std_err, ci_err, ci_low, ci_upp
