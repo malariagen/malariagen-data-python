@@ -651,7 +651,7 @@ def test_cross_metadata():
     assert df_crosses["sex"].unique().tolist() == expected_sex_values
 
 
-def test_site_annotations():
+def test_open_site_annotations():
 
     ag3 = setup_ag3()
 
@@ -670,18 +670,36 @@ def test_site_annotations():
         assert f in root
         for contig in contigs:
             assert contig in root[f]
+            z = root[f][contig]
+            # raw zarr data is aligned with genome sequence
+            assert z.shape == (len(ag3.genome_sequence(region=contig)),)
 
-    # test access as dask arrays
-    for region in "2R", "X", "AGAP007280", "2R:48714463-48715355":
-        for site_mask in None, "gamb_colu_arab":
-            pos = ag3.snp_sites(region=region, field="POS", site_mask=site_mask)
-            for field in "codon_degeneracy", "seq_cls":
-                d = ag3.site_annotations(
-                    region=region, field=field, site_mask=site_mask
-                )
-                assert isinstance(d, da.Array)
-                assert d.ndim == 1
-                assert d.shape == pos.shape
+
+@pytest.mark.parametrize("region", ["2R", "X", "AGAP007280", "2R:48714463-48715355"])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
+def test_site_annotations(region, site_mask):
+
+    ag3 = setup_ag3()
+
+    ds_snp = ag3.snp_variants(region=region, site_mask=site_mask)
+    n_variants = ds_snp.dims["variants"]
+    ds_ann = ag3.site_annotations(region=region, site_mask=site_mask)
+    # site annotations dataset is aligned with SNP sites
+    assert ds_ann.dims["variants"] == n_variants
+    assert isinstance(ds_ann, xr.Dataset)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        d = ds_ann[f]
+        assert d.ndim == 1
+        assert d.dims == ("variants",)
+        assert d.shape == (n_variants,)
 
 
 @pytest.mark.parametrize(
