@@ -29,6 +29,11 @@ from the following locations:
 ## Release notes
 
 
+### 6.0.0
+
+@@TODO release notes
+
+
 ### 5.1.0
 
 * Upgrade the default cohorts analysis in the `Ag3` class to `20220608`
