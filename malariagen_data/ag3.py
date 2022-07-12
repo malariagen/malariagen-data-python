@@ -74,7 +74,7 @@ DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_COHORTS_ANALYSIS = "20220608"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
-DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
+DEFAULT_GENES_TRACK_HEIGHT = 100  # height in px for bokeh genes track plots
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
 
@@ -7084,19 +7084,21 @@ class Ag3:
             type_error(name="sample", value=sample, expectation=(str, int))
         return sample_rec
 
-    def plot_heterozygosity_track(
+    def _plot_heterozygosity_track(
         self,
-        sample,
+        *,
+        sample_id,
+        sample_set,
+        windows,
+        counts,
         region,
-        site_mask,
         window_size,
-        sample_set=None,
-        y_max=0.03,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        circle_kwargs=None,
-        show=False,
-        x_range=None,
+        y_max,
+        width,
+        height,
+        circle_kwargs,
+        show,
+        x_range,
     ):
         """TODO doc me"""
         debug = self._log.debug
@@ -7106,39 +7108,11 @@ class Ag3:
 
         region = self.resolve_region(region)
 
-        debug("access sample metadata, look up sample")
-        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
-        sample_id = sample_rec.name  # sample_id
-        sample_set = sample_rec["sample_set"]
-
-        debug("access SNPs, select data for sample")
-        ds_snps = self.snp_calls(
-            region=region, sample_sets=sample_set, site_mask=site_mask
-        )
-        ds_snps_sample = ds_snps.set_index(samples="sample_id").sel(samples=sample_id)
-
-        # snp positions
-        pos = ds_snps_sample["variant_position"].values
-
-        # access genotypes
-        gt = allel.GenotypeVector(ds_snps_sample["call_genotype"].values)
-
-        # get het
-        is_het = gt.is_het()
-
         # pos axis
-        window_pos = allel.moving_statistic(
-            values=pos,
-            statistic=np.mean,
-            size=window_size,
-        )
+        window_pos = windows.mean(axis=1)
 
         # het axis
-        window_het = allel.moving_statistic(
-            values=is_het,
-            statistic=np.mean,
-            size=window_size,
-        )
+        window_het = counts / window_size
 
         # determine plotting limits
         if x_range is None:
@@ -7184,6 +7158,50 @@ class Ag3:
 
         if show:
             bkplt.show(fig)
+
+        return fig
+
+    def plot_heterozygosity_track(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        y_max=0.03,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        circle_kwargs=None,
+        show=False,
+        x_range=None,
+    ):
+        """TODO doc me"""
+        debug = self._log.debug
+
+        debug("compute windowed heterozygosity")
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+        )
+
+        debug("plot heterozygosity")
+        fig = self._plot_heterozygosity_track(
+            sample_id=sample_id,
+            sample_set=sample_set,
+            windows=windows,
+            counts=counts,
+            region=region,
+            window_size=window_size,
+            y_max=y_max,
+            width=width,
+            height=height,
+            circle_kwargs=circle_kwargs,
+            show=show,
+            x_range=x_range,
+        )
 
         return fig
 
@@ -7267,6 +7285,334 @@ class Ag3:
             bkplt.show(fig_all)
 
         return fig_all
+
+    def _sample_count_het(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+    ):
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+
+        debug("access sample metadata, look up sample")
+        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_id = sample_rec.name  # sample_id
+        sample_set = sample_rec["sample_set"]
+
+        debug("access SNPs, select data for sample")
+        ds_snps = self.snp_calls(
+            region=region, sample_sets=sample_set, site_mask=site_mask
+        )
+        ds_snps_sample = ds_snps.set_index(samples="sample_id").sel(samples=sample_id)
+
+        # snp positions
+        pos = ds_snps_sample["variant_position"].values
+
+        # access genotypes
+        gt = allel.GenotypeDaskVector(ds_snps_sample["call_genotype"].data)
+
+        # compute het
+        with self._dask_progress(desc="Compute heterozygous genotypes"):
+            is_het = gt.is_het().compute()
+
+        # compute window coordinates
+        windows = allel.moving_statistic(
+            values=pos,
+            statistic=lambda x: [x[0], x[-1]],
+            size=window_size,
+        )
+
+        # compute windowed heterozygosity
+        counts = allel.moving_statistic(
+            values=is_het,
+            statistic=np.sum,
+            size=window_size,
+        )
+
+        return sample_id, sample_set, windows, counts
+
+    def roh_hmm(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        phet_roh=0.001,
+        phet_nonroh=(0.003, 0.01),
+        transition=1e-3,
+    ):
+        """TODO doc me"""
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+
+        debug("compute windowed heterozygosity")
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+        )
+
+        debug("compute runs of homozygosity")
+        df_roh = _roh_hmm_predict(
+            windows=windows,
+            counts=counts,
+            phet_roh=phet_roh,
+            phet_nonroh=phet_nonroh,
+            transition=transition,
+            window_size=window_size,
+            sample_id=sample_id,
+            contig=region.contig,
+        )
+
+        return df_roh
+
+    def plot_roh_track(
+        self,
+        df_roh,
+        region,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=100,
+        show=False,
+        x_range=None,
+        title="Runs of homozygosity",
+    ):
+        debug = self._log.debug
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        debug("handle region parameter - this determines the genome region to plot")
+        region = self.resolve_region(region)
+        contig = region.contig
+        start = region.start
+        end = region.end
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(self.genome_sequence(contig))
+
+        debug("define x axis range")
+        if x_range is None:
+            x_range = bkmod.Range1d(start, end, bounds="auto")
+
+        debug(
+            "we're going to plot each gene as a rectangle, so add some additional columns"
+        )
+        data = df_roh.copy()
+        data["bottom"] = 0.2
+        data["top"] = 0.8
+
+        debug("make a figure")
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        fig = bkplt.figure(
+            title=title,
+            plot_width=width,
+            plot_height=height,
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "tap",
+                "hover",
+            ],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            x_range=x_range,
+        )
+
+        debug("now plot the ROH as rectangles")
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="roh_start",
+            right="roh_stop",
+            source=data,
+            line_width=0.5,
+            fill_alpha=0.5,
+        )
+
+        debug("tidy up the plot")
+        fig.y_range = bkmod.Range1d(0, 1)
+        fig.ygrid.visible = False
+        fig.yaxis.ticker = []
+        _bokeh_style_genome_xaxis(fig, region.contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_roh(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        phet_roh=0.001,
+        phet_nonroh=(0.003, 0.01),
+        transition=1e-3,
+        y_max=0.03,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        heterozygosity_height=170,
+        roh_height=50,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        circle_kwargs=None,
+        show=True,
+    ):
+        """TODO doc me"""
+
+        debug = self._log.debug
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        region = self.resolve_region(region)
+
+        debug("compute windowed heterozygosity")
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+        )
+
+        debug("plot_heterozygosity track")
+        fig_het = self._plot_heterozygosity_track(
+            sample_id=sample_id,
+            sample_set=sample_set,
+            windows=windows,
+            counts=counts,
+            region=region,
+            window_size=window_size,
+            y_max=y_max,
+            width=width,
+            height=heterozygosity_height,
+            circle_kwargs=circle_kwargs,
+            show=False,
+            x_range=None,
+        )
+        fig_het.xaxis.visible = False
+        figs = [fig_het]
+
+        debug("compute runs of homozygosity")
+        df_roh = _roh_hmm_predict(
+            windows=windows,
+            counts=counts,
+            phet_roh=phet_roh,
+            phet_nonroh=phet_nonroh,
+            transition=transition,
+            window_size=window_size,
+            sample_id=sample_id,
+            contig=region.contig,
+        )
+
+        debug("plot roh track")
+        fig_roh = self.plot_roh_track(
+            df_roh,
+            region=region,
+            width=width,
+            height=roh_height,
+            show=False,
+            x_range=fig_het.x_range,
+        )
+        fig_roh.xaxis.visible = False
+        figs.append(fig_roh)
+
+        debug("plot genes track")
+        fig_genes = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig_het.x_range,
+            show=False,
+        )
+        figs.append(fig_genes)
+
+        debug("combine plots into a single figure")
+        fig_all = bklay.gridplot(
+            figs, ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig_all)
+
+        return fig_all
+
+
+def _roh_hmm_predict(
+    *,
+    windows,
+    counts,
+    phet_roh,
+    phet_nonroh,
+    transition,
+    window_size,
+    sample_id,
+    contig,
+):
+    # conditional import, pomegranate takes a long time to install on
+    # linux due to lack of prebuilt wheels on PyPI
+    from allel.stats.misc import tabulate_state_blocks
+
+    # this implementation is based on scikit-allel, but modified to use
+    # moving window computation of het counts
+    from allel.stats.roh import _hmm_derive_transition_matrix
+    from pomegranate import HiddenMarkovModel, PoissonDistribution
+
+    # het probabilities
+    het_px = np.concatenate([(phet_roh,), phet_nonroh])
+
+    # start probabilities (all equal)
+    start_prob = np.repeat(1 / het_px.size, het_px.size)
+
+    # transition between underlying states
+    transition_mx = _hmm_derive_transition_matrix(transition, het_px.size)
+
+    # emission probability distribution
+    dists = [PoissonDistribution(x * window_size) for x in het_px]
+
+    # set up model
+    model = HiddenMarkovModel.from_matrix(
+        transition_probabilities=transition_mx, distributions=dists, starts=start_prob
+    )
+
+    # predict hidden states
+    prediction = np.array(model.predict(counts[:, None]))
+
+    # tabulate runs of homozygosity (state 0)
+    df_blocks = tabulate_state_blocks(prediction, states=list(range(len(het_px))))
+    df_roh = df_blocks[(df_blocks["state"] == 0)].reset_index(drop=True)
+
+    # adapt the dataframe for ROH
+    df_roh["sample_id"] = sample_id
+    df_roh["contig"] = contig
+    df_roh["roh_start"] = df_roh["start_ridx"].apply(lambda y: windows[y, 0])
+    df_roh["roh_stop"] = df_roh["stop_lidx"].apply(lambda y: windows[y, 1])
+    df_roh["roh_length"] = df_roh["roh_stop"] - df_roh["roh_start"]
+    df_roh.rename(columns={"is_marginal": "roh_is_marginal"}, inplace=True)
+
+    return df_roh[
+        [
+            "sample_id",
+            "contig",
+            "roh_start",
+            "roh_stop",
+            "roh_length",
+            "roh_is_marginal",
+        ]
+    ]
 
 
 def _setup_taxon_colors(plot_kwargs):
