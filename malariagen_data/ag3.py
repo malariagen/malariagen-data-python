@@ -3301,7 +3301,7 @@ class Ag3:
             release_path = _release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohorts metadata exist, need to handle FileNotFoundError
+            # N.B., not all cohort metadata files exist, need to handle FileNotFoundError
             try:
                 with self._fs.open(path) as f:
                     df = pd.read_csv(f, na_values="")
@@ -4290,9 +4290,9 @@ class Ag3:
             `Ag3.aa_allele_frequencies_advanced()` or
             `Ag3.gene_cnv_frequencies_advanced()`.
         height : int, optional
-            Height of plot in pixels.
+            Height of plot in pixels (px).
         width : int, optional
-            Width of plot in pixels
+            Width of plot in pixels (px).
         title : bool or str, optional
             If True, attempt to use metadata from input dataset as a plot
             title. Otherwise, use supplied value as a title.
@@ -4603,7 +4603,7 @@ class Ag3:
 
         Parameters
         ----------
-        region : str
+        region : str or Region
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
@@ -4883,6 +4883,7 @@ class Ag3:
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
+        x_range=None,
     ):
         """Plot CNV HMM data for a single sample, using bokeh.
 
@@ -4908,6 +4909,8 @@ class Ag3:
             Passed through to bokeh line() function.
         show : bool, optional
             If true, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
 
         Returns
         -------
@@ -4954,7 +4957,8 @@ class Ag3:
         debug("set up x range")
         x_min = data["variant_position"].values[0]
         x_max = data["variant_end"].values[-1]
-        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
@@ -6176,9 +6180,46 @@ class Ag3:
         width=800,
         height=120,
         max_snps=200_000,
+        x_range=None,
         show=True,
     ):
-        # TODO docstring
+        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
+        with segregating and non-segregating SNPs positioned on different levels,
+        and coloured by site filter.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : str, optional
+            Site filters mask to apply.
+        width : int, optional
+            Width of plot in pixels (px).
+        height : int, optional
+            Height of plot in pixels (px).
+        max_snps : int, optional
+            Maximum number of SNPs to plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        show : bool, optional
+            If True, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+
+        """
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -6242,7 +6283,8 @@ class Ag3:
         pos = data["pos"].values
         x_min = pos[0]
         x_max = pos[-1]
-        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
         tooltips = [
             ("Position", "$x{0,0}"),
@@ -6338,9 +6380,45 @@ class Ag3:
         width=800,
         track_height=80,
         genes_height=120,
+        max_snps=200_000,
         show=True,
     ):
-        # TODO docstring
+        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
+        with segregating and non-segregating SNPs positioned on different levels,
+        and coloured by site filter.
+
+        Parameters
+        ----------
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : str, optional
+            Site filters mask to apply.
+        width : int, optional
+            Width of plot in pixels (px).
+        track_height : int, optional
+            Height of SNPs track in pixels (px).
+        genes_height : int, optional
+            Height of genes track in pixels (px).
+        max_snps : int, optional
+            Maximum number of SNPs to show.
+        show : bool, optional
+            If True, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
         debug = self._log.debug
 
         import bokeh.layouts as bklay
@@ -6354,6 +6432,7 @@ class Ag3:
             site_mask=site_mask,
             width=width,
             height=track_height,
+            max_snps=max_snps,
             show=False,
         )
         fig1.xaxis.visible = False
@@ -6820,7 +6899,55 @@ class Ag3:
         n_jack=200,
         confidence_level=0.95,
     ):
-        """TODO doc me"""
+        """Compute genetic diversity summary statistics for a cohort of
+        individuals.
+
+        Parameters
+        ----------
+        cohort : str or (str, str)
+            Either a string giving one of the predefined cohort labels, or a
+            pair of strings giving a custom cohort label and a sample query to
+            select samples in the cohort.
+        cohort_size : int
+            Number of individuals to use for computation of summary statistics.
+            If the cohort is larger than this size, it will be randomly
+            down-sampled.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        random_seed : int, optional
+            Seed for random number generator.
+        n_jack : int, optional
+            Number of blocks to divide the data into for the block jackknife
+            estimation of confidence intervals. N.B., larger is not necessarily
+            better.
+        confidence_level : float, optional
+            Confidence level to use for confidence interval calculation. 0.95
+            means 95% confidence interval.
+
+        Returns
+        -------
+        stats : pandas.Series
+            A series with summary statistics and their confidence intervals.
+
+        """
 
         debug = self._log.debug
 
@@ -6899,7 +7026,57 @@ class Ag3:
         n_jack=200,
         confidence_level=0.95,
     ):
-        """TODO doc me"""
+        """Compute genetic diversity summary statistics for multiple cohorts.
+
+        Parameters
+        ----------
+        cohorts : str or dict
+            Either a string giving one of the predefined cohort columns, or a
+            dictionary mapping cohort labels to sample queries.
+        cohort_size : int
+            Number of individuals to use for computation of summary statistics.
+            If the cohort is larger than this size, it will be randomly
+            down-sampled.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        random_seed : int, optional
+            Seed for random number generator.
+        n_jack : int, optional
+            Number of blocks to divide the data into for the block jackknife
+            estimation of confidence intervals. N.B., larger is not necessarily
+            better.
+        confidence_level : float, optional
+            Confidence level to use for confidence interval calculation. 0.95
+            means 95% confidence interval.
+
+        Returns
+        -------
+        df_stats : pandas.DataFrame
+            A DataFrame where each row provides summary statistics and their
+            confidence intervals for a single cohort.
+
+        """
         debug = self._log.debug
         info = self._log.info
 
@@ -6947,7 +7124,7 @@ class Ag3:
             n_samples = len(df_cohort_samples)
             if n_samples < cohort_size:
                 info(
-                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"
+                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"  # noqa
                 )  # noqa
             else:
                 cohort_queries_checked[cohort_label] = cohort_query
@@ -6979,7 +7156,30 @@ class Ag3:
         center=(-2, 20),
         zoom=3,
     ):
-        """TODO doc me"""
+        """Plot an interactive map showing sampling locations using ipyleaflet.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        basemap : dict
+            Basemap description coming from ipyleaflet.basemaps.
+        center : tuple of int, optional
+            Location to center the map.
+        zoom : int, optional
+            Initial zoom level.
+
+        Returns
+        -------
+        samples_map : ipyleaflet.Map
+            Ipyleaflet map widget.
+
+        """
         debug = self._log.debug
 
         import ipyleaflet
@@ -7054,7 +7254,29 @@ class Ag3:
         ),
         columns="taxon",
     ):
-        """TODO doc me"""
+        """Create a pivot table showing numbers of samples available by space,
+        time and taxon.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        index : str or tuple of str
+            Sample metadata columns to use for the index.
+        columns : str or tuple of str
+            Sample metadata columns to use for the columns.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            Pivot table of sample counts.
+
+        """
         debug = self._log.debug
 
         debug("load sample metadata")
@@ -7100,7 +7322,6 @@ class Ag3:
         show,
         x_range,
     ):
-        """TODO doc me"""
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -7172,10 +7393,46 @@ class Ag3:
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         circle_kwargs=None,
-        show=False,
+        show=True,
         x_range=None,
     ):
-        """TODO doc me"""
+        """Plot windowed heterozygosity for a single sample over a genome
+        region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        y_max : float, optional
+            Y axis limit.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        show : bool, optional
+            If true, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
         debug = self._log.debug
 
         debug("compute windowed heterozygosity")
@@ -7219,7 +7476,43 @@ class Ag3:
         circle_kwargs=None,
         show=True,
     ):
-        """TODO doc me"""
+        """Plot windowed heterozygosity for a single sample over a genome
+        region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        y_max : float, optional
+            Y axis limit.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int, optional
+            Heterozygosity track height in pixels (px).
+        genes_height : int, optional
+            Genes track height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         debug = self._log.debug
 
@@ -7346,7 +7639,38 @@ class Ag3:
         phet_nonroh=(0.003, 0.01),
         transition=1e-3,
     ):
-        """TODO doc me"""
+        """Infer runs of homozygosity for a single sample over a genome region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        phet_roh: float, optional
+            Probability of observing a heterozygote in a ROH.
+        phet_nonroh: tuple of floats, optional
+            One or more probabilities of observing a heterozygote outside a ROH.
+        transition: float, optional
+           Probability of moving between states. A larger window size may call
+           for a larger transitional probability.
+
+        Returns
+        -------
+        df_roh : pandas.DataFrame
+            A DataFrame where each row provides data about a single run of
+            homozygosity.
+
+        """
         debug = self._log.debug
 
         region = self.resolve_region(region)
@@ -7380,7 +7704,7 @@ class Ag3:
         region,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=100,
-        show=False,
+        show=True,
         x_range=None,
         title="Runs of homozygosity",
     ):
@@ -7470,7 +7794,52 @@ class Ag3:
         circle_kwargs=None,
         show=True,
     ):
-        """TODO doc me"""
+        """Plot windowed heterozygosity and inferred runs of homozygosity for a
+        single sample over a genome region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        phet_roh: float, optional
+            Probability of observing a heterozygote in a ROH.
+        phet_nonroh: tuple of floats, optional
+            One or more probabilities of observing a heterozygote outside a ROH.
+        transition: float, optional
+           Probability of moving between states. A larger window size may call
+           for a larger transitional probability.
+        y_max : float, optional
+            Y axis limit.
+        width : int, optional
+            Plot width in pixels (px).
+        heterozygosity_height : int, optional
+            Heterozygosity track height in pixels (px).
+        roh_height : int, optional
+            ROH track height in pixels (px).
+        genes_height : int, optional
+            Genes track height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
 
         debug = self._log.debug
 
@@ -7584,6 +7953,7 @@ def _roh_hmm_predict(
     dists = [PoissonDistribution(x * window_size) for x in het_px]
 
     # set up model
+    # noinspection PyArgumentList
     model = HiddenMarkovModel.from_matrix(
         transition_probabilities=transition_mx, distributions=dists, starts=start_prob
     )
@@ -7592,6 +7962,7 @@ def _roh_hmm_predict(
     prediction = np.array(model.predict(counts[:, None]))
 
     # tabulate runs of homozygosity (state 0)
+    # noinspection PyTypeChecker
     df_blocks = tabulate_state_blocks(prediction, states=list(range(len(het_px))))
     df_roh = df_blocks[(df_blocks["state"] == 0)].reset_index(drop=True)
 
