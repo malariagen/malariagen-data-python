@@ -431,12 +431,12 @@ def test_genome():
         assert seq.dtype == "S1"
 
 
-def test_geneset():
+def test_genome_features():
 
     ag3 = setup_ag3()
 
     # default
-    df = ag3.geneset()
+    df = ag3.genome_features()
     assert isinstance(df, pd.DataFrame)
     gff3_cols = [
         "contig",
@@ -452,7 +452,7 @@ def test_geneset():
     assert df.columns.tolist() == expected_cols
 
     # don't unpack attributes
-    df = ag3.geneset(attributes=None)
+    df = ag3.genome_features(attributes=None)
     assert isinstance(df, pd.DataFrame)
     expected_cols = gff3_cols + ["attributes"]
     assert df.columns.tolist() == expected_cols
@@ -462,11 +462,11 @@ def test_geneset():
     "region",
     ["AGAP007280", "3R:28,000,000-29,000,000", "2R", "X", ["3R", "3L"]],
 )
-def test_geneset_region(region):
+def test_genome_features_region(region):
 
     ag3 = setup_ag3()
 
-    df = ag3.geneset(region=region)
+    df = ag3.genome_features(region=region)
     assert isinstance(df, pd.DataFrame)
     gff3_cols = [
         "contig",
@@ -1395,8 +1395,8 @@ def test_gene_cnv(region, sample_sets):
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
-    df_geneset = ag3.geneset(region=region)
-    df_genes = df_geneset.query("type == 'gene'")
+    df_genome_features = ag3.genome_features(region=region)
+    df_genes = df_genome_features.query("type == 'gene'")
     n_genes = len(df_genes)
     assert ds.dims["genes"] == n_genes
 
@@ -1453,8 +1453,8 @@ def test_gene_cnv_xarray_indexing(region, sample_sets):
 
     # check dim lengths
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
-    df_geneset = ag3.geneset(region=region)
-    df_genes = df_geneset.query("type == 'gene'")
+    df_genome_features = ag3.genome_features(region=region)
+    df_genes = df_genome_features.query("type == 'gene'")
     gene = random.choice(df_genes["ID"].tolist())
     sample = random.choice(df_samples["sample_id"].tolist())
     ds = ds.set_index(genes="gene_id", samples="sample_id")
@@ -1503,7 +1503,7 @@ def test_gene_cnv_frequencies(region, cohorts):
         "gene_description",
         "label",
     ]
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
 
     df_cnv_frq = ag3.gene_cnv_frequencies(
         region=region,
@@ -1569,14 +1569,14 @@ def test_gene_cnv_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
     assert len(df) == len(df_genes) * 2
 
 
 def test_gene_cnv_frequencies__max_coverage_variance():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     region = "3L"
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
 
     base_columns = [
         "contig",
@@ -1657,7 +1657,7 @@ def test_gene_cnv_frequencies__drop_invariant():
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
     assert np.all(df["max_af"] > 0)
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
     assert len(df) < len(df_genes) * 2
 
 
@@ -1933,7 +1933,7 @@ def test_sample_cohorts(sample_sets):
 def test_locate_region(region_raw):
 
     ag3 = setup_ag3()
-    gene_annotation = ag3.geneset(attributes=["ID"])
+    gene_annotation = ag3.genome_features(attributes=["ID"])
     region = resolve_region(ag3, region_raw)
     pos = ag3.snp_sites(region=region.contig, field="POS")
     ref = ag3.snp_sites(region=region.contig, field="REF")
@@ -1953,7 +1953,7 @@ def test_locate_region(region_raw):
     if isinstance(region_raw, Region):
         assert region == region_raw
 
-    # check that gene name matches coordinates from the geneset and matches gene sequence
+    # check that gene name matches coordinates from the genome_features and matches gene sequence
     if region_raw == "AGAP007280":
         gene = gene_annotation.query("ID == 'AGAP007280'").squeeze()
         assert region == Region(gene.contig, gene.start, gene.end)

@@ -374,7 +374,7 @@ def _handle_region_coords(resource, region):
 
 
 def _handle_region_feature(resource, region):
-    gene_annotation = resource.geneset(attributes=["ID"])
+    gene_annotation = resource.genome_features(attributes=["ID"])
     results = gene_annotation.query(f"ID == '{region}'")
     if not results.empty:
         # region is a feature ID

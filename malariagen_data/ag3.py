@@ -54,7 +54,7 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})
 
 PUBLIC_RELEASES = ("3.0",)
 GCS_URL = "gs://vo_agam_release/"
-GENESET_GFF3_PATH = (
+GENOME_FEATURES_GFF3_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
 )
 GENOME_FASTA_PATH = (
@@ -214,7 +214,7 @@ class Ag3:
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
         self._cache_annotator = None
-        self._cache_geneset = dict()
+        self._cache_genome_features = dict()
         self._cache_cross_metadata = None
         self._cache_site_annotations = None
         self._cache_cnv_hmm = dict()
@@ -1112,7 +1112,13 @@ class Ag3:
 
         return d[loc_region]
 
-    def geneset(self, region=None, attributes=("ID", "Parent", "Name", "description")):
+    def geneset(self, *args, **kwargs):
+        """Deprecated, this method has been renamed to snp_calls()."""
+        return self.genome_features(*args, **kwargs)
+
+    def genome_features(
+        self, region=None, attributes=("ID", "Parent", "Name", "description")
+    ):
         """Access genome feature annotations (AgamP4.12).
 
         Parameters
@@ -1139,15 +1145,15 @@ class Ag3:
             attributes = tuple(attributes)
 
         try:
-            df = self._cache_geneset[attributes]
+            df = self._cache_genome_features[attributes]
 
         except KeyError:
-            path = f"{self._base_path}/{GENESET_GFF3_PATH}"
+            path = f"{self._base_path}/{GENOME_FEATURES_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
                 df = unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_geneset[attributes] = df
+            self._cache_genome_features[attributes] = df
 
         debug("handle region")
         if region is not None:
@@ -1172,10 +1178,10 @@ class Ag3:
         return df.reset_index(drop=True).copy()
 
     def _transcript_to_gene_name(self, transcript):
-        df_geneset = self.geneset().set_index("ID")
-        rec_transcript = df_geneset.loc[transcript]
+        df_genome_features = self.genome_features().set_index("ID")
+        rec_transcript = df_genome_features.loc[transcript]
         parent = rec_transcript["Parent"]
-        rec_parent = df_geneset.loc[parent]
+        rec_parent = df_genome_features.loc[parent]
 
         # manual overrides
         if parent == "AGAP004707":
@@ -1247,8 +1253,8 @@ class Ag3:
         """Set up a dataframe with SNP site and filter columns."""
         debug = self._log.debug
 
-        debug("get feature direct from geneset")
-        gs = self.geneset()
+        debug("get feature direct from genome_features")
+        gs = self.genome_features()
         feature = gs[gs["ID"] == transcript].squeeze()
         contig = feature.contig
         region = Region(contig, feature.start, feature.end)
@@ -1292,7 +1298,7 @@ class Ag3:
         """Set up variant effect annotator."""
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), geneset=self.geneset()
+                genome=self.open_genome(), genome_features=self.genome_features()
             )
         return self._cache_annotator
 
@@ -2504,8 +2510,8 @@ class Ag3:
             pos, end, cn = dask.compute(pos, end, cn)
 
         debug("access genes")
-        df_geneset = self.geneset(region=region)
-        df_genes = df_geneset.query("type == 'gene'")
+        df_genome_features = self.genome_features(region=region)
+        df_genes = df_genome_features.query("type == 'gene'")
 
         debug("setup intermediates")
         windows = []
@@ -4345,8 +4351,10 @@ class Ag3:
             x_range = bkmod.Range1d(start, end, bounds="auto")
 
         debug("select the genes overlapping the requested region")
-        df_geneset = self.geneset(attributes=["ID", "Name", "Parent", "description"])
-        data = df_geneset.query(
+        df_genome_features = self.genome_features(
+            attributes=["ID", "Name", "Parent", "description"]
+        )
+        data = df_genome_features.query(
             f"type == 'gene' and contig == '{contig}' and start < {end} and end > {start}"
         ).copy()
 
@@ -4461,8 +4469,8 @@ class Ag3:
         import bokeh.plotting as bkplt
 
         debug("find the transcript annotation")
-        df_geneset = self.geneset().set_index("ID")
-        parent = df_geneset.loc[transcript]
+        df_genome_features = self.genome_features().set_index("ID")
+        parent = df_genome_features.loc[transcript]
 
         if title is True:
             title = f"{transcript} ({parent.strand})"
@@ -4488,7 +4496,7 @@ class Ag3:
         )
 
         debug("find child components of the transcript")
-        data = df_geneset.set_index("Parent").loc[transcript].copy()
+        data = df_genome_features.set_index("Parent").loc[transcript].copy()
         data["bottom"] = -0.4
         data["top"] = 0.4
 
@@ -5062,7 +5070,7 @@ class Ag3:
                 "tracks": [
                     {
                         "name": "Genes",
-                        "url": f"{GCS_URL}{GENESET_GFF3_PATH}",
+                        "url": f"{GCS_URL}{GENOME_FEATURES_GFF3_PATH}",
                         "indexed": False,
                     }
                 ],
