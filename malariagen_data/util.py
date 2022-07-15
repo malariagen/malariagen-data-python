@@ -373,6 +373,14 @@ def _handle_region_coords(resource, region):
         return None
 
 
+def _prep_geneset_attributes_arg(attributes):
+    if type(attributes) not in [tuple, list] and attributes != "*":
+        raise TypeError("'attributes' must be a list, tuple, or '*'")
+    if attributes is not None:
+        attributes = tuple(attributes)
+    return attributes
+
+
 def _handle_region_feature(resource, region):
     gene_annotation = resource.genome_features(attributes=["ID"])
     results = gene_annotation.query(f"ID == '{region}'")
