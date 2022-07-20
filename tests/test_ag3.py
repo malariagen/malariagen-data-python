@@ -205,6 +205,12 @@ def test_sample_metadata_dtypes():
     for k, v in expected_dtypes.items():
         assert df_samples[k].dtype == v, k
 
+    # check sample sets one by one, just to be sure
+    for sample_set in ag3.sample_sets()["sample_set"]:
+        df_samples = ag3.sample_metadata(sample_sets=sample_set)
+        for k, v in expected_dtypes.items():
+            assert df_samples[k].dtype == v, k
+
 
 def test_sample_metadata_with_aim_species():
     ag3 = setup_ag3(species_analysis="aim_20220528")
