@@ -606,23 +606,23 @@ Fork and clone this repo:
 $ git clone git@github.com:[username]/malariagen-data-python.git
 ```
 
-Install [poetry](https://python-poetry.org/docs/#installation) somehow, e.g.:
+Install [poetry](https://python-poetry.org/docs/#installation) >=1.2.0b3 somehow, e.g.:
 
 ```bash
-$ pip3 install poetry
+$ python3.7 -m install poetry==1.2.0b3
 ```
 
 Create development environment:
 
 ```bash
 $ cd malariagen-data-python
-$ poetry install
+$ python3.7 -m poetry install
 ```
 
 Activate development environment:
 
 ```bash
-$ poetry shell
+$ python3.7 -m poetry shell
 ```
 
 Install pre-commit hooks:
@@ -640,7 +640,7 @@ $ pre-commit run --all-files
 Run tests:
 
 ```bash
-$ pytest -v
+$ python3.7 -m run pytest -v
 ```
 
 ## Release process
@@ -670,8 +670,8 @@ out the release tag locally.
 7. Run:
 
 ```
-poetry build
-poetry publish
+$ python3.7 -m poetry build
+$ python3.7 -m poetry publish
 ```
 
 You will need a PyPI username and password, and will need to be added
