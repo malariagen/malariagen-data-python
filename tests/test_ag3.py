@@ -182,6 +182,36 @@ def test_sample_metadata():
     assert_frame_equal(df_default, df_all)
 
 
+def test_sample_metadata_dtypes():
+
+    expected_dtypes = {
+        "sample_id": object,
+        "partner_sample_id": object,
+        "contributor": object,
+        "country": object,
+        "location": object,
+        "year": "int64",
+        "month": "int64",
+        "latitude": "float64",
+        "longitude": "float64",
+        "sex_call": object,
+        "sample_set": object,
+        "release": object,
+    }
+
+    # check all available sample sets
+    ag3 = setup_ag3(pre=True)
+    df_samples = ag3.sample_metadata()
+    for k, v in expected_dtypes.items():
+        assert df_samples[k].dtype == v, k
+
+    # check sample sets one by one, just to be sure
+    for sample_set in ag3.sample_sets()["sample_set"]:
+        df_samples = ag3.sample_metadata(sample_sets=sample_set)
+        for k, v in expected_dtypes.items():
+            assert df_samples[k].dtype == v, k
+
+
 def test_sample_metadata_with_aim_species():
     ag3 = setup_ag3(species_analysis="aim_20220528")
 
@@ -297,6 +327,7 @@ def test_sample_metadata_without_cohorts():
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_sample_metadata_without_species_calls(analysis):
 
+    expected_cols = None
     if analysis == "aim_20220528":
         expected_cols = expected_aim_species_cols
     if analysis == "aim_20200422":
@@ -353,6 +384,7 @@ def test_species_calls(sample_sets, analysis):
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_missing_species_calls(analysis):
 
+    expected_cols = None
     if analysis == "aim_20220528":
         expected_cols = expected_aim_species_cols
     if analysis == "aim_20200422":

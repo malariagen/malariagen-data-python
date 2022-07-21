@@ -498,8 +498,20 @@ class Ag3:
             release = self._lookup_release(sample_set=sample_set)
             release_path = _release_to_path(release)
             path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
+            dtype = {
+                "sample_id": object,
+                "partner_sample_id": object,
+                "contributor": object,
+                "country": object,
+                "location": object,
+                "year": "int64",
+                "month": "int64",
+                "latitude": "float64",
+                "longitude": "float64",
+                "sex_call": object,
+            }
             with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="")
+                df = pd.read_csv(f, na_values="", dtype=dtype)
 
             # ensure all column names are lower case
             df.columns = [c.lower() for c in df.columns]
