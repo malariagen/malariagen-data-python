@@ -16,7 +16,11 @@ license = "MIT"
 python = ">=3.7,<3.10"
 numpy = "*"
 scipy = "*"
-pandas = "*"
+pandas = [
+    {version="<1.4.0", python="~3.7"},
+    {version="*", python=">3.7,<3.10"}
+]
+# pandas = "*"
 zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
