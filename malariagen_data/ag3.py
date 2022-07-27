@@ -6562,6 +6562,8 @@ class Ag3:
         sort=True,
         row_height=4,
         colors="T10",
+        xgap=0,
+        ygap=0.5,
     ):
         """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
 
@@ -6583,6 +6585,10 @@ class Ag3:
             Height per sample in px.
         colors : str, optional
             Choose your favourite color palette.
+        xgap : float, optional
+            Creates lines between columns (variants).
+        ygap : float, optional
+            Creates lines between rows (samples).
 
         Returns
         -------
@@ -6709,8 +6715,8 @@ class Ag3:
                     ],
                     zmin=-1.5,
                     zmax=2.5,
-                    xgap=0,
-                    ygap=0.5,  # this creates faint lines between rows
+                    xgap=xgap,
+                    ygap=ygap,  # this creates faint lines between rows
                     colorbar=dict(
                         title="AIM genotype",
                         tickmode="array",
