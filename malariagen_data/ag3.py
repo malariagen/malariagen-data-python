@@ -7013,21 +7013,34 @@ class Ag3:
             sample_sets=sample_sets, sample_query=cohort_query
         )
         extra_fields = [
-            "taxon",
-            "year",
-            "month",
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
+            ("taxon", "unique"),
+            ("year", "unique"),
+            ("month", "unique"),
+            ("country", "unique"),
+            ("admin1_iso", "unique"),
+            ("admin1_name", "unique"),
+            ("admin2_name", "unique"),
+            ("longitude", "mean"),
+            ("latitude", "mean"),
         ]
-        for field in extra_fields:
-            vals = df_samples[field].sort_values().unique()
-            if len(vals) == 0:
-                vals = np.nan
-            elif len(vals) == 1:
-                vals = vals[0]
-            stats[field] = vals
+        for field, agg in extra_fields:
+            if agg == "unique":
+                vals = df_samples[field].sort_values().unique()
+                if len(vals) == 0:
+                    val = np.nan
+                elif len(vals) == 1:
+                    val = vals[0]
+                else:
+                    val = vals.tolist()
+            elif agg == "mean":
+                vals = df_samples[field]
+                if len(vals) == 0:
+                    val = np.nan
+                else:
+                    val = np.mean(vals)
+            else:
+                val = np.nan
+            stats[field] = val
 
         return pd.Series(stats)
 
