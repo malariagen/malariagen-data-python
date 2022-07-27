@@ -7173,6 +7173,7 @@ class Ag3:
         basemap=None,
         center=(-2, 20),
         zoom=3,
+        min_samples=1,
     ):
         """Plot an interactive map showing sampling locations using ipyleaflet.
 
@@ -7191,6 +7192,9 @@ class Ag3:
             Location to center the map.
         zoom : int, optional
             Initial zoom level.
+        min_samples : int, optional
+            Minimum number of samples required to show a marker for a given
+            location.
 
         Returns
         -------
@@ -7246,16 +7250,19 @@ class Ag3:
             title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
             title += f"\nCountry: {row.country}"
             title += "\nNo. specimens: "
+            all_n = 0
             for taxon in taxa:
                 n = row[taxon]
+                all_n += n
                 if n > 0:
                     title += f"{n} {taxon}; "
-            marker = ipyleaflet.Marker(
-                location=(row.latitude, row.longitude),
-                draggable=False,
-                title=title,
-            )
-            samples_map.add_layer(marker)
+            if all_n >= min_samples:
+                marker = ipyleaflet.Marker(
+                    location=(row.latitude, row.longitude),
+                    draggable=False,
+                    title=title,
+                )
+                samples_map.add_layer(marker)
 
         return samples_map
 
