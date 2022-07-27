@@ -118,7 +118,7 @@ class Amin1:
         return d[loc_region]
 
     def geneset(self, *args, **kwargs):
-        """Deprecated, this method has been renamed to snp_calls()."""
+        """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
     def genome_features(self, attributes=("ID", "Parent", "Name", "description")):
