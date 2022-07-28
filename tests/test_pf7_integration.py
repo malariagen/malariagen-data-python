@@ -291,6 +291,25 @@ def test_variant_calls(extended):
 
 
 @pytest.mark.parametrize(
+    "region",
+    [
+        "Pf3D7_01_v3",
+        "*",
+        ["Pf3D7_07_v3", "Pf3D7_02_v3", "Pf3D7_03_v3"],
+        ["Pf3D7_07_v3", "Pf3D7_02_v3:15-20", "Pf3D7_03_v3:40-50"],
+        "PF3D7_0709000.1:pep",
+    ],
+)
+def test_genome_sequence(region):
+
+    pf7 = setup_pf7()
+
+    seq = pf7.genome_sequence(region=region)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == "S1"
+
+
+@pytest.mark.parametrize(
     "attributes",
     [
         ("ID", "Parent", "Name", "alias"),
