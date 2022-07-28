@@ -239,6 +239,25 @@ def test_variant_calls(extended):
 
 
 @pytest.mark.parametrize(
+    "region",
+    [
+        "PvP01_05_v1",
+        "*",
+        ["PvP01_01_v1", "PvP01_05_v1", "PvP01_MIT_v1"],
+        ["PvP01_01_v1", "PvP01_05_v1:15-20", "PvP01_MIT_v1:40-50"],
+        "PVP01_0100100.1:pep",
+    ],
+)
+def test_genome_sequence(region):
+
+    pv4 = setup_pv4()
+
+    seq = pv4.genome_sequence(region=region)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == "S1"
+
+
+@pytest.mark.parametrize(
     "attributes",
     [
         ("ID", "Parent", "Name", "alias"),
