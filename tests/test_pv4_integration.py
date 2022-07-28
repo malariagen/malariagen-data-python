@@ -1,5 +1,6 @@
 import dask.array as da
 import numpy as np
+import pandas as pd
 import pytest
 import xarray
 
@@ -235,3 +236,67 @@ def test_variant_calls(extended):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_AD"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        ("ID", "Parent", "Name", "alias"),
+        "*",
+        ["ID", "literature"],
+    ],
+)
+def test_genome_features(attributes):
+
+    pv4 = setup_pv4()
+
+    default_columns = [
+        "contig",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    # check fields
+    df = pv4.genome_features(attributes=attributes)
+    assert isinstance(df, pd.DataFrame)
+    if attributes == "*":
+        additional_columns = [
+            "Dbxref",
+            "Derives_from",
+            "End_range",
+            "ID",
+            "Name",
+            "Note",
+            "Ontology_term",
+            "Parent",
+            "Start_range",
+            "alias",
+            "comment",
+            "cytoplasmic_polypeptide_region",
+            "eupathdb_uc",
+            "gPI_anchor_cleavage_site",
+            "literature",
+            "membrane_structure",
+            "non_cytoplasmic_polypeptide_region",
+            "orthologous_to",
+            "polypeptide_domain",
+            "previous_systematic_id",
+            "product",
+            "signal_peptide",
+            "stop_codon_redefined_as_selenocysteine",
+            "synonym",
+            "translation",
+            "transmembrane_polypeptide_region",
+        ]
+        expected_columns = default_columns + additional_columns
+    else:
+        expected_columns = default_columns + list(attributes)
+    assert list(df.columns) == expected_columns
+
+    # check dimensions
+    expected_len = 38681
+    assert df.shape == (expected_len, len(expected_columns))

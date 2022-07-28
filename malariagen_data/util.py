@@ -74,15 +74,19 @@ def unpack_gff3_attributes(df, attributes):
 
     df = df.copy()
 
-    if attributes == "*":
-        # discover all attribute keys
-        attributes = set()
-        for a in df["attributes"]:
-            attributes.update(a.keys())
-        attributes = sorted(attributes)
+    # discover all attribute keys
+    all_attributes = set()
+    for a in df["attributes"]:
+        all_attributes.update(a.keys())
+    all_attributes = sorted(all_attributes)
+
+    if attributes == tuple("*"):
+        attributes = all_attributes
 
     # unpack attributes into columns
     for key in attributes:
+        if key not in all_attributes:
+            raise ValueError(f"'{key}' not in attributes set. Options {all_attributes}")
         df[key] = df["attributes"].apply(lambda v: v.get(key, np.nan))
     del df["attributes"]
 
@@ -369,8 +373,16 @@ def _handle_region_coords(resource, region):
         return None
 
 
+def _prep_geneset_attributes_arg(attributes):
+    if type(attributes) not in [tuple, list] and attributes != "*":
+        raise TypeError("'attributes' must be a list, tuple, or '*'")
+    if attributes is not None:
+        attributes = tuple(attributes)
+    return attributes
+
+
 def _handle_region_feature(resource, region):
-    gene_annotation = resource.geneset(attributes=["ID"])
+    gene_annotation = resource.genome_features(attributes=["ID"])
     results = gene_annotation.query(f"ID == '{region}'")
     if not results.empty:
         # region is a feature ID

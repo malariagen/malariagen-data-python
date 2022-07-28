@@ -11,9 +11,12 @@ from malariagen_data.util import (
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    _prep_geneset_attributes_arg,
     da_from_zarr,
     init_filesystem,
     init_zarr_store,
+    read_gff3,
+    unpack_gff3_attributes,
 )
 
 
@@ -34,6 +37,7 @@ class PlasmodiumDataResource:
         # setup caches
         self._cache_sample_metadata = None
         self._cache_variant_calls_zarr = None
+        self._cache_genome_features = dict()
 
         self.extended_calldata_variables = self.CONF["extended_calldata_variables"]
         self.extended_variant_fields = self.CONF["extended_variant_fields"]
@@ -188,3 +192,31 @@ class PlasmodiumDataResource:
         ds = xarray.Dataset(data_vars=data_vars, coords=coords)
 
         return ds
+
+    def genome_features(self, attributes=("ID", "Parent", "Name", "alias")):
+        """Access genome feature annotations.
+
+        Parameters
+        ----------
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. Provide "*" to unpack all attributes.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+
+        """
+        # Attributes
+        attributes = _prep_geneset_attributes_arg(attributes)
+
+        try:
+            df = self._cache_genome_features[attributes]
+        except KeyError:
+            path = os.path.join(self._path, self.CONF["annotations_path"])
+            with self._fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_genome_features[attributes] = df
+
+        return df
