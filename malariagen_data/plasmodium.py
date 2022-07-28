@@ -14,8 +14,8 @@ from malariagen_data.util import (
     da_from_zarr,
     init_filesystem,
     init_zarr_store,
-    resolve_region,
     read_gff3,
+    resolve_region,
     unpack_gff3_attributes,
 )
 
@@ -257,10 +257,10 @@ class PlasmodiumDataResource:
         Parameters
         ----------
         region: str or list of str or Region or list of Region. Defaults to '*'
-            Chromosome (e.g., "Pf3D7_01_v3"), gene name (e.g., "PF3D7_0114100.1:5UTR"), genomic
-            region defined with coordinates (e.g., "Pf3D7_01_v3:1-500").
+            Chromosome (e.g., "Pf3D7_07_v3"), gene name (e.g., "PF3D7_0709000"), genomic
+            region defined with coordinates (e.g., "Pf3D7_07_v3:1-500").
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["Pf3D7_01_v3:1-5000","Pf3D7_02_v3:15-20","Pf3D7_03_v3:40-50"].
+            be concatenated, e.g., ["Pf3D7_07_v3:1-500","Pf3D7_02_v3:15-20","Pf3D7_03_v3:40-50"].
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -288,7 +288,6 @@ class PlasmodiumDataResource:
             if region == tuple("*"):
                 # TODO: cache this?
                 region = self.contigs
-
             d = da.concatenate(
                 [
                     self._subset_genome_sequence_region(
