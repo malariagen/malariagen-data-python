@@ -196,6 +196,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                 "default_url": "gs://test_plasmodium_release/",
                 "metadata_path": "metadata/test_metadata.txt",
                 "reference_path": "reference/plasmodium.genome.zarr",
+                "reference_contigs": ["contig1", "contig2", "contig3"],
                 "annotations_path": "annotations/test_annotation_file.gff.gz",
                 "variant_calls_zarr_path": "test_plasmodium.zarr/",
                 "default_variant_variables": {
@@ -597,13 +598,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         self, mock_concat, mock_subset_genome, mock_genome_features, mock_open_genome
     ):
         mock_open_genome.return_value = "fake_ref_zarr"
-        test_contig_df = pd.DataFrame(
-            data={"contig": ["contig1", "contig2", "contig3"]}
-        )
-        mock_genome_features.return_value = test_contig_df
         self.test_plasmodium_class.genome_sequence()
         mock_open_genome.assert_called_once()
-        mock_genome_features.assert_called_once()
         calls = [
             call(
                 genome="fake_ref_zarr",
@@ -638,13 +634,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         self, mock_concat, mock_subset_genome, mock_genome_features, mock_open_genome
     ):
         mock_open_genome.return_value = "fake_ref_zarr"
-        test_contig_df = pd.DataFrame(
-            data={"contig": ["contig1", "contig2", "contig3"]}
-        )
-        mock_genome_features.return_value = test_contig_df
         self.test_plasmodium_class.genome_sequence(region=["contig1", "contig3"])
         mock_open_genome.assert_called_once()
-        mock_genome_features.assert_called_once()
         calls = [
             call(
                 genome="fake_ref_zarr",
@@ -673,13 +664,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         self, mock_concat, mock_subset_genome, mock_genome_features, mock_open_genome
     ):
         mock_open_genome.return_value = "fake_ref_zarr"
-        test_contig_df = pd.DataFrame(
-            data={"contig": ["contig1", "contig2", "contig3"]}
-        )
-        mock_genome_features.return_value = test_contig_df
         self.test_plasmodium_class.genome_sequence(region="contig1")
         mock_open_genome.assert_called_once()
-        mock_genome_features.assert_called_once()
         calls = [
             call(
                 genome="fake_ref_zarr",

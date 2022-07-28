@@ -233,9 +233,7 @@ class PlasmodiumDataResource:
         self, genome, region, inline_array=True, chunks="native"
     ):
         """Sebset reference genome sequence."""
-        # TODO: do we need to do this or can call resolve region directly from util
         region = self.resolve_region(region)
-        # region = resolve_region(self, region)
         z = genome[region.contig]
 
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -276,7 +274,6 @@ class PlasmodiumDataResource:
 
         """
         genome = self.open_genome()
-        # self.contigs = self.genome_features().contig.unique()
         if type(region) not in [tuple, list] and region != "*" and region is not None:
             d = self._subset_genome_sequence_region(
                 genome=genome,
@@ -303,7 +300,6 @@ class PlasmodiumDataResource:
         return d
 
     def geneset(self, attributes):
-        # Figure out better way to do this????
         features_df = self.genome_features(attributes=attributes)
         return features_df
 
