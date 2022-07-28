@@ -112,7 +112,6 @@ try:
         def __contains__(self, key):
             return key in self._mutable_mapping
 
-
 except ImportError:
     # zarr < 2.11.0
 
