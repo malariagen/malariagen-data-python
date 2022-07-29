@@ -299,10 +299,6 @@ class PlasmodiumDataResource:
             )
         return d
 
-    def geneset(self, attributes):
-        features_df = self.genome_features(attributes=attributes)
-        return features_df
-
     def genome_features(self, attributes=("ID", "Parent", "Name", "alias")):
         """Access genome feature annotations.
 
