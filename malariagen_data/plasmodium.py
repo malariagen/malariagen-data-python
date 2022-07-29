@@ -11,6 +11,7 @@ from malariagen_data.util import (
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    _prep_geneset_attributes_arg,
     da_from_zarr,
     init_filesystem,
     init_zarr_store,
@@ -284,7 +285,6 @@ class PlasmodiumDataResource:
         else:
             region = tuple(region)
             if region == tuple("*"):
-                # TODO: cache this?
                 region = self.contigs
             d = da.concatenate(
                 [
@@ -317,10 +317,7 @@ class PlasmodiumDataResource:
 
         """
         # Attributes
-        if type(attributes) not in [tuple, list] and attributes != "*":
-            raise TypeError("'attributes' must be a list, tuple, or '*'")
-        if attributes is not None:
-            attributes = tuple(attributes)
+        attributes = _prep_geneset_attributes_arg(attributes)
 
         try:
             df = self._cache_genome_features[attributes]

@@ -76,12 +76,12 @@ def test_genome():
     assert set(amin1.contigs) - set(genome) == set()
 
 
-def test_geneset():
+def test_genome_features():
 
     amin1 = setup_amin1()
 
     # default
-    df = amin1.geneset()
+    df = amin1.genome_features()
     assert isinstance(df, pd.DataFrame)
     gff3_cols = [
         "contig",
@@ -97,7 +97,7 @@ def test_geneset():
     assert df.columns.tolist() == expected_cols
 
     # don't unpack attributes
-    df = amin1.geneset(attributes=None)
+    df = amin1.genome_features(attributes=None)
     assert isinstance(df, pd.DataFrame)
     expected_cols = gff3_cols + ["attributes"]
     assert df.columns.tolist() == expected_cols

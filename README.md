@@ -29,6 +29,56 @@ from the following locations:
 ## Release notes
 
 
+### 6.0.0
+
+@@TODO release notes
+
+
+### 5.1.0
+
+* Upgrade the default cohorts analysis in the `Ag3` class to `20220608`
+  ([GH256](https://github.com/malariagen/malariagen-data-python/pull/256)).
+
+
+### 5.0.1
+
+* Handle sample sets with missing species calls
+  ([GH251](https://github.com/malariagen/malariagen-data-python/pull/251)).
+
+
+### 5.0.0
+
+* Upgrade the default species analysis in the `Ag3` class to use a new
+  set of improved ancestry-informative markers (AIMs). Note that this
+  includes a small change to the values in the `aim_species` column of
+  the sample metadata: the value "intermediate_arabiensis_gambiae" has
+  been replaced by "intermediate_gambcolu_arabiensis" for consistency
+  with AIM naming conventions used elsewhere.
+
+* Add `Ag3.aim_calls()` and `Ag3.plot_aim_heatmap()` functions for
+  accessing and plotting ancestry-informative marker (AIM) genotypes
+  ([GH236](https://github.com/malariagen/malariagen-data-python/issues/236)).
+
+* Add site filters tracks to IGV via `Ag3.view_alignments()`
+  ([GH246](https://github.com/malariagen/malariagen-data-python/issues/246)).
+
+
+### 4.4.0
+
+* Add `Ag3.aim_variants()` function
+  ([GH233](https://github.com/malariagen/malariagen-data-python/issues/233)).
+
+* Enable plotting high coverage variance samples with
+  `Ag3.plot_cnv_hmm_coverage()`
+  ([GH240](https://github.com/malariagen/malariagen-data-python/issues/240)).
+
+
+### 4.3.1
+
+* Handle sample sets with missing cohorts metadata
+  ([GH235](https://github.com/malariagen/malariagen-data-python/pull/235)).
+
+
 ### 4.3.0
 
 * Add Ag3.plot_snps() to plot segregating and non-segregating SNPs and
@@ -556,23 +606,23 @@ Fork and clone this repo:
 $ git clone git@github.com:[username]/malariagen-data-python.git
 ```
 
-Install [poetry](https://python-poetry.org/docs/#installation) somehow, e.g.:
+Install [poetry](https://python-poetry.org/docs/#installation) >=1.2.0b3 somehow, e.g.:
 
 ```bash
-$ pip3 install poetry
+$ python3.7 -m install poetry==1.2.0b3
 ```
 
 Create development environment:
 
 ```bash
 $ cd malariagen-data-python
-$ poetry install
+$ python3.7 -m poetry install
 ```
 
 Activate development environment:
 
 ```bash
-$ poetry shell
+$ python3.7 -m poetry shell
 ```
 
 Install pre-commit hooks:
@@ -590,13 +640,41 @@ $ pre-commit run --all-files
 Run tests:
 
 ```bash
-$ pytest -v
+$ python3.7 -m run pytest -v
 ```
 
-Bump version, build and publish to PyPI:
+## Release process
 
-```bash
-$ poetry version prerelease
-$ poetry build
-$ poetry publish
+To create a new release...
+
+1. From master, create a new local branch named "vX.X.X-prep"
+replacing "X.X.X" with the new version number.
+
+2. Open pyproject.toml in a text editor and change the `version`
+property to the new version number.
+
+3. Open README.md in a text editor and add a new subsection in the
+release notes section with some information about the changes in the
+new release.
+
+4. Commit the changes to pyproject.toml and README.md, open a pull
+request with the title "vX.X.X release prep", and request a review.
+
+5. Once the PR is approved, merge to master, then create a GitHub
+release, using the new version number as the release tag.
+
+6. Back on your local system, run git pull to update your master
+branch and fetch remote tags, then run `git checkout vX.X.X` to check
+out the release tag locally.
+
+7. Run:
+
 ```
+$ python3.7 -m poetry build
+$ python3.7 -m poetry publish
+```
+
+You will need a PyPI username and password, and will need to be added
+as a maintained of the malariagen_data package on PyPI.
+
+N.B., release numbers should follow semantic versioning.

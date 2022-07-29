@@ -1,0 +1,4 @@
+sample_id,partner_sample_id,contributor,country,location,year,month,latitude,longitude,sex_call
+AR0047-C,LUA047,Joao Pinto,Angola,Luanda,2009,4,-8.884,13.302,F
+AR0049-C,LUA049,Joao Pinto,Angola,Luanda,2009,4,-8.884,13.302,F
+AR0051-C,LUA051,Joao Pinto,Angola,Luanda,2009,4,-8.884,13.302,F
