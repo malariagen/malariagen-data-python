@@ -58,7 +58,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             "Sample was in Pf6": [True, True, False, False],
         }
         self.test_metadata_df = pd.DataFrame(data=self.d)
-        # self.test_plasmodium_class.contigs = ["contig1", "contig2", "contig3"]
         self.test_ref_zarr = zarr.group()
         self.test_ref_zarr.create_dataset("contig1", data=np.arange(10), chunks=(1,))
         self.test_ref_zarr.create_dataset("contig2", data=np.arange(15), chunks=(1,))
