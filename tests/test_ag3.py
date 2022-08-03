@@ -2059,6 +2059,45 @@ def test_haplotypes__sample_query(sample_query):
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
 
+def test_haplotypes__cohort_size():
+
+    sample_sets = "AG1000G-BF-B"
+    region = "3L"
+    analysis = "gamb_colu_arab"
+    cohort_size = 10
+
+    ag3 = setup_ag3()
+
+    ds = ag3.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        analysis=analysis,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check dim lengths
+    assert ds.dims["samples"] == cohort_size
+    assert ds.dims["alleles"] == 2
+
+
 # test v3 sample sets
 @pytest.mark.parametrize(
     "sample_sets",

@@ -3213,6 +3213,8 @@ class Ag3:
         sample_query=None,
         inline_array=True,
         chunks="native",
+        cohort_size=None,
+        random_seed=42,
     ):
         """Access haplotype data.
 
@@ -3241,6 +3243,10 @@ class Ag3:
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr
             chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -3307,6 +3313,18 @@ class Ag3:
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
+
+        debug("handle cohort size")
+        if cohort_size is not None:
+            n_samples = ds.dims["samples"]
+            if n_samples < cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                )
+            rng = np.random.default_rng(seed=random_seed)
+            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
+            loc_downsample.sort()
+            ds = ds.isel(samples=loc_downsample)
 
         return ds
 
