@@ -7957,6 +7957,55 @@ class Ag3:
 
         return fig_all
 
+    def h12_calibration(
+        self,
+        contig,
+        analysis,
+        sample_query,
+        sample_sets,
+        cohort_size=20,
+        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
+        random_seed=42,
+    ):
+        """Generate h12 GWSS calibration data for different window sizes.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset of haplotypes and associated data.
+
+        """
+
 
 def _roh_hmm_predict(
     *,
