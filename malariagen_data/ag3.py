@@ -6,6 +6,8 @@ from pathlib import Path
 from textwrap import dedent
 
 import allel
+import bokeh.models as bkmod
+import bokeh.plotting as bkplt
 import dask
 import dask.array as da
 import ipinfo
@@ -7971,12 +7973,8 @@ class Ag3:
 
         Parameters
         ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
+        contig: str
+            Chromosome arm (e.g., "2L")
         analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
             Which phasing analysis to use. If analysing only An. arabiensis, the
             "arab" analysis is best. If analysing only An. gambiae and An.
@@ -7989,22 +7987,139 @@ class Ag3:
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
+        window_sizes : int or list of int, optional
+            The sizes of windows used to calculate h12 over. Multiple window
+            sizes should be used to calibrate the optimal size for h12 analysis.
         random_seed : int, optional
             Random seed used for down-sampling.
 
         Returns
         -------
-        ds : xarray.Dataset
-            A dataset of haplotypes and associated data.
+        calibration runs : list of numpy.ndarrays
+            A list of h12 calibration run arrays for each window size, containing
+            values and percentiles.
 
         """
+
+        # access haplotypes
+        ds_haps = self.haplotypes(
+            region=contig,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            analysis=analysis,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+
+        # TODO - cache haplotype data
+
+        ht = gt.to_haplotypes().compute()
+
+        calibration_runs = list()
+        for window_size in tqdm(window_sizes, desc="Compute H12"):
+            h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+            calibration_runs.append(h12)
+
+        # TODO - cache calibration runs
+
+        return calibration_runs
+
+    def plot_h12_calibration(
+        self,
+        contig,
+        analysis,
+        sample_query,
+        sample_sets,
+        cohort_size=20,
+        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
+        random_seed=42,
+        title=None,
+    ):
+        """Plot h12 GWSS calibration data for different window sizes.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        window_sizes : int or list of int, optional
+            The sizes of windows used to calculate h12 over. Multiple window
+            sizes should be used to calibrate the optimal size for h12 analysis.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+
+        Returns
+        -------
+        fig : figure
+            A plot showing h12 calibration run percentiles for different window
+            sizes.
+
+        """
+
+        # get H12 values
+        calibration_runs = self.h12_calibration(
+            contig=contig,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            window_sizes=window_sizes,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        # compute summaries
+        q50 = [np.median(h12) for h12 in calibration_runs]
+        q25 = [np.percentile(h12, 25) for h12 in calibration_runs]
+        q75 = [np.percentile(h12, 75) for h12 in calibration_runs]
+        q05 = [np.percentile(h12, 5) for h12 in calibration_runs]
+        q95 = [np.percentile(h12, 95) for h12 in calibration_runs]
+
+        # make plot
+        fig = bkplt.figure(plot_width=700, plot_height=400, x_axis_type="log")
+        fig.patch(
+            window_sizes + window_sizes[::-1],
+            q75 + q25[::-1],
+            alpha=0.75,
+            line_width=2,
+            legend_label="25-75%",
+        )
+        fig.patch(
+            window_sizes + window_sizes[::-1],
+            q95 + q05[::-1],
+            alpha=0.5,
+            line_width=2,
+            legend_label="5-95%",
+        )
+        fig.line(
+            window_sizes, q50, line_color="black", line_width=4, legend_label="median"
+        )
+        fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
+
+        fig.xaxis.ticker = window_sizes
+        fig.x_range = bkmod.Range1d(100, 10000)
+        if title is None:
+            title = sample_query
+        fig.title = title
+        bkplt.show(fig)
 
 
 def _roh_hmm_predict(

@@ -3,6 +3,7 @@ import random
 import shutil
 
 import dask.array as da
+import numpy
 import numpy as np
 import pandas as pd
 import pytest
@@ -3173,3 +3174,28 @@ def test_aim_calls(sample_sets, sample_query, aims):
         assert ds.dims["variants"] == 700
     elif aims == "gambcolu_vs_arab":
         assert ds.dims["variants"] == 2612
+
+
+def test_h12_calibration():
+    ag3 = setup_ag3()
+    query_ghana = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+    window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
+
+    calibration_runs = ag3.h12_calibration(
+        contig=contig,
+        analysis=analysis,
+        sample_query=query_ghana,
+        sample_sets=sample_sets,
+        window_sizes=window_sizes,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(calibration_runs, list)
+    assert isinstance(calibration_runs[0], numpy.ndarray)
+
+    # check dimensions
+    assert len(calibration_runs) == len(window_sizes)
