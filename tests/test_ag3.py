@@ -3176,18 +3176,21 @@ def test_aim_calls(sample_sets, sample_query, aims):
         assert ds.dims["variants"] == 2612
 
 
-def test_h12_calibration():
+@pytest.mark.parametrize(
+    "window_sizes",
+    [[100, 200, 500, 1000, 2000, 5000, 10000, 20000], [5000, 10000, 20000]],
+)
+def test_h12_calibration(window_sizes):
     ag3 = setup_ag3()
-    query_ghana = "country == 'Ghana'"
+    sample_query = "country == 'Ghana'"
     contig = "3L"
     analysis = "gamb_colu"
     sample_sets = "3.0"
-    window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
 
     calibration_runs = ag3.h12_calibration(
         contig=contig,
         analysis=analysis,
-        sample_query=query_ghana,
+        sample_query=sample_query,
         sample_sets=sample_sets,
         window_sizes=window_sizes,
         cohort_size=20,
@@ -3203,7 +3206,7 @@ def test_h12_calibration():
 
 def test_h12_gwss():
     ag3 = setup_ag3()
-    query_ghana = "country == 'Ghana'"
+    sample_query = "country == 'Ghana'"
     contig = "3L"
     analysis = "gamb_colu"
     sample_sets = "3.0"
@@ -3212,7 +3215,7 @@ def test_h12_gwss():
     x, h12 = ag3.h12_gwss(
         contig=contig,
         analysis=analysis,
-        sample_query=query_ghana,
+        sample_query=sample_query,
         sample_sets=sample_sets,
         window_size=window_size,
         cohort_size=20,
@@ -3226,6 +3229,6 @@ def test_h12_gwss():
     assert len(x) == 11354
     assert len(x) == len(h12)
 
-    # check values
+    # check some values
     assert x[0] == 27701.195
     assert h12[11353] == 0.17875

@@ -8016,6 +8016,39 @@ class Ag3:
 
         """
 
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_h12_calib_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=analysis,
+            window_sizes=window_sizes,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            calibration_runs = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            calibration_runs = self._h12_calibration(**params)
+            self.results_cache_set(name=name, params=params, results=calibration_runs)
+
+        return calibration_runs
+
+    def _h12_calibration(
+        self,
+        contig,
+        analysis,
+        sample_query,
+        sample_sets,
+        cohort_size,
+        window_sizes,
+        random_seed,
+    ):
         # access haplotypes
         ds_haps = self.haplotypes(
             region=contig,
@@ -8028,16 +8061,12 @@ class Ag3:
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
 
-        # TODO - cache haplotype data
-
         ht = gt.to_haplotypes().compute()
 
-        calibration_runs = list()
+        calibration_runs = dict()
         for window_size in tqdm(window_sizes, desc="Compute H12"):
             h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
-            calibration_runs.append(h12)
-
-        # TODO - cache calibration runs
+            calibration_runs[str(window_size)] = h12
 
         return calibration_runs
 
@@ -8176,6 +8205,42 @@ class Ag3:
             an array with h12 statistic values for each window (h12).
 
         """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_h12_gwss_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._h12_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        h12 = results["h12"]
+
+        return x, h12
+
+    def _h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        cohort_size,
+        random_seed,
+    ):
 
         ds_haps = self.haplotypes(
             region=contig,
@@ -8194,7 +8259,9 @@ class Ag3:
 
         x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
-        return x, h12
+        results = dict(x=x, h12=h12)
+
+        return results
 
     def plot_h12_gwss(
         self,
