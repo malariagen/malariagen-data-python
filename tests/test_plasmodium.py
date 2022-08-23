@@ -1,6 +1,6 @@
 import os
 import unittest
-from unittest.mock import mock_open, patch
+from unittest.mock import call, mock_open, patch
 
 import dask.array as da
 import numpy as np
@@ -58,6 +58,11 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             "Sample was in Pf6": [True, True, False, False],
         }
         self.test_metadata_df = pd.DataFrame(data=self.d)
+        self.test_ref_zarr = zarr.group()
+        self.test_ref_zarr.create_dataset("contig1", data=np.arange(10), chunks=(1,))
+        self.test_ref_zarr.create_dataset("contig2", data=np.arange(15), chunks=(1,))
+        self.test_ref_zarr.create_dataset("contig3", data=np.arange(10), chunks=(1,))
+
         self.test_zarr_root = zarr.group()
         variants = self.test_zarr_root.create_group("variants")
         variants.create_dataset("POS", data=np.arange(10), chunks=(1,))
@@ -189,6 +194,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             {
                 "default_url": "gs://test_plasmodium_release/",
                 "metadata_path": "metadata/test_metadata.txt",
+                "reference_path": "reference/plasmodium.genome.zarr",
+                "reference_contigs": ["contig1", "contig2", "contig3"],
                 "annotations_path": "annotations/test_annotation_file.gff.gz",
                 "variant_calls_zarr_path": "test_plasmodium.zarr/",
                 "default_variant_variables": {
@@ -540,6 +547,151 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             set(expected_columns),
         )
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
+
+    @patch(
+        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+    )
+    @patch("malariagen_data.plasmodium.zarr.open_consolidated")
+    def test_open_genome_without_cache(self, mock_zarr, mock_safestore):
+        with patch(
+            "malariagen_data.plasmodium.init_filesystem",
+            return_value=["fs", self.test_data_path],
+        ):
+            plas_mock_fs = PlasmodiumDataResource(
+                self.test_config_path, url=self.test_data_path
+            )
+        plas_mock_fs.open_genome()
+        test_zarr_path = os.path.join(
+            self.test_data_path, "reference/plasmodium.genome.zarr"
+        )
+        mock_safestore.assert_called_once_with(fs="fs", path=test_zarr_path)
+        mock_zarr.assert_called_once_with(store="Safe store object")
+
+    @patch(
+        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+    )
+    @patch("malariagen_data.plasmodium.zarr.open_consolidated")
+    def test_open_genome_with_cache(self, mock_zarr, mock_safestore):
+        with patch(
+            "malariagen_data.plasmodium.init_filesystem",
+            return_value=["fs", self.test_data_path],
+        ):
+            plas_mock_fs = PlasmodiumDataResource(
+                self.test_config_path, url=self.test_data_path
+            )
+        plas_mock_fs.open_genome()
+        plas_mock_fs.open_genome()
+        test_zarr_path = os.path.join(
+            self.test_data_path, "reference/plasmodium.genome.zarr"
+        )
+        mock_safestore.assert_called_once_with(fs="fs", path=test_zarr_path)
+        mock_zarr.assert_called_once_with(store="Safe store object")
+
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource.open_genome")
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource.genome_features")
+    @patch(
+        "malariagen_data.plasmodium.PlasmodiumDataResource._subset_genome_sequence_region"
+    )
+    @patch("dask.array.concatenate")
+    def test_genome_sequence_default(
+        self, mock_concat, mock_subset_genome, mock_genome_features, mock_open_genome
+    ):
+        mock_open_genome.return_value = "fake_ref_zarr"
+        self.test_plasmodium_class.genome_sequence()
+        mock_open_genome.assert_called_once()
+        calls = [
+            call(
+                genome="fake_ref_zarr",
+                region="contig1",
+                inline_array=True,
+                chunks="native",
+            ),
+            call(
+                genome="fake_ref_zarr",
+                region="contig2",
+                inline_array=True,
+                chunks="native",
+            ),
+            call(
+                genome="fake_ref_zarr",
+                region="contig3",
+                inline_array=True,
+                chunks="native",
+            ),
+        ]
+        mock_subset_genome.assert_has_calls(
+            calls,
+        )
+
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource.open_genome")
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource.genome_features")
+    @patch(
+        "malariagen_data.plasmodium.PlasmodiumDataResource._subset_genome_sequence_region"
+    )
+    @patch("dask.array.concatenate")
+    def test_genome_sequence_list(
+        self, mock_concat, mock_subset_genome, mock_genome_features, mock_open_genome
+    ):
+        mock_open_genome.return_value = "fake_ref_zarr"
+        self.test_plasmodium_class.genome_sequence(region=["contig1", "contig3"])
+        mock_open_genome.assert_called_once()
+        calls = [
+            call(
+                genome="fake_ref_zarr",
+                region="contig1",
+                inline_array=True,
+                chunks="native",
+            ),
+            call(
+                genome="fake_ref_zarr",
+                region="contig3",
+                inline_array=True,
+                chunks="native",
+            ),
+        ]
+        mock_subset_genome.assert_has_calls(
+            calls,
+        )
+
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource.open_genome")
+    @patch("malariagen_data.plasmodium.PlasmodiumDataResource.genome_features")
+    @patch(
+        "malariagen_data.plasmodium.PlasmodiumDataResource._subset_genome_sequence_region"
+    )
+    @patch("dask.array.concatenate")
+    def test_genome_sequence_string(
+        self, mock_concat, mock_subset_genome, mock_genome_features, mock_open_genome
+    ):
+        mock_open_genome.return_value = "fake_ref_zarr"
+        self.test_plasmodium_class.genome_sequence(region="contig1")
+        mock_open_genome.assert_called_once()
+        calls = [
+            call(
+                genome="fake_ref_zarr",
+                region="contig1",
+                inline_array=True,
+                chunks="native",
+            ),
+        ]
+        mock_subset_genome.assert_has_calls(
+            calls,
+        )
+
+    def test_subset_genome_sequence_contig1(self):
+        sequence = self.test_plasmodium_class._subset_genome_sequence_region(
+            genome=self.test_ref_zarr, region="contig1"
+        )
+        assert isinstance(sequence, da.Array)
+        assert sequence.shape == (10,)
+        assert sequence.ndim == 1
+
+    def test_subset_genome_sequence_contig2(self):
+        sequence = self.test_plasmodium_class._subset_genome_sequence_region(
+            genome=self.test_ref_zarr, region="contig2"
+        )
+        assert isinstance(sequence, da.Array)
+        assert sequence.shape == (15,)
+        assert sequence.ndim == 1
 
 
 if __name__ == "__main__":
