@@ -8129,11 +8129,23 @@ class Ag3:
         )
 
         # compute summaries
-        q50 = [np.median(h12) for h12 in calibration_runs]
-        q25 = [np.percentile(h12, 25) for h12 in calibration_runs]
-        q75 = [np.percentile(h12, 75) for h12 in calibration_runs]
-        q05 = [np.percentile(h12, 5) for h12 in calibration_runs]
-        q95 = [np.percentile(h12, 95) for h12 in calibration_runs]
+        q50 = [np.median(calibration_runs[window]) for window in calibration_runs.files]
+        q25 = [
+            np.percentile(calibration_runs[window], 25)
+            for window in calibration_runs.files
+        ]
+        q75 = [
+            np.percentile(calibration_runs[window], 75)
+            for window in calibration_runs.files
+        ]
+        q05 = [
+            np.percentile(calibration_runs[window], 5)
+            for window in calibration_runs.files
+        ]
+        q95 = [
+            np.percentile(calibration_runs[window], 95)
+            for window in calibration_runs.files
+        ]
 
         # make plot
         fig = bkplt.figure(plot_width=700, plot_height=400, x_axis_type="log")
