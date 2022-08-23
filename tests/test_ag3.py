@@ -3199,3 +3199,33 @@ def test_h12_calibration():
 
     # check dimensions
     assert len(calibration_runs) == len(window_sizes)
+
+
+def test_h12_gwss():
+    ag3 = setup_ag3()
+    query_ghana = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+    window_size = 1000
+
+    x, h12 = ag3.h12_gwss(
+        contig=contig,
+        analysis=analysis,
+        sample_query=query_ghana,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h12, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 11354
+    assert len(x) == len(h12)
+
+    # check values
+    assert x[0] == 27701.195
+    assert h12[11353] == 0.17875

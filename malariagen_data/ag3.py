@@ -7,6 +7,7 @@ from pathlib import Path
 from textwrap import dedent
 
 import allel
+import bokeh.layouts as bklay
 import bokeh.models as bkmod
 import bokeh.plotting as bkplt
 import dask
@@ -8131,6 +8132,181 @@ class Ag3:
         if title is None:
             title = sample_query
         fig.title = title
+        bkplt.show(fig)
+
+    def h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        cohort_size=20,
+        random_seed=42,
+    ):
+        """Run h12 GWSS.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x, h12 : numpy.ndarray, numpy.ndarray
+            An array containing the window centre point genomic positions (x) and
+            an array with h12 statistic values for each window (h12).
+
+        """
+
+        ds_haps = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        ht = gt.to_haplotypes().compute()
+        pos = ds_haps["variant_position"].values
+
+        h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+
+        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        return x, h12
+
+    def plot_h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        cohort_size=20,
+        random_seed=42,
+        title=None,
+        width=800,
+        height=200,
+    ):
+        """Plot h12 GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed h12 statistic across chosen contig.
+        """
+
+        # compute H12
+        x, h12 = self.h12_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            cohort_size=cohort_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = sample_query
+        fig1 = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+        )
+
+        # plot H12
+        fig1.circle(
+            x=x,
+            y=h12,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig1.yaxis.axis_label = "H12"
+        fig1.yaxis.ticker = [0, 1]
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            width=width,
+            height=100,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
         bkplt.show(fig)
 
 
