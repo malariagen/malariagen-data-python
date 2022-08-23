@@ -1,0 +1,9 @@
+{
+    "PUBLIC_RELEASES": [
+        "3.0"
+    ],
+    "GENESET_GFF3_PATH": "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz",
+    "DEFAULT_SPECIES_ANALYSIS": "aim_20220528",
+    "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
+    "DEFAULT_COHORTS_ANALYSIS": "20220608"
+}

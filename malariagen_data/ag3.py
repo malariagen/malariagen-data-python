@@ -1,3 +1,4 @@
+import json
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
@@ -53,11 +54,8 @@ from .util import (
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_large_chunks": False})
 
-PUBLIC_RELEASES = ("3.0",)
 GCS_URL = "gs://vo_agam_release/"
-GENOME_FEATURES_GFF3_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
-)
+
 GENOME_FASTA_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa"
 )
@@ -68,10 +66,6 @@ GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
 )
 
-# DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
-DEFAULT_SPECIES_ANALYSIS = "aim_20220528"
-DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
-DEFAULT_COHORTS_ANALYSIS = "20220608"
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 100  # height in px for bokeh genes track plots
@@ -180,23 +174,21 @@ class Ag3:
     def __init__(
         self,
         url=GCS_URL,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
         debug=False,
         show_progress=True,
         check_location=True,
+        cohorts_analysis=None,
+        species_analysis=None,
+        site_filters_analysis=None,
         **kwargs,
     ):
 
         self._url = url
         self._pre = kwargs.pop("pre", False)
-        self._cohorts_analysis = cohorts_analysis
-        self._species_analysis = species_analysis
-        self._site_filters_analysis = site_filters_analysis
+
         self._debug = debug
         self._show_progress = show_progress
 
@@ -205,6 +197,26 @@ class Ag3:
 
         # set up filesystem
         self._fs, self._base_path = init_filesystem(url, **kwargs)
+
+        # load config.json
+        path = f"{self._base_path}/v3-config.json"
+        with self._fs.open(path) as f:
+            config = json.load(f)
+
+        self._public_releases = tuple(config["PUBLIC_RELEASES"])
+        self._genome_feature_GFF_path = config["GENESET_GFF3_PATH"]
+        if cohorts_analysis is None:
+            self._cohorts_analysis = config["DEFAULT_COHORTS_ANALYSIS"]
+        else:
+            self._cohorts_analysis = cohorts_analysis
+        if species_analysis is None:
+            self._species_analysis = config["DEFAULT_SPECIES_ANALYSIS"]
+        else:
+            self._species_analysis = species_analysis
+        if site_filters_analysis is None:
+            self._site_filters_analysis = config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+        else:
+            self._site_filters_analysis = site_filters_analysis
 
         # set up caches
         self._cache_releases = None
@@ -403,7 +415,7 @@ class Ag3:
                     raise ValueError("No releases found.")
                 self._cache_releases = releases
             else:
-                self._cache_releases = PUBLIC_RELEASES
+                self._cache_releases = self._public_releases
         return self._cache_releases
 
     def _read_sample_sets(self, *, release):
@@ -1222,7 +1234,7 @@ class Ag3:
             df = self._cache_genome_features[attributes]
 
         except KeyError:
-            path = f"{self._base_path}/{GENOME_FEATURES_GFF3_PATH}"
+            path = f"{self._base_path}/{self._genome_feature_GFF_path}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
@@ -5383,7 +5395,7 @@ class Ag3:
                 "tracks": [
                     {
                         "name": "Genes",
-                        "url": f"{GCS_URL}{GENOME_FEATURES_GFF3_PATH}",
+                        "url": f"{GCS_URL}{self._genome_feature_GFF_path}",
                         "indexed": False,
                     }
                 ],
