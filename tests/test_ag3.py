@@ -3197,8 +3197,8 @@ def test_h12_calibration(window_sizes):
     )
 
     # check dataset
-    assert isinstance(calibration_runs, list)
-    assert isinstance(calibration_runs[0], numpy.ndarray)
+    assert isinstance(calibration_runs, dict)
+    assert isinstance(calibration_runs[str(window_sizes[0])], numpy.ndarray)
 
     # check dimensions
     assert len(calibration_runs) == len(window_sizes)
