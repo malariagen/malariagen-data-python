@@ -8129,22 +8129,24 @@ class Ag3:
         )
 
         # compute summaries
-        q50 = [np.median(calibration_runs[window]) for window in calibration_runs.files]
+        q50 = [
+            np.median(calibration_runs[window]) for window in calibration_runs.keys()
+        ]
         q25 = [
             np.percentile(calibration_runs[window], 25)
-            for window in calibration_runs.files
+            for window in calibration_runs.keys()
         ]
         q75 = [
             np.percentile(calibration_runs[window], 75)
-            for window in calibration_runs.files
+            for window in calibration_runs.keys()
         ]
         q05 = [
             np.percentile(calibration_runs[window], 5)
-            for window in calibration_runs.files
+            for window in calibration_runs.keys()
         ]
         q95 = [
             np.percentile(calibration_runs[window], 95)
-            for window in calibration_runs.files
+            for window in calibration_runs.keys()
         ]
 
         # make plot
@@ -8169,7 +8171,7 @@ class Ag3:
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bkmod.Range1d(100, 10000)
+        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
         if title is None:
             title = sample_query
         fig.title = title
