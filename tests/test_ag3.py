@@ -3178,7 +3178,7 @@ def test_aim_calls(sample_sets, sample_query, aims):
 
 @pytest.mark.parametrize(
     "window_sizes",
-    [[100, 200, 500, 1000, 2000, 5000, 10000, 20000], [5000, 10000, 20000]],
+    [[100, 200, 500], [10000, 20000]],
 )
 def test_h12_calibration(window_sizes):
     ag3 = setup_ag3()
@@ -3202,6 +3202,9 @@ def test_h12_calibration(window_sizes):
 
     # check dimensions
     assert len(calibration_runs) == len(window_sizes)
+
+    # check keys
+    assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
 
 
 def test_h12_gwss():
