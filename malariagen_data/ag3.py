@@ -8277,6 +8277,115 @@ class Ag3:
 
         return results
 
+    def plot_h12_gwss_track(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        cohort_size=20,
+        random_seed=42,
+        title=None,
+        width=800,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Plot h12 GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed h12 statistic across chosen contig.
+        """
+
+        # compute H12
+        x, h12 = self.h12_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            cohort_size=cohort_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = sample_query
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+        )
+
+        # plot H12
+        fig.circle(
+            x=x,
+            y=h12,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "H12"
+        fig.yaxis.ticker = [0, 1]
+        fig.xaxis.visible = False
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
     def plot_h12_gwss(
         self,
         contig,
@@ -8289,6 +8398,7 @@ class Ag3:
         title=None,
         width=800,
         height=200,
+        show=True,
     ):
         """Plot h12 GWSS data.
 
@@ -8324,55 +8434,23 @@ class Ag3:
         Returns
         -------
         fig : figure
-            A plot showing windowed h12 statistic across chosen contig.
+            A plot showing windowed h12 statistic with gene track on x-axis.
         """
 
-        # compute H12
-        x, h12 = self.h12_gwss(
+        # gwss track
+        fig1 = self.plot_h12_gwss_track(
             contig=contig,
             analysis=analysis,
             window_size=window_size,
-            cohort_size=cohort_size,
-            sample_query=sample_query,
             sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
             random_seed=random_seed,
-        )
-
-        # determine X axis range
-        x_min = x[0]
-        x_max = x[-1]
-        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
-
-        # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        if title is None:
-            title = sample_query
-        fig1 = bkplt.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
-            toolbar_location="above",
-            x_range=x_range,
-            y_range=(0, 1),
+            width=width,
+            height=height,
+            show=False,
         )
-
-        # plot H12
-        fig1.circle(
-            x=x,
-            y=h12,
-            size=3,
-            line_width=0.5,
-            line_color="black",
-            fill_color=None,
-        )
-
-        # tidy up the plot
-        fig1.yaxis.axis_label = "H12"
-        fig1.yaxis.ticker = [0, 1]
-        fig1.xaxis.visible = False
 
         # plot genes
         fig2 = self.plot_genes(
