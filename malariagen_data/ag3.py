@@ -7,9 +7,6 @@ from pathlib import Path
 from textwrap import dedent
 
 import allel
-import bokeh.layouts as bklay
-import bokeh.models as bkmod
-import bokeh.plotting as bkplt
 import dask
 import dask.array as da
 import ipinfo
@@ -7978,7 +7975,7 @@ class Ag3:
         analysis,
         sample_query,
         sample_sets,
-        cohort_size=20,
+        cohort_size=30,
         window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
         random_seed=42,
     ):
@@ -8018,7 +8015,7 @@ class Ag3:
 
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = "ag3_h12_calib_v1"
+        name = "ag3_h12_calibration_v1"
 
         params = dict(
             contig=contig,
@@ -8064,7 +8061,7 @@ class Ag3:
         ht = gt.to_haplotypes().compute()
 
         calibration_runs = dict()
-        for window_size in tqdm(window_sizes, desc="Compute H12"):
+        for window_size in self._progress(window_sizes, desc="Compute H12"):
             h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
             calibration_runs[str(window_size)] = h12
 
@@ -8076,7 +8073,7 @@ class Ag3:
         analysis,
         sample_query,
         sample_sets,
-        cohort_size=20,
+        cohort_size=30,
         window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
         random_seed=42,
         title=None,
@@ -8117,6 +8114,9 @@ class Ag3:
 
         """
 
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
         # get H12 values
         calibration_runs = self.h12_calibration(
             contig=contig,
@@ -8129,24 +8129,18 @@ class Ag3:
         )
 
         # compute summaries
-        q50 = [
-            np.median(calibration_runs[window]) for window in calibration_runs.keys()
-        ]
+        q50 = [np.median(calibration_runs[str(window)]) for window in window_sizes]
         q25 = [
-            np.percentile(calibration_runs[window], 25)
-            for window in calibration_runs.keys()
+            np.percentile(calibration_runs[str(window)], 25) for window in window_sizes
         ]
         q75 = [
-            np.percentile(calibration_runs[window], 75)
-            for window in calibration_runs.keys()
+            np.percentile(calibration_runs[str(window)], 75) for window in window_sizes
         ]
         q05 = [
-            np.percentile(calibration_runs[window], 5)
-            for window in calibration_runs.keys()
+            np.percentile(calibration_runs[str(window)], 5) for window in window_sizes
         ]
         q95 = [
-            np.percentile(calibration_runs[window], 95)
-            for window in calibration_runs.keys()
+            np.percentile(calibration_runs[str(window)], 95) for window in window_sizes
         ]
 
         # make plot
@@ -8184,7 +8178,7 @@ class Ag3:
         window_size,
         sample_sets,
         sample_query,
-        cohort_size=20,
+        cohort_size=30,
         random_seed=42,
     ):
         """Run h12 GWSS.
@@ -8214,9 +8208,10 @@ class Ag3:
 
         Returns
         -------
-        x, h12 : numpy.ndarray, numpy.ndarray
-            An array containing the window centre point genomic positions (x) and
-            an array with h12 statistic values for each window (h12).
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        h12 : numpy.ndarray
+            An array with h12 statistic values for each window.
 
         """
         # change this name if you ever change the behaviour of this function, to
@@ -8284,10 +8279,10 @@ class Ag3:
         window_size,
         sample_sets,
         sample_query,
-        cohort_size=20,
+        cohort_size=30,
         random_seed=42,
         title=None,
-        width=800,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         show=True,
         x_range=None,
@@ -8332,6 +8327,9 @@ class Ag3:
         fig : figure
             A plot showing windowed h12 statistic across chosen contig.
         """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
 
         # compute H12
         x, h12 = self.h12_gwss(
@@ -8379,7 +8377,7 @@ class Ag3:
         # tidy up the plot
         fig.yaxis.axis_label = "H12"
         fig.yaxis.ticker = [0, 1]
-        fig.xaxis.visible = False
+        _bokeh_style_genome_xaxis(fig, contig)
 
         if show:
             bkplt.show(fig)
@@ -8393,12 +8391,12 @@ class Ag3:
         window_size,
         sample_sets,
         sample_query,
-        cohort_size=20,
+        cohort_size=30,
         random_seed=42,
         title=None,
-        width=800,
-        height=200,
-        show=True,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=170,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
     ):
         """Plot h12 GWSS data.
 
@@ -8428,14 +8426,19 @@ class Ag3:
             If provided, title string is used to label plot.
         width : int, optional
             Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
 
         Returns
         -------
         fig : figure
             A plot showing windowed h12 statistic with gene track on x-axis.
         """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
 
         # gwss track
         fig1 = self.plot_h12_gwss_track(
@@ -8448,15 +8451,17 @@ class Ag3:
             random_seed=random_seed,
             title=title,
             width=width,
-            height=height,
+            height=track_height,
             show=False,
         )
+
+        fig1.xaxis.visible = False
 
         # plot genes
         fig2 = self.plot_genes(
             region=contig,
             width=width,
-            height=100,
+            height=genes_height,
             x_range=fig1.x_range,
             show=False,
         )

@@ -3233,5 +3233,5 @@ def test_h12_gwss():
     assert len(x) == len(h12)
 
     # check some values
-    assert x[0] == 27701.195
-    assert h12[11353] == 0.17875
+    assert_allclose(x[0], 27701.195)
+    assert_allclose(h12[11353], 0.17875)
