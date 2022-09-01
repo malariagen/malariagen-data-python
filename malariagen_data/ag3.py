@@ -6600,6 +6600,8 @@ class Ag3:
         sort=True,
         row_height=4,
         colors="T10",
+        xgap=0,
+        ygap=0.5,
     ):
         """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
 
@@ -6621,6 +6623,10 @@ class Ag3:
             Height per sample in px.
         colors : str, optional
             Choose your favourite color palette.
+        xgap : float, optional
+            Creates lines between columns (variants).
+        ygap : float, optional
+            Creates lines between rows (samples).
 
         Returns
         -------
@@ -6747,8 +6753,8 @@ class Ag3:
                     ],
                     zmin=-1.5,
                     zmax=2.5,
-                    xgap=0,
-                    ygap=0.5,  # this creates faint lines between rows
+                    xgap=xgap,
+                    ygap=ygap,  # this creates faint lines between rows
                     colorbar=dict(
                         title="AIM genotype",
                         tickmode="array",
@@ -7045,21 +7051,34 @@ class Ag3:
             sample_sets=sample_sets, sample_query=cohort_query
         )
         extra_fields = [
-            "taxon",
-            "year",
-            "month",
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
+            ("taxon", "unique"),
+            ("year", "unique"),
+            ("month", "unique"),
+            ("country", "unique"),
+            ("admin1_iso", "unique"),
+            ("admin1_name", "unique"),
+            ("admin2_name", "unique"),
+            ("longitude", "mean"),
+            ("latitude", "mean"),
         ]
-        for field in extra_fields:
-            vals = df_samples[field].sort_values().unique()
-            if len(vals) == 0:
-                vals = np.nan
-            elif len(vals) == 1:
-                vals = vals[0]
-            stats[field] = vals
+        for field, agg in extra_fields:
+            if agg == "unique":
+                vals = df_samples[field].sort_values().unique()
+                if len(vals) == 0:
+                    val = np.nan
+                elif len(vals) == 1:
+                    val = vals[0]
+                else:
+                    val = vals.tolist()
+            elif agg == "mean":
+                vals = df_samples[field]
+                if len(vals) == 0:
+                    val = np.nan
+                else:
+                    val = np.mean(vals)
+            else:
+                val = np.nan
+            stats[field] = val
 
         return pd.Series(stats)
 
@@ -7198,6 +7217,134 @@ class Ag3:
 
         return df_stats
 
+    def plot_diversity_stats(
+        self,
+        df_stats,
+        color=None,
+        bar_plot_height=450,
+        bar_width=30,
+        scatter_plot_height=500,
+        scatter_plot_width=500,
+        template="plotly_white",
+        plot_kwargs=None,
+    ):
+        """Plot diversity statistics.
+
+        Parameters
+        ----------
+        df_stats : pandas.DataFrame
+            Output from diversity_stats().
+        color : str, optional
+            Column to color by.
+        bar_plot_height : int, optional
+            Height of bar plots in pixels (px).
+        bar_width : int, optional
+            Width per bar in pixels (px).
+        scatter_plot_height : int, optional
+            Height of scatter plot in pixels (px).
+        scatter_plot_width : int, optional
+            Width of scatter plot in pixels (px).
+        template : str, optional
+            Plotly template.
+        plot_kwargs : dict, optional
+            Extra plotting parameters
+
+        """
+        debug = self._log.debug
+        import plotly.express as px
+
+        debug("set up common plotting parameters")
+        if plot_kwargs is None:
+            plot_kwargs = dict()
+        default_plot_kwargs = dict(
+            hover_name="cohort",
+            hover_data=[
+                "taxon",
+                "country",
+                "admin1_iso",
+                "admin1_name",
+                "admin2_name",
+                "longitude",
+                "latitude",
+                "year",
+                "month",
+            ],
+            labels={
+                "theta_pi_estimate": r"$\widehat{\theta}_{\pi}$",
+                "theta_w_estimate": r"$\widehat{\theta}_{w}$",
+                "tajima_d_estimate": r"$D$",
+                "cohort": "Cohort",
+                "taxon": "Taxon",
+                "country": "Country",
+            },
+        )
+        if color == "taxon":
+            _setup_taxon_colors(plot_kwargs=default_plot_kwargs)
+        default_plot_kwargs.update(plot_kwargs)
+        plot_kwargs = default_plot_kwargs
+        bar_plot_width = 300 + bar_width * len(df_stats)
+
+        debug("nucleotide diversity bar plot")
+        fig = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="theta_pi_estimate",
+            error_y="theta_pi_ci_err",
+            title="Nucleotide diversity",
+            color=color,
+            height=bar_plot_height,
+            width=bar_plot_width,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+        debug("Watterson's estimator bar plot")
+        fig = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="theta_w_estimate",
+            error_y="theta_w_ci_err",
+            title="Watterson's estimator",
+            color=color,
+            height=bar_plot_height,
+            width=bar_plot_width,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+        debug("Tajima's D bar plot")
+        fig = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="tajima_d_estimate",
+            error_y="tajima_d_ci_err",
+            title="Tajima's D",
+            color=color,
+            height=bar_plot_height,
+            width=bar_plot_width,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+        debug("scatter plot comparing diversity estimators")
+        fig = px.scatter(
+            data_frame=df_stats,
+            x="theta_pi_estimate",
+            y="theta_w_estimate",
+            error_x="theta_pi_ci_err",
+            error_y="theta_w_ci_err",
+            title="Diversity estimators",
+            color=color,
+            width=scatter_plot_width,
+            height=scatter_plot_height,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
     def plot_samples_interactive_map(
         self,
         sample_sets=None,
@@ -7205,6 +7352,7 @@ class Ag3:
         basemap=None,
         center=(-2, 20),
         zoom=3,
+        min_samples=1,
     ):
         """Plot an interactive map showing sampling locations using ipyleaflet.
 
@@ -7223,6 +7371,9 @@ class Ag3:
             Location to center the map.
         zoom : int, optional
             Initial zoom level.
+        min_samples : int, optional
+            Minimum number of samples required to show a marker for a given
+            location.
 
         Returns
         -------
@@ -7278,16 +7429,19 @@ class Ag3:
             title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
             title += f"\nCountry: {row.country}"
             title += "\nNo. specimens: "
+            all_n = 0
             for taxon in taxa:
                 n = row[taxon]
+                all_n += n
                 if n > 0:
                     title += f"{n} {taxon}; "
-            marker = ipyleaflet.Marker(
-                location=(row.latitude, row.longitude),
-                draggable=False,
-                title=title,
-            )
-            samples_map.add_layer(marker)
+            if all_n >= min_samples:
+                marker = ipyleaflet.Marker(
+                    location=(row.latitude, row.longitude),
+                    draggable=False,
+                    title=title,
+                )
+                samples_map.add_layer(marker)
 
         return samples_map
 
@@ -8554,8 +8708,8 @@ def _setup_taxon_colors(plot_kwargs):
         "intermediate_gambiae_coluzzii": taxon_palette[6],
         "intermediate_arabiensis_gambiae": taxon_palette[7],
     }
-    plot_kwargs["color_discrete_map"] = taxon_color_map
-    plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
+    plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
+    plot_kwargs.setdefault("category_orders", {"taxon": list(taxon_color_map.keys())})
 
 
 def _locate_cohorts(*, cohorts, df_samples):
