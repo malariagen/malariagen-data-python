@@ -530,7 +530,11 @@ class LoggingHelper:
 
         # set up a logger
         logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG)
+        if debug is not False:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
+
         self._logger = logger
 
         # set up handler
