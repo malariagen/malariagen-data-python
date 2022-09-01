@@ -3,6 +3,7 @@ import random
 import shutil
 
 import dask.array as da
+import numpy
 import numpy as np
 import pandas as pd
 import pytest
@@ -2059,6 +2060,45 @@ def test_haplotypes__sample_query(sample_query):
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
 
+def test_haplotypes__cohort_size():
+
+    sample_sets = "AG1000G-BF-B"
+    region = "3L"
+    analysis = "gamb_colu_arab"
+    cohort_size = 10
+
+    ag3 = setup_ag3()
+
+    ds = ag3.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        analysis=analysis,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check dim lengths
+    assert ds.dims["samples"] == cohort_size
+    assert ds.dims["alleles"] == 2
+
+
 # test v3 sample sets
 @pytest.mark.parametrize(
     "sample_sets",
@@ -3134,3 +3174,64 @@ def test_aim_calls(sample_sets, sample_query, aims):
         assert ds.dims["variants"] == 700
     elif aims == "gambcolu_vs_arab":
         assert ds.dims["variants"] == 2612
+
+
+@pytest.mark.parametrize(
+    "window_sizes",
+    [[100, 200, 500], [10000, 20000]],
+)
+def test_h12_calibration(window_sizes):
+    ag3 = setup_ag3()
+    sample_query = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+
+    calibration_runs = ag3.h12_calibration(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_sizes=window_sizes,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(calibration_runs, dict)
+    assert isinstance(calibration_runs[str(window_sizes[0])], numpy.ndarray)
+
+    # check dimensions
+    assert len(calibration_runs) == len(window_sizes)
+
+    # check keys
+    assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
+
+
+def test_h12_gwss():
+    ag3 = setup_ag3()
+    sample_query = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+    window_size = 1000
+
+    x, h12 = ag3.h12_gwss(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h12, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 11354
+    assert len(x) == len(h12)
+
+    # check some values
+    assert_allclose(x[0], 27701.195)
+    assert_allclose(h12[11353], 0.17875)
