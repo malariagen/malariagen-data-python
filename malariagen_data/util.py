@@ -530,7 +530,7 @@ class LoggingHelper:
 
         # set up a logger
         logger = logging.getLogger(name)
-        if debug is not False:
+        if debug:
             logger.setLevel(logging.DEBUG)
         else:
             logger.setLevel(logging.INFO)
