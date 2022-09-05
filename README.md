@@ -36,7 +36,7 @@ from the following locations:
 * Adds `Ag3.h12_gwss()`, `Ag3.plot_h12_gwss_track()` and `Ag3.plot_h12_gwss()`to generate and plot h12 analyses.
 ([GH272](https://github.com/malariagen/malariagen-data-python/pull/272))
 
-* Fixes bug where in Google Colab notebooks DEBUG couldn't be turned off.
+* Fixes bug where in Google Colab notebooks, debug logging couldn't be turned off.
 ([GH274](https://github.com/malariagen/malariagen-data-python/pull/274))
 
 
