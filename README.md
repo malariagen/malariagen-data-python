@@ -29,7 +29,7 @@ from the following locations:
 ## Release notes
 
 
-### 6.2.0
+### 6.1.0
 
 * Adds cohort_size parameter to `Ag3.haplotypes()` function.
 * Adds `Ag3.h12_calibration()` and `Ag3.plot_h12_calibration()` functions to generate and plot h12 calibration data for different window sizes.
