@@ -31,7 +31,7 @@ from the following locations:
 
 ### 6.1.0
 
-* Adds cohort_size parameter to `Ag3.haplotypes()` function.
+* Adds `cohort_size` parameter to `Ag3.haplotypes()` function.
 * Adds `Ag3.h12_calibration()` and `Ag3.plot_h12_calibration()` functions to generate and plot h12 calibration data for different window sizes.
 * Adds `Ag3.h12_gwss()`, `Ag3.plot_h12_gwss_track()` and `Ag3.plot_h12_gwss()`to generate and plot h12 analyses.
 ([GH272](https://github.com/malariagen/malariagen-data-python/pull/272))
