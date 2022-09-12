@@ -268,8 +268,8 @@ class Ag3:
                             """
                         Your currently allocated Google Colab VM is not located in the US.
                         This usually means that data access will be substantially slower.
-                        If possible, select "Runtime > Factory reset runtime" from the menu
-                        to request a new VM and try again.
+                        If possible, select "Runtime > Disconnect and delete runtime" from
+                        the menu to request a new VM and try again.
                     """
                         )
                     )
@@ -3279,7 +3279,11 @@ class Ag3:
         for r in region:
             ly = []
 
-            for s in sample_sets:
+            haplotypes_iterator = self._progress(
+                sample_sets, desc="Load sample haplotypes"
+            )
+
+            for s in haplotypes_iterator:
                 y = self._haplotypes_dataset(
                     contig=r.contig,
                     sample_set=s,
@@ -8127,8 +8131,8 @@ class Ag3:
         self,
         contig,
         analysis,
-        sample_query,
-        sample_sets,
+        sample_query=None,
+        sample_sets=None,
         cohort_size=30,
         window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
         random_seed=42,
@@ -8225,8 +8229,8 @@ class Ag3:
         self,
         contig,
         analysis,
-        sample_query,
-        sample_sets,
+        sample_query=None,
+        sample_sets=None,
         cohort_size=30,
         window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
         random_seed=42,
@@ -8330,8 +8334,8 @@ class Ag3:
         contig,
         analysis,
         window_size,
-        sample_sets,
-        sample_query,
+        sample_sets=None,
+        sample_query=None,
         cohort_size=30,
         random_seed=42,
     ):
@@ -8431,8 +8435,8 @@ class Ag3:
         contig,
         analysis,
         window_size,
-        sample_sets,
-        sample_query,
+        sample_sets=None,
+        sample_query=None,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -8543,8 +8547,8 @@ class Ag3:
         contig,
         analysis,
         window_size,
-        sample_sets,
-        sample_query,
+        sample_sets=None,
+        sample_query=None,
         cohort_size=30,
         random_seed=42,
         title=None,
