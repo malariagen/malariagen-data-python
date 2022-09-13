@@ -3279,11 +3279,7 @@ class Ag3:
         for r in region:
             ly = []
 
-            haplotypes_iterator = self._progress(
-                sample_sets, desc="Load sample haplotypes"
-            )
-
-            for s in haplotypes_iterator:
+            for s in sample_sets:
                 y = self._haplotypes_dataset(
                     contig=r.contig,
                     sample_set=s,
@@ -8215,8 +8211,8 @@ class Ag3:
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
-
-        ht = gt.to_haplotypes().compute()
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
 
         calibration_runs = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
@@ -8419,7 +8415,8 @@ class Ag3:
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
-        ht = gt.to_haplotypes().compute()
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
         pos = ds_haps["variant_position"].values
 
         h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
