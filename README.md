@@ -29,6 +29,11 @@ from the following locations:
 ## Release notes
 
 
+### 6.1.1
+
+@@TODO release notes
+
+
 ### 6.1.0
 
 * Adds `cohort_size` parameter to `Ag3.haplotypes()` function.
