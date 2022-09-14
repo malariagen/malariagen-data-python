@@ -268,8 +268,8 @@ class Ag3:
                             """
                         Your currently allocated Google Colab VM is not located in the US.
                         This usually means that data access will be substantially slower.
-                        If possible, select "Runtime > Factory reset runtime" from the menu
-                        to request a new VM and try again.
+                        If possible, select "Runtime > Disconnect and delete runtime" from
+                        the menu to request a new VM and try again.
                     """
                         )
                     )
@@ -8127,8 +8127,8 @@ class Ag3:
         self,
         contig,
         analysis,
-        sample_query,
-        sample_sets,
+        sample_query=None,
+        sample_sets=None,
         cohort_size=30,
         window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
         random_seed=42,
@@ -8211,8 +8211,8 @@ class Ag3:
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
-
-        ht = gt.to_haplotypes().compute()
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
 
         calibration_runs = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
@@ -8225,8 +8225,8 @@ class Ag3:
         self,
         contig,
         analysis,
-        sample_query,
-        sample_sets,
+        sample_query=None,
+        sample_sets=None,
         cohort_size=30,
         window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
         random_seed=42,
@@ -8330,8 +8330,8 @@ class Ag3:
         contig,
         analysis,
         window_size,
-        sample_sets,
-        sample_query,
+        sample_sets=None,
+        sample_query=None,
         cohort_size=30,
         random_seed=42,
     ):
@@ -8415,7 +8415,8 @@ class Ag3:
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
-        ht = gt.to_haplotypes().compute()
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
         pos = ds_haps["variant_position"].values
 
         h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
@@ -8431,8 +8432,8 @@ class Ag3:
         contig,
         analysis,
         window_size,
-        sample_sets,
-        sample_query,
+        sample_sets=None,
+        sample_query=None,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -8543,8 +8544,8 @@ class Ag3:
         contig,
         analysis,
         window_size,
-        sample_sets,
-        sample_query,
+        sample_sets=None,
+        sample_query=None,
         cohort_size=30,
         random_seed=42,
         title=None,
