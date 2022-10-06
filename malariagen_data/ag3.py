@@ -8634,8 +8634,11 @@ class Ag3:
         analysis,
         sample_sets=None,
         sample_query=None,
-        color="taxon",
+        color=None,
+        symbol=None,
         linkage_method="single",
+        count_sort=True,
+        distance_sort=False,
         cohort_size=None,
         random_seed=42,
         width=1000,
@@ -8664,24 +8667,40 @@ class Ag3:
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         color : str, optional
-            Identifies a column in the sample metadata with which the dendrogram leaves (haplotypes)
-            are coloured.
+            Identifies a column in the sample metadata which determines the colour
+            of dendrogram leaves (haplotypes).
+        symbol : str, optional
+            Identifies a column in the sample metadata which determines the shape
+            of dendrogram leaves (haplotypes).
+        linkage_method: str, optional
+            The linkage algorithm to use, valid options are 'single', 'complete',
+            'average', 'weighted', 'centroid', 'median' and 'ward'. See the Linkage
+            Methods section of the scipy.cluster.hierarchy.linkage docs for full
+            descriptions.
+        count_sort: bool, optional
+            For each node n, the order (visually, from left-to-right) n's two descendent
+            links are plotted is determined by this parameter. If True, the child with
+            the minimum number of original objects in its cluster is plotted first. Note
+            distance_sort and count_sort cannot both be True.
+        distance_sort: bool, optional
+            For each node n, the order (visually, from left-to-right) n's two descendent
+            links are plotted is determined by this parameter. If True, The child with the
+            minimum distance between its direct descendents is plotted first.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
             Random seed used for down-sampling.
+        width : int, optional
+            The figure width in pixels
+        height: int, optional
+            The figure height in pixels
         """
         import plotly.express as px
-        from plotly.figure_factory import create_dendrogram
         from scipy.cluster.hierarchy import linkage
 
-        debug = self._log.debug
+        from .plotly_dendrogram import create_dendrogram
 
-        debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        debug = self._log.debug
 
         ds_haps = self.haplotypes(
             region=region,
@@ -8736,18 +8755,18 @@ class Ag3:
         plot_kwargs.update(kwargs)
 
         debug("Create dendrogram with plotly")
-        leaf_labels = np.arange(
-            ht.shape[1]
-        )  # set labels as the index which we extract to reorder metadata
-        max_dist = _hamming_to_snps(
-            ht.T
-        ).max()  # get the max distance, required to set xmin, xmax, which we need xmin to be slightly below 0
+        # set labels as the index which we extract to reorder metadata
+        leaf_labels = np.arange(ht.shape[1])
+        # get the max distance, required to set xmin, xmax, which we need xmin to be slightly below 0
+        max_dist = _hamming_to_snps(ht.T).max()
         fig = create_dendrogram(
             ht.T,
             distfun=lambda x: _hamming_to_snps(x),
             linkagefun=lambda x: linkage(x, method=linkage_method),
             labels=leaf_labels,
             color_threshold=0,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
         )
         fig.update_traces(
             hoverinfo="y",
@@ -8768,9 +8787,8 @@ class Ag3:
             np.repeat(df_samples_phased.values, 2, axis=0)
         )
         df_samples_phased_haps.columns = df_samples_phased.columns
-        df_samples_phased_haps = df_samples_phased_haps[
-            hover_data
-        ]  # select only columns in hover_data
+        # select only columns in hover_data
+        df_samples_phased_haps = df_samples_phased_haps[hover_data]
         debug("Reorder haplotype metadata to align with haplotype clustering")
         df_samples_phased_haps = df_samples_phased_haps.loc[
             fig.layout.xaxis["ticktext"]
@@ -8788,6 +8806,7 @@ class Ag3:
                     x=fig.layout.xaxis["tickvals"],
                     y=np.repeat(-1, len(ht.T)),
                     color=color,
+                    symbol=symbol,
                     **plot_kwargs,
                 ).select_traces()
             )
