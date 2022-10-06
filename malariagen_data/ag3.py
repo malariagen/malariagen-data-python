@@ -8653,10 +8653,10 @@ class Ag3:
             "gamb_colu_arab" analysis.
         window_size : int
             The size of windows used to calculate h12 over.
-        cohort1_query : str, optional
+        cohort1_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str, optional
+        cohort2_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         sample_sets : str or list of str, optional
@@ -8782,10 +8782,10 @@ class Ag3:
             "gamb_colu_arab" analysis.
         window_size : int
             The size of windows used to calculate h12 over.
-        cohort1_query : str, optional
+        cohort1_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str, optional
+        cohort2_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         sample_sets : str or list of str, optional
@@ -8899,10 +8899,10 @@ class Ag3:
             "gamb_colu_arab" analysis.
         window_size : int
             The size of windows used to calculate h12 over.
-        cohort1_query : str, optional
+        cohort1_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str, optional
+        cohort2_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         sample_sets : str or list of str, optional
