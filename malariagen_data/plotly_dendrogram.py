@@ -399,6 +399,7 @@ class _Dendrogram(object):
                 marker=dict(color=colors[color_key]),
                 text=hovertext_label,
                 hoverinfo="text",
+                showlegend=False,
             )
 
             try:

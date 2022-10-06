@@ -8780,6 +8780,7 @@ class Ag3:
             plot_bgcolor="white",
             yaxis_title="Distance (no. SNPs)",
             xaxis_title="Haplotypes",
+            showlegend=True,
         )
 
         # Repeat the dataframe so there is one row of metadata for each haplotype
