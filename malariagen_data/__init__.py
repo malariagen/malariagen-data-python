@@ -1,4 +1,5 @@
 # flake8: noqa
+from .af1 import Af1
 from .ag3 import Ag3, Region
 from .amin1 import Amin1
 from .util import SiteClass
