@@ -2,7 +2,9 @@ import sys
 from collections import Counter
 
 import dask.array as da
+import numpy as np
 import pandas as pd
+import xarray as xr
 import zarr
 from tqdm.auto import tqdm
 
@@ -12,23 +14,36 @@ try:
 except ImportError:
     colab = None
 
-from .util import locate_region  # FIXME: not yet supported - need good GENOME_ZARR_PATH
 from .util import resolve_region  # FIXME: potential confusion with self.resolve_region
 from .util import (
+    DIM_ALLELE,
+    DIM_PLOIDY,
+    DIM_SAMPLE,
+    DIM_VARIANT,
     LoggingHelper,
     Region,
     da_compress,
     da_from_zarr,
+    dask_compress_dataset,
     init_filesystem,
     init_zarr_store,
+    locate_region,
+    read_gff3,
+    unpack_gff3_attributes,
+    xarray_concat,
 )
 
 PUBLIC_RELEASES = ("1.0",)
 GCS_URL = "gs://vo_afun_release/"
-
-# FIXME: Where is the funestus equivalent?
+GENESET_GFF3_PATH = "reference/genome/idAnoFuneDA-416_04/GCF_943734845.2_idAnoFuneDA-416_04_genomic.gff3.gz"
+GENOME_FASTA_PATH = (
+    "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.fa"
+)
+GENOME_FAI_PATH = (
+    "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.fa.fai"
+)
 GENOME_ZARR_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
+    "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.zarr"
 )
 
 CONTIGS = "2RL", "3RL", "X"
@@ -94,9 +109,10 @@ class Af1:
         self._cache_general_metadata = dict()
         self._cache_sample_set_to_release = None
         self._cache_site_filters = dict()
-        # FIXME: self._cache_genome = None
+        self._cache_genome = None
         self._cache_snp_sites = None
         self._cache_snp_genotypes = dict()
+        self._cache_geneset = dict()
 
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
@@ -289,8 +305,8 @@ class Af1:
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "VMF00095") or a list of
-            sample set identifiers (e.g., ["VMF00045", "VMF00043"]) or a
+            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
             release identifier (e.g., "1.0") or a list of release identifiers.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
@@ -366,11 +382,10 @@ class Af1:
         z = root[f"{region.contig}/variants/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
-        # FIXME: not yet supported - need good GENOME_ZARR_PATH
-        # if region.start or region.end:
-        #     pos = self.snp_sites(region=region.contig, field="POS")
-        #     loc_region = locate_region(region, pos)
-        #     d = d[loc_region]
+        if region.start or region.end:
+            pos = self.snp_sites(region=region.contig, field="POS")
+            loc_region = locate_region(region, pos)
+            d = d[loc_region]
 
         return d
 
@@ -498,10 +513,10 @@ class Af1:
             region defined with coordinates (e.g., "2RL:44989425-44998059") or a
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["2RL", "3RLL"].
+            be concatenated, e.g., ["2RL", "3RL"].
         field : {"POS", "REF", "ALT"}
             Array to access.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"funestus"}
             Site filters mask to apply.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
@@ -607,7 +622,7 @@ class Af1:
             be concatenated, e.g., ["2RL", "3RL"].
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
-            sample set identifiers (e.g., ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]) or a
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
             release identifier (e.g., "1.0") or a list of release identifiers.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
@@ -683,3 +698,310 @@ class Af1:
             d = da.compress(loc_samples, d, axis=1)
 
         return d
+
+    def open_genome(self):
+        """Open the reference genome zarr.
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+            Zarr hierarchy containing the reference genome sequence.
+
+        """
+        if self._cache_genome is None:
+            path = f"{self._base_path}/{GENOME_ZARR_PATH}"
+            store = init_zarr_store(fs=self._fs, path=path)
+            self._cache_genome = zarr.open_consolidated(store=store)
+        return self._cache_genome
+
+    def genome_sequence(self, region, inline_array=True, chunks="native"):
+        """Access the reference genome sequence.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome (e.g., "2RL"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2RL:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["2RL", "3RL"].
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        d : dask.array.Array
+            An array of nucleotides giving the reference genome sequence for the
+            given contig.
+
+        """
+        genome = self.open_genome()
+        region = self.resolve_region(region)
+        z = genome[region.contig]
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+
+        if region.start:
+            slice_start = region.start - 1
+        else:
+            slice_start = None
+        if region.end:
+            slice_stop = region.end
+        else:
+            slice_stop = None
+        loc_region = slice(slice_start, slice_stop)
+
+        return d[loc_region]
+
+    def geneset(self, region=None, attributes=("ID", "Parent", "Name", "description")):
+        """Access genome feature annotations (idAnoFuneDA-416_04).
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome (e.g., "2RL"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2RL:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["2RL", "3RL"].
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. Provide "*" to unpack all
+            attributes.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of genome annotations, one row per feature.
+
+        """
+        debug = self._log.debug
+
+        if attributes is not None:
+            attributes = tuple(attributes)
+
+        try:
+            df = self._cache_geneset[attributes]
+
+        except KeyError:
+            path = f"{self._base_path}/{GENESET_GFF3_PATH}"
+            with self._fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_geneset[attributes] = df
+
+        debug("handle region")
+        if region is not None:
+
+            region = self.resolve_region(region)
+
+            debug("normalise to list to simplify concatenation logic")
+            if isinstance(region, Region):
+                region = [region]
+
+            debug("apply region query")
+            parts = []
+            for r in region:
+                df_part = df.query(f"contig == '{r.contig}'")
+                if r.end is not None:
+                    df_part = df_part.query(f"start <= {r.end}")
+                if r.start is not None:
+                    df_part = df_part.query(f"end >= {r.start}")
+                parts.append(df_part)
+            df = pd.concat(parts, axis=0)
+
+        return df.reset_index(drop=True).copy()
+
+    def _site_mask_ids(self):
+        if self._site_filters_analysis == "dt_20200416":
+            return ["funestus"]
+        elif self._site_filters_analysis == "sc_20220908":
+            return ["funestus"]
+        else:
+            raise ValueError
+
+    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
+        debug = self._log.debug
+
+        coords = dict()
+        data_vars = dict()
+
+        debug("variant arrays")
+        sites_root = self.open_snp_sites()
+
+        debug("variant_position")
+        pos_z = sites_root[f"{contig}/variants/POS"]
+        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
+        coords["variant_position"] = [DIM_VARIANT], variant_position
+
+        debug("variant_allele")
+        ref_z = sites_root[f"{contig}/variants/REF"]
+        alt_z = sites_root[f"{contig}/variants/ALT"]
+        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
+
+        debug("variant_contig")
+        contig_index = self.contigs.index(contig)
+        variant_contig = da.full_like(
+            variant_position, fill_value=contig_index, dtype="u1"
+        )
+        coords["variant_contig"] = [DIM_VARIANT], variant_contig
+
+        debug("site filters arrays")
+        for mask in self._site_mask_ids():
+            filters_root = self.open_site_filters(mask=mask)
+            z = filters_root[f"{contig}/variants/filter_pass"]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
+
+        debug("set up attributes")
+        attrs = {"contigs": self.contigs}
+
+        debug("create a dataset")
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+        debug = self._log.debug
+
+        coords = dict()
+        data_vars = dict()
+
+        debug("call arrays")
+        calls_root = self.open_snp_genotypes(sample_set=sample_set)
+        gt_z = calls_root[f"{contig}/calldata/GT"]
+        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+        gq_z = calls_root[f"{contig}/calldata/GQ"]
+        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+        ad_z = calls_root[f"{contig}/calldata/AD"]
+        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+        mq_z = calls_root[f"{contig}/calldata/MQ"]
+        call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
+        data_vars["call_genotype"] = (
+            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+            call_genotype,
+        )
+        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
+        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
+        data_vars["call_AD"] = (
+            [DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE],
+            call_ad,
+        )
+
+        debug("sample arrays")
+        z = calls_root["samples"]
+        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        # decode to str, as it is stored as bytes objects
+        sample_id = sample_id.astype("U")
+        coords["sample_id"] = [DIM_SAMPLE], sample_id
+
+        debug("create a dataset")
+        ds = xr.Dataset(data_vars=data_vars, coords=coords)
+
+        return ds
+
+    def snp_calls(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask=None,
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access SNP sites, site filters and genotype calls.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome (e.g., "2RL"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["2RL", "3RL"].
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
+            release identifier (e.g., "1.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Burkina Faso'".
+        site_mask : {"funestus"}
+            Site filters mask to apply.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing SNP sites, site filters and genotype calls.
+
+        """
+        debug = self._log.debug
+
+        debug("normalise parameters")
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        region = self.resolve_region(region)
+        if isinstance(region, Region):
+            region = [region]
+
+        debug("access SNP calls and concatenate multiple sample sets and/or regions")
+        lx = []
+        for r in region:
+
+            ly = []
+            for s in sample_sets:
+                y = self._snp_calls_dataset(
+                    contig=r.contig,
+                    sample_set=s,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                ly.append(y)
+
+            debug("concatenate data from multiple sample sets")
+            x = xarray_concat(ly, dim=DIM_SAMPLE)
+
+            debug("add variants variables")
+            v = self._snp_variants_dataset(
+                contig=r.contig, inline_array=inline_array, chunks=chunks
+            )
+            x = xr.merge([v, x], compat="override", join="override")
+
+            debug("handle region, do this only once - optimisation")
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        debug("concatenate data from multiple regions")
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        debug("apply site filters")
+        if site_mask is not None:
+            ds = dask_compress_dataset(
+                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+            )
+
+        debug("add call_genotype_mask")
+        ds["call_genotype_mask"] = ds["call_genotype"] < 0
+
+        debug("handle sample query")
+        if sample_query is not None:
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError(f"No samples found for query {sample_query!r}")
+            ds = ds.isel(samples=loc_samples)
+
+        return ds

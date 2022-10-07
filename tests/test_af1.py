@@ -4,6 +4,7 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 import zarr
 from pandas.testing import assert_frame_equal
 
@@ -127,26 +128,22 @@ def test_sample_metadata():
     assert_frame_equal(df_default, df_all)
 
 
-@pytest.mark.parametrize("mask", ["funestus"])
-def test_open_site_filters(mask):
+def test_open_site_filters():
     # check can open the zarr directly
     af1 = setup_af1()
-    root = af1.open_site_filters(mask=mask)
+    root = af1.open_site_filters(mask="funestus")
     assert isinstance(root, zarr.hierarchy.Group)
     for contig in af1.contigs:
         assert contig in root
 
 
-@pytest.mark.parametrize("mask", ["funestus"])
 @pytest.mark.parametrize(
-    # FIXME: support region and gene names
-    # "region", ["2RL", ["2RL", "3RL", "2RL:48,714,463-48,715,355", "AGAP007280"]]
     "region",
-    ["2RL", ["2RL", "3RL"]],
+    ["2RL", ["2RL", "3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
 )
-def test_site_filters(mask, region):
+def test_site_filters(region):
     af1 = setup_af1()
-    filter_pass = af1.site_filters(region=region, mask=mask)
+    filter_pass = af1.site_filters(region=region, mask="funestus")
     assert isinstance(filter_pass, da.Array)
     assert filter_pass.ndim == 1
     assert filter_pass.dtype == bool
@@ -162,10 +159,8 @@ def test_open_snp_sites():
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
-    # FIXME: support region and gene names
-    # "region", ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "AGAP007280"]]
     "region",
-    ["2RL", ["2RL", "3RL"]],
+    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
 )
 def test_snp_sites(chunks, region):
 
@@ -218,15 +213,13 @@ def test_open_snp_genotypes():
     [
         None,
         "1229-VO-GH-DADZIE-VMF00095",
-        ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"],
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
         "1.0",
     ],
 )
 @pytest.mark.parametrize(
-    # FIXME: support region and gene names
-    # "region", ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "AGAP007280"]]
     "region",
-    ["2RL", ["2RL", "3RL"]],
+    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
 )
 def test_snp_genotypes(chunks, sample_sets, region):
 
@@ -246,22 +239,25 @@ def test_snp_genotypes(chunks, sample_sets, region):
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i1"
+
     x = af1.snp_genotypes(
         region=region, sample_sets=sample_sets, field="GQ", chunks=chunks
     )
     assert isinstance(x, da.Array)
     assert x.ndim == 2
-    # FIXME: test_ag3.py asserts this instead:
+    # FIXME: test_ag3.py asserts this instead, which only passes for Ag3.0 (not Ag3.x):
     # assert x.dtype == "i2"
     assert x.dtype == "int8"
+
     x = af1.snp_genotypes(
         region=region, sample_sets=sample_sets, field="MQ", chunks=chunks
     )
     assert isinstance(x, da.Array)
     assert x.ndim == 2
-    # FIXME: test_ag3.py asserts this instead:
+    # FIXME: test_ag3.py asserts this instead, which only passes for Ag3.0 (not Ag3.x)
     # assert x.dtype == "i2"
     assert x.dtype == "float32"
+
     x = af1.snp_genotypes(
         region=region, sample_sets=sample_sets, field="AD", chunks=chunks
     )
@@ -295,10 +291,8 @@ def test_snp_genotypes(chunks, sample_sets, region):
     ],
 )
 @pytest.mark.parametrize(
-    # FIXME: support region and gene names
-    # "region", ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "AGAP007280"]]
     "region",
-    ["2RL", ["2RL", "3RL"]],
+    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
 )
 def test_snp_genotypes_chunks(sample_sets, region):
 
@@ -317,3 +311,109 @@ def test_snp_genotypes_chunks(sample_sets, region):
     assert gt_manual.chunks[0][0] == 100_000
     assert gt_manual.chunks[1][0] == 10
     assert gt_manual.chunks[2][0] == 2
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        None,
+        "1229-VO-GH-DADZIE-VMF00095",
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
+        "1.0",
+    ],
+)
+@pytest.mark.parametrize(
+    "region",
+    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
+)
+@pytest.mark.parametrize(
+    "site_mask",
+    [None, "funestus"],
+)
+def test_snp_calls(sample_sets, region, site_mask):
+
+    af1 = setup_af1()
+
+    ds = af1.snp_calls(region=region, sample_sets=sample_sets, site_mask=site_mask)
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "variant_filter_pass_funestus",
+        "call_genotype",
+        "call_genotype_mask",
+        "call_GQ",
+        "call_AD",
+        "call_MQ",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check dim lengths
+    pos = af1.snp_sites(region=region, field="POS", site_mask=site_mask)
+    n_variants = len(pos)
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    n_samples = len(df_samples)
+    assert ds.dims["variants"] == n_variants
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 4
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim == 2
+            assert x.shape == (n_variants, 4)
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.shape == (n_variants,)
+            assert x.dims == ("variants",)
+        elif f in {"call_genotype", "call_genotype_mask"}:
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape == (n_variants, n_samples, 2)
+        elif f == "call_AD":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "alleles")
+            assert x.shape == (n_variants, n_samples, 4)
+        elif f.startswith("call_"):
+            assert x.ndim == 2
+            assert x.dims == ("variants", "samples")
+            assert x.shape == (n_variants, n_samples)
+        elif f.startswith("sample_"):
+            assert x.ndim == 1
+            assert x.dims == ("samples",)
+            assert x.shape == (n_samples,)
+
+    # check samples
+    expected_samples = df_samples["sample_id"].tolist()
+    assert ds["sample_id"].values.tolist() == expected_samples
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == ("2RL", "3RL", "X")
+
+    # check can set up computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+    d2 = ds["call_AD"].sum(axis=(1, 2))
+    assert isinstance(d2, xr.DataArray)
+
+    # check compress bug
+    pos = ds["variant_position"].data
+    assert pos.shape == pos.compute().shape
