@@ -8758,7 +8758,9 @@ class Ag3:
         # set labels as the index which we extract to reorder metadata
         leaf_labels = np.arange(ht.shape[1])
         # get the max distance, required to set xmin, xmax, which we need xmin to be slightly below 0
-        max_dist = _hamming_to_snps(ht.T).max()
+        max_dist = _get_max_hamming_distance(
+            ht.T, metric="hamming", linkage_method=linkage_method
+        )
         fig = create_dendrogram(
             ht.T,
             distfun=lambda x: _hamming_to_snps(x),
@@ -8825,6 +8827,22 @@ def _hamming_to_snps(h):
     dist = pdist(h, metric="hamming")
     dist *= h.shape[1]
     return dist
+
+
+def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
+    """
+    Find the maximum hamming distance between haplotypes
+    """
+    from scipy.cluster.hierarchy import linkage
+
+    Z = linkage(h, metric=metric, method=linkage_method)
+
+    # Get the distances column
+    dists = Z[:, 2]
+    # Convert to the number of SNP differences
+    dists *= h.shape[1]
+    # Return the maximum
+    return dists.max()
 
 
 def _roh_hmm_predict(
