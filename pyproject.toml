@@ -37,6 +37,10 @@ importlib_metadata = "*"
 ipinfo = "*"
 igv-notebook = ">=0.2.3"
 tqdm = "*"
+dash = "*"
+dash-cytoscape = "*"
+jupyter-dash = "*"
+
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
