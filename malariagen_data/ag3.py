@@ -27,6 +27,7 @@ except ImportError:
 import malariagen_data
 
 from . import veff
+from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
     DIM_PLOIDY,
@@ -8965,6 +8966,300 @@ class Ag3:
         )
 
         bkplt.show(fig)
+
+    def plot_haplotype_network(
+        self,
+        region,
+        analysis,
+        sample_sets=None,
+        sample_query=None,
+        max_dist=2,
+        color=None,
+        color_discrete_sequence=None,
+        node_size_factor=50,
+        server_mode="inline",
+        height=650,
+        width="100%",
+        layout="cose",
+        layout_params=None,
+    ):
+        """TODO doc me"""
+
+        from itertools import cycle
+
+        import dash_cytoscape as cyto
+        import plotly.express as px
+        from dash import dcc, html
+        from dash.dependencies import Input, Output
+        from jupyter_dash import JupyterDash
+
+        if layout != "cose":
+            cyto.load_extra_layouts()
+        JupyterDash.infer_jupyter_proxy_config()
+
+        debug = self._log.debug
+
+        debug("access haplotypes dataset")
+        ds_haps = self.haplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            analysis=analysis,
+        )
+
+        debug("access sample metadata")
+        df_samples = self.sample_metadata(
+            sample_query=sample_query, sample_sets=sample_sets
+        )
+
+        debug("setup haplotype metadata")
+        samples_phased = ds_haps["sample_id"].values
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[samples_phased].reset_index()
+        )
+        df_haps = df_samples_phased.loc[df_samples_phased.index.repeat(2)].reset_index(
+            drop=True
+        )
+
+        debug("load haplotypes")
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        debug("count alleles and select segregating sites")
+        ac = gt.count_alleles(max_allele=1)
+        loc_seg = ac.is_segregating()
+        ht_seg = ht[loc_seg]
+
+        debug("identify distinct haplotypes")
+        ht_distinct_sets = ht_seg.distinct()
+        # find indices of distinct haplotypes - just need one per set
+        ht_distinct_indices = [min(s) for s in ht_distinct_sets]
+        # reorder by index - TODO is this necessary?
+        ix = np.argsort(ht_distinct_indices)
+        ht_distinct_indices = [ht_distinct_indices[i] for i in ix]
+        ht_distinct_sets = [ht_distinct_sets[i] for i in ix]
+        # obtain an array of distinct haplotypes
+        ht_distinct = ht_seg.take(ht_distinct_indices, axis=1)
+        # count how many observations per distinct haplotype
+        ht_counts = [len(s) for s in ht_distinct_sets]
+
+        debug("construct median joining network")
+        ht_distinct_mjn, edges, alt_edges = median_joining_network(
+            ht_distinct, max_dist=max_dist
+        )
+        edges = np.triu(edges)
+        alt_edges = np.triu(alt_edges)
+
+        debug("setup colors")
+        color_values = None
+        ht_color_counts = None
+        if color is not None:
+
+            # extract all unique values of the color column
+            color_values = df_haps[color].unique()
+
+            # set up a color palette
+            if color_discrete_sequence is None:
+                if len(color_values) <= 10:
+                    color_discrete_sequence = px.colors.qualitative.Plotly
+                else:
+                    color_discrete_sequence = px.colors.qualitative.Alphabet
+
+            # count color values for each distinct haplotype
+            ht_color_counts = [
+                df_haps.iloc[list(s)][color].value_counts().to_dict()
+                for s in ht_distinct_sets
+            ]
+
+        debug("construct graph")
+        anon_width = np.sqrt(0.3 * node_size_factor)
+        graph_nodes, graph_edges = mjn_graph(
+            ht_distinct=ht_distinct,
+            ht_distinct_mjn=ht_distinct_mjn,
+            ht_counts=ht_counts,
+            ht_color_counts=ht_color_counts,
+            color=color,
+            color_values=color_values,
+            edges=edges,
+            alt_edges=alt_edges,
+            node_size_factor=node_size_factor,
+            anon_width=anon_width,
+        )
+
+        debug("prepare graph data for cytoscape")
+        elements = [{"data": n} for n in graph_nodes] + [
+            {"data": e} for e in graph_edges
+        ]
+
+        debug("define node style")
+        node_stylesheet = {
+            "selector": "node",
+            "style": {
+                "width": "data(width)",
+                "height": "data(width)",
+                "pie-size": "100%",
+            },
+        }
+        if color:
+            for i, (v, c) in enumerate(
+                zip(color_values, cycle(color_discrete_sequence))
+            ):
+                node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
+                node_stylesheet["style"][
+                    f"pie-{i + 1}-background-size"
+                ] = f"mapData({v}, 0, 100, 0, 100)"
+
+        debug("define edge style")
+        edge_stylesheet = {
+            "selector": "edge",
+            "style": {"curve-style": "bezier", "width": 2, "opacity": 0.5},
+        }
+
+        debug("define selected stylesheet")
+        selected_stylesheet = {
+            "selector": ":selected",
+            "style": {
+                "border-width": "3px",
+                "border-style": "solid",
+                "border-color": "black",
+            },
+        }
+
+        debug("create figure legend")
+        legend_fig = None
+        if color is not None:
+            # here we manually create a legend by making a scatter plot then
+            # hiding everything but the legend
+            legend_df = pd.DataFrame(
+                {
+                    color: color_values,
+                    "x": np.zeros(len(color_values)),
+                    "y": np.zeros(len(color_values)),
+                }
+            )
+            legend_fig = px.scatter(
+                data_frame=legend_df,
+                x="x",
+                y="y",
+                color=color,
+                color_discrete_sequence=color_discrete_sequence,
+                template="simple_white",
+                range_x=[1, 2],
+                range_y=[1, 2],
+            )
+            legend_fig.update_layout(
+                legend=dict(
+                    yanchor="top",
+                    y=1,
+                    xanchor="left",
+                    x=0,
+                    itemsizing="constant",
+                    orientation="v",
+                ),
+                xaxis=dict(
+                    visible=False,
+                ),
+                yaxis=dict(
+                    visible=False,
+                ),
+                margin=dict(
+                    autoexpand=False,
+                    pad=0,
+                    t=0,
+                    r=0,
+                    b=0,
+                    l=0,
+                ),
+            )
+            legend_component = dcc.Graph(
+                id="legend",
+                figure=legend_fig,
+            )
+        else:
+            legend_component = html.Div()
+
+        debug("define cytoscape component")
+        if layout_params is None:
+            graph_layout_params = dict()
+        else:
+            graph_layout_params = layout_params.copy()
+        graph_layout_params["name"] = layout
+        graph_layout_params.setdefault("padding", 20)
+        graph_layout_params.setdefault("animate", False)
+
+        cytoscape_component = cyto.Cytoscape(
+            id="cytoscape",
+            elements=elements,
+            layout=graph_layout_params,
+            stylesheet=[
+                node_stylesheet,
+                edge_stylesheet,
+                selected_stylesheet,
+            ],
+            style={
+                # width and height needed to get cytoscape component to display
+                "width": "100%",
+                "height": "100%",
+                "background-color": "white",
+            },
+        )
+
+        debug("create dash app")
+        app = JupyterDash(
+            "dash cytoscape network",
+            # this stylesheet is used to provide support for a rows and columns
+            # layout of the components
+            external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"],
+        )
+        # this is an optimisation, it's generally faster to serve script files from CDN
+        app.scripts.config.serve_locally = False
+        app.layout = html.Div(
+            [
+                html.Div(
+                    cytoscape_component,
+                    className="nine columns",
+                    style={
+                        # required to get cytoscape component to show
+                        # multiply by factor to prevent scroll overflow
+                        "height": f"{height * .95}px",
+                    },
+                ),
+                html.Div(
+                    legend_component,
+                    className="three columns",
+                    style={
+                        "height": f"{height * .95}px",
+                    },
+                ),
+                html.Div(id="output"),
+            ],
+        )
+
+        @app.callback(Output("output", "children"), Input("cytoscape", "tapNodeData"))
+        def displayTapNodeData(data):
+            if data is None:
+                return "Click or tap a node for more information."
+            else:
+                n = data["count"]
+                text = f"No. haplotypes: {n}"
+                selected_color_data = {
+                    color_v: int(data.get(color_v, 0) * n / 100)
+                    for color_v in color_values
+                }
+                selected_color_data = sorted(
+                    selected_color_data.items(), key=lambda item: item[1], reverse=True
+                )
+                color_texts = [
+                    f"{color_v}: {color_n}"
+                    for color_v, color_n in selected_color_data
+                    if color_n > 0
+                ]
+                color_texts = "; ".join(color_texts)
+                text += f" ({color_texts})"
+                return text
+
+        app.run_server(mode=server_mode, height=height, width=width)
 
 
 def _haplotype_frequencies(h):
