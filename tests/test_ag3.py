@@ -3235,3 +3235,95 @@ def test_h12_gwss():
     # check some values
     assert_allclose(x[0], 27701.195)
     assert_allclose(h12[11353], 0.17875)
+
+
+def test_h1x_gwss():
+    ag3 = setup_ag3()
+    cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
+    cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    contig = "2L"
+    analysis = "gamb_colu"
+    window_size = 2000
+
+    x, h1x = ag3.h1x_gwss(
+        contig=contig,
+        analysis=analysis,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        window_size=window_size,
+        cohort_size=None,
+    )
+
+    # check data
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h1x, np.ndarray)
+
+    # check dimensions
+    assert x.ndim == h1x.ndim == 1
+    assert x.shape == h1x.shape
+
+    # check some values
+    assert_allclose(x[0], 36493.229, rtol=1e-5), x[0]
+    assert_allclose(h1x[0], 0.067621, rtol=1e-5), h1x[0]
+    assert np.all(h1x <= 1)
+    assert np.all(h1x >= 0)
+
+
+def test_haplotype_frequencies():
+    h1 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 1, 1, 0],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    from malariagen_data.ag3 import _haplotype_frequencies
+
+    f = _haplotype_frequencies(h1)
+    assert isinstance(f, dict)
+    vals = np.array(list(f.values()))
+    vals.sort()
+    assert np.all(vals >= 0)
+    assert np.all(vals <= 1)
+    assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
+
+
+def test_haplotype_joint_frequencies():
+    h1 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 1, 1, 0],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    h2 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [1, 0, 1, 1, 1],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    from malariagen_data.ag3 import _haplotype_joint_frequencies
+
+    f = _haplotype_joint_frequencies(h1, h2)
+    assert isinstance(f, dict)
+    vals = np.array(list(f.values()))
+    vals.sort()
+    assert np.all(vals >= 0)
+    assert np.all(vals <= 1)
+    assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
