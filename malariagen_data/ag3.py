@@ -45,6 +45,7 @@ from .util import (
     jackknife_ci,
     jitter,
     locate_region,
+    plotly_discrete_legend,
     read_gff3,
     resolve_region,
     type_error,
@@ -8976,12 +8977,15 @@ class Ag3:
         max_dist=2,
         color=None,
         color_discrete_sequence=None,
+        color_discrete_map=None,
+        category_orders=None,
         node_size_factor=50,
         server_mode="inline",
         height=650,
         width="100%",
         layout="cose",
         layout_params=None,
+        server_port=None,
     ):
         """TODO doc me"""
 
@@ -9054,23 +9058,41 @@ class Ag3:
         debug("setup colors")
         color_values = None
         ht_color_counts = None
+        color_params = None
         if color is not None:
 
             # extract all unique values of the color column
             color_values = df_haps[color].unique()
-
-            # set up a color palette
-            if color_discrete_sequence is None:
-                if len(color_values) <= 10:
-                    color_discrete_sequence = px.colors.qualitative.Plotly
-                else:
-                    color_discrete_sequence = px.colors.qualitative.Alphabet
 
             # count color values for each distinct haplotype
             ht_color_counts = [
                 df_haps.iloc[list(s)][color].value_counts().to_dict()
                 for s in ht_distinct_sets
             ]
+
+            if color == "taxon":
+                # special case, standardise taxon colors
+                color_params = _setup_taxon_colors()
+                color_discrete_map = color_params["color_discrete_map"]
+
+            elif color_discrete_map is None:
+
+                # set up a color palette
+                if color_discrete_sequence is None:
+                    if len(color_values) <= 10:
+                        color_discrete_sequence = px.colors.qualitative.Plotly
+                    else:
+                        color_discrete_sequence = px.colors.qualitative.Alphabet
+
+                # map values to colors
+                color_discrete_map = {
+                    v: c for v, c in zip(color_values, cycle(color_discrete_sequence))
+                }
+
+                color_params = {
+                    "color_discrete_map": color_discrete_map,
+                    "category_orders": category_orders,
+                }
 
         debug("construct graph")
         anon_width = np.sqrt(0.3 * node_size_factor)
@@ -9102,9 +9124,7 @@ class Ag3:
             },
         }
         if color:
-            for i, (v, c) in enumerate(
-                zip(color_values, cycle(color_discrete_sequence))
-            ):
+            for i, (v, c) in enumerate(color_discrete_map.items()):
                 node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
                 node_stylesheet["style"][
                     f"pie-{i + 1}-background-size"
@@ -9127,54 +9147,18 @@ class Ag3:
         }
 
         debug("create figure legend")
-        legend_fig = None
         if color is not None:
-            # here we manually create a legend by making a scatter plot then
-            # hiding everything but the legend
-            legend_df = pd.DataFrame(
-                {
-                    color: color_values,
-                    "x": np.zeros(len(color_values)),
-                    "y": np.zeros(len(color_values)),
-                }
-            )
-            legend_fig = px.scatter(
-                data_frame=legend_df,
-                x="x",
-                y="y",
+            legend_fig = plotly_discrete_legend(
                 color=color,
-                color_discrete_sequence=color_discrete_sequence,
-                template="simple_white",
-                range_x=[1, 2],
-                range_y=[1, 2],
-            )
-            legend_fig.update_layout(
-                legend=dict(
-                    yanchor="top",
-                    y=1,
-                    xanchor="left",
-                    x=0,
-                    itemsizing="constant",
-                    orientation="v",
-                ),
-                xaxis=dict(
-                    visible=False,
-                ),
-                yaxis=dict(
-                    visible=False,
-                ),
-                margin=dict(
-                    autoexpand=False,
-                    pad=0,
-                    t=0,
-                    r=0,
-                    b=0,
-                    l=0,
-                ),
+                color_values=color_values,
+                **color_params,
             )
             legend_component = dcc.Graph(
                 id="legend",
                 figure=legend_fig,
+                config=dict(
+                    displayModeBar=False,
+                ),
             )
         else:
             legend_component = html.Div()
@@ -9185,7 +9169,7 @@ class Ag3:
         else:
             graph_layout_params = layout_params.copy()
         graph_layout_params["name"] = layout
-        graph_layout_params.setdefault("padding", 20)
+        graph_layout_params.setdefault("padding", 10)
         graph_layout_params.setdefault("animate", False)
 
         cytoscape_component = cyto.Cytoscape(
@@ -9203,6 +9187,10 @@ class Ag3:
                 "height": "100%",
                 "background-color": "white",
             },
+            # enable selecting multiple nodes with shift click and drag
+            boxSelectionEnabled=True,
+            # prevent accidentally zooming out to oblivion
+            minZoom=0.1,
         )
 
         debug("create dash app")
@@ -9223,6 +9211,7 @@ class Ag3:
                         # required to get cytoscape component to show
                         # multiply by factor to prevent scroll overflow
                         "height": f"{height * .95}px",
+                        "border": "1px solid black",
                     },
                 ),
                 html.Div(
@@ -9255,11 +9244,22 @@ class Ag3:
                     for color_v, color_n in selected_color_data
                     if color_n > 0
                 ]
-                color_texts = "; ".join(color_texts)
-                text += f" ({color_texts})"
+                if color_texts:
+                    color_texts = "; ".join(color_texts)
+                    text += f" ({color_texts})"
                 return text
 
-        app.run_server(mode=server_mode, height=height, width=width)
+        debug("launch the dash app")
+        run_params = dict()
+        if server_mode is not None:
+            run_params["mode"] = server_mode
+        if server_port is not None:
+            run_params["port"] = server_port
+        if height is not None:
+            run_params["height"] = height
+        if width is not None:
+            run_params["width"] = width
+        return app.run_server(**run_params)
 
 
 def _haplotype_frequencies(h):
@@ -9395,9 +9395,11 @@ def _roh_hmm_predict(
     ]
 
 
-def _setup_taxon_colors(plot_kwargs):
+def _setup_taxon_colors(plot_kwargs=None):
     import plotly.express as px
 
+    if plot_kwargs is None:
+        plot_kwargs = dict()
     taxon_palette = px.colors.qualitative.Plotly
     taxon_color_map = {
         "gambiae": taxon_palette[0],
@@ -9411,6 +9413,7 @@ def _setup_taxon_colors(plot_kwargs):
     }
     plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
     plot_kwargs.setdefault("category_orders", {"taxon": list(taxon_color_map.keys())})
+    return plot_kwargs
 
 
 def _locate_cohorts(*, cohorts, df_samples):

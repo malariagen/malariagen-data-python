@@ -223,7 +223,7 @@ def _mjn_graph_nodes(
             # not an original haplotype, inferred during network building
             graph_node = {
                 "id": i,
-                "count": 1,
+                "count": 0,
                 "width": anon_width,
             }
 
@@ -259,7 +259,7 @@ def _mjn_graph_edges(
                 # add first intermediate node
                 graph_node = {
                     "id": f"anon_{i}_{j}_0",
-                    "count": 1,
+                    "count": 0,
                     "width": anon_width,
                 }
                 graph_nodes.append(graph_node)
@@ -278,7 +278,7 @@ def _mjn_graph_edges(
                     target = f"anon_{i}_{j}_{k}"
                     graph_node = {
                         "id": target,
-                        "count": 1,
+                        "count": 0,
                         "width": anon_width,
                     }
                     graph_nodes.append(graph_node)
@@ -294,7 +294,7 @@ def _mjn_graph_edges(
                 target = j
                 graph_node = {
                     "id": source,
-                    "count": 1,
+                    "count": 0,
                     "width": anon_width,
                 }
                 graph_nodes.append(graph_node)
