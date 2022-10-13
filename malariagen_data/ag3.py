@@ -9168,7 +9168,71 @@ class Ag3:
         layout_params=None,
         server_port=None,
     ):
-        """TODO doc me"""
+        """Construct a median-joining haplotype network and display it using
+        Cytoscape.
+
+        A haplotype network provides a visualisation of the genetic distance
+        between haplotypes. Each node in the network represents a unique
+        haplotype. The size (area) of the node is scaled by the number of
+        times that unique haplotype was observed within the selected samples.
+        A connection between two nodes represents a single SNP difference
+        between the corresponding haplotypes.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_dist : int, optional
+            Join network components up to a maximum distance of 2 SNP
+            differences.
+        color : str, optional
+            Identifies a column in the sample metadata which determines the colour
+            of pie chart segments within nodes.
+        color_discrete_sequence : list, optional
+            Provide a list of colours to use.
+        color_discrete_map : dict, optional
+            Provide an explicit mapping from values to colours.
+        category_orders : list, optional
+            Control the order in which values appear in the legend.
+        node_size_factor : int, optional
+            Control the sizing of nodes.
+        server_mode : {"inline", "external", "jupyterlab"}
+            Controls how the Jupyter Dash app will be launched. See
+            https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
+            more information.
+        height : int, optional
+            Height of the plot.
+        width : int, optional
+            Width of the plot.
+        layout : str
+            Name of the network layout to use to position nodes.
+        layout_params
+            Additional parameters to the layout algorithm.
+        server_port
+            Manually override the port on which the Dash app will run.
+
+        Returns
+        -------
+        app
+            The running Dash app.
+
+        """
 
         from itertools import cycle
 
@@ -9306,6 +9370,8 @@ class Ag3:
             },
         }
         if color:
+            # here are the styles which control the display of nodes as pie
+            # charts
             for i, (v, c) in enumerate(color_discrete_map.items()):
                 node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
                 node_stylesheet["style"][
@@ -9318,7 +9384,7 @@ class Ag3:
             "style": {"curve-style": "bezier", "width": 2, "opacity": 0.5},
         }
 
-        debug("define selected stylesheet")
+        debug("define style for selected node")
         selected_stylesheet = {
             "selector": ":selected",
             "style": {
@@ -9390,8 +9456,8 @@ class Ag3:
                     cytoscape_component,
                     className="nine columns",
                     style={
-                        # required to get cytoscape component to show
-                        # multiply by factor to prevent scroll overflow
+                        # required to get cytoscape component to show ...
+                        # multiply by factor <1 to prevent scroll overflow
                         "height": f"{height * .93}px",
                         "border": "1px solid black",
                     },
@@ -9405,6 +9471,10 @@ class Ag3:
                 ),
                 html.Div(id="output"),
             ],
+        )
+
+        debug(
+            "define a callback function to display information about the selected node"
         )
 
         @app.callback(Output("output", "children"), Input("cytoscape", "tapNodeData"))
