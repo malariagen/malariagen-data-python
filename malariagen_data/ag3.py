@@ -9180,7 +9180,8 @@ class Ag3:
 
         if layout != "cose":
             cyto.load_extra_layouts()
-        JupyterDash.infer_jupyter_proxy_config()
+        # leave this for user code, if needed (doesn't seem necessary on colab)
+        # JupyterDash.infer_jupyter_proxy_config()
 
         debug = self._log.debug
 
