@@ -31,9 +31,12 @@ numba = "*"
 plotly = "*"
 bokeh = "*"
 statsmodels = "*"
-ipyleaflet = "<0.17"  # 0.17.0 appears to be broken on colab
+# 0.17.0 appears to be broken on colab
+ipyleaflet = ">0.17.0"
 ipywidgets = "*"
-importlib_metadata = "*"
+# https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
+# compatibility issue with xarray zarr backend
+importlib_metadata = "<5.0"
 ipinfo = "*"
 igv-notebook = ">=0.2.3"
 tqdm = "*"
