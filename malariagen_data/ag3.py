@@ -9392,7 +9392,7 @@ class Ag3:
                     style={
                         # required to get cytoscape component to show
                         # multiply by factor to prevent scroll overflow
-                        "height": f"{height * .95}px",
+                        "height": f"{height * .93}px",
                         "border": "1px solid black",
                     },
                 ),
@@ -9400,7 +9400,7 @@ class Ag3:
                     legend_component,
                     className="three columns",
                     style={
-                        "height": f"{height * .95}px",
+                        "height": f"{height * .93}px",
                     },
                 ),
                 html.Div(id="output"),
