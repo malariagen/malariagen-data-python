@@ -8641,7 +8641,6 @@ class Ag3:
     ):
         """Run a H1X genome-wide scan to detect genome regions with
         shared selective sweeps between two cohorts.
-
         Parameters
         ----------
         contig: str
@@ -8667,14 +8666,12 @@ class Ag3:
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
             Random seed used for down-sampling.
-
         Returns
         -------
         x : numpy.ndarray
             An array containing the window centre point genomic positions.
         h1x : numpy.ndarray
             An array with H1X statistic values for each window.
-
         """
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -8770,7 +8767,6 @@ class Ag3:
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
-
         Parameters
         ----------
         contig: str
@@ -8806,7 +8802,6 @@ class Ag3:
             If True, show the plot.
         x_range : bokeh.models.Range1d, optional
             X axis range (for linking to other tracks).
-
         Returns
         -------
         fig : figure
@@ -8887,7 +8882,6 @@ class Ag3:
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
-
         Parameters
         ----------
         contig: str
@@ -8921,12 +8915,10 @@ class Ag3:
             GWSS track height in pixels (px).
         genes_height : int. optional
             Gene track height in pixels (px).
-
         Returns
         -------
         fig : figure
             A plot showing windowed H1X statistic with gene track on x-axis.
-
         """
 
         import bokeh.layouts as bklay
@@ -8966,6 +8958,222 @@ class Ag3:
 
         bkplt.show(fig)
 
+    def plot_haplotype_clustering(
+        self,
+        region,
+        analysis,
+        sample_sets=None,
+        sample_query=None,
+        color=None,
+        symbol=None,
+        linkage_method="single",
+        count_sort=True,
+        distance_sort=False,
+        cohort_size=None,
+        random_seed=42,
+        width=1000,
+        height=500,
+        **kwargs,
+    ):
+        """Hierarchically cluster haplotypes in region and produce an interactive plot.
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        color : str, optional
+            Identifies a column in the sample metadata which determines the colour
+            of dendrogram leaves (haplotypes).
+        symbol : str, optional
+            Identifies a column in the sample metadata which determines the shape
+            of dendrogram leaves (haplotypes).
+        linkage_method: str, optional
+            The linkage algorithm to use, valid options are 'single', 'complete',
+            'average', 'weighted', 'centroid', 'median' and 'ward'. See the Linkage
+            Methods section of the scipy.cluster.hierarchy.linkage docs for full
+            descriptions.
+        count_sort: bool, optional
+            For each node n, the order (visually, from left-to-right) n's two descendant
+            links are plotted is determined by this parameter. If True, the child with
+            the minimum number of original objects in its cluster is plotted first. Note
+            distance_sort and count_sort cannot both be True.
+        distance_sort: bool, optional
+            For each node n, the order (visually, from left-to-right) n's two descendant
+            links are plotted is determined by this parameter. If True, The child with the
+            minimum distance between its direct descendants is plotted first.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        width : int, optional
+            The figure width in pixels
+        height: int, optional
+            The figure height in pixels
+        """
+        import plotly.express as px
+        from scipy.cluster.hierarchy import linkage
+
+        from .plotly_dendrogram import create_dendrogram
+
+        debug = self._log.debug
+
+        ds_haps = self.haplotypes(
+            region=region,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+        debug("align sample metadata with haplotypes")
+        phased_samples = ds_haps["sample_id"].values.tolist()
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[phased_samples].reset_index()
+        )
+
+        debug("set up plotting options")
+        hover_data = [
+            "sample_id",
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+
+        plot_kwargs = dict(
+            template="simple_white",
+            hover_name="sample_id",
+            hover_data=hover_data,
+            render_mode="svg",
+        )
+
+        debug("special handling for taxon color")
+        if color == "taxon":
+            _setup_taxon_colors(plot_kwargs)
+
+        debug("apply any user overrides")
+        plot_kwargs.update(kwargs)
+
+        debug("Create dendrogram with plotly")
+        # set labels as the index which we extract to reorder metadata
+        leaf_labels = np.arange(ht.shape[1])
+        # get the max distance, required to set xmin, xmax, which we need xmin to be slightly below 0
+        max_dist = _get_max_hamming_distance(
+            ht.T, metric="hamming", linkage_method=linkage_method
+        )
+        fig = create_dendrogram(
+            ht.T,
+            distfun=lambda x: _hamming_to_snps(x),
+            linkagefun=lambda x: linkage(x, method=linkage_method),
+            labels=leaf_labels,
+            color_threshold=0,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
+        )
+        fig.update_traces(
+            hoverinfo="y",
+            line=dict(width=0.5, color="black"),
+        )
+        fig.update_layout(
+            width=width,
+            height=height,
+            autosize=True,
+            hovermode="closest",
+            plot_bgcolor="white",
+            yaxis_title="Distance (no. SNPs)",
+            xaxis_title="Haplotypes",
+            showlegend=True,
+        )
+
+        # Repeat the dataframe so there is one row of metadata for each haplotype
+        df_samples_phased_haps = pd.DataFrame(
+            np.repeat(df_samples_phased.values, 2, axis=0)
+        )
+        df_samples_phased_haps.columns = df_samples_phased.columns
+        # select only columns in hover_data
+        df_samples_phased_haps = df_samples_phased_haps[hover_data]
+        debug("Reorder haplotype metadata to align with haplotype clustering")
+        df_samples_phased_haps = df_samples_phased_haps.loc[
+            fig.layout.xaxis["ticktext"]
+        ]
+        fig.update_xaxes(mirror=False, showgrid=True, showticklabels=False, ticks="")
+        fig.update_yaxes(
+            mirror=False, showgrid=True, showline=True, range=[-2, max_dist + 1]
+        )
+
+        debug("Add scatter plot with hover text")
+        fig.add_traces(
+            list(
+                px.scatter(
+                    df_samples_phased_haps,
+                    x=fig.layout.xaxis["tickvals"],
+                    y=np.repeat(-1, len(ht.T)),
+                    color=color,
+                    symbol=symbol,
+                    **plot_kwargs,
+                ).select_traces()
+            )
+        )
+
+        fig.show()
+
+
+def _hamming_to_snps(h):
+    """
+    Cluster haplotype array and return the number of SNP differences
+    """
+    from scipy.spatial.distance import pdist
+
+    dist = pdist(h, metric="hamming")
+    dist *= h.shape[1]
+    return dist
+
+
+def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
+    """
+    Find the maximum hamming distance between haplotypes
+    """
+    from scipy.cluster.hierarchy import linkage
+
+    Z = linkage(h, metric=metric, method=linkage_method)
+
+    # Get the distances column
+    dists = Z[:, 2]
+    # Convert to the number of SNP differences
+    dists *= h.shape[1]
+    # Return the maximum
+    return dists.max()
+
 
 def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
@@ -8998,7 +9206,6 @@ def _h1x(ha, hb):
 
 def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     """Compute H1X in moving windows.
-
     Parameters
     ----------
     ha : array_like, int, shape (n_variants, n_haplotypes)
@@ -9014,12 +9221,10 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     step : int, optional
         The number of variants between start positions of windows. If not
         given, defaults to the window size, i.e., non-overlapping windows.
-
     Returns
     -------
     h1x : ndarray, float, shape (n_windows,)
         H1X values (sum of squares of joint haplotype frequencies).
-
     """
 
     assert ha.ndim == hb.ndim == 2
