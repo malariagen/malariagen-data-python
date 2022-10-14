@@ -11,6 +11,8 @@ import allel
 import dask.array as da
 import numpy as np
 import pandas
+import pandas as pd
+import plotly.express as px
 import xarray as xr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
@@ -637,3 +639,76 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
     ci_low, ci_upp = estimate + z_score * np.array((-std_err, std_err))
 
     return estimate, bias, std_err, ci_err, ci_low, ci_upp
+
+
+def plotly_discrete_legend(
+    color,
+    color_values,
+    **kwargs,
+):
+    """Manually create a legend by making a scatter plot then
+    hiding everything but the legend.
+
+    Parameters
+    ----------
+    color : str
+        Name of field used to obtain categorical values.
+    color_values : list
+        Categorical values to map to colours.
+    **kwargs
+        Passed through to px.scatter().
+
+    Returns
+    -------
+    fig : Figure
+        Plotly figure.
+
+    """
+
+    data_frame = pd.DataFrame(
+        {
+            color: color_values,
+            "x": np.zeros(len(color_values)),
+            "y": np.zeros(len(color_values)),
+        }
+    )
+
+    fig = px.scatter(
+        data_frame=data_frame,
+        x="x",
+        y="y",
+        color=color,
+        template="simple_white",
+        range_x=[1, 2],  # hide the scatter points
+        range_y=[1, 2],
+        **kwargs,
+    )
+
+    # visual styling to hide everything but the legend
+    fig.update_layout(
+        legend=dict(
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=0,
+            itemsizing="constant",
+            orientation="v",
+            title=color.capitalize(),
+        ),
+        xaxis=dict(
+            visible=False,
+        ),
+        yaxis=dict(
+            visible=False,
+        ),
+        margin=dict(
+            autoexpand=False,
+            pad=0,
+            t=0,
+            r=0,
+            b=0,
+            l=0,
+        ),
+    )
+
+    return fig

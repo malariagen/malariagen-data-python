@@ -27,6 +27,7 @@ except ImportError:
 import malariagen_data
 
 from . import veff
+from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
     DIM_PLOIDY,
@@ -44,6 +45,7 @@ from .util import (
     jackknife_ci,
     jitter,
     locate_region,
+    plotly_discrete_legend,
     read_gff3,
     resolve_region,
     type_error,
@@ -9147,6 +9149,370 @@ class Ag3:
 
         fig.show()
 
+    def plot_haplotype_network(
+        self,
+        region,
+        analysis,
+        sample_sets=None,
+        sample_query=None,
+        max_dist=2,
+        color=None,
+        color_discrete_sequence=None,
+        color_discrete_map=None,
+        category_orders=None,
+        node_size_factor=50,
+        server_mode="inline",
+        height=650,
+        width="100%",
+        layout="cose",
+        layout_params=None,
+        server_port=None,
+    ):
+        """Construct a median-joining haplotype network and display it using
+        Cytoscape.
+
+        A haplotype network provides a visualisation of the genetic distance
+        between haplotypes. Each node in the network represents a unique
+        haplotype. The size (area) of the node is scaled by the number of
+        times that unique haplotype was observed within the selected samples.
+        A connection between two nodes represents a single SNP difference
+        between the corresponding haplotypes.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_dist : int, optional
+            Join network components up to a maximum distance of 2 SNP
+            differences.
+        color : str, optional
+            Identifies a column in the sample metadata which determines the colour
+            of pie chart segments within nodes.
+        color_discrete_sequence : list, optional
+            Provide a list of colours to use.
+        color_discrete_map : dict, optional
+            Provide an explicit mapping from values to colours.
+        category_orders : list, optional
+            Control the order in which values appear in the legend.
+        node_size_factor : int, optional
+            Control the sizing of nodes.
+        server_mode : {"inline", "external", "jupyterlab"}
+            Controls how the Jupyter Dash app will be launched. See
+            https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
+            more information.
+        height : int, optional
+            Height of the plot.
+        width : int, optional
+            Width of the plot.
+        layout : str
+            Name of the network layout to use to position nodes.
+        layout_params
+            Additional parameters to the layout algorithm.
+        server_port
+            Manually override the port on which the Dash app will run.
+
+        Returns
+        -------
+        app
+            The running Dash app.
+
+        """
+
+        from itertools import cycle
+
+        import dash_cytoscape as cyto
+        import plotly.express as px
+        from dash import dcc, html
+        from dash.dependencies import Input, Output
+        from jupyter_dash import JupyterDash
+
+        if layout != "cose":
+            cyto.load_extra_layouts()
+        # leave this for user code, if needed (doesn't seem necessary on colab)
+        # JupyterDash.infer_jupyter_proxy_config()
+
+        debug = self._log.debug
+
+        debug("access haplotypes dataset")
+        ds_haps = self.haplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            analysis=analysis,
+        )
+
+        debug("access sample metadata")
+        df_samples = self.sample_metadata(
+            sample_query=sample_query, sample_sets=sample_sets
+        )
+
+        debug("setup haplotype metadata")
+        samples_phased = ds_haps["sample_id"].values
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[samples_phased].reset_index()
+        )
+        df_haps = df_samples_phased.loc[df_samples_phased.index.repeat(2)].reset_index(
+            drop=True
+        )
+
+        debug("load haplotypes")
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        debug("count alleles and select segregating sites")
+        ac = gt.count_alleles(max_allele=1)
+        loc_seg = ac.is_segregating()
+        ht_seg = ht[loc_seg]
+
+        debug("identify distinct haplotypes")
+        ht_distinct_sets = ht_seg.distinct()
+        # find indices of distinct haplotypes - just need one per set
+        ht_distinct_indices = [min(s) for s in ht_distinct_sets]
+        # reorder by index - TODO is this necessary?
+        ix = np.argsort(ht_distinct_indices)
+        ht_distinct_indices = [ht_distinct_indices[i] for i in ix]
+        ht_distinct_sets = [ht_distinct_sets[i] for i in ix]
+        # obtain an array of distinct haplotypes
+        ht_distinct = ht_seg.take(ht_distinct_indices, axis=1)
+        # count how many observations per distinct haplotype
+        ht_counts = [len(s) for s in ht_distinct_sets]
+
+        debug("construct median joining network")
+        ht_distinct_mjn, edges, alt_edges = median_joining_network(
+            ht_distinct, max_dist=max_dist
+        )
+        edges = np.triu(edges)
+        alt_edges = np.triu(alt_edges)
+
+        debug("setup colors")
+        color_values = None
+        ht_color_counts = None
+        color_params = None
+        if color is not None:
+
+            # extract all unique values of the color column
+            color_values = df_haps[color].unique()
+
+            # count color values for each distinct haplotype
+            ht_color_counts = [
+                df_haps.iloc[list(s)][color].value_counts().to_dict()
+                for s in ht_distinct_sets
+            ]
+
+            if color == "taxon":
+                # special case, standardise taxon colors
+                color_params = _setup_taxon_colors()
+                color_discrete_map = color_params["color_discrete_map"]
+
+            elif color_discrete_map is None:
+
+                # set up a color palette
+                if color_discrete_sequence is None:
+                    if len(color_values) <= 10:
+                        color_discrete_sequence = px.colors.qualitative.Plotly
+                    else:
+                        color_discrete_sequence = px.colors.qualitative.Alphabet
+
+                # map values to colors
+                color_discrete_map = {
+                    v: c for v, c in zip(color_values, cycle(color_discrete_sequence))
+                }
+
+                color_params = {
+                    "color_discrete_map": color_discrete_map,
+                    "category_orders": category_orders,
+                }
+
+        debug("construct graph")
+        anon_width = np.sqrt(0.3 * node_size_factor)
+        graph_nodes, graph_edges = mjn_graph(
+            ht_distinct=ht_distinct,
+            ht_distinct_mjn=ht_distinct_mjn,
+            ht_counts=ht_counts,
+            ht_color_counts=ht_color_counts,
+            color=color,
+            color_values=color_values,
+            edges=edges,
+            alt_edges=alt_edges,
+            node_size_factor=node_size_factor,
+            anon_width=anon_width,
+        )
+
+        debug("prepare graph data for cytoscape")
+        elements = [{"data": n} for n in graph_nodes] + [
+            {"data": e} for e in graph_edges
+        ]
+
+        debug("define node style")
+        node_stylesheet = {
+            "selector": "node",
+            "style": {
+                "width": "data(width)",
+                "height": "data(width)",
+                "pie-size": "100%",
+            },
+        }
+        if color:
+            # here are the styles which control the display of nodes as pie
+            # charts
+            for i, (v, c) in enumerate(color_discrete_map.items()):
+                node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
+                node_stylesheet["style"][
+                    f"pie-{i + 1}-background-size"
+                ] = f"mapData({v}, 0, 100, 0, 100)"
+
+        debug("define edge style")
+        edge_stylesheet = {
+            "selector": "edge",
+            "style": {"curve-style": "bezier", "width": 2, "opacity": 0.5},
+        }
+
+        debug("define style for selected node")
+        selected_stylesheet = {
+            "selector": ":selected",
+            "style": {
+                "border-width": "3px",
+                "border-style": "solid",
+                "border-color": "black",
+            },
+        }
+
+        debug("create figure legend")
+        if color is not None:
+            legend_fig = plotly_discrete_legend(
+                color=color,
+                color_values=color_values,
+                **color_params,
+            )
+            legend_component = dcc.Graph(
+                id="legend",
+                figure=legend_fig,
+                config=dict(
+                    displayModeBar=False,
+                ),
+            )
+        else:
+            legend_component = html.Div()
+
+        debug("define cytoscape component")
+        if layout_params is None:
+            graph_layout_params = dict()
+        else:
+            graph_layout_params = layout_params.copy()
+        graph_layout_params["name"] = layout
+        graph_layout_params.setdefault("padding", 10)
+        graph_layout_params.setdefault("animate", False)
+
+        cytoscape_component = cyto.Cytoscape(
+            id="cytoscape",
+            elements=elements,
+            layout=graph_layout_params,
+            stylesheet=[
+                node_stylesheet,
+                edge_stylesheet,
+                selected_stylesheet,
+            ],
+            style={
+                # width and height needed to get cytoscape component to display
+                "width": "100%",
+                "height": "100%",
+                "background-color": "white",
+            },
+            # enable selecting multiple nodes with shift click and drag
+            boxSelectionEnabled=True,
+            # prevent accidentally zooming out to oblivion
+            minZoom=0.1,
+        )
+
+        debug("create dash app")
+        app = JupyterDash(
+            "dash cytoscape network",
+            # this stylesheet is used to provide support for a rows and columns
+            # layout of the components
+            external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"],
+        )
+        # this is an optimisation, it's generally faster to serve script files from CDN
+        app.scripts.config.serve_locally = False
+        app.layout = html.Div(
+            [
+                html.Div(
+                    cytoscape_component,
+                    className="nine columns",
+                    style={
+                        # required to get cytoscape component to show ...
+                        # multiply by factor <1 to prevent scroll overflow
+                        "height": f"{height * .93}px",
+                        "border": "1px solid black",
+                    },
+                ),
+                html.Div(
+                    legend_component,
+                    className="three columns",
+                    style={
+                        "height": f"{height * .93}px",
+                    },
+                ),
+                html.Div(id="output"),
+            ],
+        )
+
+        debug(
+            "define a callback function to display information about the selected node"
+        )
+
+        @app.callback(Output("output", "children"), Input("cytoscape", "tapNodeData"))
+        def displayTapNodeData(data):
+            if data is None:
+                return "Click or tap a node for more information."
+            else:
+                n = data["count"]
+                text = f"No. haplotypes: {n}"
+                selected_color_data = {
+                    color_v: int(data.get(color_v, 0) * n / 100)
+                    for color_v in color_values
+                }
+                selected_color_data = sorted(
+                    selected_color_data.items(), key=lambda item: item[1], reverse=True
+                )
+                color_texts = [
+                    f"{color_v}: {color_n}"
+                    for color_v, color_n in selected_color_data
+                    if color_n > 0
+                ]
+                if color_texts:
+                    color_texts = "; ".join(color_texts)
+                    text += f" ({color_texts})"
+                return text
+
+        debug("launch the dash app")
+        run_params = dict()
+        if server_mode is not None:
+            run_params["mode"] = server_mode
+        if server_port is not None:
+            run_params["port"] = server_port
+        if height is not None:
+            run_params["height"] = height
+        if width is not None:
+            run_params["width"] = width
+        return app.run_server(**run_params)
+
 
 def _hamming_to_snps(h):
     """
@@ -9305,9 +9671,11 @@ def _roh_hmm_predict(
     ]
 
 
-def _setup_taxon_colors(plot_kwargs):
+def _setup_taxon_colors(plot_kwargs=None):
     import plotly.express as px
 
+    if plot_kwargs is None:
+        plot_kwargs = dict()
     taxon_palette = px.colors.qualitative.Plotly
     taxon_color_map = {
         "gambiae": taxon_palette[0],
@@ -9321,6 +9689,7 @@ def _setup_taxon_colors(plot_kwargs):
     }
     plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
     plot_kwargs.setdefault("category_orders", {"taxon": list(taxon_color_map.keys())})
+    return plot_kwargs
 
 
 def _locate_cohorts(*, cohorts, df_samples):
