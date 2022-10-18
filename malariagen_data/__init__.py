@@ -1,7 +1,8 @@
 # flake8: noqa
 from .af1 import Af1
-from .ag3 import Ag3, Region
+from .ag3 import Ag3
 from .amin1 import Amin1
+from .anopheles import Anopheles, Region
 from .util import SiteClass
 
 try:

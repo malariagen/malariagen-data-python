@@ -1,14 +1,11 @@
-#
-
 import dask.array as da
 import numpy as np
-import pandas as pd
 import pytest
 import xarray as xr
-import zarr
 from pandas.testing import assert_frame_equal
 
-from malariagen_data import Af1
+from malariagen_data import Af1, Region
+from malariagen_data.util import locate_region, resolve_region
 
 
 def setup_af1(url="simplecache::gs://vo_afun_release/", **kwargs):
@@ -16,54 +13,13 @@ def setup_af1(url="simplecache::gs://vo_afun_release/", **kwargs):
     kwargs.setdefault("show_progress", False)
     if url is None:
         # test default URL
+        # This only tests the setup_af1 default url, not the Af1 default.
+        # The test_anopheles setup_subclass tests true defaults.
         return Af1(**kwargs)
     if url.startswith("simplecache::"):
         # configure the directory on the local file system to cache data
         kwargs["simplecache"] = dict(cache_storage="gcs_cache")
     return Af1(url, **kwargs)
-
-
-@pytest.mark.parametrize(
-    "url",
-    [
-        None,
-        "gs://vo_afun_release/",
-        "gcs://vo_afun_release/",
-        "gs://vo_afun_release",
-        "gcs://vo_afun_release",
-        "simplecache::gs://vo_afun_release/",
-        "simplecache::gcs://vo_afun_release/",
-    ],
-)
-def test_sample_sets(url):
-
-    af1 = setup_af1(url)
-    df_sample_sets_v1 = af1.sample_sets(release="1.0")
-    assert isinstance(df_sample_sets_v1, pd.DataFrame)
-    assert len(df_sample_sets_v1) == 8
-    assert tuple(df_sample_sets_v1.columns) == ("sample_set", "sample_count", "release")
-
-    # test duplicates not allowed
-    with pytest.raises(ValueError):
-        af1.sample_sets(release=["1.0", "1.0"])
-
-    # test default is all public releases
-    df_default = af1.sample_sets()
-    df_all = af1.sample_sets(release=af1.releases)
-    assert_frame_equal(df_default, df_all)
-
-
-def test_releases():
-
-    af1 = setup_af1()
-    assert isinstance(af1.releases, tuple)
-    assert af1.releases == ("1.0",)
-
-    af1 = setup_af1(pre=True)
-    assert isinstance(af1.releases, tuple)
-    # FIXME: test_ag3.py has assert len(ag3.releases) > 1
-    assert len(af1.releases) > 0
-    assert all([r.startswith("1.") for r in af1.releases])
 
 
 def test_sample_metadata():
@@ -128,15 +84,6 @@ def test_sample_metadata():
     assert_frame_equal(df_default, df_all)
 
 
-def test_open_site_filters():
-    # check can open the zarr directly
-    af1 = setup_af1()
-    root = af1.open_site_filters(mask="funestus")
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in af1.contigs:
-        assert contig in root
-
-
 @pytest.mark.parametrize(
     "region",
     ["2RL", ["2RL", "3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
@@ -147,14 +94,6 @@ def test_site_filters(region):
     assert isinstance(filter_pass, da.Array)
     assert filter_pass.ndim == 1
     assert filter_pass.dtype == bool
-
-
-def test_open_snp_sites():
-    af1 = setup_af1()
-    root = af1.open_snp_sites()
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in af1.contigs:
-        assert contig in root
 
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
@@ -196,15 +135,6 @@ def test_snp_sites(chunks, region):
         assert isinstance(d, da.Array)
         assert d.shape[0] == n_pass
         assert d.shape == d.compute().shape
-
-
-def test_open_snp_genotypes():
-    # check can open the zarr directly
-    af1 = setup_af1()
-    root = af1.open_snp_genotypes(sample_set="1229-VO-GH-DADZIE-VMF00095")
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in af1.contigs:
-        assert contig in root
 
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
@@ -417,3 +347,69 @@ def test_snp_calls(sample_sets, region, site_mask):
     # check compress bug
     pos = ds["variant_position"].data
     assert pos.shape == pos.compute().shape
+
+
+@pytest.mark.parametrize(
+    "region",
+    ["gene-LOC125762289", "2RL:48714463-48715355", "3RL", "X"],
+)
+def test_is_accessible(region):
+
+    af1 = setup_af1()
+    # run a couple of tests
+    is_accessible = af1.is_accessible(region=region, site_mask="funestus")
+    assert isinstance(is_accessible, np.ndarray)
+    assert is_accessible.ndim == 1
+    assert is_accessible.shape[0] == af1.genome_sequence(region).shape[0]
+
+
+@pytest.mark.parametrize(
+    "region_raw",
+    [
+        "gene-LOC125762289",
+        "3RL",
+        "2RL:48714463-48715355",
+        "2RL:24,630,355-24,633,221",
+        Region("2RL", 48714463, 48715355),
+    ],
+)
+def test_locate_region(region_raw):
+
+    af1 = setup_af1()
+    gene_annotation = af1.geneset(attributes=["ID"])
+    region = resolve_region(af1, region_raw)
+    pos = af1.snp_sites(region=region.contig, field="POS")
+    ref = af1.snp_sites(region=region.contig, field="REF")
+    loc_region = locate_region(region, pos)
+
+    # check types
+    assert isinstance(loc_region, slice)
+    assert isinstance(region, Region)
+
+    # check Region with contig
+    if region_raw == "3RL":
+        assert region.contig == "3RL"
+        assert region.start is None
+        assert region.end is None
+
+    # check that Region goes through unchanged
+    if isinstance(region_raw, Region):
+        assert region == region_raw
+
+    # check that gene name matches coordinates from the geneset and matches gene sequence
+    if region_raw == "gene-LOC125762289":
+        gene = gene_annotation.query("ID == 'gene-LOC125762289'").squeeze()
+        assert region == Region(gene.contig, gene.start, gene.end)
+        assert pos[loc_region][0] == gene.start
+        assert pos[loc_region][-1] == gene.end
+        # TODO: check this is the expected sequence
+        assert (
+            ref[loc_region][:5].compute()
+            == np.array(["T", "T", "T", "C", "T"], dtype="S1")
+        ).all()
+
+    # check string parsing
+    if region_raw == "2RL:48714463-48715355":
+        assert region == Region("2RL", 48714463, 48715355)
+    if region_raw == "2RL:24,630,355-24,633,221":
+        assert region == Region("2RL", 24630355, 24633221)
