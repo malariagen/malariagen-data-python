@@ -1,6 +1,26 @@
 {
   "default_url": "gs://pv4_release/",
   "metadata_path": "metadata/Pv4_samples.txt",
+  "reference_path": "reference/PvivaxP01.genome.zarr",
+  "reference_contigs": [
+    "PvP01_01_v1",
+    "PvP01_02_v1",
+    "PvP01_03_v1",
+    "PvP01_04_v1",
+    "PvP01_05_v1",
+    "PvP01_06_v1",
+    "PvP01_07_v1",
+    "PvP01_08_v1",
+    "PvP01_09_v1",
+    "PvP01_10_v1",
+    "PvP01_11_v1",
+    "PvP01_12_v1",
+    "PvP01_13_v1",
+    "PvP01_14_v1",
+    "PvP01_API_v1",
+    "PvP01_MIT_v1"
+  ],
+  "annotations_path": "annotations/PvivaxP01.noseq.gff3.gz",
   "variant_calls_zarr_path": "Pv4.zarr/",
   "default_variant_variables": {
     "FILTER_PASS": ["variants"],

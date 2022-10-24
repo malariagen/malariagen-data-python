@@ -413,3 +413,32 @@ def test_locate_region(region_raw):
         assert region == Region("2RL", 48714463, 48715355)
     if region_raw == "2RL:24,630,355-24,633,221":
         assert region == Region("2RL", 24630355, 24633221)
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL", "X", "gene-LOC125762289", "2RL:48714463-48715355"]
+)
+@pytest.mark.parametrize("site_mask", [None, "funestus"])
+def test_site_annotations(region, site_mask):
+
+    af1 = setup_af1()
+
+    ds_snp = af1.snp_variants(region=region, site_mask=site_mask)
+    n_variants = ds_snp.dims["variants"]
+    ds_ann = af1.site_annotations(region=region, site_mask=site_mask)
+    # site annotations dataset is aligned with SNP sites
+    assert ds_ann.dims["variants"] == n_variants
+    assert isinstance(ds_ann, xr.Dataset)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        d = ds_ann[f]
+        assert d.ndim == 1
+        assert d.dims == ("variants",)
+        assert d.shape == (n_variants,)

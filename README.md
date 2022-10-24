@@ -29,6 +29,27 @@ from the following locations:
 ## Release notes
 
 
+### 6.1.1
+
+@@TODO release notes
+
+
+### 6.1.0
+
+* Adds `cohort_size` parameter to `Ag3.haplotypes()` function.
+* Adds `Ag3.h12_calibration()` and `Ag3.plot_h12_calibration()` functions to generate and plot h12 calibration data for different window sizes.
+* Adds `Ag3.h12_gwss()`, `Ag3.plot_h12_gwss_track()` and `Ag3.plot_h12_gwss()` to generate and plot h12 analyses.
+([GH272](https://github.com/malariagen/malariagen-data-python/pull/272))
+
+* Fixes bug where in Google Colab notebooks, debug logging couldn't be turned off.
+([GH274](https://github.com/malariagen/malariagen-data-python/pull/274))
+
+
+### 6.0.0
+
+@@TODO release notes
+
+
 ### 5.1.0
 
 * Upgrade the default cohorts analysis in the `Ag3` class to `20220608`
@@ -601,23 +622,23 @@ Fork and clone this repo:
 $ git clone git@github.com:[username]/malariagen-data-python.git
 ```
 
-Install [poetry](https://python-poetry.org/docs/#installation) somehow, e.g.:
+Install [poetry](https://python-poetry.org/docs/#installation) >=1.2.0b3 somehow, e.g.:
 
 ```bash
-$ pip3 install poetry
+$ python3.7 -m install poetry==1.2.0b3
 ```
 
 Create development environment:
 
 ```bash
 $ cd malariagen-data-python
-$ poetry install
+$ python3.7 -m poetry install
 ```
 
 Activate development environment:
 
 ```bash
-$ poetry shell
+$ python3.7 -m poetry shell
 ```
 
 Install pre-commit hooks:
@@ -635,7 +656,7 @@ $ pre-commit run --all-files
 Run tests:
 
 ```bash
-$ pytest -v
+$ python3.7 -m run pytest -v
 ```
 
 ## Release process
@@ -665,8 +686,8 @@ out the release tag locally.
 7. Run:
 
 ```
-poetry build
-poetry publish
+$ python3.7 -m poetry build
+$ python3.7 -m poetry publish
 ```
 
 You will need a PyPI username and password, and will need to be added

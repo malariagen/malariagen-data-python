@@ -3,12 +3,12 @@ import random
 import shutil
 
 import dask.array as da
+import numpy
 import numpy as np
 import pandas as pd
 import pytest
 import scipy.stats
 import xarray as xr
-import zarr
 from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
@@ -201,6 +201,7 @@ def test_sample_metadata_without_cohorts():
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_sample_metadata_without_species_calls(analysis):
 
+    expected_cols = None
     if analysis == "aim_20220528":
         expected_cols = expected_aim_species_cols
     if analysis == "aim_20200422":
@@ -257,6 +258,7 @@ def test_species_calls(sample_sets, analysis):
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_missing_species_calls(analysis):
 
+    expected_cols = None
     if analysis == "aim_20220528":
         expected_cols = expected_aim_species_cols
     if analysis == "aim_20200422":
@@ -454,14 +456,18 @@ def test_cross_metadata():
     assert df_crosses["sex"].unique().tolist() == expected_sex_values
 
 
-# TODO: copy or abstract for Af1 when site_annotations are available
-def test_site_annotations():
+@pytest.mark.parametrize("region", ["2R", "X", "AGAP007280", "2R:48714463-48715355"])
+@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
+def test_site_annotations(region, site_mask):
 
     ag3 = setup_ag3()
 
-    # test access as zarr
-    root = ag3.open_site_annotations()
-    assert isinstance(root, zarr.hierarchy.Group)
+    ds_snp = ag3.snp_variants(region=region, site_mask=site_mask)
+    n_variants = ds_snp.dims["variants"]
+    ds_ann = ag3.site_annotations(region=region, site_mask=site_mask)
+    # site annotations dataset is aligned with SNP sites
+    assert ds_ann.dims["variants"] == n_variants
+    assert isinstance(ds_ann, xr.Dataset)
     for f in (
         "codon_degeneracy",
         "codon_nonsyn",
@@ -471,21 +477,10 @@ def test_site_annotations():
         "seq_relpos_start",
         "seq_relpos_stop",
     ):
-        assert f in root
-        for contig in contigs:
-            assert contig in root[f]
-
-    # test access as dask arrays
-    for region in "2R", "X", "AGAP007280", "2R:48714463-48715355":
-        for site_mask in None, "gamb_colu_arab":
-            pos = ag3.snp_sites(region=region, field="POS", site_mask=site_mask)
-            for field in "codon_degeneracy", "seq_cls":
-                d = ag3.site_annotations(
-                    region=region, field=field, site_mask=site_mask
-                )
-                assert isinstance(d, da.Array)
-                assert d.ndim == 1
-                assert d.shape == pos.shape
+        d = ds_ann[f]
+        assert d.ndim == 1
+        assert d.dims == ("variants",)
+        assert d.shape == (n_variants,)
 
 
 @pytest.mark.parametrize(
@@ -614,7 +609,6 @@ def test_snp_calls__sample_query(sample_query):
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
-# TODO: create version of this test for Af1
 def test_snp_effects():
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
@@ -720,7 +714,6 @@ def test_snp_effects():
     assert df.iloc[674].effect == "INTRONIC"
 
 
-# TODO: create version of this test for Af1 when cohorts are available
 def test_snp_allele_frequencies__str_cohorts():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = "admin1_month"
@@ -753,7 +746,6 @@ def test_snp_allele_frequencies__str_cohorts():
     assert len(df) == 16526
 
 
-# TODO: create version of this test for Af1 when cohorts are available
 def test_snp_allele_frequencies__dict_cohorts():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = {
@@ -804,7 +796,6 @@ def test_snp_allele_frequencies__dict_cohorts():
     assert np.any(df.max_af == 0)
 
 
-# TODO: create version of this test for Af1 when cohorts are available
 def test_snp_allele_frequencies__str_cohorts__effects():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = "admin1_month"
@@ -853,7 +844,6 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     ]
 
 
-# TODO: create version of this test for Af1 when cohorts are available
 def test_snp_allele_frequencies__query():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = "admin1_year"
@@ -883,7 +873,6 @@ def test_snp_allele_frequencies__query():
     assert len(df) == 695
 
 
-# TODO: create version of this test for Af1 when cohorts are available
 def test_snp_allele_frequencies__dup_samples():
     ag3 = setup_ag3()
     with pytest.raises(ValueError):
@@ -1333,8 +1322,8 @@ def test_gene_cnv(region, sample_sets):
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     assert ds.dims["samples"] == n_samples
-    df_geneset = ag3.geneset(region=region)
-    df_genes = df_geneset.query("type == 'gene'")
+    df_genome_features = ag3.genome_features(region=region)
+    df_genes = df_genome_features.query("type == 'gene'")
     n_genes = len(df_genes)
     assert ds.dims["genes"] == n_genes
 
@@ -1391,8 +1380,8 @@ def test_gene_cnv_xarray_indexing(region, sample_sets):
 
     # check dim lengths
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
-    df_geneset = ag3.geneset(region=region)
-    df_genes = df_geneset.query("type == 'gene'")
+    df_genome_features = ag3.genome_features(region=region)
+    df_genes = df_genome_features.query("type == 'gene'")
     gene = random.choice(df_genes["ID"].tolist())
     sample = random.choice(df_samples["sample_id"].tolist())
     ds = ds.set_index(genes="gene_id", samples="sample_id")
@@ -1441,7 +1430,7 @@ def test_gene_cnv_frequencies(region, cohorts):
         "gene_description",
         "label",
     ]
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
 
     df_cnv_frq = ag3.gene_cnv_frequencies(
         region=region,
@@ -1507,14 +1496,14 @@ def test_gene_cnv_frequencies__query():
 
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
     assert len(df) == len(df_genes) * 2
 
 
 def test_gene_cnv_frequencies__max_coverage_variance():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     region = "3L"
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
 
     base_columns = [
         "contig",
@@ -1595,7 +1584,7 @@ def test_gene_cnv_frequencies__drop_invariant():
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
     assert np.all(df["max_af"] > 0)
-    df_genes = ag3.geneset(region=region).query("type == 'gene'")
+    df_genes = ag3.genome_features(region=region).query("type == 'gene'")
     assert len(df) < len(df_genes) * 2
 
 
@@ -1820,7 +1809,45 @@ def test_haplotypes__sample_query(sample_query):
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
 
-# TODO: create a version of this test for Af1 when cohorts are available
+def test_haplotypes__cohort_size():
+
+    sample_sets = "AG1000G-BF-B"
+    region = "3L"
+    analysis = "gamb_colu_arab"
+    cohort_size = 10
+
+    ag3 = setup_ag3()
+
+    ds = ag3.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        analysis=analysis,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check dim lengths
+    assert ds.dims["samples"] == cohort_size
+    assert ds.dims["alleles"] == 2
+
+
 # test v3 sample sets
 @pytest.mark.parametrize(
     "sample_sets",
@@ -1872,7 +1899,7 @@ def test_sample_cohorts(sample_sets):
 def test_locate_region(region_raw):
 
     ag3 = setup_ag3()
-    gene_annotation = ag3.geneset(attributes=["ID"])
+    gene_annotation = ag3.genome_features(attributes=["ID"])
     region = resolve_region(ag3, region_raw)
     pos = ag3.snp_sites(region=region.contig, field="POS")
     ref = ag3.snp_sites(region=region.contig, field="REF")
@@ -1892,7 +1919,7 @@ def test_locate_region(region_raw):
     if isinstance(region_raw, Region):
         assert region == region_raw
 
-    # check that gene name matches coordinates from the geneset and matches gene sequence
+    # check that gene name matches coordinates from the genome_features and matches gene sequence
     if region_raw == "AGAP007280":
         gene = gene_annotation.query("ID == 'AGAP007280'").squeeze()
         assert region == Region(gene.contig, gene.start, gene.end)
@@ -1910,7 +1937,6 @@ def test_locate_region(region_raw):
         assert region == Region("2L", 24630355, 24633221)
 
 
-# TODO: create a version of this test for Af1 when cohorts are available
 def test_aa_allele_frequencies():
     ag3 = setup_ag3(cohorts_analysis="20211101")
 
@@ -1948,7 +1974,6 @@ def test_aa_allele_frequencies():
     assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
 
 
-# TODO: create a version of this test for Af1 when cohorts are available
 def test_aa_allele_frequencies__dup_samples():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     with pytest.raises(ValueError):
@@ -1959,7 +1984,6 @@ def test_aa_allele_frequencies__dup_samples():
         )
 
 
-# TODO: create a version of this test for Af1 when cohorts are available
 # noinspection PyDefaultArgument
 def _check_snp_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
@@ -2117,7 +2141,6 @@ def _check_snp_allele_frequencies_advanced(
             assert_allclose(actual_frq, expect_frq)
 
 
-# TODO: create a version of this test for Af1 when cohorts are available
 # noinspection PyDefaultArgument
 def _check_aa_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
@@ -2696,7 +2719,6 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
         )
 
 
-# TODO: create a copy of this test for Af1 when cohorts (taxon) are available
 @pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
@@ -2728,7 +2750,6 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
     assert_array_equal(ac, ac2)
 
 
-# TODO: create a copy of this test for Af1 when cohorts (taxon) are available
 @pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
@@ -2902,3 +2923,156 @@ def test_aim_calls(sample_sets, sample_query, aims):
         assert ds.dims["variants"] == 700
     elif aims == "gambcolu_vs_arab":
         assert ds.dims["variants"] == 2612
+
+
+@pytest.mark.parametrize(
+    "window_sizes",
+    [[100, 200, 500], [10000, 20000]],
+)
+def test_h12_calibration(window_sizes):
+    ag3 = setup_ag3()
+    sample_query = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+
+    calibration_runs = ag3.h12_calibration(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_sizes=window_sizes,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(calibration_runs, dict)
+    assert isinstance(calibration_runs[str(window_sizes[0])], numpy.ndarray)
+
+    # check dimensions
+    assert len(calibration_runs) == len(window_sizes)
+
+    # check keys
+    assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
+
+
+def test_h12_gwss():
+    ag3 = setup_ag3()
+    sample_query = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+    window_size = 1000
+
+    x, h12 = ag3.h12_gwss(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h12, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 11354
+    assert len(x) == len(h12)
+
+    # check some values
+    assert_allclose(x[0], 27701.195)
+    assert_allclose(h12[11353], 0.17875)
+
+
+def test_h1x_gwss():
+    ag3 = setup_ag3()
+    cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
+    cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    contig = "2L"
+    analysis = "gamb_colu"
+    window_size = 2000
+
+    x, h1x = ag3.h1x_gwss(
+        contig=contig,
+        analysis=analysis,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        window_size=window_size,
+        cohort_size=None,
+    )
+
+    # check data
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h1x, np.ndarray)
+
+    # check dimensions
+    assert x.ndim == h1x.ndim == 1
+    assert x.shape == h1x.shape
+
+    # check some values
+    assert_allclose(x[0], 36493.229, rtol=1e-5), x[0]
+    assert_allclose(h1x[0], 0.067621, rtol=1e-5), h1x[0]
+    assert np.all(h1x <= 1)
+    assert np.all(h1x >= 0)
+
+
+def test_haplotype_frequencies():
+    h1 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 1, 1, 0],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    from malariagen_data.ag3 import _haplotype_frequencies
+
+    f = _haplotype_frequencies(h1)
+    assert isinstance(f, dict)
+    vals = np.array(list(f.values()))
+    vals.sort()
+    assert np.all(vals >= 0)
+    assert np.all(vals <= 1)
+    assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
+
+
+def test_haplotype_joint_frequencies():
+    h1 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 1, 1, 0],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    h2 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [1, 0, 1, 1, 1],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    from malariagen_data.ag3 import _haplotype_joint_frequencies
+
+    f = _haplotype_joint_frequencies(h1, h2)
+    assert isinstance(f, dict)
+    vals = np.array(list(f.values()))
+    vals.sort()
+    assert np.all(vals >= 0)
+    assert np.all(vals <= 1)
+    assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))

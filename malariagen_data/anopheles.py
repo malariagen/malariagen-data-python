@@ -28,6 +28,7 @@ from .util import (
     DIM_PLOIDY,
     DIM_SAMPLE,
     DIM_VARIANT,
+    CacheMiss,
     LoggingHelper,
     Region,
     da_compress,
@@ -38,6 +39,7 @@ from .util import (
     locate_region,
     read_gff3,
     resolve_region,
+    type_error,
     unpack_gff3_attributes,
     xarray_concat,
 )
@@ -47,7 +49,7 @@ DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
 
-class Anopheles(ABC):
+class AnophelesDataResource(ABC):
 
     # TODO: parent class docstring
 
@@ -87,12 +89,14 @@ class Anopheles(ABC):
         self._cache_snp_genotypes = dict()
         self._cache_genome = None
         self._cache_annotator = None
+        self._cache_genome_features = dict()
         self._cache_geneset = dict()
         self._cache_sample_metadata = dict()
+        self._cache_site_annotations = None
+        self._cache_locate_site_class = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
-            results_cache.mkdir(parents=True, exist_ok=True)
         self._results_cache = results_cache
 
         # get bokeh to output plots to the notebook - this is a common gotcha,
@@ -121,8 +125,8 @@ class Anopheles(ABC):
                             """
                         Your currently allocated Google Colab VM is not located in the US.
                         This usually means that data access will be substantially slower.
-                        If possible, select "Runtime > Factory reset runtime" from the menu
-                        to request a new VM and try again.
+                        If possible, select "Runtime > Disconnect and delete runtime" from
+                        the menu to request a new VM and try again.
                     """
                         )
                     )
@@ -154,11 +158,6 @@ class Anopheles(ABC):
 
     @property
     @abstractmethod
-    def _public_releases(self):
-        raise NotImplementedError("Must override _public_releases")
-
-    @property
-    @abstractmethod
     def _major_version_int(self):
         raise NotImplementedError("Must override _major_version_int")
 
@@ -166,11 +165,6 @@ class Anopheles(ABC):
     @abstractmethod
     def _major_version_gcs_str(self):
         raise NotImplementedError("Must override _major_version_gcs_str")
-
-    @property
-    @abstractmethod
-    def _geneset_gff3_path(self):
-        raise NotImplementedError("Must override _geneset_gff3_path")
 
     @property
     @abstractmethod
@@ -202,11 +196,30 @@ class Anopheles(ABC):
     def _gcs_url(self):
         raise NotImplementedError("Must override _gcs_url")
 
+    @property
     @abstractmethod
-    def _sample_metadata(self, sample_set):
-        # Not all children have species calls or cohorts data.
-        # TODO: maybe _read_species_calls and _read_cohort_metadata return empty.
-        raise NotImplementedError("Must override _sample_metadata")
+    def _pca_results_cache_name(self):
+        raise NotImplementedError("Must override _pca_results_cache_name")
+
+    @property
+    @abstractmethod
+    def _default_site_mask(self):
+        raise NotImplementedError("Must override _default_site_mask")
+
+    @property
+    @abstractmethod
+    def _geneset_gff3_path(self):
+        raise NotImplementedError("Must override _geneset_gff3_path")
+
+    @property
+    @abstractmethod
+    def _public_releases(self):
+        raise NotImplementedError("Must override _public_releases")
+
+    @property
+    @abstractmethod
+    def _site_annotations_zarr_path(self):
+        raise NotImplementedError("Must override _site_annotations_zarr_path")
 
     @abstractmethod
     def __repr__(self):
@@ -224,14 +237,15 @@ class Anopheles(ABC):
         raise NotImplementedError("Must override _site_mask_ids")
 
     @abstractmethod
+    def _sample_metadata(self, sample_set):
+        # Not all children have species calls or cohorts data.
+        # TODO: maybe _read_species_calls and _read_cohort_metadata return empty.
+        raise NotImplementedError("Must override _sample_metadata")
+
+    @abstractmethod
     def _transcript_to_gene_name(self, transcript):
         # children may have different manual overrides.
         raise NotImplementedError("Must override _transcript_to_gene_name")
-
-    @abstractmethod
-    def wgs_data_catalog(self, sample_set):
-        # Ag3 has special handling for 3.0.
-        raise NotImplementedError("Must override wgs_data_catalog")
 
     @abstractmethod
     def results_cache_get(self, *, name, params):
@@ -247,52 +261,6 @@ class Anopheles(ABC):
     def snp_allele_counts(self, region, sample_sets, sample_query, site_mask):
         # Ag3 has cohorts and species. Subclasses have different cache names.
         raise NotImplementedError("Must override snp_allele_counts")
-
-    @abstractmethod
-    def pca(
-        self,
-        region,
-        n_snps,
-        thin_offset,
-        sample_sets,
-        sample_query,
-        site_mask,
-        min_minor_ac,
-        max_missing_an,
-        n_components,
-    ):
-        # Subclasses have different DEFAULT_SITE_MASK and PCA_RESULTS_CACHE_NAME.
-        raise NotImplementedError("Must override pca")
-
-    @abstractmethod
-    def plot_snps_track(
-        self,
-        region,
-        sample_sets,
-        sample_query,
-        site_mask,
-        width,
-        height,
-        max_snps,
-        show,
-    ):
-        # Subclasses have different DEFAULT_SITE_MASK, cols and tooltips.
-        raise NotImplementedError("Must override plot_snps_track")
-
-    @abstractmethod
-    def plot_snps(
-        self,
-        region,
-        sample_sets,
-        sample_query,
-        site_mask,
-        width,
-        track_height,
-        genes_height,
-        show,
-    ):
-        # Subclasses have different DEFAULT_SITE_MASK.
-        raise NotImplementedError("Must override plot_snps")
 
     @staticmethod
     @abstractmethod
@@ -528,6 +496,77 @@ class Anopheles(ABC):
         ret = pd.Series((f(*vals) for vals in iterator))
         return ret
 
+    @staticmethod
+    def _roh_hmm_predict(
+        *,
+        windows,
+        counts,
+        phet_roh,
+        phet_nonroh,
+        transition,
+        window_size,
+        sample_id,
+        contig,
+    ):
+        # conditional import, pomegranate takes a long time to install on
+        # linux due to lack of prebuilt wheels on PyPI
+        from allel.stats.misc import tabulate_state_blocks
+
+        # this implementation is based on scikit-allel, but modified to use
+        # moving window computation of het counts
+        # FIXME: access to a protected member
+        from allel.stats.roh import _hmm_derive_transition_matrix
+
+        # FIXME: unresolved references
+        from pomegranate import HiddenMarkovModel, PoissonDistribution
+
+        # het probabilities
+        het_px = np.concatenate([(phet_roh,), phet_nonroh])
+
+        # start probabilities (all equal)
+        start_prob = np.repeat(1 / het_px.size, het_px.size)
+
+        # transition between underlying states
+        transition_mx = _hmm_derive_transition_matrix(transition, het_px.size)
+
+        # emission probability distribution
+        dists = [PoissonDistribution(x * window_size) for x in het_px]
+
+        # set up model
+        # noinspection PyArgumentList
+        model = HiddenMarkovModel.from_matrix(
+            transition_probabilities=transition_mx,
+            distributions=dists,
+            starts=start_prob,
+        )
+
+        # predict hidden states
+        prediction = np.array(model.predict(counts[:, None]))
+
+        # tabulate runs of homozygosity (state 0)
+        # noinspection PyTypeChecker
+        df_blocks = tabulate_state_blocks(prediction, states=list(range(len(het_px))))
+        df_roh = df_blocks[(df_blocks["state"] == 0)].reset_index(drop=True)
+
+        # adapt the dataframe for ROH
+        df_roh["sample_id"] = sample_id
+        df_roh["contig"] = contig
+        df_roh["roh_start"] = df_roh["start_ridx"].apply(lambda y: windows[y, 0])
+        df_roh["roh_stop"] = df_roh["stop_lidx"].apply(lambda y: windows[y, 1])
+        df_roh["roh_length"] = df_roh["roh_stop"] - df_roh["roh_start"]
+        df_roh.rename(columns={"is_marginal": "roh_is_marginal"}, inplace=True)
+
+        return df_roh[
+            [
+                "sample_id",
+                "contig",
+                "roh_start",
+                "roh_stop",
+                "roh_length",
+                "roh_is_marginal",
+            ]
+        ]
+
     # Note regarding release identifiers and storage paths. Within the
     # data storage, we have used path segments like "v3", "v3.1", "v3.2",
     # etc., to separate data from different releases. There is an inconsistency
@@ -614,7 +653,8 @@ class Anopheles(ABC):
                         [
                             self._path_to_release(d)
                             for d in sub_dirs
-                            if d.startswith(f"v{self._major_version_int}.")
+                            # FIXME: this matches v3 and v3.1, but also v3001.1
+                            if d.startswith(f"v{self._major_version_int}")
                             and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
                         ]
                     )
@@ -763,8 +803,20 @@ class Anopheles(ABC):
             release = self._lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
+            dtype = {
+                "sample_id": object,
+                "partner_sample_id": object,
+                "contributor": object,
+                "country": object,
+                "location": object,
+                "year": "int64",
+                "month": "int64",
+                "latitude": "float64",
+                "longitude": "float64",
+                "sex_call": object,
+            }
             with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="")
+                df = pd.read_csv(f, na_values="", dtype=dtype)
 
             # ensure all column names are lower case
             df.columns = [c.lower() for c in df.columns]
@@ -786,9 +838,9 @@ class Anopheles(ABC):
         Parameters
         ----------
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
-            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
-            release identifier (e.g., "1.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
@@ -841,7 +893,8 @@ class Anopheles(ABC):
         z = root[f"{region.contig}/variants/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
-            pos = self.snp_sites(region=region.contig, field="POS")
+            root = self.open_snp_sites()
+            pos = root[f"{region.contig}/variants/POS"][:]
             loc_region = locate_region(region, pos)
             d = d[loc_region]
         return d
@@ -913,7 +966,10 @@ class Anopheles(ABC):
         z = root[f"{region.contig}/variants/{field}"]
         ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         if region.start or region.end:
-            pos = root[f"{region.contig}/variants/POS"]
+            if field == "POS":
+                pos = z[:]
+            else:
+                pos = root[f"{region.contig}/variants/POS"][:]
             loc_region = locate_region(region, pos)
             ret = ret[loc_region]
         return ret
@@ -985,64 +1041,9 @@ class Anopheles(ABC):
 
         return ret
 
-    def geneset(self, region=None, attributes=("ID", "Parent", "Name", "description")):
-        """Access genome feature annotations (AgamP4.12).
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all
-            attributes.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of genome annotations, one row per feature.
-
-        """
-        debug = self._log.debug
-
-        if attributes is not None:
-            attributes = tuple(attributes)
-
-        try:
-            df = self._cache_geneset[attributes]
-
-        except KeyError:
-            path = f"{self._base_path}/{self._geneset_gff3_path}"
-            with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression="gzip")
-            if attributes is not None:
-                df = unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_geneset[attributes] = df
-
-        debug("handle region")
-        if region is not None:
-
-            region = self.resolve_region(region)
-
-            debug("normalise to list to simplify concatenation logic")
-            if isinstance(region, Region):
-                region = [region]
-
-            debug("apply region query")
-            parts = []
-            for r in region:
-                df_part = df.query(f"contig == '{r.contig}'")
-                if r.end is not None:
-                    df_part = df_part.query(f"start <= {r.end}")
-                if r.start is not None:
-                    df_part = df_part.query(f"end >= {r.start}")
-                parts.append(df_part)
-            df = pd.concat(parts, axis=0)
-
-        return df.reset_index(drop=True).copy()
+    def geneset(self, *args, **kwargs):
+        """Deprecated, this method has been renamed to genome_features()."""
+        return self.genome_features(*args, **kwargs)
 
     def resolve_region(self, region):
         """Convert a genome region into a standard data structure.
@@ -1311,8 +1312,8 @@ class Anopheles(ABC):
         """Set up a dataframe with SNP site and filter columns."""
         debug = self._log.debug
 
-        debug("get feature direct from geneset")
-        gs = self.geneset()
+        debug("get feature direct from genome_features")
+        gs = self.genome_features()
         feature = gs[gs["ID"] == transcript].squeeze()
         contig = feature.contig
         region = Region(contig, feature.start, feature.end)
@@ -1356,7 +1357,7 @@ class Anopheles(ABC):
         """Set up variant effect annotator."""
         if self._cache_annotator is None:
             self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), geneset=self.geneset()
+                genome=self.open_genome(), genome_features=self.genome_features()
             )
         return self._cache_annotator
 
@@ -1491,8 +1492,11 @@ class Anopheles(ABC):
         sample_sets=None,
         sample_query=None,
         site_mask=None,
+        site_class=None,
         inline_array=True,
         chunks="native",
+        cohort_size=None,
+        random_seed=42,
     ):
         """Access SNP sites, site filters and genotype calls.
 
@@ -1510,14 +1514,28 @@ class Anopheles(ABC):
             release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+            metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
             Site filters mask to apply, e.g. "gamb_colu"
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr
             chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -1556,6 +1574,15 @@ class Anopheles(ABC):
             )
             x = xr.merge([v, x], compat="override", join="override")
 
+            debug("handle site class")
+            if site_class is not None:
+                loc_ann = self._locate_site_class(
+                    region=r.contig,
+                    site_class=site_class,
+                    site_mask=None,
+                )
+                x = x.isel(variants=loc_ann)
+
             debug("handle region, do this only once - optimisation")
             if r.start or r.end:
                 pos = x["variant_position"].values
@@ -1578,11 +1605,27 @@ class Anopheles(ABC):
 
         debug("handle sample query")
         if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+            if isinstance(sample_query, str):
+                df_samples = self.sample_metadata(sample_sets=sample_sets)
+                loc_samples = df_samples.eval(sample_query).values
+                if np.count_nonzero(loc_samples) == 0:
+                    raise ValueError(f"No samples found for query {sample_query!r}")
+            else:
+                # assume sample query is an indexer, e.g., a list of integers
+                loc_samples = sample_query
             ds = ds.isel(samples=loc_samples)
+
+        debug("handle cohort size")
+        if cohort_size is not None:
+            n_samples = ds.dims["samples"]
+            if n_samples < cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                )
+            rng = np.random.default_rng(seed=random_seed)
+            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
+            loc_downsample.sort()
+            ds = ds.isel(samples=loc_downsample)
 
         return ds
 
@@ -1604,7 +1647,7 @@ class Anopheles(ABC):
 
         Parameters
         ----------
-        region : str
+        region : str or Region
             Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
@@ -1647,8 +1690,10 @@ class Anopheles(ABC):
             x_range = bkmod.Range1d(start, end, bounds="auto")
 
         debug("select the genes overlapping the requested region")
-        df_geneset = self.geneset(attributes=["ID", "Name", "Parent", "description"])
-        data = df_geneset.query(
+        df_genome_features = self.genome_features(
+            attributes=["ID", "Name", "Parent", "description"]
+        )
+        data = df_genome_features.query(
             f"type == 'gene' and contig == '{contig}' and start < {end} and end > {start}"
         ).copy()
 
@@ -1729,6 +1774,9 @@ class Anopheles(ABC):
         sample_sets,
         sample_query,
         site_mask,
+        site_class,
+        cohort_size,
+        random_seed,
     ):
         debug = self._log.debug
 
@@ -1738,6 +1786,9 @@ class Anopheles(ABC):
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
         )
         gt = ds_snps["call_genotype"]
 
@@ -1865,8 +1916,8 @@ class Anopheles(ABC):
         import bokeh.plotting as bkplt
 
         debug("find the transcript annotation")
-        df_geneset = self.geneset().set_index("ID")
-        parent = df_geneset.loc[transcript]
+        df_genome_features = self.genome_features().set_index("ID")
+        parent = df_genome_features.loc[transcript]
 
         if title is True:
             title = f"{transcript} ({parent.strand})"
@@ -1892,7 +1943,7 @@ class Anopheles(ABC):
         )
 
         debug("find child components of the transcript")
-        data = df_geneset.set_index("Parent").loc[transcript].copy()
+        data = df_genome_features.set_index("Parent").loc[transcript].copy()
         data["bottom"] = -0.4
         data["top"] = 0.4
 
@@ -2211,3 +2262,1366 @@ class Anopheles(ABC):
         assert isinstance(region, Region)
 
         return str(region)
+
+    def genome_features(
+        self, region=None, attributes=("ID", "Parent", "Name", "description")
+    ):
+        """Access genome feature annotations (e.g. AgamP4.12, idAnoFuneDA-416_04).
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. Provide "*" to unpack all
+            attributes.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of genome annotations, one row per feature.
+
+        """
+        debug = self._log.debug
+
+        if attributes is not None:
+            attributes = tuple(attributes)
+
+        try:
+            df = self._cache_genome_features[attributes]
+
+        except KeyError:
+            path = f"{self._base_path}/{self._geneset_gff3_path}"
+            with self._fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_genome_features[attributes] = df
+
+        debug("handle region")
+        if region is not None:
+
+            region = self.resolve_region(region)
+
+            debug("normalise to list to simplify concatenation logic")
+            if isinstance(region, Region):
+                region = [region]
+
+            debug("apply region query")
+            parts = []
+            for r in region:
+                df_part = df.query(f"contig == '{r.contig}'")
+                if r.end is not None:
+                    df_part = df_part.query(f"start <= {r.end}")
+                if r.start is not None:
+                    df_part = df_part.query(f"end >= {r.start}")
+                parts.append(df_part)
+            df = pd.concat(parts, axis=0)
+
+        return df.reset_index(drop=True).copy()
+
+    def _lookup_sample(self, sample, sample_set=None):
+        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
+        sample_rec = None
+        if isinstance(sample, str):
+            sample_rec = df_samples.loc[sample]
+        elif isinstance(sample, int):
+            sample_rec = df_samples.iloc[sample]
+        else:
+            type_error(name="sample", value=sample, expectation=(str, int))
+        return sample_rec
+
+    def _plot_heterozygosity_track(
+        self,
+        *,
+        sample_id,
+        sample_set,
+        windows,
+        counts,
+        region,
+        window_size,
+        y_max,
+        width,
+        height,
+        circle_kwargs,
+        show,
+        x_range,
+    ):
+        debug = self._log.debug
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        region = self.resolve_region(region)
+
+        # pos axis
+        window_pos = windows.mean(axis=1)
+
+        # het axis
+        window_het = counts / window_size
+
+        # determine plotting limits
+        if x_range is None:
+            if region.start is not None:
+                x_min = region.start
+            else:
+                x_min = 0
+            if region.end is not None:
+                x_max = region.end
+            else:
+                x_max = len(self.genome_sequence(region.contig))
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        debug("create a figure for plotting")
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        fig = bkplt.figure(
+            title=f"{sample_id} ({sample_set})",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, y_max),
+        )
+
+        debug("plot heterozygosity")
+        data = pd.DataFrame(
+            {
+                "position": window_pos,
+                "heterozygosity": window_het,
+            }
+        )
+        if circle_kwargs is None:
+            circle_kwargs = dict()
+        circle_kwargs.setdefault("size", 3)
+        fig.circle(x="position", y="heterozygosity", source=data, **circle_kwargs)
+
+        debug("tidy up the plot")
+        fig.yaxis.axis_label = "Heterozygosity (bp⁻¹)"
+        self._bokeh_style_genome_xaxis(fig, region.contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_heterozygosity_track(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        y_max=0.03,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        circle_kwargs=None,
+        show=True,
+        x_range=None,
+    ):
+        """Plot windowed heterozygosity for a single sample over a genome
+        region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : str
+            Site filters mask to apply, e.g. "gamb_colu"
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        y_max : float, optional
+            Y axis limit.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int, optional
+            Plot height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        show : bool, optional
+            If true, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+        debug = self._log.debug
+
+        debug("compute windowed heterozygosity")
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+        )
+
+        debug("plot heterozygosity")
+        fig = self._plot_heterozygosity_track(
+            sample_id=sample_id,
+            sample_set=sample_set,
+            windows=windows,
+            counts=counts,
+            region=region,
+            window_size=window_size,
+            y_max=y_max,
+            width=width,
+            height=height,
+            circle_kwargs=circle_kwargs,
+            show=show,
+            x_range=x_range,
+        )
+
+        return fig
+
+    def plot_heterozygosity(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        y_max=0.03,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=170,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        circle_kwargs=None,
+        show=True,
+    ):
+        """Plot windowed heterozygosity for a single sample over a genome
+        region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : str
+            Site filters mask to apply, e.g. "gamb_colu"
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        y_max : float, optional
+            Y axis limit.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int, optional
+            Heterozygosity track height in pixels (px).
+        genes_height : int, optional
+            Genes track height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        debug = self._log.debug
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # normalise to support multiple samples
+        if isinstance(sample, (list, tuple)):
+            samples = sample
+        else:
+            samples = [sample]
+
+        debug("plot first sample track")
+        fig1 = self.plot_heterozygosity_track(
+            sample=samples[0],
+            sample_set=sample_set,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            y_max=y_max,
+            width=width,
+            height=track_height,
+            circle_kwargs=circle_kwargs,
+            show=False,
+        )
+        fig1.xaxis.visible = False
+        figs = [fig1]
+
+        debug("plot remaining sample tracks")
+        for sample in samples[1:]:
+            fig_het = self.plot_heterozygosity_track(
+                sample=sample,
+                sample_set=sample_set,
+                region=region,
+                site_mask=site_mask,
+                window_size=window_size,
+                y_max=y_max,
+                width=width,
+                height=track_height,
+                circle_kwargs=circle_kwargs,
+                show=False,
+                x_range=fig1.x_range,
+            )
+            fig_het.xaxis.visible = False
+            figs.append(fig_het)
+
+        debug("plot genes track")
+        fig_genes = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+        figs.append(fig_genes)
+
+        debug("combine plots into a single figure")
+        fig_all = bklay.gridplot(
+            figs, ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig_all)
+
+        return fig_all
+
+    def _sample_count_het(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+    ):
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+
+        debug("access sample metadata, look up sample")
+        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_id = sample_rec.name  # sample_id
+        sample_set = sample_rec["sample_set"]
+
+        debug("access SNPs, select data for sample")
+        ds_snps = self.snp_calls(
+            region=region, sample_sets=sample_set, site_mask=site_mask
+        )
+        ds_snps_sample = ds_snps.set_index(samples="sample_id").sel(samples=sample_id)
+
+        # snp positions
+        pos = ds_snps_sample["variant_position"].values
+
+        # access genotypes
+        gt = allel.GenotypeDaskVector(ds_snps_sample["call_genotype"].data)
+
+        # compute het
+        with self._dask_progress(desc="Compute heterozygous genotypes"):
+            is_het = gt.is_het().compute()
+
+        # compute window coordinates
+        windows = allel.moving_statistic(
+            values=pos,
+            statistic=lambda x: [x[0], x[-1]],
+            size=window_size,
+        )
+
+        # compute windowed heterozygosity
+        counts = allel.moving_statistic(
+            values=is_het,
+            statistic=np.sum,
+            size=window_size,
+        )
+
+        return sample_id, sample_set, windows, counts
+
+    def roh_hmm(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        phet_roh=0.001,
+        phet_nonroh=(0.003, 0.01),
+        transition=1e-3,
+    ):
+        """Infer runs of homozygosity for a single sample over a genome region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : str
+            Site filters mask to apply, e.g. "gamb_colu"
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        phet_roh: float, optional
+            Probability of observing a heterozygote in a ROH.
+        phet_nonroh: tuple of floats, optional
+            One or more probabilities of observing a heterozygote outside a ROH.
+        transition: float, optional
+           Probability of moving between states. A larger window size may call
+           for a larger transitional probability.
+
+        Returns
+        -------
+        df_roh : pandas.DataFrame
+            A DataFrame where each row provides data about a single run of
+            homozygosity.
+
+        """
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+
+        debug("compute windowed heterozygosity")
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+        )
+
+        debug("compute runs of homozygosity")
+        df_roh = self._roh_hmm_predict(
+            windows=windows,
+            counts=counts,
+            phet_roh=phet_roh,
+            phet_nonroh=phet_nonroh,
+            transition=transition,
+            window_size=window_size,
+            sample_id=sample_id,
+            contig=region.contig,
+        )
+
+        return df_roh
+
+    def plot_roh_track(
+        self,
+        df_roh,
+        region,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=100,
+        show=True,
+        x_range=None,
+        title="Runs of homozygosity",
+    ):
+        debug = self._log.debug
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        debug("handle region parameter - this determines the genome region to plot")
+        region = self.resolve_region(region)
+        contig = region.contig
+        start = region.start
+        end = region.end
+        if start is None:
+            start = 0
+        if end is None:
+            end = len(self.genome_sequence(contig))
+
+        debug("define x axis range")
+        if x_range is None:
+            x_range = bkmod.Range1d(start, end, bounds="auto")
+
+        debug(
+            "we're going to plot each gene as a rectangle, so add some additional columns"
+        )
+        data = df_roh.copy()
+        data["bottom"] = 0.2
+        data["top"] = 0.8
+
+        debug("make a figure")
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        fig = bkplt.figure(
+            title=title,
+            plot_width=width,
+            plot_height=height,
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "tap",
+                "hover",
+            ],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            x_range=x_range,
+        )
+
+        debug("now plot the ROH as rectangles")
+        fig.quad(
+            bottom="bottom",
+            top="top",
+            left="roh_start",
+            right="roh_stop",
+            source=data,
+            line_width=0.5,
+            fill_alpha=0.5,
+        )
+
+        debug("tidy up the plot")
+        fig.y_range = bkmod.Range1d(0, 1)
+        fig.ygrid.visible = False
+        fig.yaxis.ticker = []
+        self._bokeh_style_genome_xaxis(fig, region.contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_roh(
+        self,
+        sample,
+        region,
+        site_mask,
+        window_size,
+        sample_set=None,
+        phet_roh=0.001,
+        phet_nonroh=(0.003, 0.01),
+        transition=1e-3,
+        y_max=0.03,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        heterozygosity_height=170,
+        roh_height=50,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        circle_kwargs=None,
+        show=True,
+    ):
+        """Plot windowed heterozygosity and inferred runs of homozygosity for a
+        single sample over a genome region.
+
+        Parameters
+        ----------
+        sample : str or int
+            Sample identifier or index within sample set.
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : str
+            Site filters mask to apply, e.g. "gamb_colu"
+        window_size : int
+            Number of sites per window.
+        sample_set : str, optional
+            Sample set identifier. Not needed if sample parameter gives a sample
+            identifier.
+        phet_roh: float, optional
+            Probability of observing a heterozygote in a ROH.
+        phet_nonroh: tuple of floats, optional
+            One or more probabilities of observing a heterozygote outside a ROH.
+        transition: float, optional
+           Probability of moving between states. A larger window size may call
+           for a larger transitional probability.
+        y_max : float, optional
+            Y axis limit.
+        width : int, optional
+            Plot width in pixels (px).
+        heterozygosity_height : int, optional
+            Heterozygosity track height in pixels (px).
+        roh_height : int, optional
+            ROH track height in pixels (px).
+        genes_height : int, optional
+            Genes track height in pixels (px).
+        circle_kwargs : dict, optional
+            Passed through to bokeh circle() function.
+        show : bool, optional
+            If true, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+        """
+
+        debug = self._log.debug
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        region = self.resolve_region(region)
+
+        debug("compute windowed heterozygosity")
+        sample_id, sample_set, windows, counts = self._sample_count_het(
+            sample=sample,
+            region=region,
+            site_mask=site_mask,
+            window_size=window_size,
+            sample_set=sample_set,
+        )
+
+        debug("plot_heterozygosity track")
+        fig_het = self._plot_heterozygosity_track(
+            sample_id=sample_id,
+            sample_set=sample_set,
+            windows=windows,
+            counts=counts,
+            region=region,
+            window_size=window_size,
+            y_max=y_max,
+            width=width,
+            height=heterozygosity_height,
+            circle_kwargs=circle_kwargs,
+            show=False,
+            x_range=None,
+        )
+        fig_het.xaxis.visible = False
+        figs = [fig_het]
+
+        debug("compute runs of homozygosity")
+        df_roh = self._roh_hmm_predict(
+            windows=windows,
+            counts=counts,
+            phet_roh=phet_roh,
+            phet_nonroh=phet_nonroh,
+            transition=transition,
+            window_size=window_size,
+            sample_id=sample_id,
+            contig=region.contig,
+        )
+
+        debug("plot roh track")
+        fig_roh = self.plot_roh_track(
+            df_roh,
+            region=region,
+            width=width,
+            height=roh_height,
+            show=False,
+            x_range=fig_het.x_range,
+        )
+        fig_roh.xaxis.visible = False
+        figs.append(fig_roh)
+
+        debug("plot genes track")
+        fig_genes = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig_het.x_range,
+            show=False,
+        )
+        figs.append(fig_genes)
+
+        debug("combine plots into a single figure")
+        fig_all = bklay.gridplot(
+            figs, ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig_all)
+
+        return fig_all
+
+    def _locate_site_class(
+        self,
+        *,
+        region,
+        site_mask,
+        site_class,
+    ):
+        debug = self._log.debug
+
+        # cache these data in memory to avoid repeated computation
+        cache_key = (region, site_mask, site_class)
+
+        try:
+            loc_ann = self._cache_locate_site_class[cache_key]
+
+        except KeyError:
+            debug("access site annotations data")
+            ds_ann = self.site_annotations(
+                region=region,
+                site_mask=site_mask,
+            )
+            codon_pos = ds_ann["codon_position"].data
+            codon_deg = ds_ann["codon_degeneracy"].data
+            seq_cls = ds_ann["seq_cls"].data
+            seq_flen = ds_ann["seq_flen"].data
+            seq_relpos_start = ds_ann["seq_relpos_start"].data
+            seq_relpos_stop = ds_ann["seq_relpos_stop"].data
+            site_class = site_class.upper()
+
+            debug("define constants used in site annotations data")
+            # FIXME: variable in function should be lowercase
+            SEQ_CLS_UNKNOWN = 0  # noqa
+            SEQ_CLS_UPSTREAM = 1
+            SEQ_CLS_DOWNSTREAM = 2
+            SEQ_CLS_5UTR = 3
+            SEQ_CLS_3UTR = 4
+            SEQ_CLS_CDS_FIRST = 5
+            SEQ_CLS_CDS_MID = 6
+            SEQ_CLS_CDS_LAST = 7
+            SEQ_CLS_INTRON_FIRST = 8
+            SEQ_CLS_INTRON_MID = 9
+            SEQ_CLS_INTRON_LAST = 10
+            CODON_DEG_UNKNOWN = 0  # noqa
+            CODON_DEG_0 = 1
+            CODON_DEG_2_SIMPLE = 2
+            CODON_DEG_2_COMPLEX = 3  # noqa
+            CODON_DEG_4 = 4
+
+            debug("set up site selection")
+
+            if site_class == "CDS_DEG_4":
+                # 4-fold degenerate coding sites
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_CDS_FIRST)
+                        | (seq_cls == SEQ_CLS_CDS_MID)
+                        | (seq_cls == SEQ_CLS_CDS_LAST)
+                    )
+                    & (codon_pos == 2)
+                    & (codon_deg == CODON_DEG_4)
+                )
+
+            elif site_class == "CDS_DEG_2_SIMPLE":
+                # 2-fold degenerate coding sites
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_CDS_FIRST)
+                        | (seq_cls == SEQ_CLS_CDS_MID)
+                        | (seq_cls == SEQ_CLS_CDS_LAST)
+                    )
+                    & (codon_pos == 2)
+                    & (codon_deg == CODON_DEG_2_SIMPLE)
+                )
+
+            elif site_class == "CDS_DEG_0":
+                # non-degenerate coding sites
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_CDS_FIRST)
+                    | (seq_cls == SEQ_CLS_CDS_MID)
+                    | (seq_cls == SEQ_CLS_CDS_LAST)
+                ) & (codon_deg == CODON_DEG_0)
+
+            elif site_class == "INTRON_SHORT":
+                # short introns, excluding splice regions
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_INTRON_FIRST)
+                        | (seq_cls == SEQ_CLS_INTRON_MID)
+                        | (seq_cls == SEQ_CLS_INTRON_LAST)
+                    )
+                    & (seq_flen < 100)
+                    & (seq_relpos_start > 10)
+                    & (seq_relpos_stop > 10)
+                )
+
+            elif site_class == "INTRON_LONG":
+                # long introns, excluding splice regions
+                loc_ann = (
+                    (
+                        (seq_cls == SEQ_CLS_INTRON_FIRST)
+                        | (seq_cls == SEQ_CLS_INTRON_MID)
+                        | (seq_cls == SEQ_CLS_INTRON_LAST)
+                    )
+                    & (seq_flen > 200)
+                    & (seq_relpos_start > 10)
+                    & (seq_relpos_stop > 10)
+                )
+
+            elif site_class == "INTRON_SPLICE_5PRIME":
+                # 5' intron splice regions
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_INTRON_FIRST)
+                    | (seq_cls == SEQ_CLS_INTRON_MID)
+                    | (seq_cls == SEQ_CLS_INTRON_LAST)
+                ) & (seq_relpos_start < 2)
+
+            elif site_class == "INTRON_SPLICE_3PRIME":
+                # 3' intron splice regions
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_INTRON_FIRST)
+                    | (seq_cls == SEQ_CLS_INTRON_MID)
+                    | (seq_cls == SEQ_CLS_INTRON_LAST)
+                ) & (seq_relpos_stop < 2)
+
+            elif site_class == "UTR_5PRIME":
+                # 5' UTR
+                loc_ann = seq_cls == SEQ_CLS_5UTR
+
+            elif site_class == "UTR_3PRIME":
+                # 3' UTR
+                loc_ann = seq_cls == SEQ_CLS_3UTR
+
+            elif site_class == "INTERGENIC":
+                # intergenic regions, distant from a gene
+                loc_ann = (
+                    (seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)
+                ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
+
+            else:
+                raise NotImplementedError(site_class)
+
+            debug("compute site selection")
+            with self._dask_progress(desc=f"Locate {site_class} sites"):
+                loc_ann = loc_ann.compute()
+
+            self._cache_locate_site_class[cache_key] = loc_ann
+
+        return loc_ann
+
+    def site_annotations(
+        self,
+        region,
+        site_mask=None,
+        inline_array=True,
+        chunks="auto",
+    ):
+        """Load site annotations.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        site_mask : str
+            Site filters mask to apply, e.g. "gamb_colu"
+        inline_array : bool, optional
+            Passed through to dask.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset of site annotations.
+
+        """
+        # N.B., we default to chunks="auto" here for performance reasons
+
+        debug = self._log.debug
+
+        debug("resolve region")
+        region = self.resolve_region(region)
+        if isinstance(region, list):
+            raise TypeError("Multiple regions not supported.")
+        contig = region.contig
+
+        debug("open site annotations zarr")
+        root = self.open_site_annotations()
+
+        debug("build a dataset")
+        ds = xr.Dataset()
+        for field in (
+            "codon_degeneracy",
+            "codon_nonsyn",
+            "codon_position",
+            "seq_cls",
+            "seq_flen",
+            "seq_relpos_start",
+            "seq_relpos_stop",
+        ):
+            data = da_from_zarr(
+                root[field][contig],
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            ds[field] = "variants", data
+
+        debug("subset to SNP positions")
+        pos = self.snp_sites(
+            region=contig,
+            field="POS",
+            site_mask=site_mask,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+        pos = pos.compute()
+        if region.start or region.end:
+            loc_region = locate_region(region, pos)
+            pos = pos[loc_region]
+        idx = pos - 1
+        ds = ds.isel(variants=idx)
+
+        return ds
+
+    # Note: Ag3 overrides wgs_data_catalog with special handling for 3.0
+    def wgs_data_catalog(self, sample_set):
+        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
+        files for samples in a given sample set.
+
+        Parameters
+        ----------
+        sample_set : str
+            Sample set identifier.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            One row per sample, columns provide URLs.
+
+        """
+        debug = self._log.debug
+
+        debug("look up release for sample set")
+        release = self._lookup_release(sample_set=sample_set)
+        release_path = self._release_to_path(release=release)
+
+        debug("load data catalog")
+        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
+        with self._fs.open(path) as f:
+            df = pd.read_csv(f, na_values="")
+
+        debug("normalise columns")
+        df = df[
+            [
+                "sample_id",
+                "alignments_bam",
+                "snp_genotypes_vcf",
+                "snp_genotypes_zarr",
+            ]
+        ]
+
+        return df
+
+    def pca(
+        self,
+        region,
+        n_snps,
+        thin_offset=0,
+        sample_sets=None,
+        sample_query=None,
+        site_mask="default",
+        min_minor_ac=2,
+        max_missing_an=0,
+        n_components=20,
+    ):
+        """Run a principal components analysis (PCA) using biallelic SNPs from
+        the selected genome region and samples.
+
+        Parameters
+        ----------
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        n_snps : int
+            The desired number of SNPs to use when running the analysis.
+            SNPs will be evenly thinned to approximately this number.
+        thin_offset : int, optional
+            Starting index for SNP thinning. Change this to repeat the analysis
+            using a different set of SNPs.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "country == 'Burkina Faso'".
+        site_mask : str, optional
+            Site filters mask to apply, e.g. "gamb_colu"
+        min_minor_ac : int, optional
+            The minimum minor allele count. SNPs with a minor allele count
+            below this value will be excluded prior to thinning.
+        max_missing_an : int, optional
+            The maximum number of missing allele calls to accept. SNPs with
+            more than this value will be excluded prior to thinning. Set to 0
+            (default) to require no missing calls.
+        n_components : int, optional
+            Number of components to return.
+
+        Returns
+        -------
+        df_pca : pandas.DataFrame
+            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+            etc., added.
+        evr : np.ndarray
+            An array of explained variance ratios, one per component.
+
+        Notes
+        -----
+        This computation may take some time to run, depending on your computing
+        environment. Results of this computation will be cached and re-used if
+        the `results_cache` parameter was set when instantiating the Ag3 class.
+
+        """
+        debug = self._log.debug
+
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = self._pca_results_cache_name
+
+        if site_mask == "default":
+            site_mask = self._default_site_mask
+
+        debug("normalize params for consistent hash value")
+        params = dict(
+            region=self.resolve_region(region).to_dict(),
+            n_snps=n_snps,
+            thin_offset=thin_offset,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            site_mask=site_mask,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            n_components=n_components,
+        )
+
+        debug("try to retrieve results from the cache")
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._pca(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        debug("unpack results")
+        coords = results["coords"]
+        evr = results["evr"]
+
+        debug("add coords to sample metadata dataframe")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+        )
+        df_coords = pd.DataFrame(
+            {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
+        )
+        df_pca = pd.concat([df_samples, df_coords], axis="columns")
+
+        return df_pca, evr
+
+    def plot_snps(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask="default",
+        width=800,
+        track_height=80,
+        genes_height=120,
+        max_snps=200_000,
+        show=True,
+    ):
+        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
+        with segregating and non-segregating SNPs positioned on different levels,
+        and coloured by site filter.
+        Parameters
+        ----------
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "country == 'Burkina Faso'".
+        site_mask : str, optional
+            Site filters mask to apply, e.g. "gamb_colu"
+        width : int, optional
+            Width of plot in pixels (px).
+        track_height : int, optional
+            Height of SNPs track in pixels (px).
+        genes_height : int, optional
+            Height of genes track in pixels (px).
+        max_snps : int, optional
+            Maximum number of SNPs to show.
+        show : bool, optional
+            If True, show the plot.
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+        """
+        debug = self._log.debug
+
+        if site_mask == "default":
+            site_mask = self._default_site_mask
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        debug("plot SNPs track")
+        # FIXME: parameter 'x_range' unfilled
+        fig1 = self.plot_snps_track(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+            width=width,
+            height=track_height,
+            max_snps=max_snps,
+            show=False,
+        )
+        fig1.xaxis.visible = False
+
+        debug("plot genes track")
+        fig2 = self.plot_genes(
+            region=region,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def open_site_annotations(self):
+        """Open site annotations zarr.
+
+        Returns
+        -------
+        root : zarr.hierarchy.Group
+
+        """
+
+        if self._cache_site_annotations is None:
+            path = f"{self._base_path}/{self._site_annotations_zarr_path}"
+            store = init_zarr_store(fs=self._fs, path=path)
+            self._cache_site_annotations = zarr.open_consolidated(store=store)
+        return self._cache_site_annotations
+
+    def plot_snps_track(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask="default",
+        width=800,
+        height=120,
+        max_snps=200_000,
+        x_range=None,
+        show=True,
+    ):
+        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
+        with segregating and non-segregating SNPs positioned on different levels,
+        and coloured by site filter.
+
+        Parameters
+        ----------
+        region : str
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "country == 'Burkina Faso'".
+        site_mask : str, optional
+            Site filters mask to apply, e.g. "gamb_colu"
+        width : int, optional
+            Width of plot in pixels (px).
+        height : int, optional
+            Height of plot in pixels (px).
+        max_snps : int, optional
+            Maximum number of SNPs to plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        show : bool, optional
+            If True, show the plot.
+
+        Returns
+        -------
+        fig : Figure
+            Bokeh figure.
+
+
+        """
+        debug = self._log.debug
+
+        if site_mask == "default":
+            site_mask = self._default_site_mask
+
+        import bokeh.models as bkmod
+        import bokeh.palettes as bkpal
+        import bokeh.plotting as bkplt
+
+        debug("resolve and check region")
+        region = self.resolve_region(region)
+        if (
+            (region.start is None)
+            or (region.end is None)
+            or ((region.end - region.start) > max_snps)
+        ):
+            raise ValueError("Region is too large, please provide a smaller region.")
+
+        debug("compute allele counts")
+        ac = allel.AlleleCountsArray(
+            self.snp_allele_counts(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+            )
+        )
+        an = ac.sum(axis=1)
+        is_seg = ac.is_segregating()
+        is_var = ac.is_variant()
+        allelism = ac.allelism()
+
+        debug("obtain SNP variants data")
+        ds_sites = self.snp_variants(
+            region=region,
+        ).compute()
+
+        debug("build a dataframe")
+        pos = ds_sites["variant_position"].values
+        alleles = ds_sites["variant_allele"].values.astype("U")
+        cols = {
+            "pos": pos,
+            "allele_0": alleles[:, 0],
+            "allele_1": alleles[:, 1],
+            "allele_2": alleles[:, 2],
+            "allele_3": alleles[:, 3],
+            "ac_0": ac[:, 0],
+            "ac_1": ac[:, 1],
+            "ac_2": ac[:, 2],
+            "ac_3": ac[:, 3],
+            "an": an,
+            "is_seg": is_seg,
+            "is_var": is_var,
+            "allelism": allelism,
+        }
+
+        for site_mask_id in self._site_mask_ids():
+            cols[f"pass_{site_mask_id}"] = ds_sites[
+                f"variant_filter_pass_{site_mask_id}"
+            ].values
+
+        data = pd.DataFrame(cols)
+
+        debug("create figure")
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        pos = data["pos"].values
+        x_min = pos[0]
+        x_max = pos[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        tooltips = [
+            ("Position", "$x{0,0}"),
+            (
+                "Alleles",
+                "@allele_0 (@ac_0), @allele_1 (@ac_1), @allele_2 (@ac_2), @allele_3 (@ac_3)",
+            ),
+            ("No. alleles", "@allelism"),
+            ("Allele calls", "@an"),
+        ]
+
+        for site_mask_id in self._site_mask_ids():
+            tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
+
+        fig = bkplt.figure(
+            title="SNPs",
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0.5, 2.5),
+            tooltips=tooltips,
+        )
+        hover_tool = fig.select(type=bkmod.HoverTool)
+        hover_tool.names = ["snps"]
+
+        debug("plot gaps in the reference genome")
+        seq = self.genome_sequence(region=region.contig).compute()
+        is_n = (seq == b"N") | (seq == b"n")
+        loc_n_start = ~is_n[:-1] & is_n[1:]
+        loc_n_stop = is_n[:-1] & ~is_n[1:]
+        n_starts = np.nonzero(loc_n_start)[0]
+        n_stops = np.nonzero(loc_n_stop)[0]
+        df_n_runs = pd.DataFrame(
+            {"left": n_starts + 1.6, "right": n_stops + 1.4, "top": 2.5, "bottom": 0.5}
+        )
+        fig.quad(
+            top="top",
+            bottom="bottom",
+            left="left",
+            right="right",
+            color="#cccccc",
+            source=df_n_runs,
+            name="gaps",
+        )
+
+        debug("plot SNPs")
+        color_pass = bkpal.Colorblind6[3]
+        color_fail = bkpal.Colorblind6[5]
+        data["left"] = data["pos"] - 0.4
+        data["right"] = data["pos"] + 0.4
+        data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
+        data["top"] = data["bottom"] + 0.8
+        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
+        fig.quad(
+            top="top",
+            bottom="bottom",
+            left="left",
+            right="right",
+            color="color",
+            source=data,
+            name="snps",
+        )
+        # TODO add legend?
+
+        debug("tidy plot")
+        fig.yaxis.ticker = bkmod.FixedTicker(
+            ticks=[1, 2],
+        )
+        fig.yaxis.major_label_overrides = {
+            1: "Non-segregating",
+            2: "Segregating",
+        }
+        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+        fig.xaxis.minor_tick_line_color = None
+        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+
+        if show:
+            bkplt.show(fig)
+
+        return fig

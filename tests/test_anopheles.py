@@ -278,3 +278,130 @@ def test_geneset_region(subclass, region):
         assert np.all(df["contig"].values == region.contig)
         if region.start and region.end:
             assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
+
+
+@pytest.mark.parametrize("subclass", [Ag3, Af1])
+def test_sample_metadata_dtypes(subclass):
+
+    expected_dtypes = {
+        "sample_id": object,
+        "partner_sample_id": object,
+        "contributor": object,
+        "country": object,
+        "location": object,
+        "year": "int64",
+        "month": "int64",
+        "latitude": "float64",
+        "longitude": "float64",
+        "sex_call": object,
+        "sample_set": object,
+        "release": object,
+    }
+
+    # check all available sample sets
+    anoph = setup_subclass(subclass, pre=True)
+    df_samples = anoph.sample_metadata()
+    for k, v in expected_dtypes.items():
+        assert df_samples[k].dtype == v, k
+
+    # check sample sets one by one, just to be sure
+    for sample_set in anoph.sample_sets()["sample_set"]:
+        df_samples = anoph.sample_metadata(sample_sets=sample_set)
+        for k, v in expected_dtypes.items():
+            assert df_samples[k].dtype == v, k
+
+
+@pytest.mark.parametrize("subclass", [Ag3, Af1])
+def test_genome_features(subclass):
+
+    anoph = setup_subclass(subclass)
+
+    # default
+    df = anoph.genome_features()
+    assert isinstance(df, pd.DataFrame)
+    gff3_cols = [
+        "contig",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
+    assert df.columns.tolist() == expected_cols
+
+    # don't unpack attributes
+    df = anoph.genome_features(attributes=None)
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = gff3_cols + ["attributes"]
+    assert df.columns.tolist() == expected_cols
+
+
+@pytest.mark.parametrize(
+    "subclass, region",
+    [
+        (Ag3, "AGAP007280"),
+        (Ag3, "3R:28,000,000-29,000,000"),
+        (Ag3, "2R"),
+        (Ag3, "X"),
+        (Ag3, ["3R", "3L"]),
+        (Af1, "3RL:28,000,000-29,000,000"),
+        (Af1, "gene-LOC125762289"),
+        (Af1, "2RL"),
+        (Af1, "X"),
+        (Af1, ["2RL", "3RL"]),
+    ],
+)
+def test_genome_features_region(subclass, region):
+
+    anoph = setup_subclass(subclass)
+
+    df = anoph.genome_features(region=region)
+    assert isinstance(df, pd.DataFrame)
+    gff3_cols = [
+        "contig",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
+    assert df.columns.tolist() == expected_cols
+    assert len(df) > 0
+
+    # check region
+    region = anoph.resolve_region(region)
+    if isinstance(region, Region):
+        assert np.all(df["contig"].values == region.contig)
+        if region.start and region.end:
+            assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
+
+
+@pytest.mark.parametrize("subclass", [Ag3, Af1])
+def test_open_site_annotations(subclass):
+
+    anoph = setup_subclass(subclass)
+
+    # test access as zarr
+    root = anoph.open_site_annotations()
+    assert isinstance(root, zarr.hierarchy.Group)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        assert f in root
+        for contig in anoph.contigs:
+            assert contig in root[f]
+            z = root[f][contig]
+            # raw zarr data is aligned with genome sequence
+            assert z.shape == (len(anoph.genome_sequence(region=contig)),)

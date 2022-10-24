@@ -1,6 +1,8 @@
+import json
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
+from collections import Counter
 from textwrap import dedent
 
 import allel
@@ -12,7 +14,7 @@ import pandas as pd
 import xarray as xr
 import zarr
 
-from .anopheles import Anopheles
+from .anopheles import AnophelesDataResource
 
 try:
     # noinspection PyPackageRequirements
@@ -22,6 +24,7 @@ except ImportError:
 
 import malariagen_data  # used for .__version__
 
+from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
     DIM_PLOIDY,
@@ -32,9 +35,10 @@ from .util import (
     da_from_zarr,
     hash_params,
     init_zarr_store,
+    jackknife_ci,
     jitter,
     locate_region,
-    type_error,
+    plotly_discrete_legend,
     xarray_concat,
 )
 
@@ -43,11 +47,9 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})
 
 MAJOR_VERSION_INT = 3
 MAJOR_VERSION_GCS_STR = "v3"
-PUBLIC_RELEASES = ("3.0",)
+
 GCS_URL = "gs://vo_agam_release/"
-GENESET_GFF3_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_BASEFEATURES_AgamP4.12.gff3.gz"
-)
+
 GENOME_FASTA_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa"
 )
@@ -57,17 +59,15 @@ GENOME_FAI_PATH = (
 GENOME_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
 )
+SITE_ANNOTATIONS_ZARR_PATH = (
+    "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
+)
 GENOME_REF_ID = "AgamP4"
 GENOME_REF_NAME = "Anopheles gambiae (PEST)"
 
-# DEFAULT_SPECIES_ANALYSIS = "aim_20200422"
-DEFAULT_SPECIES_ANALYSIS = "aim_20220528"
-DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
-DEFAULT_COHORTS_ANALYSIS = "20220608"
-
 CONTIGS = "2R", "2L", "3R", "3L", "X"
 DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
-DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
+DEFAULT_GENES_TRACK_HEIGHT = 100  # height in px for bokeh genes track plots
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
 AA_CHANGE_QUERY = (
@@ -75,11 +75,11 @@ AA_CHANGE_QUERY = (
 )
 
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
-SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v1"
+SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v2"
 DEFAULT_SITE_MASK = "gamb_colu_arab"
 
 
-class Ag3(Anopheles):
+class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
 
     Parameters
@@ -136,29 +136,30 @@ class Ag3(Anopheles):
     """
 
     contigs = CONTIGS
-    _public_releases = PUBLIC_RELEASES
     _major_version_int = MAJOR_VERSION_INT
     _major_version_gcs_str = MAJOR_VERSION_GCS_STR
-    _geneset_gff3_path = GENESET_GFF3_PATH
     _genome_fasta_path = GENOME_FASTA_PATH
     _genome_fai_path = GENOME_FAI_PATH
     _genome_zarr_path = GENOME_ZARR_PATH
     _genome_ref_id = GENOME_REF_ID
     _genome_ref_name = GENOME_REF_NAME
     _gcs_url = GCS_URL
+    _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
+    _default_site_mask = DEFAULT_SITE_MASK
+    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
 
     def __init__(
         self,
         url=GCS_URL,
-        cohorts_analysis=DEFAULT_COHORTS_ANALYSIS,
-        species_analysis=DEFAULT_SPECIES_ANALYSIS,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
         debug=False,
         show_progress=True,
         check_location=True,
+        cohorts_analysis=None,
+        species_analysis=None,
+        site_filters_analysis=None,
         pre=False,
         **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
@@ -176,8 +177,23 @@ class Ag3(Anopheles):
             **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
 
-        self._cohorts_analysis = cohorts_analysis
-        self._species_analysis = species_analysis
+        # load config.json
+        path = f"{self._base_path}/v3-config.json"
+        with self._fs.open(path) as f:
+            self._config = json.load(f)
+
+        if cohorts_analysis is None:
+            self._cohorts_analysis = self._config["DEFAULT_COHORTS_ANALYSIS"]
+        else:
+            self._cohorts_analysis = cohorts_analysis
+        if species_analysis is None:
+            self._species_analysis = self._config["DEFAULT_SPECIES_ANALYSIS"]
+        else:
+            self._species_analysis = species_analysis
+        if site_filters_analysis is None:
+            self._site_filters_analysis = self._config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+        else:
+            self._site_filters_analysis = site_filters_analysis
 
         # set up caches
         self._cache_species_calls = dict()
@@ -189,12 +205,31 @@ class Ag3(Anopheles):
         self._cache_haplotype_sites = dict()
         self._cache_cohort_metadata = dict()
         self._cache_aim_variants = dict()
-        self._cache_site_annotations = None
+
+    @property
+    def _public_releases(self):
+        return tuple(self._config["PUBLIC_RELEASES"])
+
+    @property
+    def _geneset_gff3_path(self):
+        return self._config["GENESET_GFF3_PATH"]
+
+    @property
+    def v3_wild(self):
+        """Legacy, convenience property to access sample sets from the
+        3.0 release, excluding the lab crosses."""
+        return [
+            x
+            for x in self.sample_sets(release="3.0")["sample_set"].tolist()
+            if x != "AG1000G-X"
+        ]
 
     @staticmethod
-    def _setup_taxon_colors(plot_kwargs):
+    def _setup_taxon_colors(plot_kwargs=None):
         import plotly.express as px
 
+        if plot_kwargs is None:
+            plot_kwargs = dict()
         taxon_palette = px.colors.qualitative.Plotly
         taxon_color_map = {
             "gambiae": taxon_palette[0],
@@ -206,8 +241,11 @@ class Ag3(Anopheles):
             "intermediate_gambiae_coluzzii": taxon_palette[6],
             "intermediate_arabiensis_gambiae": taxon_palette[7],
         }
-        plot_kwargs["color_discrete_map"] = taxon_color_map
-        plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
+        plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
+        plot_kwargs.setdefault(
+            "category_orders", {"taxon": list(taxon_color_map.keys())}
+        )
+        return plot_kwargs
 
     def __repr__(self):
         text = (
@@ -295,16 +333,6 @@ class Ag3(Anopheles):
             </table>
         """
         return html
-
-    @property
-    def v3_wild(self):
-        """Legacy, convenience property to access sample sets from the
-        3.0 release, excluding the lab crosses."""
-        return [
-            x
-            for x in self.sample_sets(release="3.0")["sample_set"].tolist()
-            if x != "AG1000G-X"
-        ]
 
     def _read_species_calls(self, *, sample_set):
         """Read species calls for a single sample set."""
@@ -478,10 +506,10 @@ class Ag3(Anopheles):
         return df
 
     def _transcript_to_gene_name(self, transcript):
-        df_geneset = self.geneset().set_index("ID")
-        rec_transcript = df_geneset.loc[transcript]
+        df_genome_features = self.genome_features().set_index("ID")
+        rec_transcript = df_genome_features.loc[transcript]
         parent = rec_transcript["Parent"]
-        rec_parent = df_geneset.loc[parent]
+        rec_parent = df_genome_features.loc[parent]
 
         # manual overrides
         if parent == "AGAP004707":
@@ -705,80 +733,6 @@ class Ag3(Anopheles):
             self._cache_cross_metadata = df
 
         return self._cache_cross_metadata.copy()
-
-    def open_site_annotations(self):
-        """Open site annotations zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
-
-        if self._cache_site_annotations is None:
-            path = f"{self._base_path}/reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
-            self._cache_site_annotations = zarr.open_consolidated(store=store)
-        return self._cache_site_annotations
-
-    def site_annotations(
-        self,
-        region,
-        field,
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
-    ):
-        """Load site annotations.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        field : str
-            One of "codon_degeneracy", "codon_nonsyn", "codon_position",
-            "seq_cls", "seq_flen", "seq_relpos_start", "seq_relpos_stop".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
-        inline_array : bool, optional
-            Passed through to dask.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.Array
-            An array of site annotations.
-
-        """
-        debug = self._log.debug
-
-        debug("access the array of values for all genome positions")
-        root = self.open_site_annotations()
-
-        debug("resolve region")
-        region = self.resolve_region(region)
-        if isinstance(region, list):
-            raise TypeError("Multiple regions not supported.")
-
-        d = da_from_zarr(
-            root[field][region.contig], inline_array=inline_array, chunks=chunks
-        )
-
-        debug("access and subset to SNP positions")
-        pos = self.snp_sites(
-            region=region,
-            field="POS",
-            site_mask=site_mask,
-        )
-        d = da.take(d, pos - 1)
-
-        return d
 
     def open_cnv_hmm(self, sample_set):
         """Open CNV HMM zarr.
@@ -1407,8 +1361,8 @@ class Ag3(Anopheles):
             pos, end, cn = dask.compute(pos, end, cn)
 
         debug("access genes")
-        df_geneset = self.geneset(region=region)
-        df_genes = df_geneset.query("type == 'gene'")
+        df_genome_features = self.genome_features(region=region)
+        df_genes = df_genome_features.query("type == 'gene'")
 
         debug("setup intermediates")
         windows = []
@@ -1826,6 +1780,8 @@ class Ag3(Anopheles):
         sample_query=None,
         inline_array=True,
         chunks="native",
+        cohort_size=None,
+        random_seed=42,
     ):
         """Access haplotype data.
 
@@ -1854,6 +1810,10 @@ class Ag3(Anopheles):
         chunks : str, optional
             If 'auto' let dask decide chunk size. If 'native' use native zarr
             chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -1921,6 +1881,18 @@ class Ag3(Anopheles):
                 raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
 
+        debug("handle cohort size")
+        if cohort_size is not None:
+            n_samples = ds.dims["samples"]
+            if n_samples < cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                )
+            rng = np.random.default_rng(seed=random_seed)
+            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
+            loc_downsample.sort()
+            ds = ds.isel(samples=loc_downsample)
+
         return ds
 
     def _read_cohort_metadata(self, *, sample_set):
@@ -1932,7 +1904,7 @@ class Ag3(Anopheles):
             release_path = self._release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohorts metadata exist, need to handle FileNotFoundError
+            # N.B., not all cohort metadata files exist, need to handle FileNotFoundError
             try:
                 with self._fs.open(path) as f:
                     df = pd.read_csv(f, na_values="")
@@ -2604,6 +2576,7 @@ class Ag3(Anopheles):
         ds_aa_frq = group_by_aa_change.map(self._map_snp_to_aa_change_frq_ds)
 
         debug("add back in cohort variables, unaffected by aggregation")
+        # FIXME: unresolved attribute reference 'startswith'
         cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
         for v in cohort_vars:
             ds_aa_frq[v] = ds_snp_frq[v]
@@ -2921,9 +2894,9 @@ class Ag3(Anopheles):
             `Ag3.aa_allele_frequencies_advanced()` or
             `Ag3.gene_cnv_frequencies_advanced()`.
         height : int, optional
-            Height of plot in pixels.
+            Height of plot in pixels (px).
         width : int, optional
-            Width of plot in pixels
+            Width of plot in pixels (px).
         title : bool or str, optional
             If True, attempt to use metadata from input dataset as a plot
             title. Otherwise, use supplied value as a title.
@@ -2948,6 +2921,7 @@ class Ag3(Anopheles):
             title = ds.attrs.get("title", None)
 
         debug("extract cohorts into a dataframe")
+        # FIXME: unresolved attribute reference 'startswith'
         cohort_vars = [v for v in ds if v.startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
@@ -3212,6 +3186,7 @@ class Ag3(Anopheles):
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
+        x_range=None,
     ):
         """Plot CNV HMM data for a single sample, using bokeh.
 
@@ -3237,6 +3212,8 @@ class Ag3(Anopheles):
             Passed through to bokeh line() function.
         show : bool, optional
             If true, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
 
         Returns
         -------
@@ -3252,29 +3229,18 @@ class Ag3(Anopheles):
         debug("resolve region")
         region = self.resolve_region(region)
 
-        if sample_set is None:
-            debug("look up sample set for sample")
-            sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
-            sample_set = sample_rec["sample_set"]
+        debug("access sample metadata, look up sample")
+        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_id = sample_rec.name  # sample_id
+        sample_set = sample_rec["sample_set"]
 
         debug("access HMM data")
         hmm = self.cnv_hmm(
             region=region, sample_sets=sample_set, max_coverage_variance=None
         )
 
-        debug(
-            "select data for the given sample - support either sample ID or integer index"
-        )
-        hmm_sample = None
-        sample_id = None
-        if isinstance(sample, str):
-            hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample)
-            sample_id = sample
-        elif isinstance(sample, int):
-            hmm_sample = hmm.isel(samples=sample)
-            sample_id = hmm["sample_id"].values[sample]
-        else:
-            type_error(name="sample", value=sample, expectation=(str, int))
+        debug("select data for the given sample")
+        hmm_sample = hmm.set_index(samples="sample_id").sel(samples=sample_id)
 
         debug("extract data into a pandas dataframe for easy plotting")
         data = hmm_sample[
@@ -3294,7 +3260,8 @@ class Ag3(Anopheles):
         debug("set up x range")
         x_min = data["variant_position"].values[0]
         x_max = data["variant_end"].values[-1]
-        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
 
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
@@ -3790,7 +3757,7 @@ class Ag3(Anopheles):
         region = self.resolve_region(region)
         contig = region.contig
         for site_mask in self._site_mask_ids():
-            site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"
+            site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             debug(site_filters_vcf_url)
             track_config = {
                 "name": f"Filters - {site_mask}",
@@ -3879,6 +3846,9 @@ class Ag3(Anopheles):
         sample_sets=None,
         sample_query=None,
         site_mask=None,
+        site_class=None,
+        cohort_size=None,
+        random_seed=42,
     ):
         """Compute SNP allele counts. This returns the number of times each
         SNP allele was observed in the selected samples.
@@ -3886,7 +3856,7 @@ class Ag3(Anopheles):
         Parameters
         ----------
         region : str or Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
         sample_sets : str or list of str, optional
@@ -3898,6 +3868,21 @@ class Ag3(Anopheles):
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size before
+            computing allele counts.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -3921,11 +3906,19 @@ class Ag3(Anopheles):
         name = SNP_ALLELE_COUNTS_CACHE_NAME
 
         # normalize params for consistent hash value
+        if isinstance(sample_query, str):
+            # resolve query to a list of integers for more cache hits
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            sample_query = np.nonzero(loc_samples)[0].tolist()
         params = dict(
             region=self.resolve_region(region).to_dict(),
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
         )
 
         try:
@@ -3937,110 +3930,6 @@ class Ag3(Anopheles):
 
         ac = results["ac"]
         return ac
-
-    def pca(
-        self,
-        region,
-        n_snps,
-        thin_offset=0,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT_SITE_MASK,
-        min_minor_ac=2,
-        max_missing_an=0,
-        n_components=20,
-    ):
-        """Run a principal components analysis (PCA) using biallelic SNPs from
-        the selected genome region and samples.
-
-        Parameters
-        ----------
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        n_snps : int
-            The desired number of SNPs to use when running the analysis.
-            SNPs will be evenly thinned to approximately this number.
-        thin_offset : int, optional
-            Starting index for SNP thinning. Change this to repeat the analysis
-            using a different set of SNPs.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
-        min_minor_ac : int, optional
-            The minimum minor allele count. SNPs with a minor allele count
-            below this value will be excluded prior to thinning.
-        max_missing_an : int, optional
-            The maximum number of missing allele calls to accept. SNPs with
-            more than this value will be excluded prior to thinning. Set to 0
-            (default) to require no missing calls.
-        n_components : int, optional
-            Number of components to return.
-
-        Returns
-        -------
-        df_pca : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        evr : np.ndarray
-            An array of explained variance ratios, one per component.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
-        debug = self._log.debug
-
-        # change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data
-        name = PCA_RESULTS_CACHE_NAME
-
-        debug("normalize params for consistent hash value")
-        params = dict(
-            region=self.resolve_region(region).to_dict(),
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
-            sample_query=sample_query,
-            site_mask=site_mask,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-            n_components=n_components,
-        )
-
-        debug("try to retrieve results from the cache")
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._pca(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        debug("unpack results")
-        coords = results["coords"]
-        evr = results["evr"]
-
-        debug("add coords to sample metadata dataframe")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-        )
-        df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
-        )
-        df_pca = pd.concat([df_samples, df_coords], axis="columns")
-
-        return df_pca, evr
 
     def plot_pca_coords(
         self,
@@ -4270,215 +4159,6 @@ class Ag3(Anopheles):
 
         return fig
 
-    def plot_snps_track(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT_SITE_MASK,
-        width=800,
-        height=120,
-        max_snps=200_000,
-        show=True,
-    ):
-        # TODO docstring
-        debug = self._log.debug
-
-        import bokeh.models as bkmod
-        import bokeh.palettes as bkpal
-        import bokeh.plotting as bkplt
-
-        debug("resolve and check region")
-        region = self.resolve_region(region)
-        if (
-            (region.start is None)
-            or (region.end is None)
-            or ((region.end - region.start) > max_snps)
-        ):
-            raise ValueError("Region is too large, please provide a smaller region.")
-
-        debug("compute allele counts")
-        ac = allel.AlleleCountsArray(
-            self.snp_allele_counts(
-                region=region,
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-            )
-        )
-        an = ac.sum(axis=1)
-        is_seg = ac.is_segregating()
-        is_var = ac.is_variant()
-        allelism = ac.allelism()
-
-        debug("obtain SNP variants data")
-        ds_sites = self.snp_variants(
-            region=region,
-        ).compute()
-
-        debug("build a dataframe")
-        pos = ds_sites["variant_position"].values
-        alleles = ds_sites["variant_allele"].values.astype("U")
-        cols = {
-            "pos": pos,
-            "allele_0": alleles[:, 0],
-            "allele_1": alleles[:, 1],
-            "allele_2": alleles[:, 2],
-            "allele_3": alleles[:, 3],
-            "ac_0": ac[:, 0],
-            "ac_1": ac[:, 1],
-            "ac_2": ac[:, 2],
-            "ac_3": ac[:, 3],
-            "an": an,
-            "is_seg": is_seg,
-            "is_var": is_var,
-            "allelism": allelism,
-            "pass_gamb_colu_arab": ds_sites[
-                "variant_filter_pass_gamb_colu_arab"
-            ].values,
-            "pass_gamb_colu": ds_sites["variant_filter_pass_gamb_colu"].values,
-            "pass_arab": ds_sites["variant_filter_pass_arab"].values,
-        }
-        data = pd.DataFrame(cols)
-
-        debug("create figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        pos = data["pos"].values
-        x_min = pos[0]
-        x_max = pos[-1]
-        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
-
-        tooltips = [
-            ("Position", "$x{0,0}"),
-            (
-                "Alleles",
-                "@allele_0 (@ac_0), @allele_1 (@ac_1), @allele_2 (@ac_2), @allele_3 (@ac_3)",
-            ),
-            ("No. alleles", "@allelism"),
-            ("Allele calls", "@an"),
-            ("Pass gamb_colu_arab", "@pass_gamb_colu_arab"),
-            ("Pass gamb_colu", "@pass_gamb_colu"),
-            ("Pass arab", "@pass_arab"),
-        ]
-
-        fig = bkplt.figure(
-            title="SNPs",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
-            toolbar_location="above",
-            x_range=x_range,
-            y_range=(0.5, 2.5),
-            tooltips=tooltips,
-        )
-        hover_tool = fig.select(type=bkmod.HoverTool)
-        hover_tool.names = ["snps"]
-
-        debug("plot gaps in the reference genome")
-        seq = self.genome_sequence(region=region.contig).compute()
-        is_n = (seq == b"N") | (seq == b"n")
-        loc_n_start = ~is_n[:-1] & is_n[1:]
-        loc_n_stop = is_n[:-1] & ~is_n[1:]
-        n_starts = np.nonzero(loc_n_start)[0]
-        n_stops = np.nonzero(loc_n_stop)[0]
-        df_n_runs = pd.DataFrame(
-            {"left": n_starts + 1.6, "right": n_stops + 1.4, "top": 2.5, "bottom": 0.5}
-        )
-        fig.quad(
-            top="top",
-            bottom="bottom",
-            left="left",
-            right="right",
-            color="#cccccc",
-            source=df_n_runs,
-            name="gaps",
-        )
-
-        debug("plot SNPs")
-        color_pass = bkpal.Colorblind6[3]
-        color_fail = bkpal.Colorblind6[5]
-        data["left"] = data["pos"] - 0.4
-        data["right"] = data["pos"] + 0.4
-        data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
-        data["top"] = data["bottom"] + 0.8
-        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
-        fig.quad(
-            top="top",
-            bottom="bottom",
-            left="left",
-            right="right",
-            color="color",
-            source=data,
-            name="snps",
-        )
-        # TODO add legend?
-
-        debug("tidy plot")
-        fig.yaxis.ticker = bkmod.FixedTicker(
-            ticks=[1, 2],
-        )
-        fig.yaxis.major_label_overrides = {
-            1: "Non-segregating",
-            2: "Segregating",
-        }
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
-        fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
-
-        if show:
-            bkplt.show(fig)
-
-        return fig
-
-    def plot_snps(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT_SITE_MASK,
-        width=800,
-        track_height=80,
-        genes_height=120,
-        show=True,
-    ):
-        # TODO docstring
-        debug = self._log.debug
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
-        debug("plot SNPs track")
-        fig1 = self.plot_snps_track(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-            width=width,
-            height=track_height,
-            show=False,
-        )
-        fig1.xaxis.visible = False
-
-        debug("plot genes track")
-        fig2 = self.plot_genes(
-            region=region,
-            width=width,
-            height=genes_height,
-            x_range=fig1.x_range,
-            show=False,
-        )
-
-        fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
-        )
-
-        if show:
-            bkplt.show(fig)
-
-        return fig
-
     def aim_variants(self, aims):
         """Open ancestry informative marker variants.
 
@@ -4574,6 +4254,8 @@ class Ag3(Anopheles):
         sort=True,
         row_height=4,
         colors="T10",
+        xgap=0,
+        ygap=0.5,
     ):
         """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
 
@@ -4595,6 +4277,10 @@ class Ag3(Anopheles):
             Height per sample in px.
         colors : str, optional
             Choose your favourite color palette.
+        xgap : float, optional
+            Creates lines between columns (variants).
+        ygap : float, optional
+            Creates lines between rows (samples).
 
         Returns
         -------
@@ -4721,8 +4407,8 @@ class Ag3(Anopheles):
                     ],
                     zmin=-1.5,
                     zmax=2.5,
-                    xgap=0,
-                    ygap=0.5,  # this creates faint lines between rows
+                    xgap=xgap,
+                    ygap=ygap,  # this creates faint lines between rows
                     colorbar=dict(
                         title="AIM genotype",
                         tickmode="array",
@@ -4770,8 +4456,2192 @@ class Ag3(Anopheles):
 
         return fig
 
+    def _block_jackknife_cohort_diversity_stats(
+        self, *, cohort_label, ac, n_jack, confidence_level
+    ):
+        debug = self._log.debug
 
-# TODO: bring these into class (how?)
+        debug("set up for diversity calculations")
+        n_sites = ac.shape[0]
+        ac = allel.AlleleCountsArray(ac)
+        n = ac.sum(axis=1).max()  # number of chromosomes sampled
+        n_sites = min(n_sites, ac.shape[0])  # number of sites
+        block_length = n_sites // n_jack  # number of sites in each block
+        n_sites_j = n_sites - block_length  # number of sites in each jackknife resample
+
+        debug("compute scaling constants")
+        a1 = np.sum(1 / np.arange(1, n))
+        a2 = np.sum(1 / (np.arange(1, n) ** 2))
+        b1 = (n + 1) / (3 * (n - 1))
+        b2 = 2 * (n**2 + n + 3) / (9 * n * (n - 1))
+        c1 = b1 - (1 / a1)
+        c2 = b2 - ((n + 2) / (a1 * n)) + (a2 / (a1**2))
+        e1 = c1 / a1
+        e2 = c2 / (a1**2 + a2)
+
+        debug(
+            "compute some intermediates ahead of time, to minimise computation during jackknife resampling"
+        )
+        mpd_data = allel.mean_pairwise_difference(ac, fill=0)
+        # N.B., here we compute the number of segregating sites as the number
+        # of alleles minus 1. This follows the sgkit and tskit implementations,
+        # and is different from scikit-allel.
+        seg_data = ac.allelism() - 1
+
+        debug("compute estimates from all data")
+        # FIXME: variable in function should be lowercase
+        theta_pi_abs_data = np.sum(mpd_data)
+        theta_pi_data = theta_pi_abs_data / n_sites
+        S_data = np.sum(seg_data)
+        theta_w_abs_data = S_data / a1
+        theta_w_data = theta_w_abs_data / n_sites
+        d_data = theta_pi_abs_data - theta_w_abs_data
+        d_stdev_data = np.sqrt((e1 * S_data) + (e2 * S_data * (S_data - 1)))
+        tajima_d_data = d_data / d_stdev_data
+
+        debug("set up for jackknife resampling")
+        jack_theta_pi = []
+        jack_theta_w = []
+        jack_tajima_d = []
+
+        debug("begin jackknife resampling")
+        for i in range(n_jack):
+
+            # locate block to delete
+            block_start = i * block_length
+            block_stop = block_start + block_length
+            loc_j = np.ones(n_sites, dtype=bool)
+            loc_j[block_start:block_stop] = False
+            assert np.count_nonzero(loc_j) == n_sites_j
+
+            # resample data and compute statistics
+
+            # theta_pi
+            mpd_j = mpd_data[loc_j]
+            theta_pi_abs_j = np.sum(mpd_j)
+            theta_pi_j = theta_pi_abs_j / n_sites_j
+            jack_theta_pi.append(theta_pi_j)
+
+            # theta_w
+            # FIXME: variable in function should be lowercase
+            seg_j = seg_data[loc_j]
+            S_j = np.sum(seg_j)
+            theta_w_abs_j = S_j / a1
+            theta_w_j = theta_w_abs_j / n_sites_j
+            jack_theta_w.append(theta_w_j)
+
+            # tajima_d
+            d_j = theta_pi_abs_j - theta_w_abs_j
+            d_stdev_j = np.sqrt((e1 * S_j) + (e2 * S_j * (S_j - 1)))
+            tajima_d_j = d_j / d_stdev_j
+            jack_tajima_d.append(tajima_d_j)
+
+        # calculate jackknife stats
+        (
+            theta_pi_estimate,
+            theta_pi_bias,
+            theta_pi_std_err,
+            theta_pi_ci_err,
+            theta_pi_ci_low,
+            theta_pi_ci_upp,
+        ) = jackknife_ci(
+            stat_data=theta_pi_data,
+            jack_stat=jack_theta_pi,
+            confidence_level=confidence_level,
+        )
+        (
+            theta_w_estimate,
+            theta_w_bias,
+            theta_w_std_err,
+            theta_w_ci_err,
+            theta_w_ci_low,
+            theta_w_ci_upp,
+        ) = jackknife_ci(
+            stat_data=theta_w_data,
+            jack_stat=jack_theta_w,
+            confidence_level=confidence_level,
+        )
+        (
+            tajima_d_estimate,
+            tajima_d_bias,
+            tajima_d_std_err,
+            tajima_d_ci_err,
+            tajima_d_ci_low,
+            tajima_d_ci_upp,
+        ) = jackknife_ci(
+            stat_data=tajima_d_data,
+            jack_stat=jack_tajima_d,
+            confidence_level=confidence_level,
+        )
+
+        return dict(
+            cohort=cohort_label,
+            theta_pi=theta_pi_data,
+            theta_pi_estimate=theta_pi_estimate,
+            theta_pi_bias=theta_pi_bias,
+            theta_pi_std_err=theta_pi_std_err,
+            theta_pi_ci_err=theta_pi_ci_err,
+            theta_pi_ci_low=theta_pi_ci_low,
+            theta_pi_ci_upp=theta_pi_ci_upp,
+            theta_w=theta_w_data,
+            theta_w_estimate=theta_w_estimate,
+            theta_w_bias=theta_w_bias,
+            theta_w_std_err=theta_w_std_err,
+            theta_w_ci_err=theta_w_ci_err,
+            theta_w_ci_low=theta_w_ci_low,
+            theta_w_ci_upp=theta_w_ci_upp,
+            tajima_d=tajima_d_data,
+            tajima_d_estimate=tajima_d_estimate,
+            tajima_d_bias=tajima_d_bias,
+            tajima_d_std_err=tajima_d_std_err,
+            tajima_d_ci_err=tajima_d_ci_err,
+            tajima_d_ci_low=tajima_d_ci_low,
+            tajima_d_ci_upp=tajima_d_ci_upp,
+        )
+
+    def cohort_diversity_stats(
+        self,
+        cohort,
+        cohort_size,
+        region,
+        site_mask,
+        site_class,
+        sample_sets=None,
+        random_seed=42,
+        n_jack=200,
+        confidence_level=0.95,
+    ):
+        """Compute genetic diversity summary statistics for a cohort of
+        individuals.
+
+        Parameters
+        ----------
+        cohort : str or (str, str)
+            Either a string giving one of the predefined cohort labels, or a
+            pair of strings giving a custom cohort label and a sample query to
+            select samples in the cohort.
+        cohort_size : int
+            Number of individuals to use for computation of summary statistics.
+            If the cohort is larger than this size, it will be randomly
+            down-sampled.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        random_seed : int, optional
+            Seed for random number generator.
+        n_jack : int, optional
+            Number of blocks to divide the data into for the block jackknife
+            estimation of confidence intervals. N.B., larger is not necessarily
+            better.
+        confidence_level : float, optional
+            Confidence level to use for confidence interval calculation. 0.95
+            means 95% confidence interval.
+
+        Returns
+        -------
+        stats : pandas.Series
+            A series with summary statistics and their confidence intervals.
+
+        """
+
+        debug = self._log.debug
+
+        debug("process cohort parameter")
+        cohort_query = None
+        if isinstance(cohort, str):
+            # assume it is one of the predefined cohorts
+            cohort_label = cohort
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            cohort_cols = [c for c in df_samples.columns if c.startswith("cohort_")]
+            for c in cohort_cols:
+                if cohort in set(df_samples[c]):
+                    cohort_query = f"{c} == '{cohort}'"
+                    break
+            if cohort_query is None:
+                raise ValueError(f"unknown cohort: {cohort}")
+
+        elif isinstance(cohort, (list, tuple)) and len(cohort) == 2:
+            cohort_label, cohort_query = cohort
+
+        else:
+            raise TypeError(r"invalid cohort parameter: {cohort!r}")
+
+        debug("access allele counts")
+        ac = self.snp_allele_counts(
+            region=region,
+            site_mask=site_mask,
+            site_class=site_class,
+            sample_query=cohort_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        debug("compute diversity stats")
+        stats = self._block_jackknife_cohort_diversity_stats(
+            cohort_label=cohort_label,
+            ac=ac,
+            n_jack=n_jack,
+            confidence_level=confidence_level,
+        )
+
+        debug("compute some extra cohort variables")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=cohort_query
+        )
+        extra_fields = [
+            ("taxon", "unique"),
+            ("year", "unique"),
+            ("month", "unique"),
+            ("country", "unique"),
+            ("admin1_iso", "unique"),
+            ("admin1_name", "unique"),
+            ("admin2_name", "unique"),
+            ("longitude", "mean"),
+            ("latitude", "mean"),
+        ]
+        for field, agg in extra_fields:
+            if agg == "unique":
+                vals = df_samples[field].sort_values().unique()
+                if len(vals) == 0:
+                    val = np.nan
+                elif len(vals) == 1:
+                    val = vals[0]
+                else:
+                    val = vals.tolist()
+            elif agg == "mean":
+                vals = df_samples[field]
+                if len(vals) == 0:
+                    val = np.nan
+                else:
+                    val = np.mean(vals)
+            else:
+                val = np.nan
+            stats[field] = val
+
+        return pd.Series(stats)
+
+    def diversity_stats(
+        self,
+        cohorts,
+        cohort_size,
+        region,
+        site_mask,
+        site_class,
+        sample_query=None,
+        sample_sets=None,
+        random_seed=42,
+        n_jack=200,
+        confidence_level=0.95,
+    ):
+        """Compute genetic diversity summary statistics for multiple cohorts.
+
+        Parameters
+        ----------
+        cohorts : str or dict
+            Either a string giving one of the predefined cohort columns, or a
+            dictionary mapping cohort labels to sample queries.
+        cohort_size : int
+            Number of individuals to use for computation of summary statistics.
+            If the cohort is larger than this size, it will be randomly
+            down-sampled.
+        region : str
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            genomic region defined with coordinates (e.g.,
+            "2L:44989425-44998059").
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        random_seed : int, optional
+            Seed for random number generator.
+        n_jack : int, optional
+            Number of blocks to divide the data into for the block jackknife
+            estimation of confidence intervals. N.B., larger is not necessarily
+            better.
+        confidence_level : float, optional
+            Confidence level to use for confidence interval calculation. 0.95
+            means 95% confidence interval.
+
+        Returns
+        -------
+        df_stats : pandas.DataFrame
+            A DataFrame where each row provides summary statistics and their
+            confidence intervals for a single cohort.
+
+        """
+        debug = self._log.debug
+        info = self._log.info
+
+        debug("set up cohorts")
+        if isinstance(cohorts, dict):
+            # user has supplied a custom dictionary mapping cohort identifiers
+            # to pandas queries
+            cohort_queries = cohorts
+
+        elif isinstance(cohorts, str):
+            # user has supplied one of the predefined cohort sets
+
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=sample_query
+            )
+
+            # determine column in dataframe - allow abbreviation
+            if cohorts.startswith("cohort_"):
+                cohorts_col = cohorts
+            else:
+                cohorts_col = "cohort_" + cohorts
+            if cohorts_col not in df_samples.columns:
+                raise ValueError(f"{cohorts_col!r} is not a known cohort set")
+
+            # find cohort labels and build queries dictionary
+            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
+            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
+
+        else:
+            raise TypeError("cohorts parameter should be dict or str")
+
+        debug("handle sample_query parameter")
+        if sample_query is not None:
+            cohort_queries = {
+                cohort_label: f"({cohort_query}) and ({sample_query})"
+                for cohort_label, cohort_query in cohort_queries.items()
+            }
+
+        debug("check cohort sizes, drop any cohorts which are too small")
+        cohort_queries_checked = dict()
+        for cohort_label, cohort_query in cohort_queries.items():
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=cohort_query
+            )
+            n_samples = len(df_cohort_samples)
+            if n_samples < cohort_size:
+                info(
+                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"  # noqa
+                )  # noqa
+            else:
+                cohort_queries_checked[cohort_label] = cohort_query
+
+        debug("compute diversity stats for cohorts")
+        all_stats = []
+        for cohort_label, cohort_query in cohort_queries_checked.items():
+            stats = self.cohort_diversity_stats(
+                cohort=(cohort_label, cohort_query),
+                cohort_size=cohort_size,
+                region=region,
+                site_mask=site_mask,
+                site_class=site_class,
+                sample_sets=sample_sets,
+                random_seed=random_seed,
+                n_jack=n_jack,
+                confidence_level=confidence_level,
+            )
+            all_stats.append(stats)
+        df_stats = pd.DataFrame(all_stats)
+
+        return df_stats
+
+    def plot_diversity_stats(
+        self,
+        df_stats,
+        color=None,
+        bar_plot_height=450,
+        bar_width=30,
+        scatter_plot_height=500,
+        scatter_plot_width=500,
+        template="plotly_white",
+        plot_kwargs=None,
+    ):
+        """Plot diversity statistics.
+
+        Parameters
+        ----------
+        df_stats : pandas.DataFrame
+            Output from diversity_stats().
+        color : str, optional
+            Column to color by.
+        bar_plot_height : int, optional
+            Height of bar plots in pixels (px).
+        bar_width : int, optional
+            Width per bar in pixels (px).
+        scatter_plot_height : int, optional
+            Height of scatter plot in pixels (px).
+        scatter_plot_width : int, optional
+            Width of scatter plot in pixels (px).
+        template : str, optional
+            Plotly template.
+        plot_kwargs : dict, optional
+            Extra plotting parameters
+
+        """
+        debug = self._log.debug
+        import plotly.express as px
+
+        debug("set up common plotting parameters")
+        if plot_kwargs is None:
+            plot_kwargs = dict()
+        default_plot_kwargs = dict(
+            hover_name="cohort",
+            hover_data=[
+                "taxon",
+                "country",
+                "admin1_iso",
+                "admin1_name",
+                "admin2_name",
+                "longitude",
+                "latitude",
+                "year",
+                "month",
+            ],
+            labels={
+                "theta_pi_estimate": r"$\widehat{\theta}_{\pi}$",
+                "theta_w_estimate": r"$\widehat{\theta}_{w}$",
+                "tajima_d_estimate": r"$D$",
+                "cohort": "Cohort",
+                "taxon": "Taxon",
+                "country": "Country",
+            },
+        )
+        if color == "taxon":
+            self._setup_taxon_colors(plot_kwargs=default_plot_kwargs)
+        default_plot_kwargs.update(plot_kwargs)
+        plot_kwargs = default_plot_kwargs
+        bar_plot_width = 300 + bar_width * len(df_stats)
+
+        debug("nucleotide diversity bar plot")
+        fig = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="theta_pi_estimate",
+            error_y="theta_pi_ci_err",
+            title="Nucleotide diversity",
+            color=color,
+            height=bar_plot_height,
+            width=bar_plot_width,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+        debug("Watterson's estimator bar plot")
+        fig = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="theta_w_estimate",
+            error_y="theta_w_ci_err",
+            title="Watterson's estimator",
+            color=color,
+            height=bar_plot_height,
+            width=bar_plot_width,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+        debug("Tajima's D bar plot")
+        fig = px.bar(
+            data_frame=df_stats,
+            x="cohort",
+            y="tajima_d_estimate",
+            error_y="tajima_d_ci_err",
+            title="Tajima's D",
+            color=color,
+            height=bar_plot_height,
+            width=bar_plot_width,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+        debug("scatter plot comparing diversity estimators")
+        fig = px.scatter(
+            data_frame=df_stats,
+            x="theta_pi_estimate",
+            y="theta_w_estimate",
+            error_x="theta_pi_ci_err",
+            error_y="theta_w_ci_err",
+            title="Diversity estimators",
+            color=color,
+            width=scatter_plot_width,
+            height=scatter_plot_height,
+            template=template,
+            **plot_kwargs,
+        )
+        fig.show()
+
+    def plot_samples_interactive_map(
+        self,
+        sample_sets=None,
+        sample_query=None,
+        basemap=None,
+        center=(-2, 20),
+        zoom=3,
+        min_samples=1,
+    ):
+        """Plot an interactive map showing sampling locations using ipyleaflet.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        basemap : dict
+            Basemap description coming from ipyleaflet.basemaps.
+        center : tuple of int, optional
+            Location to center the map.
+        zoom : int, optional
+            Initial zoom level.
+        min_samples : int, optional
+            Minimum number of samples required to show a marker for a given
+            location.
+
+        Returns
+        -------
+        samples_map : ipyleaflet.Map
+            Ipyleaflet map widget.
+
+        """
+        debug = self._log.debug
+
+        import ipyleaflet
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        debug("compute locations")
+        pivot_location_taxon = df_samples.pivot_table(
+            index=[
+                "country",
+                "admin1_iso",
+                "admin1_name",
+                "admin2_name",
+                "location",
+                "latitude",
+                "longitude",
+            ],
+            columns=["taxon"],
+            values="sample_id",
+            aggfunc="count",
+            fill_value=0,
+        )
+
+        debug("create a map")
+        if basemap is None:
+            # FIXME: cannot find reference 'Esri'
+            basemap = ipyleaflet.basemaps.Esri.WorldImagery
+        samples_map = ipyleaflet.Map(
+            center=center,
+            zoom=zoom,
+            basemap=basemap,
+        )
+        samples_map.add_control(ipyleaflet.ScaleControl(position="bottomleft"))
+        # make the map a bit taller than the default
+        samples_map.layout.height = "500px"
+
+        debug("add markers")
+        taxa = df_samples["taxon"].dropna().sort_values().unique()
+        for _, row in pivot_location_taxon.reset_index().iterrows():
+            title = (
+                f"Location: {row.location} ({row.latitude:.3f}, {row.longitude:.3f})"
+            )
+            title += f"\nAdmin level 2: {row.admin2_name}"
+            title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
+            title += f"\nCountry: {row.country}"
+            title += "\nNo. specimens: "
+            all_n = 0
+            for taxon in taxa:
+                n = row[taxon]
+                all_n += n
+                if n > 0:
+                    title += f"{n} {taxon}; "
+            if all_n >= min_samples:
+                marker = ipyleaflet.Marker(
+                    location=(row.latitude, row.longitude),
+                    draggable=False,
+                    title=title,
+                )
+                samples_map.add_layer(marker)
+
+        return samples_map
+
+    def count_samples(
+        self,
+        sample_sets=None,
+        sample_query=None,
+        index=(
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "year",
+        ),
+        columns="taxon",
+    ):
+        """Create a pivot table showing numbers of samples available by space,
+        time and taxon.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        index : str or tuple of str
+            Sample metadata columns to use for the index.
+        columns : str or tuple of str
+            Sample metadata columns to use for the columns.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            Pivot table of sample counts.
+
+        """
+        debug = self._log.debug
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        debug("create pivot table")
+        df_pivot = df_samples.pivot_table(
+            index=index,
+            columns=columns,
+            values="sample_id",
+            aggfunc="count",
+            fill_value=0,
+        )
+
+        return df_pivot
+
+    def h12_calibration(
+        self,
+        contig,
+        analysis,
+        sample_query=None,
+        sample_sets=None,
+        cohort_size=30,
+        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
+        random_seed=42,
+    ):
+        """Generate h12 GWSS calibration data for different window sizes.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        window_sizes : int or list of int, optional
+            The sizes of windows used to calculate h12 over. Multiple window
+            sizes should be used to calibrate the optimal size for h12 analysis.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        calibration runs : list of numpy.ndarrays
+            A list of h12 calibration run arrays for each window size, containing
+            values and percentiles.
+
+        """
+
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_h12_calibration_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=analysis,
+            window_sizes=window_sizes,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            calibration_runs = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            calibration_runs = self._h12_calibration(**params)
+            self.results_cache_set(name=name, params=params, results=calibration_runs)
+
+        return calibration_runs
+
+    def _h12_calibration(
+        self,
+        contig,
+        analysis,
+        sample_query,
+        sample_sets,
+        cohort_size,
+        window_sizes,
+        random_seed,
+    ):
+        # access haplotypes
+        ds_haps = self.haplotypes(
+            region=contig,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            analysis=analysis,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        calibration_runs = dict()
+        for window_size in self._progress(window_sizes, desc="Compute H12"):
+            h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+            calibration_runs[str(window_size)] = h12
+
+        return calibration_runs
+
+    def plot_h12_calibration(
+        self,
+        contig,
+        analysis,
+        sample_query=None,
+        sample_sets=None,
+        cohort_size=30,
+        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
+        random_seed=42,
+        title=None,
+    ):
+        """Plot h12 GWSS calibration data for different window sizes.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        window_sizes : int or list of int, optional
+            The sizes of windows used to calculate h12 over. Multiple window
+            sizes should be used to calibrate the optimal size for h12 analysis.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+
+        Returns
+        -------
+        fig : figure
+            A plot showing h12 calibration run percentiles for different window
+            sizes.
+
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # get H12 values
+        calibration_runs = self.h12_calibration(
+            contig=contig,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            window_sizes=window_sizes,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        # compute summaries
+        q50 = [np.median(calibration_runs[str(window)]) for window in window_sizes]
+        q25 = [
+            np.percentile(calibration_runs[str(window)], 25) for window in window_sizes
+        ]
+        q75 = [
+            np.percentile(calibration_runs[str(window)], 75) for window in window_sizes
+        ]
+        q05 = [
+            np.percentile(calibration_runs[str(window)], 5) for window in window_sizes
+        ]
+        q95 = [
+            np.percentile(calibration_runs[str(window)], 95) for window in window_sizes
+        ]
+
+        # make plot
+        fig = bkplt.figure(plot_width=700, plot_height=400, x_axis_type="log")
+        fig.patch(
+            window_sizes + window_sizes[::-1],
+            q75 + q25[::-1],
+            alpha=0.75,
+            line_width=2,
+            legend_label="25-75%",
+        )
+        fig.patch(
+            window_sizes + window_sizes[::-1],
+            q95 + q05[::-1],
+            alpha=0.5,
+            line_width=2,
+            legend_label="5-95%",
+        )
+        fig.line(
+            window_sizes, q50, line_color="black", line_width=4, legend_label="median"
+        )
+        fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
+
+        fig.xaxis.ticker = window_sizes
+        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
+        if title is None:
+            title = sample_query
+        fig.title = title
+        bkplt.show(fig)
+
+    def h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets=None,
+        sample_query=None,
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run h12 GWSS.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        h12 : numpy.ndarray
+            An array with h12 statistic values for each window.
+
+        """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_h12_gwss_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._h12_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        h12 = results["h12"]
+
+        return x, h12
+
+    def _h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        cohort_size,
+        random_seed,
+    ):
+
+        ds_haps = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+        pos = ds_haps["variant_position"].values
+
+        h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+
+        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=x, h12=h12)
+
+        return results
+
+    def plot_h12_gwss_track(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets=None,
+        sample_query=None,
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Plot h12 GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed h12 statistic across chosen contig.
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # compute H12
+        x, h12 = self.h12_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            cohort_size=cohort_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = sample_query
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+        )
+
+        # plot H12
+        fig.circle(
+            x=x,
+            y=h12,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "H12"
+        fig.yaxis.ticker = [0, 1]
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets=None,
+        sample_query=None,
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=170,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Plot h12 GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed h12 statistic with gene track on x-axis.
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # gwss track
+        fig1 = self.plot_h12_gwss_track(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        bkplt.show(fig)
+
+    def h1x_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run a H1X genome-wide scan to detect genome regions with
+        shared selective sweeps between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        h1x : numpy.ndarray
+            An array with H1X statistic values for each window.
+        """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_h1x_gwss_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._h1x_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        h1x = results["h1x"]
+
+        return x, h1x
+
+    def _h1x_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        cohort1_query,
+        cohort2_query,
+        cohort_size,
+        random_seed,
+    ):
+
+        # access haplotype datasets for each cohort
+        ds1 = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=cohort1_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+        ds2 = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=cohort2_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        # load data into memory
+        gt1 = allel.GenotypeDaskArray(ds1["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes for cohort 1"):
+            ht1 = gt1.to_haplotypes().compute()
+        gt2 = allel.GenotypeDaskArray(ds2["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes for cohort 2"):
+            ht2 = gt2.to_haplotypes().compute()
+        pos = ds1["variant_position"].values
+
+        # run H1X scan
+        h1x = _moving_h1x(ht1, ht2, size=window_size)
+
+        # compute window midpoints
+        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=x, h1x=h1x)
+
+        return results
+
+    def plot_h1x_gwss_track(
+        self,
+        contig,
+        analysis,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Run and plot a H1X genome-wide scan to detect genome regions
+        with shared selective sweeps between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed H1X statistic across chosen contig.
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # compute H1X
+        x, h1x = self.h1x_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            cohort_size=cohort_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+        )
+
+        # plot H1X
+        fig.circle(
+            x=x,
+            y=h1x,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "H1X"
+        fig.yaxis.ticker = [0, 1]
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_h1x_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=190,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Run and plot a H1X genome-wide scan to detect genome regions
+        with shared selective sweeps between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed H1X statistic with gene track on x-axis.
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # gwss track
+        fig1 = self.plot_h1x_gwss_track(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        bkplt.show(fig)
+
+    def plot_haplotype_clustering(
+        self,
+        region,
+        analysis,
+        sample_sets=None,
+        sample_query=None,
+        color=None,
+        symbol=None,
+        linkage_method="single",
+        count_sort=True,
+        distance_sort=False,
+        cohort_size=None,
+        random_seed=42,
+        width=1000,
+        height=500,
+        **kwargs,
+    ):
+        """Hierarchically cluster haplotypes in region and produce an interactive plot.
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        color : str, optional
+            Identifies a column in the sample metadata which determines the colour
+            of dendrogram leaves (haplotypes).
+        symbol : str, optional
+            Identifies a column in the sample metadata which determines the shape
+            of dendrogram leaves (haplotypes).
+        linkage_method: str, optional
+            The linkage algorithm to use, valid options are 'single', 'complete',
+            'average', 'weighted', 'centroid', 'median' and 'ward'. See the Linkage
+            Methods section of the scipy.cluster.hierarchy.linkage docs for full
+            descriptions.
+        count_sort: bool, optional
+            For each node n, the order (visually, from left-to-right) n's two descendant
+            links are plotted is determined by this parameter. If True, the child with
+            the minimum number of original objects in its cluster is plotted first. Note
+            distance_sort and count_sort cannot both be True.
+        distance_sort: bool, optional
+            For each node n, the order (visually, from left-to-right) n's two descendant
+            links are plotted is determined by this parameter. If True, The child with the
+            minimum distance between its direct descendants is plotted first.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        width : int, optional
+            The figure width in pixels
+        height: int, optional
+            The figure height in pixels
+        """
+        import plotly.express as px
+        from scipy.cluster.hierarchy import linkage
+
+        from .plotly_dendrogram import create_dendrogram
+
+        debug = self._log.debug
+
+        ds_haps = self.haplotypes(
+            region=region,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+        debug("align sample metadata with haplotypes")
+        phased_samples = ds_haps["sample_id"].values.tolist()
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[phased_samples].reset_index()
+        )
+
+        debug("set up plotting options")
+        hover_data = [
+            "sample_id",
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+
+        plot_kwargs = dict(
+            template="simple_white",
+            hover_name="sample_id",
+            hover_data=hover_data,
+            render_mode="svg",
+        )
+
+        debug("special handling for taxon color")
+        if color == "taxon":
+            self._setup_taxon_colors(plot_kwargs)
+
+        debug("apply any user overrides")
+        plot_kwargs.update(kwargs)
+
+        debug("Create dendrogram with plotly")
+        # set labels as the index which we extract to reorder metadata
+        leaf_labels = np.arange(ht.shape[1])
+        # get the max distance, required to set xmin, xmax, which we need xmin to be slightly below 0
+        max_dist = _get_max_hamming_distance(
+            ht.T, metric="hamming", linkage_method=linkage_method
+        )
+        fig = create_dendrogram(
+            ht.T,
+            distfun=lambda x: _hamming_to_snps(x),
+            linkagefun=lambda x: linkage(x, method=linkage_method),
+            # FIXME: expected type 'list', got 'ndarray'
+            labels=leaf_labels,
+            color_threshold=0,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
+        )
+        fig.update_traces(
+            hoverinfo="y",
+            line=dict(width=0.5, color="black"),
+        )
+        fig.update_layout(
+            width=width,
+            height=height,
+            autosize=True,
+            hovermode="closest",
+            plot_bgcolor="white",
+            yaxis_title="Distance (no. SNPs)",
+            xaxis_title="Haplotypes",
+            showlegend=True,
+        )
+
+        # Repeat the dataframe so there is one row of metadata for each haplotype
+        df_samples_phased_haps = pd.DataFrame(
+            np.repeat(df_samples_phased.values, 2, axis=0)
+        )
+        df_samples_phased_haps.columns = df_samples_phased.columns
+        # select only columns in hover_data
+        df_samples_phased_haps = df_samples_phased_haps[hover_data]
+        debug("Reorder haplotype metadata to align with haplotype clustering")
+        df_samples_phased_haps = df_samples_phased_haps.loc[
+            fig.layout.xaxis["ticktext"]
+        ]
+        fig.update_xaxes(mirror=False, showgrid=True, showticklabels=False, ticks="")
+        fig.update_yaxes(
+            mirror=False, showgrid=True, showline=True, range=[-2, max_dist + 1]
+        )
+
+        debug("Add scatter plot with hover text")
+        fig.add_traces(
+            list(
+                px.scatter(
+                    df_samples_phased_haps,
+                    x=fig.layout.xaxis["tickvals"],
+                    y=np.repeat(-1, len(ht.T)),
+                    color=color,
+                    symbol=symbol,
+                    **plot_kwargs,
+                ).select_traces()
+            )
+        )
+
+        fig.show()
+
+    def plot_haplotype_network(
+        self,
+        region,
+        analysis,
+        sample_sets=None,
+        sample_query=None,
+        max_dist=2,
+        color=None,
+        color_discrete_sequence=None,
+        color_discrete_map=None,
+        category_orders=None,
+        node_size_factor=50,
+        server_mode="inline",
+        height=650,
+        width="100%",
+        layout="cose",
+        layout_params=None,
+        server_port=None,
+    ):
+        """Construct a median-joining haplotype network and display it using
+        Cytoscape.
+
+        A haplotype network provides a visualisation of the genetic distance
+        between haplotypes. Each node in the network represents a unique
+        haplotype. The size (area) of the node is scaled by the number of
+        times that unique haplotype was observed within the selected samples.
+        A connection between two nodes represents a single SNP difference
+        between the corresponding haplotypes.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        analysis : {"arab", "gamb_colu", "gamb_colu_arab"}
+            Which phasing analysis to use. If analysing only An. arabiensis, the
+            "arab" analysis is best. If analysing only An. gambiae and An.
+            coluzzii, the "gamb_colu" analysis is best. Otherwise, use the
+            "gamb_colu_arab" analysis.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        max_dist : int, optional
+            Join network components up to a maximum distance of 2 SNP
+            differences.
+        color : str, optional
+            Identifies a column in the sample metadata which determines the colour
+            of pie chart segments within nodes.
+        color_discrete_sequence : list, optional
+            Provide a list of colours to use.
+        color_discrete_map : dict, optional
+            Provide an explicit mapping from values to colours.
+        category_orders : list, optional
+            Control the order in which values appear in the legend.
+        node_size_factor : int, optional
+            Control the sizing of nodes.
+        server_mode : {"inline", "external", "jupyterlab"}
+            Controls how the Jupyter Dash app will be launched. See
+            https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
+            more information.
+        height : int, optional
+            Height of the plot.
+        width : int, optional
+            Width of the plot.
+        layout : str
+            Name of the network layout to use to position nodes.
+        layout_params
+            Additional parameters to the layout algorithm.
+        server_port
+            Manually override the port on which the Dash app will run.
+
+        Returns
+        -------
+        app
+            The running Dash app.
+
+        """
+
+        from itertools import cycle
+
+        # FIXME: unresolved references
+        import dash_cytoscape as cyto
+        import plotly.express as px
+        from dash import dcc, html
+        from dash.dependencies import Input, Output
+        from jupyter_dash import JupyterDash
+
+        if layout != "cose":
+            cyto.load_extra_layouts()
+        # leave this for user code, if needed (doesn't seem necessary on colab)
+        # JupyterDash.infer_jupyter_proxy_config()
+
+        debug = self._log.debug
+
+        debug("access haplotypes dataset")
+        ds_haps = self.haplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            analysis=analysis,
+        )
+
+        debug("access sample metadata")
+        df_samples = self.sample_metadata(
+            sample_query=sample_query, sample_sets=sample_sets
+        )
+
+        debug("setup haplotype metadata")
+        samples_phased = ds_haps["sample_id"].values
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[samples_phased].reset_index()
+        )
+        df_haps = df_samples_phased.loc[df_samples_phased.index.repeat(2)].reset_index(
+            drop=True
+        )
+
+        debug("load haplotypes")
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        debug("count alleles and select segregating sites")
+        ac = gt.count_alleles(max_allele=1)
+        loc_seg = ac.is_segregating()
+        ht_seg = ht[loc_seg]
+
+        debug("identify distinct haplotypes")
+        ht_distinct_sets = ht_seg.distinct()
+        # find indices of distinct haplotypes - just need one per set
+        ht_distinct_indices = [min(s) for s in ht_distinct_sets]
+        # reorder by index - TODO is this necessary?
+        ix = np.argsort(ht_distinct_indices)
+        ht_distinct_indices = [ht_distinct_indices[i] for i in ix]
+        ht_distinct_sets = [ht_distinct_sets[i] for i in ix]
+        # obtain an array of distinct haplotypes
+        ht_distinct = ht_seg.take(ht_distinct_indices, axis=1)
+        # count how many observations per distinct haplotype
+        ht_counts = [len(s) for s in ht_distinct_sets]
+
+        debug("construct median joining network")
+        ht_distinct_mjn, edges, alt_edges = median_joining_network(
+            ht_distinct, max_dist=max_dist
+        )
+        edges = np.triu(edges)
+        alt_edges = np.triu(alt_edges)
+
+        debug("setup colors")
+        color_values = None
+        ht_color_counts = None
+        color_params = None
+        if color is not None:
+
+            # extract all unique values of the color column
+            color_values = df_haps[color].unique()
+
+            # count color values for each distinct haplotype
+            ht_color_counts = [
+                df_haps.iloc[list(s)][color].value_counts().to_dict()
+                for s in ht_distinct_sets
+            ]
+
+            if color == "taxon":
+                # special case, standardise taxon colors
+                color_params = self._setup_taxon_colors()
+                color_discrete_map = color_params["color_discrete_map"]
+
+            elif color_discrete_map is None:
+
+                # set up a color palette
+                if color_discrete_sequence is None:
+                    if len(color_values) <= 10:
+                        color_discrete_sequence = px.colors.qualitative.Plotly
+                    else:
+                        color_discrete_sequence = px.colors.qualitative.Alphabet
+
+                # map values to colors
+                color_discrete_map = {
+                    v: c for v, c in zip(color_values, cycle(color_discrete_sequence))
+                }
+
+                color_params = {
+                    "color_discrete_map": color_discrete_map,
+                    "category_orders": category_orders,
+                }
+
+        debug("construct graph")
+        anon_width = np.sqrt(0.3 * node_size_factor)
+        graph_nodes, graph_edges = mjn_graph(
+            ht_distinct=ht_distinct,
+            ht_distinct_mjn=ht_distinct_mjn,
+            ht_counts=ht_counts,
+            ht_color_counts=ht_color_counts,
+            color=color,
+            color_values=color_values,
+            edges=edges,
+            alt_edges=alt_edges,
+            node_size_factor=node_size_factor,
+            anon_width=anon_width,
+        )
+
+        debug("prepare graph data for cytoscape")
+        elements = [{"data": n} for n in graph_nodes] + [
+            {"data": e} for e in graph_edges
+        ]
+
+        debug("define node style")
+        node_stylesheet = {
+            "selector": "node",
+            "style": {
+                "width": "data(width)",
+                "height": "data(width)",
+                "pie-size": "100%",
+            },
+        }
+        if color:
+            # here are the styles which control the display of nodes as pie
+            # charts
+            for i, (v, c) in enumerate(color_discrete_map.items()):
+                node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
+                node_stylesheet["style"][
+                    f"pie-{i + 1}-background-size"
+                ] = f"mapData({v}, 0, 100, 0, 100)"
+
+        debug("define edge style")
+        edge_stylesheet = {
+            "selector": "edge",
+            "style": {"curve-style": "bezier", "width": 2, "opacity": 0.5},
+        }
+
+        debug("define style for selected node")
+        selected_stylesheet = {
+            "selector": ":selected",
+            "style": {
+                "border-width": "3px",
+                "border-style": "solid",
+                "border-color": "black",
+            },
+        }
+
+        debug("create figure legend")
+        if color is not None:
+            legend_fig = plotly_discrete_legend(
+                color=color,
+                color_values=color_values,
+                **color_params,
+            )
+            legend_component = dcc.Graph(
+                id="legend",
+                figure=legend_fig,
+                config=dict(
+                    displayModeBar=False,
+                ),
+            )
+        else:
+            legend_component = html.Div()
+
+        debug("define cytoscape component")
+        if layout_params is None:
+            graph_layout_params = dict()
+        else:
+            graph_layout_params = layout_params.copy()
+        graph_layout_params["name"] = layout
+        # FIXME: expected type 'str', got 'int'
+        graph_layout_params.setdefault("padding", 10)
+        # FIXME: expected type 'str', got 'bool'
+        graph_layout_params.setdefault("animate", False)
+
+        cytoscape_component = cyto.Cytoscape(
+            id="cytoscape",
+            elements=elements,
+            layout=graph_layout_params,
+            stylesheet=[
+                node_stylesheet,
+                edge_stylesheet,
+                selected_stylesheet,
+            ],
+            style={
+                # width and height needed to get cytoscape component to display
+                "width": "100%",
+                "height": "100%",
+                "background-color": "white",
+            },
+            # enable selecting multiple nodes with shift click and drag
+            boxSelectionEnabled=True,
+            # prevent accidentally zooming out to oblivion
+            minZoom=0.1,
+        )
+
+        debug("create dash app")
+        app = JupyterDash(
+            "dash cytoscape network",
+            # this stylesheet is used to provide support for a rows and columns
+            # layout of the components
+            external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"],
+        )
+        # this is an optimisation, it's generally faster to serve script files from CDN
+        app.scripts.config.serve_locally = False
+        app.layout = html.Div(
+            [
+                html.Div(
+                    cytoscape_component,
+                    className="nine columns",
+                    style={
+                        # required to get cytoscape component to show ...
+                        # multiply by factor <1 to prevent scroll overflow
+                        "height": f"{height * .93}px",
+                        "border": "1px solid black",
+                    },
+                ),
+                html.Div(
+                    legend_component,
+                    className="three columns",
+                    style={
+                        "height": f"{height * .93}px",
+                    },
+                ),
+                html.Div(id="output"),
+            ],
+        )
+
+        debug(
+            "define a callback function to display information about the selected node"
+        )
+
+        # FIXME: function name should be lowercase
+        @app.callback(Output("output", "children"), Input("cytoscape", "tapNodeData"))
+        def displayTapNodeData(data):
+            if data is None:
+                return "Click or tap a node for more information."
+            else:
+                n = data["count"]
+                text = f"No. haplotypes: {n}"
+                selected_color_data = {
+                    color_v: int(data.get(color_v, 0) * n / 100)
+                    for color_v in color_values
+                }
+                selected_color_data = sorted(
+                    selected_color_data.items(), key=lambda item: item[1], reverse=True
+                )
+                color_texts = [
+                    f"{color_v}: {color_n}"
+                    for color_v, color_n in selected_color_data
+                    if color_n > 0
+                ]
+                if color_texts:
+                    color_texts = "; ".join(color_texts)
+                    text += f" ({color_texts})"
+                return text
+
+        debug("launch the dash app")
+        run_params = dict()
+        if server_mode is not None:
+            run_params["mode"] = server_mode
+        if server_port is not None:
+            run_params["port"] = server_port
+        if height is not None:
+            run_params["height"] = height
+        if width is not None:
+            run_params["width"] = width
+        return app.run_server(**run_params)
+
+
+def _hamming_to_snps(h):
+    """
+    Cluster haplotype array and return the number of SNP differences
+    """
+    from scipy.spatial.distance import pdist
+
+    dist = pdist(h, metric="hamming")
+    dist *= h.shape[1]
+    return dist
+
+
+def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
+    """
+    Find the maximum hamming distance between haplotypes
+    """
+    from scipy.cluster.hierarchy import linkage
+
+    # FIXME: variable in function should be lowercase
+    Z = linkage(h, metric=metric, method=linkage_method)
+
+    # Get the distances column
+    dists = Z[:, 2]
+    # Convert to the number of SNP differences
+    dists *= h.shape[1]
+    # Return the maximum
+    return dists.max()
+
+
+def _haplotype_frequencies(h):
+    """Compute haplotype frequencies, returning a dictionary that maps
+    haplotype hash values to frequencies."""
+    n = h.shape[1]
+    hashes = [hash(h[:, i].tobytes()) for i in range(n)]
+    counts = Counter(hashes)
+    freqs = {key: count / n for key, count in counts.items()}
+    return freqs
+
+
+def _haplotype_joint_frequencies(ha, hb):
+    """Compute the joint frequency of haplotypes in two difference
+    cohorts. Returns a dictionary mapping haplotype hash values to
+    the product of frequencies in each cohort."""
+    frqa = _haplotype_frequencies(ha)
+    frqb = _haplotype_frequencies(hb)
+    keys = set(frqa.keys()) | set(frqb.keys())
+    joint_freqs = {key: frqa.get(key, 0) * frqb.get(key, 0) for key in keys}
+    return joint_freqs
+
+
+def _h1x(ha, hb):
+    """Compute H1X, the sum of joint haplotype frequencies between
+    two cohorts, which is a summary statistic useful for detecting
+    shared selective sweeps."""
+    jf = _haplotype_joint_frequencies(ha, hb)
+    return np.sum(list(jf.values()))
+
+
+def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
+    """Compute H1X in moving windows.
+    Parameters
+    ----------
+    ha : array_like, int, shape (n_variants, n_haplotypes)
+        Haplotype array for the first cohort.
+    hb : array_like, int, shape (n_variants, n_haplotypes)
+        Haplotype array for the second cohort.
+    size : int
+        The window size (number of variants).
+    start : int, optional
+        The index at which to start.
+    stop : int, optional
+        The index at which to stop.
+    step : int, optional
+        The number of variants between start positions of windows. If not
+        given, defaults to the window size, i.e., non-overlapping windows.
+    Returns
+    -------
+    h1x : ndarray, float, shape (n_windows,)
+        H1X values (sum of squares of joint haplotype frequencies).
+    """
+
+    assert ha.ndim == hb.ndim == 2
+    assert ha.shape[0] == hb.shape[0]
+
+    # construct moving windows
+    windows = allel.index_windows(ha, size, start, stop, step)
+
+    # compute statistics for each window
+    out = np.array([_h1x(ha[i:j], hb[i:j]) for i, j in windows])
+
+    return out
+
+
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
 

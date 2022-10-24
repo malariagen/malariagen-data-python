@@ -11,6 +11,8 @@ import allel
 import dask.array as da
 import numpy as np
 import pandas
+import pandas as pd
+import plotly.express as px
 import xarray as xr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
@@ -74,15 +76,19 @@ def unpack_gff3_attributes(df, attributes):
 
     df = df.copy()
 
-    if attributes == "*":
-        # discover all attribute keys
-        attributes = set()
-        for a in df["attributes"]:
-            attributes.update(a.keys())
-        attributes = sorted(attributes)
+    # discover all attribute keys
+    all_attributes = set()
+    for a in df["attributes"]:
+        all_attributes.update(a.keys())
+    all_attributes = sorted(all_attributes)
+
+    if attributes == tuple("*"):
+        attributes = all_attributes
 
     # unpack attributes into columns
     for key in attributes:
+        if key not in all_attributes:
+            raise ValueError(f"'{key}' not in attributes set. Options {all_attributes}")
         df[key] = df["attributes"].apply(lambda v: v.get(key, np.nan))
     del df["attributes"]
 
@@ -345,11 +351,10 @@ class Region:
 
 def _handle_region_coords(resource, region):
 
-    region_pattern_match = re.search("([a-zA-Z0-9]+):(.+)-(.+)", region)
+    region_pattern_match = re.search("([a-zA-Z0-9_]+):(.+)-(.+)", region)
     if region_pattern_match:
         # parse region string that contains genomic coordinates
         region_split = region_pattern_match.groups()
-
         contig = region_split[0]
         start = int(region_split[1].replace(",", ""))
         end = int(region_split[2].replace(",", ""))
@@ -369,8 +374,16 @@ def _handle_region_coords(resource, region):
         return None
 
 
+def _prep_geneset_attributes_arg(attributes):
+    if type(attributes) not in [tuple, list] and attributes != "*":
+        raise TypeError("'attributes' must be a list, tuple, or '*'")
+    if attributes is not None:
+        attributes = tuple(attributes)
+    return attributes
+
+
 def _handle_region_feature(resource, region):
-    gene_annotation = resource.geneset(attributes=["ID"])
+    gene_annotation = resource.genome_features(attributes=["ID"])
     results = gene_annotation.query(f"ID == '{region}'")
     if not results.empty:
         # region is a feature ID
@@ -519,7 +532,11 @@ class LoggingHelper:
 
         # set up a logger
         logger = logging.getLogger(name)
-        logger.setLevel(logging.DEBUG)
+        if debug:
+            logger.setLevel(logging.DEBUG)
+        else:
+            logger.setLevel(logging.INFO)
+
         self._logger = logger
 
         # set up handler
@@ -563,3 +580,135 @@ class LoggingHelper:
     def set_level(self, level):
         if self._handler is not None:
             self._handler.setLevel(level)
+
+
+def jackknife_ci(stat_data, jack_stat, confidence_level):
+    """Compute a confidence interval from jackknife resampling.
+
+    Parameters
+    ----------
+    stat_data : scalar
+        Value of the statistic computed on all data.
+    jack_stat : ndarray
+        Values of the statistic computed for each jackknife resample.
+    confidence_level : float
+        Desired confidence level (e.g., 0.95).
+
+    Returns
+    -------
+    estimate
+        Bias-corrected "jackknifed estimate".
+    bias
+        Jackknife bias.
+    std_err
+        Standard error.
+    ci_err
+        Size of the confidence interval.
+    ci_low
+        Lower limit of confidence interval.
+    ci_upp
+        Upper limit of confidence interval.
+
+    Notes
+    -----
+    N.B., this implementation is based on code from astropy, see:
+
+    https://github.com/astropy/astropy/blob/8aba9632597e6bb489488109222bf2feff5835a6/astropy/stats/jackknife.py#L55
+
+    """
+    from scipy.special import erfinv
+
+    n = len(jack_stat)
+
+    mean_jack_stat = np.mean(jack_stat)
+
+    # jackknife bias
+    bias = (n - 1) * (mean_jack_stat - stat_data)
+
+    # jackknife standard error
+    std_err = np.sqrt(
+        (n - 1) * np.mean((jack_stat - mean_jack_stat) * (jack_stat - mean_jack_stat))
+    )
+
+    # bias-corrected "jackknifed estimate"
+    estimate = stat_data - bias
+
+    # confidence interval
+    z_score = np.sqrt(2.0) * erfinv(confidence_level)
+    ci_err = 2 * z_score * std_err
+    ci_low, ci_upp = estimate + z_score * np.array((-std_err, std_err))
+
+    return estimate, bias, std_err, ci_err, ci_low, ci_upp
+
+
+def plotly_discrete_legend(
+    color,
+    color_values,
+    **kwargs,
+):
+    """Manually create a legend by making a scatter plot then
+    hiding everything but the legend.
+
+    Parameters
+    ----------
+    color : str
+        Name of field used to obtain categorical values.
+    color_values : list
+        Categorical values to map to colours.
+    **kwargs
+        Passed through to px.scatter().
+
+    Returns
+    -------
+    fig : Figure
+        Plotly figure.
+
+    """
+
+    data_frame = pd.DataFrame(
+        {
+            color: color_values,
+            "x": np.zeros(len(color_values)),
+            "y": np.zeros(len(color_values)),
+        }
+    )
+
+    fig = px.scatter(
+        data_frame=data_frame,
+        x="x",
+        y="y",
+        color=color,
+        template="simple_white",
+        range_x=[1, 2],  # hide the scatter points
+        range_y=[1, 2],
+        **kwargs,
+    )
+
+    # visual styling to hide everything but the legend
+    fig.update_layout(
+        legend=dict(
+            yanchor="top",
+            y=1,
+            xanchor="left",
+            x=0,
+            itemsizing="constant",
+            orientation="v",
+            title=color.capitalize(),
+        ),
+        xaxis=dict(
+            visible=False,
+        ),
+        yaxis=dict(
+            visible=False,
+        ),
+        margin=dict(
+            autoexpand=False,
+            pad=0,
+            t=0,
+            r=0,
+            b=0,
+            l=0,
+        ),
+    )
+
+    return fig

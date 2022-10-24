@@ -29,7 +29,7 @@ null_effect = VariantEffect(*([None] * len(VariantEffect._fields)))
 
 
 class Annotator(object):
-    def __init__(self, genome, geneset):
+    def __init__(self, genome, genome_features):
         """
         An annotator.
 
@@ -37,7 +37,7 @@ class Annotator(object):
         ----------
         genome : zarr hierarchy
             Reference genome.
-        geneset : pandas dataframe
+        genome_features : pandas dataframe
             Dataframe with genome annotations.
 
         """
@@ -45,16 +45,18 @@ class Annotator(object):
         # store initialisation parameters
         self._genome = genome
         self._genome_cache = dict()
-        self._geneset_cache = None
+        self._genome_features_cache = None
 
-        geneset = geneset[(geneset.end - geneset.start) > 0]
-        self._geneset_cache = geneset
+        genome_features = genome_features[
+            (genome_features.end - genome_features.start) > 0
+        ]
+        self._genome_features_cache = genome_features
 
         # index features by ID
-        self._idx_feature_id = self._geneset_cache.set_index("ID")
+        self._idx_feature_id = self._genome_features_cache.set_index("ID")
 
         # index features by parent ID
-        self._idx_parent_id = self._geneset_cache.set_index("Parent")
+        self._idx_parent_id = self._genome_features_cache.set_index("Parent")
 
     def get_feature(self, feature_id):
         return self._idx_feature_id.loc[feature_id]

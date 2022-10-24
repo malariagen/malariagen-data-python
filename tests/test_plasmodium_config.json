@@ -1,6 +1,9 @@
 {
   "default_url": "gs://test_plasmodium_release/",
   "metadata_path": "metadata/test_metadata.txt",
+  "reference_path": "reference/plasmodium.genome.zarr",
+  "reference_contigs": ["contig1", "contig2", "contig3"],
+  "annotations_path": "annotations/test_annotation_file.gff.gz",
   "variant_calls_zarr_path": "test_plasmodium.zarr/",
   "default_variant_variables": {
     "FILTER_PASS": ["variants"],

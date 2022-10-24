@@ -1,5 +1,6 @@
 import dask.array as da
 import numpy as np
+import pandas as pd
 import pytest
 import xarray
 
@@ -287,3 +288,87 @@ def test_variant_calls(extended):
     assert isinstance(d1, xarray.DataArray)
     d2 = ds["call_AD"].sum(axis=(1, 2))
     assert isinstance(d2, xarray.DataArray)
+
+
+@pytest.mark.parametrize(
+    "region",
+    [
+        "Pf3D7_01_v3",
+        "*",
+        ["Pf3D7_07_v3", "Pf3D7_02_v3", "Pf3D7_03_v3"],
+        ["Pf3D7_07_v3", "Pf3D7_02_v3:15-20", "Pf3D7_03_v3:40-50"],
+        "PF3D7_0709000.1:pep",
+    ],
+)
+def test_genome_sequence(region):
+
+    pf7 = setup_pf7()
+
+    seq = pf7.genome_sequence(region=region)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == "S1"
+
+
+@pytest.mark.parametrize(
+    "attributes",
+    [
+        ("ID", "Parent", "Name", "alias"),
+        "*",
+        ["ID", "literature"],
+    ],
+)
+def test_genome_features(attributes):
+
+    pf7 = setup_pf7()
+
+    default_columns = [
+        "contig",
+        "source",
+        "type",
+        "start",
+        "end",
+        "score",
+        "strand",
+        "phase",
+    ]
+    # check fields
+    df = pf7.genome_features(attributes=attributes)
+    assert isinstance(df, pd.DataFrame)
+    if attributes == "*":
+        additional_columns = [
+            "Dbxref",
+            "Derives_from",
+            "ID",
+            "Name",
+            "Note",
+            "Ontology_term",
+            "Parent",
+            "alias",
+            "comment",
+            "controlled_curation",
+            "cytoplasmic_polypeptide_region",
+            "eupathdb_uc",
+            "gPI_anchor_cleavage_site",
+            "literature",
+            "membrane_structure",
+            "non_cytoplasmic_polypeptide_region",
+            "orthologous_to",
+            "paralogous_to",
+            "polypeptide_domain",
+            "previous_systematic_id",
+            "product",
+            "product_synonym",
+            "signal_peptide",
+            "stop_codon_redefined_as_selenocysteine",
+            "synonym",
+            "translation",
+            "transmembrane_polypeptide_region",
+        ]
+        expected_columns = default_columns + additional_columns
+    else:
+        expected_columns = default_columns + list(attributes)
+    assert list(df.columns) == expected_columns
+
+    # check dimensions
+    expected_len = 40713
+    assert df.shape == (expected_len, len(expected_columns))

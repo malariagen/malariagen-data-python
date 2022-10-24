@@ -20,7 +20,7 @@ from .util import (
     xarray_concat,
 )
 
-geneset_gff3_path = (
+GENOME_FEATURES_GFF3_PATH = (
     "reference/genome/aminm1/Anopheles-minimus-MINIMUS1_BASEFEATURES_AminM1.8.gff3.gz"
 )
 genome_zarr_path = "reference/genome/aminm1/VectorBase-48_AminimusMINIMUS1_Genome.zarr"
@@ -38,7 +38,7 @@ class Amin1:
         # setup caches
         self._cache_sample_metadata = None
         self._cache_genome = None
-        self._cache_geneset = dict()
+        self._cache_genome_features = dict()
         self._cache_snp_genotypes = None
         self._contigs = None
 
@@ -117,7 +117,11 @@ class Amin1:
 
         return d[loc_region]
 
-    def geneset(self, attributes=("ID", "Parent", "Name", "description")):
+    def geneset(self, *args, **kwargs):
+        """Deprecated, this method has been renamed to genome_features()."""
+        return self.genome_features(*args, **kwargs)
+
+    def genome_features(self, attributes=("ID", "Parent", "Name", "description")):
         """Access genome feature annotations.
 
         Parameters
@@ -135,15 +139,15 @@ class Amin1:
             attributes = tuple(attributes)
 
         try:
-            df = self._cache_geneset[attributes]
+            df = self._cache_genome_features[attributes]
 
         except KeyError:
-            path = f"{self._path}/{geneset_gff3_path}"
+            path = f"{self._path}/{GENOME_FEATURES_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
             if attributes is not None:
                 df = unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_geneset[attributes] = df
+            self._cache_genome_features[attributes] = df
 
         return df
 

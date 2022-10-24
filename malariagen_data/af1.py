@@ -1,12 +1,9 @@
+import json
 import sys
 
-import allel
-import dask.array as da
 import numpy as np
-import pandas as pd
-import xarray as xr
 
-from .anopheles import Anopheles
+from .anopheles import AnophelesDataResource
 
 try:
     # noinspection PyPackageRequirements
@@ -16,13 +13,13 @@ except ImportError:
 
 import malariagen_data  # used for .__version__
 
-from .util import DIM_ALLELE, DIM_VARIANT, CacheMiss, da_from_zarr, hash_params
+from .util import CacheMiss, hash_params
 
 MAJOR_VERSION_INT = 1
 MAJOR_VERSION_GCS_STR = "v1.0"
-PUBLIC_RELEASES = ("1.0",)
+
 GCS_URL = "gs://vo_afun_release/"
-GENESET_GFF3_PATH = "reference/genome/idAnoFuneDA-416_04/GCF_943734845.2_idAnoFuneDA-416_04_genomic.gff3.gz"
+
 GENOME_FASTA_PATH = (
     "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.fa"
 )
@@ -32,6 +29,7 @@ GENOME_FAI_PATH = (
 GENOME_ZARR_PATH = (
     "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.zarr"
 )
+SITE_ANNOTATIONS_ZARR_PATH = "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr"
 GENOME_REF_ID = "idAnoFuneDA-416_04"
 GENOME_REF_NAME = "Anopheles funestus"
 
@@ -42,11 +40,11 @@ DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
-SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v1"
+SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
 DEFAULT_SITE_MASK = "funestus"
 
 
-class Af1(Anopheles):
+class Af1(AnophelesDataResource):
     """Provides access to data from Af1.x releases.
 
     Parameters
@@ -99,16 +97,17 @@ class Af1(Anopheles):
     """
 
     contigs = CONTIGS
-    _public_releases = PUBLIC_RELEASES
     _major_version_int = MAJOR_VERSION_INT
     _major_version_gcs_str = MAJOR_VERSION_GCS_STR
-    _geneset_gff3_path = GENESET_GFF3_PATH
     _genome_fasta_path = GENOME_FASTA_PATH
     _genome_fai_path = GENOME_FAI_PATH
     _genome_zarr_path = GENOME_ZARR_PATH
     _genome_ref_id = GENOME_REF_ID
     _genome_ref_name = GENOME_REF_NAME
     _gcs_url = GCS_URL
+    _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
+    _default_site_mask = DEFAULT_SITE_MASK
+    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
 
     def __init__(
         self,
@@ -136,6 +135,35 @@ class Af1(Anopheles):
             pre=pre,
             **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
+
+        # load config.json
+        path = f"{self._base_path}/v1.0-config.json"
+        with self._fs.open(path) as f:
+            self._config = json.load(f)
+
+    @property
+    def _public_releases(self):
+        return tuple(self._config["PUBLIC_RELEASES"])
+
+    @property
+    def _geneset_gff3_path(self):
+        return self._config["GENESET_GFF3_PATH"]
+
+    @staticmethod
+    def _setup_taxon_colors(plot_kwargs=None):
+        import plotly.express as px
+
+        if plot_kwargs is None:
+            plot_kwargs = dict()
+        taxon_palette = px.colors.qualitative.Plotly
+        taxon_color_map = {
+            "funestus": taxon_palette[0],
+        }
+        plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
+        plot_kwargs.setdefault(
+            "category_orders", {"taxon": list(taxon_color_map.keys())}
+        )
+        return plot_kwargs
 
     def __repr__(self):
         text = (
@@ -219,10 +247,10 @@ class Af1(Anopheles):
         return df
 
     def _transcript_to_gene_name(self, transcript):
-        df_geneset = self.geneset().set_index("ID")
-        rec_transcript = df_geneset.loc[transcript]
+        df_genome_features = self.genome_features().set_index("ID")
+        rec_transcript = df_genome_features.loc[transcript]
         parent = rec_transcript["Parent"]
-        rec_parent = df_geneset.loc[parent]
+        rec_parent = df_genome_features.loc[parent]
 
         # TODO: tailor to Af
         # manual overrides
@@ -241,88 +269,6 @@ class Af1(Anopheles):
             return ["funestus"]
         else:
             raise ValueError
-
-    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
-        debug = self._log.debug
-
-        coords = dict()
-        data_vars = dict()
-
-        debug("variant arrays")
-        sites_root = self.open_snp_sites()
-
-        debug("variant_position")
-        pos_z = sites_root[f"{contig}/variants/POS"]
-        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], variant_position
-
-        debug("variant_allele")
-        ref_z = sites_root[f"{contig}/variants/REF"]
-        alt_z = sites_root[f"{contig}/variants/ALT"]
-        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
-        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
-        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
-
-        debug("variant_contig")
-        contig_index = self.contigs.index(contig)
-        variant_contig = da.full_like(
-            variant_position, fill_value=contig_index, dtype="u1"
-        )
-        coords["variant_contig"] = [DIM_VARIANT], variant_contig
-
-        debug("site filters arrays")
-        for mask in self._site_mask_ids():
-            filters_root = self.open_site_filters(mask=mask)
-            z = filters_root[f"{contig}/variants/filter_pass"]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
-
-        debug("set up attributes")
-        attrs = {"contigs": self.contigs}
-
-        debug("create a dataset")
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-
-        return ds
-
-    def wgs_data_catalog(self, sample_set):
-        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
-        files for samples in a given sample set.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            One row per sample, columns provide URLs.
-
-        """
-        debug = self._log.debug
-
-        debug("look up release for sample set")
-        release = self._lookup_release(sample_set=sample_set)
-        release_path = self._release_to_path(release=release)
-
-        debug("load data catalog")
-        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
-        with self._fs.open(path) as f:
-            df = pd.read_csv(f, na_values="")
-
-        debug("normalise columns")
-        df = df[
-            [
-                "sample_id",
-                "alignments_bam",
-                "snp_genotypes_vcf",
-                "snp_genotypes_zarr",
-            ]
-        ]
-
-        return df
 
     def results_cache_get(self, *, name, params):
         debug = self._log.debug
@@ -366,6 +312,9 @@ class Af1(Anopheles):
         sample_sets=None,
         sample_query=None,
         site_mask=None,
+        site_class=None,
+        cohort_size=None,
+        random_seed=42,
     ):
         """Compute SNP allele counts. This returns the number of times each
         SNP allele was observed in the selected samples.
@@ -373,18 +322,33 @@ class Af1(Anopheles):
         Parameters
         ----------
         region : str or Region
-            Contig name (e.g., "2RL"), gene name (e.g., "gene-LOC125762289") or
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
-            "2RL:44989425-44998059").
+            "2L:44989425-44998059").
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
-            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
-            release identifier (e.g., "1.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : {"funestus"}
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
             Site filters mask to apply.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size before
+            computing allele counts.
+        random_seed : int, optional
+            Random seed used for down-sampling.
 
         Returns
         -------
@@ -408,11 +372,19 @@ class Af1(Anopheles):
         name = SNP_ALLELE_COUNTS_CACHE_NAME
 
         # normalize params for consistent hash value
+        if isinstance(sample_query, str):
+            # resolve query to a list of integers for more cache hits
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            sample_query = np.nonzero(loc_samples)[0].tolist()
         params = dict(
             region=self.resolve_region(region).to_dict(),
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
         )
 
         try:
@@ -424,324 +396,3 @@ class Af1(Anopheles):
 
         ac = results["ac"]
         return ac
-
-    def pca(
-        self,
-        region,
-        n_snps,
-        thin_offset=0,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT_SITE_MASK,
-        min_minor_ac=2,
-        max_missing_an=0,
-        n_components=20,
-    ):
-        """Run a principal components analysis (PCA) using biallelic SNPs from
-        the selected genome region and samples.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2RL"), gene name (e.g., "gene-LOC125762289") or
-            genomic region defined with coordinates (e.g.,
-            "2RL:44989425-44998059").
-        n_snps : int
-            The desired number of SNPs to use when running the analysis.
-            SNPs will be evenly thinned to approximately this number.
-        thin_offset : int, optional
-            Starting index for SNP thinning. Change this to repeat the analysis
-            using a different set of SNPs.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
-            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
-            release identifier (e.g., "1.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : {"funestus"}
-            Site filters mask to apply.
-        min_minor_ac : int, optional
-            The minimum minor allele count. SNPs with a minor allele count
-            below this value will be excluded prior to thinning.
-        max_missing_an : int, optional
-            The maximum number of missing allele calls to accept. SNPs with
-            more than this value will be excluded prior to thinning. Set to 0
-            (default) to require no missing calls.
-        n_components : int, optional
-            Number of components to return.
-
-        Returns
-        -------
-        df_pca : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        evr : np.ndarray
-            An array of explained variance ratios, one per component.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
-        debug = self._log.debug
-
-        # change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data
-        name = PCA_RESULTS_CACHE_NAME
-
-        debug("normalize params for consistent hash value")
-        params = dict(
-            region=self.resolve_region(region).to_dict(),
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
-            sample_query=sample_query,
-            site_mask=site_mask,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-            n_components=n_components,
-        )
-
-        debug("try to retrieve results from the cache")
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._pca(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        debug("unpack results")
-        coords = results["coords"]
-        evr = results["evr"]
-
-        debug("add coords to sample metadata dataframe")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-        )
-        df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
-        )
-        df_pca = pd.concat([df_samples, df_coords], axis="columns")
-
-        return df_pca, evr
-
-    def plot_snps_track(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT_SITE_MASK,
-        width=800,
-        height=120,
-        max_snps=200_000,
-        show=True,
-    ):
-        # TODO docstring
-        debug = self._log.debug
-
-        import bokeh.models as bkmod
-        import bokeh.palettes as bkpal
-        import bokeh.plotting as bkplt
-
-        debug("resolve and check region")
-        region = self.resolve_region(region)
-        if (
-            (region.start is None)
-            or (region.end is None)
-            or ((region.end - region.start) > max_snps)
-        ):
-            raise ValueError("Region is too large, please provide a smaller region.")
-
-        debug("compute allele counts")
-        ac = allel.AlleleCountsArray(
-            self.snp_allele_counts(
-                region=region,
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-            )
-        )
-        an = ac.sum(axis=1)
-        is_seg = ac.is_segregating()
-        is_var = ac.is_variant()
-        allelism = ac.allelism()
-
-        debug("obtain SNP variants data")
-        ds_sites = self.snp_variants(
-            region=region,
-        ).compute()
-
-        debug("build a dataframe")
-        pos = ds_sites["variant_position"].values
-        alleles = ds_sites["variant_allele"].values.astype("U")
-        cols = {
-            "pos": pos,
-            "allele_0": alleles[:, 0],
-            "allele_1": alleles[:, 1],
-            "allele_2": alleles[:, 2],
-            "allele_3": alleles[:, 3],
-            "ac_0": ac[:, 0],
-            "ac_1": ac[:, 1],
-            "ac_2": ac[:, 2],
-            "ac_3": ac[:, 3],
-            "an": an,
-            "is_seg": is_seg,
-            "is_var": is_var,
-            "allelism": allelism,
-            "pass_funestus": ds_sites["variant_filter_pass_funestus"].values,
-        }
-        data = pd.DataFrame(cols)
-
-        debug("create figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        pos = data["pos"].values
-        x_min = pos[0]
-        x_max = pos[-1]
-        x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
-
-        tooltips = [
-            ("Position", "$x{0,0}"),
-            (
-                "Alleles",
-                "@allele_0 (@ac_0), @allele_1 (@ac_1), @allele_2 (@ac_2), @allele_3 (@ac_3)",
-            ),
-            ("No. alleles", "@allelism"),
-            ("Allele calls", "@an"),
-            ("Pass funestus", "@pass_funestus"),
-        ]
-
-        fig = bkplt.figure(
-            title="SNPs",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
-            toolbar_location="above",
-            x_range=x_range,
-            y_range=(0.5, 2.5),
-            tooltips=tooltips,
-        )
-        hover_tool = fig.select(type=bkmod.HoverTool)
-        hover_tool.names = ["snps"]
-
-        debug("plot gaps in the reference genome")
-        seq = self.genome_sequence(region=region.contig).compute()
-        is_n = (seq == b"N") | (seq == b"n")
-        loc_n_start = ~is_n[:-1] & is_n[1:]
-        loc_n_stop = is_n[:-1] & ~is_n[1:]
-        n_starts = np.nonzero(loc_n_start)[0]
-        n_stops = np.nonzero(loc_n_stop)[0]
-        df_n_runs = pd.DataFrame(
-            {"left": n_starts + 1.6, "right": n_stops + 1.4, "top": 2.5, "bottom": 0.5}
-        )
-        fig.quad(
-            top="top",
-            bottom="bottom",
-            left="left",
-            right="right",
-            color="#cccccc",
-            source=df_n_runs,
-            name="gaps",
-        )
-
-        debug("plot SNPs")
-        color_pass = bkpal.Colorblind6[3]
-        color_fail = bkpal.Colorblind6[5]
-        data["left"] = data["pos"] - 0.4
-        data["right"] = data["pos"] + 0.4
-        data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
-        data["top"] = data["bottom"] + 0.8
-        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
-        fig.quad(
-            top="top",
-            bottom="bottom",
-            left="left",
-            right="right",
-            color="color",
-            source=data,
-            name="snps",
-        )
-        # TODO add legend?
-
-        debug("tidy plot")
-        fig.yaxis.ticker = bkmod.FixedTicker(
-            ticks=[1, 2],
-        )
-        fig.yaxis.major_label_overrides = {
-            1: "Non-segregating",
-            2: "Segregating",
-        }
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
-        fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
-
-        if show:
-            bkplt.show(fig)
-
-        return fig
-
-    def plot_snps(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT_SITE_MASK,
-        width=800,
-        track_height=80,
-        genes_height=120,
-        show=True,
-    ):
-        # TODO docstring
-        debug = self._log.debug
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
-        debug("plot SNPs track")
-        fig1 = self.plot_snps_track(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-            width=width,
-            height=track_height,
-            show=False,
-        )
-        fig1.xaxis.visible = False
-
-        debug("plot genes track")
-        fig2 = self.plot_genes(
-            region=region,
-            width=width,
-            height=genes_height,
-            x_range=fig1.x_range,
-            show=False,
-        )
-
-        fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
-        )
-
-        if show:
-            bkplt.show(fig)
-
-        return fig
-
-    @staticmethod
-    def _setup_taxon_colors(plot_kwargs):
-        import plotly.express as px
-
-        taxon_palette = px.colors.qualitative.Plotly
-        taxon_color_map = {
-            "funestus": taxon_palette[0],
-            "gcx1": taxon_palette[1],
-            "gcx2": taxon_palette[2],
-            "gcx3": taxon_palette[3],
-        }
-        plot_kwargs["color_discrete_map"] = taxon_color_map
-        plot_kwargs["category_orders"] = {"taxon": list(taxon_color_map.keys())}
