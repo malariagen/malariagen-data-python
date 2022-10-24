@@ -415,9 +415,8 @@ def test_locate_region(region_raw):
         assert region == Region("2RL", 24630355, 24633221)
 
 
-@pytest.mark.parametrize(
-    "region", ["2RL", "X", "gene-LOC125762289", "2RL:48714463-48715355"]
-)
+# FIXME: testing "2RL" via CI causes exit code 137 (out of memory)
+@pytest.mark.parametrize("region", ["X", "gene-LOC125762289", "2RL:48714463-48715355"])
 @pytest.mark.parametrize("site_mask", [None, "funestus"])
 def test_site_annotations(region, site_mask):
 
