@@ -29,6 +29,13 @@ from the following locations:
 ## Release notes
 
 
+### 7.0.0
+
+* Adds the `Af1` class providing access to the *Anopheles funestus*
+  `Af1.0` SNP data release.
+* Adds the `AnophelesDataResource` superclass for the `Af1` and `Ag3` subclasses.
+
+
 ### 6.1.1
 
 @@TODO release notes
