@@ -1,6 +1,8 @@
 # flake8: noqa
-from .ag3 import Ag3, Region
+from .af1 import Af1
+from .ag3 import Ag3
 from .amin1 import Amin1
+from .anopheles import AnophelesDataResource, Region
 from .pf7 import Pf7
 from .pv4 import Pv4
 from .util import SiteClass
