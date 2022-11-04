@@ -6562,6 +6562,8 @@ class Ag3(AnophelesDataResource):
         random_seed,
     ):
 
+        debug = self._log.debug
+
         ds_snps1 = self.snp_calls(
             region=contig,
             sample_query=cohort1_query,
@@ -6589,19 +6591,16 @@ class Ag3(AnophelesDataResource):
             random_seed=random_seed,
         )
 
-        print("computing allele counts for cohort 1")
+        debug("computing allele counts for cohort 1")
         gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
-        print(gt1.shape)
         ac1 = gt1.count_alleles()
 
-        print("computing allele counts for cohort 2")
+        debug("computing allele counts for cohort 2")
         gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
-        print(gt2.shape)
         ac2 = gt2.count_alleles()
 
-        print("computing allele counts for cohort 3")
+        debug("computing allele counts for cohort 3")
         gt3 = allel.GenotypeDaskArray(ds_snps3["call_genotype"].data)
-        print(gt3.shape)
         ac3 = gt3.count_alleles()
 
         pos = ds_snps1["variant_position"].values
