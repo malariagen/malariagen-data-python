@@ -3076,3 +3076,37 @@ def test_haplotype_joint_frequencies():
     assert np.all(vals >= 0)
     assert np.all(vals <= 1)
     assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
+
+
+def test_pbs_gwss():
+    ag3 = setup_ag3()
+    cohort1_query = ("cohort_admin1_year == 'ML-2_gamb_2014'",)
+    cohort2_query = ("cohort_admin1_year == 'ML-2_gamb_2004'",)
+    cohort3_query = ("cohort_admin1_year == 'CM-NO_gamb_2005'",)
+    contig = "2L"
+    site_mask = "gamb_colu"
+    window_size = 5_000
+
+    x, pbs = ag3.pbs_gwss(
+        contig=contig,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        cohort3_query=cohort3_query,
+        window_size=window_size,
+        site_mask=site_mask,
+        cohort_size=None,
+    )
+
+    # check data
+    assert isinstance(x, np.ndarray)
+    assert isinstance(pbs, np.ndarray)
+
+    # check dimensions
+    assert x.ndim == pbs.ndim == 1
+    assert x.shape == pbs.shape
+
+    # check some values
+    assert_allclose(x[0], 9525.3425, rtol=1e-5)
+    assert_allclose(pbs[0], 0.07225151, rtol=1e-5)
+    assert np.all(pbs <= 1)
+    assert np.all(pbs >= -1)
