@@ -6641,12 +6641,12 @@ class Ag3(AnophelesDataResource):
         cohort3_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -6720,12 +6720,12 @@ class Ag3(AnophelesDataResource):
         cohort3_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            Site filters mask to apply.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
