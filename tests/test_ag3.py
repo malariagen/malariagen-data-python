@@ -3106,7 +3106,7 @@ def test_pbs_gwss():
     assert x.shape == pbs.shape
 
     # check some values
-    assert_allclose(x[0], 9525.3425, rtol=1e-5)
-    assert_allclose(pbs[0], 0.07225151, rtol=1e-5)
+    assert_allclose(x[0], 33364.7982, rtol=1e-5)
+    assert_allclose(pbs[0], 0.028443288300735968, rtol=1e-5)
     assert np.all(pbs <= 1)
     assert np.all(pbs >= -1)
