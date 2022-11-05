@@ -3080,9 +3080,9 @@ def test_haplotype_joint_frequencies():
 
 def test_pbs_gwss():
     ag3 = setup_ag3()
-    cohort1_query = ("cohort_admin1_year == 'ML-2_gamb_2014'",)
-    cohort2_query = ("cohort_admin1_year == 'ML-2_gamb_2004'",)
-    cohort3_query = ("cohort_admin1_year == 'CM-NO_gamb_2005'",)
+    cohort1_query = "cohort_admin1_year == 'ML-2_gamb_2014'"
+    cohort2_query = "cohort_admin1_year == 'ML-2_gamb_2004'"
+    cohort3_query = "cohort_admin1_year == 'CM-NO_gamb_2005'"
     contig = "2L"
     site_mask = "gamb_colu"
     window_size = 5_000
