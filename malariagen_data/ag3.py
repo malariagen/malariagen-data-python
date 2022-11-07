@@ -6139,14 +6139,14 @@ class Ag3(AnophelesDataResource):
             line=dict(width=0.5, color="black"),
         )
 
-        if not sample_sets and not sample_query:
-            title = f"genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
-        elif not sample_sets:
-            title = f"sample query:    {sample_query}<br>genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
-        elif not sample_query:
-            title = f"sample sets:    {sample_sets}<br>genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
-        else:
-            title = f"sample sets:    {sample_sets},    sample query:    {sample_query}<br>genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
+        title_lines = []
+        if sample_sets is not None:
+            title_lines.append(f"sample sets: {sample_sets}")
+        if sample_query is not None:
+            title_lines.append(f"sample query: {sample_query}")
+        title_lines.append(f"genomic region: {region}")
+        title_lines.append(f"number of SNPs: {ht.shape[0]}")
+        title = "<br>".join(title_lines)
 
         fig.update_layout(
             width=width,
