@@ -6144,7 +6144,7 @@ class Ag3(AnophelesDataResource):
             title_lines.append(f"sample sets: {sample_sets}")
         if sample_query is not None:
             title_lines.append(f"sample query: {sample_query}")
-        title_lines.append(f"genomic region: {region}, {ht.shape[0]} SNPs")
+        title_lines.append(f"genomic region: {region} ({ht.shape[0]} SNPs)")
         title = "<br>".join(title_lines)
 
         fig.update_layout(
