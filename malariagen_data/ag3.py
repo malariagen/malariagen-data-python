@@ -6138,9 +6138,20 @@ class Ag3(AnophelesDataResource):
             hoverinfo="y",
             line=dict(width=0.5, color="black"),
         )
+
+        if not sample_sets and not sample_query:
+            title = f"genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
+        elif not sample_sets:
+            title = f"sample query:    {sample_query}<br>genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
+        elif not sample_query:
+            title = f"sample sets:    {sample_sets}<br>genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
+        else:
+            title = f"sample sets:    {sample_sets},    sample query:    {sample_query}<br>genomic window:    {region}<br>number of SNPs:    {ht.shape[0]}"
+
         fig.update_layout(
             width=width,
             height=height,
+            title=title,
             autosize=True,
             hovermode="closest",
             plot_bgcolor="white",
