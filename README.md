@@ -25,6 +25,11 @@ from the following locations:
 * [Amin1 API
   docs](https://malariagen.github.io/vector-data/amin1/api.html)
 
+* [Pf7 API
+  docs](https://malariagen.github.io/parasite-data/pf7/api.html)
+
+* [Pv4 API
+  docs](https://malariagen.github.io/parasite-data/pv4/api.html)
 
 ## Release notes
 
@@ -34,7 +39,11 @@ from the following locations:
 * Adds the `Af1` class providing access to the *Anopheles funestus*
   `Af1.0` SNP data release.
 * Adds the `AnophelesDataResource` superclass for the `Af1` and `Ag3` subclasses.
-
+* Adds the `Pv4` and `Pf7` classes for accessing data in the Plasmodium releases.
+* Add `Pv4.sample_metadata()` and `Pf7.sample_metadata()` functions for accessing metadata.
+* Add `Pv4.variant_calls()` and `Pf7.variant_calls()` functions for accessing variant calls.
+* Add `Pv4.genome_features()` and `Pf7.genome_features()` functions for accessing the genome feature annotations.
+* Add `Pv4.genome_sequence()` and `Pf7.genome_sequence()` functions for accessing the reference genome sequence.
 
 ### 6.1.1
 
