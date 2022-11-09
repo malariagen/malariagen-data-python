@@ -40,10 +40,10 @@ from the following locations:
   `Af1.0` SNP data release.
 * Adds the `AnophelesDataResource` superclass for the `Af1` and `Ag3` subclasses.
 * Adds the `Pv4` and `Pf7` classes for accessing data in the Plasmodium releases.
-* Add `Pv4.sample_metadata` and `Pf7.sample_metadata` functions for accessing metadata.
-* Add `Pv4.variant_calls` and `Pf7.variant_calls` functions for accessing variant calls.
-* Add `Pv4.genome_features` and `Pf7.genome_features` functions for accessing the genome feature annotations.
-* Add `Pv4.genome_sequence` and `Pf7.genome_sequence` functions for accessing the reference genome sequence.
+* Add `Pv4.sample_metadata()` and `Pf7.sample_metadata()` functions for accessing metadata.
+* Add `Pv4.variant_calls()` and `Pf7.variant_calls()` functions for accessing variant calls.
+* Add `Pv4.genome_features()` and `Pf7.genome_features()` functions for accessing the genome feature annotations.
+* Add `Pv4.genome_sequence()` and `Pf7.genome_sequence()` functions for accessing the reference genome sequence.
 
 ### 6.1.1
 
