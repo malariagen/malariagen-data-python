@@ -6138,9 +6138,19 @@ class Ag3(AnophelesDataResource):
             hoverinfo="y",
             line=dict(width=0.5, color="black"),
         )
+
+        title_lines = []
+        if sample_sets is not None:
+            title_lines.append(f"sample sets: {sample_sets}")
+        if sample_query is not None:
+            title_lines.append(f"sample query: {sample_query}")
+        title_lines.append(f"genomic region: {region} ({ht.shape[0]} SNPs)")
+        title = "<br>".join(title_lines)
+
         fig.update_layout(
             width=width,
             height=height,
+            title=title,
             autosize=True,
             hovermode="closest",
             plot_bgcolor="white",
