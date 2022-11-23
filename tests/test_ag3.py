@@ -86,6 +86,13 @@ def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
     return Ag3(url, **kwargs)
 
 
+def test_ag3_repr():
+    ag3 = setup_ag3(check_location=True)
+    assert isinstance(ag3, Ag3)
+    r = repr(ag3)
+    assert isinstance(r, str)
+
+
 def test_sample_metadata_with_aim_species():
     ag3 = setup_ag3(species_analysis="aim_20220528")
 
