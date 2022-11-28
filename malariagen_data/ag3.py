@@ -6602,13 +6602,13 @@ class Ag3(AnophelesDataResource):
             random_seed=random_seed,
         )
 
-        print("computing allele counts for cohort 1")
-        gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
-        ac1 = gt1.count_alleles()
+        with self._dask_progress(desc="computing allele counts for cohort 1"):
+            gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
+            ac1 = gt1.count_alleles().compute()
 
-        print("computing allele counts for cohort 2")
-        gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
-        ac2 = gt2.count_alleles()
+        with self._dask_progress(desc="computing allele counts for cohort 2"):
+            gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
+            ac2 = gt2.count_alleles().compute()
 
         pos = ds_snps1["variant_position"].values
 
@@ -6625,13 +6625,13 @@ class Ag3(AnophelesDataResource):
         window_size,
         cohort1_query,
         cohort2_query,
-        site_mask,
         sample_sets=None,
+        site_mask="gamb_colu_arab",
         cohort_size=30,
         random_seed=42,
     ):
-        """Run an Fst genome-wide scan to detect genome regions showing
-        differentiation between two cohorts.
+        """Run an Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
         Parameters
         ----------
         contig: str
@@ -6648,12 +6648,13 @@ class Ag3(AnophelesDataResource):
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
             Random seed used for down-sampling.
+
         Returns
         -------
         x : numpy.ndarray
@@ -6694,8 +6695,8 @@ class Ag3(AnophelesDataResource):
         window_size,
         cohort1_query,
         cohort2_query,
-        site_mask,
         sample_sets=None,
+        site_mask="gamb_colu_arab",
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -6704,8 +6705,8 @@ class Ag3(AnophelesDataResource):
         show=True,
         x_range=None,
     ):
-        """Run and plot a Fst genome-wide scan to detect genome regions
-        with shared selective sweeps between two cohorts.
+        """Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
         Parameters
         ----------
         contig: str
@@ -6722,7 +6723,7 @@ class Ag3(AnophelesDataResource):
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
@@ -6738,6 +6739,7 @@ class Ag3(AnophelesDataResource):
             If True, show the plot.
         x_range : bokeh.models.Range1d, optional
             X axis range (for linking to other tracks).
+
         Returns
         -------
         fig : figure
@@ -6807,8 +6809,8 @@ class Ag3(AnophelesDataResource):
         window_size,
         cohort1_query,
         cohort2_query,
-        site_mask,
         sample_sets=None,
+        site_mask="gamb_colu_arab",
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -6816,8 +6818,8 @@ class Ag3(AnophelesDataResource):
         track_height=190,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
     ):
-        """Run and plot an Fst genome-wide scan to detect genome regions
-        with shared selective sweeps between two cohorts.
+        """Run and plot an Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
         Parameters
         ----------
         contig: str
@@ -6834,6 +6836,8 @@ class Ag3(AnophelesDataResource):
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -6846,6 +6850,7 @@ class Ag3(AnophelesDataResource):
             GWSS track height in pixels (px).
         genes_height : int. optional
             Gene track height in pixels (px).
+
         Returns
         -------
         fig : figure
