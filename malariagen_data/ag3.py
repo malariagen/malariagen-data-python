@@ -6602,12 +6602,12 @@ class Ag3(AnophelesDataResource):
             random_seed=random_seed,
         )
 
+        gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
         with self._dask_progress(desc="computing allele counts for cohort 1"):
-            gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
             ac1 = gt1.count_alleles().compute()
 
+        gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
         with self._dask_progress(desc="computing allele counts for cohort 2"):
-            gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
             ac2 = gt2.count_alleles().compute()
 
         pos = ds_snps1["variant_position"].values
