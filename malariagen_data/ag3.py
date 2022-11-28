@@ -6138,9 +6138,19 @@ class Ag3(AnophelesDataResource):
             hoverinfo="y",
             line=dict(width=0.5, color="black"),
         )
+
+        title_lines = []
+        if sample_sets is not None:
+            title_lines.append(f"sample sets: {sample_sets}")
+        if sample_query is not None:
+            title_lines.append(f"sample query: {sample_query}")
+        title_lines.append(f"genomic region: {region} ({ht.shape[0]} SNPs)")
+        title = "<br>".join(title_lines)
+
         fig.update_layout(
             width=width,
             height=height,
+            title=title,
             autosize=True,
             hovermode="closest",
             plot_bgcolor="white",
@@ -6336,23 +6346,32 @@ class Ag3(AnophelesDataResource):
 
         debug("setup colors")
         color_values = None
+        color_values_display = None
+        color_discrete_map = None
+        color_discrete_map_display = None
         ht_color_counts = None
-        color_params = None
         if color is not None:
 
+            # sanitise color column - necessary to avoid grey pie chart segments
+            df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
+
             # extract all unique values of the color column
-            color_values = df_haps[color].unique()
+            color_values = df_haps["partition"].unique()
+            color_values_mapping = dict(zip(df_haps["partition"], df_haps[color]))
+            color_values_display = [color_values_mapping[c] for c in color_values]
 
             # count color values for each distinct haplotype
             ht_color_counts = [
-                df_haps.iloc[list(s)][color].value_counts().to_dict()
+                df_haps.iloc[list(s)]["partition"].value_counts().to_dict()
                 for s in ht_distinct_sets
             ]
 
             if color == "taxon":
-                # special case, standardise taxon colors
+                # special case, standardise taxon colors and order
                 color_params = self._setup_taxon_colors()
                 color_discrete_map = color_params["color_discrete_map"]
+                color_discrete_map_display = color_discrete_map
+                category_orders = color_params["category_orders"]
 
             elif color_discrete_map is None:
 
@@ -6367,10 +6386,11 @@ class Ag3(AnophelesDataResource):
                 color_discrete_map = {
                     v: c for v, c in zip(color_values, cycle(color_discrete_sequence))
                 }
-
-                color_params = {
-                    "color_discrete_map": color_discrete_map,
-                    "category_orders": category_orders,
+                color_discrete_map_display = {
+                    v: c
+                    for v, c in zip(
+                        color_values_display, cycle(color_discrete_sequence)
+                    )
                 }
 
         debug("construct graph")
@@ -6410,6 +6430,7 @@ class Ag3(AnophelesDataResource):
                 node_stylesheet["style"][
                     f"pie-{i + 1}-background-size"
                 ] = f"mapData({v}, 0, 100, 0, 100)"
+        debug(node_stylesheet)
 
         debug("define edge style")
         edge_stylesheet = {
@@ -6431,8 +6452,9 @@ class Ag3(AnophelesDataResource):
         if color is not None:
             legend_fig = plotly_discrete_legend(
                 color=color,
-                color_values=color_values,
-                **color_params,
+                color_values=color_values_display,
+                color_discrete_map=color_discrete_map_display,
+                category_orders=category_orders,
             )
             legend_component = dcc.Graph(
                 id="legend",
@@ -6478,7 +6500,7 @@ class Ag3(AnophelesDataResource):
 
         debug("create dash app")
         app = JupyterDash(
-            "dash cytoscape network",
+            "dash-cytoscape-network",
             # this stylesheet is used to provide support for a rows and columns
             # layout of the components
             external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"],
@@ -6512,17 +6534,18 @@ class Ag3(AnophelesDataResource):
             "define a callback function to display information about the selected node"
         )
 
-        # FIXME: function name should be lowercase
         @app.callback(Output("output", "children"), Input("cytoscape", "tapNodeData"))
-        def displayTapNodeData(data):
+        def display_tap_node_data(data):
             if data is None:
                 return "Click or tap a node for more information."
             else:
                 n = data["count"]
                 text = f"No. haplotypes: {n}"
                 selected_color_data = {
-                    color_v: int(data.get(color_v, 0) * n / 100)
-                    for color_v in color_values
+                    color_v_display: int(data.get(color_v, 0) * n / 100)
+                    for color_v, color_v_display in zip(
+                        color_values, color_values_display
+                    )
                 }
                 selected_color_data = sorted(
                     selected_color_data.items(), key=lambda item: item[1], reverse=True
