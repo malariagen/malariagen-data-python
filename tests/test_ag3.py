@@ -3114,4 +3114,4 @@ def test_fst_gwss():
     assert_allclose(x[0], 56835.9649, rtol=1e-5), x[0]
     assert_allclose(fst[0], 0.0405522778148594, rtol=1e-5), fst[0]
     assert np.all(fst <= 1)
-    assert np.all(fst >= -0.1 and fst <= 1)
+    assert np.all(np.logical_and(fst >= -0.1, fst <= 1))
