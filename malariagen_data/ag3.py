@@ -3656,57 +3656,10 @@ class Ag3(AnophelesDataResource):
         release = self._lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release=release)
 
-        if release == "3.0":
-
-            debug("special handling for 3.0 as data catalogs have a different format")
-
-            debug("load alignments catalog")
-            alignments_path = f"{self._base_path}/{release_path}/alignments/catalog.csv"
-            with self._fs.open(alignments_path) as f:
-                alignments_df = pd.read_csv(f, na_values="").query(
-                    f"sample_set == '{sample_set}'"
-                )
-
-            debug("load SNP genotypes catalog")
-            genotypes_path = (
-                f"{self._base_path}/{release_path}/snp_genotypes/per_sample/catalog.csv"
-            )
-            with self._fs.open(genotypes_path) as f:
-                genotypes_df = pd.read_csv(f, na_values="").query(
-                    f"sample_set == '{sample_set}'"
-                )
-
-            debug("join catalogs")
-            df = pd.merge(
-                left=alignments_df, right=genotypes_df, on="sample_id", how="inner"
-            )
-
-            debug("normalise columns")
-            df = df[["sample_id", "bam_path", "vcf_path", "zarr_path"]]
-            df = df.rename(
-                columns={
-                    "bam_path": "alignments_bam",
-                    "vcf_path": "snp_genotypes_vcf",
-                    "zarr_path": "snp_genotypes_zarr",
-                }
-            )
-
-        else:
-
-            debug("load data catalog")
-            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
-            with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="")
-
-            debug("normalise columns")
-            df = df[
-                [
-                    "sample_id",
-                    "alignments_bam",
-                    "snp_genotypes_vcf",
-                    "snp_genotypes_zarr",
-                ]
-            ]
+        debug("load data catalog")
+        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
+        with self._fs.open(path) as f:
+            df = pd.read_csv(f, na_values="")
 
         return df
 
