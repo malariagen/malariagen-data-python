@@ -5874,6 +5874,7 @@ class Ag3(AnophelesDataResource):
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -5907,10 +5908,12 @@ class Ag3(AnophelesDataResource):
             GWSS track height in pixels (px).
         genes_height : int. optional
             Gene track height in pixels (px).
+
         Returns
         -------
         fig : figure
             A plot showing windowed H1X statistic with gene track on x-axis.
+
         """
 
         import bokeh.layouts as bklay
