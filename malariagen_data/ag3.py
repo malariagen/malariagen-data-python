@@ -5627,6 +5627,7 @@ class Ag3(AnophelesDataResource):
     ):
         """Run a H1X genome-wide scan to detect genome regions with
         shared selective sweeps between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -5652,12 +5653,14 @@ class Ag3(AnophelesDataResource):
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
             Random seed used for down-sampling.
+
         Returns
         -------
         x : numpy.ndarray
             An array containing the window centre point genomic positions.
         h1x : numpy.ndarray
             An array with H1X statistic values for each window.
+
         """
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -5753,6 +5756,7 @@ class Ag3(AnophelesDataResource):
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -5788,10 +5792,12 @@ class Ag3(AnophelesDataResource):
             If True, show the plot.
         x_range : bokeh.models.Range1d, optional
             X axis range (for linking to other tracks).
+
         Returns
         -------
         fig : figure
             A plot showing windowed H1X statistic across chosen contig.
+
         """
 
         import bokeh.models as bkmod
@@ -5962,6 +5968,7 @@ class Ag3(AnophelesDataResource):
         **kwargs,
     ):
         """Hierarchically cluster haplotypes in region and produce an interactive plot.
+
         Parameters
         ----------
         region: str or list of str or Region or list of Region
@@ -6010,6 +6017,12 @@ class Ag3(AnophelesDataResource):
             The figure width in pixels
         height: int, optional
             The figure height in pixels
+
+        Returns
+        -------
+        fig : Figure
+            Plotly figure.
+
         """
         import plotly.express as px
         from scipy.cluster.hierarchy import linkage
@@ -6142,7 +6155,7 @@ class Ag3(AnophelesDataResource):
             )
         )
 
-        fig.show()
+        return fig
 
     def plot_haplotype_network(
         self,
