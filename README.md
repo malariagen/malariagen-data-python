@@ -31,26 +31,25 @@ from the following locations:
 * [Pv4 API
   docs](https://malariagen.github.io/parasite-data/pv4/api.html)
 
-## Release notes
+## Release highlights
+
+### 7.1
+
+* Adds `Ag3.fst_gwss()` and `Ag3.plot_fst_gwss()` functions for calculating and plotting Fst across a contig.
 
 
-### 7.0.0
+### 7.0
 
-* Adds the `Af1` class providing access to the *Anopheles funestus*
-  `Af1.0` SNP data release.
-* Adds the `AnophelesDataResource` superclass for the `Af1` and `Ag3` subclasses.
+* Adds H1X statistics for detecting shared selective sweeps, via `Ag3.h1x_gwss()` and `Ag3.plot_h1x_gwss()` functions.
+* Adds `Ag3.plot_haplotype_clustering()` to visualise hierarchical clustering of haplotypes from a given genome region.
+* Adds `Ag3.plot_haplotyp_network()` to visualise a median-joining network of haplotypes from a given genome region.
 * Adds the `Pv4` and `Pf7` classes for accessing data in the Plasmodium releases.
 * Add `Pv4.sample_metadata()` and `Pf7.sample_metadata()` functions for accessing metadata.
 * Add `Pv4.variant_calls()` and `Pf7.variant_calls()` functions for accessing variant calls.
 * Add `Pv4.genome_features()` and `Pf7.genome_features()` functions for accessing the genome feature annotations.
 * Add `Pv4.genome_sequence()` and `Pf7.genome_sequence()` functions for accessing the reference genome sequence.
 
-### 6.1.1
-
-@@TODO release notes
-
-
-### 6.1.0
+### 6.1
 
 * Adds `cohort_size` parameter to `Ag3.haplotypes()` function.
 * Adds `Ag3.h12_calibration()` and `Ag3.plot_h12_calibration()` functions to generate and plot h12 calibration data for different window sizes.
@@ -61,24 +60,22 @@ from the following locations:
 ([GH274](https://github.com/malariagen/malariagen-data-python/pull/274))
 
 
-### 6.0.0
+### 6.0
 
-@@TODO release notes
+* Add `Ag3.plot_heterozygosity()`
+* Add `Ag3.cohort_diversity_stats()` and `Ag3.diversity_stats()` with supporting functions
+* Add `Ag3.plot_samples_interactive_map()`
+* Add `Ag3.count_samples()`
+* Add `Ag3.roh_hmm()` and `Ag3.plot_roh()` with supporting functions
 
 
-### 5.1.0
+### 5.1
 
 * Upgrade the default cohorts analysis in the `Ag3` class to `20220608`
   ([GH256](https://github.com/malariagen/malariagen-data-python/pull/256)).
 
 
-### 5.0.1
-
-* Handle sample sets with missing species calls
-  ([GH251](https://github.com/malariagen/malariagen-data-python/pull/251)).
-
-
-### 5.0.0
+### 5.0
 
 * Upgrade the default species analysis in the `Ag3` class to use a new
   set of improved ancestry-informative markers (AIMs). Note that this
@@ -95,7 +92,7 @@ from the following locations:
   ([GH246](https://github.com/malariagen/malariagen-data-python/issues/246)).
 
 
-### 4.4.0
+### 4.4
 
 * Add `Ag3.aim_variants()` function
   ([GH233](https://github.com/malariagen/malariagen-data-python/issues/233)).
@@ -105,20 +102,14 @@ from the following locations:
   ([GH240](https://github.com/malariagen/malariagen-data-python/issues/240)).
 
 
-### 4.3.1
-
-* Handle sample sets with missing cohorts metadata
-  ([GH235](https://github.com/malariagen/malariagen-data-python/pull/235)).
-
-
-### 4.3.0
+### 4.3
 
 * Add Ag3.plot_snps() to plot segregating and non-segregating SNPs and
   visualise site filters
   ([GH226](https://github.com/malariagen/malariagen-data-python/issues/226)).
 
 
-### 4.2.0
+### 4.2
 
 * Add progress bars for longer-running computations using tqdm
   ([GH217](https://github.com/malariagen/malariagen-data-python/issues/217)).
@@ -127,7 +118,7 @@ from the following locations:
   ([GH216](https://github.com/malariagen/malariagen-data-python/issues/216)).
 
 
-### 4.1.0
+### 4.1
 
 * Use pypi for igv-notebook dependency
   ([GH209](https://github.com/malariagen/malariagen-data-python/issues/209)).
@@ -140,13 +131,7 @@ from the following locations:
   ([GH213](https://github.com/malariagen/malariagen-data-python/issues/213)).
 
 
-### 4.0.1
-
-* Make igv-notebook an optional dependency while it is still only
-  available from GitHub.
-
-
-### 4.0.0
+### 4.0
 
 * `Ag3`: A new `pca()` function has been added for performing
   principal components analysis
@@ -185,7 +170,7 @@ from the following locations:
   ([GH193](https://github.com/malariagen/malariagen-data-python/issues/193)).
 
 
-### 3.1.0
+### 3.1
 
 * `Ag3`: Limit docstring widths for better wrapping in colab help tabs
   ([GH186](https://github.com/malariagen/malariagen-data-python/issues/186)).
@@ -219,7 +204,7 @@ from the following locations:
   ([GH183](https://github.com/malariagen/malariagen-data-python/issues/183)).
 
 
-### 3.0.0
+### 3.0
 
 * Added a new function `Ag3.plot_cnv_hmm_coverage()` which generates a
   bokeh plot showing normalised coverage and HMM copy number for an
@@ -247,8 +232,7 @@ from the following locations:
   columns.
 
 
-### 2.2.0
-
+### 2.2
 
 * Added a new function `Ag3.plot_genes()` which generates a bokeh plot
   of gene annotations
@@ -265,7 +249,7 @@ from the following locations:
   ([GH150](https://github.com/malariagen/malariagen-data-python/issues/150)).
 
 
-### 2.1.0
+### 2.1
 
 * `Ag3`: Add support for giving a list of contigs to the `contig`
   parameter in `gene_cnv()` and `gene_cnv_frequencies()`
@@ -278,7 +262,7 @@ from the following locations:
   [GH161](https://github.com/malariagen/malariagen-data-python/issues/161)).
 
 
-### 2.0.0
+### 2.0
 
 
 #### New features and API changes
@@ -371,14 +355,7 @@ from the following locations:
   ([GH138](https://github.com/malariagen/malariagen-data-python/issues/138)).
 
 
-### 1.0.1
-
-* `Ag3`: Expose more plotting parameters through the
-  `plot_frequencies_heatmap()` method
-  ([GH133](https://github.com/malariagen/malariagen-data-python/issues/133)).
-
-
-### 1.0.0
+### 1.0
 
 
 #### New features and API changes
@@ -501,29 +478,19 @@ ag3 = malariagen_data.Ag3()
   ([GH122](https://github.com/malariagen/malariagen-data-python/issues/122)).
 
 
-### 0.15.0
+### 0.15
 
 * `Ag3`: Update default cohort parameter to latest analysis
   (20211101).
 
 
-### 0.14.1
-
-* `Amin1`: Bug fix to `snp_calls()` handling of site_mask parameter.
-
-
-### 0.14.0
+### 0.14
 
 * Adds the `Amin1` class providing access to the *Anopheles minimus*
   `Amin1` SNP data release.
 
 
-### 0.12.1
-
-* `Ag3`: Bug fix to `sample_cohorts()`.
-
-
-### 0.12.0
+### 0.12
 
 * `Ag3`: Update default cohort parameter to latest analysis
   (20210927).
@@ -532,36 +499,36 @@ ag3 = malariagen_data.Ag3()
   `gene_cnv_frequencies()`.
 
 
-### 0.11.0
+### 0.11
 
 * `Ag3`: Add support for standard cohorts in the functions
   `snp_allele_frequencies()` and `gene_cnv_frequencies()`.
 
 
-### 0.10.0
+### 0.10
 
 * `Ag3`: Add `sample_cohorts()`.
 
 
-### 0.9.0
+### 0.9
 
 * `Ag3`: Add `haplotypes()` and supporting functions
   `open_haplotypes()` and `open_haplotype_sites()`.
 
 
-### 0.8.0
+### 0.8
 
 * `Ag3`: Add site filter columns to dataframes returned by
   `snp_effects()` and `snp_allele_frequencies()`.
 
 
-### 0.7.0
+### 0.7
 
 * `Ag3`: Rename parameter "populations" to "cohorts" to be consistent
   with sgkit terminology.
 
 
-### 0.6.0
+### 0.6
 
 * `Ag3`: Add `gene_cnv()` and `gene_cnv_frequencies()`.
 
@@ -569,7 +536,7 @@ ag3 = malariagen_data.Ag3()
   `snp_allele_frequencies()`.
 
 
-### 0.5.0
+### 0.5
 
 * `Ag3`: Add `snp_allele_frequencies()`.
 
@@ -583,23 +550,7 @@ ag3 = malariagen_data.Ag3()
 * Add configuration for pre-commit hooks.
 
 
-### 0.4.3
-
-* Performance improvements for faster reading a indexing zarr arrays.
-
-
-### 0.4.2
-
-* `Ag3`: Bug fix and minor improvements to `snp_calls()`.
-
-
-### 0.4.1
-
-* `Ag3`: Explore workarounds to xarray memory issues in the
-  `snp_calls()` method.
-
-
-### 0.4.0
+### 0.4
 
 * `Ag3`: Make public the `open_genome()`, `open_snp_sites()`,
   `open_site_filters()` and `open_snp_genotypes()` methods.
@@ -616,12 +567,7 @@ ag3 = malariagen_data.Ag3()
 * Improve memory usage.
 
 
-### 0.3.1
-
-* Fix compatibility issue in recent fsspec/gcsfs release.
-
-
-### 0.3.0
+### 0.3
 
 First release with basic functionality in the `Ag3` class for
 accessing Ag1000G phase 3 data.
