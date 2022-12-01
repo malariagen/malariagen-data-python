@@ -6525,6 +6525,328 @@ class Ag3(AnophelesDataResource):
             run_params["width"] = width
         return app.run_server(**run_params)
 
+    def _fst_gwss(
+        self,
+        contig,
+        window_size,
+        sample_sets,
+        cohort1_query,
+        cohort2_query,
+        site_mask,
+        cohort_size,
+        random_seed,
+    ):
+
+        ds_snps1 = self.snp_calls(
+            region=contig,
+            sample_query=cohort1_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        ds_snps2 = self.snp_calls(
+            region=contig,
+            sample_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
+        with self._dask_progress(desc="Compute allele counts for cohort 1"):
+            ac1 = gt1.count_alleles(max_allele=3).compute()
+
+        gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
+        with self._dask_progress(desc="Compute allele counts for cohort 2"):
+            ac2 = gt2.count_alleles(max_allele=3).compute()
+
+        pos = ds_snps1["variant_position"].values
+
+        fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
+        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=x, fst=fst)
+
+        return results
+
+    def fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="gamb_colu_arab",
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run an Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        fst : numpy.ndarray
+            An array with Fst statistic values for each window.
+        """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_fst_gwss_v1"
+
+        params = dict(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._fst_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        fst = results["fst"]
+
+        return x, fst
+
+    def plot_fst_gwss_track(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="gamb_colu_arab",
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed Fst statistic across chosen contig.
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # compute Fst
+        x, fst = self.fst_gwss(
+            contig=contig,
+            window_size=window_size,
+            cohort_size=cohort_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+        )
+
+        # plot Fst
+        fig.circle(
+            x=x,
+            y=fst,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "Fst"
+        fig.yaxis.ticker = [0, 1]
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="gamb_colu_arab",
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=190,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Run and plot an Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed Fst statistic with gene track on x-axis.
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # gwss track
+        fig1 = self.plot_fst_gwss_track(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        bkplt.show(fig)
+
 
 def _hamming_to_snps(h):
     """
