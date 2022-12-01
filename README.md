@@ -42,7 +42,7 @@ from the following locations:
 
 * Adds H1X statistics for detecting shared selective sweeps, via `Ag3.h1x_gwss()` and `Ag3.plot_h1x_gwss()` functions.
 * Adds `Ag3.plot_haplotype_clustering()` to visualise hierarchical clustering of haplotypes from a given genome region.
-* Adds `Ag3.plot_haplotyp_network()` to visualise a median-joining network of haplotypes from a given genome region.
+* Adds `Ag3.plot_haplotype_network()` to visualise a median-joining network of haplotypes from a given genome region.
 * Adds the `Pv4` and `Pf7` classes for accessing data in the Plasmodium releases.
 * Add `Pv4.sample_metadata()` and `Pf7.sample_metadata()` functions for accessing metadata.
 * Add `Pv4.variant_calls()` and `Pf7.variant_calls()` functions for accessing variant calls.
