@@ -3656,57 +3656,10 @@ class Ag3(AnophelesDataResource):
         release = self._lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release=release)
 
-        if release == "3.0":
-
-            debug("special handling for 3.0 as data catalogs have a different format")
-
-            debug("load alignments catalog")
-            alignments_path = f"{self._base_path}/{release_path}/alignments/catalog.csv"
-            with self._fs.open(alignments_path) as f:
-                alignments_df = pd.read_csv(f, na_values="").query(
-                    f"sample_set == '{sample_set}'"
-                )
-
-            debug("load SNP genotypes catalog")
-            genotypes_path = (
-                f"{self._base_path}/{release_path}/snp_genotypes/per_sample/catalog.csv"
-            )
-            with self._fs.open(genotypes_path) as f:
-                genotypes_df = pd.read_csv(f, na_values="").query(
-                    f"sample_set == '{sample_set}'"
-                )
-
-            debug("join catalogs")
-            df = pd.merge(
-                left=alignments_df, right=genotypes_df, on="sample_id", how="inner"
-            )
-
-            debug("normalise columns")
-            df = df[["sample_id", "bam_path", "vcf_path", "zarr_path"]]
-            df = df.rename(
-                columns={
-                    "bam_path": "alignments_bam",
-                    "vcf_path": "snp_genotypes_vcf",
-                    "zarr_path": "snp_genotypes_zarr",
-                }
-            )
-
-        else:
-
-            debug("load data catalog")
-            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
-            with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="")
-
-            debug("normalise columns")
-            df = df[
-                [
-                    "sample_id",
-                    "alignments_bam",
-                    "snp_genotypes_vcf",
-                    "snp_genotypes_zarr",
-                ]
-            ]
+        debug("load data catalog")
+        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
+        with self._fs.open(path) as f:
+            df = pd.read_csv(f, na_values="")
 
         return df
 
@@ -5674,6 +5627,7 @@ class Ag3(AnophelesDataResource):
     ):
         """Run a H1X genome-wide scan to detect genome regions with
         shared selective sweeps between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -5699,12 +5653,14 @@ class Ag3(AnophelesDataResource):
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
             Random seed used for down-sampling.
+
         Returns
         -------
         x : numpy.ndarray
             An array containing the window centre point genomic positions.
         h1x : numpy.ndarray
             An array with H1X statistic values for each window.
+
         """
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -5800,6 +5756,7 @@ class Ag3(AnophelesDataResource):
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -5835,10 +5792,12 @@ class Ag3(AnophelesDataResource):
             If True, show the plot.
         x_range : bokeh.models.Range1d, optional
             X axis range (for linking to other tracks).
+
         Returns
         -------
         fig : figure
             A plot showing windowed H1X statistic across chosen contig.
+
         """
 
         import bokeh.models as bkmod
@@ -5915,6 +5874,7 @@ class Ag3(AnophelesDataResource):
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -5948,10 +5908,12 @@ class Ag3(AnophelesDataResource):
             GWSS track height in pixels (px).
         genes_height : int. optional
             Gene track height in pixels (px).
+
         Returns
         -------
         fig : figure
             A plot showing windowed H1X statistic with gene track on x-axis.
+
         """
 
         import bokeh.layouts as bklay
@@ -6009,6 +5971,7 @@ class Ag3(AnophelesDataResource):
         **kwargs,
     ):
         """Hierarchically cluster haplotypes in region and produce an interactive plot.
+
         Parameters
         ----------
         region: str or list of str or Region or list of Region
@@ -6057,6 +6020,12 @@ class Ag3(AnophelesDataResource):
             The figure width in pixels
         height: int, optional
             The figure height in pixels
+
+        Returns
+        -------
+        fig : Figure
+            Plotly figure.
+
         """
         import plotly.express as px
         from scipy.cluster.hierarchy import linkage
@@ -6138,9 +6107,19 @@ class Ag3(AnophelesDataResource):
             hoverinfo="y",
             line=dict(width=0.5, color="black"),
         )
+
+        title_lines = []
+        if sample_sets is not None:
+            title_lines.append(f"sample sets: {sample_sets}")
+        if sample_query is not None:
+            title_lines.append(f"sample query: {sample_query}")
+        title_lines.append(f"genomic region: {region} ({ht.shape[0]} SNPs)")
+        title = "<br>".join(title_lines)
+
         fig.update_layout(
             width=width,
             height=height,
+            title=title,
             autosize=True,
             hovermode="closest",
             plot_bgcolor="white",
@@ -6179,7 +6158,7 @@ class Ag3(AnophelesDataResource):
             )
         )
 
-        fig.show()
+        return fig
 
     def plot_haplotype_network(
         self,
@@ -6336,23 +6315,32 @@ class Ag3(AnophelesDataResource):
 
         debug("setup colors")
         color_values = None
+        color_values_display = None
+        color_discrete_map = None
+        color_discrete_map_display = None
         ht_color_counts = None
-        color_params = None
         if color is not None:
 
+            # sanitise color column - necessary to avoid grey pie chart segments
+            df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
+
             # extract all unique values of the color column
-            color_values = df_haps[color].unique()
+            color_values = df_haps["partition"].unique()
+            color_values_mapping = dict(zip(df_haps["partition"], df_haps[color]))
+            color_values_display = [color_values_mapping[c] for c in color_values]
 
             # count color values for each distinct haplotype
             ht_color_counts = [
-                df_haps.iloc[list(s)][color].value_counts().to_dict()
+                df_haps.iloc[list(s)]["partition"].value_counts().to_dict()
                 for s in ht_distinct_sets
             ]
 
             if color == "taxon":
-                # special case, standardise taxon colors
+                # special case, standardise taxon colors and order
                 color_params = self._setup_taxon_colors()
                 color_discrete_map = color_params["color_discrete_map"]
+                color_discrete_map_display = color_discrete_map
+                category_orders = color_params["category_orders"]
 
             elif color_discrete_map is None:
 
@@ -6367,10 +6355,11 @@ class Ag3(AnophelesDataResource):
                 color_discrete_map = {
                     v: c for v, c in zip(color_values, cycle(color_discrete_sequence))
                 }
-
-                color_params = {
-                    "color_discrete_map": color_discrete_map,
-                    "category_orders": category_orders,
+                color_discrete_map_display = {
+                    v: c
+                    for v, c in zip(
+                        color_values_display, cycle(color_discrete_sequence)
+                    )
                 }
 
         debug("construct graph")
@@ -6410,6 +6399,7 @@ class Ag3(AnophelesDataResource):
                 node_stylesheet["style"][
                     f"pie-{i + 1}-background-size"
                 ] = f"mapData({v}, 0, 100, 0, 100)"
+        debug(node_stylesheet)
 
         debug("define edge style")
         edge_stylesheet = {
@@ -6431,8 +6421,9 @@ class Ag3(AnophelesDataResource):
         if color is not None:
             legend_fig = plotly_discrete_legend(
                 color=color,
-                color_values=color_values,
-                **color_params,
+                color_values=color_values_display,
+                color_discrete_map=color_discrete_map_display,
+                category_orders=category_orders,
             )
             legend_component = dcc.Graph(
                 id="legend",
@@ -6478,7 +6469,7 @@ class Ag3(AnophelesDataResource):
 
         debug("create dash app")
         app = JupyterDash(
-            "dash cytoscape network",
+            "dash-cytoscape-network",
             # this stylesheet is used to provide support for a rows and columns
             # layout of the components
             external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"],
@@ -6512,17 +6503,18 @@ class Ag3(AnophelesDataResource):
             "define a callback function to display information about the selected node"
         )
 
-        # FIXME: function name should be lowercase
         @app.callback(Output("output", "children"), Input("cytoscape", "tapNodeData"))
-        def displayTapNodeData(data):
+        def display_tap_node_data(data):
             if data is None:
                 return "Click or tap a node for more information."
             else:
                 n = data["count"]
                 text = f"No. haplotypes: {n}"
                 selected_color_data = {
-                    color_v: int(data.get(color_v, 0) * n / 100)
-                    for color_v in color_values
+                    color_v_display: int(data.get(color_v, 0) * n / 100)
+                    for color_v, color_v_display in zip(
+                        color_values, color_values_display
+                    )
                 }
                 selected_color_data = sorted(
                     selected_color_data.items(), key=lambda item: item[1], reverse=True
@@ -6549,6 +6541,328 @@ class Ag3(AnophelesDataResource):
             run_params["width"] = width
         return app.run_server(**run_params)
 
+    def _fst_gwss(
+        self,
+        contig,
+        window_size,
+        sample_sets,
+        cohort1_query,
+        cohort2_query,
+        site_mask,
+        cohort_size,
+        random_seed,
+    ):
+
+        ds_snps1 = self.snp_calls(
+            region=contig,
+            sample_query=cohort1_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        ds_snps2 = self.snp_calls(
+            region=contig,
+            sample_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
+        with self._dask_progress(desc="Compute allele counts for cohort 1"):
+            ac1 = gt1.count_alleles(max_allele=3).compute()
+
+        gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
+        with self._dask_progress(desc="Compute allele counts for cohort 2"):
+            ac2 = gt2.count_alleles(max_allele=3).compute()
+
+        pos = ds_snps1["variant_position"].values
+
+        fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
+        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=x, fst=fst)
+
+        return results
+
+    def fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="gamb_colu_arab",
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run an Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        fst : numpy.ndarray
+            An array with Fst statistic values for each window.
+        """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = "ag3_fst_gwss_v1"
+
+        params = dict(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._fst_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        fst = results["fst"]
+
+        return x, fst
+
+    def plot_fst_gwss_track(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="gamb_colu_arab",
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed Fst statistic across chosen contig.
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # compute Fst
+        x, fst = self.fst_gwss(
+            contig=contig,
+            window_size=window_size,
+            cohort_size=cohort_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            plot_width=width,
+            plot_height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+        )
+
+        # plot Fst
+        fig.circle(
+            x=x,
+            y=fst,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "Fst"
+        fig.yaxis.ticker = [0, 1]
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="gamb_colu_arab",
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=190,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Run and plot an Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed Fst statistic with gene track on x-axis.
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # gwss track
+        fig1 = self.plot_fst_gwss_track(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+        )
+
+        bkplt.show(fig)
+
     def _pbs_gwss(
         self,
         contig,
@@ -6561,8 +6875,6 @@ class Ag3(AnophelesDataResource):
         cohort_size,
         random_seed,
     ):
-
-        debug = self._log.debug
 
         ds_snps1 = self.snp_calls(
             region=contig,
@@ -6591,17 +6903,17 @@ class Ag3(AnophelesDataResource):
             random_seed=random_seed,
         )
 
-        debug("computing allele counts for cohort 1")
         gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
-        ac1 = gt1.count_alleles()
+        with self._dask_progress(desc="Compute allele counts for cohort 1"):
+            ac1 = gt1.count_alleles(max_allele=3).compute()
 
-        debug("computing allele counts for cohort 2")
         gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
-        ac2 = gt2.count_alleles()
+        with self._dask_progress(desc="Compute allele counts for cohort 2"):
+            ac2 = gt2.count_alleles(max_allele=3).compute()
 
-        debug("computing allele counts for cohort 3")
         gt3 = allel.GenotypeDaskArray(ds_snps3["call_genotype"].data)
-        ac3 = gt3.count_alleles()
+        with self._dask_progress(desc="Compute allele counts for cohort 3"):
+            ac3 = gt3.count_alleles(max_allele=3).compute()
 
         pos = ds_snps1["variant_position"].values
 
@@ -6619,13 +6931,13 @@ class Ag3(AnophelesDataResource):
         cohort1_query,
         cohort2_query,
         cohort3_query,
-        site_mask,
+        site_mask="gamb_colu_arab",
         sample_sets=None,
         cohort_size=30,
         random_seed=42,
     ):
-        """Run an pbs genome-wide scan to detect genome regions showing
-        differentiation between two cohorts and an outgroup.
+        """Run a Pbs genome-wide scan to investigate genetic
+            differentiation between two cohorts and an outgroup
         Parameters
         ----------
         contig: str
@@ -6641,7 +6953,7 @@ class Ag3(AnophelesDataResource):
         cohort3_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
@@ -6651,6 +6963,7 @@ class Ag3(AnophelesDataResource):
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
             Random seed used for down-sampling.
+
         Returns
         -------
         x : numpy.ndarray
@@ -6693,7 +7006,7 @@ class Ag3(AnophelesDataResource):
         cohort1_query,
         cohort2_query,
         cohort3_query,
-        site_mask,
+        site_mask="gamb_colu_arab",
         sample_sets=None,
         cohort_size=30,
         random_seed=42,
@@ -6703,8 +7016,8 @@ class Ag3(AnophelesDataResource):
         show=True,
         x_range=None,
     ):
-        """Run and plot a pbs genome-wide scan to detect genome regions
-        with shared selective sweeps between two cohorts.
+        """Run and plot an Pbs genome-wide scan to investigate genetic
+            differentiation between two cohorts and an outgroup
         Parameters
         ----------
         contig: str
@@ -6720,7 +7033,7 @@ class Ag3(AnophelesDataResource):
         cohort3_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
             Site filters mask to apply.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
@@ -6740,6 +7053,7 @@ class Ag3(AnophelesDataResource):
             If True, show the plot.
         x_range : bokeh.models.Range1d, optional
             X axis range (for linking to other tracks).
+
         Returns
         -------
         fig : figure
@@ -6811,7 +7125,7 @@ class Ag3(AnophelesDataResource):
         cohort1_query,
         cohort2_query,
         cohort3_query,
-        site_mask,
+        site_mask="gamb_colu_arab",
         sample_sets=None,
         cohort_size=30,
         random_seed=42,
@@ -6820,8 +7134,8 @@ class Ag3(AnophelesDataResource):
         track_height=190,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
     ):
-        """Run and plot an pbs genome-wide scan to detect genome regions
-        with shared selective sweeps between two cohorts.
+        """Run and plot an Pbs genome-wide scan to investigate genetic
+            differentiation between two cohorts and an outgroup
         Parameters
         ----------
         contig: str
@@ -6837,6 +7151,8 @@ class Ag3(AnophelesDataResource):
         cohort3_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -6853,6 +7169,7 @@ class Ag3(AnophelesDataResource):
             GWSS track height in pixels (px).
         genes_height : int. optional
             Gene track height in pixels (px).
+
         Returns
         -------
         fig : figure

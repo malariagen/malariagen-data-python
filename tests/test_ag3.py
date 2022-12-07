@@ -86,6 +86,13 @@ def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
     return Ag3(url, **kwargs)
 
 
+def test_ag3_repr():
+    ag3 = setup_ag3(check_location=True)
+    assert isinstance(ag3, Ag3)
+    r = repr(ag3)
+    assert isinstance(r, str)
+
+
 def test_sample_metadata_with_aim_species():
     ag3 = setup_ag3(species_analysis="aim_20220528")
 
@@ -3078,6 +3085,38 @@ def test_haplotype_joint_frequencies():
     assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
 
 
+def test_fst_gwss():
+    ag3 = setup_ag3()
+    cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
+    cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    contig = "2L"
+    site_mask = "gamb_colu"
+    window_size = 10_000
+
+    x, fst = ag3.fst_gwss(
+        contig=contig,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        window_size=window_size,
+        site_mask=site_mask,
+        cohort_size=None,
+    )
+
+    # check data
+    assert isinstance(x, np.ndarray)
+    assert isinstance(fst, np.ndarray)
+
+    # check dimensions
+    assert x.ndim == fst.ndim == 1
+    assert x.shape == fst.shape
+
+    # check some values
+    assert_allclose(x[0], 56835.9649, rtol=1e-5), x[0]
+    assert_allclose(fst[0], 0.0405522778148594, rtol=1e-5), fst[0]
+    assert np.all(fst <= 1)
+    assert np.all(np.logical_and(fst >= -0.1, fst <= 1))
+
+
 def test_pbs_gwss():
     ag3 = setup_ag3()
     cohort1_query = "cohort_admin1_year == 'ML-2_gamb_2014'"
@@ -3097,10 +3136,8 @@ def test_pbs_gwss():
         cohort_size=None,
     )
 
-    # check data
     assert isinstance(x, np.ndarray)
     assert isinstance(pbs, np.ndarray)
-
     # check dimensions
     assert x.ndim == pbs.ndim == 1
     assert x.shape == pbs.shape

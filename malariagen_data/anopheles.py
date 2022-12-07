@@ -3337,6 +3337,7 @@ class AnophelesDataResource(ABC):
         """Plot SNPs in a given genome region. SNPs are shown as rectangles,
         with segregating and non-segregating SNPs positioned on different levels,
         and coloured by site filter.
+
         Parameters
         ----------
         region : str
@@ -3362,10 +3363,12 @@ class AnophelesDataResource(ABC):
             Maximum number of SNPs to show.
         show : bool, optional
             If True, show the plot.
+
         Returns
         -------
         fig : Figure
             Bokeh figure.
+
         """
         debug = self._log.debug
 
