@@ -210,77 +210,6 @@ def test_genome(subclass):
 
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_geneset(subclass):
-
-    anoph = setup_subclass(subclass)
-
-    # default
-    df = anoph.geneset()
-    assert isinstance(df, pd.DataFrame)
-    gff3_cols = [
-        "contig",
-        "source",
-        "type",
-        "start",
-        "end",
-        "score",
-        "strand",
-        "phase",
-    ]
-    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
-    assert df.columns.tolist() == expected_cols
-
-    # don't unpack attributes
-    df = anoph.geneset(attributes=None)
-    assert isinstance(df, pd.DataFrame)
-    expected_cols = gff3_cols + ["attributes"]
-    assert df.columns.tolist() == expected_cols
-
-
-@pytest.mark.parametrize(
-    "subclass, region",
-    [
-        (Ag3, "AGAP007280"),
-        (Ag3, "3R:28,000,000-29,000,000"),
-        (Ag3, "2R"),
-        (Ag3, "X"),
-        (Ag3, ["3R", "3L"]),
-        (Af1, "3RL:28,000,000-29,000,000"),
-        (Af1, "gene-LOC125762289"),
-        (Af1, "2RL"),
-        (Af1, "X"),
-        (Af1, ["2RL", "3RL"]),
-    ],
-)
-def test_geneset_region(subclass, region):
-
-    anoph = setup_subclass(subclass)
-
-    df = anoph.geneset(region=region)
-    assert isinstance(df, pd.DataFrame)
-    gff3_cols = [
-        "contig",
-        "source",
-        "type",
-        "start",
-        "end",
-        "score",
-        "strand",
-        "phase",
-    ]
-    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
-    assert df.columns.tolist() == expected_cols
-    assert len(df) > 0
-
-    # check region
-    region = anoph.resolve_region(region)
-    if isinstance(region, Region):
-        assert np.all(df["contig"].values == region.contig)
-        if region.start and region.end:
-            assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_sample_metadata_dtypes(subclass):
 
     expected_dtypes = {
@@ -329,7 +258,11 @@ def test_genome_features(subclass):
         "strand",
         "phase",
     ]
-    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
+    if subclass == Af1:
+        # different default attributes for funestus
+        expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
+    else:
+        expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
     assert df.columns.tolist() == expected_cols
 
     # don't unpack attributes
@@ -348,7 +281,7 @@ def test_genome_features(subclass):
         (Ag3, "X"),
         (Ag3, ["3R", "3L"]),
         (Af1, "3RL:28,000,000-29,000,000"),
-        (Af1, "gene-LOC125762289"),
+        (Af1, "LOC125762289"),
         (Af1, "2RL"),
         (Af1, "X"),
         (Af1, ["2RL", "3RL"]),
@@ -370,7 +303,11 @@ def test_genome_features_region(subclass, region):
         "strand",
         "phase",
     ]
-    expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
+    if subclass == Af1:
+        # different default attributes for funestus
+        expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
+    else:
+        expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
     assert df.columns.tolist() == expected_cols
     assert len(df) > 0
 
