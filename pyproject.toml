@@ -53,6 +53,7 @@ jupyter-dash = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
+pytest-xdist = "*"
 notebook = "*"
 jupyterlab = "*"
 pre-commit = "*"
