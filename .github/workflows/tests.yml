@@ -12,9 +12,9 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - name: Cache GCS data
-        id: cache-gcs
-        uses: actions/cache@v3
+      - name: Restore GCS cache
+        id: cache-restore-gcs
+        uses: actions/cache/restore@v3
         with:
           path: gcs_cache
           key: gcs_cache
@@ -29,3 +29,10 @@ jobs:
         run: poetry install
       - name: Run tests
         run: poetry run pytest -v -n 4
+      - name: Save GCS cache
+        id: cache-save-gcs
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: gcs_cache
+          key: gcs_cache
