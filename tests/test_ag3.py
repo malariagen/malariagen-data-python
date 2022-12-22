@@ -286,9 +286,7 @@ def test_missing_species_calls(analysis):
 
 
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
-@pytest.mark.parametrize(
-    "region", ["2R", ["3R", "3L", "2R:48,714,463-48,715,355", "AGAP007280"]]
-)
+@pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 def test_site_filters(mask, region):
     ag3 = setup_ag3()
     filter_pass = ag3.site_filters(region=region, mask=mask)
@@ -298,9 +296,7 @@ def test_site_filters(mask, region):
 
 
 @pytest.mark.parametrize("chunks", ["auto", "native"])
-@pytest.mark.parametrize(
-    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
-)
+@pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 def test_snp_sites(chunks, region):
 
     ag3 = setup_ag3()
@@ -344,9 +340,7 @@ def test_snp_sites(chunks, region):
     "sample_sets",
     [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
 )
-@pytest.mark.parametrize(
-    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
-)
+@pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 def test_snp_genotypes(chunks, sample_sets, region):
 
     ag3 = setup_ag3()
@@ -407,9 +401,7 @@ def test_snp_genotypes(chunks, sample_sets, region):
     "sample_sets",
     [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
 )
-@pytest.mark.parametrize(
-    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
-)
+@pytest.mark.parametrize("region", ["X"])
 def test_snp_genotypes_chunks(sample_sets, region):
 
     ag3 = setup_ag3()
@@ -431,7 +423,7 @@ def test_snp_genotypes_chunks(sample_sets, region):
 
 @pytest.mark.parametrize(
     "region",
-    ["AGAP007280", "2R:48714463-48715355", "2R", "X"],
+    ["AGAP007280", "2R:48714463-48715355", "3L"],
 )
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
 def test_is_accessible(region, mask):
@@ -463,7 +455,7 @@ def test_cross_metadata():
     assert df_crosses["sex"].unique().tolist() == expected_sex_values
 
 
-@pytest.mark.parametrize("region", ["2R", "X", "AGAP007280", "2R:48714463-48715355"])
+@pytest.mark.parametrize("region", ["3L", "AGAP007280", "2R:48714463-48715355"])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_site_annotations(region, site_mask):
 
@@ -494,9 +486,7 @@ def test_site_annotations(region, site_mask):
     "sample_sets",
     [None, "AG1000G-X", ["AG1000G-BF-A", "AG1000G-BF-B"], "3.0"],
 )
-@pytest.mark.parametrize(
-    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
-)
+@pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_snp_calls(sample_sets, region, site_mask):
 
@@ -1648,9 +1638,7 @@ def test_gene_cnv_frequencies__missing_samples():
     "sample_sets",
     ["AG1000G-BF-A", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
 )
-@pytest.mark.parametrize(
-    "region", ["2R", ["3R", "2R:48,714,463-48,715,355", "AGAP007280"]]
-)
+@pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
 def test_haplotypes(sample_sets, region, analysis):
 
@@ -1899,7 +1887,7 @@ def test_sample_cohorts(sample_sets):
         "AGAP007280",
         "3L",
         "2R:48714463-48715355",
-        "2L:24,630,355-24,633,221",
+        "2R:24,630,355-24,633,221",
         Region("2R", 48714463, 48715355),
     ],
 )
@@ -1940,7 +1928,7 @@ def test_locate_region(region_raw):
     # check string parsing
     if region_raw == "2R:48714463-48715355":
         assert region == Region("2R", 48714463, 48715355)
-    if region_raw == "2L:24,630,355-24,633,221":
+    if region_raw == "2R:24,630,355-24,633,221":
         assert region == Region("2L", 24630355, 24633221)
 
 
