@@ -2,7 +2,7 @@ name: notebooks
 on: pull_request
 
 jobs:
-  ci:
+  notebooks:
     strategy:
       fail-fast: true
       matrix:

@@ -2,10 +2,9 @@ name: linting
 on: pull_request
 
 jobs:
-  ci:
+  linting:
     strategy:
       fail-fast: true
-  linting:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
