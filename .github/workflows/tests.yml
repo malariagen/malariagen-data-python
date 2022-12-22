@@ -28,7 +28,7 @@ jobs:
       - name: Install dependencies
         run: poetry install
       - name: Run tests
-        run: poetry run pytest -v -n 4
+        run: poetry run pytest -v
       - name: Save GCS cache
         id: cache-save-gcs
         uses: actions/cache/save@v3
