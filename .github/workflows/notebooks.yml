@@ -11,27 +11,32 @@ jobs:
         os: [ubuntu-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v3
+
+      - name: Checkout source
+        uses: actions/checkout@v3
+
       - name: Restore GCS cache
-        id: cache-restore-gcs
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
           key: gcs_cache_notebooks
-      - uses: actions/setup-python@v4
+
+      - name: Install poetry
+        run: pipx install poetry==${{ matrix.poetry-version }}
+
+      - name: Setup python
+        uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'poetry'
-      - name: Setup poetry
-        uses: abatilo/actions-poetry@v2
-        with:
-          poetry-version: ${{ matrix.poetry-version }}
+
       - name: Install dependencies
         run: poetry install
+
       - name: Run notebooks
-        run: poetry run jupyter nbconvert --execute notebooks/*  --inplace
+        run: poetry run jupyter nbconvert --execute notebooks/* --inplace
+
       - name: Save GCS cache
-        id: cache-save-gcs
         uses: actions/cache/save@v3
         if: always()
         with:
