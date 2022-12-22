@@ -1,6 +1,11 @@
 name: notebooks
-on: pull_request
-
+on:
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master
 jobs:
   notebooks:
     strategy:
