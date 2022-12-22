@@ -85,7 +85,7 @@ class Af1(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> af1 = malariagen_data.Af1(
-        ...     "simplecache::gs://vo_afub_release",
+        ...     "simplecache::gs://vo_afun_release",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 
@@ -396,3 +396,39 @@ class Af1(AnophelesDataResource):
 
         ac = results["ac"]
         return ac
+
+    def genome_features(
+        self, region=None, attributes=("ID", "Parent", "Note", "description")
+    ):
+        """Access genome feature annotations.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2RL"), gene name (e.g., "LOC125767311"), genomic
+            region defined with coordinates (e.g., "2RL:44,989,425-44,998,059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["2RL", "3RL"].
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. Provide "*" to unpack all
+            attributes.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of genome annotations, one row per feature.
+
+        """
+
+        # Here we override the superclass implementation in order to provide a
+        # different default value for the `attributes` parameter, because the
+        # genome annotations don't include a "Name" attribute but do include a
+        # "Note" attribute which is probably useful to include instead.
+        #
+        # Also, we take the opportunity to customise the docstring to use
+        # examples specific to funestus.
+        #
+        # See also https://github.com/malariagen/malariagen-data-python/issues/306
+
+        return super().genome_features(region=region, attributes=attributes)
