@@ -1,6 +1,6 @@
 {
   "default_url": "gs://pf7_release/",
-  "metadata_path": "metadata/Pf_7_samples.txt",
+  "metadata_path": "metadata/Pf7_samples.txt",
   "reference_path": "reference/Pfalciparum.genome.zarr",
   "reference_contigs": [
     "Pf3D7_01_v3",
