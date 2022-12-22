@@ -1929,7 +1929,7 @@ def test_locate_region(region_raw):
     if region_raw == "2R:48714463-48715355":
         assert region == Region("2R", 48714463, 48715355)
     if region_raw == "2R:24,630,355-24,633,221":
-        assert region == Region("2L", 24630355, 24633221)
+        assert region == Region("2R", 24630355, 24633221)
 
 
 def test_aa_allele_frequencies():
