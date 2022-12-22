@@ -17,7 +17,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache
+          key: gcs_cache_tests
       - uses: actions/setup-python@v4
         with:
           python-version: ${{ matrix.python-version }}
@@ -35,4 +35,4 @@ jobs:
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache
+          key: gcs_cache_tests
