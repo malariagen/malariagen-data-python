@@ -50,7 +50,6 @@ dash = "*"
 dash-cytoscape = "*"
 jupyter-dash = "*"
 
-
 [tool.poetry.dev-dependencies]
 pytest = "*"
 pytest-xdist = "*"
