@@ -258,7 +258,16 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError("Must override results_cache_set")
 
     @abstractmethod
-    def snp_allele_counts(self, region, sample_sets, sample_query, site_mask):
+    def snp_allele_counts(
+        self,
+        region,
+        sample_sets,
+        sample_query,
+        site_mask,
+        site_class,
+        cohort_size,
+        random_seed,
+    ):
         # Ag3 has cohorts and species. Subclasses have different cache names.
         raise NotImplementedError("Must override snp_allele_counts")
 
@@ -514,10 +523,7 @@ class AnophelesDataResource(ABC):
 
         # this implementation is based on scikit-allel, but modified to use
         # moving window computation of het counts
-        # FIXME: access to a protected member
         from allel.stats.roh import _hmm_derive_transition_matrix
-
-        # FIXME: unresolved references
         from pomegranate import HiddenMarkovModel, PoissonDistribution
 
         # het probabilities
@@ -3328,6 +3334,7 @@ class AnophelesDataResource(ABC):
         sample_sets=None,
         sample_query=None,
         site_mask="default",
+        cohort_size=None,
         width=800,
         track_height=80,
         genes_height=120,
@@ -3352,7 +3359,10 @@ class AnophelesDataResource(ABC):
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Site filters mask to apply, e.g. "gamb_colu".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size before
+            computing allele counts.
         width : int, optional
             Width of plot in pixels (px).
         track_height : int, optional
@@ -3379,12 +3389,12 @@ class AnophelesDataResource(ABC):
         import bokeh.plotting as bkplt
 
         debug("plot SNPs track")
-        # FIXME: parameter 'x_range' unfilled
         fig1 = self.plot_snps_track(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
+            cohort_size=cohort_size,
             width=width,
             height=track_height,
             max_snps=max_snps,
@@ -3431,6 +3441,7 @@ class AnophelesDataResource(ABC):
         sample_sets=None,
         sample_query=None,
         site_mask="default",
+        cohort_size=None,
         width=800,
         height=120,
         max_snps=200_000,
@@ -3455,7 +3466,10 @@ class AnophelesDataResource(ABC):
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Site filters mask to apply, e.g. "gamb_colu".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size before
+            computing allele counts.
         width : int, optional
             Width of plot in pixels (px).
         height : int, optional
@@ -3498,6 +3512,7 @@ class AnophelesDataResource(ABC):
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 site_mask=None,
+                cohort_size=cohort_size,
             )
         )
         an = ac.sum(axis=1)
