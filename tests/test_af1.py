@@ -86,7 +86,7 @@ def test_sample_metadata():
 
 @pytest.mark.parametrize(
     "region",
-    ["2RL", ["2RL", "3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
+    ["X", ["2RL:48,714,463-48,715,355", "LOC125762289"]],
 )
 def test_site_filters(region):
     af1 = setup_af1()
@@ -96,18 +96,17 @@ def test_site_filters(region):
     assert filter_pass.dtype == bool
 
 
-@pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "region",
-    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
+    ["X", ["2RL:48,714,463-48,715,355", "LOC125762289"]],
 )
-def test_snp_sites(chunks, region):
+def test_snp_sites(region):
 
     af1 = setup_af1()
 
-    pos = af1.snp_sites(region=region, field="POS", chunks=chunks)
-    ref = af1.snp_sites(region=region, field="REF", chunks=chunks)
-    alt = af1.snp_sites(region=region, field="ALT", chunks=chunks)
+    pos = af1.snp_sites(region=region, field="POS")
+    ref = af1.snp_sites(region=region, field="REF")
+    alt = af1.snp_sites(region=region, field="ALT")
     assert isinstance(pos, da.Array)
     assert pos.ndim == 1
     assert pos.dtype == "i4"
@@ -122,22 +121,19 @@ def test_snp_sites(chunks, region):
     # apply site mask
     filter_pass = af1.site_filters(region=region, mask="funestus").compute()
     n_pass = np.count_nonzero(filter_pass)
-    pos_pass = af1.snp_sites(
-        region=region, field="POS", site_mask="funestus", chunks=chunks
-    )
+    pos_pass = af1.snp_sites(region=region, field="POS", site_mask="funestus")
     assert isinstance(pos_pass, da.Array)
     assert pos_pass.ndim == 1
     assert pos_pass.dtype == "i4"
     assert pos_pass.shape[0] == n_pass
     assert pos_pass.compute().shape == pos_pass.shape
     for f in "POS", "REF", "ALT":
-        d = af1.snp_sites(region=region, site_mask="funestus", field=f, chunks=chunks)
+        d = af1.snp_sites(region=region, site_mask="funestus", field=f)
         assert isinstance(d, da.Array)
         assert d.shape[0] == n_pass
         assert d.shape == d.compute().shape
 
 
-@pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -149,48 +145,36 @@ def test_snp_sites(chunks, region):
 )
 @pytest.mark.parametrize(
     "region",
-    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
+    ["X", ["2RL:48,714,463-48,715,355", "LOC125762289"]],
 )
-def test_snp_genotypes(chunks, sample_sets, region):
+def test_snp_genotypes(sample_sets, region):
 
     af1 = setup_af1()
 
     df_samples = af1.sample_metadata(sample_sets=sample_sets)
-    gt = af1.snp_genotypes(region=region, sample_sets=sample_sets, chunks=chunks)
+    gt = af1.snp_genotypes(region=region, sample_sets=sample_sets)
     assert isinstance(gt, da.Array)
     assert gt.ndim == 3
     assert gt.dtype == "i1"
     assert gt.shape[1] == len(df_samples)
 
     # specific fields
-    x = af1.snp_genotypes(
-        region=region, sample_sets=sample_sets, field="GT", chunks=chunks
-    )
+    x = af1.snp_genotypes(region=region, sample_sets=sample_sets, field="GT")
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i1"
 
-    x = af1.snp_genotypes(
-        region=region, sample_sets=sample_sets, field="GQ", chunks=chunks
-    )
+    x = af1.snp_genotypes(region=region, sample_sets=sample_sets, field="GQ")
     assert isinstance(x, da.Array)
     assert x.ndim == 2
-    # FIXME: test_ag3.py asserts this instead, which only passes for Ag3.0 (not Ag3.x):
-    # assert x.dtype == "i2"
     assert x.dtype == "int8"
 
-    x = af1.snp_genotypes(
-        region=region, sample_sets=sample_sets, field="MQ", chunks=chunks
-    )
+    x = af1.snp_genotypes(region=region, sample_sets=sample_sets, field="MQ")
     assert isinstance(x, da.Array)
     assert x.ndim == 2
-    # FIXME: test_ag3.py asserts this instead, which only passes for Ag3.0 (not Ag3.x)
-    # assert x.dtype == "i2"
     assert x.dtype == "float32"
 
-    x = af1.snp_genotypes(
-        region=region, sample_sets=sample_sets, field="AD", chunks=chunks
-    )
+    x = af1.snp_genotypes(region=region, sample_sets=sample_sets, field="AD")
     assert isinstance(x, da.Array)
     assert x.ndim == 3
     assert x.dtype == "i2"
@@ -201,7 +185,6 @@ def test_snp_genotypes(chunks, sample_sets, region):
         region=region,
         sample_sets=sample_sets,
         site_mask="funestus",
-        chunks=chunks,
     )
     assert isinstance(gt_pass, da.Array)
     assert gt_pass.ndim == 3
@@ -222,7 +205,7 @@ def test_snp_genotypes(chunks, sample_sets, region):
 )
 @pytest.mark.parametrize(
     "region",
-    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
+    ["X"],
 )
 def test_snp_genotypes_chunks(sample_sets, region):
 
@@ -254,7 +237,7 @@ def test_snp_genotypes_chunks(sample_sets, region):
 )
 @pytest.mark.parametrize(
     "region",
-    ["2RL", ["3RL", "2RL:48,714,463-48,715,355", "gene-LOC125762289"]],
+    ["X", ["2RL:48,714,463-48,715,355", "LOC125762289"]],
 )
 @pytest.mark.parametrize(
     "site_mask",
@@ -351,7 +334,7 @@ def test_snp_calls(sample_sets, region, site_mask):
 
 @pytest.mark.parametrize(
     "region",
-    ["gene-LOC125762289", "2RL:48714463-48715355", "3RL", "X"],
+    ["X", "LOC125762289", "2RL:48714463-48715355"],
 )
 def test_is_accessible(region):
 
@@ -366,8 +349,8 @@ def test_is_accessible(region):
 @pytest.mark.parametrize(
     "region_raw",
     [
-        "gene-LOC125762289",
-        "3RL",
+        "LOC125762289",
+        "X",
         "2RL:48714463-48715355",
         "2RL:24,630,355-24,633,221",
         Region("2RL", 48714463, 48715355),
@@ -387,8 +370,8 @@ def test_locate_region(region_raw):
     assert isinstance(region, Region)
 
     # check Region with contig
-    if region_raw == "3RL":
-        assert region.contig == "3RL"
+    if region_raw == "X":
+        assert region.contig == "X"
         assert region.start is None
         assert region.end is None
 
@@ -397,8 +380,8 @@ def test_locate_region(region_raw):
         assert region == region_raw
 
     # check that gene name matches coordinates from the geneset and matches gene sequence
-    if region_raw == "gene-LOC125762289":
-        gene = gene_annotation.query("ID == 'gene-LOC125762289'").squeeze()
+    if region_raw == "LOC125762289":
+        gene = gene_annotation.query("ID == 'LOC125762289'").squeeze()
         assert region == Region(gene.contig, gene.start, gene.end)
         assert pos[loc_region][0] == gene.start
         assert pos[loc_region][-1] == gene.end
@@ -415,8 +398,7 @@ def test_locate_region(region_raw):
         assert region == Region("2RL", 24630355, 24633221)
 
 
-# FIXME: testing "2RL" via CI causes exit code 137 (out of memory)
-@pytest.mark.parametrize("region", ["X", "gene-LOC125762289", "2RL:48714463-48715355"])
+@pytest.mark.parametrize("region", ["X", "LOC125762289", "2RL:48714463-48715355"])
 @pytest.mark.parametrize("site_mask", [None, "funestus"])
 def test_site_annotations(region, site_mask):
 

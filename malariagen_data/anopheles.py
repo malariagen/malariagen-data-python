@@ -2266,7 +2266,7 @@ class AnophelesDataResource(ABC):
     def genome_features(
         self, region=None, attributes=("ID", "Parent", "Name", "description")
     ):
-        """Access genome feature annotations (e.g. AgamP4.12, idAnoFuneDA-416_04).
+        """Access genome feature annotations.
 
         Parameters
         ----------
@@ -3472,7 +3472,6 @@ class AnophelesDataResource(ABC):
         fig : Figure
             Bokeh figure.
 
-
         """
         debug = self._log.debug
 
@@ -3498,6 +3497,7 @@ class AnophelesDataResource(ABC):
                 region=region,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
+                site_mask=None,
             )
         )
         an = ac.sum(axis=1)

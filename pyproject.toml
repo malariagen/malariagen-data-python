@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "malariagen_data"
-version = "7.1.1"
+version = "0.0.0"
 description = "A package for accessing and analysing MalariaGEN data."
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
@@ -50,9 +50,9 @@ dash = "*"
 dash-cytoscape = "*"
 jupyter-dash = "*"
 
-
 [tool.poetry.dev-dependencies]
 pytest = "*"
+pytest-xdist = "*"
 notebook = "*"
 jupyterlab = "*"
 pre-commit = "*"
@@ -60,8 +60,13 @@ black = "*"
 snakeviz = "*"
 
 [build-system]
-requires = ["poetry-core>=1.0.0"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.isort]
 profile = "black"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"

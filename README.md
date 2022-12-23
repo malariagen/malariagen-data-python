@@ -584,23 +584,26 @@ Fork and clone this repo:
 $ git clone git@github.com:[username]/malariagen-data-python.git
 ```
 
-Install [poetry](https://python-poetry.org/docs/#installation) >=1.2.0b3 somehow, e.g.:
+Install [poetry](https://python-poetry.org/docs/#installation) 1.3.1 somehow, e.g.:
 
 ```bash
-$ python3.7 -m install poetry==1.2.0b3
+$ sudo apt install python3.7-venv
+$ python3.7 -m pip install --user pipx
+$ python3.7 -m pipx ensurepath
+$ pipx install poetry==1.3.1
 ```
 
 Create development environment:
 
 ```bash
 $ cd malariagen-data-python
-$ python3.7 -m poetry install
+$ poetry install
 ```
 
 Activate development environment:
 
 ```bash
-$ python3.7 -m poetry shell
+$ poetry shell
 ```
 
 Install pre-commit hooks:
@@ -618,41 +621,10 @@ $ pre-commit run --all-files
 Run tests:
 
 ```bash
-$ python3.7 -m run pytest -v
+$ poetry run pytest -v
 ```
 
 ## Release process
 
-To create a new release...
-
-1. From master, create a new local branch named "vX.X.X-prep"
-replacing "X.X.X" with the new version number.
-
-2. Open pyproject.toml in a text editor and change the `version`
-property to the new version number.
-
-3. Open README.md in a text editor and add a new subsection in the
-release notes section with some information about the changes in the
-new release.
-
-4. Commit the changes to pyproject.toml and README.md, open a pull
-request with the title "vX.X.X release prep", and request a review.
-
-5. Once the PR is approved, merge to master, then create a GitHub
-release, using the new version number as the release tag.
-
-6. Back on your local system, run git pull to update your master
-branch and fetch remote tags, then run `git checkout vX.X.X` to check
-out the release tag locally.
-
-7. Run:
-
-```
-$ python3.7 -m poetry build
-$ python3.7 -m poetry publish
-```
-
-You will need a PyPI username and password, and will need to be added
-as a maintained of the malariagen_data package on PyPI.
-
-N.B., release numbers should follow semantic versioning.
+Create a new GitHub release. That's it. This will automatically
+trigger publishing of a new release to PyPI via GitHub actions.

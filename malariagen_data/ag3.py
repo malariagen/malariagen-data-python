@@ -5147,8 +5147,8 @@ class Ag3(AnophelesDataResource):
 
         Returns
         -------
-        calibration runs : list of numpy.ndarrays
-            A list of h12 calibration run arrays for each window size, containing
+        calibration runs : list of numpy.ndarray
+            A list of H12 calibration run arrays for each window size, containing
             values and percentiles.
 
         """
@@ -6316,7 +6316,6 @@ class Ag3(AnophelesDataResource):
         debug("setup colors")
         color_values = None
         color_values_display = None
-        color_discrete_map = None
         color_discrete_map_display = None
         ht_color_counts = None
         if color is not None:
@@ -6599,8 +6598,9 @@ class Ag3(AnophelesDataResource):
         cohort_size=30,
         random_seed=42,
     ):
-        """Run an Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
+        """Run a Fst genome-wide scan to investigate genetic differentiation
+        between two cohorts.
+
         Parameters
         ----------
         contig: str
@@ -6631,6 +6631,7 @@ class Ag3(AnophelesDataResource):
         fst : numpy.ndarray
             An array with Fst statistic values for each window.
         """
+
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = "ag3_fst_gwss_v1"
@@ -6787,8 +6788,9 @@ class Ag3(AnophelesDataResource):
         track_height=190,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
     ):
-        """Run and plot an Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
+        """Run and plot a Fst genome-wide scan to investigate genetic
+        differentiation between two cohorts.
+
         Parameters
         ----------
         contig: str
