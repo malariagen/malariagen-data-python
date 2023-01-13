@@ -34,7 +34,6 @@ GENOME_REF_ID = "idAnoFuneDA-416_04"
 GENOME_REF_NAME = "Anopheles funestus"
 
 CONTIGS = "2RL", "3RL", "X"
-DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 
 DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
@@ -108,17 +107,20 @@ class Af1(AnophelesDataResource):
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
+    _cohorts_analysis = None
+    _site_filters_analysis = None
 
     def __init__(
         self,
         url=GCS_URL,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
         debug=False,
         show_progress=True,
         check_location=True,
+        cohorts_analysis=None,
+        site_filters_analysis=None,
         pre=False,
         **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
@@ -140,6 +142,16 @@ class Af1(AnophelesDataResource):
         path = f"{self._base_path}/v1.0-config.json"
         with self._fs.open(path) as f:
             self._config = json.load(f)
+
+        if cohorts_analysis is None:
+            self._cohorts_analysis = self._config["DEFAULT_COHORTS_ANALYSIS"]
+        else:
+            self._cohorts_analysis = cohorts_analysis
+
+        if site_filters_analysis is None:
+            self._site_filters_analysis = self._config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+        else:
+            self._site_filters_analysis = site_filters_analysis
 
     @property
     def _public_releases(self):
@@ -241,24 +253,25 @@ class Af1(AnophelesDataResource):
     # TODO: generalise (species, cohorts) so we can abstract to parent class
     def _sample_metadata(self, *, sample_set):
         df = self._read_general_metadata(sample_set=sample_set)
-        # TODO: when cohorts are available
-        # df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
-        # df = df.merge(df_cohorts, on="sample_id", sort=False)
+        df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
+        df = df.merge(df_cohorts, on="sample_id", sort=False)
         return df
 
     def _transcript_to_gene_name(self, transcript):
         df_genome_features = self.genome_features().set_index("ID")
         rec_transcript = df_genome_features.loc[transcript]
         parent = rec_transcript["Parent"]
-        rec_parent = df_genome_features.loc[parent]
 
-        # TODO: tailor to Af
-        # manual overrides
+        # E.g. manual overrides (used in Ag3)
         # if parent == "AGAP004707":
         #     parent_name = "Vgsc/para"
         # else:
         #     parent_name = rec_parent["Name"]
-        parent_name = rec_parent["Name"]
+
+        # Note: Af1 doesn't have the "Name" attribute
+        # rec_parent = df_genome_features.loc[parent]
+        # parent_name = rec_parent["Name"]
+        parent_name = parent
 
         return parent_name
 

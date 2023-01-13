@@ -147,6 +147,8 @@ class Ag3(AnophelesDataResource):
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
+    _cohorts_analysis = None
+    _site_filters_analysis = None
 
     def __init__(
         self,
@@ -186,10 +188,12 @@ class Ag3(AnophelesDataResource):
             self._cohorts_analysis = self._config["DEFAULT_COHORTS_ANALYSIS"]
         else:
             self._cohorts_analysis = cohorts_analysis
+
         if species_analysis is None:
             self._species_analysis = self._config["DEFAULT_SPECIES_ANALYSIS"]
         else:
             self._species_analysis = species_analysis
+
         if site_filters_analysis is None:
             self._site_filters_analysis = self._config["DEFAULT_SITE_FILTERS_ANALYSIS"]
         else:
@@ -524,168 +528,6 @@ class Ag3(AnophelesDataResource):
             return "gamb_colu_arab", "gamb_colu", "arab"
         else:
             raise ValueError
-
-    def snp_allele_frequencies(
-        self,
-        transcript,
-        cohorts,
-        sample_query=None,
-        min_cohort_size=10,
-        site_mask=None,
-        sample_sets=None,
-        drop_invariant=True,
-        effects=True,
-    ):
-        """Compute per variant allele frequencies for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int
-            Minimum cohort size. Any cohorts below this size are omitted.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        effects : bool, optional
-            If True, add SNP effect columns.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of SNP frequencies, one row per variant.
-
-        Notes
-        -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from
-        output.
-
-        """
-        debug = self._log.debug
-
-        debug("check parameters")
-        self._check_param_min_cohort_size(min_cohort_size)
-
-        debug("access sample metadata")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        debug("setup initial dataframe of SNPs")
-        region, df_snps = self._snp_df(transcript=transcript)
-
-        debug("get genotypes")
-        gt = self.snp_genotypes(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            field="GT",
-        )
-
-        debug("slice to feature location")
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gt = gt.compute()
-
-        debug("build coh dict")
-        coh_dict = self._locate_cohorts(cohorts=cohorts, df_samples=df_samples)
-
-        debug("count alleles")
-        freq_cols = dict()
-        cohorts_iterator = self._progress(
-            coh_dict.items(), desc="Compute allele frequencies"
-        )
-        for coh, loc_coh in cohorts_iterator:
-            n_samples = np.count_nonzero(loc_coh)
-            debug(f"{coh}, {n_samples} samples")
-            if n_samples >= min_cohort_size:
-                gt_coh = np.compress(loc_coh, gt, axis=1)
-                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
-                af_coh = ac_coh.to_frequencies()
-                freq_cols["frq_" + coh] = af_coh[:, 1:].flatten()
-
-        debug("build a dataframe with the frequency columns")
-        df_freqs = pd.DataFrame(freq_cols)
-
-        debug("compute max_af")
-        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
-
-        debug("build the final dataframe")
-        df_snps.reset_index(drop=True, inplace=True)
-        df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
-
-        debug("apply site mask if requested")
-        if site_mask is not None:
-            loc_sites = df_snps[f"pass_{site_mask}"]
-            df_snps = df_snps.loc[loc_sites]
-
-        debug("drop invariants")
-        if drop_invariant:
-            loc_variant = df_snps["max_af"] > 0
-            df_snps = df_snps.loc[loc_variant]
-
-        debug("reset index after filtering")
-        df_snps.reset_index(inplace=True, drop=True)
-
-        if effects:
-
-            debug("add effect annotations")
-            ann = self._annotator()
-            ann.get_effects(
-                transcript=transcript, variants=df_snps, progress=self._progress
-            )
-
-            debug("add label")
-            df_snps["label"] = self._pandas_apply(
-                self._make_snp_label_effect,
-                df_snps,
-                columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-            )
-
-            debug("set index")
-            df_snps.set_index(
-                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-                inplace=True,
-            )
-
-        else:
-
-            debug("add label")
-            df_snps["label"] = self._pandas_apply(
-                self._make_snp_label,
-                df_snps,
-                columns=["contig", "position", "ref_allele", "alt_allele"],
-            )
-
-            debug("set index")
-            df_snps.set_index(
-                ["contig", "position", "ref_allele", "alt_allele"],
-                inplace=True,
-            )
-
-        debug("add dataframe metadata")
-        gene_name = self._transcript_to_gene_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
-        title += " SNP frequencies"
-        df_snps.attrs["title"] = title
-
-        return df_snps
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses,
@@ -1894,83 +1736,6 @@ class Ag3(AnophelesDataResource):
             ds = ds.isel(samples=loc_downsample)
 
         return ds
-
-    def _read_cohort_metadata(self, *, sample_set):
-        """Read cohort metadata for a single sample set."""
-        try:
-            df = self._cache_cohort_metadata[sample_set]
-        except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path_prefix = f"{self._base_path}/{release_path}/metadata"
-            path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohort metadata files exist, need to handle FileNotFoundError
-            try:
-                with self._fs.open(path) as f:
-                    df = pd.read_csv(f, na_values="")
-
-                # ensure all column names are lower case
-                df.columns = [c.lower() for c in df.columns]
-
-                # rename some columns for consistent naming
-                df.rename(
-                    columns={
-                        "adm1_iso": "admin1_iso",
-                        "adm1_name": "admin1_name",
-                        "adm2_name": "admin2_name",
-                    },
-                    inplace=True,
-                )
-            except FileNotFoundError:
-                # Specify cohort_cols
-                cohort_cols = (
-                    "country_iso",
-                    "admin1_name",
-                    "admin1_iso",
-                    "admin2_name",
-                    "taxon",
-                    "cohort_admin1_year",
-                    "cohort_admin1_month",
-                    "cohort_admin2_year",
-                    "cohort_admin2_month",
-                )
-
-                # Get sample ids as an index via general metadata (has caching)
-                df_general = self._read_general_metadata(sample_set=sample_set)
-                df_general.set_index("sample_id", inplace=True)
-
-                # Create a blank DataFrame with cohort_cols and sample_id index
-                df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
-
-                # Revert sample_id index to column
-                df.reset_index(inplace=True)
-
-            self._cache_cohort_metadata[sample_set] = df
-        return df.copy()
-
-    def sample_cohorts(self, sample_sets=None):
-        """Access cohorts metadata for one or more sample sets.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of cohort metadata, one row per sample.
-
-        """
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
-
-        # concatenate multiple sample sets
-        dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
-        df = pd.concat(dfs, axis=0, ignore_index=True)
-
-        return df
 
     def aa_allele_frequencies(
         self,

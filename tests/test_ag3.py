@@ -711,38 +711,6 @@ def test_snp_effects():
     assert df.iloc[674].effect == "INTRONIC"
 
 
-def test_snp_allele_frequencies__str_cohorts():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
-    cohorts = "admin1_month"
-    min_cohort_size = 10
-    universal_fields = [
-        "pass_gamb_colu_arab",
-        "pass_gamb_colu",
-        "pass_arab",
-        "label",
-    ]
-    df = ag3.snp_allele_frequencies(
-        transcript="AGAP004707-RD",
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask="gamb_colu",
-        sample_sets="3.0",
-        drop_invariant=True,
-        effects=False,
-    )
-    df_coh = ag3.sample_cohorts(sample_sets="3.0")
-    coh_nm = "cohort_" + cohorts
-    coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
-    cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
-    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
-    expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
-
-    assert isinstance(df, pd.DataFrame)
-    assert sorted(df.columns.tolist()) == sorted(expected_fields)
-    assert df.index.names == ["contig", "position", "ref_allele", "alt_allele"]
-    assert len(df) == 16526
-
-
 def test_snp_allele_frequencies__dict_cohorts():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = {

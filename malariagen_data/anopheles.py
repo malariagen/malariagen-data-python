@@ -94,6 +94,7 @@ class AnophelesDataResource(ABC):
         self._cache_sample_metadata = dict()
         self._cache_site_annotations = None
         self._cache_locate_site_class = dict()
+        self._cache_cohort_metadata = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -134,6 +135,8 @@ class AnophelesDataResource(ABC):
                 pass
         self._client_details = client_details
 
+    # Start of @property
+
     @property
     def _client_location(self):
         details = self._client_details
@@ -150,6 +153,36 @@ class AnophelesDataResource(ABC):
         else:
             location = "unknown"
         return location
+
+    @property
+    def releases(self):
+        """The releases for which data are available at the given storage
+        location."""
+        if self._cache_releases is None:
+            if self._pre:
+                # Here we discover which releases are available, by listing the storage
+                # directory and examining the subdirectories. This may include "pre-releases"
+                # where data may be incomplete.
+                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
+                releases = tuple(
+                    sorted(
+                        [
+                            self._path_to_release(d)
+                            for d in sub_dirs
+                            # FIXME: this matches v3 and v3.1, but also v3001.1
+                            if d.startswith(f"v{self._major_version_int}")
+                            and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
+                        ]
+                    )
+                )
+                if len(releases) == 0:
+                    raise ValueError("No releases found.")
+                self._cache_releases = releases
+            else:
+                self._cache_releases = self._public_releases
+        return self._cache_releases
+
+    # Start of @property @abstractmethod
 
     @property
     @abstractmethod
@@ -221,6 +254,13 @@ class AnophelesDataResource(ABC):
     def _site_annotations_zarr_path(self):
         raise NotImplementedError("Must override _site_annotations_zarr_path")
 
+    @property
+    @abstractmethod
+    def _cohorts_analysis(self):
+        raise NotImplementedError("Must override _cohorts_analysis")
+
+    # Start of @abstractmethod
+
     @abstractmethod
     def __repr__(self):
         # Not all children have species calls or cohorts data.
@@ -271,11 +311,15 @@ class AnophelesDataResource(ABC):
         # Ag3 has cohorts and species. Subclasses have different cache names.
         raise NotImplementedError("Must override snp_allele_counts")
 
+    # Start of @staticmethod @abstractmethod
+
     @staticmethod
     @abstractmethod
     def _setup_taxon_colors(plot_kwargs):
         # Subclasses have different taxon_color_map.
         raise NotImplementedError("Must override _setup_taxon_colors")
+
+    # Start of @staticmethod
 
     @staticmethod
     def _bokeh_style_genome_xaxis(fig, contig):
@@ -524,6 +568,8 @@ class AnophelesDataResource(ABC):
         # this implementation is based on scikit-allel, but modified to use
         # moving window computation of het counts
         from allel.stats.roh import _hmm_derive_transition_matrix
+
+        # FIXME: Unresolved references
         from pomegranate import HiddenMarkovModel, PoissonDistribution
 
         # het probabilities
@@ -572,6 +618,8 @@ class AnophelesDataResource(ABC):
                 "roh_is_marginal",
             ]
         ]
+
+    # Start of undecorated functions
 
     # Note regarding release identifiers and storage paths. Within the
     # data storage, we have used path segments like "v3", "v3.1", "v3.2",
@@ -643,34 +691,6 @@ class AnophelesDataResource(ABC):
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
-
-    @property
-    def releases(self):
-        """The releases for which data are available at the given storage
-        location."""
-        if self._cache_releases is None:
-            if self._pre:
-                # Here we discover which releases are available, by listing the storage
-                # directory and examining the subdirectories. This may include "pre-releases"
-                # where data may be incomplete.
-                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
-                releases = tuple(
-                    sorted(
-                        [
-                            self._path_to_release(d)
-                            for d in sub_dirs
-                            # FIXME: this matches v3 and v3.1, but also v3001.1
-                            if d.startswith(f"v{self._major_version_int}")
-                            and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
-                        ]
-                    )
-                )
-                if len(releases) == 0:
-                    raise ValueError("No releases found.")
-                self._cache_releases = releases
-            else:
-                self._cache_releases = self._public_releases
-        return self._cache_releases
 
     def _read_sample_sets(self, *, release):
         """Read the manifest of sample sets for a given release."""
@@ -3643,3 +3663,243 @@ class AnophelesDataResource(ABC):
             bkplt.show(fig)
 
         return fig
+
+    def snp_allele_frequencies(
+        self,
+        transcript,
+        cohorts,
+        sample_query=None,
+        min_cohort_size=10,
+        site_mask=None,
+        sample_sets=None,
+        drop_invariant=True,
+        effects=True,
+    ):
+        """Compute per variant allele frequencies for a gene transcript.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID, e.g., "AGAP004707-RD".
+        cohorts : str or dict
+            If a string, gives the name of a predefined cohort set, e.g., one of
+            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
+            If a dict, should map cohort labels to sample queries, e.g.,
+            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
+            taxon == 'coluzzii'"}`.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int
+            Minimum cohort size. Any cohorts below this size are omitted.
+        site_mask : str
+            Site filters mask to apply.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any cohorts are
+            dropped from the result.
+        effects : bool, optional
+            If True, add SNP effect columns.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of SNP frequencies, one row per variant.
+
+        Notes
+        -----
+        Cohorts with fewer samples than min_cohort_size will be excluded from
+        output.
+
+        """
+        debug = self._log.debug
+
+        debug("check parameters")
+        self._check_param_min_cohort_size(min_cohort_size)
+
+        debug("access sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        debug("setup initial dataframe of SNPs")
+        region, df_snps = self._snp_df(transcript=transcript)
+
+        debug("get genotypes")
+        gt = self.snp_genotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            field="GT",
+        )
+
+        debug("slice to feature location")
+        with self._dask_progress(desc="Load SNP genotypes"):
+            gt = gt.compute()
+
+        debug("build coh dict")
+        coh_dict = self._locate_cohorts(cohorts=cohorts, df_samples=df_samples)
+
+        debug("count alleles")
+        freq_cols = dict()
+        cohorts_iterator = self._progress(
+            coh_dict.items(), desc="Compute allele frequencies"
+        )
+        for coh, loc_coh in cohorts_iterator:
+            n_samples = np.count_nonzero(loc_coh)
+            debug(f"{coh}, {n_samples} samples")
+            if n_samples >= min_cohort_size:
+                gt_coh = np.compress(loc_coh, gt, axis=1)
+                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
+                af_coh = ac_coh.to_frequencies()
+                freq_cols["frq_" + coh] = af_coh[:, 1:].flatten()
+
+        debug("build a dataframe with the frequency columns")
+        df_freqs = pd.DataFrame(freq_cols)
+
+        debug("compute max_af")
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+
+        debug("build the final dataframe")
+        df_snps.reset_index(drop=True, inplace=True)
+        df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
+
+        debug("apply site mask if requested")
+        if site_mask is not None:
+            loc_sites = df_snps[f"pass_{site_mask}"]
+            df_snps = df_snps.loc[loc_sites]
+
+        debug("drop invariants")
+        if drop_invariant:
+            loc_variant = df_snps["max_af"] > 0
+            df_snps = df_snps.loc[loc_variant]
+
+        debug("reset index after filtering")
+        df_snps.reset_index(inplace=True, drop=True)
+
+        if effects:
+
+            debug("add effect annotations")
+            ann = self._annotator()
+            ann.get_effects(
+                transcript=transcript, variants=df_snps, progress=self._progress
+            )
+
+            debug("add label")
+            df_snps["label"] = self._pandas_apply(
+                self._make_snp_label_effect,
+                df_snps,
+                columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+            )
+
+            debug("set index")
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+                inplace=True,
+            )
+
+        else:
+
+            debug("add label")
+            df_snps["label"] = self._pandas_apply(
+                self._make_snp_label,
+                df_snps,
+                columns=["contig", "position", "ref_allele", "alt_allele"],
+            )
+
+            debug("set index")
+            df_snps.set_index(
+                ["contig", "position", "ref_allele", "alt_allele"],
+                inplace=True,
+            )
+
+        debug("add dataframe metadata")
+        # FIXME: We don't have "Name" in Af1.0
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        df_snps.attrs["title"] = title
+
+        return df_snps
+
+    def _read_cohort_metadata(self, *, sample_set):
+        """Read cohort metadata for a single sample set."""
+        try:
+            df = self._cache_cohort_metadata[sample_set]
+        except KeyError:
+            release = self._lookup_release(sample_set=sample_set)
+            release_path = self._release_to_path(release)
+            path_prefix = f"{self._base_path}/{release_path}/metadata"
+            path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+            # N.B., not all cohort metadata files exist, need to handle FileNotFoundError
+            try:
+                with self._fs.open(path) as f:
+                    df = pd.read_csv(f, na_values="")
+
+                # ensure all column names are lower case
+                df.columns = [c.lower() for c in df.columns]
+
+                # rename some columns for consistent naming
+                df.rename(
+                    columns={
+                        "adm1_iso": "admin1_iso",
+                        "adm1_name": "admin1_name",
+                        "adm2_name": "admin2_name",
+                    },
+                    inplace=True,
+                )
+            except FileNotFoundError:
+                # Specify cohort_cols
+                cohort_cols = (
+                    "country_iso",
+                    "admin1_name",
+                    "admin1_iso",
+                    "admin2_name",
+                    "taxon",
+                    "cohort_admin1_year",
+                    "cohort_admin1_month",
+                    "cohort_admin2_year",
+                    "cohort_admin2_month",
+                )
+
+                # Get sample ids as an index via general metadata (has caching)
+                df_general = self._read_general_metadata(sample_set=sample_set)
+                df_general.set_index("sample_id", inplace=True)
+
+                # Create a blank DataFrame with cohort_cols and sample_id index
+                df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
+
+                # Revert sample_id index to column
+                df.reset_index(inplace=True)
+
+            self._cache_cohort_metadata[sample_set] = df
+        return df.copy()
+
+    def sample_cohorts(self, sample_sets=None):
+        """Access cohorts metadata for one or more sample sets.
+
+        Parameters
+        ----------
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of cohort metadata, one row per sample.
+
+        """
+        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+
+        # concatenate multiple sample sets
+        dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
+        df = pd.concat(dfs, axis=0, ignore_index=True)
+
+        return df
