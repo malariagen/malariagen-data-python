@@ -1,5 +1,6 @@
 import dask.array as da
 import numpy as np
+import pandas as pd
 import pytest
 import xarray as xr
 from pandas.testing import assert_frame_equal
@@ -423,3 +424,52 @@ def test_site_annotations(region, site_mask):
         assert d.ndim == 1
         assert d.dims == ("variants",)
         assert d.shape == (n_variants,)
+
+
+def test_snp_allele_frequencies__dict_cohorts():
+
+    af1 = setup_af1(cohorts_analysis="20221129")
+    cohorts = {
+        "ke": "country == 'Kenya'",
+        "gh_2017": "country == 'Ghana' and year == 2017",
+    }
+    universal_fields = [
+        "pass_funestus",
+        "label",
+    ]
+
+    # test drop invariants
+    df = af1.snp_allele_frequencies(
+        transcript="LOC125761549_t5",
+        cohorts=cohorts,
+        site_mask="funestus",
+        sample_sets="1.0",
+        drop_invariant=True,
+        effects=False,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    frq_columns = ["frq_" + s for s in list(cohorts.keys())]
+    expected_fields = universal_fields + frq_columns + ["max_af"]
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.shape == (3185, len(expected_fields))
+    assert df.iloc[2].frq_ke == 0
+    assert df.iloc[2].frq_gh_2017 == pytest.approx(0.013889, abs=1e-6)
+    assert df.iloc[2].max_af == pytest.approx(0.013889, abs=1e-6)
+    # check invariant have been dropped
+    assert df.max_af.min() > 0
+
+    # test keep invariants
+    df = af1.snp_allele_frequencies(
+        transcript="LOC125761549_t7",
+        cohorts=cohorts,
+        site_mask="funestus",
+        sample_sets="1.0",
+        drop_invariant=False,
+        effects=False,
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.shape == (29418, len(expected_fields))
+    # check invariant positions are still present
+    assert np.any(df.max_af == 0)
