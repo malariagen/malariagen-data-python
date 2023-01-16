@@ -183,6 +183,7 @@ class Af1(AnophelesDataResource):
             f"Storage URL             : {self._url}\n"
             f"Data releases available : {', '.join(self.releases)}\n"
             f"Results cache           : {self._results_cache}\n"
+            f"Cohorts analysis        : {self._cohorts_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : malariagen_data {malariagen_data.__version__}\n"
             f"Client location         : {self._client_location}\n"
@@ -226,6 +227,12 @@ class Af1(AnophelesDataResource):
                             Results cache
                         </th>
                         <td>{self._results_cache}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Cohorts analysis
+                        </th>
+                        <td>{self._cohorts_analysis}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
