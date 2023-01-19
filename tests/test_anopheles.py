@@ -1,4 +1,4 @@
-#
+import os
 
 import dask.array as da
 import numpy as np
@@ -8,6 +8,18 @@ import zarr
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Af1, Ag3, Region
+
+expected_cohort_cols = (
+    "country_iso",
+    "admin1_name",
+    "admin1_iso",
+    "admin2_name",
+    "taxon",
+    "cohort_admin1_year",
+    "cohort_admin1_month",
+    "cohort_admin2_year",
+    "cohort_admin2_month",
+)
 
 
 def setup_subclass(subclass, url=None, **kwargs):
@@ -409,3 +421,168 @@ def test_snp_allele_frequencies__str_cohorts(
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == ["contig", "position", "ref_allele", "alt_allele"]
     assert len(df) == expected_snp_count
+
+
+@pytest.mark.parametrize(
+    "subclass, transcript, sample_set",
+    [
+        (
+            Ag3,
+            "AGAP004707-RD",
+            "AG1000G-FR",
+        ),
+        (
+            Af1,
+            "LOC125767311_t2",
+            "1229-VO-GH-DADZIE-VMF00095",
+        ),
+    ],
+)
+def test_snp_allele_frequencies__dup_samples(
+    subclass,
+    transcript,
+    sample_set,
+):
+    anoph = setup_subclass(subclass)
+    with pytest.raises(ValueError):
+        anoph.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=[sample_set, sample_set],
+        )
+
+
+@pytest.mark.parametrize(
+    "subclass, cohorts_analysis, transcript, sample_set",
+    [
+        (
+            Ag3,
+            "20211101",
+            "AGAP004707-RD",
+            "AG1000G-FR",
+        ),
+        (
+            Af1,
+            "20221129",
+            "LOC125767311_t2",
+            "1229-VO-GH-DADZIE-VMF00095",
+        ),
+    ],
+)
+def test_aa_allele_frequencies__dup_samples(
+    subclass, cohorts_analysis, transcript, sample_set
+):
+    anoph = setup_subclass(subclass=subclass, cohorts_analysis=cohorts_analysis)
+    with pytest.raises(ValueError):
+        anoph.aa_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=[sample_set, sample_set],
+        )
+
+
+@pytest.mark.parametrize(
+    "subclass, cohorts_analysis, transcript, sample_set",
+    [
+        (
+            Ag3,
+            "20211101",
+            "AGAP004707-RD",
+            "AG1000G-FR",
+        ),
+        (
+            Af1,
+            "20221129",
+            "LOC125767311_t2",
+            "1229-VO-GH-DADZIE-VMF00095",
+        ),
+    ],
+)
+def test_snp_allele_frequencies_advanced__dup_samples(
+    subclass, cohorts_analysis, transcript, sample_set
+):
+    anoph = setup_subclass(subclass=subclass, cohorts_analysis=cohorts_analysis)
+    with pytest.raises(ValueError):
+        anoph.snp_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by="admin1_iso",
+            period_by="year",
+            sample_sets=[sample_set, sample_set],
+        )
+
+
+@pytest.mark.parametrize(
+    "subclass, cohorts_analysis, transcript, sample_set",
+    [
+        (
+            Ag3,
+            "20211101",
+            "AGAP004707-RD",
+            "AG1000G-FR",
+        ),
+        (
+            Af1,
+            "20221129",
+            "LOC125767311_t2",
+            "1229-VO-GH-DADZIE-VMF00095",
+        ),
+    ],
+)
+def test_aa_allele_frequencies_advanced__dup_samples(
+    subclass, cohorts_analysis, transcript, sample_set
+):
+    anoph = setup_subclass(subclass=subclass, cohorts_analysis=cohorts_analysis)
+    with pytest.raises(ValueError):
+        anoph.aa_allele_frequencies_advanced(
+            transcript=transcript,
+            area_by="admin1_iso",
+            period_by="year",
+            sample_sets=[sample_set, sample_set],
+        )
+
+
+@pytest.mark.parametrize(
+    "subclass, sample_sets",
+    [
+        (
+            Ag3,
+            "3.0",
+        ),
+        (
+            Af1,
+            "1.0",
+        ),
+    ],
+)
+def test_sample_metadata_with_cohorts(subclass, sample_sets):
+    anoph = setup_subclass(subclass)
+    df_samples_coh = anoph.sample_metadata(sample_sets=sample_sets)
+    for c in expected_cohort_cols:
+        assert c in df_samples_coh
+
+
+@pytest.mark.parametrize(
+    "subclass, sample_sets, test_subdir",
+    [
+        (
+            Ag3,
+            "3.0",
+            "ag",
+        ),
+        (
+            Af1,
+            "1.0",
+            "af",
+        ),
+    ],
+)
+def test_sample_metadata_without_cohorts(subclass, sample_sets, test_subdir):
+    working_dir = os.path.dirname(os.path.abspath(__file__))
+    test_data_path = os.path.join(
+        working_dir, "anopheles_test_data", "test_missing_cohorts", test_subdir
+    )
+    anoph = setup_subclass(subclass, url=test_data_path)
+    df_samples_coh = anoph.sample_metadata(sample_sets=sample_sets)
+    for c in expected_cohort_cols:
+        assert c in df_samples_coh
+        assert df_samples_coh[c].isnull().all()

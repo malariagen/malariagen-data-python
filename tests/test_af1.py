@@ -1,8 +1,11 @@
+import shutil
+
 import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
+from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Af1, Region
@@ -334,6 +337,139 @@ def test_snp_calls(sample_sets, region, site_mask):
 
 
 @pytest.mark.parametrize(
+    "sample_query",
+    [None, "taxon == 'funestus'", "taxon == 'robot'"],
+)
+def test_snp_calls__sample_query(sample_query):
+
+    af1 = setup_af1()
+
+    sample_sets = "1229-VO-GH-DADZIE-VMF00095"
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            af1.snp_calls(
+                region="3RL", sample_sets=sample_sets, sample_query=sample_query
+            )
+
+    else:
+        ds = af1.snp_calls(
+            region="3RL", sample_sets=sample_sets, sample_query=sample_query
+        )
+        assert ds.dims["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+# TODO: adapt for Af1.
+# def test_snp_effects():
+#
+#     af1 = setup_af1()
+#
+#     site_mask = "funestus"
+#     expected_fields = [
+#         "contig",
+#         "position",
+#         "ref_allele",
+#         "alt_allele",
+#         "pass_funestus",
+#         "transcript",
+#         "effect",
+#         "impact",
+#         "ref_codon",
+#         "alt_codon",
+#         "aa_pos",
+#         "ref_aa",
+#         "alt_aa",
+#         "aa_change",
+#     ]
+#
+#     # reverse strand gene
+#     gste2 = "LOC125761549_t5"  # Ag3 tests "AGAP009194-RA"
+#     df = af1.snp_effects(transcript=gste2, site_mask=site_mask)
+#     assert isinstance(df, pd.DataFrame)
+#     assert df.columns.tolist() == expected_fields
+#     assert df.shape == (2838, len(expected_fields))
+#
+#     # check first, second, third codon position non-syn
+#     assert df.iloc[1454].aa_change == "I114L"
+#     assert df.iloc[1446].aa_change == "I114M"
+#     # while we are here, check all columns for a position
+#     assert df.iloc[1451].position == 28598166
+#     assert df.iloc[1451].ref_allele == "A"
+#     assert df.iloc[1451].alt_allele == "G"
+#     assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
+#     assert df.iloc[1451].impact == "MODERATE"
+#     assert df.iloc[1451].ref_codon == "aTt"
+#     assert df.iloc[1451].alt_codon == "aCt"
+#     assert df.iloc[1451].aa_pos == 114
+#     assert df.iloc[1451].ref_aa == "I"
+#     assert df.iloc[1451].alt_aa == "T"
+#     assert df.iloc[1451].aa_change == "I114T"
+#     # check syn
+#     assert df.iloc[1447].aa_change == "I114I"
+#     # check intronic
+#     assert df.iloc[1197].effect == "INTRONIC"
+#     # check 5' utr
+#     assert df.iloc[2661].effect == "FIVE_PRIME_UTR"
+#     # check 3' utr
+#     assert df.iloc[0].effect == "THREE_PRIME_UTR"
+#
+#     # test forward strand gene gste6
+#     gste6 = "LOC125761549_t5"  # Ag3 tests "AGAP009196-RA"
+#     df = af1.snp_effects(transcript=gste6, site_mask=site_mask)
+#     assert isinstance(df, pd.DataFrame)
+#     assert df.columns.tolist() == expected_fields
+#     assert df.shape == (2829, len(expected_fields))
+#
+#     # check first, second, third codon position non-syn
+#     assert df.iloc[701].aa_change == "E35*"
+#     assert df.iloc[703].aa_change == "E35V"
+#     # while we are here, check all columns for a position
+#     assert df.iloc[706].position == 28600605
+#     assert df.iloc[706].ref_allele == "G"
+#     assert df.iloc[706].alt_allele == "C"
+#     assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
+#     assert df.iloc[706].impact == "MODERATE"
+#     assert df.iloc[706].ref_codon == "gaG"
+#     assert df.iloc[706].alt_codon == "gaC"
+#     assert df.iloc[706].aa_pos == 35
+#     assert df.iloc[706].ref_aa == "E"
+#     assert df.iloc[706].alt_aa == "D"
+#     assert df.iloc[706].aa_change == "E35D"
+#     # check syn
+#     assert df.iloc[705].aa_change == "E35E"
+#     # check intronic
+#     assert df.iloc[900].effect == "INTRONIC"
+#     # check 5' utr
+#     assert df.iloc[0].effect == "FIVE_PRIME_UTR"
+#     # check 3' utr
+#     assert df.iloc[2828].effect == "THREE_PRIME_UTR"
+#
+#     # check 5' utr intron and the different intron effects
+#     utr_intron5 = "LOC125761549_t5"  # Ag3 tests "AGAP004679-RB"
+#     df = af1.snp_effects(transcript=utr_intron5, site_mask=site_mask)
+#     assert isinstance(df, pd.DataFrame)
+#     assert df.columns.tolist() == expected_fields
+#     assert df.shape == (7686, len(expected_fields))
+#     assert df.iloc[180].effect == "SPLICE_CORE"
+#     assert df.iloc[198].effect == "SPLICE_REGION"
+#     assert df.iloc[202].effect == "INTRONIC"
+#
+#     # check 3' utr intron
+#     utr_intron3 = "LOC125761549_t5"  # Ag3 tests "AGAP000689-RA"
+#     df = af1.snp_effects(transcript=utr_intron3, site_mask=site_mask)
+#     assert isinstance(df, pd.DataFrame)
+#     assert df.columns.tolist() == expected_fields
+#     assert df.shape == (5397, len(expected_fields))
+#     assert df.iloc[646].effect == "SPLICE_CORE"
+#     assert df.iloc[652].effect == "SPLICE_REGION"
+#     assert df.iloc[674].effect == "INTRONIC"
+
+
+@pytest.mark.parametrize(
     "region",
     ["X", "LOC125762289", "2RL:48714463-48715355"],
 )
@@ -386,7 +522,6 @@ def test_locate_region(region_raw):
         assert region == Region(gene.contig, gene.start, gene.end)
         assert pos[loc_region][0] == gene.start
         assert pos[loc_region][-1] == gene.end
-        # TODO: check this is the expected sequence
         assert (
             ref[loc_region][:5].compute()
             == np.array(["T", "T", "T", "C", "T"], dtype="S1")
@@ -427,7 +562,6 @@ def test_site_annotations(region, site_mask):
 
 
 def test_snp_allele_frequencies__dict_cohorts():
-
     af1 = setup_af1(cohorts_analysis="20221129")
     cohorts = {
         "ke": "country == 'Kenya'",
@@ -473,3 +607,623 @@ def test_snp_allele_frequencies__dict_cohorts():
     assert df.shape == (29418, len(expected_fields))
     # check invariant positions are still present
     assert np.any(df.max_af == 0)
+
+
+def test_snp_allele_frequencies__str_cohorts__effects():
+    af1 = setup_af1(cohorts_analysis="20221129")
+    cohorts = "admin1_month"
+    min_cohort_size = 10
+    universal_fields = [
+        "pass_funestus",
+        "label",
+    ]
+    effects_fields = [
+        "transcript",
+        "effect",
+        "impact",
+        "ref_codon",
+        "alt_codon",
+        "aa_pos",
+        "ref_aa",
+        "alt_aa",
+    ]
+    df = af1.snp_allele_frequencies(
+        transcript="LOC125767311_t2",
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask="funestus",
+        sample_sets="1.0",
+        drop_invariant=True,
+        effects=True,
+    )
+    df_coh = af1.sample_cohorts(sample_sets="1.0")
+    coh_nm = "cohort_" + cohorts
+    coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
+    cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
+    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
+    expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
+
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) == 4221
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.index.names == [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+        "aa_change",
+    ]
+
+
+def test_snp_allele_frequencies__query():
+    af1 = setup_af1(cohorts_analysis="20221129")
+    cohorts = "admin1_year"
+    min_cohort_size = 10
+    expected_columns = [
+        "pass_funestus",
+        "frq_GH-AH_fune_2014",
+        "frq_GH-NP_fune_2017",
+        "max_af",
+        "label",
+    ]
+
+    df = af1.snp_allele_frequencies(
+        transcript="LOC125767311_t2",
+        cohorts=cohorts,
+        sample_query="country == 'Ghana'",
+        min_cohort_size=min_cohort_size,
+        site_mask="funestus",
+        sample_sets="1.0",
+        drop_invariant=True,
+        effects=False,
+    )
+
+    assert isinstance(df, pd.DataFrame)
+    assert sorted(df.columns) == sorted(expected_columns)
+    assert len(df) == 1309
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1.0",
+        "1229-VO-GH-DADZIE-VMF00095",
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
+    ],
+)
+def test_sample_cohorts(sample_sets):
+    af1 = setup_af1(cohorts_analysis="20221129")
+
+    expected_cols = (
+        "sample_id",
+        "country_iso",
+        "admin1_name",
+        "admin1_iso",
+        "admin2_name",
+        "taxon",
+        "cohort_admin1_year",
+        "cohort_admin1_month",
+        "cohort_admin2_year",
+        "cohort_admin2_month",
+    )
+
+    df_coh = af1.sample_cohorts(sample_sets=sample_sets)
+    df_meta = af1.sample_metadata(sample_sets=sample_sets)
+
+    assert tuple(df_coh.columns) == expected_cols
+    assert len(df_coh) == len(df_meta)
+    assert df_coh.sample_id.tolist() == df_meta.sample_id.tolist()
+    if sample_sets == "1229-VO-GH-DADZIE-VMF00095":
+        assert df_coh.sample_id[0] == "VBS24195"
+        assert df_coh.cohort_admin1_year[23] == "GH-NP_fune_2017"
+        assert df_coh.cohort_admin1_month[24] == "GH-NP_fune_2017_10"
+        assert df_coh.cohort_admin2_year[25] == "GH-NP_Tolon-Kumbungu_fune_2017"
+        assert df_coh.cohort_admin2_month[26] == "GH-NP_Tolon-Kumbungu_fune_2017_07"
+    if sample_sets == [
+        "1240-VO-CD-KOEKEMOER-VMF00099",
+        "1240-VO-MZ-KOEKEMOER-VMF00101",
+    ]:
+        assert df_coh.sample_id[0] == "VBS24386"
+        assert df_coh.sample_id[27] == "VBS24419"
+
+
+def test_aa_allele_frequencies():
+    af1 = setup_af1(cohorts_analysis="20221129")
+
+    expected_fields = [
+        "transcript",
+        "aa_pos",
+        "ref_allele",
+        "alt_allele",
+        "ref_aa",
+        "alt_aa",
+        "effect",
+        "impact",
+        "frq_CD-HU_fune_2017",
+        "frq_MZ-P_fune_2015",
+        "max_af",
+        "label",
+    ]
+
+    df = af1.aa_allele_frequencies(
+        transcript="LOC125767311_t2",
+        cohorts="admin1_year",
+        min_cohort_size=10,
+        site_mask="funestus",
+        sample_sets=("1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"),
+        drop_invariant=True,
+    )
+
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert isinstance(df, pd.DataFrame)
+    assert df.index.names == ["aa_change", "contig", "position"]
+    assert df.shape == (53, len(expected_fields))
+    assert df.loc["V947L"].max_af[0] == pytest.approx(0.025, abs=1e-6)
+
+
+@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t5"])
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
+    ],
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
+@pytest.mark.parametrize("site_mask", [None, "funestus"])
+def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    af1 = setup_af1(results_cache=results_cache)
+
+    ac = af1.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert isinstance(ac, np.ndarray)
+    pos = af1.snp_sites(region=region, field="POS", site_mask=site_mask)
+    assert ac.shape == (pos.shape[0], 4)
+
+    ac2 = af1.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert_array_equal(ac, ac2)
+
+
+# TODO: this function is a duplicate, from test_ag3.py
+def _compare_series_like(actual, expect):
+
+    # compare pandas series-like objects for equality or floating point
+    # similarity, handling missing values appropriately
+
+    # handle object arrays, these don't get nans compared properly
+    t = actual.dtype
+    if t == object:
+        expect = expect.fillna("NA")
+        actual = actual.fillna("NA")
+
+    if t.kind == "f":
+        assert_allclose(actual.values, expect.values)
+    else:
+        assert_array_equal(actual.values, expect.values)
+
+
+# noinspection PyDefaultArgument
+def _check_snp_allele_frequencies_advanced(
+    transcript="LOC125767311_t2",
+    area_by="admin1_iso",
+    period_by="year",
+    sample_sets=[
+        "1229-VO-GH-DADZIE-VMF00095",
+        "1240-VO-CD-KOEKEMOER-VMF00099",
+        "1240-VO-MZ-KOEKEMOER-VMF00101",
+    ],
+    sample_query=None,
+    min_cohort_size=10,
+    nobs_mode="called",
+    variant_query="max_af > 0.02",
+):
+    af1 = setup_af1(cohorts_analysis="20221129")
+
+    ds = af1.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        nobs_mode=nobs_mode,
+        variant_query=variant_query,
+    )
+
+    assert isinstance(ds, xr.Dataset)
+
+    # noinspection PyTypeChecker
+    assert sorted(ds.dims) == ["cohorts", "variants"]
+
+    expected_variant_vars = (
+        "variant_label",
+        "variant_contig",
+        "variant_position",
+        "variant_ref_allele",
+        "variant_alt_allele",
+        "variant_max_af",
+        "variant_pass_funestus",
+        "variant_transcript",
+        "variant_effect",
+        "variant_impact",
+        "variant_ref_codon",
+        "variant_alt_codon",
+        "variant_ref_aa",
+        "variant_alt_aa",
+        "variant_aa_pos",
+        "variant_aa_change",
+    )
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    expected_cohort_vars = (
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    )
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    expected_event_vars = (
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    )
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # sanity checks for area values
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+    expected_area = np.unique(df_samples[area_by].dropna().values)
+    area = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area:
+        assert a in expected_area
+
+    # sanity checks for period values
+    period = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # sanity check cohort size
+    size = ds["cohort_size"].values
+    for s in size:
+        assert s >= min_cohort_size
+
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
+
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler snp_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # check consistency with the basic snp allele frequencies method
+        df_af = af1.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+        )
+        df_af = df_af.reset_index()  # make sure all variables available to check
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # check cohorts are consistent
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # check variants are consistent
+        assert ds.dims["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
+
+        # check frequencies are consistent
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+# noinspection PyDefaultArgument
+def _check_aa_allele_frequencies_advanced(
+    transcript="LOC125767311_t2",
+    area_by="admin1_iso",
+    period_by="year",
+    sample_sets=[
+        "1229-VO-GH-DADZIE-VMF00095",
+        "1240-VO-CD-KOEKEMOER-VMF00099",
+        "1240-VO-MZ-KOEKEMOER-VMF00101",
+    ],
+    sample_query=None,
+    min_cohort_size=10,
+    nobs_mode="called",
+    variant_query="max_af > 0.02",
+):
+    af1 = setup_af1(cohorts_analysis="20221129")
+
+    ds = af1.aa_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        nobs_mode=nobs_mode,
+        variant_query=variant_query,
+    )
+
+    assert isinstance(ds, xr.Dataset)
+
+    # noinspection PyTypeChecker
+    assert sorted(ds.dims) == ["cohorts", "variants"]
+
+    expected_variant_vars = (
+        "variant_label",
+        "variant_contig",
+        "variant_position",
+        "variant_max_af",
+        "variant_transcript",
+        "variant_effect",
+        "variant_impact",
+        "variant_ref_aa",
+        "variant_alt_aa",
+        "variant_aa_pos",
+        "variant_aa_change",
+    )
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    expected_cohort_vars = (
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    )
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    expected_event_vars = (
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    )
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # sanity checks for area values
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    if sample_query is not None:
+        df_samples = df_samples.query(sample_query)
+    expected_area = np.unique(df_samples[area_by].dropna().values)
+    area = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area:
+        assert a in expected_area
+
+    # sanity checks for period values
+    period = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # sanity check cohort size
+    size = ds["cohort_size"].values
+    for s in size:
+        assert s >= min_cohort_size
+
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
+
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler aa_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # check consistency with the basic snp allele frequencies method
+        df_af = af1.aa_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+        )
+        df_af = df_af.reset_index()  # make sure all variables available to check
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # check cohorts are consistent
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # check variants are consistent
+        assert ds.dims["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            _compare_series_like(actual, expect)
+
+        # check frequencies are consistent
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            print(cohort_label)
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+# Here we don't explore the full matrix, but vary one parameter at a time, otherwise
+# the test suite would take too long to run.
+
+
+@pytest.mark.parametrize(
+    "transcript", ["LOC125767311_t2", "LOC125761549_t5", "LOC125761549_t7"]
+)
+def test_allele_frequencies_advanced__transcript(transcript):
+    _check_snp_allele_frequencies_advanced(
+        transcript=transcript,
+    )
+    _check_aa_allele_frequencies_advanced(
+        transcript=transcript,
+    )
+
+
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
+def test_allele_frequencies_advanced__area_by(area_by):
+    _check_snp_allele_frequencies_advanced(
+        area_by=area_by,
+    )
+    _check_aa_allele_frequencies_advanced(
+        area_by=area_by,
+    )
+
+
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+def test_allele_frequencies_advanced__period_by(period_by):
+    _check_snp_allele_frequencies_advanced(
+        period_by=period_by,
+    )
+    _check_aa_allele_frequencies_advanced(
+        period_by=period_by,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
+        "1.0",
+    ],
+)
+def test_allele_frequencies_advanced__sample_sets(sample_sets):
+    _check_snp_allele_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
+    _check_aa_allele_frequencies_advanced(
+        sample_sets=sample_sets,
+    )
+
+
+def test_allele_frequencies_advanced__sample_query():
+    _check_snp_allele_frequencies_advanced(
+        sample_query="taxon == 'funestus' and country in ['Ghana', 'Gabon']",
+    )
+    # noinspection PyTypeChecker
+    _check_aa_allele_frequencies_advanced(
+        sample_query="taxon == 'funestus' and country in ['Ghana', 'Gabon']",
+        variant_query=None,
+    )
+
+
+@pytest.mark.parametrize("min_cohort_size", [10, 40])
+def test_allele_frequencies_advanced__min_cohort_size(min_cohort_size):
+    _check_snp_allele_frequencies_advanced(
+        min_cohort_size=min_cohort_size,
+    )
+    _check_aa_allele_frequencies_advanced(
+        min_cohort_size=min_cohort_size,
+    )
+
+
+@pytest.mark.parametrize(
+    "variant_query",
+    [
+        None,
+        "effect == 'NON_SYNONYMOUS_CODING' and max_af > 0.05",
+        "effect == 'foobar'",  # no variants
+    ],
+)
+def test_allele_frequencies_advanced__variant_query(variant_query):
+    _check_snp_allele_frequencies_advanced(
+        variant_query=variant_query,
+    )
+    _check_aa_allele_frequencies_advanced(
+        variant_query=variant_query,
+    )
+
+
+@pytest.mark.parametrize("nobs_mode", ["called", "fixed"])
+def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
+    _check_snp_allele_frequencies_advanced(
+        nobs_mode=nobs_mode,
+    )
+    _check_aa_allele_frequencies_advanced(
+        nobs_mode=nobs_mode,
+    )

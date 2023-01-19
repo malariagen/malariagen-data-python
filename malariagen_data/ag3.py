@@ -70,10 +70,6 @@ DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 100  # height in px for bokeh genes track plots
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
-AA_CHANGE_QUERY = (
-    "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
-)
-
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v2"
 DEFAULT_SITE_MASK = "gamb_colu_arab"
@@ -1737,122 +1733,6 @@ class Ag3(AnophelesDataResource):
 
         return ds
 
-    def aa_allele_frequencies(
-        self,
-        transcript,
-        cohorts,
-        sample_query=None,
-        min_cohort_size=10,
-        site_mask=None,
-        sample_sets=None,
-        drop_invariant=True,
-    ):
-        """Compute per amino acid allele frequencies for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not
-            calculated for cohorts.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of amino acid allele frequencies, one row per
-            replacement.
-
-        Notes
-        -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from
-        output.
-
-        """
-        debug = self._log.debug
-
-        df_snps = self.snp_allele_frequencies(
-            transcript=transcript,
-            cohorts=cohorts,
-            sample_query=sample_query,
-            min_cohort_size=min_cohort_size,
-            site_mask=site_mask,
-            sample_sets=sample_sets,
-            drop_invariant=drop_invariant,
-            effects=True,
-        )
-        df_snps.reset_index(inplace=True)
-
-        # we just want aa change
-        df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
-
-        # N.B., we need to worry about the possibility of the
-        # same aa change due to SNPs at different positions. We cannot
-        # sum frequencies of SNPs at different genomic positions. This
-        # is why we group by position and aa_change, not just aa_change.
-
-        debug("group and sum to collapse multi variant allele changes")
-        freq_cols = [col for col in df_ns_snps if col.startswith("frq")]
-        agg = {c: np.nansum for c in freq_cols}
-        keep_cols = (
-            "contig",
-            "transcript",
-            "aa_pos",
-            "ref_allele",
-            "ref_aa",
-            "alt_aa",
-            "effect",
-            "impact",
-        )
-        for c in keep_cols:
-            agg[c] = "first"
-        agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
-        df_aaf = df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
-
-        debug("compute new max_af")
-        df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
-
-        debug("add label")
-        df_aaf["label"] = self._pandas_apply(
-            self._make_snp_label_aa,
-            df_aaf,
-            columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
-        )
-
-        debug("sort by genomic position")
-        df_aaf = df_aaf.sort_values(["position", "aa_change"])
-
-        debug("set index")
-        df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
-
-        debug("add metadata")
-        gene_name = self._transcript_to_gene_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
-        title += " SNP frequencies"
-        df_aaf.attrs["title"] = title
-
-        return df_aaf
-
     def plot_frequencies_heatmap(
         self,
         df,
@@ -2005,396 +1885,6 @@ class Ag3(AnophelesDataResource):
             fig.update(layout_coloraxis_showscale=False)
 
         return fig
-
-    def snp_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        drop_invariant=True,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        SNP allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples
-            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level
-            1 administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        variant_query : str, optional
-        site_mask : str, optional
-            Site filters mask to apply.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and
-            "variants". Variables prefixed with "cohort" are 1-dimensional
-            arrays with data about the cohorts, such as the area, period, taxon
-            and cohort size. Variables prefixed with "variant" are
-            1-dimensional arrays with data about the variants, such as the
-            contig, position, reference and alternate alleles. Variables
-            prefixed with "event" are 2-dimensional arrays with the allele
-            counts and frequency calculations.
-
-        """
-        debug = self._log.debug
-
-        debug("check parameters")
-        self._check_param_min_cohort_size(min_cohort_size)
-
-        debug("load sample metadata")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        debug("access SNP calls")
-        ds_snps = self.snp_calls(
-            region=transcript,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-        )
-
-        debug("access genotypes")
-        gt = ds_snps["call_genotype"].data
-
-        debug("prepare sample metadata for cohort grouping")
-        df_samples = self._prep_samples_for_cohort_grouping(
-            df_samples=df_samples,
-            area_by=area_by,
-            period_by=period_by,
-        )
-
-        debug("group samples to make cohorts")
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
-
-        debug("build cohorts dataframe")
-        df_cohorts = self._build_cohorts_from_sample_grouping(
-            group_samples_by_cohort, min_cohort_size
-        )
-
-        debug("bring genotypes into memory")
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gt = gt.compute()
-
-        debug("set up variant variables")
-        contigs = ds_snps.attrs["contigs"]
-        variant_contig = np.repeat(
-            [contigs[i] for i in ds_snps["variant_contig"].values], 3
-        )
-        variant_position = np.repeat(ds_snps["variant_position"].values, 3)
-        alleles = ds_snps["variant_allele"].values
-        variant_ref_allele = np.repeat(alleles[:, 0], 3)
-        variant_alt_allele = alleles[:, 1:].flatten()
-        variant_pass_gamb_colu_arab = np.repeat(
-            ds_snps["variant_filter_pass_gamb_colu_arab"].values, 3
-        )
-        variant_pass_gamb_colu = np.repeat(
-            ds_snps["variant_filter_pass_gamb_colu"].values, 3
-        )
-        variant_pass_arab = np.repeat(ds_snps["variant_filter_pass_arab"].values, 3)
-
-        debug("setup main event variables")
-        n_variants, n_cohorts = len(variant_position), len(df_cohorts)
-        count = np.zeros((n_variants, n_cohorts), dtype=int)
-        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
-
-        debug("build event count and nobs for each cohort")
-        cohorts_iterator = self._progress(
-            enumerate(df_cohorts.itertuples()),
-            total=len(df_cohorts),
-            desc="Compute SNP allele frequencies",
-        )
-        for cohort_index, cohort in cohorts_iterator:
-
-            cohort_key = cohort.taxon, cohort.area, cohort.period
-            sample_indices = group_samples_by_cohort.indices[cohort_key]
-
-            cohort_ac, cohort_an = self._cohort_alt_allele_counts_melt(
-                gt, sample_indices, max_allele=3
-            )
-            count[:, cohort_index] = cohort_ac
-
-            if nobs_mode == "called":
-                nobs[:, cohort_index] = cohort_an
-            elif nobs_mode == "fixed":
-                nobs[:, cohort_index] = cohort.size * 2
-            else:
-                raise ValueError(f"Bad nobs_mode: {nobs_mode!r}")
-
-        debug("compute frequency")
-        with np.errstate(divide="ignore", invalid="ignore"):
-            # ignore division warnings
-            frequency = count / nobs
-
-        debug("compute maximum frequency over cohorts")
-        with warnings.catch_warnings():
-            # ignore "All-NaN slice encountered" warnings
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            max_af = np.nanmax(frequency, axis=1)
-
-        debug("make dataframe of SNPs")
-        df_variants = pd.DataFrame(
-            {
-                "contig": variant_contig,
-                "position": variant_position,
-                "ref_allele": variant_ref_allele.astype("U1"),
-                "alt_allele": variant_alt_allele.astype("U1"),
-                "max_af": max_af,
-                "pass_gamb_colu_arab": variant_pass_gamb_colu_arab,
-                "pass_gamb_colu": variant_pass_gamb_colu,
-                "pass_arab": variant_pass_arab,
-            }
-        )
-
-        debug("deal with SNP alleles not observed")
-        if drop_invariant:
-            loc_variant = max_af > 0
-            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
-            count = np.compress(loc_variant, count, axis=0)
-            nobs = np.compress(loc_variant, nobs, axis=0)
-            frequency = np.compress(loc_variant, frequency, axis=0)
-
-        debug("set up variant effect annotator")
-        ann = self._annotator()
-
-        debug("add effects to the dataframe")
-        ann.get_effects(
-            transcript=transcript, variants=df_variants, progress=self._progress
-        )
-
-        debug("add variant labels")
-        df_variants["label"] = self._pandas_apply(
-            self._make_snp_label_effect,
-            df_variants,
-            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-        )
-
-        debug("build the output dataset")
-        ds_out = xr.Dataset()
-
-        debug("cohort variables")
-        for coh_col in df_cohorts.columns:
-            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
-
-        debug("variant variables")
-        for snp_col in df_variants.columns:
-            ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
-
-        debug("event variables")
-        ds_out["event_count"] = ("variants", "cohorts"), count
-        ds_out["event_nobs"] = ("variants", "cohorts"), nobs
-        ds_out["event_frequency"] = ("variants", "cohorts"), frequency
-
-        debug("apply variant query")
-        if variant_query is not None:
-            loc_variants = df_variants.eval(variant_query).values
-            ds_out = ds_out.isel(variants=loc_variants)
-
-        debug("add confidence intervals")
-        self._add_frequency_ci(ds_out, ci_method)
-
-        debug("tidy up display by sorting variables")
-        ds_out = ds_out[sorted(ds_out)]
-
-        debug("add metadata")
-        gene_name = self._transcript_to_gene_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
-        title += " SNP frequencies"
-        ds_out.attrs["title"] = title
-
-        return ds_out
-
-    def aa_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        amino acid change allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples spatially.
-            E.g., use "admin1_iso" or "admin1_name" to group by level 1
-            administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        variant_query : str, optional
-        site_mask : str, optional
-            Site filters mask to apply.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and
-            "variants". Variables prefixed with "cohort" are 1-dimensional
-            arrays with data about the cohorts, such as the area, period, taxon
-            and cohort size. Variables prefixed with "variant" are 1-dimensional
-            arrays with data about the variants, such as the contig, position,
-            reference and alternate alleles. Variables prefixed with "event" are
-            2-dimensional arrays with the allele counts and frequency
-            calculations.
-
-        """
-        debug = self._log.debug
-
-        debug("begin by computing SNP allele frequencies")
-        ds_snp_frq = self.snp_allele_frequencies_advanced(
-            transcript=transcript,
-            area_by=area_by,
-            period_by=period_by,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            min_cohort_size=min_cohort_size,
-            drop_invariant=True,  # always drop invariant for aa frequencies
-            variant_query=AA_CHANGE_QUERY,  # we'll also apply a variant query later
-            site_mask=site_mask,
-            nobs_mode=nobs_mode,
-            ci_method=None,  # we will recompute confidence intervals later
-        )
-
-        # N.B., we need to worry about the possibility of the
-        # same aa change due to SNPs at different positions. We cannot
-        # sum frequencies of SNPs at different genomic positions. This
-        # is why we group by position and aa_change, not just aa_change.
-
-        # add in a special grouping column to work around the fact that xarray currently
-        # doesn't support grouping by multiple variables in the same dimension
-        df_grouper = ds_snp_frq[
-            ["variant_position", "variant_aa_change"]
-        ].to_dataframe()
-        grouper_var = df_grouper.apply(
-            lambda row: "_".join([str(v) for v in row]), axis="columns"
-        )
-        ds_snp_frq["variant_position_aa_change"] = "variants", grouper_var
-
-        debug("group by position and amino acid change")
-        group_by_aa_change = ds_snp_frq.groupby("variant_position_aa_change")
-
-        debug("apply aggregation")
-        ds_aa_frq = group_by_aa_change.map(self._map_snp_to_aa_change_frq_ds)
-
-        debug("add back in cohort variables, unaffected by aggregation")
-        # FIXME: unresolved attribute reference 'startswith'
-        cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
-        for v in cohort_vars:
-            ds_aa_frq[v] = ds_snp_frq[v]
-
-        debug("sort by genomic position")
-        ds_aa_frq = ds_aa_frq.sortby(["variant_position", "variant_aa_change"])
-
-        debug("recompute frequency")
-        count = ds_aa_frq["event_count"].values
-        nobs = ds_aa_frq["event_nobs"].values
-        with np.errstate(divide="ignore", invalid="ignore"):
-            frequency = count / nobs  # ignore division warnings
-        ds_aa_frq["event_frequency"] = ("variants", "cohorts"), frequency
-
-        debug("recompute max frequency over cohorts")
-        with warnings.catch_warnings():
-            # ignore "All-NaN slice encountered" warnings
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            max_af = np.nanmax(ds_aa_frq["event_frequency"].values, axis=1)
-        ds_aa_frq["variant_max_af"] = "variants", max_af
-
-        debug("set up variant dataframe, useful intermediate")
-        variant_cols = [v for v in ds_aa_frq if v.startswith("variant_")]
-        df_variants = ds_aa_frq[variant_cols].to_dataframe()
-        df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
-
-        debug("assign new variant label")
-        label = self._pandas_apply(
-            self._make_snp_label_aa,
-            df_variants,
-            columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
-        )
-        ds_aa_frq["variant_label"] = "variants", label
-
-        debug("apply variant query if given")
-        if variant_query is not None:
-            loc_variants = df_variants.eval(variant_query).values
-            ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
-
-        debug("compute new confidence intervals")
-        self._add_frequency_ci(ds_aa_frq, ci_method)
-
-        debug("tidy up display by sorting variables")
-        ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
-
-        gene_name = self._transcript_to_gene_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
-        title += " SNP frequencies"
-        ds_aa_frq.attrs["title"] = title
-
-        return ds_aa_frq
 
     def gene_cnv_frequencies_advanced(
         self,
@@ -2643,6 +2133,241 @@ class Ag3(AnophelesDataResource):
 
         debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]
+
+        return ds_out
+
+    def snp_allele_frequencies_advanced(
+        self,
+        transcript,
+        area_by,
+        period_by,
+        sample_sets=None,
+        sample_query=None,
+        min_cohort_size=10,
+        drop_invariant=True,
+        variant_query=None,
+        site_mask=None,
+        nobs_mode="called",  # or "fixed"
+        ci_method="wilson",
+    ):
+        """Group samples by taxon, area (space) and period (time), then compute
+        SNP allele counts and frequencies.
+
+        Parameters
+        ----------
+        transcript : str
+            Gene transcript ID, e.g., "AGAP004707-RD".
+        area_by : str
+            Column name in the sample metadata to use to group samples
+            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level
+            1 administrative divisions, or use "admin2_name" to group by level 2
+            administrative divisions.
+        period_by : {"year", "quarter", "month"}
+            Length of time to group samples temporally.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int, optional
+            Minimum cohort size. Any cohorts below this size are omitted.
+        drop_invariant : bool, optional
+            If True, variants with no alternate allele calls in any cohorts are
+            dropped from the result.
+        variant_query : str, optional
+        site_mask : str, optional
+            Site filters mask to apply.
+        nobs_mode : {"called", "fixed"}
+            Method for calculating the denominator when computing frequencies.
+            If "called" then use the number of called alleles, i.e., number of
+            samples with non-missing genotype calls multiplied by 2. If "fixed"
+            then use the number of samples multiplied by 2.
+        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
+            Method to use for computing confidence intervals, passed through to
+            `statsmodels.stats.proportion.proportion_confint`.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            The resulting dataset contains data has dimensions "cohorts" and
+            "variants". Variables prefixed with "cohort" are 1-dimensional
+            arrays with data about the cohorts, such as the area, period, taxon
+            and cohort size. Variables prefixed with "variant" are
+            1-dimensional arrays with data about the variants, such as the
+            contig, position, reference and alternate alleles. Variables
+            prefixed with "event" are 2-dimensional arrays with the allele
+            counts and frequency calculations.
+
+        """
+        debug = self._log.debug
+
+        debug("check parameters")
+        self._check_param_min_cohort_size(min_cohort_size)
+
+        debug("load sample metadata")
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        debug("access SNP calls")
+        ds_snps = self.snp_calls(
+            region=transcript,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+        )
+
+        debug("access genotypes")
+        gt = ds_snps["call_genotype"].data
+
+        debug("prepare sample metadata for cohort grouping")
+        df_samples = self._prep_samples_for_cohort_grouping(
+            df_samples=df_samples,
+            area_by=area_by,
+            period_by=period_by,
+        )
+
+        debug("group samples to make cohorts")
+        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+
+        debug("build cohorts dataframe")
+        df_cohorts = self._build_cohorts_from_sample_grouping(
+            group_samples_by_cohort, min_cohort_size
+        )
+
+        debug("bring genotypes into memory")
+        with self._dask_progress(desc="Load SNP genotypes"):
+            gt = gt.compute()
+
+        debug("set up variant variables")
+        contigs = ds_snps.attrs["contigs"]
+        variant_contig = np.repeat(
+            [contigs[i] for i in ds_snps["variant_contig"].values], 3
+        )
+        variant_position = np.repeat(ds_snps["variant_position"].values, 3)
+        alleles = ds_snps["variant_allele"].values
+        variant_ref_allele = np.repeat(alleles[:, 0], 3)
+        variant_alt_allele = alleles[:, 1:].flatten()
+        variant_pass_gamb_colu_arab = np.repeat(
+            ds_snps["variant_filter_pass_gamb_colu_arab"].values, 3
+        )
+        variant_pass_gamb_colu = np.repeat(
+            ds_snps["variant_filter_pass_gamb_colu"].values, 3
+        )
+        variant_pass_arab = np.repeat(ds_snps["variant_filter_pass_arab"].values, 3)
+
+        debug("setup main event variables")
+        n_variants, n_cohorts = len(variant_position), len(df_cohorts)
+        count = np.zeros((n_variants, n_cohorts), dtype=int)
+        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
+
+        debug("build event count and nobs for each cohort")
+        cohorts_iterator = self._progress(
+            enumerate(df_cohorts.itertuples()),
+            total=len(df_cohorts),
+            desc="Compute SNP allele frequencies",
+        )
+        for cohort_index, cohort in cohorts_iterator:
+
+            cohort_key = cohort.taxon, cohort.area, cohort.period
+            sample_indices = group_samples_by_cohort.indices[cohort_key]
+
+            cohort_ac, cohort_an = self._cohort_alt_allele_counts_melt(
+                gt, sample_indices, max_allele=3
+            )
+            count[:, cohort_index] = cohort_ac
+
+            if nobs_mode == "called":
+                nobs[:, cohort_index] = cohort_an
+            elif nobs_mode == "fixed":
+                nobs[:, cohort_index] = cohort.size * 2
+            else:
+                raise ValueError(f"Bad nobs_mode: {nobs_mode!r}")
+
+        debug("compute frequency")
+        with np.errstate(divide="ignore", invalid="ignore"):
+            # ignore division warnings
+            frequency = count / nobs
+
+        debug("compute maximum frequency over cohorts")
+        with warnings.catch_warnings():
+            # ignore "All-NaN slice encountered" warnings
+            warnings.simplefilter("ignore", category=RuntimeWarning)
+            max_af = np.nanmax(frequency, axis=1)
+
+        debug("make dataframe of SNPs")
+        df_variants = pd.DataFrame(
+            {
+                "contig": variant_contig,
+                "position": variant_position,
+                "ref_allele": variant_ref_allele.astype("U1"),
+                "alt_allele": variant_alt_allele.astype("U1"),
+                "max_af": max_af,
+                "pass_gamb_colu_arab": variant_pass_gamb_colu_arab,
+                "pass_gamb_colu": variant_pass_gamb_colu,
+                "pass_arab": variant_pass_arab,
+            }
+        )
+
+        debug("deal with SNP alleles not observed")
+        if drop_invariant:
+            loc_variant = max_af > 0
+            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
+            count = np.compress(loc_variant, count, axis=0)
+            nobs = np.compress(loc_variant, nobs, axis=0)
+            frequency = np.compress(loc_variant, frequency, axis=0)
+
+        debug("set up variant effect annotator")
+        ann = self._annotator()
+
+        debug("add effects to the dataframe")
+        ann.get_effects(
+            transcript=transcript, variants=df_variants, progress=self._progress
+        )
+
+        debug("add variant labels")
+        df_variants["label"] = self._pandas_apply(
+            self._make_snp_label_effect,
+            df_variants,
+            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+        )
+
+        debug("build the output dataset")
+        ds_out = xr.Dataset()
+
+        debug("cohort variables")
+        for coh_col in df_cohorts.columns:
+            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+
+        debug("variant variables")
+        for snp_col in df_variants.columns:
+            ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
+
+        debug("event variables")
+        ds_out["event_count"] = ("variants", "cohorts"), count
+        ds_out["event_nobs"] = ("variants", "cohorts"), nobs
+        ds_out["event_frequency"] = ("variants", "cohorts"), frequency
+
+        debug("apply variant query")
+        if variant_query is not None:
+            loc_variants = df_variants.eval(variant_query).values
+            ds_out = ds_out.isel(variants=loc_variants)
+
+        debug("add confidence intervals")
+        self._add_frequency_ci(ds_out, ci_method)
+
+        debug("tidy up display by sorting variables")
+        ds_out = ds_out[sorted(ds_out)]
+
+        debug("add metadata")
+        gene_name = self._transcript_to_gene_name(transcript)
+        title = transcript
+        if gene_name:
+            title += f" ({gene_name})"
+        title += " SNP frequencies"
+        ds_out.attrs["title"] = title
 
         return ds_out
 

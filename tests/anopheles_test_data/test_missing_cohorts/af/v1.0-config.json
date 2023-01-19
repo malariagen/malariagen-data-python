@@ -1,0 +1,8 @@
+{
+    "PUBLIC_RELEASES": [
+        "1.0"
+    ],
+    "GENESET_GFF3_PATH": "reference/genome/idAnoFuneDA-416_04/VectorBase-61_AfunestusidAnoFuneDA416_04_patched.gff3.gz",
+    "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
+    "DEFAULT_COHORTS_ANALYSIS": "20221129"
+}
