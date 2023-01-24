@@ -26,66 +26,11 @@ def setup_af1(url="simplecache::gs://vo_afun_release/", **kwargs):
     return Af1(url, **kwargs)
 
 
-def test_sample_metadata():
-
-    af1 = setup_af1()
-    df_sample_sets_v1 = af1.sample_sets(release="1.0")
-
-    expected_cols = (
-        "sample_id",
-        "partner_sample_id",
-        "contributor",
-        "country",
-        "location",
-        "year",
-        "month",
-        "latitude",
-        "longitude",
-        "sex_call",
-        "sample_set",
-        "release",
-    )
-
-    # all v1.0
-    df_samples_v1 = af1.sample_metadata(sample_sets="1.0")
-    assert tuple(df_samples_v1.columns[: len(expected_cols)]) == expected_cols
-    expected_len = df_sample_sets_v1["sample_count"].sum()
-    assert len(df_samples_v1) == expected_len
-
-    # single sample set
-    df_samples_eg = af1.sample_metadata(sample_sets="1229-VO-GH-DADZIE-VMF00095")
-    assert tuple(df_samples_eg.columns[: len(expected_cols)]) == expected_cols
-    expected_len = df_sample_sets_v1.query(
-        "sample_set == '1229-VO-GH-DADZIE-VMF00095'"
-    )["sample_count"].sum()
-    assert len(df_samples_eg) == expected_len
-
-    # multiple sample sets
-    sample_sets = [
-        "1229-VO-GH-DADZIE-VMF00095",
-        "1230-VO-GA-CF-AYALA-VMF00045",
-        "1231-VO-MULTI-WONDJI-VMF00043",
-    ]
-    df_samples_egs = af1.sample_metadata(sample_sets=sample_sets)
-    assert tuple(df_samples_egs.columns[: len(expected_cols)]) == expected_cols
-    loc_sample_sets = df_sample_sets_v1["sample_set"].isin(sample_sets)
-    expected_len = df_sample_sets_v1.loc[loc_sample_sets]["sample_count"].sum()
-    assert len(df_samples_egs) == expected_len
-
-    # duplicate sample sets
-    with pytest.raises(ValueError):
-        af1.sample_metadata(sample_sets=["1.0", "1.0"])
-    with pytest.raises(ValueError):
-        af1.sample_metadata(
-            sample_sets=["1229-VO-GH-DADZIE-VMF00095", "1229-VO-GH-DADZIE-VMF00095"]
-        )
-    with pytest.raises(ValueError):
-        af1.sample_metadata(sample_sets=["1229-VO-GH-DADZIE-VMF00095", "1.0"])
-
-    # default is all public releases
-    df_default = af1.sample_metadata()
-    df_all = af1.sample_metadata(sample_sets=af1.releases)
-    assert_frame_equal(df_default, df_all)
+def test_ag3_repr():
+    af1 = setup_af1(check_location=True)
+    assert isinstance(af1, Af1)
+    r = repr(af1)
+    assert isinstance(r, str)
 
 
 @pytest.mark.parametrize(
@@ -231,6 +176,47 @@ def test_snp_genotypes_chunks(sample_sets, region):
 
 
 @pytest.mark.parametrize(
+    "region",
+    ["X", "LOC125762289", "2RL:48714463-48715355"],
+)
+def test_is_accessible(region):
+
+    af1 = setup_af1()
+    # run a couple of tests
+    is_accessible = af1.is_accessible(region=region, site_mask="funestus")
+    assert isinstance(is_accessible, np.ndarray)
+    assert is_accessible.ndim == 1
+    assert is_accessible.shape[0] == af1.genome_sequence(region).shape[0]
+
+
+@pytest.mark.parametrize("region", ["X", "LOC125762289", "2RL:48714463-48715355"])
+@pytest.mark.parametrize("site_mask", [None, "funestus"])
+def test_site_annotations(region, site_mask):
+
+    af1 = setup_af1()
+
+    ds_snp = af1.snp_variants(region=region, site_mask=site_mask)
+    n_variants = ds_snp.dims["variants"]
+    ds_ann = af1.site_annotations(region=region, site_mask=site_mask)
+    # site annotations dataset is aligned with SNP sites
+    assert ds_ann.dims["variants"] == n_variants
+    assert isinstance(ds_ann, xr.Dataset)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        d = ds_ann[f]
+        assert d.ndim == 1
+        assert d.dims == ("variants",)
+        assert d.shape == (n_variants,)
+
+
+@pytest.mark.parametrize(
     "sample_sets",
     [
         None,
@@ -363,202 +349,18 @@ def test_snp_calls__sample_query(sample_query):
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
-# TODO: adapt for Af1.
-# def test_snp_effects():
+# TODO: test_snp_effects() for Af1.0
+# # reverse strand gene
+# gste2 = "LOC125761549"
 #
-#     af1 = setup_af1()
+# # test forward strand gene gste6
+# gste6 = "LOC125767311"
 #
-#     site_mask = "funestus"
-#     expected_fields = [
-#         "contig",
-#         "position",
-#         "ref_allele",
-#         "alt_allele",
-#         "pass_funestus",
-#         "transcript",
-#         "effect",
-#         "impact",
-#         "ref_codon",
-#         "alt_codon",
-#         "aa_pos",
-#         "ref_aa",
-#         "alt_aa",
-#         "aa_change",
-#     ]
+# # check 5' utr intron and the different intron effects
+# utr_intron5 = "utr_LOC125767311_t1_1"
 #
-#     # reverse strand gene
-#     gste2 = "LOC125761549_t5"  # Ag3 tests "AGAP009194-RA"
-#     df = af1.snp_effects(transcript=gste2, site_mask=site_mask)
-#     assert isinstance(df, pd.DataFrame)
-#     assert df.columns.tolist() == expected_fields
-#     assert df.shape == (2838, len(expected_fields))
-#
-#     # check first, second, third codon position non-syn
-#     assert df.iloc[1454].aa_change == "I114L"
-#     assert df.iloc[1446].aa_change == "I114M"
-#     # while we are here, check all columns for a position
-#     assert df.iloc[1451].position == 28598166
-#     assert df.iloc[1451].ref_allele == "A"
-#     assert df.iloc[1451].alt_allele == "G"
-#     assert df.iloc[1451].effect == "NON_SYNONYMOUS_CODING"
-#     assert df.iloc[1451].impact == "MODERATE"
-#     assert df.iloc[1451].ref_codon == "aTt"
-#     assert df.iloc[1451].alt_codon == "aCt"
-#     assert df.iloc[1451].aa_pos == 114
-#     assert df.iloc[1451].ref_aa == "I"
-#     assert df.iloc[1451].alt_aa == "T"
-#     assert df.iloc[1451].aa_change == "I114T"
-#     # check syn
-#     assert df.iloc[1447].aa_change == "I114I"
-#     # check intronic
-#     assert df.iloc[1197].effect == "INTRONIC"
-#     # check 5' utr
-#     assert df.iloc[2661].effect == "FIVE_PRIME_UTR"
-#     # check 3' utr
-#     assert df.iloc[0].effect == "THREE_PRIME_UTR"
-#
-#     # test forward strand gene gste6
-#     gste6 = "LOC125761549_t5"  # Ag3 tests "AGAP009196-RA"
-#     df = af1.snp_effects(transcript=gste6, site_mask=site_mask)
-#     assert isinstance(df, pd.DataFrame)
-#     assert df.columns.tolist() == expected_fields
-#     assert df.shape == (2829, len(expected_fields))
-#
-#     # check first, second, third codon position non-syn
-#     assert df.iloc[701].aa_change == "E35*"
-#     assert df.iloc[703].aa_change == "E35V"
-#     # while we are here, check all columns for a position
-#     assert df.iloc[706].position == 28600605
-#     assert df.iloc[706].ref_allele == "G"
-#     assert df.iloc[706].alt_allele == "C"
-#     assert df.iloc[706].effect == "NON_SYNONYMOUS_CODING"
-#     assert df.iloc[706].impact == "MODERATE"
-#     assert df.iloc[706].ref_codon == "gaG"
-#     assert df.iloc[706].alt_codon == "gaC"
-#     assert df.iloc[706].aa_pos == 35
-#     assert df.iloc[706].ref_aa == "E"
-#     assert df.iloc[706].alt_aa == "D"
-#     assert df.iloc[706].aa_change == "E35D"
-#     # check syn
-#     assert df.iloc[705].aa_change == "E35E"
-#     # check intronic
-#     assert df.iloc[900].effect == "INTRONIC"
-#     # check 5' utr
-#     assert df.iloc[0].effect == "FIVE_PRIME_UTR"
-#     # check 3' utr
-#     assert df.iloc[2828].effect == "THREE_PRIME_UTR"
-#
-#     # check 5' utr intron and the different intron effects
-#     utr_intron5 = "LOC125761549_t5"  # Ag3 tests "AGAP004679-RB"
-#     df = af1.snp_effects(transcript=utr_intron5, site_mask=site_mask)
-#     assert isinstance(df, pd.DataFrame)
-#     assert df.columns.tolist() == expected_fields
-#     assert df.shape == (7686, len(expected_fields))
-#     assert df.iloc[180].effect == "SPLICE_CORE"
-#     assert df.iloc[198].effect == "SPLICE_REGION"
-#     assert df.iloc[202].effect == "INTRONIC"
-#
-#     # check 3' utr intron
-#     utr_intron3 = "LOC125761549_t5"  # Ag3 tests "AGAP000689-RA"
-#     df = af1.snp_effects(transcript=utr_intron3, site_mask=site_mask)
-#     assert isinstance(df, pd.DataFrame)
-#     assert df.columns.tolist() == expected_fields
-#     assert df.shape == (5397, len(expected_fields))
-#     assert df.iloc[646].effect == "SPLICE_CORE"
-#     assert df.iloc[652].effect == "SPLICE_REGION"
-#     assert df.iloc[674].effect == "INTRONIC"
-
-
-@pytest.mark.parametrize(
-    "region",
-    ["X", "LOC125762289", "2RL:48714463-48715355"],
-)
-def test_is_accessible(region):
-
-    af1 = setup_af1()
-    # run a couple of tests
-    is_accessible = af1.is_accessible(region=region, site_mask="funestus")
-    assert isinstance(is_accessible, np.ndarray)
-    assert is_accessible.ndim == 1
-    assert is_accessible.shape[0] == af1.genome_sequence(region).shape[0]
-
-
-@pytest.mark.parametrize(
-    "region_raw",
-    [
-        "LOC125762289",
-        "X",
-        "2RL:48714463-48715355",
-        "2RL:24,630,355-24,633,221",
-        Region("2RL", 48714463, 48715355),
-    ],
-)
-def test_locate_region(region_raw):
-
-    af1 = setup_af1()
-    gene_annotation = af1.geneset(attributes=["ID"])
-    region = resolve_region(af1, region_raw)
-    pos = af1.snp_sites(region=region.contig, field="POS")
-    ref = af1.snp_sites(region=region.contig, field="REF")
-    loc_region = locate_region(region, pos)
-
-    # check types
-    assert isinstance(loc_region, slice)
-    assert isinstance(region, Region)
-
-    # check Region with contig
-    if region_raw == "X":
-        assert region.contig == "X"
-        assert region.start is None
-        assert region.end is None
-
-    # check that Region goes through unchanged
-    if isinstance(region_raw, Region):
-        assert region == region_raw
-
-    # check that gene name matches coordinates from the geneset and matches gene sequence
-    if region_raw == "LOC125762289":
-        gene = gene_annotation.query("ID == 'LOC125762289'").squeeze()
-        assert region == Region(gene.contig, gene.start, gene.end)
-        assert pos[loc_region][0] == gene.start
-        assert pos[loc_region][-1] == gene.end
-        assert (
-            ref[loc_region][:5].compute()
-            == np.array(["T", "T", "T", "C", "T"], dtype="S1")
-        ).all()
-
-    # check string parsing
-    if region_raw == "2RL:48714463-48715355":
-        assert region == Region("2RL", 48714463, 48715355)
-    if region_raw == "2RL:24,630,355-24,633,221":
-        assert region == Region("2RL", 24630355, 24633221)
-
-
-@pytest.mark.parametrize("region", ["X", "LOC125762289", "2RL:48714463-48715355"])
-@pytest.mark.parametrize("site_mask", [None, "funestus"])
-def test_site_annotations(region, site_mask):
-
-    af1 = setup_af1()
-
-    ds_snp = af1.snp_variants(region=region, site_mask=site_mask)
-    n_variants = ds_snp.dims["variants"]
-    ds_ann = af1.site_annotations(region=region, site_mask=site_mask)
-    # site annotations dataset is aligned with SNP sites
-    assert ds_ann.dims["variants"] == n_variants
-    assert isinstance(ds_ann, xr.Dataset)
-    for f in (
-        "codon_degeneracy",
-        "codon_nonsyn",
-        "codon_position",
-        "seq_cls",
-        "seq_flen",
-        "seq_relpos_start",
-        "seq_relpos_stop",
-    ):
-        d = ds_ann[f]
-        assert d.ndim == 1
-        assert d.dims == ("variants",)
-        assert d.shape == (n_variants,)
+# # check 3' utr intron
+# utr_intron3 = "utr_LOC125767311_t1_3"
 
 
 def test_snp_allele_frequencies__dict_cohorts():
@@ -683,6 +485,9 @@ def test_snp_allele_frequencies__query():
     assert len(df) == 1309
 
 
+# TODO: Af1.0 CNV tests will go here, then HAP tests underneath
+
+
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -727,6 +532,57 @@ def test_sample_cohorts(sample_sets):
         assert df_coh.sample_id[27] == "VBS24419"
 
 
+@pytest.mark.parametrize(
+    "region_raw",
+    [
+        "LOC125762289",
+        "X",
+        "2RL:48714463-48715355",
+        "2RL:24,630,355-24,633,221",
+        Region("2RL", 48714463, 48715355),
+    ],
+)
+def test_locate_region(region_raw):
+
+    af1 = setup_af1()
+    gene_annotation = af1.geneset(attributes=["ID"])
+    region = resolve_region(af1, region_raw)
+    pos = af1.snp_sites(region=region.contig, field="POS")
+    ref = af1.snp_sites(region=region.contig, field="REF")
+    loc_region = locate_region(region, pos)
+
+    # check types
+    assert isinstance(loc_region, slice)
+    assert isinstance(region, Region)
+
+    # check Region with contig
+    if region_raw == "X":
+        assert region.contig == "X"
+        assert region.start is None
+        assert region.end is None
+
+    # check that Region goes through unchanged
+    if isinstance(region_raw, Region):
+        assert region == region_raw
+
+    # check that gene name matches coordinates from the geneset and matches gene sequence
+    if region_raw == "LOC125762289":
+        gene = gene_annotation.query("ID == 'LOC125762289'").squeeze()
+        assert region == Region(gene.contig, gene.start, gene.end)
+        assert pos[loc_region][0] == gene.start
+        assert pos[loc_region][-1] == gene.end
+        assert (
+            ref[loc_region][:5].compute()
+            == np.array(["T", "T", "T", "C", "T"], dtype="S1")
+        ).all()
+
+    # check string parsing
+    if region_raw == "2RL:48714463-48715355":
+        assert region == Region("2RL", 48714463, 48715355)
+    if region_raw == "2RL:24,630,355-24,633,221":
+        assert region == Region("2RL", 24630355, 24633221)
+
+
 def test_aa_allele_frequencies():
     af1 = setup_af1(cohorts_analysis="20221129")
 
@@ -759,59 +615,6 @@ def test_aa_allele_frequencies():
     assert df.index.names == ["aa_change", "contig", "position"]
     assert df.shape == (53, len(expected_fields))
     assert df.loc["V947L"].max_af[0] == pytest.approx(0.025, abs=1e-6)
-
-
-@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t5"])
-@pytest.mark.parametrize(
-    "sample_sets",
-    [
-        "1229-VO-GH-DADZIE-VMF00095",
-        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
-    ],
-)
-@pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
-@pytest.mark.parametrize("site_mask", [None, "funestus"])
-def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
-
-    results_cache = "../results_cache"
-    shutil.rmtree(results_cache, ignore_errors=True)
-    af1 = setup_af1(results_cache=results_cache)
-
-    ac = af1.snp_allele_counts(
-        region=region,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        site_mask=site_mask,
-    )
-    assert isinstance(ac, np.ndarray)
-    pos = af1.snp_sites(region=region, field="POS", site_mask=site_mask)
-    assert ac.shape == (pos.shape[0], 4)
-
-    ac2 = af1.snp_allele_counts(
-        region=region,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        site_mask=site_mask,
-    )
-    assert_array_equal(ac, ac2)
-
-
-# TODO: this function is a duplicate, from test_ag3.py
-def _compare_series_like(actual, expect):
-
-    # compare pandas series-like objects for equality or floating point
-    # similarity, handling missing values appropriately
-
-    # handle object arrays, these don't get nans compared properly
-    t = actual.dtype
-    if t == object:
-        expect = expect.fillna("NA")
-        actual = actual.fillna("NA")
-
-    if t.kind == "f":
-        assert_allclose(actual.values, expect.values)
-    else:
-        assert_array_equal(actual.values, expect.values)
 
 
 # noinspection PyDefaultArgument
@@ -1227,3 +1030,149 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
     _check_aa_allele_frequencies_advanced(
         nobs_mode=nobs_mode,
     )
+
+
+# TODO: here _check_gene_cnv_frequencies_advanced
+# TODO: here test_gene_cnv_frequencies_advanced__
+
+
+@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t5"])
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
+    ],
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
+@pytest.mark.parametrize("site_mask", [None, "funestus"])
+def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    af1 = setup_af1(results_cache=results_cache)
+
+    ac = af1.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert isinstance(ac, np.ndarray)
+    pos = af1.snp_sites(region=region, field="POS", site_mask=site_mask)
+    assert ac.shape == (pos.shape[0], 4)
+
+    ac2 = af1.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert_array_equal(ac, ac2)
+
+
+@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t7"])
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
+    ],
+)
+@pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
+@pytest.mark.parametrize("site_mask", [None, "funestus"])
+def test_pca(region, sample_sets, sample_query, site_mask):
+
+    results_cache = "../results_cache"
+    shutil.rmtree(results_cache, ignore_errors=True)
+    af1 = setup_af1(results_cache=results_cache)
+
+    n_components = 8
+    df_pca, evr = af1.pca(
+        region=region,
+        n_snps=100,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        n_components=n_components,
+    )
+
+    df_samples = af1.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+    )
+
+    assert isinstance(df_pca, pd.DataFrame)
+    assert len(df_pca) == len(df_samples)
+    expected_columns = df_samples.columns.tolist() + [
+        f"PC{n+1}" for n in range(n_components)
+    ]
+    assert df_pca.columns.tolist() == expected_columns
+    assert_frame_equal(df_samples, df_pca[df_samples.columns.tolist()])
+    assert isinstance(evr, np.ndarray)
+    assert evr.shape == (n_components,)
+
+    df_pca2, evr2 = af1.pca(
+        region=region,
+        n_snps=100,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        n_components=n_components,
+    )
+    assert_frame_equal(df_pca, df_pca2)
+    assert_array_equal(evr, evr2)
+
+
+# TODO: this function is a verbatim duplicate, from test_ag3.py
+def _compare_series_like(actual, expect):
+
+    # compare pandas series-like objects for equality or floating point
+    # similarity, handling missing values appropriately
+
+    # handle object arrays, these don't get nans compared properly
+    t = actual.dtype
+    if t == object:
+        expect = expect.fillna("NA")
+        actual = actual.fillna("NA")
+
+    if t.kind == "f":
+        assert_allclose(actual.values, expect.values)
+    else:
+        assert_array_equal(actual.values, expect.values)
+
+
+# TODO: here test_h12_calibration
+# TODO: here test_haplotype_frequencies
+
+
+def test_fst_gwss():
+    af1 = setup_af1()
+    cohort1_query = "cohort_admin2_year == 'GH-NP_Tolon-Kumbungu_fune_2017'"
+    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu-Tatale_fune_2017'"
+    contig = "2RL"
+    site_mask = "funestus"
+    window_size = 10_000
+
+    x, fst = af1.fst_gwss(
+        contig=contig,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        window_size=window_size,
+        site_mask=site_mask,
+        cohort_size=None,
+    )
+
+    # check data
+    assert isinstance(x, np.ndarray)
+    assert isinstance(fst, np.ndarray)
+
+    # check dimensions
+    assert x.ndim == fst.ndim == 1
+    assert x.shape == fst.shape
+
+    # check some values
+    assert_allclose(x[0], 87935.3098, rtol=1e-5), x[0]
+    assert_allclose(fst[0], -0.102647, rtol=1e-5), fst[0]
+    assert np.all(fst <= 1)
+    assert np.all(np.logical_and(fst >= -0.4, fst <= 1))

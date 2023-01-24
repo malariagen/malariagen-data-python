@@ -43,6 +43,7 @@ DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
+FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
 DEFAULT_SITE_MASK = "funestus"
 
 
@@ -260,7 +261,6 @@ class Af1(AnophelesDataResource):
         """
         return html
 
-    # TODO: generalise (species, cohorts) so we can abstract to parent class
     def _sample_metadata(self, *, sample_set):
         df = self._read_general_metadata(sample_set=sample_set)
         df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
@@ -298,8 +298,7 @@ class Af1(AnophelesDataResource):
         if self._results_cache is None:
             raise CacheMiss
         params = params.copy()
-        # TODO: when cohorts are available
-        # params["cohorts_analysis"] = self._cohorts_analysis
+        params["cohorts_analysis"] = self._cohorts_analysis
         params["site_filters_analysis"] = self._site_filters_analysis
         cache_key, _ = hash_params(params)
         cache_path = self._results_cache / name / cache_key
@@ -316,8 +315,7 @@ class Af1(AnophelesDataResource):
             debug("no results cache has been configured, do nothing")
             return
         params = params.copy()
-        # TODO: when cohorts are available
-        # params["cohorts_analysis"] = self._cohorts_analysis
+        params["cohorts_analysis"] = self._cohorts_analysis
         params["site_filters_analysis"] = self._site_filters_analysis
         cache_key, params_json = hash_params(params)
         cache_path = self._results_cache / name / cache_key
@@ -345,17 +343,17 @@ class Af1(AnophelesDataResource):
         Parameters
         ----------
         region : str or Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
+            Contig name (e.g., "2RL"), gene name (e.g., "LOC125762289") or
             genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
+            "2RL:44989425-44998059").
         sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
+            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
+            release identifier (e.g., "1.0") or a list of release identifiers.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        site_mask : str, optional
             Site filters mask to apply.
         site_class : str, optional
             Select sites belonging to one of the following classes: CDS_DEG_4,
@@ -684,3 +682,232 @@ class Af1(AnophelesDataResource):
         ds_out.attrs["title"] = title
 
         return ds_out
+
+    # TODO: here plot_haplotype_network
+
+    def fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="funestus",
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run a Fst genome-wide scan to investigate genetic differentiation
+        between two cohorts.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2RL")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
+            release identifier (e.g., "1.0") or a list of release identifiers.
+        site_mask : str, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        fst : numpy.ndarray
+            An array with Fst statistic values for each window.
+        """
+
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = FST_GWSS_CACHE_NAME
+
+        params = dict(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._fst_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        fst = results["fst"]
+
+        return x, fst
+
+    def plot_fst_gwss_track(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="funestus",
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2RL")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
+            release identifier (e.g., "1.0") or a list of release identifiers.
+        site_mask : {"funestus"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed Fst statistic across chosen contig.
+        """
+
+        # Here we override the superclass implementation in order to provide a
+        # different default value for the `site_mask` parameter.
+        #
+        # Also, we take the opportunity to customise the docstring to use
+        # examples specific to funestus.
+
+        return super().plot_fst_gwss_track(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            width=width,
+            height=height,
+            show=show,
+            x_range=x_range,
+        )
+
+    def plot_fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="funestus",
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=190,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Run and plot a Fst genome-wide scan to investigate genetic
+        differentiation between two cohorts.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2RL")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
+            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
+            release identifier (e.g., "1.0") or a list of release identifiers.
+        site_mask : {"funestus"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed Fst statistic with gene track on x-axis.
+        """
+
+        # Here we override the superclass implementation in order to provide a
+        # different default value for the `site_mask` parameter.
+        #
+        # Also, we take the opportunity to customise the docstring to use
+        # examples specific to funestus.
+
+        return super().plot_fst_gwss(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            width=width,
+            track_height=track_height,
+            genes_height=genes_height,
+        )
