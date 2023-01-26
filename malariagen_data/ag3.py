@@ -32,7 +32,6 @@ from .util import (
     CacheMiss,
     Region,
     da_from_zarr,
-    hash_params,
     init_zarr_store,
     locate_region,
     plotly_discrete_legend,
@@ -2543,41 +2542,10 @@ class Ag3(AnophelesDataResource):
         debug("create IGV browser")
         self.igv(region=region, tracks=tracks)
 
-    def results_cache_get(self, *, name, params):
-        debug = self._log.debug
-        if self._results_cache is None:
-            raise CacheMiss
-        params = params.copy()
-        params["cohorts_analysis"] = self._cohorts_analysis
+    def _results_cache_add_analysis_params(self, params):
+        super()._results_cache_add_analysis_params(params)
+        # override parent class to add species analysis
         params["species_analysis"] = self._species_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-        cache_key, _ = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        results_path = cache_path / "results.npz"
-        if not results_path.exists():
-            raise CacheMiss
-        results = np.load(results_path)
-        debug(f"loaded {name}/{cache_key}")
-        return results
-
-    def results_cache_set(self, *, name, params, results):
-        debug = self._log.debug
-        if self._results_cache is None:
-            debug("no results cache has been configured, do nothing")
-            return
-        params = params.copy()
-        params["cohorts_analysis"] = self._cohorts_analysis
-        params["species_analysis"] = self._species_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-        cache_key, params_json = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        cache_path.mkdir(exist_ok=True, parents=True)
-        params_path = cache_path / "params.json"
-        results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
-        debug(f"saved {name}/{cache_key}")
 
     def aim_variants(self, aims):
         """Open ancestry informative marker variants.

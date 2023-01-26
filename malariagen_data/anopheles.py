@@ -35,6 +35,7 @@ from .util import (
     da_compress,
     da_from_zarr,
     dask_compress_dataset,
+    hash_params,
     init_filesystem,
     init_zarr_store,
     jackknife_ci,
@@ -315,15 +316,43 @@ class AnophelesDataResource(ABC):
         # children may have different manual overrides.
         raise NotImplementedError("Must override _transcript_to_gene_name")
 
-    @abstractmethod
-    def results_cache_get(self, *, name, params):
-        # Ag3 has cohorts and species. Subclasses have different cache names.
-        raise NotImplementedError("Must override results_cache_get")
+    def _results_cache_add_analysis_params(self, params):
+        # default implementation, can be overridden if additional analysis
+        # params are used
+        params["cohorts_analysis"] = self._cohorts_analysis
+        params["site_filters_analysis"] = self._site_filters_analysis
 
-    @abstractmethod
+    def results_cache_get(self, *, name, params):
+        debug = self._log.debug
+        if self._results_cache is None:
+            raise CacheMiss
+        params = params.copy()
+        self._results_cache_add_analysis_params(params)
+        cache_key, _ = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        results_path = cache_path / "results.npz"
+        if not results_path.exists():
+            raise CacheMiss
+        results = np.load(results_path)
+        debug(f"loaded {name}/{cache_key}")
+        return results
+
     def results_cache_set(self, *, name, params, results):
-        # Ag3 has cohorts and species. Subclasses have different cache names.
-        raise NotImplementedError("Must override results_cache_set")
+        debug = self._log.debug
+        if self._results_cache is None:
+            debug("no results cache has been configured, do nothing")
+            return
+        params = params.copy()
+        self._results_cache_add_analysis_params(params)
+        cache_key, params_json = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        cache_path.mkdir(exist_ok=True, parents=True)
+        params_path = cache_path / "params.json"
+        results_path = cache_path / "results.npz"
+        with params_path.open(mode="w") as f:
+            f.write(params_json)
+        np.savez_compressed(results_path, **results)
+        debug(f"saved {name}/{cache_key}")
 
     def snp_allele_counts(
         self,

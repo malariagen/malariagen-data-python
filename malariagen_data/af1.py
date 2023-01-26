@@ -1,7 +1,5 @@
 import sys
 
-import numpy as np
-
 from .anopheles import AnophelesDataResource
 
 try:
@@ -12,7 +10,7 @@ except ImportError:
 
 import malariagen_data  # used for .__version__
 
-from .util import CacheMiss, hash_params
+from .util import CacheMiss
 
 MAJOR_VERSION_INT = 1
 MAJOR_VERSION_GCS_STR = "v1.0"
@@ -269,40 +267,6 @@ class Af1(AnophelesDataResource):
             return ["funestus"]
         else:
             raise ValueError
-
-    def results_cache_get(self, *, name, params):
-        debug = self._log.debug
-        if self._results_cache is None:
-            raise CacheMiss
-        params = params.copy()
-        params["cohorts_analysis"] = self._cohorts_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-        cache_key, _ = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        results_path = cache_path / "results.npz"
-        if not results_path.exists():
-            raise CacheMiss
-        results = np.load(results_path)
-        debug(f"loaded {name}/{cache_key}")
-        return results
-
-    def results_cache_set(self, *, name, params, results):
-        debug = self._log.debug
-        if self._results_cache is None:
-            debug("no results cache has been configured, do nothing")
-            return
-        params = params.copy()
-        params["cohorts_analysis"] = self._cohorts_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-        cache_key, params_json = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        cache_path.mkdir(exist_ok=True, parents=True)
-        params_path = cache_path / "params.json"
-        results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
-        debug(f"saved {name}/{cache_key}")
 
     def genome_features(
         self, region=None, attributes=("ID", "Parent", "Note", "description")
