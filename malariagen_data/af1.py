@@ -303,6 +303,26 @@ class Af1(AnophelesDataResource):
 
         return super().genome_features(region=region, attributes=attributes)
 
+    def _plot_genes_setup_data(self, *, region):
+
+        # Here we override the superclass implementation because the
+        # gene annotations don't include a "Name" attribute.
+        #
+        # Also, the type needed is "protein_coding_gene".
+
+        df_genome_features = self.genome_features(
+            region=region, attributes=["ID", "Parent", "description"]
+        )
+        data = df_genome_features.query("type == 'protein_coding_gene'").copy()
+
+        tooltips = [
+            ("ID", "@ID"),
+            ("Description", "@description"),
+            ("Location", "@contig:@start{,}-@end{,}"),
+        ]
+
+        return data, tooltips
+
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks
     ):

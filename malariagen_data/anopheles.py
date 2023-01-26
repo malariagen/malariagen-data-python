@@ -2039,6 +2039,24 @@ class AnophelesDataResource(ABC):
         """Deprecated, this method has been renamed to snp_calls()."""
         return self.snp_calls(*args, **kwargs)
 
+    def _plot_genes_setup_data(self, *, region):
+        # default implementation - can be overridden if different attributes
+        # used in GFF
+
+        df_genome_features = self.genome_features(
+            region=region, attributes=["ID", "Name", "Parent", "description"]
+        )
+        data = df_genome_features.query("type == 'gene'").copy()
+
+        tooltips = [
+            ("ID", "@ID"),
+            ("Name", "@Name"),
+            ("Description", "@description"),
+            ("Location", "@contig:@start{,}-@end{,}"),
+        ]
+
+        return data, tooltips
+
     def plot_genes(
         self,
         region,
@@ -2096,12 +2114,7 @@ class AnophelesDataResource(ABC):
             x_range = bkmod.Range1d(start, end, bounds="auto")
 
         debug("select the genes overlapping the requested region")
-        df_genome_features = self.genome_features(
-            attributes=["ID", "Name", "Parent", "description"]
-        )
-        data = df_genome_features.query(
-            f"type == 'gene' and contig == '{contig}' and start < {end} and end > {start}"
-        ).copy()
+        data, tooltips = self._plot_genes_setup_data(region=region)
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -2109,17 +2122,8 @@ class AnophelesDataResource(ABC):
         data["bottom"] = np.where(data["strand"] == "+", 1, 0)
         data["top"] = data["bottom"] + 0.8
 
-        debug("tidy up some columns for presentation")
-        data["Name"].fillna("", inplace=True)
-        data["description"].fillna("", inplace=True)
-
-        debug("define tooltips for hover")
-        tooltips = [
-            ("ID", "@ID"),
-            ("Name", "@Name"),
-            ("Description", "@description"),
-            ("Location", "@contig:@start{,}-@end{,}"),
-        ]
+        debug("tidy up missing values for presentation")
+        data.fillna("", inplace=True)
 
         debug("make a figure")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
