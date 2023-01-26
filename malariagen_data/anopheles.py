@@ -268,14 +268,15 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError("Must override _default_site_mask")
 
     @property
-    @abstractmethod
     def _geneset_gff3_path(self):
-        raise NotImplementedError("Must override _geneset_gff3_path")
+        return self._config.get("GENESET_GFF3_PATH")
 
     @property
-    @abstractmethod
     def _public_releases(self):
-        raise NotImplementedError("Must override _public_releases")
+        releases = self._config.get("PUBLIC_RELEASES")
+        if releases is not None:
+            releases = tuple(releases)
+        return releases
 
     @property
     @abstractmethod

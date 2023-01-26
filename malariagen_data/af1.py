@@ -144,14 +144,6 @@ class Af1(AnophelesDataResource):
             **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
 
-    @property
-    def _public_releases(self):
-        return tuple(self._config["PUBLIC_RELEASES"])
-
-    @property
-    def _geneset_gff3_path(self):
-        return self._config["GENESET_GFF3_PATH"]
-
     @staticmethod
     def _setup_taxon_colors(plot_kwargs=None):
         import plotly.express as px

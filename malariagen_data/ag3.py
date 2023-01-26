@@ -192,14 +192,6 @@ class Ag3(AnophelesDataResource):
         self._cache_aim_variants = dict()
 
     @property
-    def _public_releases(self):
-        return tuple(self._config["PUBLIC_RELEASES"])
-
-    @property
-    def _geneset_gff3_path(self):
-        return self._config["GENESET_GFF3_PATH"]
-
-    @property
     def v3_wild(self):
         """Legacy, convenience property to access sample sets from the
         3.0 release, excluding the lab crosses."""
