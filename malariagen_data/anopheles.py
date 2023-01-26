@@ -5180,7 +5180,7 @@ class AnophelesDataResource(ABC):
         debug("clear existing layers in the map")
         if clear:
             for layer in m.layers[1:]:
-                m.remove_layer(layer)
+                m.remove(layer)
 
         debug("add markers")
         for x in df_markers.itertuples():
@@ -5203,7 +5203,7 @@ class AnophelesDataResource(ABC):
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
-            m.add_layer(marker)
+            m.add(marker)
 
     def plot_frequencies_interactive_map(
         self,
@@ -5711,7 +5711,7 @@ class AnophelesDataResource(ABC):
             zoom=zoom,
             basemap=basemap,
         )
-        samples_map.add_control(ipyleaflet.ScaleControl(position="bottomleft"))
+        samples_map.add(ipyleaflet.ScaleControl(position="bottomleft"))
         # make the map a bit taller than the default
         samples_map.layout.height = "500px"
 
@@ -5737,7 +5737,7 @@ class AnophelesDataResource(ABC):
                     draggable=False,
                     title=title,
                 )
-                samples_map.add_layer(marker)
+                samples_map.add(marker)
 
         return samples_map
 

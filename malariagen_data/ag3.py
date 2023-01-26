@@ -4095,6 +4095,7 @@ class Ag3(AnophelesDataResource):
         max_dist = _get_max_hamming_distance(
             ht.T, metric="hamming", linkage_method=linkage_method
         )
+        # noinspection PyTypeChecker
         fig = create_dendrogram(
             ht.T,
             distfun=lambda x: _hamming_to_snps(x),
@@ -4443,8 +4444,10 @@ class Ag3(AnophelesDataResource):
             graph_layout_params = layout_params.copy()
         graph_layout_params["name"] = layout
         # FIXME: expected type 'str', got 'int'
+        # noinspection PyTypeChecker
         graph_layout_params.setdefault("padding", 10)
         # FIXME: expected type 'str', got 'bool'
+        # noinspection PyTypeChecker
         graph_layout_params.setdefault("animate", False)
 
         cytoscape_component = cyto.Cytoscape(
