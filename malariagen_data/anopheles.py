@@ -270,6 +270,11 @@ class AnophelesDataResource(ABC):
 
     @property
     @abstractmethod
+    def _fst_gwss_results_cache_name(self):
+        raise NotImplementedError("Must override _fst_gwss_results_cache_name")
+
+    @property
+    @abstractmethod
     def _default_site_mask(self):
         raise NotImplementedError("Must override _default_site_mask")
 
@@ -675,21 +680,6 @@ class AnophelesDataResource(ABC):
         ds_out.attrs["title"] = title
 
         return ds_out
-
-    @abstractmethod
-    def fst_gwss(
-        self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets,
-        site_mask,
-        cohort_size,
-        random_seed,
-    ):
-        # Subclasses have different cache names.
-        raise NotImplementedError("Must override fst_gwss")
 
     # Start of @staticmethod @abstractmethod
 
@@ -5028,6 +5018,81 @@ class AnophelesDataResource(ABC):
         )
 
         return df_pivot
+
+    def fst_gwss(
+        self,
+        contig,
+        window_size,
+        cohort1_query,
+        cohort2_query,
+        sample_sets=None,
+        site_mask="default",
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run a Fst genome-wide scan to investigate genetic differentiation
+        between two cohorts.
+
+        Parameters
+        ----------
+        contig: str
+            Chromosome arm (e.g., "2L")
+        window_size : int
+            The size of windows used to calculate h12 over.
+        cohort1_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort2_query : str
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
+            Site filters mask to apply.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        fst : numpy.ndarray
+            An array with Fst statistic values for each window.
+        """
+
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = self._fst_gwss_results_cache_name
+
+        if site_mask == "default":
+            site_mask = self._default_site_mask
+
+        params = dict(
+            contig=contig,
+            window_size=window_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            site_mask=site_mask,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._fst_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        fst = results["fst"]
+
+        return x, fst
 
     def _fst_gwss(
         self,
