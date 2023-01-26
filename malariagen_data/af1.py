@@ -109,6 +109,7 @@ class Af1(AnophelesDataResource):
     _genome_ref_name = GENOME_REF_NAME
     _gcs_url = GCS_URL
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
+    _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _cohorts_analysis = None
@@ -305,97 +306,6 @@ class Af1(AnophelesDataResource):
             f.write(params_json)
         np.savez_compressed(results_path, **results)
         debug(f"saved {name}/{cache_key}")
-
-    def snp_allele_counts(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        site_class=None,
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Compute SNP allele counts. This returns the number of times each
-        SNP allele was observed in the selected samples.
-
-        Parameters
-        ----------
-        region : str or Region
-            Contig name (e.g., "2RL"), gene name (e.g., "LOC125762289") or
-            genomic region defined with coordinates (e.g.,
-            "2RL:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "1229-VO-GH-DADZIE-VMF00095") or a list of
-            sample set identifiers (e.g., ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"]) or a
-            release identifier (e.g., "1.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'funestus' and country == 'Ghana'".
-        site_mask : str, optional
-            Site filters mask to apply.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ac : np.ndarray
-            A numpy array of shape (n_variants, 4), where the first column has
-            the reference allele (0) counts, the second column has the first
-            alternate allele (1) counts, the third column has the second
-            alternate allele (2) counts, and the fourth column has the third
-            alternate allele (3) counts.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
-
-        # change this name if you ever change the behaviour of this function,
-        # to invalidate any previously cached data
-        name = SNP_ALLELE_COUNTS_CACHE_NAME
-
-        # normalize params for consistent hash value
-        if isinstance(sample_query, str):
-            # resolve query to a list of integers for more cache hits
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            sample_query = np.nonzero(loc_samples)[0].tolist()
-        params = dict(
-            region=self.resolve_region(region).to_dict(),
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
-            sample_query=sample_query,
-            site_mask=site_mask,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-        )
-
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._snp_allele_counts(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        ac = results["ac"]
-        return ac
 
     def genome_features(
         self, region=None, attributes=("ID", "Parent", "Note", "description")
