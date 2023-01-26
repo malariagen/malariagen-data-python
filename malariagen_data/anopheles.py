@@ -3574,7 +3574,6 @@ class AnophelesDataResource(ABC):
 
         return ds
 
-    # Note: Ag3 overrides wgs_data_catalog with special handling for 3.0
     def wgs_data_catalog(self, sample_set):
         """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
         files for samples in a given sample set.

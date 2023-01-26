@@ -2421,34 +2421,6 @@ class Ag3(AnophelesDataResource):
 
         return fig
 
-    def wgs_data_catalog(self, sample_set):
-        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
-        files for samples in a given sample set.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            One row per sample, columns provide URLs.
-
-        """
-        debug = self._log.debug
-
-        debug("look up release for sample set")
-        release = self._lookup_release(sample_set=sample_set)
-        release_path = self._release_to_path(release=release)
-
-        debug("load data catalog")
-        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
-        with self._fs.open(path) as f:
-            df = pd.read_csv(f, na_values="")
-
-        return df
-
     def view_alignments(
         self,
         region,
