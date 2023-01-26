@@ -321,6 +321,15 @@ class AnophelesDataResource(ABC):
         # children may have different manual overrides.
         raise NotImplementedError("Must override _transcript_to_gene_name")
 
+    @abstractmethod
+    def _view_alignments_add_site_filters_tracks(
+        self, *, contig, visibility_window, tracks
+    ):
+        # default implementation, do nothing
+        raise NotImplementedError(
+            "Must override _view_alignments_add_site_filters_tracks"
+        )
+
     def _results_cache_add_analysis_params(self, params):
         # default implementation, can be overridden if additional analysis
         # params are used
@@ -2470,6 +2479,88 @@ class AnophelesDataResource(ABC):
         browser = igv_notebook.Browser(config)
 
         return browser
+
+    def view_alignments(
+        self,
+        region,
+        sample,
+        visibility_window=20_000,
+    ):
+        """Launch IGV and view sequence read alignments and SNP genotypes from
+        the given sample.
+
+        Parameters
+        ----------
+        region: str or Region
+            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
+        sample : str
+            Sample identifier, e.g., "AR0001-C".
+        visibility_window : int, optional
+            Zoom level in base pairs at which alignment and SNP data will become
+            visible.
+
+        Notes
+        -----
+        Only samples from the Ag3.0 release are currently supported.
+
+        """
+        debug = self._log.debug
+
+        debug("look up sample set for sample")
+        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        sample_set = sample_rec["sample_set"]
+
+        debug("load data catalog")
+        df_cat = self.wgs_data_catalog(sample_set=sample_set)
+
+        debug("locate record for sample")
+        cat_rec = df_cat.set_index("sample_id").loc[sample]
+        bam_url = cat_rec["alignments_bam"]
+        vcf_url = cat_rec["snp_genotypes_vcf"]
+        debug(bam_url)
+        debug(vcf_url)
+
+        debug("parse region")
+        region = self.resolve_region(region)
+        contig = region.contig
+
+        # begin creating tracks
+        tracks = []
+
+        # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
+        debug("set up site filters tracks")
+        self._view_alignments_add_site_filters_tracks(
+            contig=contig, visibility_window=visibility_window, tracks=tracks
+        )
+
+        debug("add SNPs track")
+        tracks.append(
+            {
+                "name": "SNPs",
+                "url": vcf_url,
+                "indexURL": f"{vcf_url}.tbi",
+                "format": "vcf",
+                "type": "variant",
+                "visibilityWindow": visibility_window,  # bp
+                "height": 50,
+            }
+        )
+
+        debug("add alignments track")
+        tracks.append(
+            {
+                "name": "Alignments",
+                "url": bam_url,
+                "indexURL": f"{bam_url}.bai",
+                "format": "bam",
+                "type": "alignment",
+                "visibilityWindow": visibility_window,  # bp
+                "height": 500,
+            }
+        )
+
+        debug("create IGV browser")
+        self.igv(region=region, tracks=tracks)
 
     def _pca(
         self,

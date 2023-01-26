@@ -302,3 +302,11 @@ class Af1(AnophelesDataResource):
         # See also https://github.com/malariagen/malariagen-data-python/issues/306
 
         return super().genome_features(region=region, attributes=attributes)
+
+    def _view_alignments_add_site_filters_tracks(
+        self, *, contig, visibility_window, tracks
+    ):
+        # Do nothing for now, because we don't have VCFs for the site filters
+        # https://github.com/malariagen/vobs-funestus/issues/251
+        # TODO implement when VCFs are available
+        pass

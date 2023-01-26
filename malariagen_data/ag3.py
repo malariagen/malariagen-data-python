@@ -2421,52 +2421,11 @@ class Ag3(AnophelesDataResource):
 
         return fig
 
-    def view_alignments(
-        self,
-        region,
-        sample,
-        visibility_window=20_000,
+    def _view_alignments_add_site_filters_tracks(
+        self, *, contig, visibility_window, tracks
     ):
-        """Launch IGV and view sequence read alignments and SNP genotypes from
-        the given sample.
-
-        Parameters
-        ----------
-        region: str or Region
-            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
-        sample : str
-            Sample identifier, e.g., "AR0001-C".
-        visibility_window : int, optional
-            Zoom level in base pairs at which alignment and SNP data will become
-            visible.
-
-        Notes
-        -----
-        Only samples from the Ag3.0 release are currently supported.
-
-        """
         debug = self._log.debug
 
-        debug("look up sample set for sample")
-        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
-        sample_set = sample_rec["sample_set"]
-
-        debug("load data catalog")
-        df_cat = self.wgs_data_catalog(sample_set=sample_set)
-
-        debug("locate record for sample")
-        cat_rec = df_cat.set_index("sample_id").loc[sample]
-        bam_url = cat_rec["alignments_bam"]
-        vcf_url = cat_rec["snp_genotypes_vcf"]
-        debug(bam_url)
-        debug(vcf_url)
-
-        tracks = []
-
-        # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
-        debug("set up site filters tracks")
-        region = self.resolve_region(region)
-        contig = region.contig
         for site_mask in self._site_mask_ids():
             site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             debug(site_filters_vcf_url)
@@ -2485,35 +2444,6 @@ class Ag3(AnophelesDataResource):
                 },
             }
             tracks.append(track_config)
-
-        debug("add SNPs track")
-        tracks.append(
-            {
-                "name": "SNPs",
-                "url": vcf_url,
-                "indexURL": f"{vcf_url}.tbi",
-                "format": "vcf",
-                "type": "variant",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 50,
-            }
-        )
-
-        debug("add alignments track")
-        tracks.append(
-            {
-                "name": "Alignments",
-                "url": bam_url,
-                "indexURL": f"{bam_url}.bai",
-                "format": "bam",
-                "type": "alignment",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 500,
-            }
-        )
-
-        debug("create IGV browser")
-        self.igv(region=region, tracks=tracks)
 
     def _results_cache_add_analysis_params(self, params):
         super()._results_cache_add_analysis_params(params)
