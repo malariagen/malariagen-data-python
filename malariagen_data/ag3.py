@@ -1,4 +1,3 @@
-import json
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
@@ -45,6 +44,7 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})
 
 MAJOR_VERSION_INT = 3
 MAJOR_VERSION_GCS_STR = "v3"
+CONFIG_PATH = "v3-config.json"
 
 GCS_URL = "gs://vo_agam_release/"
 
@@ -142,8 +142,6 @@ class Ag3(AnophelesDataResource):
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
-    _cohorts_analysis = None
-    _site_filters_analysis = None
 
     def __init__(
         self,
@@ -163,6 +161,8 @@ class Ag3(AnophelesDataResource):
 
         super().__init__(
             url=url,
+            config_path=CONFIG_PATH,
+            cohorts_analysis=cohorts_analysis,
             site_filters_analysis=site_filters_analysis,
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
@@ -174,25 +174,12 @@ class Ag3(AnophelesDataResource):
             **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
 
-        # load config.json
-        path = f"{self._base_path}/v3-config.json"
-        with self._fs.open(path) as f:
-            self._config = json.load(f)
-
-        if cohorts_analysis is None:
-            self._cohorts_analysis = self._config["DEFAULT_COHORTS_ANALYSIS"]
-        else:
-            self._cohorts_analysis = cohorts_analysis
-
+        # set species analysis version - this is Ag specific currently, hence
+        # not in parent class
         if species_analysis is None:
             self._species_analysis = self._config["DEFAULT_SPECIES_ANALYSIS"]
         else:
             self._species_analysis = species_analysis
-
-        if site_filters_analysis is None:
-            self._site_filters_analysis = self._config["DEFAULT_SITE_FILTERS_ANALYSIS"]
-        else:
-            self._site_filters_analysis = site_filters_analysis
 
         # set up caches
         self._cache_species_calls = dict()

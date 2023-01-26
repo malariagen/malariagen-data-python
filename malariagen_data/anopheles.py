@@ -1,3 +1,4 @@
+import json
 import sys
 import warnings
 from abc import ABC, abstractmethod
@@ -61,7 +62,9 @@ class AnophelesDataResource(ABC):
 
     def __init__(
         self,
-        url=None,
+        url,
+        config_path,
+        cohorts_analysis=None,
         site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
         bokeh_output_notebook=True,
         results_cache=None,
@@ -140,6 +143,25 @@ class AnophelesDataResource(ABC):
             except OSError:
                 pass
         self._client_details = client_details
+
+        # load config
+        path = f"{self._base_path}/{config_path}"
+        with self._fs.open(path) as f:
+            self._config = json.load(f)
+
+        # set analysis versions
+
+        if cohorts_analysis is None:
+            self._cohorts_analysis = self._config.get("DEFAULT_COHORTS_ANALYSIS")
+        else:
+            self._cohorts_analysis = cohorts_analysis
+
+        if site_filters_analysis is None:
+            self._site_filters_analysis = self._config.get(
+                "DEFAULT_SITE_FILTERS_ANALYSIS"
+            )
+        else:
+            self._site_filters_analysis = site_filters_analysis
 
     # Start of @property
 
@@ -259,11 +281,6 @@ class AnophelesDataResource(ABC):
     @abstractmethod
     def _site_annotations_zarr_path(self):
         raise NotImplementedError("Must override _site_annotations_zarr_path")
-
-    @property
-    @abstractmethod
-    def _cohorts_analysis(self):
-        raise NotImplementedError("Must override _cohorts_analysis")
 
     # Start of @abstractmethod
 
@@ -609,6 +626,7 @@ class AnophelesDataResource(ABC):
         from allel.stats.roh import _hmm_derive_transition_matrix
 
         # FIXME: Unresolved references
+        # noinspection PyUnresolvedReferences
         from pomegranate import HiddenMarkovModel, PoissonDistribution
 
         # het probabilities

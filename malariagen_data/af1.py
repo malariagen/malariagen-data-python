@@ -1,4 +1,3 @@
-import json
 import sys
 import warnings
 
@@ -20,6 +19,7 @@ from .util import CacheMiss, hash_params
 
 MAJOR_VERSION_INT = 1
 MAJOR_VERSION_GCS_STR = "v1.0"
+CONFIG_PATH = "v1.0-config.json"
 
 GCS_URL = "gs://vo_afun_release/"
 
@@ -131,6 +131,8 @@ class Af1(AnophelesDataResource):
 
         super().__init__(
             url=url,
+            config_path=CONFIG_PATH,
+            cohorts_analysis=cohorts_analysis,
             site_filters_analysis=site_filters_analysis,
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
@@ -141,21 +143,6 @@ class Af1(AnophelesDataResource):
             pre=pre,
             **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
-
-        # load config.json
-        path = f"{self._base_path}/v1.0-config.json"
-        with self._fs.open(path) as f:
-            self._config = json.load(f)
-
-        if cohorts_analysis is None:
-            self._cohorts_analysis = self._config["DEFAULT_COHORTS_ANALYSIS"]
-        else:
-            self._cohorts_analysis = cohorts_analysis
-
-        if site_filters_analysis is None:
-            self._site_filters_analysis = self._config["DEFAULT_SITE_FILTERS_ANALYSIS"]
-        else:
-            self._site_filters_analysis = site_filters_analysis
 
     @property
     def _public_releases(self):
