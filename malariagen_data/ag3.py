@@ -1,4 +1,3 @@
-import json
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
@@ -33,7 +32,6 @@ from .util import (
     CacheMiss,
     Region,
     da_from_zarr,
-    hash_params,
     init_zarr_store,
     locate_region,
     plotly_discrete_legend,
@@ -45,6 +43,7 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})
 
 MAJOR_VERSION_INT = 3
 MAJOR_VERSION_GCS_STR = "v3"
+CONFIG_PATH = "v3-config.json"
 
 GCS_URL = "gs://vo_agam_release/"
 
@@ -140,10 +139,10 @@ class Ag3(AnophelesDataResource):
     _genome_ref_name = GENOME_REF_NAME
     _gcs_url = GCS_URL
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
+    _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
+    _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
-    _cohorts_analysis = None
-    _site_filters_analysis = None
 
     def __init__(
         self,
@@ -163,6 +162,8 @@ class Ag3(AnophelesDataResource):
 
         super().__init__(
             url=url,
+            config_path=CONFIG_PATH,
+            cohorts_analysis=cohorts_analysis,
             site_filters_analysis=site_filters_analysis,
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
@@ -174,25 +175,12 @@ class Ag3(AnophelesDataResource):
             **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
 
-        # load config.json
-        path = f"{self._base_path}/v3-config.json"
-        with self._fs.open(path) as f:
-            self._config = json.load(f)
-
-        if cohorts_analysis is None:
-            self._cohorts_analysis = self._config["DEFAULT_COHORTS_ANALYSIS"]
-        else:
-            self._cohorts_analysis = cohorts_analysis
-
+        # set species analysis version - this is Ag specific currently, hence
+        # not in parent class
         if species_analysis is None:
             self._species_analysis = self._config["DEFAULT_SPECIES_ANALYSIS"]
         else:
             self._species_analysis = species_analysis
-
-        if site_filters_analysis is None:
-            self._site_filters_analysis = self._config["DEFAULT_SITE_FILTERS_ANALYSIS"]
-        else:
-            self._site_filters_analysis = site_filters_analysis
 
         # set up caches
         self._cache_species_calls = dict()
@@ -203,14 +191,6 @@ class Ag3(AnophelesDataResource):
         self._cache_haplotypes = dict()
         self._cache_haplotype_sites = dict()
         self._cache_aim_variants = dict()
-
-    @property
-    def _public_releases(self):
-        return tuple(self._config["PUBLIC_RELEASES"])
-
-    @property
-    def _geneset_gff3_path(self):
-        return self._config["GENESET_GFF3_PATH"]
 
     @property
     def v3_wild(self):
@@ -1981,241 +1961,6 @@ class Ag3(AnophelesDataResource):
 
         return ds_out
 
-    def snp_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        drop_invariant=True,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        SNP allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples
-            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level
-            1 administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        variant_query : str, optional
-        site_mask : str, optional
-            Site filters mask to apply.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            The resulting dataset contains data has dimensions "cohorts" and
-            "variants". Variables prefixed with "cohort" are 1-dimensional
-            arrays with data about the cohorts, such as the area, period, taxon
-            and cohort size. Variables prefixed with "variant" are
-            1-dimensional arrays with data about the variants, such as the
-            contig, position, reference and alternate alleles. Variables
-            prefixed with "event" are 2-dimensional arrays with the allele
-            counts and frequency calculations.
-
-        """
-        debug = self._log.debug
-
-        debug("check parameters")
-        self._check_param_min_cohort_size(min_cohort_size)
-
-        debug("load sample metadata")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        debug("access SNP calls")
-        ds_snps = self.snp_calls(
-            region=transcript,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-        )
-
-        debug("access genotypes")
-        gt = ds_snps["call_genotype"].data
-
-        debug("prepare sample metadata for cohort grouping")
-        df_samples = self._prep_samples_for_cohort_grouping(
-            df_samples=df_samples,
-            area_by=area_by,
-            period_by=period_by,
-        )
-
-        debug("group samples to make cohorts")
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
-
-        debug("build cohorts dataframe")
-        df_cohorts = self._build_cohorts_from_sample_grouping(
-            group_samples_by_cohort, min_cohort_size
-        )
-
-        debug("bring genotypes into memory")
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gt = gt.compute()
-
-        debug("set up variant variables")
-        contigs = ds_snps.attrs["contigs"]
-        variant_contig = np.repeat(
-            [contigs[i] for i in ds_snps["variant_contig"].values], 3
-        )
-        variant_position = np.repeat(ds_snps["variant_position"].values, 3)
-        alleles = ds_snps["variant_allele"].values
-        variant_ref_allele = np.repeat(alleles[:, 0], 3)
-        variant_alt_allele = alleles[:, 1:].flatten()
-        variant_pass_gamb_colu_arab = np.repeat(
-            ds_snps["variant_filter_pass_gamb_colu_arab"].values, 3
-        )
-        variant_pass_gamb_colu = np.repeat(
-            ds_snps["variant_filter_pass_gamb_colu"].values, 3
-        )
-        variant_pass_arab = np.repeat(ds_snps["variant_filter_pass_arab"].values, 3)
-
-        debug("setup main event variables")
-        n_variants, n_cohorts = len(variant_position), len(df_cohorts)
-        count = np.zeros((n_variants, n_cohorts), dtype=int)
-        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
-
-        debug("build event count and nobs for each cohort")
-        cohorts_iterator = self._progress(
-            enumerate(df_cohorts.itertuples()),
-            total=len(df_cohorts),
-            desc="Compute SNP allele frequencies",
-        )
-        for cohort_index, cohort in cohorts_iterator:
-
-            cohort_key = cohort.taxon, cohort.area, cohort.period
-            sample_indices = group_samples_by_cohort.indices[cohort_key]
-
-            cohort_ac, cohort_an = self._cohort_alt_allele_counts_melt(
-                gt, sample_indices, max_allele=3
-            )
-            count[:, cohort_index] = cohort_ac
-
-            if nobs_mode == "called":
-                nobs[:, cohort_index] = cohort_an
-            elif nobs_mode == "fixed":
-                nobs[:, cohort_index] = cohort.size * 2
-            else:
-                raise ValueError(f"Bad nobs_mode: {nobs_mode!r}")
-
-        debug("compute frequency")
-        with np.errstate(divide="ignore", invalid="ignore"):
-            # ignore division warnings
-            frequency = count / nobs
-
-        debug("compute maximum frequency over cohorts")
-        with warnings.catch_warnings():
-            # ignore "All-NaN slice encountered" warnings
-            warnings.simplefilter("ignore", category=RuntimeWarning)
-            max_af = np.nanmax(frequency, axis=1)
-
-        debug("make dataframe of SNPs")
-        df_variants = pd.DataFrame(
-            {
-                "contig": variant_contig,
-                "position": variant_position,
-                "ref_allele": variant_ref_allele.astype("U1"),
-                "alt_allele": variant_alt_allele.astype("U1"),
-                "max_af": max_af,
-                "pass_gamb_colu_arab": variant_pass_gamb_colu_arab,
-                "pass_gamb_colu": variant_pass_gamb_colu,
-                "pass_arab": variant_pass_arab,
-            }
-        )
-
-        debug("deal with SNP alleles not observed")
-        if drop_invariant:
-            loc_variant = max_af > 0
-            df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
-            count = np.compress(loc_variant, count, axis=0)
-            nobs = np.compress(loc_variant, nobs, axis=0)
-            frequency = np.compress(loc_variant, frequency, axis=0)
-
-        debug("set up variant effect annotator")
-        ann = self._annotator()
-
-        debug("add effects to the dataframe")
-        ann.get_effects(
-            transcript=transcript, variants=df_variants, progress=self._progress
-        )
-
-        debug("add variant labels")
-        df_variants["label"] = self._pandas_apply(
-            self._make_snp_label_effect,
-            df_variants,
-            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-        )
-
-        debug("build the output dataset")
-        ds_out = xr.Dataset()
-
-        debug("cohort variables")
-        for coh_col in df_cohorts.columns:
-            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
-
-        debug("variant variables")
-        for snp_col in df_variants.columns:
-            ds_out[f"variant_{snp_col}"] = "variants", df_variants[snp_col]
-
-        debug("event variables")
-        ds_out["event_count"] = ("variants", "cohorts"), count
-        ds_out["event_nobs"] = ("variants", "cohorts"), nobs
-        ds_out["event_frequency"] = ("variants", "cohorts"), frequency
-
-        debug("apply variant query")
-        if variant_query is not None:
-            loc_variants = df_variants.eval(variant_query).values
-            ds_out = ds_out.isel(variants=loc_variants)
-
-        debug("add confidence intervals")
-        self._add_frequency_ci(ds_out, ci_method)
-
-        debug("tidy up display by sorting variables")
-        ds_out = ds_out[sorted(ds_out)]
-
-        debug("add metadata")
-        gene_name = self._transcript_to_gene_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
-        title += " SNP frequencies"
-        ds_out.attrs["title"] = title
-
-        return ds_out
-
     def plot_cnv_hmm_coverage_track(
         self,
         sample,
@@ -2676,80 +2421,11 @@ class Ag3(AnophelesDataResource):
 
         return fig
 
-    def wgs_data_catalog(self, sample_set):
-        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
-        files for samples in a given sample set.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            One row per sample, columns provide URLs.
-
-        """
-        debug = self._log.debug
-
-        debug("look up release for sample set")
-        release = self._lookup_release(sample_set=sample_set)
-        release_path = self._release_to_path(release=release)
-
-        debug("load data catalog")
-        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
-        with self._fs.open(path) as f:
-            df = pd.read_csv(f, na_values="")
-
-        return df
-
-    def view_alignments(
-        self,
-        region,
-        sample,
-        visibility_window=20_000,
+    def _view_alignments_add_site_filters_tracks(
+        self, *, contig, visibility_window, tracks
     ):
-        """Launch IGV and view sequence read alignments and SNP genotypes from
-        the given sample.
-
-        Parameters
-        ----------
-        region: str or Region
-            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
-        sample : str
-            Sample identifier, e.g., "AR0001-C".
-        visibility_window : int, optional
-            Zoom level in base pairs at which alignment and SNP data will become
-            visible.
-
-        Notes
-        -----
-        Only samples from the Ag3.0 release are currently supported.
-
-        """
         debug = self._log.debug
 
-        debug("look up sample set for sample")
-        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
-        sample_set = sample_rec["sample_set"]
-
-        debug("load data catalog")
-        df_cat = self.wgs_data_catalog(sample_set=sample_set)
-
-        debug("locate record for sample")
-        cat_rec = df_cat.set_index("sample_id").loc[sample]
-        bam_url = cat_rec["alignments_bam"]
-        vcf_url = cat_rec["snp_genotypes_vcf"]
-        debug(bam_url)
-        debug(vcf_url)
-
-        tracks = []
-
-        # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
-        debug("set up site filters tracks")
-        region = self.resolve_region(region)
-        contig = region.contig
         for site_mask in self._site_mask_ids():
             site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             debug(site_filters_vcf_url)
@@ -2769,161 +2445,10 @@ class Ag3(AnophelesDataResource):
             }
             tracks.append(track_config)
 
-        debug("add SNPs track")
-        tracks.append(
-            {
-                "name": "SNPs",
-                "url": vcf_url,
-                "indexURL": f"{vcf_url}.tbi",
-                "format": "vcf",
-                "type": "variant",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 50,
-            }
-        )
-
-        debug("add alignments track")
-        tracks.append(
-            {
-                "name": "Alignments",
-                "url": bam_url,
-                "indexURL": f"{bam_url}.bai",
-                "format": "bam",
-                "type": "alignment",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 500,
-            }
-        )
-
-        debug("create IGV browser")
-        self.igv(region=region, tracks=tracks)
-
-    def results_cache_get(self, *, name, params):
-        debug = self._log.debug
-        if self._results_cache is None:
-            raise CacheMiss
-        params = params.copy()
-        params["cohorts_analysis"] = self._cohorts_analysis
+    def _results_cache_add_analysis_params(self, params):
+        super()._results_cache_add_analysis_params(params)
+        # override parent class to add species analysis
         params["species_analysis"] = self._species_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-        cache_key, _ = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        results_path = cache_path / "results.npz"
-        if not results_path.exists():
-            raise CacheMiss
-        results = np.load(results_path)
-        debug(f"loaded {name}/{cache_key}")
-        return results
-
-    def results_cache_set(self, *, name, params, results):
-        debug = self._log.debug
-        if self._results_cache is None:
-            debug("no results cache has been configured, do nothing")
-            return
-        params = params.copy()
-        params["cohorts_analysis"] = self._cohorts_analysis
-        params["species_analysis"] = self._species_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-        cache_key, params_json = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        cache_path.mkdir(exist_ok=True, parents=True)
-        params_path = cache_path / "params.json"
-        results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
-        debug(f"saved {name}/{cache_key}")
-
-    def snp_allele_counts(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        site_class=None,
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Compute SNP allele counts. This returns the number of times each
-        SNP allele was observed in the selected samples.
-
-        Parameters
-        ----------
-        region : str or Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ac : np.ndarray
-            A numpy array of shape (n_variants, 4), where the first column has
-            the reference allele (0) counts, the second column has the first
-            alternate allele (1) counts, the third column has the second
-            alternate allele (2) counts, and the fourth column has the third
-            alternate allele (3) counts.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
-
-        # change this name if you ever change the behaviour of this function,
-        # to invalidate any previously cached data
-        name = SNP_ALLELE_COUNTS_CACHE_NAME
-
-        # normalize params for consistent hash value
-        if isinstance(sample_query, str):
-            # resolve query to a list of integers for more cache hits
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            sample_query = np.nonzero(loc_samples)[0].tolist()
-        params = dict(
-            region=self.resolve_region(region).to_dict(),
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
-            sample_query=sample_query,
-            site_mask=site_mask,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-        )
-
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._snp_allele_counts(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        ac = results["ac"]
-        return ac
 
     def aim_variants(self, aims):
         """Open ancestry informative marker variants.
@@ -4206,6 +3731,7 @@ class Ag3(AnophelesDataResource):
         max_dist = _get_max_hamming_distance(
             ht.T, metric="hamming", linkage_method=linkage_method
         )
+        # noinspection PyTypeChecker
         fig = create_dendrogram(
             ht.T,
             distfun=lambda x: _hamming_to_snps(x),
@@ -4554,8 +4080,10 @@ class Ag3(AnophelesDataResource):
             graph_layout_params = layout_params.copy()
         graph_layout_params["name"] = layout
         # FIXME: expected type 'str', got 'int'
+        # noinspection PyTypeChecker
         graph_layout_params.setdefault("padding", 10)
         # FIXME: expected type 'str', got 'bool'
+        # noinspection PyTypeChecker
         graph_layout_params.setdefault("animate", False)
 
         cytoscape_component = cyto.Cytoscape(
@@ -4652,233 +4180,6 @@ class Ag3(AnophelesDataResource):
         if width is not None:
             run_params["width"] = width
         return app.run_server(**run_params)
-
-    def fst_gwss(
-        self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask="gamb_colu_arab",
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run a Fst genome-wide scan to investigate genetic differentiation
-        between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Chromosome arm (e.g., "2L")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
-            Site filters mask to apply.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        fst : numpy.ndarray
-            An array with Fst statistic values for each window.
-        """
-
-        # change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data
-        name = FST_GWSS_CACHE_NAME
-
-        params = dict(
-            contig=contig,
-            window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-        )
-
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._fst_gwss(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        x = results["x"]
-        fst = results["fst"]
-
-        return x, fst
-
-    def plot_fst_gwss_track(
-        self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask="gamb_colu_arab",
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Run and plot a Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
-        Parameters
-        ----------
-        contig: str
-            Chromosome arm (e.g., "2L")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
-            Site filters mask to apply.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed Fst statistic across chosen contig.
-        """
-
-        # Here we override the superclass implementation in order to provide a
-        # different default value for the `site_mask` parameter.
-        #
-        # Also, we take the opportunity to customise the docstring to use
-        # examples specific to gambiae.
-
-        return super().plot_fst_gwss_track(
-            contig=contig,
-            window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-            title=title,
-            width=width,
-            height=height,
-            show=show,
-            x_range=x_range,
-        )
-
-    def plot_fst_gwss(
-        self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask="gamb_colu_arab",
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=190,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-    ):
-        """Run and plot a Fst genome-wide scan to investigate genetic
-        differentiation between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Chromosome arm (e.g., "2L")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
-            Site filters mask to apply.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed Fst statistic with gene track on x-axis.
-        """
-
-        # Here we override the superclass implementation in order to provide a
-        # different default value for the `site_mask` parameter.
-        #
-        # Also, we take the opportunity to customise the docstring to use
-        # examples specific to gambiae.
-
-        return super().plot_fst_gwss(
-            contig=contig,
-            window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-            title=title,
-            width=width,
-            track_height=track_height,
-            genes_height=genes_height,
-        )
 
 
 def _hamming_to_snps(h):
