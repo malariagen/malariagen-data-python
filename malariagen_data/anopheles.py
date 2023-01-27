@@ -48,7 +48,6 @@ from .util import (
     xarray_concat,
 )
 
-DEFAULT_SITE_FILTERS_ANALYSIS = "dt_20200416"
 DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
 DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
@@ -66,7 +65,7 @@ class AnophelesDataResource(ABC):
         url,
         config_path,
         cohorts_analysis=None,
-        site_filters_analysis=DEFAULT_SITE_FILTERS_ANALYSIS,
+        site_filters_analysis=None,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
