@@ -1,0 +1,4 @@
+sample_id,partner_sample_id,contributor,country,location,year,month,latitude,longitude,sex_call
+VBS24195,1229-GH-A-GH01,Samuel Dadzie,Ghana,Dimabi,2017,8,9.420,-1.083,F
+VBS24196,1229-GH-A-GH02,Samuel Dadzie,Ghana,Gbullung,2017,7,9.488,-1.009,F
+VBS24197,1229-GH-A-GH03,Samuel Dadzie,Ghana,Dimabi,2017,7,9.420,-1.083,F

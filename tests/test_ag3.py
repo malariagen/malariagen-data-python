@@ -34,18 +34,6 @@ expected_species = {
 
 contigs = "2R", "2L", "3R", "3L", "X"
 
-expected_cohort_cols = (
-    "country_iso",
-    "admin1_name",
-    "admin1_iso",
-    "admin2_name",
-    "taxon",
-    "cohort_admin1_year",
-    "cohort_admin1_month",
-    "cohort_admin2_year",
-    "cohort_admin2_month",
-)
-
 expected_aim_species_cols = (
     "aim_species_fraction_arab",
     "aim_species_fraction_colu",
@@ -184,25 +172,6 @@ def test_sample_metadata_with_pca_species():
         set(df_samples_pca["pca_species"].dropna()).difference(expected_species_legacy)
         == set()
     )
-
-
-def test_sample_metadata_with_cohorts():
-    ag3 = setup_ag3()
-    df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
-    for c in expected_cohort_cols:
-        assert c in df_samples_coh
-
-
-def test_sample_metadata_without_cohorts():
-    working_dir = os.path.dirname(os.path.abspath(__file__))
-    test_data_path = os.path.join(
-        working_dir, "anopheles_test_data", "test_missing_cohorts"
-    )
-    ag3 = Ag3(test_data_path)
-    df_samples_coh = ag3.sample_metadata(sample_sets="3.0")
-    for c in expected_cohort_cols:
-        assert c in df_samples_coh
-        assert df_samples_coh[c].isnull().all()
 
 
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
@@ -579,7 +548,6 @@ def test_snp_calls(sample_sets, region, site_mask):
     assert pos.shape == pos.compute().shape
 
 
-# TODO: make version for Af1 when taxon is available
 @pytest.mark.parametrize(
     "sample_query",
     [None, "taxon == 'coluzzii'", "taxon == 'robot'"],
@@ -711,38 +679,6 @@ def test_snp_effects():
     assert df.iloc[674].effect == "INTRONIC"
 
 
-def test_snp_allele_frequencies__str_cohorts():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
-    cohorts = "admin1_month"
-    min_cohort_size = 10
-    universal_fields = [
-        "pass_gamb_colu_arab",
-        "pass_gamb_colu",
-        "pass_arab",
-        "label",
-    ]
-    df = ag3.snp_allele_frequencies(
-        transcript="AGAP004707-RD",
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask="gamb_colu",
-        sample_sets="3.0",
-        drop_invariant=True,
-        effects=False,
-    )
-    df_coh = ag3.sample_cohorts(sample_sets="3.0")
-    coh_nm = "cohort_" + cohorts
-    coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
-    cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
-    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
-    expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
-
-    assert isinstance(df, pd.DataFrame)
-    assert sorted(df.columns.tolist()) == sorted(expected_fields)
-    assert df.index.names == ["contig", "position", "ref_allele", "alt_allele"]
-    assert len(df) == 16526
-
-
 def test_snp_allele_frequencies__dict_cohorts():
     ag3 = setup_ag3(cohorts_analysis="20211101")
     cohorts = {
@@ -868,16 +804,6 @@ def test_snp_allele_frequencies__query():
     assert isinstance(df, pd.DataFrame)
     assert sorted(df.columns) == sorted(expected_columns)
     assert len(df) == 695
-
-
-def test_snp_allele_frequencies__dup_samples():
-    ag3 = setup_ag3()
-    with pytest.raises(ValueError):
-        ag3.snp_allele_frequencies(
-            transcript="AGAP004707-RD",
-            cohorts="admin1_year",
-            sample_sets=["AG1000G-FR", "AG1000G-FR"],
-        )
 
 
 @pytest.mark.parametrize(
@@ -1969,16 +1895,6 @@ def test_aa_allele_frequencies():
     assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
 
 
-def test_aa_allele_frequencies__dup_samples():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
-    with pytest.raises(ValueError):
-        ag3.aa_allele_frequencies(
-            transcript="AGAP004707-RD",
-            cohorts="admin1_year",
-            sample_sets=["AG1000G-FR", "AG1000G-FR"],
-        )
-
-
 # noinspection PyDefaultArgument
 def _check_snp_allele_frequencies_advanced(
     transcript="AGAP004707-RD",
@@ -2679,28 +2595,6 @@ def test_gene_cnv_frequencies_advanced__missing_samples():
         period_by="year",
     )
     assert isinstance(ds, xr.Dataset)
-
-
-def test_snp_allele_frequencies_advanced__dup_samples():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
-    with pytest.raises(ValueError):
-        ag3.snp_allele_frequencies_advanced(
-            transcript="AGAP004707-RD",
-            area_by="admin1_iso",
-            period_by="year",
-            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
-        )
-
-
-def test_aa_allele_frequencies_advanced__dup_samples():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
-    with pytest.raises(ValueError):
-        ag3.aa_allele_frequencies_advanced(
-            transcript="AGAP004707-RD",
-            area_by="admin1_iso",
-            period_by="year",
-            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
-        )
 
 
 def test_gene_cnv_frequencies_advanced__dup_samples():
