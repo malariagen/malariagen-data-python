@@ -2469,6 +2469,8 @@ class AnophelesDataResource(ABC):
                 "tracks": [
                     {
                         "name": "Genes",
+                        "type": "annotation",
+                        "format": "gff3",
                         "url": f"{self._gcs_url}{self._geneset_gff3_path}",
                         "indexed": False,
                     }
