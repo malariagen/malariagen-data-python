@@ -48,7 +48,10 @@ from .util import (
     xarray_concat,
 )
 
-DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
+# width in px for bokeh genome plots - leave as None to allow stretching
+DEFAULT_GENOME_PLOT_WIDTH = None
+# see also https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
+DEFAULT_GENOME_PLOT_SIZING_MODE = "stretch_width"
 DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
 AA_CHANGE_QUERY = (
@@ -2059,6 +2062,7 @@ class AnophelesDataResource(ABC):
     def plot_genes(
         self,
         region,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=DEFAULT_GENES_TRACK_HEIGHT,
         show=True,
@@ -2074,6 +2078,8 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         height : int, optional
@@ -2128,6 +2134,7 @@ class AnophelesDataResource(ABC):
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
+            sizing_mode=sizing_mode,
             width=width,
             height=height,
             tools=[
@@ -6155,6 +6162,7 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         show=True,
@@ -6186,6 +6194,8 @@ class AnophelesDataResource(ABC):
             Random seed used for down-sampling.
         title : str, optional
             If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         height : int. optional
@@ -6231,6 +6241,7 @@ class AnophelesDataResource(ABC):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
+            sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
@@ -6269,6 +6280,7 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=190,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
@@ -6300,6 +6312,8 @@ class AnophelesDataResource(ABC):
             Random seed used for down-sampling.
         title : str, optional
             If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         track_height : int. optional
@@ -6327,6 +6341,7 @@ class AnophelesDataResource(ABC):
             cohort_size=cohort_size,
             random_seed=random_seed,
             title=title,
+            sizing_mode=sizing_mode,
             width=width,
             height=track_height,
             show=False,
@@ -6337,6 +6352,7 @@ class AnophelesDataResource(ABC):
         # plot genes
         fig2 = self.plot_genes(
             region=contig,
+            sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
             x_range=fig1.x_range,
@@ -6345,7 +6361,11 @@ class AnophelesDataResource(ABC):
 
         # combine plots into a single figure
         fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
         )
 
         bkplt.show(fig)
