@@ -31,9 +31,6 @@ GENOME_REF_NAME = "Anopheles funestus"
 
 CONTIGS = "2RL", "3RL", "X"
 
-DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
-DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
-
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
