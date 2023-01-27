@@ -2912,8 +2912,8 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask,
-        window_size,
+        site_mask="default",
+        window_size=20_000,
         sample_set=None,
         y_max=0.03,
         width=DEFAULT_GENOME_PLOT_WIDTH,
@@ -2933,9 +2933,9 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
-        site_mask : str
+        site_mask : str, optional
             Site filters mask to apply, e.g. "gamb_colu"
-        window_size : int
+        window_size : int, optional
             Number of sites per window.
         sample_set : str, optional
             Sample set identifier. Not needed if sample parameter gives a sample
@@ -2992,8 +2992,8 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask,
-        window_size,
+        site_mask="default",
+        window_size=20_000,
         sample_set=None,
         y_max=0.03,
         width=DEFAULT_GENOME_PLOT_WIDTH,
@@ -3013,9 +3013,9 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
-        site_mask : str
+        site_mask : str, optional
             Site filters mask to apply, e.g. "gamb_colu"
-        window_size : int
+        window_size : int, optional
             Number of sites per window.
         sample_set : str, optional
             Sample set identifier. Not needed if sample parameter gives a sample
@@ -3116,6 +3116,8 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         region = self.resolve_region(region)
+        if site_mask == "default":
+            site_mask = self._default_site_mask
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
@@ -3158,8 +3160,8 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask,
-        window_size,
+        window_size=20_000,
+        site_mask="default",
         sample_set=None,
         phet_roh=0.001,
         phet_nonroh=(0.003, 0.01),
@@ -3175,10 +3177,10 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
-        site_mask : str
-            Site filters mask to apply, e.g. "gamb_colu"
-        window_size : int
+        window_size : int, optional
             Number of sites per window.
+        site_mask : str, optional
+            Site filters mask to apply, e.g. "gamb_colu"
         sample_set : str, optional
             Sample set identifier. Not needed if sample parameter gives a sample
             identifier.
@@ -3306,8 +3308,8 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask,
-        window_size,
+        window_size=20_000,
+        site_mask="default",
         sample_set=None,
         phet_roh=0.001,
         phet_nonroh=(0.003, 0.01),
@@ -3331,10 +3333,10 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
-        site_mask : str
-            Site filters mask to apply, e.g. "gamb_colu"
-        window_size : int
+        window_size : int, optional
             Number of sites per window.
+        site_mask : str, optional
+            Site filters mask to apply, e.g. "gamb_colu"
         sample_set : str, optional
             Sample set identifier. Not needed if sample parameter gives a sample
             identifier.
