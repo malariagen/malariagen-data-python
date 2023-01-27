@@ -2058,8 +2058,8 @@ class Ag3(AnophelesDataResource):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, y_max),
@@ -2275,8 +2275,8 @@ class Ag3(AnophelesDataResource):
         ]
         fig = bkplt.figure(
             title=title,
-            plot_width=width,
-            plot_height=plot_height,
+            width=width,
+            height=plot_height,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
@@ -2924,7 +2924,7 @@ class Ag3(AnophelesDataResource):
         ]
 
         # make plot
-        fig = bkplt.figure(plot_width=700, plot_height=400, x_axis_type="log")
+        fig = bkplt.figure(width=700, height=400, x_axis_type="log")
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -3138,8 +3138,8 @@ class Ag3(AnophelesDataResource):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),
@@ -3470,8 +3470,8 @@ class Ag3(AnophelesDataResource):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),

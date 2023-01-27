@@ -2128,8 +2128,8 @@ class AnophelesDataResource(ABC):
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             tools=[
                 "xpan",
                 "xzoom_in",
@@ -2341,8 +2341,8 @@ class AnophelesDataResource(ABC):
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "hover"],
             toolbar_location=toolbar_location,
             active_scroll=xwheel_zoom,
@@ -2877,8 +2877,8 @@ class AnophelesDataResource(ABC):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, y_max),
@@ -3263,8 +3263,8 @@ class AnophelesDataResource(ABC):
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=title,
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             tools=[
                 "xpan",
                 "xzoom_in",
@@ -4067,8 +4067,8 @@ class AnophelesDataResource(ABC):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             toolbar_location="above",
             x_range=x_range,
             y_range=(0.5, 2.5),
@@ -6231,8 +6231,8 @@ class AnophelesDataResource(ABC):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            plot_width=width,
-            plot_height=height,
+            width=width,
+            height=height,
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),
