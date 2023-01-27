@@ -31,9 +31,6 @@ GENOME_REF_NAME = "Anopheles funestus"
 
 CONTIGS = "2RL", "3RL", "X"
 
-DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
-DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
-
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
@@ -302,6 +299,26 @@ class Af1(AnophelesDataResource):
         # See also https://github.com/malariagen/malariagen-data-python/issues/306
 
         return super().genome_features(region=region, attributes=attributes)
+
+    def _plot_genes_setup_data(self, *, region):
+
+        # Here we override the superclass implementation because the
+        # gene annotations don't include a "Name" attribute.
+        #
+        # Also, the type needed is "protein_coding_gene".
+
+        df_genome_features = self.genome_features(
+            region=region, attributes=["ID", "Parent", "description"]
+        )
+        data = df_genome_features.query("type == 'protein_coding_gene'").copy()
+
+        tooltips = [
+            ("ID", "@ID"),
+            ("Description", "@description"),
+            ("Location", "@contig:@start{,}-@end{,}"),
+        ]
+
+        return data, tooltips
 
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks

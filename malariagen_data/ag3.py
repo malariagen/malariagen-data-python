@@ -13,7 +13,11 @@ import pandas as pd
 import xarray as xr
 import zarr
 
-from .anopheles import AnophelesDataResource
+from .anopheles import (
+    DEFAULT_GENES_TRACK_HEIGHT,
+    DEFAULT_GENOME_PLOT_WIDTH,
+    AnophelesDataResource,
+)
 
 try:
     # noinspection PyPackageRequirements
@@ -63,8 +67,6 @@ GENOME_REF_ID = "AgamP4"
 GENOME_REF_NAME = "Anopheles gambiae (PEST)"
 
 CONTIGS = "2R", "2L", "3R", "3L", "X"
-DEFAULT_GENOME_PLOT_WIDTH = 800  # width in px for bokeh genome plots
-DEFAULT_GENES_TRACK_HEIGHT = 100  # height in px for bokeh genes track plots
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
