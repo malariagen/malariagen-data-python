@@ -2458,8 +2458,6 @@ class AnophelesDataResource(ABC):
 
         import igv_notebook
 
-        # TODO deal with funestus gene annotations
-
         config = {
             "reference": {
                 "id": self._genome_ref_id,
