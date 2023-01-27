@@ -15,6 +15,7 @@ import zarr
 
 from .anopheles import (
     DEFAULT_GENES_TRACK_HEIGHT,
+    DEFAULT_GENOME_PLOT_SIZING_MODE,
     DEFAULT_GENOME_PLOT_WIDTH,
     AnophelesDataResource,
 )
@@ -1969,6 +1970,7 @@ class Ag3(AnophelesDataResource):
         region,
         sample_set=None,
         y_max="auto",
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         circle_kwargs=None,
@@ -1990,6 +1992,8 @@ class Ag3(AnophelesDataResource):
             Sample set identifier.
         y_max : str or int, optional
             Maximum Y axis value.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         height : int, optional
@@ -2058,6 +2062,7 @@ class Ag3(AnophelesDataResource):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
+            sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
@@ -2099,6 +2104,7 @@ class Ag3(AnophelesDataResource):
         region,
         sample_set=None,
         y_max="auto",
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=170,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
@@ -2121,6 +2127,8 @@ class Ag3(AnophelesDataResource):
             Sample set identifier.
         y_max : str or int, optional
             Maximum Y axis value.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         track_height : int, optional
@@ -2151,6 +2159,7 @@ class Ag3(AnophelesDataResource):
             sample_set=sample_set,
             region=region,
             y_max=y_max,
+            sizing_mode=sizing_mode,
             width=width,
             height=track_height,
             circle_kwargs=circle_kwargs,
@@ -2162,6 +2171,7 @@ class Ag3(AnophelesDataResource):
         debug("plot genes track")
         fig2 = self.plot_genes(
             region=region,
+            sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
             x_range=fig1.x_range,
@@ -2170,7 +2180,11 @@ class Ag3(AnophelesDataResource):
 
         debug("combine plots into a single figure")
         fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
         )
 
         if show:
@@ -2184,6 +2198,7 @@ class Ag3(AnophelesDataResource):
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         row_height=7,
         height=None,
@@ -2206,6 +2221,8 @@ class Ag3(AnophelesDataResource):
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         max_coverage_variance : float, optional
             Remove samples if coverage variance exceeds this value.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         row_height : int, optional
@@ -2275,6 +2292,7 @@ class Ag3(AnophelesDataResource):
         ]
         fig = bkplt.figure(
             title=title,
+            sizing_mode=sizing_mode,
             width=width,
             height=plot_height,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
@@ -2344,6 +2362,7 @@ class Ag3(AnophelesDataResource):
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         row_height=7,
         track_height=None,
@@ -2368,6 +2387,8 @@ class Ag3(AnophelesDataResource):
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
         max_coverage_variance : float, optional
             Remove samples if coverage variance exceeds this value.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         row_height : int, optional
@@ -2397,6 +2418,7 @@ class Ag3(AnophelesDataResource):
             sample_sets=sample_sets,
             sample_query=sample_query,
             max_coverage_variance=max_coverage_variance,
+            sizing_mode=sizing_mode,
             width=width,
             row_height=row_height,
             height=track_height,
@@ -2407,6 +2429,7 @@ class Ag3(AnophelesDataResource):
         debug("plot genes track")
         fig2 = self.plot_genes(
             region=region,
+            sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
             x_range=fig1.x_range,
@@ -2415,7 +2438,11 @@ class Ag3(AnophelesDataResource):
 
         debug("combine plots into a single figure")
         fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
         )
 
         if show:
@@ -3063,6 +3090,7 @@ class Ag3(AnophelesDataResource):
         cohort_size=30,
         random_seed=42,
         title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         show=True,
@@ -3094,6 +3122,8 @@ class Ag3(AnophelesDataResource):
             Random seed used for down-sampling.
         title : str, optional
             If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         height : int. optional
@@ -3138,6 +3168,7 @@ class Ag3(AnophelesDataResource):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
+            sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
@@ -3175,6 +3206,7 @@ class Ag3(AnophelesDataResource):
         cohort_size=30,
         random_seed=42,
         title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=170,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
@@ -3205,6 +3237,8 @@ class Ag3(AnophelesDataResource):
             Random seed used for down-sampling.
         title : str, optional
             If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         track_height : int. optional
@@ -3231,6 +3265,7 @@ class Ag3(AnophelesDataResource):
             cohort_size=cohort_size,
             random_seed=random_seed,
             title=title,
+            sizing_mode=sizing_mode,
             width=width,
             height=track_height,
             show=False,
@@ -3241,6 +3276,7 @@ class Ag3(AnophelesDataResource):
         # plot genes
         fig2 = self.plot_genes(
             region=contig,
+            sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
             x_range=fig1.x_range,
@@ -3249,7 +3285,11 @@ class Ag3(AnophelesDataResource):
 
         # combine plots into a single figure
         fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
         )
 
         bkplt.show(fig)
@@ -3389,6 +3429,7 @@ class Ag3(AnophelesDataResource):
         cohort_size=30,
         random_seed=42,
         title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         height=200,
         show=True,
@@ -3424,6 +3465,8 @@ class Ag3(AnophelesDataResource):
             Random seed used for down-sampling.
         title : str, optional
             If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         height : int. optional
@@ -3470,6 +3513,7 @@ class Ag3(AnophelesDataResource):
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
+            sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
@@ -3508,6 +3552,7 @@ class Ag3(AnophelesDataResource):
         cohort_size=30,
         random_seed=42,
         title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
         track_height=190,
         genes_height=DEFAULT_GENES_TRACK_HEIGHT,
@@ -3542,6 +3587,8 @@ class Ag3(AnophelesDataResource):
             Random seed used for down-sampling.
         title : str, optional
             If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
         width : int, optional
             Plot width in pixels (px).
         track_height : int. optional
@@ -3570,6 +3617,7 @@ class Ag3(AnophelesDataResource):
             cohort_size=cohort_size,
             random_seed=random_seed,
             title=title,
+            sizing_mode=sizing_mode,
             width=width,
             height=track_height,
             show=False,
@@ -3580,6 +3628,7 @@ class Ag3(AnophelesDataResource):
         # plot genes
         fig2 = self.plot_genes(
             region=contig,
+            sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
             x_range=fig1.x_range,
@@ -3588,7 +3637,11 @@ class Ag3(AnophelesDataResource):
 
         # combine plots into a single figure
         fig = bklay.gridplot(
-            [fig1, fig2], ncols=1, toolbar_location="above", merge_tools=True
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
         )
 
         bkplt.show(fig)
