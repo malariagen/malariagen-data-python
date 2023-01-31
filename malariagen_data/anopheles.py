@@ -1308,7 +1308,7 @@ class AnophelesDataResource(ABC):
 
         # check for uniqueness
         if not data[on].is_unique:
-            raise ValueError(f"duplicate values found for column {on!r}")
+            raise ValueError(f"column {on!r} does not have unique values")
 
         # check there are matching samples
         df_samples = self.sample_metadata()
