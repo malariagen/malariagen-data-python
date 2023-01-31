@@ -3791,7 +3791,6 @@ class Ag3(AnophelesDataResource):
             ht.T,
             distfun=lambda x: _hamming_to_snps(x),
             linkagefun=lambda x: linkage(x, method=linkage_method),
-            # FIXME: expected type 'list', got 'ndarray'
             labels=leaf_labels,
             color_threshold=0,
             count_sort=count_sort,
@@ -3941,7 +3940,6 @@ class Ag3(AnophelesDataResource):
 
         from itertools import cycle
 
-        # FIXME: unresolved references
         import dash_cytoscape as cyto
         import plotly.express as px
         from dash import dcc, html
