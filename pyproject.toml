@@ -33,7 +33,9 @@ scikit-allel = "*"
 xarray = "*"
 numba = "*"
 plotly = "*"
-bokeh = "*"
+# https://github.com/bokeh/bokeh/issues/12614
+# bokeh 3.0 has a problem with stretch sizing modes
+bokeh = "<3.0"
 statsmodels = "*"
 # 0.17.0 appears to be broken on colab
 ipyleaflet = ">0.17.0"
