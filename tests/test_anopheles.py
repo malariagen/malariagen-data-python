@@ -68,16 +68,17 @@ def test_sample_sets(subclass, url, release, sample_sets_count):
 
 
 @pytest.mark.parametrize(
-    "subclass,url,major_release,major_release_prefix,expected_pre_releases_min",
+    "subclass,major_release,major_release_prefix,expected_pre_releases_min",
     [
-        (Ag3, "simplecache::gs://vo_agam_release/", "3.0", "3.", 1),
-        (Af1, "simplecache::gs://vo_afun_release/", "1.0", "1.", 0),
+        (Ag3, "3.0", "3.", 1),
+        (Af1, "1.0", "1.", 0),
     ],
 )
 def test_releases(
-    subclass, url, major_release, major_release_prefix, expected_pre_releases_min
+    subclass, major_release, major_release_prefix, expected_pre_releases_min
 ):
 
+    url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
     assert isinstance(anoph.releases, tuple)
     assert anoph.releases == (major_release,)
@@ -90,18 +91,16 @@ def test_releases(
 
 
 @pytest.mark.parametrize(
-    "subclass,url,major_release,sample_set,sample_sets",
+    "subclass,major_release,sample_set,sample_sets",
     [
         (
             Ag3,
-            "simplecache::gs://vo_agam_release/",
             "3.0",
             "AG1000G-X",
             ["AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"],
         ),
         (
             Af1,
-            "simplecache::gs://vo_afun_release/",
             "1.0",
             "1229-VO-GH-DADZIE-VMF00095",
             [
@@ -112,8 +111,9 @@ def test_releases(
         ),
     ],
 )
-def test_sample_metadata(subclass, url, major_release, sample_set, sample_sets):
+def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
 
+    url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
     df_sample_sets_major = anoph.sample_sets(release=major_release)
 
@@ -169,12 +169,141 @@ def test_sample_metadata(subclass, url, major_release, sample_set, sample_sets):
 
 
 @pytest.mark.parametrize(
+    "subclass",
+    [
+        Ag3,
+        Af1,
+    ],
+)
+def test_extra_metadata_errors(subclass):
+
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
+
+    # bad type
+    with pytest.raises(TypeError):
+        anoph.add_extra_metadata(data="foo")
+
+    bad_data = pd.DataFrame({"foo": [1, 2, 3], "bar": ["a", "b", "c"]})
+
+    # missing sample identifier column
+    with pytest.raises(ValueError):
+        anoph.add_extra_metadata(data=bad_data)
+    # invalid sample identifier column
+    with pytest.raises(ValueError):
+        anoph.add_extra_metadata(data=bad_data, on="foo")
+
+    # duplicate identifiers
+    df_samples = anoph.sample_metadata()
+    sample_id = df_samples["sample_id"].values
+    data_with_dups = pd.DataFrame(
+        {
+            "sample_id": [sample_id[0], sample_id[0], sample_id[1]],
+            "foo": [1, 2, 3],
+            "bar": ["a", "b", "c"],
+        }
+    )
+    with pytest.raises(ValueError):
+        anoph.add_extra_metadata(data=data_with_dups)
+
+    # no matching samples
+    data_no_matches = pd.DataFrame(
+        {"sample_id": ["x", "y", "z"], "foo": [1, 2, 3], "bar": ["a", "b", "c"]}
+    )
+    with pytest.raises(ValueError):
+        anoph.add_extra_metadata(data=data_no_matches)
+
+
+@pytest.mark.parametrize(
+    "subclass",
+    [
+        Ag3,
+        Af1,
+    ],
+)
+@pytest.mark.parametrize(
+    "on",
+    [
+        "sample_id",
+        "partner_sample_id",
+    ],
+)
+def test_extra_metadata(subclass, on):
+
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
+
+    # load vanilla metadata
+    df_samples = anoph.sample_metadata()
+    sample_id = df_samples[on].values
+
+    # partially overlapping data
+    extra1 = pd.DataFrame(
+        {
+            on: [sample_id[0], sample_id[1], "spam"],
+            "foo": [1, 2, 3],
+            "bar": ["a", "b", "c"],
+        }
+    )
+    extra2 = pd.DataFrame(
+        {
+            on: [sample_id[2], sample_id[3], "eggs"],
+            "baz": [True, False, True],
+            "qux": [42, 84, 126],
+        }
+    )
+    anoph.add_extra_metadata(data=extra1, on=on)
+    anoph.add_extra_metadata(data=extra2, on=on)
+    df_samples_extra = anoph.sample_metadata()
+    assert "foo" in df_samples_extra.columns
+    assert "bar" in df_samples_extra.columns
+    assert "baz" in df_samples_extra.columns
+    assert "qux" in df_samples_extra.columns
+    assert df_samples_extra.columns.tolist() == (
+        df_samples.columns.tolist() + ["foo", "bar", "baz", "qux"]
+    )
+    assert len(df_samples_extra) == len(df_samples)
+    df_samples_extra = df_samples_extra.set_index(on)
+    rec = df_samples_extra.loc[sample_id[0]]
+    assert rec["foo"] == 1
+    assert rec["bar"] == "a"
+    assert np.isnan(rec["baz"])
+    assert np.isnan(rec["qux"])
+    rec = df_samples_extra.loc[sample_id[1]]
+    assert rec["foo"] == 2
+    assert rec["bar"] == "b"
+    assert np.isnan(rec["baz"])
+    assert np.isnan(rec["qux"])
+    rec = df_samples_extra.loc[sample_id[2]]
+    assert np.isnan(rec["foo"])
+    assert np.isnan(rec["bar"])
+    assert rec["baz"]
+    assert rec["qux"] == 42
+    rec = df_samples_extra.loc[sample_id[3]]
+    assert np.isnan(rec["foo"])
+    assert np.isnan(rec["bar"])
+    assert not rec["baz"]
+    assert rec["qux"] == 84
+    with pytest.raises(KeyError):
+        _ = df_samples_extra.loc["spam"]
+    with pytest.raises(KeyError):
+        _ = df_samples_extra.loc["eggs"]
+
+    # clear extra metadata
+    anoph.clear_extra_metadata()
+    df_samples_cleared = anoph.sample_metadata()
+    assert df_samples_cleared.columns.tolist() == df_samples.columns.tolist()
+    assert len(df_samples_cleared) == len(df_samples)
+
+
+@pytest.mark.parametrize(
     "subclass,mask",
     [(Ag3, "gamb_colu_arab"), (Ag3, "gamb_colu"), (Ag3, "arab"), (Af1, "funestus")],
 )
 def test_open_site_filters(subclass, mask):
     # check can open the zarr directly
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
     root = anoph.open_site_filters(mask=mask)
     assert isinstance(root, zarr.hierarchy.Group)
     for contig in anoph.contigs:
@@ -183,7 +312,8 @@ def test_open_site_filters(subclass, mask):
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_open_snp_sites(subclass):
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
     root = anoph.open_snp_sites()
     assert isinstance(root, zarr.hierarchy.Group)
     for contig in anoph.contigs:
@@ -195,7 +325,8 @@ def test_open_snp_sites(subclass):
 )
 def test_open_snp_genotypes(subclass, sample_set):
     # check can open the zarr directly
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
     root = anoph.open_snp_genotypes(sample_set=sample_set)
     assert isinstance(root, zarr.hierarchy.Group)
     for contig in anoph.contigs:
@@ -205,7 +336,8 @@ def test_open_snp_genotypes(subclass, sample_set):
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_genome(subclass):
 
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
 
     # test the open_genome() method to access as zarr
     genome = anoph.open_genome()
@@ -224,6 +356,9 @@ def test_genome(subclass):
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_sample_metadata_dtypes(subclass):
 
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url, pre=True)
+
     expected_dtypes = {
         "sample_id": object,
         "partner_sample_id": object,
@@ -240,7 +375,6 @@ def test_sample_metadata_dtypes(subclass):
     }
 
     # check all available sample sets
-    anoph = setup_subclass(subclass, pre=True)
     df_samples = anoph.sample_metadata()
     for k, v in expected_dtypes.items():
         assert df_samples[k].dtype == v, k
@@ -255,7 +389,8 @@ def test_sample_metadata_dtypes(subclass):
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_genome_features(subclass):
 
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
 
     # default
     df = anoph.genome_features()
@@ -301,7 +436,8 @@ def test_genome_features(subclass):
 )
 def test_genome_features_region(subclass, region):
 
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
 
     df = anoph.genome_features(region=region)
     assert isinstance(df, pd.DataFrame)
@@ -334,7 +470,8 @@ def test_genome_features_region(subclass, region):
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_open_site_annotations(subclass):
 
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
 
     # test access as zarr
     root = anoph.open_site_annotations()
@@ -397,7 +534,8 @@ def test_snp_allele_frequencies__str_cohorts(
     expected_snp_count,
 ):
 
-    anoph = setup_subclass(subclass, cohorts_analysis=cohorts_analysis)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url, cohorts_analysis=cohorts_analysis)
 
     cohorts = "admin1_month"
     min_cohort_size = 10
@@ -443,7 +581,8 @@ def test_snp_allele_frequencies__dup_samples(
     transcript,
     sample_set,
 ):
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
     with pytest.raises(ValueError):
         anoph.snp_allele_frequencies(
             transcript=transcript,
@@ -472,7 +611,10 @@ def test_snp_allele_frequencies__dup_samples(
 def test_aa_allele_frequencies__dup_samples(
     subclass, cohorts_analysis, transcript, sample_set
 ):
-    anoph = setup_subclass(subclass=subclass, cohorts_analysis=cohorts_analysis)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(
+        subclass=subclass, url=url, cohorts_analysis=cohorts_analysis
+    )
     with pytest.raises(ValueError):
         anoph.aa_allele_frequencies(
             transcript=transcript,
@@ -501,7 +643,10 @@ def test_aa_allele_frequencies__dup_samples(
 def test_snp_allele_frequencies_advanced__dup_samples(
     subclass, cohorts_analysis, transcript, sample_set
 ):
-    anoph = setup_subclass(subclass=subclass, cohorts_analysis=cohorts_analysis)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(
+        subclass=subclass, url=url, cohorts_analysis=cohorts_analysis
+    )
     with pytest.raises(ValueError):
         anoph.snp_allele_frequencies_advanced(
             transcript=transcript,
@@ -531,7 +676,10 @@ def test_snp_allele_frequencies_advanced__dup_samples(
 def test_aa_allele_frequencies_advanced__dup_samples(
     subclass, cohorts_analysis, transcript, sample_set
 ):
-    anoph = setup_subclass(subclass=subclass, cohorts_analysis=cohorts_analysis)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(
+        subclass=subclass, url=url, cohorts_analysis=cohorts_analysis
+    )
     with pytest.raises(ValueError):
         anoph.aa_allele_frequencies_advanced(
             transcript=transcript,
@@ -555,7 +703,8 @@ def test_aa_allele_frequencies_advanced__dup_samples(
     ],
 )
 def test_sample_metadata_with_cohorts(subclass, sample_sets):
-    anoph = setup_subclass(subclass)
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
     df_samples_coh = anoph.sample_metadata(sample_sets=sample_sets)
     for c in expected_cohort_cols:
         assert c in df_samples_coh
