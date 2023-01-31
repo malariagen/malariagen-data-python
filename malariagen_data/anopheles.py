@@ -166,6 +166,9 @@ class AnophelesDataResource(ABC):
         else:
             self._site_filters_analysis = site_filters_analysis
 
+        # set up extra metadata
+        self._extra_metadata = []
+
     # Start of @property
 
     @property
@@ -1281,11 +1284,43 @@ class AnophelesDataResource(ABC):
             df_samples = pd.concat(dfs, axis=0, ignore_index=True)
             self._cache_sample_metadata[cache_key] = df_samples
 
+        # add extra metadata
+        for on, data in self._extra_metadata:
+            df_samples = df_samples.merge(data, how="left", on=on)
+
         # for convenience, apply a query
         if sample_query is not None:
             df_samples = df_samples.query(sample_query).reset_index(drop=True)
 
         return df_samples.copy()
+
+    def add_extra_metadata(self, data, on="sample_id"):
+
+        # check parameters
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("`data` parameter must be a pandas DataFrame")
+        if on not in data.columns:
+            raise ValueError(f"dataframe does not contain column {on!r}")
+        if on not in {"sample_id", "partner_sample_id"}:
+            raise ValueError(
+                "`on` parameter must be either 'sample_id' or 'partner_sample_id'"
+            )
+
+        # check for uniqueness
+        if not data[on].is_unique:
+            raise ValueError(f"duplicate values found for column {on!r}")
+
+        # check there are matching samples
+        df_samples = self.sample_metadata()
+        loc_isec = data[on].isin(df_samples[on])
+        if not loc_isec.any():
+            raise ValueError("no matching samples found")
+
+        # store extra metadata
+        self._extra_metadata.append((on, data.copy()))
+
+    def clear_extra_metadata(self):
+        self._extra_metadata = []
 
     def _site_filters(
         self,
