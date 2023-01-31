@@ -1295,6 +1295,23 @@ class AnophelesDataResource(ABC):
         return df_samples.copy()
 
     def add_extra_metadata(self, data, on="sample_id"):
+        """Add extra sample metadata, e.g., including additional columns
+        which you would like to use to query and group samples.
+
+        Parameters
+        ----------
+        data : DataFrame
+            A data frame with one row per sample. Must include either a
+            "sample_id" or "partner_sample_id" column.
+        on : {"sample_id", "partner_sample_id"}
+            Name of column to use when merging with sample metadata.
+
+        Notes
+        -----
+        The values in the column containing sample identifiers must be
+        unique.
+
+        """
 
         # check parameters
         if not isinstance(data, pd.DataFrame):
@@ -1320,6 +1337,7 @@ class AnophelesDataResource(ABC):
         self._extra_metadata.append((on, data.copy()))
 
     def clear_extra_metadata(self):
+        """Clear any extra metadata previously added."""
         self._extra_metadata = []
 
     def _site_filters(
