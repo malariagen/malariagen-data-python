@@ -468,7 +468,7 @@ class Ag3(AnophelesDataResource):
 
         """
 
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
         dfs = [self._read_species_calls(sample_set=s) for s in sample_sets]
@@ -689,7 +689,7 @@ class Ag3(AnophelesDataResource):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -1081,7 +1081,7 @@ class Ag3(AnophelesDataResource):
         # CNV alleles have unknown start or end coordinates.
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         if isinstance(contig, str):
             contig = [contig]
 
@@ -2296,7 +2296,7 @@ class Ag3(AnophelesDataResource):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         debug("access SNP calls and concatenate multiple sample sets and/or regions")
         ly = []

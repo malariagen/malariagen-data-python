@@ -475,7 +475,7 @@ class AnophelesDataResource(ABC):
             sample_query = np.nonzero(loc_samples)[0].tolist()
         params = dict(
             region=self.resolve_region(region).to_dict(),
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
             site_class=site_class,
@@ -1167,7 +1167,7 @@ class AnophelesDataResource(ABC):
 
         return df.copy()
 
-    def _prep_sample_sets_arg(self, *, sample_sets):
+    def _prep_sample_sets_param(self, *, sample_sets):
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
@@ -1194,7 +1194,7 @@ class AnophelesDataResource(ABC):
             for s in sample_sets:
 
                 # make a recursive call to handle the case where s is a release identifier
-                sp = self._prep_sample_sets_arg(sample_sets=s)
+                sp = self._prep_sample_sets_param(sample_sets=s)
 
                 # make sure we end up with a flat list of sample sets
                 if isinstance(sp, str):
@@ -1292,7 +1292,7 @@ class AnophelesDataResource(ABC):
 
         """
 
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
 
         try:
@@ -1638,7 +1638,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
 
         debug("normalise region to list to simplify concatenation logic")
@@ -2036,7 +2036,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -3905,7 +3905,7 @@ class AnophelesDataResource(ABC):
             region=self.resolve_region(region).to_dict(),
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
             site_mask=site_mask,
             min_minor_ac=min_minor_ac,
@@ -4496,7 +4496,7 @@ class AnophelesDataResource(ABC):
             A dataframe of cohort metadata, one row per sample.
 
         """
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
         dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
@@ -5300,7 +5300,7 @@ class AnophelesDataResource(ABC):
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             site_mask=site_mask,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -6659,7 +6659,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -6781,7 +6781,7 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_sizes=window_sizes,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -6978,7 +6978,7 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -7295,7 +7295,7 @@ class AnophelesDataResource(ABC):
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
