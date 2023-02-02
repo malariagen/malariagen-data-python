@@ -283,6 +283,21 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError("Must override _fst_gwss_results_cache_name")
 
     @property
+    @abstractmethod
+    def _h12_calibration_cache_name(self):
+        raise NotImplementedError("Must override _h12_calibration_cache_name")
+
+    @property
+    @abstractmethod
+    def _h12_gwss_cache_name(self):
+        raise NotImplementedError("Must override _h12_gwss_cache_name")
+
+    @property
+    @abstractmethod
+    def _h1x_gwss_cache_name(self):
+        raise NotImplementedError("Must override _h1x_gwss_cache_name")
+
+    @property
     def _geneset_gff3_path(self):
         return self._config.get("GENESET_GFF3_PATH")
 
@@ -742,7 +757,7 @@ class AnophelesDataResource(ABC):
 
     @staticmethod
     @abstractmethod
-    def _setup_taxon_colors(plot_kwargs):
+    def _setup_taxon_colors(plot_kwargs=None):
         # Subclasses have different taxon_color_map.
         raise NotImplementedError("Must override _setup_taxon_colors")
 
