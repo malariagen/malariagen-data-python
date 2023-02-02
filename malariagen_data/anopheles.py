@@ -60,8 +60,7 @@ AA_CHANGE_QUERY = (
 
 
 class AnophelesDataResource(ABC):
-
-    # TODO: parent class docstring
+    """Base class for Anopheles data resources."""
 
     def __init__(
         self,
@@ -1295,6 +1294,23 @@ class AnophelesDataResource(ABC):
         return df_samples.copy()
 
     def add_extra_metadata(self, data, on="sample_id"):
+        """Add extra sample metadata, e.g., including additional columns
+        which you would like to use to query and group samples.
+
+        Parameters
+        ----------
+        data : DataFrame
+            A data frame with one row per sample. Must include either a
+            "sample_id" or "partner_sample_id" column.
+        on : {"sample_id", "partner_sample_id"}
+            Name of column to use when merging with sample metadata.
+
+        Notes
+        -----
+        The values in the column containing sample identifiers must be
+        unique.
+
+        """
 
         # check parameters
         if not isinstance(data, pd.DataFrame):
@@ -1320,6 +1336,7 @@ class AnophelesDataResource(ABC):
         self._extra_metadata.append((on, data.copy()))
 
     def clear_extra_metadata(self):
+        """Clear any extra metadata previously added."""
         self._extra_metadata = []
 
     def _site_filters(
@@ -2640,7 +2657,6 @@ class AnophelesDataResource(ABC):
         )
 
         debug("perform allele count")
-        # FIXME: Parameter 'cohort_size', 'random_seed', 'site_class' unfilled
         ac = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
@@ -4081,7 +4097,6 @@ class AnophelesDataResource(ABC):
             raise ValueError("Region is too large, please provide a smaller region.")
 
         debug("compute allele counts")
-        # FIXME: Parameters 'random_seed', 'site_class' unfilled
         ac = allel.AlleleCountsArray(
             self.snp_allele_counts(
                 region=region,
@@ -4201,7 +4216,6 @@ class AnophelesDataResource(ABC):
             source=data,
             name="snps",
         )
-        # TODO add legend?
 
         debug("tidy plot")
         fig.yaxis.ticker = bkmod.FixedTicker(
@@ -4676,7 +4690,6 @@ class AnophelesDataResource(ABC):
         ds_aa_frq = group_by_aa_change.map(self._map_snp_to_aa_change_frq_ds)
 
         debug("add back in cohort variables, unaffected by aggregation")
-        # FIXME: Unresolved attribute reference 'startswith' for class 'Hashable'
         cohort_vars = [v for v in ds_snp_frq if v.startswith("cohort_")]
         for v in cohort_vars:
             ds_aa_frq[v] = ds_snp_frq[v]
@@ -4764,7 +4777,6 @@ class AnophelesDataResource(ABC):
         seg_data = ac.allelism() - 1
 
         debug("compute estimates from all data")
-        # FIXME: variable in function should be lowercase
         theta_pi_abs_data = np.sum(mpd_data)
         theta_pi_data = theta_pi_abs_data / n_sites
         S_data = np.sum(seg_data)
@@ -4798,7 +4810,6 @@ class AnophelesDataResource(ABC):
             jack_theta_pi.append(theta_pi_j)
 
             # theta_w
-            # FIXME: variable in function should be lowercase
             seg_j = seg_data[loc_j]
             S_j = np.sum(seg_j)
             theta_w_abs_j = S_j / a1
@@ -5013,7 +5024,6 @@ class AnophelesDataResource(ABC):
 
         return pd.Series(stats)
 
-    # TODO: compare with cohort_diversity_stats()
     def diversity_stats(
         self,
         cohorts,
@@ -5520,7 +5530,6 @@ class AnophelesDataResource(ABC):
             title = ds.attrs.get("title", None)
 
         debug("extract cohorts into a dataframe")
-        # FIXME: unresolved attribute reference 'startswith'
         cohort_vars = [v for v in ds if v.startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
@@ -6194,7 +6203,6 @@ class AnophelesDataResource(ABC):
 
         debug("create a map")
         if basemap is None:
-            # FIXME: cannot find reference 'Esri'
             basemap = ipyleaflet.basemaps.Esri.WorldImagery
         samples_map = ipyleaflet.Map(
             center=center,
