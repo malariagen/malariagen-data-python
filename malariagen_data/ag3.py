@@ -145,6 +145,8 @@ class Ag3(AnophelesDataResource):
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
+    phasing_analysis_ids = ("gamb_colu_arab", "gamb_colu", "arab")
+    _default_phasing_analysis = "gamb_colu_arab"
 
     def __init__(
         self,
