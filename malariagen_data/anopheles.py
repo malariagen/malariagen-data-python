@@ -3003,7 +3003,7 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask="default",
+        site_mask=DEFAULT,
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
@@ -3087,7 +3087,7 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask="default",
+        site_mask=DEFAULT,
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
@@ -3221,7 +3221,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         region = self.resolve_region(region)
-        if site_mask == "default":
+        if site_mask == DEFAULT:
             site_mask = self._default_site_mask
 
         debug("access sample metadata, look up sample")
@@ -3266,7 +3266,7 @@ class AnophelesDataResource(ABC):
         sample,
         region,
         window_size=20_000,
-        site_mask="default",
+        site_mask=DEFAULT,
         sample_set=None,
         phet_roh=0.001,
         phet_nonroh=(0.003, 0.01),
@@ -3416,7 +3416,7 @@ class AnophelesDataResource(ABC):
         sample,
         region,
         window_size=20_000,
-        site_mask="default",
+        site_mask=DEFAULT,
         sample_set=None,
         phet_roh=0.001,
         phet_nonroh=(0.003, 0.01),
@@ -3837,7 +3837,7 @@ class AnophelesDataResource(ABC):
         thin_offset=0,
         sample_sets=None,
         sample_query=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         min_minor_ac=2,
         max_missing_an=0,
         n_components=20,
@@ -3897,7 +3897,7 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._pca_results_cache_name
 
-        if site_mask == "default":
+        if site_mask == DEFAULT:
             site_mask = self._default_site_mask
 
         debug("normalize params for consistent hash value")
@@ -3942,7 +3942,7 @@ class AnophelesDataResource(ABC):
         region,
         sample_sets=None,
         sample_query=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=None,
         sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
@@ -3994,7 +3994,7 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        if site_mask == "default":
+        if site_mask == DEFAULT:
             site_mask = self._default_site_mask
 
         import bokeh.layouts as bklay
@@ -4058,7 +4058,7 @@ class AnophelesDataResource(ABC):
         region,
         sample_sets=None,
         sample_query=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=None,
         sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
@@ -4110,7 +4110,7 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        if site_mask == "default":
+        if site_mask == DEFAULT:
             site_mask = self._default_site_mask
 
         import bokeh.models as bkmod
@@ -5250,7 +5250,7 @@ class AnophelesDataResource(ABC):
         cohort1_query,
         cohort2_query,
         sample_sets=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=30,
         random_seed=42,
     ):
@@ -5292,7 +5292,7 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._fst_gwss_results_cache_name
 
-        if site_mask == "default":
+        if site_mask == DEFAULT:
             site_mask = self._default_site_mask
 
         params = dict(
@@ -6277,7 +6277,7 @@ class AnophelesDataResource(ABC):
         cohort1_query,
         cohort2_query,
         sample_sets=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -6395,7 +6395,7 @@ class AnophelesDataResource(ABC):
         cohort1_query,
         cohort2_query,
         sample_sets=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=30,
         random_seed=42,
         title=None,
