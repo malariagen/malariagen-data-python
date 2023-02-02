@@ -50,6 +50,7 @@ from .util import (
     xarray_concat,
 )
 
+DEFAULT = "default"
 # width in px for bokeh genome plots - leave as None to allow stretching
 DEFAULT_GENOME_PLOT_WIDTH = None
 # see also https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
@@ -337,6 +338,31 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError(
             "Must override _view_alignments_add_site_filters_tracks"
         )
+
+    @property
+    @abstractmethod
+    def phasing_analysis_ids(self):
+        """Identifiers for the different phasing analyses that are available.
+        These are values than can be used for the `analysis` parameter in any
+        method making using of haplotype data.
+
+        """
+        # Not all children have the same phasing analysis IDs.
+        raise NotImplementedError("Must override _phasing_analysis_ids")
+
+    @property
+    @abstractmethod
+    def _default_phasing_analysis(self):
+        raise NotImplementedError("Must override _default_phasing_analysis")
+
+    def _prep_phasing_analysis_param(self, *, analysis):
+        if analysis == DEFAULT:
+            analysis = self._default_phasing_analysis
+        if analysis not in self.phasing_analysis_ids:
+            raise ValueError(
+                f"Invalid phasing analysis, must be one of f{self.phasing_analysis_ids}."
+            )
+        return analysis
 
     def _results_cache_add_analysis_params(self, params):
         # default implementation, can be overridden if additional analysis
@@ -6463,24 +6489,23 @@ class AnophelesDataResource(ABC):
 
         bkplt.show(fig)
 
-    def open_haplotypes(self, sample_set, analysis):
+    def open_haplotypes(self, sample_set, analysis=DEFAULT):
         """Open haplotypes zarr.
 
         Parameters
         ----------
         sample_set : str
             Sample set identifier, e.g., "AG1000G-AO".
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
 
         Returns
         -------
         root : zarr.hierarchy.Group
 
         """
+        analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotypes[(sample_set, analysis)]
         except KeyError:
@@ -6496,22 +6521,21 @@ class AnophelesDataResource(ABC):
             self._cache_haplotypes[(sample_set, analysis)] = root
         return root
 
-    def open_haplotype_sites(self, analysis):
+    def open_haplotype_sites(self, analysis=DEFAULT):
         """Open haplotype sites zarr.
 
         Parameters
         ----------
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis,
-            the "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
 
         Returns
         -------
         root : zarr.hierarchy.Group
 
         """
+        analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotype_sites[analysis]
         except KeyError:
@@ -6588,7 +6612,7 @@ class AnophelesDataResource(ABC):
     def haplotypes(
         self,
         region,
-        analysis,
+        analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
         inline_array=True,
@@ -6606,11 +6630,9 @@ class AnophelesDataResource(ABC):
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"] or ["2RL", "3RL"].
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -6641,6 +6663,7 @@ class AnophelesDataResource(ABC):
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
+        analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
         debug("build dataset")
         lx = []
@@ -6711,7 +6734,7 @@ class AnophelesDataResource(ABC):
     def h12_calibration(
         self,
         contig,
-        analysis,
+        analysis=DEFAULT,
         sample_query=None,
         sample_sets=None,
         cohort_size=30,
@@ -6724,11 +6747,9 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -6758,7 +6779,7 @@ class AnophelesDataResource(ABC):
 
         params = dict(
             contig=contig,
-            analysis=analysis,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_sizes=window_sizes,
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
@@ -6809,7 +6830,7 @@ class AnophelesDataResource(ABC):
     def plot_h12_calibration(
         self,
         contig,
-        analysis,
+        analysis=DEFAULT,
         sample_query=None,
         sample_sets=None,
         cohort_size=30,
@@ -6823,11 +6844,9 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -6913,8 +6932,8 @@ class AnophelesDataResource(ABC):
     def h12_gwss(
         self,
         contig,
-        analysis,
         window_size,
+        analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
         cohort_size=30,
@@ -6926,13 +6945,11 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
         window_size : int
             The size of windows used to calculate h12 over.
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -6959,7 +6976,7 @@ class AnophelesDataResource(ABC):
 
         params = dict(
             contig=contig,
-            analysis=analysis,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
             sample_query=sample_query,
@@ -7015,8 +7032,8 @@ class AnophelesDataResource(ABC):
     def plot_h12_gwss_track(
         self,
         contig,
-        analysis,
         window_size,
+        analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
         cohort_size=30,
@@ -7034,13 +7051,11 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
         window_size : int
             The size of windows used to calculate h12 over.
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -7131,8 +7146,8 @@ class AnophelesDataResource(ABC):
     def plot_h12_gwss(
         self,
         contig,
-        analysis,
         window_size,
+        analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
         cohort_size=30,
@@ -7149,13 +7164,11 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
         window_size : int
             The size of windows used to calculate h12 over.
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -7229,10 +7242,10 @@ class AnophelesDataResource(ABC):
     def h1x_gwss(
         self,
         contig,
-        analysis,
         window_size,
         cohort1_query,
         cohort2_query,
+        analysis=DEFAULT,
         sample_sets=None,
         cohort_size=30,
         random_seed=42,
@@ -7244,11 +7257,6 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "2RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
         window_size : int
             The size of windows used to calculate h12 over.
         cohort1_query : str
@@ -7257,6 +7265,9 @@ class AnophelesDataResource(ABC):
         cohort2_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -7280,7 +7291,7 @@ class AnophelesDataResource(ABC):
 
         params = dict(
             contig=contig,
-            analysis=analysis,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
@@ -7353,10 +7364,10 @@ class AnophelesDataResource(ABC):
     def plot_h1x_gwss_track(
         self,
         contig,
-        analysis,
         window_size,
         cohort1_query,
         cohort2_query,
+        analysis=DEFAULT,
         sample_sets=None,
         cohort_size=30,
         random_seed=42,
@@ -7374,11 +7385,6 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
         window_size : int
             The size of windows used to calculate h12 over.
         cohort1_query : str
@@ -7387,6 +7393,9 @@ class AnophelesDataResource(ABC):
         cohort2_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -7476,10 +7485,10 @@ class AnophelesDataResource(ABC):
     def plot_h1x_gwss(
         self,
         contig,
-        analysis,
         window_size,
         cohort1_query,
         cohort2_query,
+        analysis=DEFAULT,
         sample_sets=None,
         cohort_size=30,
         random_seed=42,
@@ -7496,11 +7505,6 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
         window_size : int
             The size of windows used to calculate h12 over.
         cohort1_query : str
@@ -7509,6 +7513,9 @@ class AnophelesDataResource(ABC):
         cohort2_query : str
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -7581,7 +7588,7 @@ class AnophelesDataResource(ABC):
     def plot_haplotype_clustering(
         self,
         region,
-        analysis,
+        analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
         color=None,
@@ -7605,11 +7612,9 @@ class AnophelesDataResource(ABC):
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"] or ["2RL", "X"].
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -7788,7 +7793,7 @@ class AnophelesDataResource(ABC):
     def plot_haplotype_network(
         self,
         region,
-        analysis,
+        analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
         max_dist=2,
@@ -7822,11 +7827,9 @@ class AnophelesDataResource(ABC):
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"] or ["2RL", "X"].
-        analysis : {"arab", "gamb_colu", "gamb_colu_arab"} or "funestus"
-            Which phasing analysis to use. If analysing only An. arabiensis, the
-            "arab" analysis is best. If analysing only An. gambiae and An.
-            coluzzii, the "gamb_colu" analysis is best. Otherwise for An. gambiae,
-            use the "gamb_colu_arab" analysis. For An. funestus use "funestus".
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a

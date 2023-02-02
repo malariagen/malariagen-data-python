@@ -112,6 +112,8 @@ class Af1(AnophelesDataResource):
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _cohorts_analysis = None
     _site_filters_analysis = None
+    phasing_analysis_ids = ("funestus",)
+    _default_phasing_analysis = "funestus"
 
     def __init__(
         self,
