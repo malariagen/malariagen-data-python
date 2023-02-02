@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import zarr
+from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Af1, Ag3, Region
@@ -735,3 +736,63 @@ def test_sample_metadata_without_cohorts(subclass, sample_sets, test_subdir):
     for c in expected_cohort_cols:
         assert c in df_samples_coh
         assert df_samples_coh[c].isnull().all()
+
+
+def test_haplotype_frequencies():
+    h1 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 1, 1, 0],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    from malariagen_data.anopheles import _haplotype_frequencies
+
+    f = _haplotype_frequencies(h1)
+    assert isinstance(f, dict)
+    vals = np.array(list(f.values()))
+    vals.sort()
+    assert np.all(vals >= 0)
+    assert np.all(vals <= 1)
+    assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
+
+
+def test_haplotype_joint_frequencies():
+    h1 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [0, 1, 0, 0, 0],
+            [1, 0, 1, 1, 0],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    h2 = np.array(
+        [
+            [0, 1, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [1, 0, 1, 1, 1],
+            [0, 1, 1, 1, 0],
+            [0, 0, 1, 1, 0],
+            [1, 1, 0, 0, 0],
+            [0, 1, 1, 1, 0],
+        ],
+        dtype="i1",
+    )
+    from malariagen_data.anopheles import _haplotype_joint_frequencies
+
+    f = _haplotype_joint_frequencies(h1, h2)
+    assert isinstance(f, dict)
+    vals = np.array(list(f.values()))
+    vals.sort()
+    assert np.all(vals >= 0)
+    assert np.all(vals <= 1)
+    assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
