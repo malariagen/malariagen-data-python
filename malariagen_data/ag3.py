@@ -143,6 +143,7 @@ class Ag3(AnophelesDataResource):
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
+    site_mask_ids = ("gamb_colu_arab", "gamb_colu", "arab")
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     phasing_analysis_ids = ("gamb_colu_arab", "gamb_colu", "arab")
@@ -498,12 +499,6 @@ class Ag3(AnophelesDataResource):
             parent_name = rec_parent["Name"]
 
         return parent_name
-
-    def _site_mask_ids(self):
-        if self._site_filters_analysis == "dt_20200416":
-            return "gamb_colu_arab", "gamb_colu", "arab"
-        else:
-            raise ValueError
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses,
@@ -2209,7 +2204,7 @@ class Ag3(AnophelesDataResource):
     ):
         debug = self._log.debug
 
-        for site_mask in self._site_mask_ids():
+        for site_mask in self.site_mask_ids:
             site_filters_vcf_url = f"gs://vo_agam_release/v3/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             debug(site_filters_vcf_url)
             track_config = {

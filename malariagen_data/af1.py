@@ -108,6 +108,7 @@ class Af1(AnophelesDataResource):
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
+    site_mask_ids = ("funestus",)
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _cohorts_analysis = None
@@ -264,14 +265,6 @@ class Af1(AnophelesDataResource):
         parent_name = parent
 
         return parent_name
-
-    def _site_mask_ids(self):
-        if self._site_filters_analysis == "dt_20200416":
-            return ["funestus"]
-        elif self._site_filters_analysis == "sc_20220908":
-            return ["funestus"]
-        else:
-            raise ValueError
 
     def genome_features(
         self, region=None, attributes=("ID", "Parent", "Note", "description")

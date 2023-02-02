@@ -283,11 +283,6 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError("Must override _fst_gwss_results_cache_name")
 
     @property
-    @abstractmethod
-    def _default_site_mask(self):
-        raise NotImplementedError("Must override _default_site_mask")
-
-    @property
     def _geneset_gff3_path(self):
         return self._config.get("GENESET_GFF3_PATH")
 
@@ -315,10 +310,29 @@ class AnophelesDataResource(ABC):
         # Not all children have species calls or cohorts data.
         raise NotImplementedError("Must override _repr_html_")
 
+    @property
     @abstractmethod
-    def _site_mask_ids(self):
-        # Not all children have the same site mask ids.
+    def site_mask_ids(self):
+        """Identifiers for the different site masks that are available.
+        These are values than can be used for the `site_mask` parameter in any
+        method making using of SNP data.
+
+        """
         raise NotImplementedError("Must override _site_mask_ids")
+
+    @property
+    @abstractmethod
+    def _default_site_mask(self):
+        raise NotImplementedError("Must override _default_site_mask")
+
+    def _prep_site_mask_param(self, *, site_mask):
+        if site_mask == DEFAULT:
+            site_mask = self._default_site_mask
+        if site_mask not in self.site_mask_ids:
+            raise ValueError(
+                f"Invalid site mask, must be one of f{self.site_mask_ids}."
+            )
+        return site_mask
 
     @abstractmethod
     def _sample_metadata(self, sample_set):
@@ -608,7 +622,7 @@ class AnophelesDataResource(ABC):
         variant_ref_allele = np.repeat(alleles[:, 0], 3)
         variant_alt_allele = alleles[:, 1:].flatten()
         variant_pass = dict()
-        for site_mask in self._site_mask_ids():
+        for site_mask in self.site_mask_ids:
             variant_pass[site_mask] = np.repeat(
                 ds_snps[f"variant_filter_pass_{site_mask}"].values, 3
             )
@@ -660,7 +674,7 @@ class AnophelesDataResource(ABC):
             "alt_allele": variant_alt_allele.astype("U1"),
             "max_af": max_af,
         }
-        for site_mask in self._site_mask_ids():
+        for site_mask in self.site_mask_ids:
             df_variants_cols[f"pass_{site_mask}"] = variant_pass[site_mask]
         df_variants = pd.DataFrame(df_variants_cols)
 
@@ -1819,7 +1833,7 @@ class AnophelesDataResource(ABC):
 
         debug("access site filters")
         filter_pass = dict()
-        masks = self._site_mask_ids()
+        masks = self.site_mask_ids
         for m in masks:
             x = self.site_filters(region=contig, mask=m)
             x = x[loc_feature].compute()
@@ -1923,7 +1937,7 @@ class AnophelesDataResource(ABC):
         coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
         debug("site filters arrays")
-        for mask in self._site_mask_ids():
+        for mask in self.site_mask_ids:
             filters_root = self.open_site_filters(mask=mask)
             z = filters_root[f"{contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -3221,8 +3235,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         region = self.resolve_region(region)
-        if site_mask == DEFAULT:
-            site_mask = self._default_site_mask
+        site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
@@ -3897,9 +3910,6 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._pca_results_cache_name
 
-        if site_mask == DEFAULT:
-            site_mask = self._default_site_mask
-
         debug("normalize params for consistent hash value")
         params = dict(
             region=self.resolve_region(region).to_dict(),
@@ -3907,7 +3917,7 @@ class AnophelesDataResource(ABC):
             thin_offset=thin_offset,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
-            site_mask=site_mask,
+            site_mask=self._prep_site_mask_param(site_mask=site_mask),
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             n_components=n_components,
@@ -3993,9 +4003,6 @@ class AnophelesDataResource(ABC):
 
         """
         debug = self._log.debug
-
-        if site_mask == DEFAULT:
-            site_mask = self._default_site_mask
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt
@@ -4110,8 +4117,7 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        if site_mask == DEFAULT:
-            site_mask = self._default_site_mask
+        site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         import bokeh.models as bkmod
         import bokeh.palettes as bkpal
@@ -4165,7 +4171,7 @@ class AnophelesDataResource(ABC):
             "allelism": allelism,
         }
 
-        for site_mask_id in self._site_mask_ids():
+        for site_mask_id in self.site_mask_ids:
             cols[f"pass_{site_mask_id}"] = ds_sites[
                 f"variant_filter_pass_{site_mask_id}"
             ].values
@@ -4190,7 +4196,7 @@ class AnophelesDataResource(ABC):
             ("Allele calls", "@an"),
         ]
 
-        for site_mask_id in self._site_mask_ids():
+        for site_mask_id in self.site_mask_ids:
             tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
 
         fig = bkplt.figure(
@@ -5292,16 +5298,13 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._fst_gwss_results_cache_name
 
-        if site_mask == DEFAULT:
-            site_mask = self._default_site_mask
-
         params = dict(
             contig=contig,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
-            site_mask=site_mask,
+            site_mask=self._prep_site_mask_param(site_mask=site_mask),
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
