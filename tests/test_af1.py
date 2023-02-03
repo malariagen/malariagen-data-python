@@ -485,7 +485,169 @@ def test_snp_allele_frequencies__query():
     assert len(df) == 1309
 
 
-# TODO: Af1.0 CNV tests will go here, then HAP tests underneath
+# TODO: Af1.0 CNV tests will go here, with test_haplotypes underneath
+
+
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        ("1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"),
+        "1.0",
+        None,
+    ],
+)
+@pytest.mark.parametrize(
+    "region", ["3RL", ["2RL:48,714,463-48,715,355", "LOC125761549_t7"]]
+)
+def test_haplotypes(sample_sets, region):
+
+    af1 = setup_af1()
+
+    # check expected samples
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    expected_samples = df_samples["sample_id"].tolist()
+    n_samples = len(expected_samples)
+
+    # check if any samples
+    if n_samples == 0:
+        ds = af1.haplotypes(region=region, sample_sets=sample_sets)
+        assert ds is None
+        return
+
+    ds = af1.haplotypes(region=region, sample_sets=sample_sets)
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check samples
+    samples = ds["sample_id"].values
+    assert set(samples) == set(expected_samples)
+
+    # check dim lengths
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 2
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim == 2
+            assert x.shape[1] == 2
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape[1] == n_samples
+            assert x.shape[2] == 2
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == ("2RL", "3RL", "X")
+
+    # check can set up computations
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+    d2 = ds["call_genotype"].sum(axis=(1, 2))
+    assert isinstance(d2, xr.DataArray)
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    [
+        "location == 'Dimabi'",
+        "location == 'Gbullung'",
+    ],
+)
+def test_haplotypes__sample_query(sample_query):
+
+    sample_sets = "1229-VO-GH-DADZIE-VMF00095"
+    region = "3RL"
+
+    af1 = setup_af1()
+
+    # check expected samples
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    expected_samples = df_samples.query(sample_query)["sample_id"].tolist()
+    n_samples = len(expected_samples)
+
+    ds = af1.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check samples
+    samples = ds["sample_id"].values
+    assert set(samples) == set(expected_samples)
+
+    # check dim lengths
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 2
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim == 2
+            assert x.shape[1] == 2
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape[1] == n_samples
+            assert x.shape[2] == 2
+
+    # check attributes
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == ("2RL", "3RL", "X")
 
 
 @pytest.mark.parametrize(
@@ -1142,8 +1304,64 @@ def _compare_series_like(actual, expect):
         assert_array_equal(actual.values, expect.values)
 
 
-# TODO: here test_h12_calibration
-# TODO: here test_haplotype_frequencies
+def test_h12_gwss():
+    af1 = setup_af1()
+    sample_query = "country == 'Ghana'"
+    contig = "3RL"
+    analysis = "funestus"
+    sample_sets = "1.0"
+    window_size = 1000
+
+    x, h12 = af1.h12_gwss(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h12, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 15845
+    assert len(x) == len(h12)
+
+    # check some values
+    assert_allclose(x[0], 185756.747)
+    assert_allclose(h12[11353], 0.0525)
+
+
+def test_h1x_gwss():
+    af1 = setup_af1()
+    cohort1_query = "cohort_admin2_year == 'GH-NP_Tolon-Kumbungu_fune_2017'"
+    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu-Tatale_fune_2017'"
+    contig = "2RL"
+    window_size = 2000
+
+    x, h1x = af1.h1x_gwss(
+        contig=contig,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        window_size=window_size,
+        cohort_size=None,
+    )
+
+    # check data
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h1x, np.ndarray)
+
+    # check dimensions
+    assert x.ndim == h1x.ndim == 1
+    assert x.shape == h1x.shape
+
+    # check some values
+    assert_allclose(x[0], 87606.705, rtol=1e-5), x[0]
+    assert_allclose(h1x[0], 0.007143, atol=1e-5), h1x[0]
+    assert np.all(h1x <= 1)
+    assert np.all(h1x >= 0)
 
 
 def test_fst_gwss():
@@ -1151,7 +1369,6 @@ def test_fst_gwss():
     cohort1_query = "cohort_admin2_year == 'GH-NP_Tolon-Kumbungu_fune_2017'"
     cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu-Tatale_fune_2017'"
     contig = "2RL"
-    site_mask = "funestus"
     window_size = 10_000
 
     x, fst = af1.fst_gwss(
@@ -1159,7 +1376,6 @@ def test_fst_gwss():
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
         window_size=window_size,
-        site_mask=site_mask,
         cohort_size=None,
     )
 

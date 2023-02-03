@@ -4,6 +4,7 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 import zarr
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
@@ -796,3 +797,83 @@ def test_haplotype_joint_frequencies():
     assert np.all(vals >= 0)
     assert np.all(vals <= 1)
     assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
+
+
+@pytest.mark.parametrize(
+    "subclass, sample_sets, region, analysis, cohort_size",
+    [
+        (Ag3, "AG1000G-BF-B", "3L", "gamb_colu_arab", 10),
+        (Af1, "1229-VO-GH-DADZIE-VMF00095", "3RL", "funestus", 10),
+    ],
+)
+def test_haplotypes__cohort_size(subclass, sample_sets, region, analysis, cohort_size):
+
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
+
+    ds = anoph.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        analysis=analysis,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # check dim lengths
+    assert ds.dims["samples"] == cohort_size
+    assert ds.dims["alleles"] == 2
+
+
+@pytest.mark.parametrize(
+    "subclass, sample_query, contig, analysis, sample_sets",
+    [
+        (Ag3, "country == 'Ghana'", "3L", "gamb_colu", "3.0"),
+        (Af1, "country == 'Ghana'", "3RL", "funestus", "1.0"),
+    ],
+)
+@pytest.mark.parametrize(
+    "window_sizes",
+    [[100, 200, 500], [10000, 20000]],
+)
+def test_h12_calibration(
+    subclass, sample_query, contig, analysis, sample_sets, window_sizes
+):
+
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
+
+    calibration_runs = anoph.h12_calibration(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_sizes=window_sizes,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(calibration_runs, dict)
+    assert isinstance(calibration_runs[str(window_sizes[0])], np.ndarray)
+
+    # check dimensions
+    assert len(calibration_runs) == len(window_sizes)
+
+    # check keys
+    assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
