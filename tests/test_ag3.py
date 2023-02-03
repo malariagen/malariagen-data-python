@@ -2907,66 +2907,6 @@ def test_h1x_gwss():
     assert np.all(h1x >= 0)
 
 
-def test_haplotype_frequencies():
-    h1 = np.array(
-        [
-            [0, 1, 1, 1, 0],
-            [0, 1, 0, 0, 0],
-            [1, 0, 1, 1, 0],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 1, 0],
-            [1, 1, 0, 0, 0],
-            [0, 1, 1, 1, 0],
-        ],
-        dtype="i1",
-    )
-    from malariagen_data.ag3 import _haplotype_frequencies
-
-    f = _haplotype_frequencies(h1)
-    assert isinstance(f, dict)
-    vals = np.array(list(f.values()))
-    vals.sort()
-    assert np.all(vals >= 0)
-    assert np.all(vals <= 1)
-    assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
-
-
-def test_haplotype_joint_frequencies():
-    h1 = np.array(
-        [
-            [0, 1, 1, 1, 0],
-            [0, 1, 0, 0, 0],
-            [1, 0, 1, 1, 0],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 1, 0],
-            [1, 1, 0, 0, 0],
-            [0, 1, 1, 1, 0],
-        ],
-        dtype="i1",
-    )
-    h2 = np.array(
-        [
-            [0, 1, 1, 1, 0],
-            [1, 1, 0, 0, 0],
-            [1, 0, 1, 1, 1],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 1, 0],
-            [1, 1, 0, 0, 0],
-            [0, 1, 1, 1, 0],
-        ],
-        dtype="i1",
-    )
-    from malariagen_data.ag3 import _haplotype_joint_frequencies
-
-    f = _haplotype_joint_frequencies(h1, h2)
-    assert isinstance(f, dict)
-    vals = np.array(list(f.values()))
-    vals.sort()
-    assert np.all(vals >= 0)
-    assert np.all(vals <= 1)
-    assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
-
-
 def test_fst_gwss():
     ag3 = setup_ag3()
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"

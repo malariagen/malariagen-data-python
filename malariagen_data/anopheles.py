@@ -284,8 +284,18 @@ class AnophelesDataResource(ABC):
 
     @property
     @abstractmethod
-    def _default_site_mask(self):
-        raise NotImplementedError("Must override _default_site_mask")
+    def _h12_calibration_cache_name(self):
+        raise NotImplementedError("Must override _h12_calibration_cache_name")
+
+    @property
+    @abstractmethod
+    def _h12_gwss_cache_name(self):
+        raise NotImplementedError("Must override _h12_gwss_cache_name")
+
+    @property
+    @abstractmethod
+    def _h1x_gwss_cache_name(self):
+        raise NotImplementedError("Must override _h1x_gwss_cache_name")
 
     @property
     def _geneset_gff3_path(self):
@@ -315,10 +325,32 @@ class AnophelesDataResource(ABC):
         # Not all children have species calls or cohorts data.
         raise NotImplementedError("Must override _repr_html_")
 
+    @property
     @abstractmethod
-    def _site_mask_ids(self):
-        # Not all children have the same site mask ids.
+    def site_mask_ids(self):
+        """Identifiers for the different site masks that are available.
+        These are values than can be used for the `site_mask` parameter in any
+        method making using of SNP data.
+
+        """
         raise NotImplementedError("Must override _site_mask_ids")
+
+    @property
+    @abstractmethod
+    def _default_site_mask(self):
+        raise NotImplementedError("Must override _default_site_mask")
+
+    def _prep_site_mask_param(self, *, site_mask):
+        if site_mask is None:
+            # allowed
+            pass
+        elif site_mask == DEFAULT:
+            site_mask = self._default_site_mask
+        elif site_mask not in self.site_mask_ids:
+            raise ValueError(
+                f"Invalid site mask, must be one of f{self.site_mask_ids}."
+            )
+        return site_mask
 
     @abstractmethod
     def _sample_metadata(self, sample_set):
@@ -428,8 +460,9 @@ class AnophelesDataResource(ABC):
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         site_class : str, optional
             Select sites belonging to one of the following classes: CDS_DEG_4,
             (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
@@ -475,9 +508,9 @@ class AnophelesDataResource(ABC):
             sample_query = np.nonzero(loc_samples)[0].tolist()
         params = dict(
             region=self.resolve_region(region).to_dict(),
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
-            site_mask=site_mask,
+            site_mask=self._prep_site_mask_param(site_mask=site_mask),
             site_class=site_class,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -535,7 +568,8 @@ class AnophelesDataResource(ABC):
             dropped from the result.
         variant_query : str, optional
         site_mask : str, optional
-            Site filters mask to apply.
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         nobs_mode : {"called", "fixed"}
             Method for calculating the denominator when computing frequencies.
             If "called" then use the number of called alleles, i.e., number of
@@ -608,7 +642,7 @@ class AnophelesDataResource(ABC):
         variant_ref_allele = np.repeat(alleles[:, 0], 3)
         variant_alt_allele = alleles[:, 1:].flatten()
         variant_pass = dict()
-        for site_mask in self._site_mask_ids():
+        for site_mask in self.site_mask_ids:
             variant_pass[site_mask] = np.repeat(
                 ds_snps[f"variant_filter_pass_{site_mask}"].values, 3
             )
@@ -660,7 +694,7 @@ class AnophelesDataResource(ABC):
             "alt_allele": variant_alt_allele.astype("U1"),
             "max_af": max_af,
         }
-        for site_mask in self._site_mask_ids():
+        for site_mask in self.site_mask_ids:
             df_variants_cols[f"pass_{site_mask}"] = variant_pass[site_mask]
         df_variants = pd.DataFrame(df_variants_cols)
 
@@ -728,7 +762,7 @@ class AnophelesDataResource(ABC):
 
     @staticmethod
     @abstractmethod
-    def _setup_taxon_colors(plot_kwargs):
+    def _setup_taxon_colors(plot_kwargs=None):
         # Subclasses have different taxon_color_map.
         raise NotImplementedError("Must override _setup_taxon_colors")
 
@@ -1167,7 +1201,7 @@ class AnophelesDataResource(ABC):
 
         return df.copy()
 
-    def _prep_sample_sets_arg(self, *, sample_sets):
+    def _prep_sample_sets_param(self, *, sample_sets):
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
@@ -1194,7 +1228,7 @@ class AnophelesDataResource(ABC):
             for s in sample_sets:
 
                 # make a recursive call to handle the case where s is a release identifier
-                sp = self._prep_sample_sets_arg(sample_sets=s)
+                sp = self._prep_sample_sets_param(sample_sets=s)
 
                 # make sure we end up with a flat list of sample sets
                 if isinstance(sp, str):
@@ -1292,7 +1326,7 @@ class AnophelesDataResource(ABC):
 
         """
 
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
 
         try:
@@ -1485,7 +1519,8 @@ class AnophelesDataResource(ABC):
         field : {"POS", "REF", "ALT"}
             Array to access.
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1621,7 +1656,8 @@ class AnophelesDataResource(ABC):
         field : {"GT", "GQ", "AD", "MQ"}
             Array to access.
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -1638,7 +1674,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
 
         debug("normalise region to list to simplify concatenation logic")
@@ -1749,7 +1785,7 @@ class AnophelesDataResource(ABC):
     def is_accessible(
         self,
         region,
-        site_mask,
+        site_mask=DEFAULT,
     ):
         """Compute genome accessibility array.
 
@@ -1761,8 +1797,9 @@ class AnophelesDataResource(ABC):
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
-        site_mask : str
-            Site filters mask to apply, e.g. "gamb_colu"
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
 
         Returns
         -------
@@ -1819,7 +1856,7 @@ class AnophelesDataResource(ABC):
 
         debug("access site filters")
         filter_pass = dict()
-        masks = self._site_mask_ids()
+        masks = self.site_mask_ids
         for m in masks:
             x = self.site_filters(region=contig, mask=m)
             x = x[loc_feature].compute()
@@ -1863,7 +1900,8 @@ class AnophelesDataResource(ABC):
         transcript : str
             Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
 
         Returns
         -------
@@ -1923,7 +1961,7 @@ class AnophelesDataResource(ABC):
         coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
         debug("site filters arrays")
-        for mask in self._site_mask_ids():
+        for mask in self.site_mask_ids:
             filters_root = self.open_site_filters(mask=mask)
             z = filters_root[f"{contig}/variants/filter_pass"]
             d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
@@ -2006,7 +2044,8 @@ class AnophelesDataResource(ABC):
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         site_class : str, optional
             Select sites belonging to one of the following classes: CDS_DEG_4,
             (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
@@ -2036,7 +2075,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -2323,7 +2362,8 @@ class AnophelesDataResource(ABC):
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         inline_array : bool, optional
             Passed through to dask.array.from_array().
         chunks : str, optional
@@ -3003,7 +3043,7 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask="default",
+        site_mask=DEFAULT,
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
@@ -3026,7 +3066,8 @@ class AnophelesDataResource(ABC):
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         window_size : int, optional
             Number of sites per window.
         sample_set : str, optional
@@ -3087,7 +3128,7 @@ class AnophelesDataResource(ABC):
         self,
         sample,
         region,
-        site_mask="default",
+        site_mask=DEFAULT,
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
@@ -3110,7 +3151,8 @@ class AnophelesDataResource(ABC):
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         window_size : int, optional
             Number of sites per window.
         sample_set : str, optional
@@ -3221,8 +3263,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         region = self.resolve_region(region)
-        if site_mask == "default":
-            site_mask = self._default_site_mask
+        site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
@@ -3266,7 +3307,7 @@ class AnophelesDataResource(ABC):
         sample,
         region,
         window_size=20_000,
-        site_mask="default",
+        site_mask=DEFAULT,
         sample_set=None,
         phet_roh=0.001,
         phet_nonroh=(0.003, 0.01),
@@ -3285,7 +3326,8 @@ class AnophelesDataResource(ABC):
         window_size : int, optional
             Number of sites per window.
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         sample_set : str, optional
             Sample set identifier. Not needed if sample parameter gives a sample
             identifier.
@@ -3416,7 +3458,7 @@ class AnophelesDataResource(ABC):
         sample,
         region,
         window_size=20_000,
-        site_mask="default",
+        site_mask=DEFAULT,
         sample_set=None,
         phet_roh=0.001,
         phet_nonroh=(0.003, 0.01),
@@ -3444,7 +3486,8 @@ class AnophelesDataResource(ABC):
         window_size : int, optional
             Number of sites per window.
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         sample_set : str, optional
             Sample set identifier. Not needed if sample parameter gives a sample
             identifier.
@@ -3730,8 +3773,9 @@ class AnophelesDataResource(ABC):
             named tuple with genomic location `Region(contig, start, end)`.
             Multiple values can be provided as a list, in which case data will
             be concatenated, e.g., ["3R", "3L"].
-        site_mask : str
-            Site filters mask to apply, e.g. "gamb_colu"
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         inline_array : bool, optional
             Passed through to dask.from_array().
         chunks : str, optional
@@ -3837,7 +3881,7 @@ class AnophelesDataResource(ABC):
         thin_offset=0,
         sample_sets=None,
         sample_query=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         min_minor_ac=2,
         max_missing_an=0,
         n_components=20,
@@ -3865,7 +3909,8 @@ class AnophelesDataResource(ABC):
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu"
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         min_minor_ac : int, optional
             The minimum minor allele count. SNPs with a minor allele count
             below this value will be excluded prior to thinning.
@@ -3897,17 +3942,14 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._pca_results_cache_name
 
-        if site_mask == "default":
-            site_mask = self._default_site_mask
-
         debug("normalize params for consistent hash value")
         params = dict(
             region=self.resolve_region(region).to_dict(),
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
-            site_mask=site_mask,
+            site_mask=self._prep_site_mask_param(site_mask=site_mask),
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             n_components=n_components,
@@ -3942,7 +3984,7 @@ class AnophelesDataResource(ABC):
         region,
         sample_sets=None,
         sample_query=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=None,
         sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
@@ -3969,7 +4011,8 @@ class AnophelesDataResource(ABC):
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu".
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size before
             computing allele counts.
@@ -3993,9 +4036,6 @@ class AnophelesDataResource(ABC):
 
         """
         debug = self._log.debug
-
-        if site_mask == "default":
-            site_mask = self._default_site_mask
 
         import bokeh.layouts as bklay
         import bokeh.plotting as bkplt
@@ -4058,7 +4098,7 @@ class AnophelesDataResource(ABC):
         region,
         sample_sets=None,
         sample_query=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=None,
         sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
         width=DEFAULT_GENOME_PLOT_WIDTH,
@@ -4085,7 +4125,8 @@ class AnophelesDataResource(ABC):
             A pandas query string which will be evaluated against the sample
             metadata e.g., "country == 'Burkina Faso'".
         site_mask : str, optional
-            Site filters mask to apply, e.g. "gamb_colu".
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size before
             computing allele counts.
@@ -4110,8 +4151,7 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        if site_mask == "default":
-            site_mask = self._default_site_mask
+        site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         import bokeh.models as bkmod
         import bokeh.palettes as bkpal
@@ -4165,7 +4205,7 @@ class AnophelesDataResource(ABC):
             "allelism": allelism,
         }
 
-        for site_mask_id in self._site_mask_ids():
+        for site_mask_id in self.site_mask_ids:
             cols[f"pass_{site_mask_id}"] = ds_sites[
                 f"variant_filter_pass_{site_mask_id}"
             ].values
@@ -4190,7 +4230,7 @@ class AnophelesDataResource(ABC):
             ("Allele calls", "@an"),
         ]
 
-        for site_mask_id in self._site_mask_ids():
+        for site_mask_id in self.site_mask_ids:
             tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
 
         fig = bkplt.figure(
@@ -4294,7 +4334,8 @@ class AnophelesDataResource(ABC):
         min_cohort_size : int
             Minimum cohort size. Any cohorts below this size are omitted.
         site_mask : str, optional
-            Site filters mask to apply.
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -4496,7 +4537,7 @@ class AnophelesDataResource(ABC):
             A dataframe of cohort metadata, one row per sample.
 
         """
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
         dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
@@ -4533,7 +4574,8 @@ class AnophelesDataResource(ABC):
             Minimum cohort size, below which allele frequencies are not
             calculated for cohorts.
         site_mask : str, optional
-            Site filters mask to apply.
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
@@ -4658,7 +4700,8 @@ class AnophelesDataResource(ABC):
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
         site_mask : str, optional
-            Site filters mask to apply.
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         nobs_mode : {"called", "fixed"}
             Method for calculating the denominator when computing frequencies.
             If "called" then use the number of called alleles, i.e., number of
@@ -4920,7 +4963,7 @@ class AnophelesDataResource(ABC):
         cohort,
         cohort_size,
         region,
-        site_mask,
+        site_mask=DEFAULT,
         site_class=None,
         sample_sets=None,
         random_seed=42,
@@ -4944,8 +4987,9 @@ class AnophelesDataResource(ABC):
             Chromosome arm, gene name or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
-        site_mask : str
-            Site filters mask to apply.
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         site_class : str, optional
             Select sites belonging to one of the following classes: CDS_DEG_4,
             (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
@@ -5059,7 +5103,7 @@ class AnophelesDataResource(ABC):
         cohorts,
         cohort_size,
         region,
-        site_mask,
+        site_mask=DEFAULT,
         site_class=None,
         sample_query=None,
         sample_sets=None,
@@ -5082,8 +5126,9 @@ class AnophelesDataResource(ABC):
             Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
             genomic region defined with coordinates (e.g.,
             "2L:44989425-44998059").
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}
-            Site filters mask to apply.
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         site_class : str, optional
             Select sites belonging to one of the following classes: CDS_DEG_4,
             (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
@@ -5250,7 +5295,7 @@ class AnophelesDataResource(ABC):
         cohort1_query,
         cohort2_query,
         sample_sets=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=30,
         random_seed=42,
     ):
@@ -5273,8 +5318,9 @@ class AnophelesDataResource(ABC):
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
             sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
             release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : {"gamb_colu_arab", "gamb_colu", "arab"}, optional
-            Site filters mask to apply.
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -5292,16 +5338,13 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._fst_gwss_results_cache_name
 
-        if site_mask == "default":
-            site_mask = self._default_site_mask
-
         params = dict(
             contig=contig,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
-            site_mask=site_mask,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            site_mask=self._prep_site_mask_param(site_mask=site_mask),
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
@@ -6277,7 +6320,7 @@ class AnophelesDataResource(ABC):
         cohort1_query,
         cohort2_query,
         sample_sets=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -6306,7 +6349,8 @@ class AnophelesDataResource(ABC):
             sample set identifiers or a
             release identifier or a list of release identifiers.
         site_mask : str, optional
-            Site filters mask to apply.
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -6395,7 +6439,7 @@ class AnophelesDataResource(ABC):
         cohort1_query,
         cohort2_query,
         sample_sets=None,
-        site_mask="default",
+        site_mask=DEFAULT,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -6424,7 +6468,8 @@ class AnophelesDataResource(ABC):
             sample set identifiers or a
             release identifier or a list of release identifiers.
         site_mask : str, optional
-            Site filters mask to apply.
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -6659,7 +6704,7 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_arg(sample_sets=sample_sets)
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -6781,7 +6826,7 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_sizes=window_sizes,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -6978,7 +7023,7 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -7295,7 +7340,7 @@ class AnophelesDataResource(ABC):
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_arg(sample_sets=sample_sets),
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
