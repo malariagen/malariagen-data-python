@@ -34,6 +34,10 @@ CONTIGS = "2RL", "3RL", "X"
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
+H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
+H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
+H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
+
 DEFAULT_SITE_MASK = "funestus"
 
 
@@ -101,10 +105,16 @@ class Af1(AnophelesDataResource):
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
+    _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
+    _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
+    _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
+    site_mask_ids = ("funestus",)
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _cohorts_analysis = None
     _site_filters_analysis = None
+    phasing_analysis_ids = ("funestus",)
+    _default_phasing_analysis = "funestus"
 
     def __init__(
         self,
@@ -255,14 +265,6 @@ class Af1(AnophelesDataResource):
         parent_name = parent
 
         return parent_name
-
-    def _site_mask_ids(self):
-        if self._site_filters_analysis == "dt_20200416":
-            return ["funestus"]
-        elif self._site_filters_analysis == "sc_20220908":
-            return ["funestus"]
-        else:
-            raise ValueError
 
     def genome_features(
         self, region=None, attributes=("ID", "Parent", "Note", "description")
