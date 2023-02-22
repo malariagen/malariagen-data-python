@@ -2568,7 +2568,14 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
         )
 
 
-@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2R:1,000,000-2,000,000",
+        "AGAP004707",
+        ["2R:1,000,000-2,000,000", "2L:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
 )
@@ -2599,7 +2606,14 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
     assert_array_equal(ac, ac2)
 
 
-@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2R:1,000,000-2,000,000",
+        "AGAP004707",
+        ["2R:1,000,000-2,000,000", "2L:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
 )

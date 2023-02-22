@@ -501,16 +501,16 @@ class AnophelesDataResource(ABC):
         name = self._snp_allele_counts_results_cache_name
 
         # normalize params for consistent hash value
-        if isinstance(sample_query, str):
-            # resolve query to a list of integers for more cache hits
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            sample_query = np.nonzero(loc_samples)[0].tolist()
+        sample_sets, sample_query = self._prep_sample_selection_cache_params(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+        region = self._prep_region_cache_param(region=region)
+        site_mask = self._prep_site_mask_param(site_mask=site_mask)
         params = dict(
-            region=self.resolve_region(region).to_dict(),
-            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            region=region,
+            sample_sets=sample_sets,
             sample_query=sample_query,
-            site_mask=self._prep_site_mask_param(site_mask=site_mask),
+            site_mask=site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -1353,7 +1353,13 @@ class AnophelesDataResource(ABC):
 
         # for convenience, apply a query
         if sample_query is not None:
-            df_samples = df_samples.query(sample_query).reset_index(drop=True)
+            if isinstance(sample_query, str):
+                # assume a pandas query string
+                df_samples = df_samples.query(sample_query)
+            else:
+                # assume it is an indexer
+                df_samples = df_samples.iloc[sample_query]
+            df_samples = df_samples.reset_index(drop=True)
 
         return df_samples.copy()
 
@@ -1588,6 +1594,37 @@ class AnophelesDataResource(ABC):
         """
 
         return resolve_region(self, region)
+
+    def _prep_region_cache_param(self, *, region):
+        """Obtain a normalised representation of a region parameter which can
+        be used with the results cache."""
+
+        # N.B., we need to convert to a dict, because cache saves params as
+        # JSON
+
+        region = self.resolve_region(region)
+        if isinstance(region, list):
+            region = [r.to_dict() for r in region]
+        else:
+            region = region.to_dict()
+        return region
+
+    def _prep_sample_selection_cache_params(self, *, sample_sets, sample_query):
+
+        # normalise sample sets
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+
+        # normalize sample_query
+        if isinstance(sample_query, str):
+            # resolve query to a list of integers for more cache hits - we
+            # do this because there are different ways to write the same pandas
+            # query, and so it's better to evaluate the query and use a list of
+            # integer indices instead
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            sample_query = np.nonzero(loc_samples)[0].tolist()
+
+        return sample_sets, sample_query
 
     def open_snp_genotypes(self, sample_set):
         """Open SNP genotypes zarr.
@@ -3943,13 +3980,18 @@ class AnophelesDataResource(ABC):
         name = self._pca_results_cache_name
 
         debug("normalize params for consistent hash value")
+        sample_sets, sample_query = self._prep_sample_selection_cache_params(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+        region = self._prep_region_cache_param(region=region)
+        site_mask = self._prep_site_mask_param(site_mask=site_mask)
         params = dict(
-            region=self.resolve_region(region).to_dict(),
+            region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            sample_sets=sample_sets,
             sample_query=sample_query,
-            site_mask=self._prep_site_mask_param(site_mask=site_mask),
+            site_mask=site_mask,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             n_components=n_components,
@@ -6827,6 +6869,9 @@ class AnophelesDataResource(ABC):
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_sizes=window_sizes,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
             sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -7024,6 +7069,9 @@ class AnophelesDataResource(ABC):
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
             sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -7338,6 +7386,9 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
+            # N.B., do not be tempted to convert these sample queries into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),

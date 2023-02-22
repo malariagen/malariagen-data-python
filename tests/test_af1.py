@@ -1198,7 +1198,14 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
 # TODO: here test_gene_cnv_frequencies_advanced__
 
 
-@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t5"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2RL:1,000,000-2,000,000",
+        "LOC125761549_t5",
+        ["2RL:1,000,000-2,000,000", "3RL:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -1233,7 +1240,14 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
     assert_array_equal(ac, ac2)
 
 
-@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t7"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2RL:1,000,000-2,000,000",
+        "LOC125761549_t7",
+        ["2RL:1,000,000-2,000,000", "3RL:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets",
     [
