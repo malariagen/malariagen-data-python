@@ -30,7 +30,6 @@ def setup_amin1(url="simplecache::gs://vo_amin_release/", **kwargs):
     ],
 )
 def test_sample_metadata(url):
-
     amin1 = setup_amin1(url)
 
     expected_cols = (
@@ -57,7 +56,6 @@ def test_sample_metadata(url):
 
 
 def test_genome():
-
     amin1 = setup_amin1()
 
     # test the open_genome() method to access as zarr
@@ -77,7 +75,6 @@ def test_genome():
 
 
 def test_genome_features():
-
     amin1 = setup_amin1()
 
     # default
@@ -115,7 +112,6 @@ def test_genome_features():
     ],
 )
 def test_snp_calls(region, site_mask):
-
     amin1 = setup_amin1()
 
     ds = amin1.snp_calls(region=region, site_mask=site_mask)

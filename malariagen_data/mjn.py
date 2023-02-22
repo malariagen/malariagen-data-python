@@ -8,7 +8,6 @@ import numpy as np
 
 
 def _minimum_spanning_network(dist, max_dist=None):
-
     # keep only the upper triangle of the distance matrix, to avoid adding the same
     # edge twice
     dist = np.triu(dist)
@@ -28,7 +27,6 @@ def _minimum_spanning_network(dist, max_dist=None):
 
     # iterate until all haplotypes in a single cluster, or max_dist reached
     while len(set(cluster)) > 1 and (max_dist is None or step <= max_dist):
-
         # keep track of which clusters have been merged at this height
         merged = set()
 
@@ -37,7 +35,6 @@ def _minimum_spanning_network(dist, max_dist=None):
 
         # iterate over all pairs where distance equals current step size
         for i, j in zip(*np.nonzero(dist == step)):
-
             # current cluster assignment for each haplotype
             a = cluster[i]
             b = cluster[j]
@@ -48,7 +45,6 @@ def _minimum_spanning_network(dist, max_dist=None):
 
             # check to see if both nodes already in the same cluster
             if a != b:
-
                 # nodes are in different clusters, so we can merge (i.e., connect) the
                 # clusters
 
@@ -64,7 +60,6 @@ def _minimum_spanning_network(dist, max_dist=None):
                 merged.add(tuple(sorted([pa, pb])))
 
             elif tuple(sorted([pa, pb])) in merged or step == 1:
-
                 # the two clusters have already been merged at this level, this is an
                 # alternate connection
                 # N.B., special case step = 1 because no previous cluster assignments
@@ -96,7 +91,6 @@ def _mjn_remove_obsolete(h, orig_n_haplotypes, max_dist):
     edges = alt_edges = None
 
     while n_removed is None or n_removed > 0:
-
         # step 1 - compute distance
         dist = _pairwise_haplotype_distance(h, metric="hamming")
 
@@ -135,14 +129,12 @@ def _uvw_consensus(h, max_allele):
 
 
 def median_joining_network(h, max_dist=None, max_allele=1):
-
     # setup
     h = np.asarray(h)
     orig_n_haplotypes = h.shape[1]
     n_medians_added = None
 
     while n_medians_added is None or n_medians_added > 0:
-
         # steps 1-3
 
         h, edges, alt_edges = _mjn_remove_obsolete(
@@ -193,7 +185,6 @@ def _mjn_graph_nodes(
     anon_width,
 ):
     for i in range(ht_distinct_mjn.shape[1]):
-
         if i < ht_distinct.shape[1]:
             # original haplotype
 
@@ -237,9 +228,7 @@ def _mjn_graph_edges(
     anon_width,
 ):
     for i in range(edges.shape[0]):
-
         for j in range(edges.shape[1]):
-
             # lookup distance between nodes i and j
             sep = edges[i, j]
 

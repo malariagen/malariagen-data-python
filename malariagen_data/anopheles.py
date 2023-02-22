@@ -80,7 +80,6 @@ class AnophelesDataResource(ABC):
         pre=False,
         **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
-
         self._url = url
         self._pre = pre
         self._site_filters_analysis = site_filters_analysis
@@ -659,7 +658,6 @@ class AnophelesDataResource(ABC):
             desc="Compute SNP allele frequencies",
         )
         for cohort_index, cohort in cohorts_iterator:
-
             cohort_key = cohort.taxon, cohort.area, cohort.period
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
@@ -780,7 +778,6 @@ class AnophelesDataResource(ABC):
 
     @staticmethod
     def _locate_cohorts(*, cohorts, df_samples):
-
         # build cohort dictionary where key=cohort_id, value=loc_coh
         coh_dict = {}
 
@@ -842,7 +839,6 @@ class AnophelesDataResource(ABC):
     @staticmethod
     @numba.njit
     def _cohort_alt_allele_counts_melt_kernel(gt, indices, max_allele):
-
         n_variants = gt.shape[0]
         n_indices = indices.shape[0]
         ploidy = gt.shape[2]
@@ -891,7 +887,6 @@ class AnophelesDataResource(ABC):
 
     @staticmethod
     def _map_snp_to_aa_change_frq_ds(ds):
-
         # keep only variables that make sense for amino acid substitutions
         keep_vars = [
             "variant_contig",
@@ -908,12 +903,10 @@ class AnophelesDataResource(ABC):
         ]
 
         if ds.dims["variants"] == 1:
-
             # keep everything as-is, no need for aggregation
             ds_out = ds[keep_vars + ["variant_alt_allele", "event_count"]]
 
         else:
-
             # take the first value from all variants variables
             ds_out = ds[keep_vars].isel(variants=[0])
 
@@ -945,7 +938,6 @@ class AnophelesDataResource(ABC):
 
     @staticmethod
     def _build_cohorts_from_sample_grouping(group_samples_by_cohort, min_cohort_size):
-
         # build cohorts dataframe
         df_cohorts = group_samples_by_cohort.agg(
             size=("sample_id", len),
@@ -1182,7 +1174,6 @@ class AnophelesDataResource(ABC):
                 self._cache_sample_sets[release] = df
 
         elif isinstance(release, (list, tuple)):
-
             # check no duplicates
             counter = Counter(release)
             for k, v in counter.items():
@@ -1211,7 +1202,6 @@ class AnophelesDataResource(ABC):
             sample_sets = self.sample_sets()["sample_set"].tolist()
 
         elif isinstance(sample_sets, str):
-
             if sample_sets.startswith(f"{self._major_version_int}."):
                 # convenience, can use a release identifier to denote all sample sets in a release
                 sample_sets = self.sample_sets(release=sample_sets)[
@@ -1226,7 +1216,6 @@ class AnophelesDataResource(ABC):
             # list or tuple of sample sets or releases
             prepped_sample_sets = []
             for s in sample_sets:
-
                 # make a recursive call to handle the case where s is a release identifier
                 sp = self._prep_sample_sets_param(sample_sets=s)
 
@@ -1330,11 +1319,9 @@ class AnophelesDataResource(ABC):
         cache_key = tuple(sample_sets)
 
         try:
-
             df_samples = self._cache_sample_metadata[cache_key]
 
         except KeyError:
-
             # concatenate multiple sample sets
             dfs = []
             # there can be some delay here due to network latency, so show progress
@@ -1610,7 +1597,6 @@ class AnophelesDataResource(ABC):
         return region
 
     def _prep_sample_selection_cache_params(self, *, sample_sets, sample_query):
-
         # normalise sample sets
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
@@ -2120,7 +2106,6 @@ class AnophelesDataResource(ABC):
         debug("access SNP calls and concatenate multiple sample sets and/or regions")
         lx = []
         for r in region:
-
             ly = []
             for s in sample_sets:
                 y = self._snp_calls_dataset(
@@ -2423,7 +2408,6 @@ class AnophelesDataResource(ABC):
         debug("access SNP data and concatenate multiple regions")
         lx = []
         for r in region:
-
             debug("access variants")
             x = self._snp_variants_dataset(
                 contig=r.contig,
@@ -2872,7 +2856,6 @@ class AnophelesDataResource(ABC):
         return ac_alt_melt, an_melt
 
     def _prep_samples_for_cohort_grouping(self, *, df_samples, area_by, period_by):
-
         # take a copy, as we will modify the dataframe
         df_samples = df_samples.copy()
 
@@ -2967,7 +2950,6 @@ class AnophelesDataResource(ABC):
 
         debug("handle region")
         if region is not None:
-
             region = self.resolve_region(region)
 
             debug("normalise to list to simplify concatenation logic")
@@ -4465,7 +4447,6 @@ class AnophelesDataResource(ABC):
         df_snps.reset_index(inplace=True, drop=True)
 
         if effects:
-
             debug("add effect annotations")
             ann = self._annotator()
             ann.get_effects(
@@ -4486,7 +4467,6 @@ class AnophelesDataResource(ABC):
             )
 
         else:
-
             debug("add label")
             df_snps["label"] = self._pandas_apply(
                 self._make_snp_label,
@@ -4911,7 +4891,6 @@ class AnophelesDataResource(ABC):
 
         debug("begin jackknife resampling")
         for i in range(n_jack):
-
             # locate block to delete
             block_start = i * block_length
             block_stop = block_start + block_length
@@ -5417,7 +5396,6 @@ class AnophelesDataResource(ABC):
         cohort_size,
         random_seed,
     ):
-
         ds_snps1 = self.snp_calls(
             region=contig,
             sample_query=cohort1_query,
@@ -6791,7 +6769,6 @@ class AnophelesDataResource(ABC):
 
         debug("handle sample query")
         if sample_query is not None:
-
             debug("load sample metadata")
             df_samples = self.sample_metadata(sample_sets=sample_sets)
 
@@ -7102,7 +7079,6 @@ class AnophelesDataResource(ABC):
         cohort_size,
         random_seed,
     ):
-
         ds_haps = self.haplotypes(
             region=contig,
             analysis=analysis,
@@ -7422,7 +7398,6 @@ class AnophelesDataResource(ABC):
         cohort_size,
         random_seed,
     ):
-
         # access haplotype datasets for each cohort
         ds1 = self.haplotypes(
             region=contig,
@@ -8045,7 +8020,6 @@ class AnophelesDataResource(ABC):
         color_discrete_map_display = None
         ht_color_counts = None
         if color is not None:
-
             # sanitise color column - necessary to avoid grey pie chart segments
             df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
 
@@ -8068,7 +8042,6 @@ class AnophelesDataResource(ABC):
                 category_orders = color_params["category_orders"]
 
             elif color_discrete_map is None:
-
                 # set up a color palette
                 if color_discrete_sequence is None:
                     if len(color_values) <= 10:
