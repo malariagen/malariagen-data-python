@@ -4519,7 +4519,10 @@ class AnophelesDataResource(ABC):
             release_path = self._release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohort metadata files exist, need to handle FileNotFoundError
+            # N.B., not all cohort metadata files exist, need to handle errors
+            # N.B., allow a broad exception here, because it seems a variety
+            # of different exceptions may be thrown
+            # noinspection PyBroadException
             try:
                 with self._fs.open(path) as f:
                     df = pd.read_csv(f, na_values="")
@@ -4536,7 +4539,7 @@ class AnophelesDataResource(ABC):
                     },
                     inplace=True,
                 )
-            except FileNotFoundError:
+            except Exception:
                 # Specify cohort_cols
                 cohort_cols = (
                     "country_iso",
