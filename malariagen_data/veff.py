@@ -76,7 +76,6 @@ class Annotator(object):
         return ref_seq
 
     def get_ref_allele_coords(self, chrom, pos, ref):
-
         # N.B., use one-based inclusive coordinate system (like GFF3) throughout
         ref_start = pos
         ref_stop = pos + len(ref) - 1
@@ -91,7 +90,6 @@ class Annotator(object):
         return ref_start, ref_stop
 
     def get_effects(self, transcript, variants, progress=None):
-
         children = self.get_children(transcript).sort_values("start")
         feature = self.get_feature(transcript)
 
@@ -271,11 +269,9 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
     )
 
     if len(ref) == 1 and len(alt) == 1:
-
         # SNPs
 
         if ref_aa == alt_aa:
-
             # TODO SYNONYMOUS_START and SYNONYMOUS_STOP
 
             # variant causes a codon that produces the same amino acid
@@ -283,24 +279,20 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="SYNONYMOUS_CODING", impact="LOW")
 
         elif ref_aa == "M" and ref_cds_start == 0:
-
             # variant causes start codon to be mutated into a non-start codon.
             # e.g.: aTg/aGg, M/R
             effect = base_effect._replace(effect="START_LOST", impact="HIGH")
 
         elif ref_aa == "*":
-
             # variant causes stop codon to be mutated into a non-stop codon
             # e.g.: Tga/Cga, */R
             effect = base_effect._replace(effect="STOP_LOST", impact="HIGH")
 
         elif alt_aa == "*":
-
             # variant causes a STOP codon e.g.: Cag/Tag, Q/*
             effect = base_effect._replace(effect="STOP_GAINED", impact="HIGH")
 
         else:
-
             # TODO NON_SYNONYMOUS_START and NON_SYNONYMOUS_STOP
 
             # variant causes a codon that produces a different amino acid
@@ -310,11 +302,9 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             )
 
     else:
-
         # INDELs and MNPs
 
         if (len(alt) - len(ref)) % 3:
-
             # N.B., this case covers both simple INDELs and complex
             # polymorphisms
 
@@ -323,7 +313,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             effect = base_effect._replace(effect="FRAME_SHIFT", impact="HIGH")
 
         elif len(ref) == 1 and len(ref) < len(alt):
-
             # simple insertions
 
             # figure out if there has been a codon change or not
@@ -332,7 +321,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             )
 
             if is_codon_changed:
-
                 # one codon is changed and one or many codons are inserted
                 # e.g.: An insert of size multiple of three, not at codon
                 # boundary
@@ -341,7 +329,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
                 )
 
             else:
-
                 # one or many codons are inserted
                 # e.g.: An insert multiple of three in a codon boundary
                 effect = base_effect._replace(
@@ -349,7 +336,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
                 )
 
         elif len(alt) == 1 and len(ref) > len(alt):
-
             # simple deletions
 
             # figure out if there has been a codon change or not
@@ -358,7 +344,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
             )
 
             if is_codon_changed:
-
                 # one codon is changed and one or many codons are deleted
                 # e.g.: A deletion of size multiple of three, not at codon
                 # boundary
@@ -367,7 +352,6 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
                 )
 
             else:
-
                 # one or many codons are deleted
                 # e.g.: A deletions multiple of three in a codon boundary
                 effect = base_effect._replace(
@@ -375,12 +359,10 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
                 )
 
         elif len(ref) == len(alt):
-
             # MNPs
             effect = base_effect._replace(effect="CODON_CHANGE", impact="MODERATE")
 
         else:
-
             # TODO in-frame complex variation (MNP + INDEL)
             effect = base_effect._replace(effect="TODO", impact="UNKNOWN")
 
@@ -423,7 +405,6 @@ def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
     ref_start_phase = ref_cds_start % 3
 
     if cds.strand == "+":
-
         # obtain any previous nucleotides to complete the first codon
         prefix = ann.get_ref_seq(
             chrom=chrom, start=ref_start - ref_start_phase, stop=ref_start - 1
@@ -450,7 +431,6 @@ def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
             alt_codon += suffix
 
     else:
-
         # N.B., we are on the reverse strand, so position reported for
         # variant is actually position at the *end* of the reference allele
         # which is particularly important for deletions
@@ -492,7 +472,6 @@ def _get_codon_change(ann, chrom, pos, ref, alt, cds, cdss):
 
 def _get_coding_position(ref_start, ref_stop, cds, cdss):
     if cds.strand == "+":
-
         # sort exons
         cdss = sorted(cdss, key=operator.attrgetter("start"))
 
@@ -507,7 +486,6 @@ def _get_coding_position(ref_start, ref_stop, cds, cdss):
         ref_cds_stop = offset + (ref_stop - cds.start)
 
     else:
-
         # sort exons (backwards this time)
         cdss = sorted(cdss, key=operator.attrgetter("end"), reverse=True)
 
@@ -543,7 +521,6 @@ def _get_within_intron_effect(base_effect, intron):
     intron_min_dist = min(intron_5prime_dist, -intron_3prime_dist)
 
     if len(ref) == 1 and len(alt) == 1:
-
         # SNPs
 
         if intron_min_dist <= 2:
@@ -551,17 +528,14 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="SPLICE_CORE", impact="HIGH")
 
         elif intron_min_dist <= 7:
-
             # splice site variation
             effect = base_effect._replace(effect="SPLICE_REGION", impact="MODERATE")
 
         else:
-
             # intron modifier
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-
         # TODO INDELs and MNPs
         effect = base_effect._replace(effect="TODO")
 

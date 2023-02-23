@@ -50,7 +50,6 @@ def test_site_filters(region):
     ["X", ["2RL:48,714,463-48,715,355", "LOC125762289"]],
 )
 def test_snp_sites(region):
-
     af1 = setup_af1()
 
     pos = af1.snp_sites(region=region, field="POS")
@@ -97,7 +96,6 @@ def test_snp_sites(region):
     ["X", ["2RL:48,714,463-48,715,355", "LOC125762289"]],
 )
 def test_snp_genotypes(sample_sets, region):
-
     af1 = setup_af1()
 
     df_samples = af1.sample_metadata(sample_sets=sample_sets)
@@ -157,7 +155,6 @@ def test_snp_genotypes(sample_sets, region):
     ["X"],
 )
 def test_snp_genotypes_chunks(sample_sets, region):
-
     af1 = setup_af1()
     gt_native = af1.snp_genotypes(
         region=region, sample_sets=sample_sets, chunks="native"
@@ -180,7 +177,6 @@ def test_snp_genotypes_chunks(sample_sets, region):
     ["X", "LOC125762289", "2RL:48714463-48715355"],
 )
 def test_is_accessible(region):
-
     af1 = setup_af1()
     # run a couple of tests
     is_accessible = af1.is_accessible(region=region, site_mask="funestus")
@@ -192,7 +188,6 @@ def test_is_accessible(region):
 @pytest.mark.parametrize("region", ["X", "LOC125762289", "2RL:48714463-48715355"])
 @pytest.mark.parametrize("site_mask", [None, "funestus"])
 def test_site_annotations(region, site_mask):
-
     af1 = setup_af1()
 
     ds_snp = af1.snp_variants(region=region, site_mask=site_mask)
@@ -234,7 +229,6 @@ def test_site_annotations(region, site_mask):
     [None, "funestus"],
 )
 def test_snp_calls(sample_sets, region, site_mask):
-
     af1 = setup_af1()
 
     ds = af1.snp_calls(region=region, sample_sets=sample_sets, site_mask=site_mask)
@@ -327,7 +321,6 @@ def test_snp_calls(sample_sets, region, site_mask):
     [None, "taxon == 'funestus'", "taxon == 'robot'"],
 )
 def test_snp_calls__sample_query(sample_query):
-
     af1 = setup_af1()
 
     sample_sets = "1229-VO-GH-DADZIE-VMF00095"
@@ -501,7 +494,6 @@ def test_snp_allele_frequencies__query():
     "region", ["3RL", ["2RL:48,714,463-48,715,355", "LOC125761549_t7"]]
 )
 def test_haplotypes(sample_sets, region):
-
     af1 = setup_af1()
 
     # check expected samples
@@ -582,7 +574,6 @@ def test_haplotypes(sample_sets, region):
     ],
 )
 def test_haplotypes__sample_query(sample_query):
-
     sample_sets = "1229-VO-GH-DADZIE-VMF00095"
     region = "3RL"
 
@@ -705,7 +696,6 @@ def test_sample_cohorts(sample_sets):
     ],
 )
 def test_locate_region(region_raw):
-
     af1 = setup_af1()
     gene_annotation = af1.geneset(attributes=["ID"])
     region = resolve_region(af1, region_raw)
@@ -898,7 +888,6 @@ def _check_snp_allele_frequencies_advanced(
         assert s >= min_cohort_size
 
     if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
-
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
         # we can compare results directly against the simpler snp_allele_frequencies()
@@ -1052,7 +1041,6 @@ def _check_aa_allele_frequencies_advanced(
         assert s >= min_cohort_size
 
     if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
-
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
         # we can compare results directly against the simpler aa_allele_frequencies()
@@ -1198,7 +1186,14 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
 # TODO: here test_gene_cnv_frequencies_advanced__
 
 
-@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t5"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2RL:1,000,000-2,000,000",
+        "LOC125761549_t5",
+        ["2RL:1,000,000-2,000,000", "3RL:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -1209,7 +1204,6 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
 @pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
 @pytest.mark.parametrize("site_mask", [None, "funestus"])
 def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
-
     results_cache = "../results_cache"
     shutil.rmtree(results_cache, ignore_errors=True)
     af1 = setup_af1(results_cache=results_cache)
@@ -1233,7 +1227,14 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
     assert_array_equal(ac, ac2)
 
 
-@pytest.mark.parametrize("region", ["2RL:1,000,000-2,000,000", "LOC125761549_t7"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2RL:1,000,000-2,000,000",
+        "LOC125761549_t7",
+        ["2RL:1,000,000-2,000,000", "3RL:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets",
     [
@@ -1244,7 +1245,6 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
 @pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
 @pytest.mark.parametrize("site_mask", [None, "funestus"])
 def test_pca(region, sample_sets, sample_query, site_mask):
-
     results_cache = "../results_cache"
     shutil.rmtree(results_cache, ignore_errors=True)
     af1 = setup_af1(results_cache=results_cache)
@@ -1288,7 +1288,6 @@ def test_pca(region, sample_sets, sample_query, site_mask):
 
 # TODO: this function is a verbatim duplicate, from test_ag3.py
 def _compare_series_like(actual, expect):
-
     # compare pandas series-like objects for equality or floating point
     # similarity, handling missing values appropriately
 

@@ -130,7 +130,6 @@ class Af1(AnophelesDataResource):
         pre=False,
         **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
-
         super().__init__(
             url=url,
             config_path=CONFIG_PATH,
@@ -303,7 +302,6 @@ class Af1(AnophelesDataResource):
         return super().genome_features(region=region, attributes=attributes)
 
     def _plot_genes_setup_data(self, *, region):
-
         # Here we override the superclass implementation because the
         # gene annotations don't include a "Name" attribute.
         #

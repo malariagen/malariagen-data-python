@@ -28,7 +28,6 @@ class PlasmodiumDataResource:
         url=None,
         **kwargs,
     ):
-
         # setup filesystem
         self.CONF = self._load_config(data_config)
         if not url:

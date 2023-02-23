@@ -25,7 +25,6 @@ def setup_pf7(url="simplecache::gs://pf7_staging/", **storage_kwargs):
     ],
 )
 def test_sample_metadata(url):
-
     pf7 = setup_pf7(url)
     df_samples = pf7.sample_metadata()
 
@@ -56,7 +55,6 @@ def test_sample_metadata(url):
 
 @pytest.mark.parametrize("extended", [True, False])
 def test_variant_calls(extended):
-
     pf7 = setup_pf7()
 
     ds = pf7.variant_calls(extended=extended)
@@ -301,7 +299,6 @@ def test_variant_calls(extended):
     ],
 )
 def test_genome_sequence(region):
-
     pf7 = setup_pf7()
 
     seq = pf7.genome_sequence(region=region)
@@ -318,7 +315,6 @@ def test_genome_sequence(region):
     ],
 )
 def test_genome_features(attributes):
-
     pf7 = setup_pf7()
 
     default_columns = [

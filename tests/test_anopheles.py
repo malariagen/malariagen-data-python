@@ -52,7 +52,6 @@ def setup_subclass(subclass, url=None, **kwargs):
     ],
 )
 def test_sample_sets(subclass, url, release, sample_sets_count):
-
     anoph = setup_subclass(subclass, url)
     df_sample_sets = anoph.sample_sets(release=release)
     assert isinstance(df_sample_sets, pd.DataFrame)
@@ -79,7 +78,6 @@ def test_sample_sets(subclass, url, release, sample_sets_count):
 def test_releases(
     subclass, major_release, major_release_prefix, expected_pre_releases_min
 ):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
     assert isinstance(anoph.releases, tuple)
@@ -114,7 +112,6 @@ def test_releases(
     ],
 )
 def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
     df_sample_sets_major = anoph.sample_sets(release=major_release)
@@ -178,7 +175,6 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
     ],
 )
 def test_extra_metadata_errors(subclass):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -231,7 +227,6 @@ def test_extra_metadata_errors(subclass):
     ],
 )
 def test_extra_metadata(subclass, on):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -337,7 +332,6 @@ def test_open_snp_genotypes(subclass, sample_set):
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_genome(subclass):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -357,7 +351,6 @@ def test_genome(subclass):
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_sample_metadata_dtypes(subclass):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url, pre=True)
 
@@ -390,7 +383,6 @@ def test_sample_metadata_dtypes(subclass):
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_genome_features(subclass):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -437,7 +429,6 @@ def test_genome_features(subclass):
     ],
 )
 def test_genome_features_region(subclass, region):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -471,7 +462,6 @@ def test_genome_features_region(subclass, region):
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_open_site_annotations(subclass):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -535,7 +525,6 @@ def test_snp_allele_frequencies__str_cohorts(
     cohorts_analysis,
     expected_snp_count,
 ):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url, cohorts_analysis=cohorts_analysis)
 
@@ -807,7 +796,6 @@ def test_haplotype_joint_frequencies():
     ],
 )
 def test_haplotypes__cohort_size(subclass, sample_sets, region, analysis, cohort_size):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 
@@ -855,7 +843,6 @@ def test_haplotypes__cohort_size(subclass, sample_sets, region, analysis, cohort
 def test_h12_calibration(
     subclass, sample_query, contig, analysis, sample_sets, window_sizes
 ):
-
     url = f"simplecache::{subclass._gcs_url}"
     anoph = setup_subclass(subclass, url)
 

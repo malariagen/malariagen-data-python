@@ -55,7 +55,6 @@ gff3_cols = (
 
 
 def read_gff3(buf, compression="gzip"):
-
     # read as dataframe
     df = pandas.read_csv(
         buf,
@@ -73,7 +72,6 @@ def read_gff3(buf, compression="gzip"):
 
 
 def unpack_gff3_attributes(df, attributes):
-
     df = df.copy()
 
     # discover all attribute keys
@@ -350,7 +348,6 @@ class Region:
 
 
 def _handle_region_coords(resource, region):
-
     region_pattern_match = re.search("([a-zA-Z0-9_]+):(.+)-(.+)", region)
     if region_pattern_match:
         # parse region string that contains genomic coordinates
@@ -529,7 +526,6 @@ class CacheMiss(Exception):
 
 class LoggingHelper:
     def __init__(self, name, out, debug=False):
-
         # set up a logger
         logger = logging.getLogger(name)
         if debug:
@@ -562,7 +558,6 @@ class LoggingHelper:
             self._handler.flush()
 
     def debug(self, msg):
-
         # get the name of the calling function, helps with debugging
         caller_name = sys._getframe().f_back.f_code.co_name
         msg = f"{caller_name}: {msg}"

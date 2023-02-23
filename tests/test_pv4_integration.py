@@ -25,7 +25,6 @@ def setup_pv4(url="simplecache::gs://pv4_staging/", **storage_kwargs):
     ],
 )
 def test_sample_metadata(url):
-
     pv4 = setup_pv4(url)
     df_samples = pv4.sample_metadata()
 
@@ -54,7 +53,6 @@ def test_sample_metadata(url):
 
 @pytest.mark.parametrize("extended", [True, False])
 def test_variant_calls(extended):
-
     pv4 = setup_pv4()
 
     ds = pv4.variant_calls(extended=extended)
@@ -249,7 +247,6 @@ def test_variant_calls(extended):
     ],
 )
 def test_genome_sequence(region):
-
     pv4 = setup_pv4()
 
     seq = pv4.genome_sequence(region=region)
@@ -266,7 +263,6 @@ def test_genome_sequence(region):
     ],
 )
 def test_genome_features(attributes):
-
     pv4 = setup_pv4()
 
     default_columns = [

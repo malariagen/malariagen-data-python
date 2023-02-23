@@ -31,7 +31,6 @@ DEFAULT_URL = "gs://vo_amin_release/"
 
 class Amin1:
     def __init__(self, url=DEFAULT_URL, **kwargs):
-
         # setup filesystem
         self._fs, self._path = init_filesystem(url, **kwargs)
 
@@ -159,7 +158,6 @@ class Amin1:
         return self._cache_snp_genotypes
 
     def _snp_calls_dataset(self, *, region, inline_array, chunks):
-
         assert isinstance(region, Region)
         contig = region.contig
 

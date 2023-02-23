@@ -164,7 +164,6 @@ class Ag3(AnophelesDataResource):
         pre=False,
         **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
-
         super().__init__(
             url=url,
             config_path=CONFIG_PATH,
@@ -513,7 +512,6 @@ class Ag3(AnophelesDataResource):
         debug = self._log.debug
 
         if self._cache_cross_metadata is None:
-
             path = f"{self._base_path}/v3/metadata/crosses/crosses.fam"
             fam_names = [
                 "cross",
@@ -692,7 +690,6 @@ class Ag3(AnophelesDataResource):
         debug("access CNV HMM data and concatenate as needed")
         lx = []
         for r in region:
-
             ly = []
             for s in sample_sets:
                 y = self._cnv_hmm_dataset(
@@ -723,7 +720,6 @@ class Ag3(AnophelesDataResource):
 
         debug("handle sample query")
         if sample_query is not None:
-
             debug("load sample metadata")
             df_samples = self.sample_metadata(sample_sets=sample_sets)
 
@@ -914,7 +910,6 @@ class Ag3(AnophelesDataResource):
         debug("access data and concatenate as needed")
         lx = []
         for r in region:
-
             debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
@@ -1083,7 +1078,6 @@ class Ag3(AnophelesDataResource):
         debug("access data and concatenate as needed")
         lx = []
         for c in contig:
-
             ly = []
             for s in sample_sets:
                 y = self._cnv_discordant_read_calls_dataset(
@@ -1189,7 +1183,6 @@ class Ag3(AnophelesDataResource):
             total=len(df_genes),
         )
         for gene in genes_iterator:
-
             # locate windows overlapping the gene
             loc_gene_start = bisect_left(end, gene.start)
             loc_gene_stop = bisect_right(pos, gene.end)
@@ -1403,12 +1396,10 @@ class Ag3(AnophelesDataResource):
         debug("compute cohort frequencies")
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
-
             n_samples = np.count_nonzero(loc_coh)
             debug(f"{coh}, {n_samples} samples")
 
             if n_samples >= min_cohort_size:
-
                 # subset data to cohort
                 is_amp_coh = np.compress(loc_coh, is_amp, axis=1)
                 is_del_coh = np.compress(loc_coh, is_del, axis=1)
@@ -1626,7 +1617,6 @@ class Ag3(AnophelesDataResource):
 
         debug("build event count and nobs for each cohort")
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
-
             # construct grouping key
             cohort_key = cohort.taxon, cohort.area, cohort.period
 
@@ -2528,7 +2518,6 @@ class Ag3(AnophelesDataResource):
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
-
     # setup intermediates
     m = a.shape[0]
     counts = np.zeros(vmax + 1, dtype=numba.int64)
@@ -2556,7 +2545,6 @@ def _cn_mode_1d(a, vmax):
 
 @numba.njit("Tuple((int8[:], int64[:]))(int8[:, :], int8)")
 def _cn_mode(a, vmax):
-
     # setup intermediates
     n = a.shape[1]
 

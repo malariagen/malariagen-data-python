@@ -175,7 +175,6 @@ def test_sample_metadata_with_pca_species():
 
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_sample_metadata_without_species_calls(analysis):
-
     expected_cols = None
     if analysis == "aim_20220528":
         expected_cols = expected_aim_species_cols
@@ -232,7 +231,6 @@ def test_species_calls(sample_sets, analysis):
 
 @pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
 def test_missing_species_calls(analysis):
-
     expected_cols = None
     if analysis == "aim_20220528":
         expected_cols = expected_aim_species_cols
@@ -266,7 +264,6 @@ def test_site_filters(mask, region):
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 def test_snp_sites(chunks, region):
-
     ag3 = setup_ag3()
 
     pos = ag3.snp_sites(region=region, field="POS", chunks=chunks)
@@ -310,7 +307,6 @@ def test_snp_sites(chunks, region):
 )
 @pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 def test_snp_genotypes(chunks, sample_sets, region):
-
     ag3 = setup_ag3()
 
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
@@ -371,7 +367,6 @@ def test_snp_genotypes(chunks, sample_sets, region):
 )
 @pytest.mark.parametrize("region", ["X"])
 def test_snp_genotypes_chunks(sample_sets, region):
-
     ag3 = setup_ag3()
     gt_native = ag3.snp_genotypes(
         region=region, sample_sets=sample_sets, chunks="native"
@@ -395,7 +390,6 @@ def test_snp_genotypes_chunks(sample_sets, region):
 )
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
 def test_is_accessible(region, mask):
-
     ag3 = setup_ag3()
     # run a couple of tests
     is_accessible = ag3.is_accessible(region=region, site_mask=mask)
@@ -405,7 +399,6 @@ def test_is_accessible(region, mask):
 
 
 def test_cross_metadata():
-
     ag3 = setup_ag3()
     df_crosses = ag3.cross_metadata()
     assert isinstance(df_crosses, pd.DataFrame)
@@ -426,7 +419,6 @@ def test_cross_metadata():
 @pytest.mark.parametrize("region", ["3L", "AGAP007280", "2R:48714463-48715355"])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_site_annotations(region, site_mask):
-
     ag3 = setup_ag3()
 
     ds_snp = ag3.snp_variants(region=region, site_mask=site_mask)
@@ -457,7 +449,6 @@ def test_site_annotations(region, site_mask):
 @pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_snp_calls(sample_sets, region, site_mask):
-
     ag3 = setup_ag3()
 
     ds = ag3.snp_calls(region=region, sample_sets=sample_sets, site_mask=site_mask)
@@ -905,7 +896,6 @@ def test_cnv_hmm(sample_sets, region):
     ],
 )
 def test_cnv_hmm__sample_query(sample_query):
-
     sample_sets = "AG1000G-BF-B"
     region = "3L"
     ag3 = setup_ag3()
@@ -953,7 +943,6 @@ def test_cnv_hmm__sample_query(sample_query):
     [0, 0.1, 0.2, 1],
 )
 def test_cnv_hmm__max_coverage_variance(max_coverage_variance):
-
     sample_sets = "AG1000G-CI"
     region = "3L"
     ag3 = setup_ag3()
@@ -996,7 +985,6 @@ def test_cnv_hmm__max_coverage_variance(max_coverage_variance):
     "region", ["3L", "X", ["2R", "2L"], "3R:28,000,000-29,000,000"]
 )
 def test_cnv_coverage_calls(sample_set, analysis, region):
-
     ag3 = setup_ag3()
 
     expected_analyses = {
@@ -1091,7 +1079,6 @@ def test_cnv_coverage_calls(sample_set, analysis, region):
 )
 @pytest.mark.parametrize("contig", ["2R", "3R", "X", ["2R", "3R"]])
 def test_cnv_discordant_read_calls(sample_sets, contig):
-
     ag3 = setup_ag3()
 
     if contig == "3L":
@@ -1177,7 +1164,6 @@ def test_cnv_discordant_read_calls(sample_sets, contig):
 )
 @pytest.mark.parametrize("contig", ["2L", "3L"])
 def test_cnv_discordant_read_calls__no_calls(sample_sets, contig):
-
     ag3 = setup_ag3()
 
     with pytest.raises(ValueError):
@@ -1566,7 +1552,6 @@ def test_gene_cnv_frequencies__missing_samples():
 @pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
 def test_haplotypes(sample_sets, region, analysis):
-
     ag3 = setup_ag3()
 
     # check expected samples
@@ -1659,7 +1644,6 @@ def test_haplotypes(sample_sets, region, analysis):
     ],
 )
 def test_haplotypes__sample_query(sample_query):
-
     sample_sets = "AG1000G-BF-B"
     region = "3L"
     analysis = "gamb_colu_arab"
@@ -1778,7 +1762,6 @@ def test_sample_cohorts(sample_sets):
     ],
 )
 def test_locate_region(region_raw):
-
     ag3 = setup_ag3()
     gene_annotation = ag3.genome_features(attributes=["ID"])
     region = resolve_region(ag3, region_raw)
@@ -1972,7 +1955,6 @@ def _check_snp_allele_frequencies_advanced(
         assert s >= min_cohort_size
 
     if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
-
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
         # we can compare results directly against the simpler snp_allele_frequencies()
@@ -2122,7 +2104,6 @@ def _check_aa_allele_frequencies_advanced(
         assert s >= min_cohort_size
 
     if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
-
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
         # we can compare results directly against the simpler aa_allele_frequencies()
@@ -2375,7 +2356,6 @@ def _check_gene_cnv_frequencies_advanced(
         assert s >= min_cohort_size
 
     if area_by == "admin1_iso" and period_by == "year":
-
         # Here we test the behaviour of the function when grouping by admin level
         # 1 and year. We can do some more in-depth testing in this case because
         # we can compare results directly against the simpler gene_cnv_frequencies()
@@ -2568,14 +2548,20 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
         )
 
 
-@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2R:1,000,000-2,000,000",
+        "AGAP004707",
+        ["2R:1,000,000-2,000,000", "2L:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
 )
 @pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
-
     results_cache = "../results_cache"
     shutil.rmtree(results_cache, ignore_errors=True)
     ag3 = setup_ag3(results_cache=results_cache)
@@ -2599,14 +2585,20 @@ def test_snp_allele_counts(region, sample_sets, sample_query, site_mask):
     assert_array_equal(ac, ac2)
 
 
-@pytest.mark.parametrize("region", ["2R:1,000,000-2,000,000", "AGAP004707"])
+@pytest.mark.parametrize(
+    "region",
+    [
+        "2R:1,000,000-2,000,000",
+        "AGAP004707",
+        ["2R:1,000,000-2,000,000", "2L:1,000,000-2,000,000"],
+    ],
+)
 @pytest.mark.parametrize(
     "sample_sets", ["AG1000G-AO", ["AG1000G-BF-A", "AG1000G-BF-B"]]
 )
 @pytest.mark.parametrize("sample_query", [None, "taxon == 'coluzzii'"])
 @pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
 def test_pca(region, sample_sets, sample_query, site_mask):
-
     results_cache = "../results_cache"
     shutil.rmtree(results_cache, ignore_errors=True)
     ag3 = setup_ag3(results_cache=results_cache)
@@ -2649,7 +2641,6 @@ def test_pca(region, sample_sets, sample_query, site_mask):
 
 
 def _compare_series_like(actual, expect):
-
     # compare pandas series-like objects for equality or floating point
     # similarity, handling missing values appropriately
 

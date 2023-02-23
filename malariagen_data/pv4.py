@@ -36,7 +36,6 @@ class Pv4(PlasmodiumDataResource):
         data_config=None,
         **kwargs,
     ):
-
         # setup filesystem
         if not data_config:
             working_dir = os.path.dirname(os.path.abspath(__file__))
