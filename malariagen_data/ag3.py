@@ -361,9 +361,7 @@ class Ag3(AnophelesDataResource):
 
             d = da.concatenate(
                 [
-                    da_from_zarr(
-                        genome[contig], inline_array=inline_array, chunks=chunks
-                    )
+                    super().genome_sequence(region=contig, inline_array=inline_array, chunks=chunks)
                     for contig in contigs
                 ]
             )
