@@ -356,7 +356,7 @@ def _handle_region_coords(resource, region):
         start = int(region_split[1].replace(",", ""))
         end = int(region_split[2].replace(",", ""))
 
-        if contig not in resource.contigs:
+        if contig not in resource.contigs and contig not in resource.chromosomes:
             raise ValueError(f"Contig {contig} does not exist in the dataset.")
         elif (
             start < 0
@@ -415,6 +415,10 @@ def resolve_region(resource, region):
 
     # check if region is a chromosome arm
     if region in resource.contigs:
+        return Region(region, None, None)
+
+    # check if region is a whole chromosome
+    if region in resource.chromosomes:
         return Region(region, None, None)
 
     # check if region is a region string providing coordinates

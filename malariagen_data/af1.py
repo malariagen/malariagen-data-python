@@ -30,6 +30,7 @@ GENOME_REF_ID = "idAnoFuneDA-416_04"
 GENOME_REF_NAME = "Anopheles funestus"
 
 CONTIGS = "2RL", "3RL", "X"
+CHROMOSOMES = "2RL", "3RL", "X"
 
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
@@ -94,6 +95,7 @@ class Af1(AnophelesDataResource):
     """
 
     contigs = CONTIGS
+    chromosomes = CHROMOSOMES
     _major_version_int = MAJOR_VERSION_INT
     _major_version_gcs_str = MAJOR_VERSION_GCS_STR
     _genome_fasta_path = GENOME_FASTA_PATH

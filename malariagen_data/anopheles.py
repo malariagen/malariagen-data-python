@@ -297,6 +297,11 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError("Must override _h1x_gwss_cache_name")
 
     @property
+    @abstractmethod
+    def _ihs_gwss_cache_name(self):
+        raise NotImplementedError("Must override _ihs_gwss_cache_name")
+
+    @property
     def _geneset_gff3_path(self):
         return self._config.get("GENESET_GFF3_PATH")
 
@@ -7627,6 +7632,340 @@ class AnophelesDataResource(ABC):
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
             sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
+
+        bkplt.show(fig)
+
+    def ihs_gwss(
+        self,
+        contig,
+        window_size,
+        window_func=np.nanmax,
+        min_maf=0,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        cohort_size=30,
+        random_seed=42,
+    ):
+        """Run IHS GWSS.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        window_size : int
+            The size of windows used to calculate ihs over.
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        ihs : numpy.ndarray
+            An array with ihs statistic values for each window.
+
+        """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = self._ihs_gwss_cache_name
+
+        params = dict(
+            contig=contig,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
+            window_size=window_size,
+            window_func=window_func,
+            min_maf=min_maf,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._ihs_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        ihs = results["ihs"]
+
+        return x, ihs
+
+    def _ihs_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        window_func,
+        min_maf,
+        sample_sets,
+        sample_query,
+        cohort_size,
+        random_seed,
+    ):
+        ds_haps = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        pos = ds_haps["variant_position"].values
+
+        if min_maf > 0:
+            ac = ht.count_alleles().to_frequencies()
+            maf_filter = ac[:, 1] > min_maf
+            ht = ht.compress(maf_filter, axis=0)
+            pos = pos[maf_filter]
+
+        ihs = allel.ihs(ht, pos)
+        ihs_windowed = allel.moving_statistic(
+            ihs, statistic=window_func, size=window_size
+        )
+        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=x, ihs=ihs_windowed)
+
+        return results
+
+    def plot_ihs_gwss_track(
+        self,
+        contig,
+        window_size,
+        window_func=np.nanmax,
+        min_maf=0,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Plot IHS GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        window_size : int
+            The size of windows used to calculate ihs over.
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed ihs statistic across chosen contig.
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # compute ihs
+        x, ihs = self.ihs_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            window_func=window_func,
+            min_maf=min_maf,
+            cohort_size=cohort_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = sample_query
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            sizing_mode=sizing_mode,
+            width=width,
+            height=height,
+            toolbar_location="above",
+            x_range=x_range,
+        )
+
+        # plot ihs
+        fig.circle(
+            x=x,
+            y=ihs,
+            size=3,
+            line_width=0.5,
+            line_color="black",
+            fill_color=None,
+        )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "ihs"
+        #  fig.yaxis.ticker = [0, 1]
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_ihs_gwss(
+        self,
+        contig,
+        window_size,
+        window_func=np.nanmax,
+        min_maf=0.05,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        cohort_size=30,
+        random_seed=42,
+        title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=170,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Plot ihs GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        window_size : int
+            The size of windows used to calculate ihs over.
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed ihs statistic with gene track on x-axis.
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # gwss track
+        fig1 = self.plot_ihs_gwss_track(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            window_func=window_func,
+            min_maf=min_maf,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
             cohort_size=cohort_size,
             random_seed=random_seed,
             title=title,

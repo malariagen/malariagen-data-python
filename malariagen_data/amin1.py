@@ -50,6 +50,10 @@ class Amin1:
             )
         return self._contigs
 
+    @property
+    def chromosomes(self):
+        return self.contigs
+
     def sample_metadata(self):
         """Access sample metadata.
 

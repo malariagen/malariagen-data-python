@@ -43,6 +43,7 @@ class PlasmodiumDataResource:
         self.extended_calldata_variables = self.CONF["extended_calldata_variables"]
         self.extended_variant_fields = self.CONF["extended_variant_fields"]
         self.contigs = self.CONF["reference_contigs"]
+        self.chromosomes = self.contigs
 
     def _load_config(self, data_config):
         """Load the config for data structure on the cloud into json format."""

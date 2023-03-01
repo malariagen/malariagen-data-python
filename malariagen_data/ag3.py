@@ -32,6 +32,7 @@ from .util import (
     Region,
     da_from_zarr,
     init_zarr_store,
+    locate_region,
     xarray_concat,
 )
 
@@ -60,6 +61,7 @@ GENOME_REF_ID = "AgamP4"
 GENOME_REF_NAME = "Anopheles gambiae (PEST)"
 
 CONTIGS = "2R", "2L", "3R", "3L", "X"
+CHROMOSOMES = "2RL", "3RL", "X"
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
@@ -68,8 +70,10 @@ FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
+IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
 
 DEFAULT_SITE_MASK = "gamb_colu_arab"
+DEFAULT = "default"
 
 
 class Ag3(AnophelesDataResource):
@@ -129,6 +133,7 @@ class Ag3(AnophelesDataResource):
     """
 
     contigs = CONTIGS
+    chromosomes = CHROMOSOMES
     _major_version_int = MAJOR_VERSION_INT
     _major_version_gcs_str = MAJOR_VERSION_GCS_STR
     _genome_fasta_path = GENOME_FASTA_PATH
@@ -143,6 +148,7 @@ class Ag3(AnophelesDataResource):
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
+    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("gamb_colu_arab", "gamb_colu", "arab")
     _default_site_mask = DEFAULT_SITE_MASK
     _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
@@ -313,6 +319,482 @@ class Ag3(AnophelesDataResource):
             </table>
         """
         return html
+
+    def genome_sequence(self, region, inline_array=True, chunks="native"):
+        """Access the reference genome sequence.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        d : dask.array.Array
+            An array of nucleotides giving the reference genome sequence for the
+            given contig.
+
+        """
+        region = self.resolve_region(region)
+
+        if region.contig in self.contigs:
+            d = super().genome_sequence(
+                region, inline_array=inline_array, chunks=chunks
+            )
+            return d
+
+        elif region.contig in ["2RL", "3RL"]:
+            genome = self.open_genome()
+            contigs = (
+                region.contig[0] + region.contig[1],
+                region.contig[0] + region.contig[1],
+            )
+
+            d = da.concatenate(
+                [
+                    da_from_zarr(
+                        genome[contig], inline_array=inline_array, chunks=chunks
+                    )
+                    for contig in contigs
+                ]
+            )
+
+        if region.start:
+            slice_start = region.start - 1
+        else:
+            slice_start = None
+        if region.end:
+            slice_stop = region.end
+        else:
+            slice_stop = None
+        loc_region = slice(slice_start, slice_stop)
+
+        return d[loc_region]
+
+    def genome_features(
+        self, region=None, attributes=("ID", "Parent", "Name", "description")
+    ):
+        """Access genome feature annotations.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        attributes : list of str, optional
+            Attribute keys to unpack into columns. Provide "*" to unpack all
+            attributes.
+
+        Returns
+        -------
+        df : pandas.DataFrame
+            A dataframe of genome annotations, one row per feature.
+
+        """
+        debug = self._log.debug
+
+        if region is None:
+            df = super().genome_features(region=region, attributes=attributes)
+            return df
+
+        elif region is not None:
+            region = self.resolve_region(region)
+            debug("normalise to list to simplify concatenation logic")
+            if isinstance(region, Region):
+                region = [region]
+
+            if all([r.contig in self.contigs for r in region]):
+                df = super().genome_features(region=region, attributes=attributes)
+                return df
+
+            elif all([r.contig in ["2RL", "3RL"] for r in region]):
+                parts = []
+                for r in region:
+                    debug("concatenating right and left arm genome features")
+                    contig_r, contig_l = (
+                        r.contig[0] + r.contig[1],
+                        r.contig[0] + r.contig[2],
+                    )
+                    df_r = super().genome_features(
+                        region=contig_r, attributes=attributes
+                    )
+                    df_l = super().genome_features(
+                        region=contig_l, attributes=attributes
+                    )
+                    max_r = df_r.query("type == 'chromosome'").loc[0, "end"]
+                    df_l = df_l.assign(
+                        start=lambda x: x.start + max_r, end=lambda x: x.end + max_r
+                    )
+                    df_part = pd.concat([df_r, df_l], axis=0)
+
+                    debug("apply region query")
+                    if r.end is not None:
+                        df_part = df_part.query(f"start <= {r.end}")
+                    if r.start is not None:
+                        df_part = df_part.query(f"end >= {r.start}")
+                    parts.append(df_part)
+
+                df = pd.concat(parts, axis=0)
+
+                return df.reset_index(drop=True).copy()
+
+    def snp_genotypes(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        field="GT",
+        site_mask=None,
+        inline_array=True,
+        chunks="native",
+    ):
+        """Access SNP genotypes and associated data.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        field : {"GT", "GQ", "AD", "MQ"}
+            Array to access.
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+
+        Returns
+        -------
+        d : dask.array.Array
+            An array of either genotypes (GT), genotype quality (GQ), allele
+            depths (AD) or mapping quality (MQ) values.
+
+        """
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+        debug("normalise region to list to simplify concatenation logic")
+        if isinstance(region, Region):
+            region = [region]
+
+        if all([r.contig in self.contigs for r in region]):
+            d = super().snp_genotypes(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                site_mask=site_mask,
+                inline_array=inline_array,
+                chunks=chunks,
+                field=field,
+            )
+            return d
+
+        elif all([r.contig in ["2RL", "3RL"] for r in region]):
+            debug("concatenate snp genotypes for right and left arms")
+            lx = []
+            for r in region:
+                contig_r, contig_l = (
+                    r.contig[0] + r.contig[1],
+                    r.contig[0] + r.contig[2],
+                )
+                d_r = super().snp_genotypes(
+                    region=contig_r,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    site_mask=site_mask,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                    field=field,
+                )
+                d_l = super().snp_genotypes(
+                    region=contig_l,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    site_mask=site_mask,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                    field=field,
+                )
+                x = da.concatenate([d_r, d_l], axis=0)
+
+                debug("locate region - do this only once, optimisation")
+                if r.start or r.end:
+                    pos_r = self.snp_sites(region=contig_r, field="POS")
+                    pos_l = self.snp_sites(region=contig_l, field="POS")
+                    max_r = self.genome_sequence(region=contig_r).shape[0]
+                    pos_l = pos_l + max_r
+                    pos = da.concatenate([pos_r, pos_l])
+                    loc_region = locate_region(r, pos)
+                    x = x[loc_region]
+
+                lx.append(x)
+
+            d = da.concatenate(lx, axis=0)
+
+            return d
+
+    def haplotypes(
+        self,
+        region,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        inline_array=True,
+        chunks="native",
+        cohort_size=None,
+        random_seed=42,
+    ):
+        """Access haplotype data.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"] or ["2RL", "3RL"].
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset of haplotypes and associated data.
+
+        """
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+        debug("normalise region to list to simplify concatenation logic")
+        if isinstance(region, Region):
+            region = [region]
+
+        if all([r.contig in self.contigs for r in region]):
+            debug("calling super class haplotypes() function")
+            ds = super().haplotypes(
+                region=region,
+                analysis=analysis,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                inline_array=inline_array,
+                chunks=chunks,
+                cohort_size=cohort_size,
+                random_seed=random_seed,
+            )
+            return ds
+
+        elif all([r.contig in ["2RL", "3RL"] for r in region]):
+            debug("concatenate haplotypes for right and left arms")
+            lx = []
+            for r in region:
+                contig_r, contig_l = (
+                    r.contig[0] + r.contig[1],
+                    r.contig[0] + r.contig[2],
+                )
+                ds_r = super().haplotypes(
+                    region=contig_r,
+                    analysis=analysis,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    cohort_size=cohort_size,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                    random_seed=random_seed,
+                )
+                ds_l = super().haplotypes(
+                    region=contig_l,
+                    analysis=analysis,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    cohort_size=cohort_size,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                    random_seed=random_seed,
+                )
+                max_r = self.genome_sequence(contig_r).shape[0]
+                ds_l["variant_position"] = ds_l["variant_position"] + max_r
+                ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+
+                debug("handle region")
+                if r.start or r.end:
+                    pos = ds["variant_position"].values
+                    loc_region = locate_region(r, pos)
+                    ds = ds.isel(variants=loc_region)
+
+                lx.append(ds)
+
+            ds = xr.concat(lx, dim=DIM_VARIANT)
+        return ds
+
+    def snp_calls(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask=None,
+        site_class=None,
+        inline_array=True,
+        chunks="native",
+        cohort_size=None,
+        random_seed=42,
+    ):
+        """Access SNP sites, site filters and genotype calls.
+
+        Parameters
+        ----------
+        region: str or list of str or Region or list of Region
+            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
+            region defined with coordinates (e.g., "2L:44989425-44998059") or a
+            named tuple with genomic location `Region(contig, start, end)`.
+            Multiple values can be provided as a list, in which case data will
+            be concatenated, e.g., ["3R", "3L"].
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "country == 'Burkina Faso'".
+        site_mask : str, optional
+            Which site filters mask to apply. See the `site_mask_ids`
+            property for available values.
+        site_class : str, optional
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        inline_array : bool, optional
+            Passed through to dask.array.from_array().
+        chunks : str, optional
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+        cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        ds : xarray.Dataset
+            A dataset containing SNP sites, site filters and genotype calls.
+
+        """
+        debug = self._log.debug
+
+        region = self.resolve_region(region)
+        debug("normalise region to list to simplify concatenation logic")
+        if isinstance(region, Region):
+            region = [region]
+
+        if all([r.contig in self.contigs for r in region]):
+            ds = super().snp_calls(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                site_mask=site_mask,
+                site_class=site_class,
+                inline_array=inline_array,
+                chunks=chunks,
+                cohort_size=cohort_size,
+                random_seed=random_seed,
+            )
+            return ds
+
+        elif all([r.contig in ["2RL", "3RL"] for r in region]):
+            debug("concatenate snp calls for right and left arms")
+
+            lx = []
+            for r in region:
+                contig_r, contig_l = (
+                    r.contig[0] + r.contig[1],
+                    r.contig[0] + r.contig[2],
+                )
+                debug(f"{contig_r}, {contig_l}")
+                ds_r = super().snp_calls(
+                    region=contig_r,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    cohort_size=cohort_size,
+                    site_mask=site_mask,
+                    site_class=site_class,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                    random_seed=random_seed,
+                )
+                ds_l = super().snp_calls(
+                    region=contig_l,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    cohort_size=cohort_size,
+                    site_mask=site_mask,
+                    site_class=site_class,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                    random_seed=random_seed,
+                )
+                max_r = self.genome_sequence(contig_r).shape[0]
+                ds_l["variant_position"] = ds_l["variant_position"] + max_r
+                ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+
+                debug("handle region, do this only once - optimisation")
+                if r.start or r.end:
+                    pos = ds["variant_position"].values
+                    loc_region = locate_region(r, pos)
+                    ds = ds.isel(variants=loc_region)
+
+                lx.append(ds)
+
+            ds = xr.concat(lx, dim=DIM_VARIANT)
+
+            return ds
 
     def _read_species_calls(self, *, sample_set):
         """Read species calls for a single sample set."""
