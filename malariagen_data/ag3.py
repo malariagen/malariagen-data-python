@@ -356,7 +356,7 @@ class Ag3(AnophelesDataResource):
             genome = self.open_genome()
             contigs = (
                 region.contig[0] + region.contig[1],
-                region.contig[0] + region.contig[1],
+                region.contig[0] + region.contig[2],
             )
 
             d = da.concatenate(
