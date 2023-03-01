@@ -129,6 +129,7 @@ class Ag3(AnophelesDataResource):
     """
 
     contigs = CONTIGS
+    virtual_contigs = "2RL", "3RL"
     _major_version_int = MAJOR_VERSION_INT
     _major_version_gcs_str = MAJOR_VERSION_GCS_STR
     _genome_fasta_path = GENOME_FASTA_PATH
@@ -544,6 +545,24 @@ class Ag3(AnophelesDataResource):
             self._cache_cross_metadata = df
 
         return self._cache_cross_metadata.copy()
+
+    def _genome_sequence_array(self, *, contig, inline_array, chunks):
+        """Obtain the genome sequence for a given contig as an array."""
+
+        if contig in self.virtual_contigs:
+            # handle virtual contig with joined arms
+            contig_r, contig_l = _chrom_to_contigs(contig)
+            d_r = super()._genome_sequence_array(
+                contig=contig_r, inline_array=inline_array, chunks=chunks
+            )
+            d_l = super()._genome_sequence_array(
+                contig=contig_l, inline_array=inline_array, chunks=chunks
+            )
+            return da.concatenate([d_r, d_l])
+
+        return super()._genome_sequence_array(
+            contig=contig, inline_array=inline_array, chunks=chunks
+        )
 
     def open_cnv_hmm(self, sample_set):
         """Open CNV HMM zarr.
@@ -2559,3 +2578,11 @@ def _cn_mode(a, vmax):
         counts[j] = count
 
     return modes, counts
+
+
+def _chrom_to_contigs(chrom):
+    """Split a chromosome name into two contig names."""
+    assert chrom in ["2RL", "3RL"]
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    return contig_r, contig_l

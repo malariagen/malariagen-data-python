@@ -1764,6 +1764,14 @@ class AnophelesDataResource(ABC):
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
+    def _genome_sequence_array(self, *, contig, inline_array, chunks):
+        """Obtain the genome sequence for a given contig as an array."""
+        assert contig in self.contigs
+        genome = self.open_genome()
+        z = genome[contig]
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return d
+
     def genome_sequence(self, region, inline_array=True, chunks="native"):
         """Access the reference genome sequence.
 
@@ -1788,11 +1796,14 @@ class AnophelesDataResource(ABC):
             given contig.
 
         """
-        genome = self.open_genome()
         region = self.resolve_region(region)
-        z = genome[region.contig]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
+        # obtain complete sequence for the requested contig
+        d = self._genome_sequence_array(
+            contig=region.contig, inline_array=inline_array, chunks=chunks
+        )
+
+        # deal with region start and stop
         if region.start:
             slice_start = region.start - 1
         else:
