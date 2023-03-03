@@ -43,7 +43,7 @@ jobs:
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
-        if: always()
+        # if: always()
         with:
           path: gcs_cache
           key: gcs_cache_tests
