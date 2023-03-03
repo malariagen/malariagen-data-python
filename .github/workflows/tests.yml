@@ -24,7 +24,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_tests_v2
+          key: gcs_cache_tests
 
       - name: Install poetry
         run: pipx install poetry==${{ matrix.poetry-version }}
@@ -46,4 +46,4 @@ jobs:
         # if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_tests_v2
+          key: gcs_cache_tests
