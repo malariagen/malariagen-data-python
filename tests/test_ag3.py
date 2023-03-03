@@ -262,6 +262,9 @@ def test_genome_sequence_joined_arms(chrom):
     assert isinstance(seq, da.Array)
     assert seq.dtype == "S1"
     assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
+    # N.B., we use a single-threaded computation here to avoid race conditions
+    # when data are being cached locally from GCS (which manifests as blosc
+    # decompression errors).
     assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
         scheduler="single-threaded"
     )
