@@ -251,6 +251,36 @@ def test_missing_species_calls(analysis):
         assert df_species[c].isnull().all()
 
 
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_genome_sequence_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    seq_r = ag3.genome_sequence(region=contig_r)
+    seq_l = ag3.genome_sequence(region=contig_l)
+    seq = ag3.genome_sequence(region=chrom)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == "S1"
+    assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
+    # N.B., we use a single-threaded computation here to avoid race conditions
+    # when data are being cached locally from GCS (which manifests as blosc
+    # decompression errors).
+    assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
+        scheduler="single-threaded"
+    )
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_genome_sequence_joined_arms_region(region):
+    ag3 = setup_ag3()
+    seq = ag3.genome_sequence(region=region)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == "S1"
+    assert seq.shape[0] == 1_000_001
+
+
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
 @pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 def test_site_filters(mask, region):

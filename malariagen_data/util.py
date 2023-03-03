@@ -356,7 +356,7 @@ def _handle_region_coords(resource, region):
         start = int(region_split[1].replace(",", ""))
         end = int(region_split[2].replace(",", ""))
 
-        if contig not in resource.contigs:
+        if contig not in _valid_contigs(resource):
             raise ValueError(f"Contig {contig} does not exist in the dataset.")
         elif (
             start < 0
@@ -390,6 +390,14 @@ def _handle_region_feature(resource, region):
         return None
 
 
+def _valid_contigs(resource):
+    """Determine which contig identifiers are valid for the given data resource."""
+    valid_contigs = resource.contigs
+    # allow for optional virtual contigs
+    valid_contigs += getattr(resource, "virtual_contigs", ())
+    return valid_contigs
+
+
 def resolve_region(resource, region):
     """Parse the provided region and return `Region(contig, start, end)`.
     Supports contig names, gene names and genomic coordinates"""
@@ -413,8 +421,8 @@ def resolve_region(resource, region):
     if not isinstance(region, str):
         raise TypeError("The region parameter must be a string or Region object.")
 
-    # check if region is a chromosome arm
-    if region in resource.contigs:
+    # check if region is a whole contig
+    if region in _valid_contigs(resource):
         return Region(region, None, None)
 
     # check if region is a region string providing coordinates
