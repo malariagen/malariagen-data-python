@@ -564,6 +564,26 @@ class Ag3(AnophelesDataResource):
             contig=contig, inline_array=inline_array, chunks=chunks
         )
 
+    def _genome_features_array(self, *, contig, attributes):
+        """Obtain the genome features for a given contig as a pandas DataFrame."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            df_r = super()._genome_features_array(
+                contig=contig_r, attributes=attributes
+            )
+            df_l = super()._genome_features_array(
+                contig=contig_l, attributes=attributes
+            )
+            max_r = super().genome_sequence(region=contig_r).shape[0]
+            df_l = df_l.assign(
+                start=lambda x: x.start + max_r, end=lambda x: x.end + max_r
+            )
+            return pd.concat([df_r, df_l], axis=0)
+
+        return super()._genome_features_array(contig=contig, attributes=attributes)
+
     def open_cnv_hmm(self, sample_set):
         """Open CNV HMM zarr.
 

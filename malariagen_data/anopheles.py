@@ -2920,6 +2920,30 @@ class AnophelesDataResource(ABC):
 
         return str(region)
 
+    def _genome_features_array(self, *, contig, attributes):
+        """Obtain the genome features for a given contig as a pandas DataFrame."""
+        debug = self._log.debug
+
+        if attributes is not None:
+            attributes = tuple(attributes)
+
+        try:
+            df = self._cache_genome_features[attributes]
+
+        except KeyError:
+            path = f"{self._base_path}/{self._geneset_gff3_path}"
+            with self._fs.open(path, mode="rb") as f:
+                df = read_gff3(f, compression="gzip")
+            if attributes is not None:
+                df = unpack_gff3_attributes(df, attributes=attributes)
+            self._cache_genome_features[attributes] = df
+
+        if contig is not None:
+            debug("apply contig query")
+            return df.query(f"contig == '{contig}'")
+
+        return df
+
     def genome_features(
         self, region=None, attributes=("ID", "Parent", "Name", "description")
     ):
@@ -2944,23 +2968,8 @@ class AnophelesDataResource(ABC):
 
         """
         debug = self._log.debug
-
-        if attributes is not None:
-            attributes = tuple(attributes)
-
-        try:
-            df = self._cache_genome_features[attributes]
-
-        except KeyError:
-            path = f"{self._base_path}/{self._geneset_gff3_path}"
-            with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression="gzip")
-            if attributes is not None:
-                df = unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_genome_features[attributes] = df
-
-        debug("handle region")
         if region is not None:
+            debug("handle region")
             region = self.resolve_region(region)
 
             debug("normalise to list to simplify concatenation logic")
@@ -2970,15 +2979,22 @@ class AnophelesDataResource(ABC):
             debug("apply region query")
             parts = []
             for r in region:
-                df_part = df.query(f"contig == '{r.contig}'")
+                df_part = self._genome_features_array(
+                    contig=r.contig, attributes=attributes
+                )
                 if r.end is not None:
                     df_part = df_part.query(f"start <= {r.end}")
                 if r.start is not None:
                     df_part = df_part.query(f"end >= {r.start}")
                 parts.append(df_part)
             df = pd.concat(parts, axis=0)
+            return df.reset_index(drop=True).copy()
 
-        return df.reset_index(drop=True).copy()
+        return (
+            self._genome_features_array(contig=None, attributes=attributes)
+            .reset_index(drop=True)
+            .copy()
+        )
 
     def _lookup_sample(self, sample, sample_set=None):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
