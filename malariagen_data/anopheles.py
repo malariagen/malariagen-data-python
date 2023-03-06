@@ -1288,6 +1288,15 @@ class AnophelesDataResource(ABC):
             df["sample_set"] = sample_set
             df["release"] = release
 
+            # Derive quarter from month
+            # Replace -1 with Not-a-Time, otherwise -1 month is converted to quarter 4
+            df["quarter"] = (
+                df["month"].replace(-1, pd.NaT).astype("datetime64[M]").dt.quarter
+            )
+            # Replace all NaN quarters with -1
+            # Specify int64, otherwise it can become float64
+            df["quarter"] = df["quarter"].fillna(-1).astype("int64")
+
             self._cache_general_metadata[sample_set] = df
         return df.copy()
 

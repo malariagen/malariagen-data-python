@@ -129,6 +129,7 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
         "sex_call",
         "sample_set",
         "release",
+        "quarter",
     )
 
     # all major_release
@@ -367,6 +368,7 @@ def test_sample_metadata_dtypes(subclass):
         "sex_call": object,
         "sample_set": object,
         "release": object,
+        "quarter": "int64",
     }
 
     # check all available sample sets
@@ -379,6 +381,29 @@ def test_sample_metadata_dtypes(subclass):
         df_samples = anoph.sample_metadata(sample_sets=sample_set)
         for k, v in expected_dtypes.items():
             assert df_samples[k].dtype == v, k
+
+
+@pytest.mark.parametrize("subclass", [Ag3, Af1])
+def test_sample_metadata_derivations(subclass):
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url, pre=True)
+
+    # Check all available sample sets
+    df_samples = anoph.sample_metadata()
+
+    # Check that quarter only contains the expected values
+    expected_quarter_values = {-1, 1, 2, 3, 4}
+    assert df_samples["quarter"].isin(expected_quarter_values).all()
+
+    # Check that quarter is -1 when month is -1
+    assert np.all(df_samples.query("month == -1")["quarter"] == -1)
+
+    # Check that quarter is derived from month, in cases where it is not -1
+    df_samples_with_quarter = df_samples.query("quarter != -1")
+    df_derived_quarters = (
+        df_samples_with_quarter["month"].astype("datetime64[M]").dt.quarter
+    )
+    assert np.all(df_samples_with_quarter["quarter"] == df_derived_quarters)
 
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
