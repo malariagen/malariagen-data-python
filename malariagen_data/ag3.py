@@ -546,23 +546,45 @@ class Ag3(AnophelesDataResource):
 
         return self._cache_cross_metadata.copy()
 
-    def _genome_sequence_array(self, *, contig, inline_array, chunks):
+    def _genome_sequence_for_contig(self, *, contig, inline_array, chunks):
         """Obtain the genome sequence for a given contig as an array."""
 
         if contig in self.virtual_contigs:
             # handle virtual contig with joined arms
             contig_r, contig_l = _chrom_to_contigs(contig)
-            d_r = super()._genome_sequence_array(
+            d_r = super()._genome_sequence_for_contig(
                 contig=contig_r, inline_array=inline_array, chunks=chunks
             )
-            d_l = super()._genome_sequence_array(
+            d_l = super()._genome_sequence_for_contig(
                 contig=contig_l, inline_array=inline_array, chunks=chunks
             )
             return da.concatenate([d_r, d_l])
 
-        return super()._genome_sequence_array(
+        return super()._genome_sequence_for_contig(
             contig=contig, inline_array=inline_array, chunks=chunks
         )
+
+    def _genome_features_for_contig(self, *, contig, attributes):
+        """Obtain the genome features for a given contig as a pandas DataFrame."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            df_r = super()._genome_features_for_contig(
+                contig=contig_r, attributes=attributes
+            )
+            df_l = super()._genome_features_for_contig(
+                contig=contig_l, attributes=attributes
+            )
+            max_r = super().genome_sequence(region=contig_r).shape[0]
+            df_l = df_l.assign(
+                start=lambda x: x.start + max_r, end=lambda x: x.end + max_r
+            )
+            df = pd.concat([df_r, df_l], axis=0)
+            df = df.assign(contig=contig)
+            return df
+
+        return super()._genome_features_for_contig(contig=contig, attributes=attributes)
 
     def open_cnv_hmm(self, sample_set):
         """Open CNV HMM zarr.
