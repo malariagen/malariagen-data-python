@@ -291,9 +291,11 @@ def test_genome_features_joined_arms(chrom):
     max_r = ag3.genome_sequence(contig_r).shape[0]
     df_l = df_l.assign(start=lambda x: x.start + max_r, end=lambda x: x.end + max_r)
     df_concat = pd.concat([df_r, df_l], axis=0).reset_index(drop=True)
+    df_concat = df_concat.assign(contig=chrom)
     df = ag3.genome_features(region=chrom)
     assert isinstance(df, pd.DataFrame)
     assert df.shape[0] == df_r.shape[0] + df_l.shape[0]
+    assert all(df["contig"] == chrom)
     assert_frame_equal(df, df_concat)
 
 
@@ -302,11 +304,9 @@ def test_genome_features_joined_arms(chrom):
 )
 def test_genome_features_joined_arms_region(region):
     ag3 = setup_ag3()
-    contigs = (region[0] + region[1], region[0] + region[2])
     df = ag3.genome_features(region=region)
     assert isinstance(df, pd.DataFrame)
-    assert all(np.isin(df.contig.unique(), contigs))
-    assert all(np.isin(contigs, df.contig.unique()))
+    assert df["contig"].unique() == region.split(":")[0]
 
 
 @pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
