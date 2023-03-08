@@ -631,7 +631,6 @@ class Ag3(AnophelesDataResource):
                 contig=contig_l, field=field, inline_array=inline_array, chunks=chunks
             )
 
-            # TODO check what other fields are?
             if field == "POS":
                 max_r = super().genome_sequence(region=contig_r).shape[0]
                 field_l = field_l + max_r

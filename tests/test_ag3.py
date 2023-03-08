@@ -359,32 +359,35 @@ def test_snp_sites(chunks, region):
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_sites_for_contig(chrom):
+def test_snp_sites_for_joined_arms(chrom):
     ag3 = setup_ag3()
     contig_r = chrom[0] + chrom[1]
     contig_l = chrom[0] + chrom[2]
     sites_r = ag3.snp_sites(region=contig_r, field="POS")
     sites_l = ag3.snp_sites(region=contig_l, field="POS")
     max_r = ag3.genome_sequence(region=contig_r).shape[0]
-    sites = da.concatenate([sites_r, sites_l + max_r])
+    sites_expected = da.concatenate([sites_r, sites_l + max_r])
+    sites_actual = ag3.snp_sites(region=chrom, field="POS")
 
-    sites_joined = ag3.snp_sites(region=chrom, field="POS")
-
-    assert isinstance(sites_joined, da.Array)
-    assert sites_joined.ndim == 1
-    assert sites_joined.dtype == "int32"
-    assert np.all(sites == sites_joined)
+    assert isinstance(sites_actual, da.Array)
+    assert sites_actual.ndim == 1
+    assert sites_actual.dtype == "int32"
+    assert np.all(sites_expected == sites_actual)
 
 
 @pytest.mark.parametrize(
     "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
 )
 @pytest.mark.parametrize("field", ["POS", "REF", "ALT"])
-def test_snp_sites_for_contig_region(region, field):
+def test_snp_sites_for_joined_arms_region(region, field):
     ag3 = setup_ag3()
     sites = ag3.snp_sites(region=region, field=field)
 
+    start, end = region.split(":")[1].split("-")
+    size = end - start
+
     assert isinstance(sites, da.Array)
+    assert sites.shape[0] <= size
     if field == "POS":
         assert sites.dtype == "int32"
         assert sites.ndim == 1
@@ -481,7 +484,7 @@ def test_snp_genotypes_chunks(sample_sets, region):
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_genotypes_for_contig(chrom):
+def test_snp_genotypes_for_joined_arms(chrom):
     ag3 = setup_ag3()
     contig_r = chrom[0] + chrom[1]
     contig_l = chrom[0] + chrom[2]
@@ -500,7 +503,7 @@ def test_snp_genotypes_for_contig(chrom):
 @pytest.mark.parametrize(
     "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
 )
-def test_snp_genotypes_for_contig_region(region):
+def test_snp_genotypes_for_joined_arms_region(region):
     ag3 = setup_ag3()
     gt = ag3.snp_genotypes(region=region)
     sites = ag3.snp_sites(region=region, field="POS")
