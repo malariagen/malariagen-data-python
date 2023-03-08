@@ -251,23 +251,23 @@ def test_missing_species_calls(analysis):
         assert df_species[c].isnull().all()
 
 
-# @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-# def test_genome_sequence_joined_arms(chrom):
-#     ag3 = setup_ag3()
-#     contig_r = chrom[0] + chrom[1]
-#     contig_l = chrom[0] + chrom[2]
-#     seq_r = ag3.genome_sequence(region=contig_r)
-#     seq_l = ag3.genome_sequence(region=contig_l)
-#     seq = ag3.genome_sequence(region=chrom)
-#     assert isinstance(seq, da.Array)
-#     assert seq.dtype == "S1"
-#     assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
-#     # N.B., we use a single-threaded computation here to avoid race conditions
-#     # when data are being cached locally from GCS (which manifests as blosc
-#     # decompression errors).
-#     assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
-#         scheduler="single-threaded"
-#     )
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_genome_sequence_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    seq_r = ag3.genome_sequence(region=contig_r)
+    seq_l = ag3.genome_sequence(region=contig_l)
+    seq = ag3.genome_sequence(region=chrom)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == "S1"
+    assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
+    # N.B., we use a single-threaded computation here to avoid race conditions
+    # when data are being cached locally from GCS (which manifests as blosc
+    # decompression errors).
+    assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
+        scheduler="single-threaded"
+    )
 
 
 @pytest.mark.parametrize(
@@ -383,8 +383,8 @@ def test_snp_sites_for_joined_arms_region(region, field):
     ag3 = setup_ag3()
     sites = ag3.snp_sites(region=region, field=field)
 
-    start, end = region.split(":")[1].split("-")
-    size = end - start
+    start, end = region.replace(",", "").split(":")[1].split("-")
+    size = int(end) - int(start)
 
     assert isinstance(sites, da.Array)
     assert sites.shape[0] <= size
@@ -692,6 +692,39 @@ def test_snp_calls__sample_query(sample_query):
         )
         assert ds.dims["samples"] == len(df_samples)
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_calls_for_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    ds_r = ag3.snp_calls(region=contig_r)
+    ds_l = ag3.snp_calls(region=contig_l)
+    ds_expected = xr.concat([ds_r, ds_l], dim="variants")
+
+    ds_actual = ag3.snp_calls(region=chrom)
+
+    assert isinstance(ds_actual, xr.Dataset)
+    assert len(ds_actual.dims) == 4
+    assert ds_actual["call_genotype"].dtype == "int8"
+    assert ds_actual["variant_position"].dtype == "int32"
+    assert ds_actual["call_genotype"].shape == ds_expected["call_genotype"].shape
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_snp_calls_for_joined_arms_region(region):
+    ag3 = setup_ag3()
+    ds_snps = ag3.snp_calls(region=region)
+    sites = ag3.snp_sites(region=region, field="POS")
+
+    assert isinstance(ds_snps, xr.Dataset)
+    assert len(ds_snps.dims) == 4
+    assert ds_snps["call_genotype"].dtype == "int8"
+    assert ds_snps["variant_position"].dtype == "int32"
+    assert sites.shape[0] == ds_snps["call_genotype"].shape[0]
 
 
 def test_snp_effects():

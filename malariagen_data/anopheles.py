@@ -1977,7 +1977,7 @@ class AnophelesDataResource(ABC):
 
         return df_snps
 
-    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
+    def _snp_variants_for_contig(self, *, contig, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -2021,7 +2021,7 @@ class AnophelesDataResource(ABC):
 
         return ds
 
-    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+    def _snp_calls_for_contig(self, *, contig, sample_set, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -2131,7 +2131,7 @@ class AnophelesDataResource(ABC):
         for r in region:
             ly = []
             for s in sample_sets:
-                y = self._snp_calls_dataset(
+                y = self._snp_calls_for_contig(
                     contig=r.contig,
                     sample_set=s,
                     inline_array=inline_array,
@@ -2143,7 +2143,7 @@ class AnophelesDataResource(ABC):
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("add variants variables")
-            v = self._snp_variants_dataset(
+            v = self._snp_variants_for_contig(
                 contig=r.contig, inline_array=inline_array, chunks=chunks
             )
             x = xr.merge([v, x], compat="override", join="override")
@@ -2432,7 +2432,7 @@ class AnophelesDataResource(ABC):
         lx = []
         for r in region:
             debug("access variants")
-            x = self._snp_variants_dataset(
+            x = self._snp_variants_for_contig(
                 contig=r.contig,
                 inline_array=inline_array,
                 chunks=chunks,

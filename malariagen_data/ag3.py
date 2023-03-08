@@ -641,6 +641,61 @@ class Ag3(AnophelesDataResource):
             contig=contig, field=field, inline_array=inline_array, chunks=chunks
         )
 
+    def _snp_calls_for_contig(self, contig, *, sample_set, inline_array, chunks):
+        """Access SNP calls for a single contig/chromosome and a single sample sets as an xarray dataset."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            ds_r = super()._snp_calls_for_contig(
+                contig=contig_r,
+                sample_set=sample_set,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            ds_l = super()._snp_calls_for_contig(
+                contig=contig_l,
+                sample_set=sample_set,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+            return xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+
+        return super()._snp_calls_for_contig(
+            contig=contig,
+            sample_set=sample_set,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+    def _snp_variants_for_contig(self, contig, *, inline_array, chunks):
+        """Access SNP variants for a single contig/chromosome as an xarray dataset."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            ds_r = super()._snp_variants_for_contig(
+                contig=contig_r,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            ds_l = super()._snp_variants_for_contig(
+                contig=contig_l,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            max_r = super().genome_sequence(region=contig_r).shape[0]
+            ds_l["variant_position"] = ds_l["variant_position"] + max_r
+
+            return xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+
+        return super()._snp_variants_for_contig(
+            contig=contig,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
     def open_cnv_hmm(self, sample_set):
         """Open CNV HMM zarr.
 
