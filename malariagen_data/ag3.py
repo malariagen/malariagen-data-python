@@ -660,7 +660,10 @@ class Ag3(AnophelesDataResource):
                 chunks=chunks,
             )
 
-            return xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+            ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+            ds.attrs["contigs"] = list(ds.attrs["contigs"]) + list(self.virtual_contigs)
+
+            return ds
 
         return super()._snp_calls_for_contig(
             contig=contig,
@@ -688,7 +691,10 @@ class Ag3(AnophelesDataResource):
             max_r = super().genome_sequence(region=contig_r).shape[0]
             ds_l["variant_position"] = ds_l["variant_position"] + max_r
 
-            return xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+            ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+            ds.attrs["contigs"] = list(ds.attrs["contigs"]) + list(self.virtual_contigs)
+
+            return ds
 
         return super()._snp_variants_for_contig(
             contig=contig,
