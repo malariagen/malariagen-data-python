@@ -2,9 +2,10 @@ import json
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections import Counter
+from collections import Counter, namedtuple
 from pathlib import Path
 from textwrap import dedent
+from typing import List, Optional, Union
 
 import allel
 import dask.array as da
@@ -14,8 +15,10 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
+from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
+from typing_extensions import Final
 
 try:
     # noinspection PyPackageRequirements
@@ -61,7 +64,65 @@ AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
 
+# shared parameter documentation and typing
+ParamDef = namedtuple("ParamDef", ["doc", "type"])
+region_param: Final = ParamDef(
+    """
+    Contig name, region string (formatted like "{contig}:{start}-{end}"), or
+    identifier of a genome feature such as a gene or transcript.
+    """,
+    Union[str, Region],
+)
+sample_sets_param: Final = ParamDef(
+    """
+    List of sample sets and/or releases. Can also be a single sample set or
+    release.
+    """,
+    Union[List[str], str],
+)
+sample_query_param: Final = ParamDef(
+    """
+    A pandas query string to be evaluated against the sample metadata.
+    """,
+    str,
+)
+site_mask_param: Final = ParamDef(
+    """
+    Which site filters mask to apply. See the `site_mask_ids` property for
+    available values.
+    """,
+    str,
+)
+site_class_param: Final = ParamDef(
+    """
+    Select sites belonging to one of the following classes: CDS_DEG_4,
+    (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+    degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+    INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+    longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+    5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+    splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+    untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+    a gene).
+    """,
+    str,
+)
+cohort_size_param: Final = ParamDef(
+    """
+    Randomly down-sample to the given cohort size.
+    """,
+    int,
+)
+random_seed_param: Final = ParamDef(
+    """
+    Random seed used for reproducible down-sampling.
+    """,
+    int,
+)
 
+
+# work around pycharm failing to recognise that doc() is callable
+# noinspection PyCallingNonCallable
 class AnophelesDataResource(ABC):
     """Base class for Anopheles data resources."""
 
@@ -433,68 +494,44 @@ class AnophelesDataResource(ABC):
         np.savez_compressed(results_path, **results)
         debug(f"saved {name}/{cache_key}")
 
-    def snp_allele_counts(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        site_class=None,
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Compute SNP allele counts. This returns the number of times each
-        SNP allele was observed in the selected samples.
-
-        Parameters
-        ----------
-        region : str or Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ac : np.ndarray
+    @doc(
+        summary="""
+            Compute SNP allele counts. This returns the number of times each
+            SNP allele was observed in the selected samples.
+        """,
+        parameters=dict(
+            region=region_param.doc,
+            sample_sets=sample_sets_param.doc,
+            sample_query=sample_query_param.doc,
+            site_mask=site_mask_param.doc,
+            site_class=site_class_param.doc,
+            cohort_size=cohort_size_param.doc,
+            random_seed=random_seed_param.doc,
+        ),
+        returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
             alternate allele (1) counts, the third column has the second
             alternate allele (2) counts, and the fourth column has the third
             alternate allele (3) counts.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
-
+        """,
+        notes="""
+            This computation may take some time to run, depending on your
+            computing environment. Results of this computation will be cached
+            and re-used if the `results_cache` parameter was set when
+            instantiating the class.
+        """,
+    )
+    def snp_allele_counts(
+        self,
+        region: region_param.type,
+        sample_sets: Optional[sample_sets_param.type] = None,
+        sample_query: Optional[sample_query_param.type] = None,
+        site_mask: Optional[site_mask_param.type] = None,
+        site_class: Optional[site_class_param.type] = None,
+        cohort_size: Optional[cohort_size_param.type] = None,
+        random_seed: Optional[random_seed_param.type] = 42,
+    ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
         name = self._snp_allele_counts_results_cache_name
