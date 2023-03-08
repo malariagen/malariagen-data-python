@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from collections import Counter, namedtuple
 from pathlib import Path
 from textwrap import dedent
+from types import SimpleNamespace
 from typing import List, Optional, Union
 
 import allel
@@ -18,7 +19,6 @@ import zarr
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
-from typing_extensions import Final
 
 try:
     # noinspection PyPackageRequirements
@@ -66,34 +66,35 @@ AA_CHANGE_QUERY = (
 
 # shared parameter documentation and typing
 ParamDef = namedtuple("ParamDef", ["doc", "type"])
-region_param: Final = ParamDef(
+param_defs = SimpleNamespace()
+param_defs.region = ParamDef(
     """
     Contig name, region string (formatted like "{contig}:{start}-{end}"), or
     identifier of a genome feature such as a gene or transcript.
     """,
     Union[str, Region],
 )
-sample_sets_param: Final = ParamDef(
+param_defs.sample_sets = ParamDef(
     """
     List of sample sets and/or releases. Can also be a single sample set or
     release.
     """,
     Union[List[str], str],
 )
-sample_query_param: Final = ParamDef(
+param_defs.sample_query = ParamDef(
     """
     A pandas query string to be evaluated against the sample metadata.
     """,
     str,
 )
-site_mask_param: Final = ParamDef(
+param_defs.site_mask = ParamDef(
     """
     Which site filters mask to apply. See the `site_mask_ids` property for
     available values.
     """,
     str,
 )
-site_class_param: Final = ParamDef(
+param_defs.site_class = ParamDef(
     """
     Select sites belonging to one of the following classes: CDS_DEG_4,
     (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
@@ -107,13 +108,13 @@ site_class_param: Final = ParamDef(
     """,
     str,
 )
-cohort_size_param: Final = ParamDef(
+param_defs.cohort_size = ParamDef(
     """
     Randomly down-sample to the given cohort size.
     """,
     int,
 )
-random_seed_param: Final = ParamDef(
+param_defs.random_seed = ParamDef(
     """
     Random seed used for reproducible down-sampling.
     """,
@@ -500,13 +501,13 @@ class AnophelesDataResource(ABC):
             SNP allele was observed in the selected samples.
         """,
         parameters=dict(
-            region=region_param.doc,
-            sample_sets=sample_sets_param.doc,
-            sample_query=sample_query_param.doc,
-            site_mask=site_mask_param.doc,
-            site_class=site_class_param.doc,
-            cohort_size=cohort_size_param.doc,
-            random_seed=random_seed_param.doc,
+            region=param_defs.region.doc,
+            sample_sets=param_defs.sample_sets.doc,
+            sample_query=param_defs.sample_query.doc,
+            site_mask=param_defs.site_mask.doc,
+            site_class=param_defs.site_class.doc,
+            cohort_size=param_defs.cohort_size.doc,
+            random_seed=param_defs.random_seed.doc,
         ),
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
@@ -524,13 +525,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_counts(
         self,
-        region: region_param.type,
-        sample_sets: Optional[sample_sets_param.type] = None,
-        sample_query: Optional[sample_query_param.type] = None,
-        site_mask: Optional[site_mask_param.type] = None,
-        site_class: Optional[site_class_param.type] = None,
-        cohort_size: Optional[cohort_size_param.type] = None,
-        random_seed: Optional[random_seed_param.type] = 42,
+        region: param_defs.region.type,
+        sample_sets: Optional[param_defs.sample_sets.type] = None,
+        sample_query: Optional[param_defs.sample_query.type] = None,
+        site_mask: Optional[param_defs.site_mask.type] = None,
+        site_class: Optional[param_defs.site_class.type] = None,
+        cohort_size: Optional[param_defs.cohort_size.type] = None,
+        random_seed: Optional[param_defs.random_seed.type] = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
