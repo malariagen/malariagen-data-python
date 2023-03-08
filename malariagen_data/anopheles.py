@@ -661,7 +661,7 @@ class AnophelesDataResource(ABC):
         variant_query: Optional[Params.variant_query.type] = None,
         site_mask: Optional[Params.site_mask.type] = None,
         nobs_mode: Params.nobs_mode.type = "called",
-        ci_method: Params.ci_method.type = "wilson",
+        ci_method: Optional[Params.ci_method.type] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -4795,68 +4795,47 @@ class AnophelesDataResource(ABC):
 
         return df_aaf
 
-    def aa_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        amino acid change allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples spatially.
-            E.g., use "admin1_iso" or "admin1_name" to group by level 1
-            administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        variant_query : str, optional
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
+    @doc(
+        summary="""
+            Group samples by taxon, area (space) and period (time), then compute
+            amino acid change allele frequencies.
+        """,
+        parameters=dict(
+            transcript=Params.transcript.doc,
+            area_by=Params.area_by.doc,
+            period_by=Params.period_by.doc,
+            sample_sets=Params.sample_sets.doc,
+            sample_query=Params.sample_query.doc,
+            min_cohort_size=Params.min_cohort_size.doc,
+            variant_query=Params.variant_query.doc,
+            site_mask=Params.site_mask.doc,
+            nobs_mode=Params.nobs_mode.doc,
+            ci_method=Params.ci_method.doc,
+        ),
+        returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
             arrays with data about the cohorts, such as the area, period, taxon
-            and cohort size. Variables prefixed with "variant" are 1-dimensional
-            arrays with data about the variants, such as the contig, position,
-            reference and alternate alleles. Variables prefixed with "event" are
-            2-dimensional arrays with the allele counts and frequency
-            calculations.
-
-        """
+            and cohort size. Variables prefixed with "variant" are
+            1-dimensional arrays with data about the variants, such as the
+            contig, position, reference and alternate alleles. Variables
+            prefixed with "event" are 2-dimensional arrays with the allele
+            counts and frequency calculations.
+        """,
+    )
+    def aa_allele_frequencies_advanced(
+        self,
+        transcript: Params.transcript.type,
+        area_by: Params.area_by.type,
+        period_by: Params.period_by.type,
+        sample_sets: Optional[Params.sample_sets.type] = None,
+        sample_query: Optional[Params.sample_query.type] = None,
+        min_cohort_size: Params.min_cohort_size.type = 10,
+        variant_query: Optional[Params.variant_query.type] = None,
+        site_mask: Optional[Params.site_mask.type] = None,
+        nobs_mode: Params.nobs_mode.type = "called",
+        ci_method: Optional[Params.ci_method.type] = "wilson",
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("begin by computing SNP allele frequencies")
