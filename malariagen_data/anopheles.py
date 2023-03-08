@@ -19,6 +19,7 @@ import zarr
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
+from typing_extensions import Literal
 
 try:
     # noinspection PyPackageRequirements
@@ -66,35 +67,35 @@ AA_CHANGE_QUERY = (
 
 # shared parameter documentation and typing
 ParamDef = namedtuple("ParamDef", ["doc", "type"])
-param_defs = SimpleNamespace()
-param_defs.region = ParamDef(
+Params = SimpleNamespace()
+Params.region = ParamDef(
     """
     Contig name, region string (formatted like "{contig}:{start}-{end}"), or
     identifier of a genome feature such as a gene or transcript.
     """,
     Union[str, Region],
 )
-param_defs.sample_sets = ParamDef(
+Params.sample_sets = ParamDef(
     """
     List of sample sets and/or releases. Can also be a single sample set or
     release.
     """,
     Union[List[str], str],
 )
-param_defs.sample_query = ParamDef(
+Params.sample_query = ParamDef(
     """
     A pandas query string to be evaluated against the sample metadata.
     """,
     str,
 )
-param_defs.site_mask = ParamDef(
+Params.site_mask = ParamDef(
     """
     Which site filters mask to apply. See the `site_mask_ids` property for
     available values.
     """,
     str,
 )
-param_defs.site_class = ParamDef(
+Params.site_class = ParamDef(
     """
     Select sites belonging to one of the following classes: CDS_DEG_4,
     (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
@@ -108,17 +109,73 @@ param_defs.site_class = ParamDef(
     """,
     str,
 )
-param_defs.cohort_size = ParamDef(
+Params.cohort_size = ParamDef(
     """
     Randomly down-sample to the given cohort size.
     """,
     int,
 )
-param_defs.random_seed = ParamDef(
+Params.random_seed = ParamDef(
     """
     Random seed used for reproducible down-sampling.
     """,
     int,
+)
+Params.transcript = ParamDef(
+    """
+    Gene transcript identifier.
+    """,
+    str,
+)
+Params.area_by = ParamDef(
+    """
+    Column name in the sample metadata to use to group samples spatially. E.g.,
+    use "admin1_iso" or "admin1_name" to group by level 1 administrative
+    divisions, or use "admin2_name" to group by level 2 administrative
+    divisions.
+    """,
+    str,
+)
+Params.period_by = ParamDef(
+    """
+    Length of time to group samples temporally.
+    """,
+    Literal["year", "quarter", "month"],
+)
+Params.min_cohort_size = ParamDef(
+    """
+    Any cohorts below this size are omitted.
+    """,
+    int,
+)
+Params.drop_invariant = ParamDef(
+    """
+    If True, variants with no alternate allele calls in any cohorts are
+    dropped from the result.
+    """,
+    bool,
+)
+Params.variant_query = ParamDef(
+    """
+    A pandas query string to be evaluated against variants.
+    """,
+    str,
+)
+Params.nobs_mode = ParamDef(
+    """
+    Method for calculating the denominator when computing frequencies. If
+    "called" then use the number of called alleles, i.e., number of samples
+    with non-missing genotype calls multiplied by 2. If "fixed" then use the
+    number of samples multiplied by 2.
+    """,
+    Literal["called", "fixed"],
+)
+Params.ci_method = ParamDef(
+    """
+    Method to use for computing confidence intervals, passed through to
+    `statsmodels.stats.proportion.proportion_confint`.
+    """,
+    Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"],
 )
 
 
@@ -501,13 +558,13 @@ class AnophelesDataResource(ABC):
             SNP allele was observed in the selected samples.
         """,
         parameters=dict(
-            region=param_defs.region.doc,
-            sample_sets=param_defs.sample_sets.doc,
-            sample_query=param_defs.sample_query.doc,
-            site_mask=param_defs.site_mask.doc,
-            site_class=param_defs.site_class.doc,
-            cohort_size=param_defs.cohort_size.doc,
-            random_seed=param_defs.random_seed.doc,
+            region=Params.region.doc,
+            sample_sets=Params.sample_sets.doc,
+            sample_query=Params.sample_query.doc,
+            site_mask=Params.site_mask.doc,
+            site_class=Params.site_class.doc,
+            cohort_size=Params.cohort_size.doc,
+            random_seed=Params.random_seed.doc,
         ),
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
@@ -525,13 +582,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_counts(
         self,
-        region: param_defs.region.type,
-        sample_sets: Optional[param_defs.sample_sets.type] = None,
-        sample_query: Optional[param_defs.sample_query.type] = None,
-        site_mask: Optional[param_defs.site_mask.type] = None,
-        site_class: Optional[param_defs.site_class.type] = None,
-        cohort_size: Optional[param_defs.cohort_size.type] = None,
-        random_seed: Optional[param_defs.random_seed.type] = 42,
+        region: Params.region.type,
+        sample_sets: Optional[Params.sample_sets.type] = None,
+        sample_query: Optional[Params.sample_query.type] = None,
+        site_mask: Optional[Params.site_mask.type] = None,
+        site_class: Optional[Params.site_class.type] = None,
+        cohort_size: Optional[Params.cohort_size.type] = None,
+        random_seed: Optional[Params.random_seed.type] = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
@@ -563,62 +620,25 @@ class AnophelesDataResource(ABC):
         ac = results["ac"]
         return ac
 
-    def snp_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        drop_invariant=True,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        SNP allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples
-            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level
-            1 administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        variant_query : str, optional
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
+    @doc(
+        summary="""
+            Group samples by taxon, area (space) and period (time), then compute
+            SNP allele frequencies.
+        """,
+        parameters=dict(
+            transcript=Params.transcript.doc,
+            area_by=Params.area_by.doc,
+            period_by=Params.period_by.doc,
+            sample_sets=Params.sample_sets.doc,
+            sample_query=Params.sample_query.doc,
+            min_cohort_size=Params.min_cohort_size.doc,
+            drop_invariant=Params.drop_invariant.doc,
+            variant_query=Params.variant_query.doc,
+            site_mask=Params.site_mask.doc,
+            nobs_mode=Params.nobs_mode.doc,
+            ci_method=Params.ci_method.doc,
+        ),
+        returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
             arrays with data about the cohorts, such as the area, period, taxon
@@ -627,8 +647,22 @@ class AnophelesDataResource(ABC):
             contig, position, reference and alternate alleles. Variables
             prefixed with "event" are 2-dimensional arrays with the allele
             counts and frequency calculations.
-
-        """
+        """,
+    )
+    def snp_allele_frequencies_advanced(
+        self,
+        transcript: Params.transcript.type,
+        area_by: Params.area_by.type,
+        period_by: Params.period_by.type,
+        sample_sets: Optional[Params.sample_sets.type] = None,
+        sample_query: Optional[Params.sample_query.type] = None,
+        min_cohort_size: Params.min_cohort_size.type = 10,
+        drop_invariant: Params.drop_invariant.type = True,
+        variant_query: Optional[Params.variant_query.type] = None,
+        site_mask: Optional[Params.site_mask.type] = None,
+        nobs_mode: Params.nobs_mode.type = "called",
+        ci_method: Params.ci_method.type = "wilson",
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("check parameters")
