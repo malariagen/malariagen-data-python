@@ -586,6 +586,62 @@ class Ag3(AnophelesDataResource):
 
         return super()._genome_features_for_contig(contig=contig, attributes=attributes)
 
+    def _snp_genotypes_for_contig(
+        self, *, contig, sample_set, field, inline_array, chunks
+    ):
+        """Access SNP genotypes for a single contig/chromosome and multiple sample sets."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            d_r = super()._snp_genotypes_for_contig(
+                contig=contig_r,
+                sample_set=sample_set,
+                field=field,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            d_l = super()._snp_genotypes_for_contig(
+                contig=contig_l,
+                sample_set=sample_set,
+                field=field,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            return da.concatenate([d_r, d_l])
+
+        return super()._snp_genotypes_for_contig(
+            contig=contig,
+            sample_set=sample_set,
+            field=field,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+    def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
+        """Access SNP sites for a single contig/chromosome."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            field_r = super()._snp_sites_for_contig(
+                contig=contig_r, field=field, inline_array=inline_array, chunks=chunks
+            )
+            field_l = super()._snp_sites_for_contig(
+                contig=contig_l, field=field, inline_array=inline_array, chunks=chunks
+            )
+
+            # TODO check what other fields are?
+            if field == "POS":
+                max_r = super().genome_sequence(region=contig_r).shape[0]
+                field_l = field_l + max_r
+
+            return da.concatenate([field_r, field_l])
+
+        return super()._snp_sites_for_contig(
+            contig=contig, field=field, inline_array=inline_array, chunks=chunks
+        )
+
     def open_cnv_hmm(self, sample_set):
         """Open CNV HMM zarr.
 

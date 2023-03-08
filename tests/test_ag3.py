@@ -358,6 +358,40 @@ def test_snp_sites(chunks, region):
         assert d.shape == d.compute().shape
 
 
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_sites_for_contig(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    sites_r = ag3.snp_sites(region=contig_r, field="POS")
+    sites_l = ag3.snp_sites(region=contig_l, field="POS")
+    max_r = ag3.genome_sequence(region=contig_r).shape[0]
+    sites = da.concatenate([sites_r, sites_l + max_r])
+
+    sites_joined = ag3.snp_sites(region=chrom, field="POS")
+
+    assert isinstance(sites_joined, da.Array)
+    assert sites_joined.ndim == 1
+    assert sites_joined.dtype == "int32"
+    assert np.all(sites == sites_joined)
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+@pytest.mark.parametrize("field", ["POS", "REF", "ALT"])
+def test_snp_sites_for_contig_region(region, field):
+    ag3 = setup_ag3()
+    sites = ag3.snp_sites(region=region, field=field)
+
+    assert isinstance(sites, da.Array)
+    assert sites.ndim == 1
+    if field == "POS":
+        assert sites.dtype == "int32"
+    elif field in ["REF", "ALT"]:
+        assert sites.dtype == "S1"
+
+
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
@@ -440,6 +474,37 @@ def test_snp_genotypes_chunks(sample_sets, region):
     assert gt_manual.chunks[0][0] == 100_000
     assert gt_manual.chunks[1][0] == 10
     assert gt_manual.chunks[2][0] == 2
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_genotypes_for_contig(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    d_r = ag3.snp_genotypes(region=contig_r)
+    d_l = ag3.snp_genotypes(region=contig_l)
+    d = da.concatenate([d_r, d_l])
+
+    gt = ag3.snp_genotypes(region=chrom)
+
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert gt.shape == d.shape
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_snp_genotypes_for_contig_region(region):
+    ag3 = setup_ag3()
+    gt = ag3.snp_genotypes(region=region)
+    sites = ag3.snp_sites(region=region, field="POS")
+
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert sites.shape[0] == gt.shape[0]
 
 
 @pytest.mark.parametrize(
