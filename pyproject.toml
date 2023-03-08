@@ -58,6 +58,8 @@ dash = "*"
 dash-cytoscape = "*"
 jupyter-dash = "*"
 numpydoc_decorator = "*"
+# needed for PY37
+typing_extensions = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
