@@ -727,6 +727,37 @@ def test_snp_calls_for_joined_arms_region(region):
     assert sites.shape[0] == ds_snps["call_genotype"].shape[0]
 
 
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_variants_for_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    ds_r = ag3.snp_variants(region=contig_r)
+    ds_l = ag3.snp_variants(region=contig_l)
+    ds_expected = xr.concat([ds_r, ds_l], dim="variants")
+
+    ds_actual = ag3.snp_variants(region=chrom)
+
+    assert isinstance(ds_actual, xr.Dataset)
+    assert len(ds_actual.dims) == 2
+    assert ds_actual["variant_position"].dtype == "int32"
+    assert ds_actual["variant_position"].shape == ds_expected["variant_position"].shape
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_snp_variants_for_joined_arms_region(region):
+    ag3 = setup_ag3()
+    ds_vars = ag3.snp_variants(region=region)
+    sites = ag3.snp_sites(region=region, field="POS")
+
+    assert isinstance(ds_vars, xr.Dataset)
+    assert len(ds_vars.dims) == 2
+    assert ds_vars["variant_position"].dtype == "int32"
+    assert sites.shape[0] == ds_vars["variant_position"].shape[0]
+
+
 def test_snp_effects():
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
