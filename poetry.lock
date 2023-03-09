@@ -2651,14 +2651,14 @@ files = [
 
 [[package]]
 name = "numpydoc-decorator"
-version = "1.2.1"
+version = "1.3.0"
 description = ""
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.11"
 files = [
-    {file = "numpydoc_decorator-1.2.1-py3-none-any.whl", hash = "sha256:90e769401934e9402fb95acf880652b370a39567e5989b0280315ab0f40cb51e"},
-    {file = "numpydoc_decorator-1.2.1.tar.gz", hash = "sha256:defa5ab36c0baee5e650c66eb9d601f97c8ae3c1ea2dd18efc426cf95b77b73f"},
+    {file = "numpydoc_decorator-1.3.0-py3-none-any.whl", hash = "sha256:c4efea7f5fe39b42a5284962c2918c464456423b55cb5f0b2dc71ef9701ace2d"},
+    {file = "numpydoc_decorator-1.3.0.tar.gz", hash = "sha256:5c5d956d99d29ec865aa4324f3e2fcd3fbca6f41dc29485285c6bc45edd4c45b"},
 ]
 
 [package.dependencies]
