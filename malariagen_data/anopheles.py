@@ -2,7 +2,7 @@ import json
 import sys
 import warnings
 from abc import ABC, abstractmethod
-from collections import Counter, namedtuple
+from collections import Counter
 from pathlib import Path
 from textwrap import dedent
 from types import SimpleNamespace
@@ -65,141 +65,112 @@ AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
 
-# shared parameter documentation and typing
-ParamDef = namedtuple("ParamDef", ["doc", "type"])
-Params = SimpleNamespace()
-Params.region = ParamDef(
-    """
-    Contig name, region string (formatted like "{contig}:{start}-{end}"), or
-    identifier of a genome feature such as a gene or transcript.
+# shared parameter documentation
+parameters = dict(
+    region="""
+        Contig name, region string (formatted like "{contig}:{start}-{end}"), or
+        identifier of a genome feature such as a gene or transcript.
     """,
-    Union[str, Region],
-)
-Params.sample_sets = ParamDef(
-    """
-    List of sample sets and/or releases. Can also be a single sample set or
-    release.
+    release="""
+        Release version identifier.
     """,
-    Union[List[str], str],
-)
-Params.sample_query = ParamDef(
-    """
-    A pandas query string to be evaluated against the sample metadata.
+    sample_sets="""
+        List of sample sets and/or releases. Can also be a single sample set or
+        release.
     """,
-    str,
-)
-Params.site_mask = ParamDef(
-    """
-    Which site filters mask to apply. See the `site_mask_ids` property for
-    available values.
+    sample_query="""
+        A pandas query string to be evaluated against the sample metadata.
     """,
-    str,
-)
-Params.site_class = ParamDef(
-    """
-    Select sites belonging to one of the following classes: CDS_DEG_4,
-    (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-    degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-    INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-    longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-    5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-    splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-    untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-    a gene).
+    site_mask="""
+        Which site filters mask to apply. See the `site_mask_ids` property for
+        available values.
     """,
-    str,
-)
-Params.cohort_size = ParamDef(
-    """
-    Randomly down-sample to the given cohort size.
+    site_class="""
+        Select sites belonging to one of the following classes: CDS_DEG_4,
+        (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+        degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+        INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+        longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+        5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+        splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+        untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+        a gene).
     """,
-    int,
-)
-Params.random_seed = ParamDef(
-    """
-    Random seed used for reproducible down-sampling.
+    cohort_size="""
+        Randomly down-sample to the given cohort size.
     """,
-    int,
-)
-Params.transcript = ParamDef(
-    """
-    Gene transcript identifier.
+    random_seed="""
+        Random seed used for reproducible down-sampling.
     """,
-    str,
-)
-Params.area_by = ParamDef(
-    """
-    Column name in the sample metadata to use to group samples spatially. E.g.,
-    use "admin1_iso" or "admin1_name" to group by level 1 administrative
-    divisions, or use "admin2_name" to group by level 2 administrative
-    divisions.
+    transcript="""
+        Gene transcript identifier.
     """,
-    str,
-)
-Params.period_by = ParamDef(
-    """
-    Length of time to group samples temporally.
+    area_by="""
+        Column name in the sample metadata to use to group samples spatially. E.g.,
+        use "admin1_iso" or "admin1_name" to group by level 1 administrative
+        divisions, or use "admin2_name" to group by level 2 administrative
+        divisions.
     """,
-    Literal["year", "quarter", "month"],
-)
-Params.min_cohort_size = ParamDef(
-    """
-    Any cohorts below this size are omitted.
+    period_by="""
+        Length of time to group samples temporally.
     """,
-    int,
-)
-Params.drop_invariant = ParamDef(
-    """
-    If True, variants with no alternate allele calls in any cohorts are
-    dropped from the result.
+    min_cohort_size="""
+        Any cohorts below this size are omitted.
     """,
-    bool,
-)
-Params.variant_query = ParamDef(
-    """
-    A pandas query string to be evaluated against variants.
+    drop_invariant="""
+        If True, variants with no alternate allele calls in any cohorts are
+        dropped from the result.
     """,
-    str,
-)
-Params.nobs_mode = ParamDef(
-    """
-    Method for calculating the denominator when computing frequencies. If
-    "called" then use the number of called alleles, i.e., number of samples
-    with non-missing genotype calls multiplied by 2. If "fixed" then use the
-    number of samples multiplied by 2.
+    variant_query="""
+        A pandas query string to be evaluated against variants.
     """,
-    Literal["called", "fixed"],
-)
-Params.ci_method = ParamDef(
-    """
-    Method to use for computing confidence intervals, passed through to
-    `statsmodels.stats.proportion.proportion_confint`.
+    nobs_mode="""
+        Method for calculating the denominator when computing frequencies. If
+        "called" then use the number of called alleles, i.e., number of samples
+        with non-missing genotype calls multiplied by 2. If "fixed" then use the
+        number of samples multiplied by 2.
     """,
-    Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"],
-)
-Params.cohort = ParamDef(
-    """
-    Either a string giving one of the predefined cohort labels, or a
-    pair of strings giving a custom cohort label and a sample query to
-    select samples in the cohort.
+    ci_method="""
+        Method to use for computing confidence intervals, passed through to
+        `statsmodels.stats.proportion.proportion_confint`.
     """,
-    Union[str, Tuple[str, str]],
-)
-Params.n_jack = ParamDef(
-    """
-    Number of blocks to divide the data into for the block jackknife
-    estimation of confidence intervals. N.B., larger is not necessarily
-    better.
+    cohort="""
+        Either a string giving one of the predefined cohort labels, or a
+        pair of strings giving a custom cohort label and a sample query to
+        select samples in the cohort.
     """,
-    int,
-)
-Params.confidence_level = ParamDef(
-    """
-    Confidence level to use for confidence interval calculation. E.g., 0.95
-    means 95% confidence interval.
+    n_jack="""
+        Number of blocks to divide the data into for the block jackknife
+        estimation of confidence intervals. N.B., larger is not necessarily
+        better.
     """,
-    float,
+    confidence_level="""
+        Confidence level to use for confidence interval calculation. E.g., 0.95
+        means 95% confidence interval.
+    """,
 )
+
+# shared parameter types
+types = SimpleNamespace()
+types.region = Union[str, Region]
+types.release = str
+types.sample_sets = Union[List[str], str]
+types.sample_query = str
+types.site_mask = str
+types.site_class = str
+types.cohort_size = int
+types.random_seed = int
+types.transcript = str
+types.area_by = str
+types.period_by = Literal["year", "quarter", "month"]
+types.min_cohort_size = int
+types.drop_invariant = bool
+types.variant_query = str
+types.nobs_mode = Literal["called", "fixed"]
+types.ci_method = Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"]
+types.cohort = Union[str, Tuple[str, str]]
+types.n_jack = int
+types.confidence_level = float
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -580,15 +551,7 @@ class AnophelesDataResource(ABC):
             Compute SNP allele counts. This returns the number of times each
             SNP allele was observed in the selected samples.
         """,
-        parameters=dict(
-            region=Params.region.doc,
-            sample_sets=Params.sample_sets.doc,
-            sample_query=Params.sample_query.doc,
-            site_mask=Params.site_mask.doc,
-            site_class=Params.site_class.doc,
-            cohort_size=Params.cohort_size.doc,
-            random_seed=Params.random_seed.doc,
-        ),
+        parameters=parameters,
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
@@ -605,13 +568,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_counts(
         self,
-        region: Params.region.type,
-        sample_sets: Optional[Params.sample_sets.type] = None,
-        sample_query: Optional[Params.sample_query.type] = None,
-        site_mask: Optional[Params.site_mask.type] = None,
-        site_class: Optional[Params.site_class.type] = None,
-        cohort_size: Optional[Params.cohort_size.type] = None,
-        random_seed: Optional[Params.random_seed.type] = 42,
+        region: types.region,
+        sample_sets: Optional[types.sample_sets] = None,
+        sample_query: Optional[types.sample_query] = None,
+        site_mask: Optional[types.site_mask] = None,
+        site_class: Optional[types.site_class] = None,
+        cohort_size: Optional[types.cohort_size] = None,
+        random_seed: Optional[types.random_seed] = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
@@ -648,19 +611,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             SNP allele frequencies.
         """,
-        parameters=dict(
-            transcript=Params.transcript.doc,
-            area_by=Params.area_by.doc,
-            period_by=Params.period_by.doc,
-            sample_sets=Params.sample_sets.doc,
-            sample_query=Params.sample_query.doc,
-            min_cohort_size=Params.min_cohort_size.doc,
-            drop_invariant=Params.drop_invariant.doc,
-            variant_query=Params.variant_query.doc,
-            site_mask=Params.site_mask.doc,
-            nobs_mode=Params.nobs_mode.doc,
-            ci_method=Params.ci_method.doc,
-        ),
+        parameters=parameters,
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -674,17 +625,17 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_frequencies_advanced(
         self,
-        transcript: Params.transcript.type,
-        area_by: Params.area_by.type,
-        period_by: Params.period_by.type,
-        sample_sets: Optional[Params.sample_sets.type] = None,
-        sample_query: Optional[Params.sample_query.type] = None,
-        min_cohort_size: Params.min_cohort_size.type = 10,
-        drop_invariant: Params.drop_invariant.type = True,
-        variant_query: Optional[Params.variant_query.type] = None,
-        site_mask: Optional[Params.site_mask.type] = None,
-        nobs_mode: Params.nobs_mode.type = "called",
-        ci_method: Optional[Params.ci_method.type] = "wilson",
+        transcript: types.transcript,
+        area_by: types.area_by,
+        period_by: types.period_by,
+        sample_sets: Optional[types.sample_sets] = None,
+        sample_query: Optional[types.sample_query] = None,
+        min_cohort_size: types.min_cohort_size = 10,
+        drop_invariant: types.drop_invariant = True,
+        variant_query: Optional[types.variant_query] = None,
+        site_mask: Optional[types.site_mask] = None,
+        nobs_mode: types.nobs_mode = "called",
+        ci_method: Optional[types.ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -1236,21 +1187,12 @@ class AnophelesDataResource(ABC):
         df["release"] = release
         return df
 
-    def sample_sets(self, release=None):
-        """Access a dataframe of sample sets.
-
-        Parameters
-        ----------
-        release : str, optional
-            Release identifier, e.g. give "3.0" to access the v3.0 data release.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of sample sets, one row per sample set.
-
-        """
-
+    @doc(
+        summary="Access a dataframe of sample sets",
+        parameters=parameters,
+        returns="A dataframe of sample sets, one row per sample set.",
+    )
+    def sample_sets(self, release: Optional[types.release] = None) -> pd.DataFrame:
         if release is None:
             # retrieve sample sets from all available releases
             release = self.releases
@@ -1395,30 +1337,16 @@ class AnophelesDataResource(ABC):
             self._cache_general_metadata[sample_set] = df
         return df.copy()
 
+    @doc(
+        summary="Access sample metadata for one or more sample sets.",
+        parameters=parameters,
+        returns="A dataframe of sample metadata, one row per sample.",
+    )
     def sample_metadata(
         self,
-        sample_sets=None,
-        sample_query=None,
+        sample_sets: Optional[types.sample_sets] = None,
+        sample_query: Optional[types.sample_query] = None,
     ):
-        """Access sample metadata for one or more sample sets.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-
-        Returns
-        -------
-        df_samples : pandas.DataFrame
-            A dataframe of sample metadata, one row per sample.
-
-        """
-
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
 
@@ -1454,25 +1382,26 @@ class AnophelesDataResource(ABC):
 
         return df_samples.copy()
 
-    def add_extra_metadata(self, data, on="sample_id"):
-        """Add extra sample metadata, e.g., including additional columns
-        which you would like to use to query and group samples.
-
-        Parameters
-        ----------
-        data : DataFrame
-            A data frame with one row per sample. Must include either a
-            "sample_id" or "partner_sample_id" column.
-        on : {"sample_id", "partner_sample_id"}
-            Name of column to use when merging with sample metadata.
-
-        Notes
-        -----
-        The values in the column containing sample identifiers must be
-        unique.
-
-        """
-
+    @doc(
+        summary="""
+            Add extra sample metadata, e.g., including additional columns
+            which you would like to use to query and group samples.
+        """,
+        parameters=dict(
+            data="""
+                A data frame with one row per sample. Must include either a
+                "sample_id" or "partner_sample_id" column.
+            """,
+            on="""
+                Name of column to use when merging with sample metadata.
+            """,
+        ),
+        notes="""
+            The values in the column containing sample identifiers must be
+            unique.
+        """,
+    )
+    def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
         # check parameters
         if not isinstance(data, pd.DataFrame):
             raise TypeError("`data` parameter must be a pandas DataFrame")
@@ -4823,18 +4752,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             amino acid change allele frequencies.
         """,
-        parameters=dict(
-            transcript=Params.transcript.doc,
-            area_by=Params.area_by.doc,
-            period_by=Params.period_by.doc,
-            sample_sets=Params.sample_sets.doc,
-            sample_query=Params.sample_query.doc,
-            min_cohort_size=Params.min_cohort_size.doc,
-            variant_query=Params.variant_query.doc,
-            site_mask=Params.site_mask.doc,
-            nobs_mode=Params.nobs_mode.doc,
-            ci_method=Params.ci_method.doc,
-        ),
+        parameters=parameters,
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -4848,16 +4766,16 @@ class AnophelesDataResource(ABC):
     )
     def aa_allele_frequencies_advanced(
         self,
-        transcript: Params.transcript.type,
-        area_by: Params.area_by.type,
-        period_by: Params.period_by.type,
-        sample_sets: Optional[Params.sample_sets.type] = None,
-        sample_query: Optional[Params.sample_query.type] = None,
-        min_cohort_size: Params.min_cohort_size.type = 10,
-        variant_query: Optional[Params.variant_query.type] = None,
-        site_mask: Optional[Params.site_mask.type] = None,
-        nobs_mode: Params.nobs_mode.type = "called",
-        ci_method: Optional[Params.ci_method.type] = "wilson",
+        transcript: types.transcript,
+        area_by: types.area_by,
+        period_by: types.period_by,
+        sample_sets: Optional[types.sample_sets] = None,
+        sample_query: Optional[types.sample_query] = None,
+        min_cohort_size: types.min_cohort_size = 10,
+        variant_query: Optional[types.variant_query] = None,
+        site_mask: Optional[types.site_mask] = None,
+        nobs_mode: types.nobs_mode = "called",
+        ci_method: Optional[types.ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -5097,17 +5015,7 @@ class AnophelesDataResource(ABC):
             Compute genetic diversity summary statistics for a cohort of
             individuals.
         """,
-        parameters=dict(
-            cohort=Params.cohort.doc,
-            cohort_size=Params.cohort_size.doc,
-            region=Params.region.doc,
-            site_mask=Params.site_mask.doc,
-            site_class=Params.site_class.doc,
-            sample_sets=Params.sample_sets.doc,
-            random_seed=Params.random_seed.doc,
-            n_jack=Params.n_jack.doc,
-            confidence_level=Params.confidence_level.doc,
-        ),
+        parameters=parameters,
         returns="""
             A pandas series with summary statistics and their confidence
             intervals.
@@ -5115,15 +5023,15 @@ class AnophelesDataResource(ABC):
     )
     def cohort_diversity_stats(
         self,
-        cohort: Params.cohort.type,
-        cohort_size: Params.cohort_size.type,
-        region: Params.region.type,
-        site_mask: Optional[Params.site_mask.type] = DEFAULT,
-        site_class: Optional[Params.site_class.type] = None,
-        sample_sets: Optional[Params.sample_sets.type] = None,
-        random_seed: Params.random_seed.type = 42,
-        n_jack: Params.n_jack.type = 200,
-        confidence_level: Params.confidence_level.type = 0.95,
+        cohort: types.cohort,
+        cohort_size: types.cohort_size,
+        region: types.region,
+        site_mask: Optional[types.site_mask] = DEFAULT,
+        site_class: Optional[types.site_class] = None,
+        sample_sets: Optional[types.sample_sets] = None,
+        random_seed: types.random_seed = 42,
+        n_jack: types.n_jack = 200,
+        confidence_level: types.confidence_level = 0.95,
     ) -> pd.Series:
         debug = self._log.debug
 
