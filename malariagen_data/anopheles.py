@@ -5,8 +5,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from pathlib import Path
 from textwrap import dedent
-from types import SimpleNamespace
-from typing import List, Optional, Tuple, Union
+from typing import List, Optional, Sequence, Tuple, Union
 
 import allel
 import dask.array as da
@@ -19,7 +18,7 @@ import zarr
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
-from typing_extensions import Literal
+from typing_extensions import Literal, TypeAlias
 
 try:
     # noinspection PyPackageRequirements
@@ -151,26 +150,27 @@ parameters = dict(
 )
 
 # shared parameter types
-types = SimpleNamespace()
-types.region = Union[str, Region]
-types.release = str
-types.sample_sets = Union[List[str], str]
-types.sample_query = str
-types.site_mask = str
-types.site_class = str
-types.cohort_size = int
-types.random_seed = int
-types.transcript = str
-types.area_by = str
-types.period_by = Literal["year", "quarter", "month"]
-types.min_cohort_size = int
-types.drop_invariant = bool
-types.variant_query = str
-types.nobs_mode = Literal["called", "fixed"]
-types.ci_method = Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"]
-types.cohort = Union[str, Tuple[str, str]]
-types.n_jack = int
-types.confidence_level = float
+type_region: TypeAlias = Union[str, Region]
+type_release: TypeAlias = Union[str, Sequence[str]]
+type_sample_sets: TypeAlias = Union[Sequence[str], str]
+type_sample_query: TypeAlias = str
+type_site_mask: TypeAlias = str
+type_site_class: TypeAlias = str
+type_cohort_size: TypeAlias = int
+type_random_seed: TypeAlias = int
+type_transcript: TypeAlias = str
+type_area_by: TypeAlias = str
+type_period_by: TypeAlias = Literal["year", "quarter", "month"]
+type_min_cohort_size: TypeAlias = int
+type_drop_invariant: TypeAlias = bool
+type_variant_query: TypeAlias = str
+type_nobs_mode: TypeAlias = Literal["called", "fixed"]
+type_ci_method: TypeAlias = Literal[
+    "normal", "agresti_coull", "beta", "wilson", "binom_test"
+]
+type_cohort: TypeAlias = Union[str, Tuple[str, str]]
+type_n_jack: TypeAlias = int
+type_confidence_level: TypeAlias = float
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -568,13 +568,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_counts(
         self,
-        region: types.region,
-        sample_sets: Optional[types.sample_sets] = None,
-        sample_query: Optional[types.sample_query] = None,
-        site_mask: Optional[types.site_mask] = None,
-        site_class: Optional[types.site_class] = None,
-        cohort_size: Optional[types.cohort_size] = None,
-        random_seed: Optional[types.random_seed] = 42,
+        region: type_region,
+        sample_sets: Optional[type_sample_sets] = None,
+        sample_query: Optional[type_sample_query] = None,
+        site_mask: Optional[type_site_mask] = None,
+        site_class: Optional[type_site_class] = None,
+        cohort_size: Optional[type_cohort_size] = None,
+        random_seed: Optional[type_random_seed] = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
@@ -625,17 +625,17 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_frequencies_advanced(
         self,
-        transcript: types.transcript,
-        area_by: types.area_by,
-        period_by: types.period_by,
-        sample_sets: Optional[types.sample_sets] = None,
-        sample_query: Optional[types.sample_query] = None,
-        min_cohort_size: types.min_cohort_size = 10,
-        drop_invariant: types.drop_invariant = True,
-        variant_query: Optional[types.variant_query] = None,
-        site_mask: Optional[types.site_mask] = None,
-        nobs_mode: types.nobs_mode = "called",
-        ci_method: Optional[types.ci_method] = "wilson",
+        transcript: type_transcript,
+        area_by: type_area_by,
+        period_by: type_period_by,
+        sample_sets: Optional[type_sample_sets] = None,
+        sample_query: Optional[type_sample_query] = None,
+        min_cohort_size: type_min_cohort_size = 10,
+        drop_invariant: type_drop_invariant = True,
+        variant_query: Optional[type_variant_query] = None,
+        site_mask: Optional[type_site_mask] = None,
+        nobs_mode: type_nobs_mode = "called",
+        ci_method: Optional[type_ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -1192,7 +1192,7 @@ class AnophelesDataResource(ABC):
         parameters=parameters,
         returns="A dataframe of sample sets, one row per sample set.",
     )
-    def sample_sets(self, release: Optional[types.release] = None) -> pd.DataFrame:
+    def sample_sets(self, release: Optional[type_release] = None) -> pd.DataFrame:
         if release is None:
             # retrieve sample sets from all available releases
             release = self.releases
@@ -1229,25 +1229,27 @@ class AnophelesDataResource(ABC):
 
         return df.copy()
 
-    def _prep_sample_sets_param(self, *, sample_sets):
+    def _prep_sample_sets_param(
+        self, *, sample_sets: Optional[type_sample_sets]
+    ) -> List[str]:
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
 
         if sample_sets is None:
             # all available sample sets
-            sample_sets = self.sample_sets()["sample_set"].tolist()
+            prepped_sample_sets = self.sample_sets()["sample_set"].tolist()
 
         elif isinstance(sample_sets, str):
             if sample_sets.startswith(f"{self._major_version_int}."):
                 # convenience, can use a release identifier to denote all sample sets in a release
-                sample_sets = self.sample_sets(release=sample_sets)[
+                prepped_sample_sets = self.sample_sets(release=sample_sets)[
                     "sample_set"
                 ].tolist()
 
             else:
                 # single sample set, normalise to always return a list
-                sample_sets = [sample_sets]
+                prepped_sample_sets = [sample_sets]
 
         elif isinstance(sample_sets, (list, tuple)):
             # list or tuple of sample sets or releases
@@ -1261,7 +1263,6 @@ class AnophelesDataResource(ABC):
                     prepped_sample_sets.append(sp)
                 else:
                     prepped_sample_sets.extend(sp)
-            sample_sets = prepped_sample_sets
 
         else:
             raise TypeError(
@@ -1269,14 +1270,15 @@ class AnophelesDataResource(ABC):
             )
 
         # check all sample sets selected at most once
-        counter = Counter(sample_sets)
+        counter = Counter(prepped_sample_sets)
         for k, v in counter.items():
+            # TODO could relax here, just remove any duplicates for the user
             if v > 1:
                 raise ValueError(
                     f"Bad value for sample_sets parameter, {k:!r} selected more than once."
                 )
 
-        return sample_sets
+        return prepped_sample_sets
 
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
@@ -1344,9 +1346,9 @@ class AnophelesDataResource(ABC):
     )
     def sample_metadata(
         self,
-        sample_sets: Optional[types.sample_sets] = None,
-        sample_query: Optional[types.sample_query] = None,
-    ):
+        sample_sets: Optional[type_sample_sets] = None,
+        sample_query: Optional[type_sample_query] = None,
+    ) -> pd.DataFrame:
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
 
@@ -4766,16 +4768,16 @@ class AnophelesDataResource(ABC):
     )
     def aa_allele_frequencies_advanced(
         self,
-        transcript: types.transcript,
-        area_by: types.area_by,
-        period_by: types.period_by,
-        sample_sets: Optional[types.sample_sets] = None,
-        sample_query: Optional[types.sample_query] = None,
-        min_cohort_size: types.min_cohort_size = 10,
-        variant_query: Optional[types.variant_query] = None,
-        site_mask: Optional[types.site_mask] = None,
-        nobs_mode: types.nobs_mode = "called",
-        ci_method: Optional[types.ci_method] = "wilson",
+        transcript: type_transcript,
+        area_by: type_area_by,
+        period_by: type_period_by,
+        sample_sets: Optional[type_sample_sets] = None,
+        sample_query: Optional[type_sample_query] = None,
+        min_cohort_size: type_min_cohort_size = 10,
+        variant_query: Optional[type_variant_query] = None,
+        site_mask: Optional[type_site_mask] = None,
+        nobs_mode: type_nobs_mode = "called",
+        ci_method: Optional[type_ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -5023,15 +5025,15 @@ class AnophelesDataResource(ABC):
     )
     def cohort_diversity_stats(
         self,
-        cohort: types.cohort,
-        cohort_size: types.cohort_size,
-        region: types.region,
-        site_mask: Optional[types.site_mask] = DEFAULT,
-        site_class: Optional[types.site_class] = None,
-        sample_sets: Optional[types.sample_sets] = None,
-        random_seed: types.random_seed = 42,
-        n_jack: types.n_jack = 200,
-        confidence_level: types.confidence_level = 0.95,
+        cohort: type_cohort,
+        cohort_size: type_cohort_size,
+        region: type_region,
+        site_mask: Optional[type_site_mask] = DEFAULT,
+        site_class: Optional[type_site_class] = None,
+        sample_sets: Optional[type_sample_sets] = None,
+        random_seed: type_random_seed = 42,
+        n_jack: type_n_jack = 200,
+        confidence_level: type_confidence_level = 0.95,
     ) -> pd.Series:
         debug = self._log.debug
 
@@ -7875,7 +7877,7 @@ class AnophelesDataResource(ABC):
         Cytoscape.
 
         A haplotype network provides a visualisation of the genetic distance
-        between haplotypes. Each node in the network represents a unique
+        between haplotype_ Each node in the network represents a unique
         haplotype. The size (area) of the node is scaled by the number of
         times that unique haplotype was observed within the selected samples.
         A connection between two nodes represents a single SNP difference
