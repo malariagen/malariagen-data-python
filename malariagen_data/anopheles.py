@@ -6,7 +6,7 @@ from collections import Counter, namedtuple
 from pathlib import Path
 from textwrap import dedent
 from types import SimpleNamespace
-from typing import List, Optional, Union
+from typing import List, Optional, Tuple, Union
 
 import allel
 import dask.array as da
@@ -176,6 +176,29 @@ Params.ci_method = ParamDef(
     `statsmodels.stats.proportion.proportion_confint`.
     """,
     Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"],
+)
+Params.cohort = ParamDef(
+    """
+    Either a string giving one of the predefined cohort labels, or a
+    pair of strings giving a custom cohort label and a sample query to
+    select samples in the cohort.
+    """,
+    Union[str, Tuple[str, str]],
+)
+Params.n_jack = ParamDef(
+    """
+    Number of blocks to divide the data into for the block jackknife
+    estimation of confidence intervals. N.B., larger is not necessarily
+    better.
+    """,
+    int,
+)
+Params.confidence_level = ParamDef(
+    """
+    Confidence level to use for confidence interval calculation. E.g., 0.95
+    means 95% confidence interval.
+    """,
+    float,
 )
 
 
@@ -5069,69 +5092,39 @@ class AnophelesDataResource(ABC):
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
+    @doc(
+        summary="""
+            Compute genetic diversity summary statistics for a cohort of
+            individuals.
+        """,
+        parameters=dict(
+            cohort=Params.cohort.doc,
+            cohort_size=Params.cohort_size.doc,
+            region=Params.region.doc,
+            site_mask=Params.site_mask.doc,
+            site_class=Params.site_class.doc,
+            sample_sets=Params.sample_sets.doc,
+            random_seed=Params.random_seed.doc,
+            n_jack=Params.n_jack.doc,
+            confidence_level=Params.confidence_level.doc,
+        ),
+        returns="""
+            A pandas series with summary statistics and their confidence
+            intervals.
+        """,
+    )
     def cohort_diversity_stats(
         self,
-        cohort,
-        cohort_size,
-        region,
-        site_mask=DEFAULT,
-        site_class=None,
-        sample_sets=None,
-        random_seed=42,
-        n_jack=200,
-        confidence_level=0.95,
-    ):
-        """Compute genetic diversity summary statistics for a cohort of
-        individuals.
-
-        Parameters
-        ----------
-        cohort : str or (str, str)
-            Either a string giving one of the predefined cohort labels, or a
-            pair of strings giving a custom cohort label and a sample query to
-            select samples in the cohort.
-        cohort_size : int
-            Number of individuals to use for computation of summary statistics.
-            If the cohort is larger than this size, it will be randomly
-            down-sampled.
-        region : str
-            Chromosome arm, gene name or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers  or a
-            release identifier or a list of release identifiers.
-        random_seed : int, optional
-            Seed for random number generator.
-        n_jack : int, optional
-            Number of blocks to divide the data into for the block jackknife
-            estimation of confidence intervals. N.B., larger is not necessarily
-            better.
-        confidence_level : float, optional
-            Confidence level to use for confidence interval calculation. 0.95
-            means 95% confidence interval.
-
-        Returns
-        -------
-        stats : pandas.Series
-            A series with summary statistics and their confidence intervals.
-
-        """
-
+        cohort: Params.cohort.type,
+        cohort_size: Params.cohort_size.type,
+        region: Params.region.type,
+        site_mask: Optional[Params.site_mask.type] = DEFAULT,
+        site_class: Optional[Params.site_class.type] = None,
+        sample_sets: Optional[Params.sample_sets.type] = None,
+        random_seed: Params.random_seed.type = 42,
+        n_jack: Params.n_jack.type = 200,
+        confidence_level: Params.confidence_level.type = 0.95,
+    ) -> pd.Series:
         debug = self._log.debug
 
         debug("process cohort parameter")
