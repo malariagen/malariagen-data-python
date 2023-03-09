@@ -1,4 +1,4 @@
-name: tests
+name: mypy
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ on:
     branches:
     - master
 jobs:
-  tests:
+  mypy:
     strategy:
       fail-fast: true
       matrix:
