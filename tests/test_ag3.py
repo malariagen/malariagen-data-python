@@ -375,7 +375,7 @@ def test_snp_sites_for_joined_arms(chrom):
     assert isinstance(sites_actual, da.Array)
     assert sites_actual.ndim == 1
     assert sites_actual.dtype == "int32"
-    assert np.all(sites_expected == sites_actual)
+    assert da.all(sites_expected == sites_actual)
 
 
 @pytest.mark.parametrize(
