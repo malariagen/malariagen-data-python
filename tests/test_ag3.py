@@ -375,7 +375,7 @@ def test_snp_sites_for_joined_arms(chrom):
     assert isinstance(sites_actual, da.Array)
     assert sites_actual.ndim == 1
     assert sites_actual.dtype == "int32"
-    assert np.all(sites_expected == sites_actual)
+    assert da.all(sites_expected == sites_actual).compute(scheduler="single-threaded")
 
 
 @pytest.mark.parametrize(
@@ -784,12 +784,12 @@ def test_haplotypes_for_joined_arms(chrom):
 )
 def test_haplotypes_for_joined_arms_region(region):
     ag3 = setup_ag3()
-    ds_snps = ag3.haplotypes(region=region)
+    ds_haps = ag3.haplotypes(region=region)
 
-    assert isinstance(ds_snps, xr.Dataset)
-    assert len(ds_snps.dims) == 4
-    assert ds_snps["call_genotype"].dtype == "int8"
-    assert ds_snps["variant_position"].dtype == "int32"
+    assert isinstance(ds_haps, xr.Dataset)
+    assert len(ds_haps.dims) == 4
+    assert ds_haps["call_genotype"].dtype == "int8"
+    assert ds_haps["variant_position"].dtype == "int32"
 
 
 def test_snp_effects():
