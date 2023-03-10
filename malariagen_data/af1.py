@@ -323,7 +323,23 @@ class Af1(AnophelesDataResource):
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks
     ):
-        # Do nothing for now, because we don't have VCFs for the site filters
-        # https://github.com/malariagen/vobs-funestus/issues/251
-        # TODO implement when VCFs are available
-        pass
+        debug = self._log.debug
+
+        for site_mask in self.site_mask_ids:
+            site_filters_vcf_url = f"gs://vo_afun_release/v1.0/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
+            debug(site_filters_vcf_url)
+            track_config = {
+                "name": f"Filters - {site_mask}",
+                "url": site_filters_vcf_url,
+                "indexURL": f"{site_filters_vcf_url}.tbi",
+                "format": "vcf",
+                "type": "variant",
+                "visibilityWindow": visibility_window,  # bp
+                "height": 30,
+                "colorBy": "FILTER",
+                "colorTable": {
+                    "PASS": "#00cc96",
+                    "*": "#ef553b",
+                },
+            }
+            tracks.append(track_config)
