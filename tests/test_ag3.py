@@ -361,6 +361,47 @@ def test_snp_sites(chunks, region):
         assert d.shape == d.compute().shape
 
 
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_sites_for_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    sites_r = ag3.snp_sites(region=contig_r, field="POS")
+    sites_l = ag3.snp_sites(region=contig_l, field="POS")
+    max_r = ag3.genome_sequence(region=contig_r).shape[0]
+    sites_expected = da.concatenate([sites_r, sites_l + max_r])
+    sites_actual = ag3.snp_sites(region=chrom, field="POS")
+
+    assert isinstance(sites_actual, da.Array)
+    assert sites_actual.ndim == 1
+    assert sites_actual.dtype == "int32"
+    assert np.all(sites_expected == sites_actual)
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+@pytest.mark.parametrize("field", ["POS", "REF", "ALT"])
+def test_snp_sites_for_joined_arms_region(region, field):
+    ag3 = setup_ag3()
+    sites = ag3.snp_sites(region=region, field=field)
+
+    start, end = region.replace(",", "").split(":")[1].split("-")
+    size = int(end) - int(start)
+
+    assert isinstance(sites, da.Array)
+    assert sites.shape[0] <= size
+    if field == "POS":
+        assert sites.dtype == "int32"
+        assert sites.ndim == 1
+    elif field == "REF":
+        assert sites.dtype == "S1"
+        assert sites.ndim == 1
+    elif field == "ALT":
+        assert sites.dtype == "S1"
+        assert sites.ndim == 2
+
+
 @pytest.mark.parametrize("chunks", ["auto", "native"])
 @pytest.mark.parametrize(
     "sample_sets",
@@ -443,6 +484,37 @@ def test_snp_genotypes_chunks(sample_sets, region):
     assert gt_manual.chunks[0][0] == 100_000
     assert gt_manual.chunks[1][0] == 10
     assert gt_manual.chunks[2][0] == 2
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_genotypes_for_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    d_r = ag3.snp_genotypes(region=contig_r)
+    d_l = ag3.snp_genotypes(region=contig_l)
+    d = da.concatenate([d_r, d_l])
+
+    gt = ag3.snp_genotypes(region=chrom)
+
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert gt.shape == d.shape
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_snp_genotypes_for_joined_arms_region(region):
+    ag3 = setup_ag3()
+    gt = ag3.snp_genotypes(region=region)
+    sites = ag3.snp_sites(region=region, field="POS")
+
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert sites.shape[0] == gt.shape[0]
 
 
 @pytest.mark.parametrize(
@@ -623,6 +695,70 @@ def test_snp_calls__sample_query(sample_query):
         )
         assert ds.dims["samples"] == len(df_samples)
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_calls_for_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    ds_r = ag3.snp_calls(region=contig_r)
+    ds_l = ag3.snp_calls(region=contig_l)
+    ds_expected = xr.concat([ds_r, ds_l], dim="variants")
+
+    ds_actual = ag3.snp_calls(region=chrom)
+
+    assert isinstance(ds_actual, xr.Dataset)
+    assert len(ds_actual.dims) == 4
+    assert ds_actual["call_genotype"].dtype == "int8"
+    assert ds_actual["variant_position"].dtype == "int32"
+    assert ds_actual["call_genotype"].shape == ds_expected["call_genotype"].shape
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_snp_calls_for_joined_arms_region(region):
+    ag3 = setup_ag3()
+    ds_snps = ag3.snp_calls(region=region)
+    sites = ag3.snp_sites(region=region, field="POS")
+
+    assert isinstance(ds_snps, xr.Dataset)
+    assert len(ds_snps.dims) == 4
+    assert ds_snps["call_genotype"].dtype == "int8"
+    assert ds_snps["variant_position"].dtype == "int32"
+    assert sites.shape[0] == ds_snps["call_genotype"].shape[0]
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_variants_for_joined_arms(chrom):
+    ag3 = setup_ag3()
+    contig_r = chrom[0] + chrom[1]
+    contig_l = chrom[0] + chrom[2]
+    ds_r = ag3.snp_variants(region=contig_r)
+    ds_l = ag3.snp_variants(region=contig_l)
+    ds_expected = xr.concat([ds_r, ds_l], dim="variants")
+
+    ds_actual = ag3.snp_variants(region=chrom)
+
+    assert isinstance(ds_actual, xr.Dataset)
+    assert len(ds_actual.dims) == 2
+    assert ds_actual["variant_position"].dtype == "int32"
+    assert ds_actual["variant_position"].shape == ds_expected["variant_position"].shape
+
+
+@pytest.mark.parametrize(
+    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
+)
+def test_snp_variants_for_joined_arms_region(region):
+    ag3 = setup_ag3()
+    ds_vars = ag3.snp_variants(region=region)
+    sites = ag3.snp_sites(region=region, field="POS")
+
+    assert isinstance(ds_vars, xr.Dataset)
+    assert len(ds_vars.dims) == 2
+    assert ds_vars["variant_position"].dtype == "int32"
+    assert sites.shape[0] == ds_vars["variant_position"].shape[0]
 
 
 def test_snp_effects():
