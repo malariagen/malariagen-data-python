@@ -115,7 +115,7 @@ try:
 except ImportError:
     # zarr < 2.11.0
 
-    class SafeStore(Mapping):
+    class SafeStore(Mapping):  # type: ignore
         def __init__(self, store):
             self.store = store
 
