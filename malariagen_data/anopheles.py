@@ -6328,21 +6328,34 @@ class AnophelesDataResource(ABC):
             sample_sets=sample_sets, sample_query=sample_query
         )
 
-        debug("compute locations")
+        debug("pivot taxa by locations")
+        location_composite_key = [
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "latitude",
+            "longitude",
+        ]
         pivot_location_taxon = df_samples.pivot_table(
-            index=[
-                "country",
-                "admin1_iso",
-                "admin1_name",
-                "admin2_name",
-                "location",
-                "latitude",
-                "longitude",
-            ],
+            index=location_composite_key,
             columns=["taxon"],
             values="sample_id",
             aggfunc="count",
             fill_value=0,
+        )
+
+        debug("append aggregations to pivot")
+        df_location_aggs = df_samples.groupby(location_composite_key).agg(
+            {
+                "year": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+                "sample_set": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+                "contributor": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+            }
+        )
+        pivot_location_taxon = pivot_location_taxon.merge(
+            df_location_aggs, on=location_composite_key, validate="one_to_one"
         )
 
         debug("create a map")
@@ -6353,8 +6366,8 @@ class AnophelesDataResource(ABC):
             zoom=zoom,
             basemap=basemap,
         )
-        # FIXME: Unresolved attribute reference 'add' for class 'Map'
-        samples_map.add(ipyleaflet.ScaleControl(position="bottomleft"))
+        scale_control = ipyleaflet.ScaleControl(position="bottomleft")
+        samples_map.add_control(scale_control)
         # make the map a bit taller than the default
         samples_map.layout.height = "500px"
 
@@ -6367,20 +6380,26 @@ class AnophelesDataResource(ABC):
             title += f"\nAdmin level 2: {row.admin2_name}"
             title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
             title += f"\nCountry: {row.country}"
+            title += f"\nYears: {row.year}"
+            title += f"\nSample sets: {row.sample_set}"
+            title += f"\nContributors: {row.contributor}"
             title += "\nNo. specimens: "
             all_n = 0
             for taxon in taxa:
+                # Get the number of samples in this taxon
                 n = row[taxon]
+                # Count the number of samples in all taxa
                 all_n += n
                 if n > 0:
                     title += f"{n} {taxon}; "
+            # Only show a marker when there are enough samples
             if all_n >= min_samples:
                 marker = ipyleaflet.Marker(
                     location=(row.latitude, row.longitude),
                     draggable=False,
                     title=title,
                 )
-                samples_map.add(marker)
+                samples_map.add_control(marker)
 
         return samples_map
 
