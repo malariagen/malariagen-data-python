@@ -1288,6 +1288,15 @@ class AnophelesDataResource(ABC):
             df["sample_set"] = sample_set
             df["release"] = release
 
+            # Derive quarter from month
+            # Replace -1 with Not-a-Time, otherwise -1 month is converted to quarter 4
+            df["quarter"] = (
+                df["month"].replace(-1, pd.NaT).astype("datetime64[M]").dt.quarter
+            )
+            # Replace all NaN quarters with -1
+            # Specify int64, otherwise it can become float64
+            df["quarter"] = df["quarter"].fillna(-1).astype("int64")
+
             self._cache_general_metadata[sample_set] = df
         return df.copy()
 
@@ -1470,6 +1479,13 @@ class AnophelesDataResource(ABC):
 
         return d
 
+    def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
+        """Access SNP sites data for a single contig."""
+        root = self.open_snp_sites()
+        z = root[f"{contig}/variants/{field}"]
+        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return ret
+
     def _snp_sites(
         self,
         *,
@@ -1479,14 +1495,21 @@ class AnophelesDataResource(ABC):
         chunks,
     ):
         assert isinstance(region, Region), type(region)
-        root = self.open_snp_sites()
-        z = root[f"{region.contig}/variants/{field}"]
-        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+
+        ret = self._snp_sites_for_contig(
+            contig=region.contig, field=field, inline_array=inline_array, chunks=chunks
+        )
+
         if region.start or region.end:
             if field == "POS":
-                pos = z[:]
+                pos = ret
             else:
-                pos = root[f"{region.contig}/variants/POS"][:]
+                pos = self._snp_sites_for_contig(
+                    contig=region.contig,
+                    field="POS",
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
             loc_region = locate_region(region, pos)
             ret = ret[loc_region]
         return ret
@@ -1635,17 +1658,15 @@ class AnophelesDataResource(ABC):
             self._cache_snp_genotypes[sample_set] = root
             return root
 
-    def _snp_genotypes(self, *, region, sample_set, field, inline_array, chunks):
+    def _snp_genotypes_for_contig(
+        self, *, contig, sample_set, field, inline_array, chunks
+    ):
         """Access SNP genotypes for a single contig and a single sample set."""
-        assert isinstance(region, Region)
+        assert isinstance(contig, str)
         assert isinstance(sample_set, str)
         root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[f"{region.contig}/calldata/{field}"]
+        z = root[f"{contig}/calldata/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        if region.start or region.end:
-            pos = self.snp_sites(region=region.contig, field="POS")
-            loc_region = locate_region(region, pos)
-            d = d[loc_region]
 
         return d
 
@@ -1710,8 +1731,8 @@ class AnophelesDataResource(ABC):
             ly = []
 
             for s in sample_sets:
-                y = self._snp_genotypes(
-                    region=Region(r.contig, None, None),
+                y = self._snp_genotypes_for_contig(
+                    contig=r.contig,
                     sample_set=s,
                     field=field,
                     inline_array=inline_array,
@@ -1965,7 +1986,7 @@ class AnophelesDataResource(ABC):
 
         return df_snps
 
-    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
+    def _snp_variants_for_contig(self, *, contig, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -2009,7 +2030,7 @@ class AnophelesDataResource(ABC):
 
         return ds
 
-    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+    def _snp_calls_for_contig(self, *, contig, sample_set, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -2119,7 +2140,7 @@ class AnophelesDataResource(ABC):
         for r in region:
             ly = []
             for s in sample_sets:
-                y = self._snp_calls_dataset(
+                y = self._snp_calls_for_contig(
                     contig=r.contig,
                     sample_set=s,
                     inline_array=inline_array,
@@ -2131,7 +2152,7 @@ class AnophelesDataResource(ABC):
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("add variants variables")
-            v = self._snp_variants_dataset(
+            v = self._snp_variants_for_contig(
                 contig=r.contig, inline_array=inline_array, chunks=chunks
             )
             x = xr.merge([v, x], compat="override", join="override")
@@ -2420,7 +2441,7 @@ class AnophelesDataResource(ABC):
         lx = []
         for r in region:
             debug("access variants")
-            x = self._snp_variants_dataset(
+            x = self._snp_variants_for_contig(
                 contig=r.contig,
                 inline_array=inline_array,
                 chunks=chunks,
