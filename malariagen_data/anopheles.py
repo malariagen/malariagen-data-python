@@ -6680,7 +6680,7 @@ class AnophelesDataResource(ABC):
             self._cache_haplotype_sites[analysis] = root
         return root
 
-    def _haplotypes_dataset(
+    def _haplotypes_for_contig(
         self, *, contig, sample_set, analysis, inline_array, chunks
     ):
         debug = self._log.debug
@@ -6806,7 +6806,7 @@ class AnophelesDataResource(ABC):
             ly = []
 
             for s in sample_sets:
-                y = self._haplotypes_dataset(
+                y = self._haplotypes_for_contig(
                     contig=r.contig,
                     sample_set=s,
                     analysis=analysis,
