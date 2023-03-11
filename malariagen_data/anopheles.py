@@ -7843,6 +7843,11 @@ class AnophelesDataResource(ABC):
             "month",
         ]
 
+        if color and color not in hover_data:
+            hover_data.append(color)
+        if symbol and symbol not in hover_data:
+            hover_data.append(symbol)
+
         plot_kwargs = dict(
             template="simple_white",
             hover_name="sample_id",
