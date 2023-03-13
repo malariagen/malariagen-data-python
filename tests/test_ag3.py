@@ -3085,3 +3085,33 @@ def test_fst_gwss():
     assert_allclose(fst[0], 0.0405522778148594, rtol=1e-5), fst[0]
     assert np.all(fst <= 1)
     assert np.all(np.logical_and(fst >= -0.1, fst <= 1))
+
+
+def test_ihs_gwss():
+    ag3 = setup_ag3()
+    sample_query = "country == 'Ghana'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+    window_size = 1000
+
+    x, ihs = ag3.ihs_gwss(
+        contig=contig,
+        analysis=analysis,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(ihs, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 11354
+    assert len(x) == len(ihs)
+
+    # check some values
+    assert_allclose(x[0], 27701.195)
+    assert_allclose(ihs[1000], 4.5293855795938445)
