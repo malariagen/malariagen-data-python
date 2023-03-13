@@ -7745,7 +7745,12 @@ class AnophelesDataResource(ABC):
         contig: str
             Contig name (e.g., "2L" or "3RL")
         window_size : int
-            The size of windows used to calculate ihs over.
+            The size of windows used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        window_func : callable, optional
+            A function which will be applied to ihs values in windows.
+        min_maf : float, optional
+            minor allele frequency threshold to include variants in analysis.
         analysis : str
             Which phasing analysis to use. See the `phasing_analysis_ids`
             property for available values.
@@ -7868,7 +7873,12 @@ class AnophelesDataResource(ABC):
         contig: str
             Contig name (e.g., "2L" or "3RL")
         window_size : int
-            The size of windows used to calculate ihs over.
+            The size of windows used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        window_func : callable, optional
+            A function which will be applied to ihs values in windows.
+        min_maf : float, optional
+            minor allele frequency threshold to include variants in analysis.
         analysis : str
             Which phasing analysis to use. See the `phasing_analysis_ids`
             property for available values.
@@ -7964,7 +7974,7 @@ class AnophelesDataResource(ABC):
         contig,
         window_size,
         window_func=np.nanmax,
-        min_maf=0.05,
+        min_maf=0,
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
@@ -7983,7 +7993,12 @@ class AnophelesDataResource(ABC):
         contig: str
             Contig name (e.g., "2L" or "3RL")
         window_size : int
-            The size of windows used to calculate ihs over.
+            The size of windows used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        window_func : callable, optional
+            A function which will be applied to ihs values in windows.
+        min_maf : float, optional
+            minor allele frequency threshold to include variants in analysis.
         analysis : str
             Which phasing analysis to use. See the `phasing_analysis_ids`
             property for available values.
