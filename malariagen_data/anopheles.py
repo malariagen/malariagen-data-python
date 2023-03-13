@@ -7834,12 +7834,12 @@ class AnophelesDataResource(ABC):
             pos = pos[maf_filter]
 
         ihs = allel.ihs(ht, pos)
-        ihs_windowed = allel.moving_statistic(
-            ihs, statistic=window_func, size=window_size
-        )
-        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
-        results = dict(x=x, ihs=ihs_windowed)
+        if window_size:
+            ihs = allel.moving_statistic(ihs, statistic=window_func, size=window_size)
+            pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=pos, ihs=ihs)
 
         return results
 
