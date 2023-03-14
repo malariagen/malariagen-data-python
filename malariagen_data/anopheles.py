@@ -5846,7 +5846,7 @@ class AnophelesDataResource(ABC):
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
-            m.add(marker)
+            m.add_control(marker)
 
     def plot_frequencies_interactive_map(
         self,
@@ -6303,8 +6303,10 @@ class AnophelesDataResource(ABC):
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        basemap : dict
-            Basemap description coming from ipyleaflet.basemaps.
+        basemap : dict or TileProvider or TileLayer or str
+            Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
+            basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
+            When none is specified, basemap defaults to TileProvider ipyleaflet.basemaps.Esri.WorldImagery.
         center : tuple of int, optional
             Location to center the map.
         zoom : int, optional
@@ -6315,13 +6317,14 @@ class AnophelesDataResource(ABC):
 
         Returns
         -------
-        samples_map : ipyleaflet.Map
-            Ipyleaflet map widget.
+        out : ipywidgets.Widget
+            An interactive map with widgets for selecting which basemap to display.
 
         """
         debug = self._log.debug
 
         import ipyleaflet
+        import ipywidgets
 
         debug("load sample metadata")
         df_samples = self.sample_metadata(
@@ -6358,13 +6361,43 @@ class AnophelesDataResource(ABC):
             df_location_aggs, on=location_composite_key, validate="one_to_one"
         )
 
-        debug("create a map")
-        if basemap is None:
-            basemap = ipyleaflet.basemaps.Esri.WorldImagery
+        debug("create basemap")
+        basemap_abbrevs = {
+            "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
+            "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
+            "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
+            "positron": ipyleaflet.basemaps.CartoDB.Positron,
+            "satellite": ipyleaflet.basemaps.Gaode.Satellite,
+            "terrain": ipyleaflet.basemaps.Stamen.Terrain,
+            "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
+            "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
+            "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
+            "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
+        }
+
+        # Get basemap_provider
+        if type(basemap) == str:
+            basemap_str = basemap.lower()
+            if basemap_str not in basemap_abbrevs:
+                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
+            basemap_provider = basemap_abbrevs[basemap_str]
+        elif basemap is None:
+            basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
+        else:
+            basemap_provider = basemap
+
+        # Get basemap_abbrev_selected
+        basemap_abbrev_selected = None
+        if basemap_provider in basemap_abbrevs.values():
+            basemap_abbrev_selected = list(basemap_abbrevs.keys())[
+                list(basemap_abbrevs.values()).index(basemap_provider)
+            ]
+
+        debug("create samples map")
         samples_map = ipyleaflet.Map(
             center=center,
             zoom=zoom,
-            basemap=basemap,
+            basemap=basemap_provider,
         )
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
         samples_map.add_control(scale_control)
@@ -6372,6 +6405,8 @@ class AnophelesDataResource(ABC):
         samples_map.layout.height = "500px"
 
         debug("add markers")
+        # TODO: mosquito & mosquito-net icons were added to Font Awesome in 4.10. (ipyleaflet has 4.7.0.)
+        icon = ipyleaflet.AwesomeIcon(name="circle")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
         for _, row in pivot_location_taxon.reset_index().iterrows():
             title = (
@@ -6398,10 +6433,38 @@ class AnophelesDataResource(ABC):
                     location=(row.latitude, row.longitude),
                     draggable=False,
                     title=title,
+                    icon=icon,
                 )
                 samples_map.add_control(marker)
 
-        return samples_map
+        debug("set up interactive controls")
+        basemap_dropdown = ipywidgets.Dropdown(
+            description="Basemap: ",
+            options=list(basemap_abbrevs.keys()),
+            value=basemap_abbrev_selected,
+        )
+
+        def on_basemap_dropdown_change(change):
+            basemap_abbrev_selected_new = change["new"]
+            new_basemap_provider = basemap_abbrevs[basemap_abbrev_selected_new]
+            samples_map.clear_layers()
+            samples_map.add_layer(new_basemap_provider)
+
+        basemap_dropdown.observe(on_basemap_dropdown_change, "value")
+
+        interactive_widget = ipywidgets.interactive(
+            self.plot_samples_interactive_map,
+            sample_sets=ipywidgets.fixed(sample_sets),
+            sample_query=ipywidgets.fixed(sample_query),
+            basemap=basemap_dropdown,
+            center=ipywidgets.fixed(center),
+            zoom=ipywidgets.fixed(zoom),
+            min_samples=ipywidgets.fixed(min_samples),
+        )
+
+        out = ipywidgets.VBox([interactive_widget, samples_map])
+
+        return out
 
     def plot_fst_gwss_track(
         self,
