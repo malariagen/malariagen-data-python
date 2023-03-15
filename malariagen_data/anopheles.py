@@ -8086,6 +8086,7 @@ class AnophelesDataResource(ABC):
             if not isinstance(window_percentiles, list):
                 window_percentiles = [window_percentiles]
 
+        # add an empty dimension to ihs array if 1D
         ihs = np.reshape(ihs, (ihs.shape[0], -1))
         for i in range(ihs.shape[1]):
             ihs_perc = ihs[:, i]

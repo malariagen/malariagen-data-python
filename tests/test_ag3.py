@@ -3104,14 +3104,13 @@ def test_ihs_gwss():
         cohort_size=20,
     )
 
-    # check dataset
     assert isinstance(x, np.ndarray)
     assert isinstance(ihs, np.ndarray)
 
     # check dimensions
-    assert len(x) == 11354
+    assert len(x) == 574
     assert len(x) == len(ihs)
 
     # check some values
-    assert_allclose(x[0], 27701.195)
-    assert_allclose(ihs[1000], 4.5293855795938445)
+    assert_allclose(x[0], 397293.887)
+    assert_allclose(ihs[:, 3][100], 3.131243772135567)
