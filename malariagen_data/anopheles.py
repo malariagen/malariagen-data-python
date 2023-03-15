@@ -8094,7 +8094,7 @@ class AnophelesDataResource(ABC):
             elif ihs.shape[1] == 2:
                 color = bokeh_palette[3][i]
             else:
-                color = "black"
+                color = None
 
             # plot ihs
             fig.circle(
