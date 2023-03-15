@@ -8082,15 +8082,16 @@ class AnophelesDataResource(ABC):
             x_range=x_range,
         )
 
-        if not isinstance(window_percentiles, list):
-            window_percentiles = [window_percentiles]
+        if window_size:
+            if not isinstance(window_percentiles, list):
+                window_percentiles = [window_percentiles]
 
-        n_percentiles = len(window_percentiles)
-        for i in range(n_percentiles):
+        ihs = np.reshape(ihs, (ihs.shape[0], -1))
+        for i in range(ihs.shape[1]):
             ihs_perc = ihs[:, i]
-            if n_percentiles >= 3:
-                color = bokeh_palette[n_percentiles][i]
-            elif n_percentiles == 2:
+            if ihs.shape[1] >= 3:
+                color = bokeh_palette[ihs.shape[1]][i]
+            elif ihs.shape[1] == 2:
                 color = bokeh_palette[3][i]
             else:
                 color = "black"
