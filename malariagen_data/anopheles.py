@@ -7733,19 +7733,19 @@ class AnophelesDataResource(ABC):
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
-        window_size=None,
-        window_percentiles=[50, 75, 90, 100],
+        window_size=200,
+        percentiles=(50, 75, 100),
         standardize=True,
         standardization_bins=None,
         standardization_n_bins=20,
         standardization_diagnostics=False,
-        filter_min_maf=0,
+        filter_min_maf=0.05,
         compute_min_maf=0.05,
         min_ehh=0.05,
         max_gap=200_000,
         gap_scale=20_000,
         include_edges=True,
-        use_threads=False,
+        use_threads=True,
         cohort_size=30,
         random_seed=42,
     ):
@@ -7768,7 +7768,7 @@ class AnophelesDataResource(ABC):
         window_size : int, optional
             The size of window in number of SNPs used to summarise iHS over.
             If None, per-variant iHS values are returned.
-        window_percentiles : int or list of int, optional
+        percentiles : int or list of int, optional
             If window size is specified, this returns the iHS percentiles
             for each window.
         standardize : bool, optional
@@ -7819,7 +7819,7 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
-            window_percentiles=window_percentiles,
+            percentiles=percentiles,
             standardize=standardize,
             standardization_bins=standardization_bins,
             standardization_n_bins=standardization_n_bins,
@@ -7859,7 +7859,7 @@ class AnophelesDataResource(ABC):
         sample_sets,
         sample_query,
         window_size,
-        window_percentiles,
+        percentiles,
         standardize,
         standardization_bins,
         standardization_n_bins,
@@ -7887,14 +7887,18 @@ class AnophelesDataResource(ABC):
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
+        ac = ht.count_alleles(max_allele=1)
         pos = ds_haps["variant_position"].values
 
         if filter_min_maf > 0:
-            ac = ht.count_alleles().to_frequencies()
-            maf_filter = ac[:, 1] > filter_min_maf
+            af = ac.to_frequencies()
+            maf = np.min(af, axis=1)
+            maf_filter = maf > filter_min_maf
             ht = ht.compress(maf_filter, axis=0)
             pos = pos[maf_filter]
+            ac = ac[maf_filter]
 
+        # compute iHS
         ihs = allel.ihs(
             h=ht,
             pos=pos,
@@ -7906,24 +7910,28 @@ class AnophelesDataResource(ABC):
             use_threads=use_threads,
         )
 
+        # remove any NaNs
+        na_mask = ~np.isnan(ihs)
+        ihs = ihs[na_mask]
+        pos = pos[na_mask]
+        ac = ac[na_mask]
+
+        # take absolute value
+        ihs = np.fabs(ihs)
+
         if standardize:
-            ihs = allel.standardize_by_allele_count(
+            ihs, _ = allel.standardize_by_allele_count(
                 score=ihs,
-                aac=ht.count_alleles()[:, 1],
+                aac=ac[:, 1],
                 bins=standardization_bins,
                 n_bins=standardization_n_bins,
                 diagnostics=standardization_diagnostics,
             )
-            ihs = ihs[0]
 
         if window_size:
             # remove any NaNs prior to windowed percentiles
-            na_mask = np.isnan(ihs)
-            ihs = ihs[~na_mask]
-            pos = pos[~na_mask]
-
             ihs = allel.moving_statistic(
-                ihs, statistic=np.percentile, size=window_size, q=window_percentiles
+                ihs, statistic=np.percentile, size=window_size, q=percentiles
             )
             pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
@@ -7937,20 +7945,20 @@ class AnophelesDataResource(ABC):
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
-        window_size=None,
-        window_percentiles=[50, 75, 90, 100],
+        window_size=200,
+        percentiles=(50, 75, 100),
         bokeh_palette=palettes.Blues,
         standardize=True,
         standardization_bins=None,
         standardization_n_bins=20,
         standardization_diagnostics=False,
-        filter_min_maf=0,
+        filter_min_maf=0.05,
         compute_min_maf=0.05,
         min_ehh=0.05,
         max_gap=200000,
         gap_scale=20000,
         include_edges=True,
-        use_threads=False,
+        use_threads=True,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -7979,7 +7987,7 @@ class AnophelesDataResource(ABC):
         window_size : int, optional
             The size of window in number of SNPs used to summarise iHS over.
             If None, per-variant iHS values are returned.
-        window_percentiles : int or list of int, optional
+        percentiles : int or list of int, optional
             If window size is specified, these iHS percentiles are returned
             for each window.
         bokeh_palette : bokeh.palettes, optional
@@ -8042,7 +8050,7 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=analysis,
             window_size=window_size,
-            window_percentiles=window_percentiles,
+            percentiles=percentiles,
             standardize=standardize,
             standardization_bins=standardization_bins,
             standardization_n_bins=standardization_n_bins,
@@ -8083,8 +8091,8 @@ class AnophelesDataResource(ABC):
         )
 
         if window_size:
-            if not isinstance(window_percentiles, list):
-                window_percentiles = [window_percentiles]
+            if not isinstance(percentiles, list):
+                percentiles = [percentiles]
 
         # add an empty dimension to ihs array if 1D
         ihs = np.reshape(ihs, (ihs.shape[0], -1))
@@ -8122,17 +8130,17 @@ class AnophelesDataResource(ABC):
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
-        window_size=None,
-        window_percentiles=[50, 75, 90, 100],
+        window_size=200,
+        percentiles=(50, 75, 100),
         bokeh_palette=palettes.Blues,
         standardize=True,
         standardization_bins=None,
         standardization_n_bins=20,
         standardization_diagnostics=False,
-        filter_min_maf=0,
+        filter_min_maf=0.05,
         compute_min_maf=0.05,
         min_ehh=0.05,
-        max_gap=10_000,
+        max_gap=200_000,
         gap_scale=20_000,
         include_edges=False,
         use_threads=True,
@@ -8163,7 +8171,7 @@ class AnophelesDataResource(ABC):
         window_size : int, optional
             The size of window in number of SNPs used to summarise iHS over.
             If None, per-variant iHS values are returned.
-        window_percentiles : int or list of int, optional
+        percentiles : int or list of int, optional
             If window size is specified, these iHS percentiles are returned
             for each window.
         bokeh_palette : bokeh.palettes, optional
@@ -8226,7 +8234,7 @@ class AnophelesDataResource(ABC):
             sample_sets=sample_sets,
             sample_query=sample_query,
             window_size=window_size,
-            window_percentiles=window_percentiles,
+            percentiles=percentiles,
             bokeh_palette=bokeh_palette,
             standardize=standardize,
             standardization_bins=standardization_bins,
