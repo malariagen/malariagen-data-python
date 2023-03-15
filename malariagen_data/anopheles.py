@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
+from bokeh import palettes
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
 
@@ -7729,28 +7730,31 @@ class AnophelesDataResource(ABC):
     def ihs_gwss(
         self,
         contig,
-        window_size,
-        window_func=np.nanmax,
-        min_maf=0,
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
+        window_size=None,
+        window_percentiles=[50, 75, 90, 100],
+        standardize=True,
+        standardization_bins=None,
+        standardization_n_bins=20,
+        standardization_diagnostics=False,
+        filter_min_maf=0,
+        compute_min_maf=0.05,
+        min_ehh=0.05,
+        max_gap=200_000,
+        gap_scale=20_000,
+        include_edges=True,
+        use_threads=False,
         cohort_size=30,
         random_seed=42,
     ):
-        """Run IHS GWSS.
+        """Run iHS GWSS.
 
         Parameters
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to summarise iHS over.
-            If None, per-variant iHS values are returned.
-        window_func : callable, optional
-            A function which will be applied to ihs values in windows.
-        min_maf : float, optional
-            minor allele frequency threshold to include variants in analysis.
         analysis : str
             Which phasing analysis to use. See the `phasing_analysis_ids`
             property for available values.
@@ -7761,6 +7765,39 @@ class AnophelesDataResource(ABC):
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        window_size : int, optional
+            The size of window in number of SNPs used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        window_percentiles : int or list of int, optional
+            If window size is specified, this returns the iHS percentiles
+            for each window.
+        standardize : bool, optional
+            If True, standardize iHS values by alternate allele counts
+        standardization_bins : list of floats, optional
+            If provided, use these allele count bins to standardize iHS values.
+        standardization_n_bins : int, optional
+            Number of allele count bins to use for standardization.
+            Overrides standardization_bins.
+        standardization_diagnostics : bool, optional
+            If True, plot some diagnostics about the standardization.
+        filter_min_maf : float, optional
+            Minimum minor allele frequency to use for filtering prior to passing
+            haplotypes to allel.ihs function
+        compute_min_maf : float, optional
+            Do not compute integrated haplotype homozygosity for variants with
+            minor allele frequency below this threshold.
+        min_ehh : float, optional
+            Minimum EHH beyond which to truncate integrated haplotype homozygosity
+            calculation.
+        max_gap : int, optional
+            Do not report scores if EHH spans a gap larger than this number of base pairs
+        gap_scale : int, optional
+            Rescale distance between variants if gap is larger than this value
+        include_edges : bool, optional
+            If True, report scores even if EHH does not decay below min_ehh at the
+            end of the chromosome.
+        use_threads : bool, optional
+            If True, use multiple threads to compute iHS.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -7771,7 +7808,7 @@ class AnophelesDataResource(ABC):
         x : numpy.ndarray
             An array containing the window centre point genomic positions.
         ihs : numpy.ndarray
-            An array with ihs statistic values for each window.
+            An array with iHS statistic values for each window.
 
         """
         # change this name if you ever change the behaviour of this function, to
@@ -7782,8 +7819,18 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
-            window_func=window_func,
-            min_maf=min_maf,
+            window_percentiles=window_percentiles,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            include_edges=include_edges,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            use_threads=use_threads,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
@@ -7809,11 +7856,21 @@ class AnophelesDataResource(ABC):
         self,
         contig,
         analysis,
-        window_size,
-        window_func,
-        min_maf,
         sample_sets,
         sample_query,
+        window_size,
+        window_percentiles,
+        standardize,
+        standardization_bins,
+        standardization_n_bins,
+        standardization_diagnostics,
+        filter_min_maf,
+        compute_min_maf,
+        min_ehh,
+        max_gap,
+        gap_scale,
+        include_edges,
+        use_threads,
         cohort_size,
         random_seed,
     ):
@@ -7832,16 +7889,42 @@ class AnophelesDataResource(ABC):
 
         pos = ds_haps["variant_position"].values
 
-        if min_maf > 0:
+        if filter_min_maf > 0:
             ac = ht.count_alleles().to_frequencies()
-            maf_filter = ac[:, 1] > min_maf
+            maf_filter = ac[:, 1] > filter_min_maf
             ht = ht.compress(maf_filter, axis=0)
             pos = pos[maf_filter]
 
-        ihs = allel.ihs(ht, pos)
+        ihs = allel.ihs(
+            h=ht,
+            pos=pos,
+            min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            include_edges=include_edges,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            use_threads=use_threads,
+        )
+
+        if standardize:
+            ihs = allel.standardize_by_allele_count(
+                score=ihs,
+                aac=ht.count_alleles()[:, 1],
+                bins=standardization_bins,
+                n_bins=standardization_n_bins,
+                diagnostics=standardization_diagnostics,
+            )
+            ihs = ihs[0]
 
         if window_size:
-            ihs = allel.moving_statistic(ihs, statistic=window_func, size=window_size)
+            # remove any NaNs prior to windowed percentiles
+            na_mask = np.isnan(ihs)
+            ihs = ihs[~na_mask]
+            pos = pos[~na_mask]
+
+            ihs = allel.moving_statistic(
+                ihs, statistic=np.percentile, size=window_size, q=window_percentiles
+            )
             pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=pos, ihs=ihs)
@@ -7851,12 +7934,23 @@ class AnophelesDataResource(ABC):
     def plot_ihs_gwss_track(
         self,
         contig,
-        window_size,
-        window_func=np.nanmax,
-        min_maf=0,
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
+        window_size=None,
+        window_percentiles=[50, 75, 90, 100],
+        bokeh_palette=palettes.Blues,
+        standardize=True,
+        standardization_bins=None,
+        standardization_n_bins=20,
+        standardization_diagnostics=False,
+        filter_min_maf=0,
+        compute_min_maf=0.05,
+        min_ehh=0.05,
+        max_gap=200000,
+        gap_scale=20000,
+        include_edges=True,
+        use_threads=False,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -7866,19 +7960,12 @@ class AnophelesDataResource(ABC):
         show=True,
         x_range=None,
     ):
-        """Plot IHS GWSS data.
+        """Plot iHS GWSS data.
 
         Parameters
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to summarise iHS over.
-            If None, per-variant iHS values are returned.
-        window_func : callable, optional
-            A function which will be applied to ihs values in windows.
-        min_maf : float, optional
-            minor allele frequency threshold to include variants in analysis.
         analysis : str
             Which phasing analysis to use. See the `phasing_analysis_ids`
             property for available values.
@@ -7889,6 +7976,41 @@ class AnophelesDataResource(ABC):
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        window_size : int, optional
+            The size of window in number of SNPs used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        window_percentiles : int or list of int, optional
+            If window size is specified, these iHS percentiles are returned
+            for each window.
+        bokeh_palette : bokeh.palettes, optional
+            Bokeh palette to use for plotting multiple percentile values.
+        standardize : bool, optional
+            If True, standardize iHS values by allele count.
+        standardization_bins : array_like, optional
+            If provided, use these bins for standardization.
+        standardization_n_bins : int, optional
+            Number of allele count bins to use for standardization.
+            Overrides standardization_bins.
+        standardization_diagnostics : bool, optional
+            If True, plot some diagnostics about the standardization.
+        filter_min_maf : float, optional
+            Minimum minor allele frequency to use for filtering prior to passing
+            haplotypes to allel.ihs function
+        compute_min_maf : float, optional
+            Do not compute integrated haplotype homozygosity for variants with
+            minor allele frequency below this threshold.
+        min_ehh : float, optional
+            Minimum EHH beyond which to truncate integrated haplotype homozygosity
+            calculation.
+        max_gap : int, optional
+            Do not report scores if EHH spans a gap larger than this number of base pairs
+        gap_scale : int, optional
+            Rescale distance between variants if gap is larger than this value
+        include_edges : bool, optional
+            If True, report scores even if EHH does not decay below min_ehh at the
+            end of the chromosome.
+        use_threads : bool, optional
+            If True, use multiple threads to compute iHS.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -7909,7 +8031,7 @@ class AnophelesDataResource(ABC):
         Returns
         -------
         fig : figure
-            A plot showing windowed ihs statistic across chosen contig.
+            A plot showing iHS statistic across the chosen contig.
         """
 
         import bokeh.models as bkmod
@@ -7920,8 +8042,18 @@ class AnophelesDataResource(ABC):
             contig=contig,
             analysis=analysis,
             window_size=window_size,
-            window_func=window_func,
-            min_maf=min_maf,
+            window_percentiles=window_percentiles,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
             cohort_size=cohort_size,
             sample_query=sample_query,
             sample_sets=sample_sets,
@@ -7950,15 +8082,28 @@ class AnophelesDataResource(ABC):
             x_range=x_range,
         )
 
-        # plot ihs
-        fig.circle(
-            x=x,
-            y=ihs,
-            size=3,
-            line_width=0.5,
-            line_color="black",
-            fill_color=None,
-        )
+        if not isinstance(window_percentiles, list):
+            window_percentiles = [window_percentiles]
+
+        n_percentiles = len(window_percentiles)
+        for i in range(n_percentiles):
+            ihs_perc = ihs[:, i]
+            if n_percentiles >= 3:
+                color = bokeh_palette[n_percentiles][i]
+            elif n_percentiles == 2:
+                color = bokeh_palette[3][i]
+            else:
+                color = "black"
+
+            # plot ihs
+            fig.circle(
+                x=x,
+                y=ihs_perc,
+                size=3,
+                line_width=0.15,
+                line_color="black",
+                fill_color=color,
+            )
 
         # tidy up the plot
         fig.yaxis.axis_label = "ihs"
@@ -7972,12 +8117,23 @@ class AnophelesDataResource(ABC):
     def plot_ihs_gwss(
         self,
         contig,
-        window_size,
-        window_func=np.nanmax,
-        min_maf=0,
         analysis=DEFAULT,
         sample_sets=None,
         sample_query=None,
+        window_size=None,
+        window_percentiles=[50, 75, 90, 100],
+        bokeh_palette=palettes.Blues,
+        standardize=True,
+        standardization_bins=None,
+        standardization_n_bins=20,
+        standardization_diagnostics=False,
+        filter_min_maf=0,
+        compute_min_maf=0.05,
+        min_ehh=0.05,
+        max_gap=10_000,
+        gap_scale=20_000,
+        include_edges=False,
+        use_threads=True,
         cohort_size=30,
         random_seed=42,
         title=None,
@@ -7992,13 +8148,6 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to summarise iHS over.
-            If None, per-variant iHS values are returned.
-        window_func : callable, optional
-            A function which will be applied to ihs values in windows.
-        min_maf : float, optional
-            minor allele frequency threshold to include variants in analysis.
         analysis : str
             Which phasing analysis to use. See the `phasing_analysis_ids`
             property for available values.
@@ -8009,6 +8158,41 @@ class AnophelesDataResource(ABC):
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        window_size : int, optional
+            The size of window in number of SNPs used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        window_percentiles : int or list of int, optional
+            If window size is specified, these iHS percentiles are returned
+            for each window.
+        bokeh_palette : bokeh.palettes, optional
+            Bokeh palette to use for plotting multiple percentile values.
+        standardize : bool, optional
+            If True, standardize iHS values by allele count.
+        standardization_bins : array_like, optional
+            If provided, use these bins for standardization.
+        standardization_n_bins : int, optional
+            Number of allele count bins to use for standardization.
+            Overrides standardization_bins.
+        standardization_diagnostics : bool, optional
+            If True, plot some diagnostics about the standardization.
+        filter_min_maf : float, optional
+            Minimum minor allele frequency to use for filtering prior to passing
+            haplotypes to allel.ihs function
+        compute_min_maf : float, optional
+            Do not compute integrated haplotype homozygosity for variants with
+            minor allele frequency below this threshold.
+        min_ehh : float, optional
+            Minimum EHH beyond which to truncate integrated haplotype homozygosity
+            calculation.
+        max_gap : int, optional
+            Do not report scores if EHH spans a gap larger than this number of base pairs
+        gap_scale : int, optional
+            Rescale distance between variants if gap is larger than this value
+        include_edges : bool, optional
+            If True, report scores even if EHH does not decay below min_ehh at the
+            end of the chromosome.
+        use_threads : bool, optional
+            If True, use multiple threads to compute iHS.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size.
         random_seed : int, optional
@@ -8037,11 +8221,22 @@ class AnophelesDataResource(ABC):
         fig1 = self.plot_ihs_gwss_track(
             contig=contig,
             analysis=analysis,
-            window_size=window_size,
-            window_func=window_func,
-            min_maf=min_maf,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            window_size=window_size,
+            window_percentiles=window_percentiles,
+            bokeh_palette=bokeh_palette,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
             cohort_size=cohort_size,
             random_seed=random_seed,
             title=title,
