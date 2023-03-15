@@ -3108,9 +3108,9 @@ def test_ihs_gwss():
     assert isinstance(ihs, np.ndarray)
 
     # check dimensions
-    assert len(x) == 574
+    assert len(x) == 395
     assert len(x) == len(ihs)
 
     # check some values
-    assert_allclose(x[0], 397293.887)
-    assert_allclose(ihs[:, 3][100], 3.131243772135567)
+    assert_allclose(x[0], 510232.847)
+    assert_allclose(ihs[:, 3][100], 2.3467595962486327)
