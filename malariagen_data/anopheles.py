@@ -1494,9 +1494,11 @@ class AnophelesDataResource(ABC):
         inline_array: inline_array_param_type = inline_array_param_default,
         chunks: chunks_param_type = chunks_param_default,
     ) -> da.Array:
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        # resolve the region parameter to a standard type
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         d = da.concatenate(
             [
@@ -1507,7 +1509,7 @@ class AnophelesDataResource(ABC):
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-                for r in region
+                for r in resolved_region
             ]
         )
 
@@ -1552,9 +1554,11 @@ class AnophelesDataResource(ABC):
     ) -> da.Array:
         debug = self._log.debug
 
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        # resolve the region parameter to a standard type
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("access SNP sites and concatenate over regions")
         ret = da.concatenate(
@@ -1565,7 +1569,7 @@ class AnophelesDataResource(ABC):
                     chunks=chunks,
                     inline_array=inline_array,
                 )
-                for r in region
+                for r in resolved_region
             ],
             axis=0,
         )
@@ -1573,7 +1577,7 @@ class AnophelesDataResource(ABC):
         debug("apply site mask if requested")
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region,
+                region=resolved_region,
                 mask=site_mask,
                 chunks=chunks,
                 inline_array=inline_array,
@@ -1586,23 +1590,12 @@ class AnophelesDataResource(ABC):
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
-    def resolve_region(self, region):
-        """Convert a genome region into a standard data structure.
-
-        Parameters
-        ----------
-        region: str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-
-        Returns
-        -------
-        out : Region
-            A named tuple with attributes contig, start and end.
-
-        """
-
+    @doc(
+        summary="Convert a genome region into a standard data structure.",
+        parameters=general_params,
+        returns="An instance of the `Region` class.",
+    )
+    def resolve_region(self, region: region_param_type) -> Region:
         return resolve_region(self, region)
 
     def _prep_region_cache_param(self, *, region):
