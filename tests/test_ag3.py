@@ -3113,4 +3113,4 @@ def test_ihs_gwss():
 
     # check some values
     assert_allclose(x[0], 510232.847)
-    assert_allclose(ihs[:, 3][100], 2.3467595962486327)
+    assert_allclose(ihs[:, 2][100], 2.3467595962486327)
