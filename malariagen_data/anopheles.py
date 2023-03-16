@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Optional, Sequence, Tuple, Union
+from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
 import dask.array as da
@@ -65,7 +65,7 @@ AA_CHANGE_QUERY = (
 )
 
 # shared parameter documentation
-parameters = dict(
+general_params = dict(
     region="""
         Contig name, region string (formatted like "{contig}:{start}-{end}"), or
         identifier of a genome feature such as a gene or transcript.
@@ -98,12 +98,51 @@ parameters = dict(
     cohort_size="""
         Randomly down-sample to the given cohort size.
     """,
+    min_cohort_size="""
+        Minimum cohort size.
+    """,
     random_seed="""
         Random seed used for reproducible down-sampling.
     """,
     transcript="""
         Gene transcript identifier.
     """,
+    cohort="""
+        Either a string giving one of the predefined cohort labels, or a
+        pair of strings giving a custom cohort label and a sample query.
+    """,
+    cohorts="""
+        Either a string giving the name of a predefined cohort set (e.g.,
+        "admin1_month") or a dict mapping custom cohort labels to sample
+        queries.
+    """,
+    drop_invariant="""
+        If True, drop variants not observed in the selected samples.
+    """,
+    effects="""
+        If True, add SNP effects columns.
+    """,
+    n_jack="""
+        Number of blocks to divide the data into for the block jackknife
+        estimation of confidence intervals. N.B., larger is not necessarily
+        better.
+    """,
+    confidence_level="""
+        Confidence level to use for confidence interval calculation. E.g., 0.95
+        means 95% confidence interval.
+    """,
+    field="""
+        Array or column to access.
+    """,
+    inline_array="Passed through to dask `from_array()`.",
+    chunks="""
+        If 'auto' let dask decide chunk size. If 'native' use native zarr
+        chunks. Also, can be a target size, e.g., '200 MiB'.
+    """,
+)
+
+
+frequencies_advanced_params = dict(
     area_by="""
         Column name in the sample metadata to use to group samples spatially. E.g.,
         use "admin1_iso" or "admin1_name" to group by level 1 administrative
@@ -113,15 +152,8 @@ parameters = dict(
     period_by="""
         Length of time to group samples temporally.
     """,
-    min_cohort_size="""
-        Any cohorts below this size are omitted.
-    """,
-    drop_invariant="""
-        If True, variants with no alternate allele calls in any cohorts are
-        dropped from the result.
-    """,
     variant_query="""
-        A pandas query string to be evaluated against variants.
+        A pandas query to be evaluated against variants.
     """,
     nobs_mode="""
         Method for calculating the denominator when computing frequencies. If
@@ -133,44 +165,38 @@ parameters = dict(
         Method to use for computing confidence intervals, passed through to
         `statsmodels.stats.proportion.proportion_confint`.
     """,
-    cohort="""
-        Either a string giving one of the predefined cohort labels, or a
-        pair of strings giving a custom cohort label and a sample query to
-        select samples in the cohort.
-    """,
-    n_jack="""
-        Number of blocks to divide the data into for the block jackknife
-        estimation of confidence intervals. N.B., larger is not necessarily
-        better.
-    """,
-    confidence_level="""
-        Confidence level to use for confidence interval calculation. E.g., 0.95
-        means 95% confidence interval.
-    """,
 )
 
+
 # shared parameter types
-type_region: TypeAlias = Union[str, Region]
-type_release: TypeAlias = Union[str, Sequence[str]]
-type_sample_sets: TypeAlias = Union[Sequence[str], str]
-type_sample_query: TypeAlias = str
-type_site_mask: TypeAlias = str
-type_site_class: TypeAlias = str
-type_cohort_size: TypeAlias = int
-type_random_seed: TypeAlias = int
-type_transcript: TypeAlias = str
-type_area_by: TypeAlias = str
-type_period_by: TypeAlias = Literal["year", "quarter", "month"]
-type_min_cohort_size: TypeAlias = int
-type_drop_invariant: TypeAlias = bool
-type_variant_query: TypeAlias = str
-type_nobs_mode: TypeAlias = Literal["called", "fixed"]
-type_ci_method: TypeAlias = Literal[
+region_param_type: TypeAlias = Union[str, Region]
+release_param_type: TypeAlias = Union[str, Sequence[str]]
+sample_sets_param_type: TypeAlias = Union[Sequence[str], str]
+sample_query_param_type: TypeAlias = str
+site_mask_param_type: TypeAlias = str
+site_class_param_type: TypeAlias = str
+cohort_size_param_type: TypeAlias = int
+random_seed_param_type: TypeAlias = int
+transcript_param_type: TypeAlias = str
+area_by_param_type: TypeAlias = str
+period_by_param_type: TypeAlias = Literal["year", "quarter", "month"]
+min_cohort_size_param_type: TypeAlias = int
+drop_invariant_param_type: TypeAlias = bool
+effects_param_type: TypeAlias = bool
+variant_query_param_type: TypeAlias = str
+nobs_mode_param_type: TypeAlias = Literal["called", "fixed"]
+ci_method_param_type: TypeAlias = Literal[
     "normal", "agresti_coull", "beta", "wilson", "binom_test"
 ]
-type_cohort: TypeAlias = Union[str, Tuple[str, str]]
-type_n_jack: TypeAlias = int
-type_confidence_level: TypeAlias = float
+cohort_param_type: TypeAlias = Union[str, Tuple[str, str]]
+cohorts_param_type: TypeAlias = Union[str, Mapping[str, str]]
+n_jack_param_type: TypeAlias = int
+confidence_level_param_type: TypeAlias = float
+field_param_type: TypeAlias = str
+inline_array_param_type: TypeAlias = bool
+inline_array_param_default = True
+chunks_param_type: TypeAlias = str
+chunks_param_default = "native"
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -551,7 +577,7 @@ class AnophelesDataResource(ABC):
             Compute SNP allele counts. This returns the number of times each
             SNP allele was observed in the selected samples.
         """,
-        parameters=parameters,
+        parameters=general_params,
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
@@ -568,13 +594,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_counts(
         self,
-        region: type_region,
-        sample_sets: Optional[type_sample_sets] = None,
-        sample_query: Optional[type_sample_query] = None,
-        site_mask: Optional[type_site_mask] = None,
-        site_class: Optional[type_site_class] = None,
-        cohort_size: Optional[type_cohort_size] = None,
-        random_seed: Optional[type_random_seed] = 42,
+        region: region_param_type,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        sample_query: Optional[sample_query_param_type] = None,
+        site_mask: Optional[site_mask_param_type] = None,
+        site_class: Optional[site_class_param_type] = None,
+        cohort_size: Optional[cohort_size_param_type] = None,
+        random_seed: Optional[random_seed_param_type] = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
@@ -611,7 +637,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             SNP allele frequencies.
         """,
-        parameters=parameters,
+        parameters=dict(**general_params, **frequencies_advanced_params),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -625,17 +651,17 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_frequencies_advanced(
         self,
-        transcript: type_transcript,
-        area_by: type_area_by,
-        period_by: type_period_by,
-        sample_sets: Optional[type_sample_sets] = None,
-        sample_query: Optional[type_sample_query] = None,
-        min_cohort_size: type_min_cohort_size = 10,
-        drop_invariant: type_drop_invariant = True,
-        variant_query: Optional[type_variant_query] = None,
-        site_mask: Optional[type_site_mask] = None,
-        nobs_mode: type_nobs_mode = "called",
-        ci_method: Optional[type_ci_method] = "wilson",
+        transcript: transcript_param_type,
+        area_by: area_by_param_type,
+        period_by: period_by_param_type,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        sample_query: Optional[sample_query_param_type] = None,
+        min_cohort_size: min_cohort_size_param_type = 10,
+        drop_invariant: drop_invariant_param_type = True,
+        variant_query: Optional[variant_query_param_type] = None,
+        site_mask: Optional[site_mask_param_type] = None,
+        nobs_mode: nobs_mode_param_type = "called",
+        ci_method: Optional[ci_method_param_type] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -1054,9 +1080,11 @@ class AnophelesDataResource(ABC):
         # moving window computation of het counts
         from allel.stats.roh import _hmm_derive_transition_matrix
 
-        # Unresolved references
         # noinspection PyUnresolvedReferences
-        from pomegranate import HiddenMarkovModel, PoissonDistribution
+        from pomegranate import (  # pyright: ignore
+            HiddenMarkovModel,
+            PoissonDistribution,
+        )
 
         # het probabilities
         het_px = np.concatenate([(phet_roh,), phet_nonroh])
@@ -1141,19 +1169,14 @@ class AnophelesDataResource(ABC):
         else:
             raise RuntimeError(f"Unexpected release path: {path!r}")
 
-    def open_site_filters(self, mask):
-        """Open site filters zarr.
-
-        Parameters
-        ----------
-        mask : str
-            Mask to use, e.g. "gamb_colu".
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open site filters zarr.",
+        parameters=dict(
+            mask=general_params["site_mask"],  # same param but named differently here
+        ),
+        returns="Zarr hierarchy.",
+    )
+    def open_site_filters(self, mask: site_mask_param_type) -> zarr.hierarchy.Group:
         try:
             return self._cache_site_filters[mask]
         except KeyError:
@@ -1163,14 +1186,11 @@ class AnophelesDataResource(ABC):
             self._cache_site_filters[mask] = root
             return root
 
-    def open_snp_sites(self):
-        """Open SNP sites zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open SNP sites zarr",
+        returns="Zarr hierarchy.",
+    )
+    def open_snp_sites(self) -> zarr.hierarchy.Group:
         if self._cache_snp_sites is None:
             path = f"{self._base_path}/{self._major_version_gcs_str}/snp_genotypes/all/sites/"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -1189,10 +1209,13 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access a dataframe of sample sets",
-        parameters=parameters,
+        parameters=general_params,
         returns="A dataframe of sample sets, one row per sample set.",
     )
-    def sample_sets(self, release: Optional[type_release] = None) -> pd.DataFrame:
+    def sample_sets(
+        self,
+        release: Optional[release_param_type] = None,
+    ) -> pd.DataFrame:
         if release is None:
             # retrieve sample sets from all available releases
             release = self.releases
@@ -1230,7 +1253,7 @@ class AnophelesDataResource(ABC):
         return df.copy()
 
     def _prep_sample_sets_param(
-        self, *, sample_sets: Optional[type_sample_sets]
+        self, *, sample_sets: Optional[sample_sets_param_type]
     ) -> List[str]:
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
@@ -1341,13 +1364,13 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access sample metadata for one or more sample sets.",
-        parameters=parameters,
+        parameters=general_params,
         returns="A dataframe of sample metadata, one row per sample.",
     )
     def sample_metadata(
         self,
-        sample_sets: Optional[type_sample_sets] = None,
-        sample_query: Optional[type_sample_query] = None,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        sample_query: Optional[sample_query_param_type] = None,
     ) -> pd.DataFrame:
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
@@ -1427,8 +1450,10 @@ class AnophelesDataResource(ABC):
         # store extra metadata
         self._extra_metadata.append((on, data.copy()))
 
+    @doc(
+        summary="Clear any extra metadata previously added",
+    )
     def clear_extra_metadata(self):
-        """Clear any extra metadata previously added."""
         self._extra_metadata = []
 
     def _site_filters(
@@ -1451,41 +1476,24 @@ class AnophelesDataResource(ABC):
             d = d[loc_region]
         return d
 
+    @doc(
+        summary="Access SNP site filters.",
+        parameters=dict(
+            mask=general_params["site_mask"],  # same param but different name here
+            **general_params,
+        ),
+        returns="""
+            An array of boolean values identifying sites that pass the filters.
+        """,
+    )
     def site_filters(
         self,
-        region,
-        mask,
-        field="filter_pass",
-        inline_array=True,
-        chunks="native",
-    ):
-        """Access SNP site filters.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        mask : str
-            Mask to use, e.g. "gamb_colu"
-        field : str, optional
-            Array to access.
-        inline_array : bool, optional
-            Passed through to dask.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
-            An array of boolean values identifying sites that pass the filters.
-
-        """
-
+        region: region_param_type,
+        mask: site_mask_param_type,
+        field: field_param_type = "filter_pass",
+        inline_array: inline_array_param_type = inline_array_param_default,
+        chunks: chunks_param_type = chunks_param_default,
+    ) -> da.Array:
         region = self.resolve_region(region)
         if isinstance(region, Region):
             region = [region]
@@ -1526,42 +1534,22 @@ class AnophelesDataResource(ABC):
             ret = ret[loc_region]
         return ret
 
-    def snp_sites(
-        self,
-        region,
-        field,
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
-    ):
-        """Access SNP site data (positions and alleles).
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        field : {"POS", "REF", "ALT"}
-            Array to access.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
+    @doc(
+        summary="Access SNP site data (positions and alleles).",
+        parameters=general_params,
+        returns="""
             An array of either SNP positions, reference alleles or alternate
             alleles.
-
-        """
+        """,
+    )
+    def snp_sites(
+        self,
+        region: region_param_type,
+        field: Literal["POS", "REF", "ALT"],
+        site_mask: Optional[site_mask_param_type] = None,
+        inline_array: inline_array_param_type = inline_array_param_default,
+        chunks: chunks_param_type = chunks_param_default,
+    ) -> da.Array:
         debug = self._log.debug
 
         region = self.resolve_region(region)
@@ -4391,58 +4379,30 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="""
+            Compute SNP allele frequencies for a gene transcript.
+        """,
+        parameters=general_params,
+        returns="""
+            A dataframe of SNP allele frequencies, one row per variant allele.
+        """,
+        notes="""
+            Cohorts with fewer samples than `min_cohort_size` will be excluded from
+            output data frame.
+        """,
+    )
     def snp_allele_frequencies(
         self,
-        transcript,
-        cohorts,
-        sample_query=None,
-        min_cohort_size=10,
-        site_mask=None,
-        sample_sets=None,
-        drop_invariant=True,
-        effects=True,
+        transcript: transcript_param_type,
+        cohorts: cohorts_param_type,
+        sample_query: Optional[sample_query_param_type] = None,
+        min_cohort_size: Optional[min_cohort_size_param_type] = 10,
+        site_mask: Optional[site_mask_param_type] = None,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        drop_invariant: Optional[drop_invariant_param_type] = True,
+        effects: effects_param_type = True,
     ):
-        """Compute per variant allele frequencies for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int
-            Minimum cohort size. Any cohorts below this size are omitted.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        effects : bool, optional
-            If True, add SNP effect columns.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of SNP frequencies, one row per variant.
-
-        Notes
-        -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from
-        output.
-
-        """
         debug = self._log.debug
 
         debug("check parameters")
@@ -4632,57 +4592,30 @@ class AnophelesDataResource(ABC):
 
         return df
 
+    @doc(
+        summary="""
+            Compute amino acid substitution frequencies for a gene transcript.
+        """,
+        parameters=general_params,
+        returns="""
+            A dataframe of amino acid allele frequencies, one row per
+            substitution.
+        """,
+        notes="""
+            Cohorts with fewer samples than `min_cohort_size` will be excluded from
+            output data frame.
+        """,
+    )
     def aa_allele_frequencies(
         self,
-        transcript,
-        cohorts,
-        sample_query=None,
-        min_cohort_size=10,
-        site_mask=None,
-        sample_sets=None,
-        drop_invariant=True,
-    ):
-        """Compute per amino acid allele frequencies for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RA".
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not
-            calculated for cohorts.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of amino acid allele frequencies, one row per
-            replacement.
-
-        Notes
-        -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from
-        output.
-
-        """
+        transcript: transcript_param_type,
+        cohorts: cohorts_param_type,
+        sample_query: Optional[sample_query_param_type] = None,
+        min_cohort_size: Optional[min_cohort_size_param_type] = 10,
+        site_mask: Optional[site_mask_param_type] = None,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        drop_invariant: drop_invariant_param_type = True,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         df_snps = self.snp_allele_frequencies(
@@ -4754,7 +4687,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             amino acid change allele frequencies.
         """,
-        parameters=parameters,
+        parameters=dict(**general_params, **frequencies_advanced_params),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -4768,16 +4701,16 @@ class AnophelesDataResource(ABC):
     )
     def aa_allele_frequencies_advanced(
         self,
-        transcript: type_transcript,
-        area_by: type_area_by,
-        period_by: type_period_by,
-        sample_sets: Optional[type_sample_sets] = None,
-        sample_query: Optional[type_sample_query] = None,
-        min_cohort_size: type_min_cohort_size = 10,
-        variant_query: Optional[type_variant_query] = None,
-        site_mask: Optional[type_site_mask] = None,
-        nobs_mode: type_nobs_mode = "called",
-        ci_method: Optional[type_ci_method] = "wilson",
+        transcript: transcript_param_type,
+        area_by: area_by_param_type,
+        period_by: period_by_param_type,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        sample_query: Optional[sample_query_param_type] = None,
+        min_cohort_size: min_cohort_size_param_type = 10,
+        variant_query: Optional[variant_query_param_type] = None,
+        site_mask: Optional[site_mask_param_type] = None,
+        nobs_mode: nobs_mode_param_type = "called",
+        ci_method: Optional[ci_method_param_type] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -5017,7 +4950,7 @@ class AnophelesDataResource(ABC):
             Compute genetic diversity summary statistics for a cohort of
             individuals.
         """,
-        parameters=parameters,
+        parameters=general_params,
         returns="""
             A pandas series with summary statistics and their confidence
             intervals.
@@ -5025,15 +4958,15 @@ class AnophelesDataResource(ABC):
     )
     def cohort_diversity_stats(
         self,
-        cohort: type_cohort,
-        cohort_size: type_cohort_size,
-        region: type_region,
-        site_mask: Optional[type_site_mask] = DEFAULT,
-        site_class: Optional[type_site_class] = None,
-        sample_sets: Optional[type_sample_sets] = None,
-        random_seed: type_random_seed = 42,
-        n_jack: type_n_jack = 200,
-        confidence_level: type_confidence_level = 0.95,
+        cohort: cohort_param_type,
+        cohort_size: cohort_size_param_type,
+        region: region_param_type,
+        site_mask: Optional[site_mask_param_type] = DEFAULT,
+        site_class: Optional[site_class_param_type] = None,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        random_seed: random_seed_param_type = 42,
+        n_jack: n_jack_param_type = 200,
+        confidence_level: confidence_level_param_type = 0.95,
     ) -> pd.Series:
         debug = self._log.debug
 
