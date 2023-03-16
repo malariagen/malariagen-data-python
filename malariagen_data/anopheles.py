@@ -1897,6 +1897,10 @@ class AnophelesDataResource(ABC):
         debug("get feature direct from genome_features")
         gs = self.genome_features()
         feature = gs[gs["ID"] == transcript].squeeze()
+        if feature.empty:
+            raise ValueError(
+                f"No genome feature ID found matching transcript {transcript}"
+            )
         contig = feature.contig
         region = Region(contig, feature.start, feature.end)
 
