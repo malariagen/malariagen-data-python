@@ -1515,6 +1515,13 @@ class AnophelesDataResource(ABC):
 
         return d
 
+    def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
+        """Access SNP sites data for a single contig."""
+        root = self.open_snp_sites()
+        z = root[f"{contig}/variants/{field}"]
+        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return ret
+
     def _snp_sites(
         self,
         *,
@@ -1524,14 +1531,21 @@ class AnophelesDataResource(ABC):
         chunks,
     ):
         assert isinstance(region, Region), type(region)
-        root = self.open_snp_sites()
-        z = root[f"{region.contig}/variants/{field}"]
-        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+
+        ret = self._snp_sites_for_contig(
+            contig=region.contig, field=field, inline_array=inline_array, chunks=chunks
+        )
+
         if region.start or region.end:
             if field == "POS":
-                pos = z[:]
+                pos = ret
             else:
-                pos = root[f"{region.contig}/variants/POS"][:]
+                pos = self._snp_sites_for_contig(
+                    contig=region.contig,
+                    field="POS",
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
             loc_region = locate_region(region, pos)
             ret = ret[loc_region]
         return ret
@@ -1651,17 +1665,15 @@ class AnophelesDataResource(ABC):
             self._cache_snp_genotypes[sample_set] = root
             return root
 
-    def _snp_genotypes(self, *, region, sample_set, field, inline_array, chunks):
+    def _snp_genotypes_for_contig(
+        self, *, contig, sample_set, field, inline_array, chunks
+    ):
         """Access SNP genotypes for a single contig and a single sample set."""
-        assert isinstance(region, Region)
+        assert isinstance(contig, str)
         assert isinstance(sample_set, str)
         root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[f"{region.contig}/calldata/{field}"]
+        z = root[f"{contig}/calldata/{field}"]
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        if region.start or region.end:
-            pos = self.snp_sites(region=region.contig, field="POS")
-            loc_region = locate_region(region, pos)
-            d = d[loc_region]
 
         return d
 
@@ -1726,8 +1738,8 @@ class AnophelesDataResource(ABC):
             ly = []
 
             for s in sample_sets:
-                y = self._snp_genotypes(
-                    region=Region(r.contig, None, None),
+                y = self._snp_genotypes_for_contig(
+                    contig=r.contig,
                     sample_set=s,
                     field=field,
                     inline_array=inline_array,
@@ -1981,7 +1993,7 @@ class AnophelesDataResource(ABC):
 
         return df_snps
 
-    def _snp_variants_dataset(self, *, contig, inline_array, chunks):
+    def _snp_variants_for_contig(self, *, contig, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -2025,7 +2037,7 @@ class AnophelesDataResource(ABC):
 
         return ds
 
-    def _snp_calls_dataset(self, *, contig, sample_set, inline_array, chunks):
+    def _snp_calls_for_contig(self, *, contig, sample_set, inline_array, chunks):
         debug = self._log.debug
 
         coords = dict()
@@ -2135,7 +2147,7 @@ class AnophelesDataResource(ABC):
         for r in region:
             ly = []
             for s in sample_sets:
-                y = self._snp_calls_dataset(
+                y = self._snp_calls_for_contig(
                     contig=r.contig,
                     sample_set=s,
                     inline_array=inline_array,
@@ -2147,7 +2159,7 @@ class AnophelesDataResource(ABC):
             x = xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("add variants variables")
-            v = self._snp_variants_dataset(
+            v = self._snp_variants_for_contig(
                 contig=r.contig, inline_array=inline_array, chunks=chunks
             )
             x = xr.merge([v, x], compat="override", join="override")
@@ -2436,7 +2448,7 @@ class AnophelesDataResource(ABC):
         lx = []
         for r in region:
             debug("access variants")
-            x = self._snp_variants_dataset(
+            x = self._snp_variants_for_contig(
                 contig=r.contig,
                 inline_array=inline_array,
                 chunks=chunks,
@@ -6196,21 +6208,34 @@ class AnophelesDataResource(ABC):
             sample_sets=sample_sets, sample_query=sample_query
         )
 
-        debug("compute locations")
+        debug("pivot taxa by locations")
+        location_composite_key = [
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "latitude",
+            "longitude",
+        ]
         pivot_location_taxon = df_samples.pivot_table(
-            index=[
-                "country",
-                "admin1_iso",
-                "admin1_name",
-                "admin2_name",
-                "location",
-                "latitude",
-                "longitude",
-            ],
+            index=location_composite_key,
             columns=["taxon"],
             values="sample_id",
             aggfunc="count",
             fill_value=0,
+        )
+
+        debug("append aggregations to pivot")
+        df_location_aggs = df_samples.groupby(location_composite_key).agg(
+            {
+                "year": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+                "sample_set": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+                "contributor": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+            }
+        )
+        pivot_location_taxon = pivot_location_taxon.merge(
+            df_location_aggs, on=location_composite_key, validate="one_to_one"
         )
 
         debug("create a map")
@@ -6221,8 +6246,8 @@ class AnophelesDataResource(ABC):
             zoom=zoom,
             basemap=basemap,
         )
-        # FIXME: Unresolved attribute reference 'add' for class 'Map'
-        samples_map.add(ipyleaflet.ScaleControl(position="bottomleft"))
+        scale_control = ipyleaflet.ScaleControl(position="bottomleft")
+        samples_map.add_control(scale_control)
         # make the map a bit taller than the default
         samples_map.layout.height = "500px"
 
@@ -6235,20 +6260,26 @@ class AnophelesDataResource(ABC):
             title += f"\nAdmin level 2: {row.admin2_name}"
             title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
             title += f"\nCountry: {row.country}"
+            title += f"\nYears: {row.year}"
+            title += f"\nSample sets: {row.sample_set}"
+            title += f"\nContributors: {row.contributor}"
             title += "\nNo. specimens: "
             all_n = 0
             for taxon in taxa:
+                # Get the number of samples in this taxon
                 n = row[taxon]
+                # Count the number of samples in all taxa
                 all_n += n
                 if n > 0:
                     title += f"{n} {taxon}; "
+            # Only show a marker when there are enough samples
             if all_n >= min_samples:
                 marker = ipyleaflet.Marker(
                     location=(row.latitude, row.longitude),
                     draggable=False,
                     title=title,
                 )
-                samples_map.add(marker)
+                samples_map.add_control(marker)
 
         return samples_map
 
@@ -6529,7 +6560,7 @@ class AnophelesDataResource(ABC):
             self._cache_haplotype_sites[analysis] = root
         return root
 
-    def _haplotypes_dataset(
+    def _haplotypes_for_contig(
         self, *, contig, sample_set, analysis, inline_array, chunks
     ):
         debug = self._log.debug
@@ -6655,7 +6686,7 @@ class AnophelesDataResource(ABC):
             ly = []
 
             for s in sample_sets:
-                y = self._haplotypes_dataset(
+                y = self._haplotypes_for_contig(
                     contig=r.contig,
                     sample_set=s,
                     analysis=analysis,
@@ -7691,6 +7722,11 @@ class AnophelesDataResource(ABC):
             "year",
             "month",
         ]
+
+        if color and color not in hover_data:
+            hover_data.append(color)
+        if symbol and symbol not in hover_data:
+            hover_data.append(symbol)
 
         plot_kwargs = dict(
             template="simple_white",
