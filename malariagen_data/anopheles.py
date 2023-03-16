@@ -6291,6 +6291,8 @@ class AnophelesDataResource(ABC):
         center=(-2, 20),
         zoom=3,
         min_samples=1,
+        height="500px",
+        icon=None,
     ):
         """Plot an interactive map showing sampling locations using ipyleaflet.
 
@@ -6314,6 +6316,11 @@ class AnophelesDataResource(ABC):
         min_samples : int, optional
             Minimum number of samples required to show a marker for a given
             location.
+        height : str, optional
+            Height of the map, e.g. "500px",
+        icon : object, optional
+            Icon used for the map marker. It can be an instance of ipyleaflet's Icon, AwesomeIcon or DivIcon.
+            When none is specified, icon defaults to the "circle" AwesomeIcon.
 
         Returns
         -------
@@ -6376,7 +6383,7 @@ class AnophelesDataResource(ABC):
         }
 
         # Get basemap_provider
-        if type(basemap) == str:
+        if isinstance(basemap, str):
             basemap_str = basemap.lower()
             if basemap_str not in basemap_abbrevs:
                 raise ValueError("Basemap abbreviation not recognised:", basemap_str)
@@ -6402,11 +6409,12 @@ class AnophelesDataResource(ABC):
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
         samples_map.add_control(scale_control)
         # make the map a bit taller than the default
-        samples_map.layout.height = "500px"
+        samples_map.layout.height = height
 
         debug("add markers")
         # TODO: mosquito & mosquito-net icons were added to Font Awesome in 4.10. (ipyleaflet has 4.7.0.)
-        icon = ipyleaflet.AwesomeIcon(name="circle")
+        if icon is None:
+            icon = ipyleaflet.AwesomeIcon(name="circle")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
         for _, row in pivot_location_taxon.reset_index().iterrows():
             title = (
@@ -6460,6 +6468,8 @@ class AnophelesDataResource(ABC):
             center=ipywidgets.fixed(center),
             zoom=ipywidgets.fixed(zoom),
             min_samples=ipywidgets.fixed(min_samples),
+            height=ipywidgets.fixed(height),
+            icon=ipywidgets.fixed(icon),
         )
 
         out = ipywidgets.VBox([interactive_widget, samples_map])
