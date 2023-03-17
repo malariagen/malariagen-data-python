@@ -65,8 +65,8 @@ AA_CHANGE_QUERY = (
 )
 
 
-# documentation for general parameters common to many functions
-general_param_docs = dict(
+# general parameter documentation
+param_docs = dict(
     region="""
         Contig name, region string (formatted like "{contig}:{start}-{end}"), or
         identifier of a genome feature such as a gene or transcript.
@@ -144,30 +144,31 @@ general_param_docs = dict(
 
 
 # general parameter types
-region_param_type: TypeAlias = Union[str, Region]
-release_param_type: TypeAlias = Union[str, Sequence[str]]
-sample_sets_param_type: TypeAlias = Union[Sequence[str], str]
-sample_query_param_type: TypeAlias = str
-site_mask_param_type: TypeAlias = str
-site_class_param_type: TypeAlias = str
-cohort_size_param_type: TypeAlias = int
-random_seed_param_type: TypeAlias = int
-transcript_param_type: TypeAlias = str
-min_cohort_size_param_type: TypeAlias = int
-drop_invariant_param_type: TypeAlias = bool
-effects_param_type: TypeAlias = bool
-cohort_param_type: TypeAlias = Union[str, Tuple[str, str]]
-cohorts_param_type: TypeAlias = Union[str, Mapping[str, str]]
-n_jack_param_type: TypeAlias = int
-confidence_level_param_type: TypeAlias = float
-field_param_type: TypeAlias = str
-inline_array_param_type: TypeAlias = bool
-inline_array_param_default = True
-chunks_param_type: TypeAlias = str
-chunks_param_default = "native"
+class params:
+    region: TypeAlias = Union[str, Region]
+    release: TypeAlias = Union[str, Sequence[str]]
+    sample_sets: TypeAlias = Union[Sequence[str], str]
+    sample_query: TypeAlias = str
+    site_mask: TypeAlias = str
+    site_class: TypeAlias = str
+    cohort_size: TypeAlias = int
+    random_seed: TypeAlias = int
+    transcript: TypeAlias = str
+    min_cohort_size: TypeAlias = int
+    drop_invariant: TypeAlias = bool
+    effects: TypeAlias = bool
+    cohort: TypeAlias = Union[str, Tuple[str, str]]
+    cohorts: TypeAlias = Union[str, Mapping[str, str]]
+    n_jack: TypeAlias = int
+    confidence_level: TypeAlias = float
+    field: TypeAlias = str
+    inline_array: TypeAlias = bool
+    inline_array_default: inline_array = True
+    chunks: TypeAlias = str
+    chunks_default: chunks = "native"
 
 
-# documentation for parameters common to advanced frequency functions
+# frequencies advanced parameter documentation
 freq_adv_param_docs = dict(
     area_by="""
         Column name in the sample metadata to use to group samples spatially. E.g.,
@@ -195,16 +196,17 @@ freq_adv_param_docs = dict(
 
 
 # frequencies advanced parameter types
-area_by_freq_adv_param_type: TypeAlias = str
-period_by_freq_adv_param_type: TypeAlias = Literal["year", "quarter", "month"]
-variant_query_freq_adv_param_type: TypeAlias = str
-nobs_mode_freq_adv_param_type: TypeAlias = Literal["called", "fixed"]
-ci_method_freq_adv_param_type: TypeAlias = Literal[
-    "normal", "agresti_coull", "beta", "wilson", "binom_test"
-]
+class freq_adv_params:
+    area_by: TypeAlias = str
+    period_by: TypeAlias = Literal["year", "quarter", "month"]
+    variant_query: TypeAlias = str
+    nobs_mode: TypeAlias = Literal["called", "fixed"]
+    ci_method: TypeAlias = Literal[
+        "normal", "agresti_coull", "beta", "wilson", "binom_test"
+    ]
 
 
-# documentation for parameters common to bokeh plotting of data against genomic coordinates
+# bokeh genome plotting parameter documentation
 genome_plot_param_docs = dict(
     sizing_mode="""
         Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
@@ -220,33 +222,28 @@ genome_plot_param_docs = dict(
 )
 
 
-# bokeh genome plotting params
-sizing_mode_genome_plot_param_type: TypeAlias = Literal[
-    "fixed",
-    "stretch_width",
-    "stretch_height",
-    "stretch_both",
-    "scale_width",
-    "scale_height",
-    "scale_both",
-]
-sizing_mode_genome_plot_param_default: sizing_mode_genome_plot_param_type = (
-    "stretch_width"
-)
-width_genome_plot_param_type: TypeAlias = Optional[int]  # always can be None
-width_genome_plot_param_default = None
-height_genome_plot_param_type: TypeAlias = int
-genes_height_genome_plot_param_type: TypeAlias = int
-genes_height_genome_plot_param_default = 120
-show_genome_plot_param_type: TypeAlias = bool
-toolbar_location_genome_plot_param_type: TypeAlias = Literal[
-    "above", "below", "left", "right"
-]
-toolbar_location_genome_plot_param_default: toolbar_location_genome_plot_param_type = (
-    "above"
-)
-x_range_genome_plot_param_type: TypeAlias = bokeh.models.Range1d
-title_genome_plot_param_type: TypeAlias = str
+# bokeh genome plotting parameter types
+class genome_plot_params:
+    sizing_mode: TypeAlias = Literal[
+        "fixed",
+        "stretch_width",
+        "stretch_height",
+        "stretch_both",
+        "scale_width",
+        "scale_height",
+        "scale_both",
+    ]
+    sizing_mode_default: sizing_mode = "stretch_width"
+    width: TypeAlias = Optional[int]  # always can be None
+    width_default = None
+    height: TypeAlias = int
+    genes_height: TypeAlias = int
+    genes_height_default: genes_height = 120
+    show: TypeAlias = bool
+    toolbar_location: TypeAlias = Literal["above", "below", "left", "right"]
+    toolbar_location_default: toolbar_location = "above"
+    x_range: TypeAlias = bokeh.models.Range1d
+    title: TypeAlias = str
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -627,7 +624,7 @@ class AnophelesDataResource(ABC):
             Compute SNP allele counts. This returns the number of times each
             SNP allele was observed in the selected samples.
         """,
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
@@ -644,13 +641,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_counts(
         self,
-        region: region_param_type,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        sample_query: Optional[sample_query_param_type] = None,
-        site_mask: Optional[site_mask_param_type] = None,
-        site_class: Optional[site_class_param_type] = None,
-        cohort_size: Optional[cohort_size_param_type] = None,
-        random_seed: Optional[random_seed_param_type] = 42,
+        region: params.region,
+        sample_sets: Optional[params.sample_sets] = None,
+        sample_query: Optional[params.sample_query] = None,
+        site_mask: Optional[params.site_mask] = None,
+        site_class: Optional[params.site_class] = None,
+        cohort_size: Optional[params.cohort_size] = None,
+        random_seed: Optional[params.random_seed] = 42,
     ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
@@ -687,7 +684,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             SNP allele frequencies.
         """,
-        parameters=dict(**general_param_docs, **freq_adv_param_docs),
+        parameters=dict(**param_docs, **freq_adv_param_docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -701,17 +698,17 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_frequencies_advanced(
         self,
-        transcript: transcript_param_type,
-        area_by: area_by_freq_adv_param_type,
-        period_by: period_by_freq_adv_param_type,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        sample_query: Optional[sample_query_param_type] = None,
-        min_cohort_size: min_cohort_size_param_type = 10,
-        drop_invariant: drop_invariant_param_type = True,
-        variant_query: Optional[variant_query_freq_adv_param_type] = None,
-        site_mask: Optional[site_mask_param_type] = None,
-        nobs_mode: nobs_mode_freq_adv_param_type = "called",
-        ci_method: Optional[ci_method_freq_adv_param_type] = "wilson",
+        transcript: params.transcript,
+        area_by: freq_adv_params.area_by,
+        period_by: freq_adv_params.period_by,
+        sample_sets: Optional[params.sample_sets] = None,
+        sample_query: Optional[params.sample_query] = None,
+        min_cohort_size: params.min_cohort_size = 10,
+        drop_invariant: params.drop_invariant = True,
+        variant_query: Optional[freq_adv_params.variant_query] = None,
+        site_mask: Optional[params.site_mask] = None,
+        nobs_mode: freq_adv_params.nobs_mode = "called",
+        ci_method: Optional[freq_adv_params.ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -1220,13 +1217,11 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Open site filters zarr.",
         parameters=dict(
-            mask=general_param_docs[
-                "site_mask"
-            ],  # same param but named differently here
+            mask=param_docs["site_mask"],  # same param but named differently here
         ),
         returns="Zarr hierarchy.",
     )
-    def open_site_filters(self, mask: site_mask_param_type) -> zarr.hierarchy.Group:
+    def open_site_filters(self, mask: params.site_mask) -> zarr.hierarchy.Group:
         try:
             return self._cache_site_filters[mask]
         except KeyError:
@@ -1259,12 +1254,12 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access a dataframe of sample sets",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="A dataframe of sample sets, one row per sample set.",
     )
     def sample_sets(
         self,
-        release: Optional[release_param_type] = None,
+        release: Optional[params.release] = None,
     ) -> pd.DataFrame:
         if release is None:
             # retrieve sample sets from all available releases
@@ -1303,7 +1298,7 @@ class AnophelesDataResource(ABC):
         return df.copy()
 
     def _prep_sample_sets_param(
-        self, *, sample_sets: Optional[sample_sets_param_type]
+        self, *, sample_sets: Optional[params.sample_sets]
     ) -> List[str]:
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
@@ -1414,13 +1409,13 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access sample metadata for one or more sample sets.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="A dataframe of sample metadata, one row per sample.",
     )
     def sample_metadata(
         self,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        sample_query: Optional[sample_query_param_type] = None,
+        sample_sets: Optional[params.sample_sets] = None,
+        sample_query: Optional[params.sample_query] = None,
     ) -> pd.DataFrame:
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
@@ -1529,8 +1524,8 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Access SNP site filters.",
         parameters=dict(
-            mask=general_param_docs["site_mask"],  # same param but different name here
-            **general_param_docs,
+            mask=param_docs["site_mask"],  # same param but different name here
+            **param_docs,
         ),
         returns="""
             An array of boolean values identifying sites that pass the filters.
@@ -1538,11 +1533,11 @@ class AnophelesDataResource(ABC):
     )
     def site_filters(
         self,
-        region: region_param_type,
-        mask: site_mask_param_type,
-        field: field_param_type = "filter_pass",
-        inline_array: inline_array_param_type = inline_array_param_default,
-        chunks: chunks_param_type = chunks_param_default,
+        region: params.region,
+        mask: params.site_mask,
+        field: params.field = "filter_pass",
+        inline_array: params.inline_array = params.inline_array_default,
+        chunks: params.chunks = params.chunks_default,
     ) -> da.Array:
         # resolve the region parameter to a standard type
         resolved_region = self.resolve_region(region)
@@ -1602,7 +1597,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP site data (positions and alleles).",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             An array of either SNP positions, reference alleles or alternate
             alleles.
@@ -1610,11 +1605,11 @@ class AnophelesDataResource(ABC):
     )
     def snp_sites(
         self,
-        region: region_param_type,
+        region: params.region,
         field: Literal["POS", "REF", "ALT"],
-        site_mask: Optional[site_mask_param_type] = None,
-        inline_array: inline_array_param_type = inline_array_param_default,
-        chunks: chunks_param_type = chunks_param_default,
+        site_mask: Optional[params.site_mask] = None,
+        inline_array: params.inline_array = params.inline_array_default,
+        chunks: params.chunks = params.chunks_default,
     ) -> da.Array:
         debug = self._log.debug
 
@@ -1656,10 +1651,10 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Convert a genome region into a standard data structure.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="An instance of the `Region` class.",
     )
-    def resolve_region(self, region: region_param_type) -> Region:
+    def resolve_region(self, region: params.region) -> Region:
         return resolve_region(self, region)
 
     def _prep_region_cache_param(self, *, region):
@@ -1694,7 +1689,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Open SNP genotypes zarr for a given sample set.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="Zarr hierarchy.",
     )
     def open_snp_genotypes(self, sample_set: str) -> zarr.hierarchy.Group:
@@ -1729,7 +1724,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP genotypes and associated data.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             An array of either genotypes (GT), genotype quality (GQ), allele
             depths (AD) or mapping quality (MQ) values.
@@ -1737,13 +1732,13 @@ class AnophelesDataResource(ABC):
     )
     def snp_genotypes(
         self,
-        region: region_param_type,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        sample_query: Optional[sample_query_param_type] = None,
+        region: params.region,
+        sample_sets: Optional[params.sample_sets] = None,
+        sample_query: Optional[params.sample_query] = None,
         field: Literal["GT", "GQ", "AD", "MQ"] = "GT",
-        site_mask: Optional[site_mask_param_type] = None,
-        inline_array: inline_array_param_type = inline_array_param_default,
-        chunks: chunks_param_type = chunks_param_default,
+        site_mask: Optional[params.site_mask] = None,
+        inline_array: params.inline_array = params.inline_array_default,
+        chunks: params.chunks = params.chunks_default,
     ) -> da.Array:
         debug = self._log.debug
 
@@ -1822,7 +1817,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access the reference genome sequence.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             An array of nucleotides giving the reference genome sequence for the
             given contig.
@@ -1830,9 +1825,9 @@ class AnophelesDataResource(ABC):
     )
     def genome_sequence(
         self,
-        region: region_param_type,
-        inline_array: inline_array_param_type = inline_array_param_default,
-        chunks: chunks_param_type = chunks_param_default,
+        region: params.region,
+        inline_array: params.inline_array = params.inline_array_default,
+        chunks: params.chunks = params.chunks_default,
     ) -> da.Array:
         resolved_region: Region = self.resolve_region(region)
         del region
@@ -1857,13 +1852,13 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Compute genome accessibility array.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="An array of boolean values identifying accessible genome sites.",
     )
     def is_accessible(
         self,
-        region: region_param_type,
-        site_mask: site_mask_param_type = DEFAULT,
+        region: params.region,
+        site_mask: params.site_mask = DEFAULT,
     ) -> np.ndarray:
         debug = self._log.debug
 
@@ -1949,7 +1944,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Compute variant effects for a gene transcript.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             A dataframe of all possible SNP variants and their effects, one row
             per variant.
@@ -1957,8 +1952,8 @@ class AnophelesDataResource(ABC):
     )
     def snp_effects(
         self,
-        transcript: transcript_param_type,
-        site_mask: Optional[site_mask_param_type] = None,
+        transcript: params.transcript,
+        site_mask: Optional[params.site_mask] = None,
     ) -> pd.DataFrame:
         debug = self._log.debug
 
@@ -2066,20 +2061,20 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP sites, site filters and genotype calls.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="A dataset containing SNP sites, site filters and genotype calls.",
     )
     def snp_calls(
         self,
-        region: region_param_type,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        sample_query: Optional[sample_query_param_type] = None,
-        site_mask: Optional[site_mask_param_type] = None,
-        site_class: Optional[site_class_param_type] = None,
-        inline_array: inline_array_param_type = inline_array_param_default,
-        chunks: chunks_param_type = chunks_param_default,
-        cohort_size: Optional[cohort_size_param_type] = None,
-        random_seed: random_seed_param_type = 42,
+        region: params.region,
+        sample_sets: Optional[params.sample_sets] = None,
+        sample_query: Optional[params.sample_query] = None,
+        site_mask: Optional[params.site_mask] = None,
+        site_class: Optional[params.site_class] = None,
+        inline_array: params.inline_array = params.inline_array_default,
+        chunks: params.chunks = params.chunks_default,
+        cohort_size: Optional[params.cohort_size] = None,
+        random_seed: params.random_seed = 42,
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -2192,21 +2187,21 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot a genes track, using bokeh.",
         parameters=dict(
-            **general_param_docs,
+            **param_docs,
             **genome_plot_param_docs,
         ),
         returns="Bokeh figure.",
     )
     def plot_genes(
         self,
-        region: region_param_type,
-        sizing_mode: sizing_mode_genome_plot_param_type = sizing_mode_genome_plot_param_default,
-        width: width_genome_plot_param_type = width_genome_plot_param_default,
-        height: genes_height_genome_plot_param_type = genes_height_genome_plot_param_default,
-        show: show_genome_plot_param_type = True,
-        toolbar_location: toolbar_location_genome_plot_param_type = toolbar_location_genome_plot_param_default,
-        x_range: Optional[x_range_genome_plot_param_type] = None,
-        title: title_genome_plot_param_type = "Genes",
+        region: params.region,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+        show: genome_plot_params.show = True,
+        toolbar_location: genome_plot_params.toolbar_location = genome_plot_params.toolbar_location_default,
+        x_range: Optional[genome_plot_params.x_range] = None,
+        title: genome_plot_params.title = "Genes",
     ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
@@ -2336,15 +2331,15 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP sites and site filters.",
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="A dataset containing SNP sites and site filters.",
     )
     def snp_variants(
         self,
-        region: region_param_type,
-        site_mask: Optional[site_mask_param_type] = None,
-        inline_array: inline_array_param_type = inline_array_param_default,
-        chunks: chunks_param_type = chunks_param_default,
+        region: params.region,
+        site_mask: Optional[params.site_mask] = None,
+        inline_array: params.inline_array = params.inline_array_default,
+        chunks: params.chunks = params.chunks_default,
     ):
         debug = self._log.debug
 
@@ -2386,20 +2381,20 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot a transcript, using bokeh.",
         parameters=dict(
-            **general_param_docs,
+            **param_docs,
             **genome_plot_param_docs,
         ),
         returns="Bokeh figure.",
     )
     def plot_transcript(
         self,
-        transcript: transcript_param_type,
-        sizing_mode: sizing_mode_genome_plot_param_type = sizing_mode_genome_plot_param_default,
-        width: width_genome_plot_param_type = width_genome_plot_param_default,
-        height: height_genome_plot_param_type = genes_height_genome_plot_param_default,
-        show: show_genome_plot_param_type = True,
-        x_range: Optional[x_range_genome_plot_param_type] = None,
-        toolbar_location: toolbar_location_genome_plot_param_type = toolbar_location_genome_plot_param_default,
+        transcript: params.transcript,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        height: genome_plot_params.height = genome_plot_params.genes_height_default,
+        show: genome_plot_params.show = True,
+        x_range: Optional[genome_plot_params.x_range] = None,
+        toolbar_location: genome_plot_params.toolbar_location = genome_plot_params.toolbar_location_default,
         title: Union[
             str, bool
         ] = True,  # this type is a little different from plot_genes()
@@ -2523,13 +2518,13 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="",
         parameters=dict(
-            region=general_param_docs["region"],
+            region=param_docs["region"],
             tracks="Configuration for any additional tracks.",
         ),
         returns="IGV browser.",
     )
     def igv(
-        self, region: region_param_type, tracks: Optional[List] = None
+        self, region: params.region, tracks: Optional[List] = None
     ) -> igv_notebook.Browser:
         debug = self._log.debug
 
@@ -2570,7 +2565,7 @@ class AnophelesDataResource(ABC):
             the given sample.
         """,
         parameters=dict(
-            region=general_param_docs["region"],
+            region=param_docs["region"],
             sample="Sample identifier.",
             visibility_window="""
                 Zoom level in base pairs at which alignment and SNP data will become
@@ -2580,7 +2575,7 @@ class AnophelesDataResource(ABC):
     )
     def view_alignments(
         self,
-        region: region_param_type,
+        region: params.region,
         sample: str,
         visibility_window: int = 20_000,
     ):
@@ -3003,8 +2998,8 @@ class AnophelesDataResource(ABC):
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         height=200,
         circle_kwargs=None,
         show=True,
@@ -3088,10 +3083,10 @@ class AnophelesDataResource(ABC):
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         track_height=170,
-        genes_height=genes_height_genome_plot_param_default,
+        genes_height=genome_plot_params.genes_height_default,
         circle_kwargs=None,
         show=True,
     ):
@@ -3330,8 +3325,8 @@ class AnophelesDataResource(ABC):
         self,
         df_roh,
         region,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         height=100,
         show=True,
         x_range=None,
@@ -3416,11 +3411,11 @@ class AnophelesDataResource(ABC):
         phet_nonroh=(0.003, 0.01),
         transition=1e-3,
         y_max=0.03,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         heterozygosity_height=170,
         roh_height=50,
-        genes_height=genes_height_genome_plot_param_default,
+        genes_height=genome_plot_params.genes_height_default,
         circle_kwargs=None,
         show=True,
     ):
@@ -3940,10 +3935,10 @@ class AnophelesDataResource(ABC):
         sample_query=None,
         site_mask=DEFAULT,
         cohort_size=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         track_height=80,
-        genes_height=genes_height_genome_plot_param_default,
+        genes_height=genome_plot_params.genes_height_default,
         max_snps=200_000,
         show=True,
     ):
@@ -4051,8 +4046,8 @@ class AnophelesDataResource(ABC):
         sample_query=None,
         site_mask=DEFAULT,
         cohort_size=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         height=120,
         max_snps=200_000,
         x_range=None,
@@ -4258,7 +4253,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute SNP allele frequencies for a gene transcript.
         """,
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             A dataframe of SNP allele frequencies, one row per variant allele.
         """,
@@ -4269,14 +4264,14 @@ class AnophelesDataResource(ABC):
     )
     def snp_allele_frequencies(
         self,
-        transcript: transcript_param_type,
-        cohorts: cohorts_param_type,
-        sample_query: Optional[sample_query_param_type] = None,
-        min_cohort_size: Optional[min_cohort_size_param_type] = 10,
-        site_mask: Optional[site_mask_param_type] = None,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        drop_invariant: Optional[drop_invariant_param_type] = True,
-        effects: effects_param_type = True,
+        transcript: params.transcript,
+        cohorts: params.cohorts,
+        sample_query: Optional[params.sample_query] = None,
+        min_cohort_size: Optional[params.min_cohort_size] = 10,
+        site_mask: Optional[params.site_mask] = None,
+        sample_sets: Optional[params.sample_sets] = None,
+        drop_invariant: Optional[params.drop_invariant] = True,
+        effects: params.effects = True,
     ):
         debug = self._log.debug
 
@@ -4471,7 +4466,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
         """,
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             A dataframe of amino acid allele frequencies, one row per
             substitution.
@@ -4483,13 +4478,13 @@ class AnophelesDataResource(ABC):
     )
     def aa_allele_frequencies(
         self,
-        transcript: transcript_param_type,
-        cohorts: cohorts_param_type,
-        sample_query: Optional[sample_query_param_type] = None,
-        min_cohort_size: Optional[min_cohort_size_param_type] = 10,
-        site_mask: Optional[site_mask_param_type] = None,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        drop_invariant: drop_invariant_param_type = True,
+        transcript: params.transcript,
+        cohorts: params.cohorts,
+        sample_query: Optional[params.sample_query] = None,
+        min_cohort_size: Optional[params.min_cohort_size] = 10,
+        site_mask: Optional[params.site_mask] = None,
+        sample_sets: Optional[params.sample_sets] = None,
+        drop_invariant: params.drop_invariant = True,
     ) -> pd.DataFrame:
         debug = self._log.debug
 
@@ -4562,7 +4557,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             amino acid change allele frequencies.
         """,
-        parameters=dict(**general_param_docs, **freq_adv_param_docs),
+        parameters=dict(**param_docs, **freq_adv_param_docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -4576,16 +4571,16 @@ class AnophelesDataResource(ABC):
     )
     def aa_allele_frequencies_advanced(
         self,
-        transcript: transcript_param_type,
-        area_by: area_by_freq_adv_param_type,
-        period_by: period_by_freq_adv_param_type,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        sample_query: Optional[sample_query_param_type] = None,
-        min_cohort_size: min_cohort_size_param_type = 10,
-        variant_query: Optional[variant_query_freq_adv_param_type] = None,
-        site_mask: Optional[site_mask_param_type] = None,
-        nobs_mode: nobs_mode_freq_adv_param_type = "called",
-        ci_method: Optional[ci_method_freq_adv_param_type] = "wilson",
+        transcript: params.transcript,
+        area_by: freq_adv_params.area_by,
+        period_by: freq_adv_params.period_by,
+        sample_sets: Optional[params.sample_sets] = None,
+        sample_query: Optional[params.sample_query] = None,
+        min_cohort_size: params.min_cohort_size = 10,
+        variant_query: Optional[freq_adv_params.variant_query] = None,
+        site_mask: Optional[params.site_mask] = None,
+        nobs_mode: freq_adv_params.nobs_mode = "called",
+        ci_method: Optional[freq_adv_params.ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -4825,7 +4820,7 @@ class AnophelesDataResource(ABC):
             Compute genetic diversity summary statistics for a cohort of
             individuals.
         """,
-        parameters=general_param_docs,
+        parameters=param_docs,
         returns="""
             A pandas series with summary statistics and their confidence
             intervals.
@@ -4833,15 +4828,15 @@ class AnophelesDataResource(ABC):
     )
     def cohort_diversity_stats(
         self,
-        cohort: cohort_param_type,
-        cohort_size: cohort_size_param_type,
-        region: region_param_type,
-        site_mask: Optional[site_mask_param_type] = DEFAULT,
-        site_class: Optional[site_class_param_type] = None,
-        sample_sets: Optional[sample_sets_param_type] = None,
-        random_seed: random_seed_param_type = 42,
-        n_jack: n_jack_param_type = 200,
-        confidence_level: confidence_level_param_type = 0.95,
+        cohort: params.cohort,
+        cohort_size: params.cohort_size,
+        region: params.region,
+        site_mask: Optional[params.site_mask] = DEFAULT,
+        site_class: Optional[params.site_class] = None,
+        sample_sets: Optional[params.sample_sets] = None,
+        random_seed: params.random_seed = 42,
+        n_jack: params.n_jack = 200,
+        confidence_level: params.confidence_level = 0.95,
     ) -> pd.Series:
         debug = self._log.debug
 
@@ -6164,8 +6159,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         height=200,
         show=True,
         x_range=None,
@@ -6282,10 +6277,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         track_height=190,
-        genes_height=genes_height_genome_plot_param_default,
+        genes_height=genome_plot_params.genes_height_default,
     ):
         """Run and plot a Fst genome-wide scan to investigate genetic
         differentiation between two cohorts.
@@ -6921,8 +6916,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         height=200,
         show=True,
         x_range=None,
@@ -7034,10 +7029,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         track_height=170,
-        genes_height=genes_height_genome_plot_param_default,
+        genes_height=genome_plot_params.genes_height_default,
     ):
         """Plot h12 GWSS data.
 
@@ -7252,8 +7247,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         height=200,
         show=True,
         x_range=None,
@@ -7372,10 +7367,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=sizing_mode_genome_plot_param_default,
-        width=width_genome_plot_param_default,
+        sizing_mode=genome_plot_params.sizing_mode_default,
+        width=genome_plot_params.width_default,
         track_height=190,
-        genes_height=genes_height_genome_plot_param_default,
+        genes_height=genome_plot_params.genes_height_default,
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
