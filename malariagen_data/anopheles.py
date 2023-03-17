@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from collections import Counter
 from pathlib import Path
 from textwrap import dedent
-from typing import List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -230,8 +230,10 @@ sizing_mode_genome_plot_param_type: TypeAlias = Literal[
     "scale_height",
     "scale_both",
 ]
-sizing_mode_genome_plot_param_default = "stretch_width"
-width_genome_plot_param_type: TypeAlias = int
+sizing_mode_genome_plot_param_default: sizing_mode_genome_plot_param_type = (
+    "stretch_width"
+)
+width_genome_plot_param_type: TypeAlias = Optional[int]  # always can be None
 width_genome_plot_param_default = None
 height_genome_plot_param_type: TypeAlias = int
 genes_height_genome_plot_param_type: TypeAlias = int
@@ -240,7 +242,9 @@ show_genome_plot_param_type: TypeAlias = bool
 toolbar_location_genome_plot_param_type: TypeAlias = Literal[
     "above", "below", "left", "right"
 ]
-toolbar_location_genome_plot_param_default = "above"
+toolbar_location_genome_plot_param_default: toolbar_location_genome_plot_param_type = (
+    "above"
+)
 x_range_genome_plot_param_type: TypeAlias = bokeh.models.Range1d
 title_genome_plot_param_type: TypeAlias = str
 
@@ -1745,15 +1749,16 @@ class AnophelesDataResource(ABC):
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("normalise region to list to simplify concatenation logic")
-        if isinstance(region, Region):
-            region = [region]
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("concatenate multiple sample sets and/or contigs")
         lx = []
-        for r in region:
+        for r in resolved_region:
             ly = []
 
             for s in sample_sets:
@@ -1783,7 +1788,7 @@ class AnophelesDataResource(ABC):
         debug("apply site filters if requested")
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region,
+                region=resolved_region,
                 mask=site_mask,
             )
             d = da_compress(loc_sites, d, axis=0)
@@ -1863,23 +1868,24 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("resolve region")
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("determine contig sequence length")
-        seq_length = self.genome_sequence(region).shape[0]
+        seq_length = self.genome_sequence(resolved_region).shape[0]
 
         debug("set up output")
         is_accessible = np.zeros(seq_length, dtype=bool)
 
-        pos = self.snp_sites(region=region, field="POS").compute()
-        if region.start:
-            offset = region.start
+        pos = self.snp_sites(region=resolved_region, field="POS").compute()
+        if resolved_region.start:
+            offset = resolved_region.start
         else:
             offset = 1
 
         debug("access site filters")
         filter_pass = self.site_filters(
-            region=region,
+            region=resolved_region,
             mask=site_mask,
         ).compute()
 
@@ -2079,13 +2085,14 @@ class AnophelesDataResource(ABC):
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("access SNP calls and concatenate multiple sample sets and/or regions")
         lx = []
-        for r in region:
+        for r in resolved_region:
             ly = []
             for s in sample_sets:
                 y = self._snp_calls_for_contig(
@@ -2204,10 +2211,13 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        region = self.resolve_region(region)
-        contig = region.contig
-        start = region.start
-        end = region.end
+        resolved_region = self.resolve_region(region)
+        del region
+
+        debug("handle region bounds")
+        contig = resolved_region.contig
+        start = resolved_region.start
+        end = resolved_region.end
         if start is None:
             start = 0
         if end is None:
@@ -2218,7 +2228,7 @@ class AnophelesDataResource(ABC):
             x_range = bokeh.models.Range1d(start, end, bounds="auto")
 
         debug("select the genes overlapping the requested region")
-        data, tooltips = self._plot_genes_setup_data(region=region)
+        data, tooltips = self._plot_genes_setup_data(region=resolved_region)
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -2277,7 +2287,7 @@ class AnophelesDataResource(ABC):
         yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
             bokeh.plotting.show(fig)
@@ -2339,13 +2349,14 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("normalise parameters")
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("access SNP data and concatenate multiple regions")
         lx = []
-        for r in region:
+        for r in resolved_region:
             debug("access variants")
             x = self._snp_variants_for_contig(
                 contig=r.contig,
@@ -2590,11 +2601,12 @@ class AnophelesDataResource(ABC):
         debug(vcf_url)
 
         debug("parse region")
-        region = self.resolve_region(region)
-        contig = region.contig
+        resolved_region = self.resolve_region(region)
+        del region
+        contig = resolved_region.contig
 
         # begin creating tracks
-        tracks = []
+        tracks: List[Dict] = []
 
         # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
         debug("set up site filters tracks")
@@ -2629,7 +2641,7 @@ class AnophelesDataResource(ABC):
         )
 
         debug("create IGV browser")
-        self.igv(region=region, tracks=tracks)
+        self.igv(region=resolved_region, tracks=tracks)
 
     def _pca(
         self,
