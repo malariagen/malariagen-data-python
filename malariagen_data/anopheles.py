@@ -7746,7 +7746,8 @@ class AnophelesDataResource(ABC):
         gap_scale=20_000,
         include_edges=True,
         use_threads=True,
-        cohort_size=30,
+        min_cohort_size=15,
+        max_cohort_size=50,
         random_seed=42,
     ):
         """Run iHS GWSS.
@@ -7798,8 +7799,12 @@ class AnophelesDataResource(ABC):
             end of the chromosome.
         use_threads : bool, optional
             If True, use multiple threads to compute iHS.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to this value if the number of
+            samples in the cohort is greater.
         random_seed : int, optional
             Random seed used for down-sampling.
 
@@ -7836,7 +7841,8 @@ class AnophelesDataResource(ABC):
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
-            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -7871,7 +7877,8 @@ class AnophelesDataResource(ABC):
         gap_scale,
         include_edges,
         use_threads,
-        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         random_seed,
     ):
         ds_haps = self.haplotypes(
@@ -7879,9 +7886,23 @@ class AnophelesDataResource(ABC):
             analysis=analysis,
             sample_query=sample_query,
             sample_sets=sample_sets,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
         )
+
+        if min_cohort_size is not None:
+            n_samples = ds_haps.dims["samples"]
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
+                )
+        if max_cohort_size is not None:
+            n_samples = ds_haps.dims["samples"]
+            if n_samples > max_cohort_size:
+                rng = np.random.default_rng(seed=random_seed)
+                loc_downsample = rng.choice(
+                    n_samples, size=max_cohort_size, replace=False
+                )
+                loc_downsample.sort()
+                ds_haps = ds_haps.isel(samples=loc_downsample)
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):
@@ -7959,7 +7980,8 @@ class AnophelesDataResource(ABC):
         gap_scale=20000,
         include_edges=True,
         use_threads=True,
-        cohort_size=30,
+        min_cohort_size=15,
+        max_cohort_size=50,
         random_seed=42,
         title=None,
         sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
@@ -8019,8 +8041,12 @@ class AnophelesDataResource(ABC):
             end of the chromosome.
         use_threads : bool, optional
             If True, use multiple threads to compute iHS.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to this value if the number of
+            samples in the cohort is greater.
         random_seed : int, optional
             Random seed used for down-sampling.
         title : str, optional
@@ -8062,7 +8088,8 @@ class AnophelesDataResource(ABC):
             gap_scale=gap_scale,
             include_edges=include_edges,
             use_threads=use_threads,
-            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             sample_query=sample_query,
             sample_sets=sample_sets,
             random_seed=random_seed,
@@ -8144,7 +8171,8 @@ class AnophelesDataResource(ABC):
         gap_scale=20_000,
         include_edges=False,
         use_threads=True,
-        cohort_size=30,
+        min_cohort_size=15,
+        max_cohort_size=50,
         random_seed=42,
         title=None,
         sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
@@ -8203,8 +8231,12 @@ class AnophelesDataResource(ABC):
             end of the chromosome.
         use_threads : bool, optional
             If True, use multiple threads to compute iHS.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to this value if the number of
+            samples in the cohort is greater.
         random_seed : int, optional
             Random seed used for down-sampling.
         title : str, optional
@@ -8247,7 +8279,8 @@ class AnophelesDataResource(ABC):
             gap_scale=gap_scale,
             include_edges=include_edges,
             use_threads=use_threads,
-            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
             title=title,
             sizing_mode=sizing_mode,
