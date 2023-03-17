@@ -8,7 +8,12 @@ from textwrap import dedent
 from typing import List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
+import bokeh.layouts
+import bokeh.models
+import bokeh.palettes
+import bokeh.plotting
 import dask.array as da
+import igv_notebook
 import ipinfo
 import numba
 import numpy as np
@@ -54,18 +59,14 @@ from .util import (
 )
 
 DEFAULT = "default"
-# width in px for bokeh genome plots - leave as None to allow stretching
-DEFAULT_GENOME_PLOT_WIDTH = None
-# see also https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-DEFAULT_GENOME_PLOT_SIZING_MODE = "stretch_width"
-DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
 
-# shared parameter documentation
-general_params = dict(
+
+# documentation for general parameters common to many functions
+general_param_docs = dict(
     region="""
         Contig name, region string (formatted like "{contig}:{start}-{end}"), or
         identifier of a genome feature such as a gene or transcript.
@@ -142,7 +143,32 @@ general_params = dict(
 )
 
 
-frequencies_advanced_params = dict(
+# general parameter types
+region_param_type: TypeAlias = Union[str, Region]
+release_param_type: TypeAlias = Union[str, Sequence[str]]
+sample_sets_param_type: TypeAlias = Union[Sequence[str], str]
+sample_query_param_type: TypeAlias = str
+site_mask_param_type: TypeAlias = str
+site_class_param_type: TypeAlias = str
+cohort_size_param_type: TypeAlias = int
+random_seed_param_type: TypeAlias = int
+transcript_param_type: TypeAlias = str
+min_cohort_size_param_type: TypeAlias = int
+drop_invariant_param_type: TypeAlias = bool
+effects_param_type: TypeAlias = bool
+cohort_param_type: TypeAlias = Union[str, Tuple[str, str]]
+cohorts_param_type: TypeAlias = Union[str, Mapping[str, str]]
+n_jack_param_type: TypeAlias = int
+confidence_level_param_type: TypeAlias = float
+field_param_type: TypeAlias = str
+inline_array_param_type: TypeAlias = bool
+inline_array_param_default = True
+chunks_param_type: TypeAlias = str
+chunks_param_default = "native"
+
+
+# documentation for parameters common to advanced frequency functions
+freq_adv_param_docs = dict(
     area_by="""
         Column name in the sample metadata to use to group samples spatially. E.g.,
         use "admin1_iso" or "admin1_name" to group by level 1 administrative
@@ -168,35 +194,55 @@ frequencies_advanced_params = dict(
 )
 
 
-# shared parameter types
-region_param_type: TypeAlias = Union[str, Region]
-release_param_type: TypeAlias = Union[str, Sequence[str]]
-sample_sets_param_type: TypeAlias = Union[Sequence[str], str]
-sample_query_param_type: TypeAlias = str
-site_mask_param_type: TypeAlias = str
-site_class_param_type: TypeAlias = str
-cohort_size_param_type: TypeAlias = int
-random_seed_param_type: TypeAlias = int
-transcript_param_type: TypeAlias = str
-area_by_param_type: TypeAlias = str
-period_by_param_type: TypeAlias = Literal["year", "quarter", "month"]
-min_cohort_size_param_type: TypeAlias = int
-drop_invariant_param_type: TypeAlias = bool
-effects_param_type: TypeAlias = bool
-variant_query_param_type: TypeAlias = str
-nobs_mode_param_type: TypeAlias = Literal["called", "fixed"]
-ci_method_param_type: TypeAlias = Literal[
+# frequencies advanced parameter types
+area_by_freq_adv_param_type: TypeAlias = str
+period_by_freq_adv_param_type: TypeAlias = Literal["year", "quarter", "month"]
+variant_query_freq_adv_param_type: TypeAlias = str
+nobs_mode_freq_adv_param_type: TypeAlias = Literal["called", "fixed"]
+ci_method_freq_adv_param_type: TypeAlias = Literal[
     "normal", "agresti_coull", "beta", "wilson", "binom_test"
 ]
-cohort_param_type: TypeAlias = Union[str, Tuple[str, str]]
-cohorts_param_type: TypeAlias = Union[str, Mapping[str, str]]
-n_jack_param_type: TypeAlias = int
-confidence_level_param_type: TypeAlias = float
-field_param_type: TypeAlias = str
-inline_array_param_type: TypeAlias = bool
-inline_array_param_default = True
-chunks_param_type: TypeAlias = str
-chunks_param_default = "native"
+
+
+# documentation for parameters common to bokeh plotting of data against genomic coordinates
+genome_plot_param_docs = dict(
+    sizing_mode="""
+        Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
+    """,
+    width="Plot width in pixels (px).",
+    height="Plot height in pixels (px).",
+    track_height="Main track height in pixels (px).",
+    genes_height="Genes track height in pixels (px).",
+    show="If true, show the plot.",
+    toolbar_location="Location of bokeh toolbar.",
+    x_range="X axis range (for linking to other tracks).",
+    title="Plot title.",
+)
+
+
+# bokeh genome plotting params
+sizing_mode_genome_plot_param_type: TypeAlias = Literal[
+    "fixed",
+    "stretch_width",
+    "stretch_height",
+    "stretch_both",
+    "scale_width",
+    "scale_height",
+    "scale_both",
+]
+sizing_mode_genome_plot_param_default = "stretch_width"
+width_genome_plot_param_type: TypeAlias = int
+width_genome_plot_param_default = None
+height_genome_plot_param_type: TypeAlias = int
+genes_height_genome_plot_param_type: TypeAlias = int
+genes_height_genome_plot_param_default = 120
+show_genome_plot_param_type: TypeAlias = bool
+toolbar_location_genome_plot_param_type: TypeAlias = Literal[
+    "above", "below", "left", "right"
+]
+toolbar_location_genome_plot_param_default = "above"
+x_range_genome_plot_param_type: TypeAlias = bokeh.models.Range1d
+title_genome_plot_param_type: TypeAlias = str
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -577,7 +623,7 @@ class AnophelesDataResource(ABC):
             Compute SNP allele counts. This returns the number of times each
             SNP allele was observed in the selected samples.
         """,
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
@@ -637,7 +683,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             SNP allele frequencies.
         """,
-        parameters=dict(**general_params, **frequencies_advanced_params),
+        parameters=dict(**general_param_docs, **freq_adv_param_docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -652,16 +698,16 @@ class AnophelesDataResource(ABC):
     def snp_allele_frequencies_advanced(
         self,
         transcript: transcript_param_type,
-        area_by: area_by_param_type,
-        period_by: period_by_param_type,
+        area_by: area_by_freq_adv_param_type,
+        period_by: period_by_freq_adv_param_type,
         sample_sets: Optional[sample_sets_param_type] = None,
         sample_query: Optional[sample_query_param_type] = None,
         min_cohort_size: min_cohort_size_param_type = 10,
         drop_invariant: drop_invariant_param_type = True,
-        variant_query: Optional[variant_query_param_type] = None,
+        variant_query: Optional[variant_query_freq_adv_param_type] = None,
         site_mask: Optional[site_mask_param_type] = None,
-        nobs_mode: nobs_mode_param_type = "called",
-        ci_method: Optional[ci_method_param_type] = "wilson",
+        nobs_mode: nobs_mode_freq_adv_param_type = "called",
+        ci_method: Optional[ci_method_freq_adv_param_type] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -841,12 +887,10 @@ class AnophelesDataResource(ABC):
     @staticmethod
     def _bokeh_style_genome_xaxis(fig, contig):
         """Standard styling for X axis of genome plots."""
-        import bokeh.models as bkmod
-
         fig.xaxis.axis_label = f"Contig {contig} position (bp)"
-        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+        fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
     @staticmethod
     def _locate_cohorts(*, cohorts, df_samples):
@@ -1172,7 +1216,9 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Open site filters zarr.",
         parameters=dict(
-            mask=general_params["site_mask"],  # same param but named differently here
+            mask=general_param_docs[
+                "site_mask"
+            ],  # same param but named differently here
         ),
         returns="Zarr hierarchy.",
     )
@@ -1209,7 +1255,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access a dataframe of sample sets",
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="A dataframe of sample sets, one row per sample set.",
     )
     def sample_sets(
@@ -1364,7 +1410,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access sample metadata for one or more sample sets.",
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="A dataframe of sample metadata, one row per sample.",
     )
     def sample_metadata(
@@ -1479,8 +1525,8 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Access SNP site filters.",
         parameters=dict(
-            mask=general_params["site_mask"],  # same param but different name here
-            **general_params,
+            mask=general_param_docs["site_mask"],  # same param but different name here
+            **general_param_docs,
         ),
         returns="""
             An array of boolean values identifying sites that pass the filters.
@@ -1552,7 +1598,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP site data (positions and alleles).",
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="""
             An array of either SNP positions, reference alleles or alternate
             alleles.
@@ -1606,7 +1652,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Convert a genome region into a standard data structure.",
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="An instance of the `Region` class.",
     )
     def resolve_region(self, region: region_param_type) -> Region:
@@ -1642,18 +1688,12 @@ class AnophelesDataResource(ABC):
 
         return sample_sets, sample_query
 
-    def open_snp_genotypes(self, sample_set):
-        """Open SNP genotypes zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open SNP genotypes zarr for a given sample set.",
+        parameters=general_param_docs,
+        returns="Zarr hierarchy.",
+    )
+    def open_snp_genotypes(self, sample_set: str) -> zarr.hierarchy.Group:
         try:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
@@ -1666,8 +1706,14 @@ class AnophelesDataResource(ABC):
             return root
 
     def _snp_genotypes_for_contig(
-        self, *, contig, sample_set, field, inline_array, chunks
-    ):
+        self,
+        *,
+        contig: str,
+        sample_set: str,
+        field: str,
+        inline_array: bool,
+        chunks: str,
+    ) -> da.Array:
         """Access SNP genotypes for a single contig and a single sample set."""
         assert isinstance(contig, str)
         assert isinstance(sample_set, str)
@@ -1677,51 +1723,24 @@ class AnophelesDataResource(ABC):
 
         return d
 
-    def snp_genotypes(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        field="GT",
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
-    ):
-        """Access SNP genotypes and associated data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        field : {"GT", "GQ", "AD", "MQ"}
-            Array to access.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
+    @doc(
+        summary="Access SNP genotypes and associated data.",
+        parameters=general_param_docs,
+        returns="""
             An array of either genotypes (GT), genotype quality (GQ), allele
             depths (AD) or mapping quality (MQ) values.
-
-        """
+        """,
+    )
+    def snp_genotypes(
+        self,
+        region: region_param_type,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        sample_query: Optional[sample_query_param_type] = None,
+        field: Literal["GT", "GQ", "AD", "MQ"] = "GT",
+        site_mask: Optional[site_mask_param_type] = None,
+        inline_array: inline_array_param_type = inline_array_param_default,
+        chunks: chunks_param_type = chunks_param_default,
+    ) -> da.Array:
         debug = self._log.debug
 
         debug("normalise parameters")
@@ -1777,15 +1796,11 @@ class AnophelesDataResource(ABC):
 
         return d
 
-    def open_genome(self):
-        """Open the reference genome zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-            Zarr hierarchy containing the reference genome sequence.
-
-        """
+    @doc(
+        summary="Open the reference genome zarr.",
+        returns="Zarr hierarchy containing the reference genome sequence.",
+    )
+    def open_genome(self) -> zarr.hierarchy.Group:
         if self._cache_genome is None:
             path = f"{self._base_path}/{self._genome_zarr_path}"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -1800,75 +1815,51 @@ class AnophelesDataResource(ABC):
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
-    def genome_sequence(self, region, inline_array=True, chunks="native"):
-        """Access the reference genome sequence.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
+    @doc(
+        summary="Access the reference genome sequence.",
+        parameters=general_param_docs,
+        returns="""
             An array of nucleotides giving the reference genome sequence for the
             given contig.
-
-        """
-        region = self.resolve_region(region)
+        """,
+    )
+    def genome_sequence(
+        self,
+        region: region_param_type,
+        inline_array: inline_array_param_type = inline_array_param_default,
+        chunks: chunks_param_type = chunks_param_default,
+    ) -> da.Array:
+        resolved_region: Region = self.resolve_region(region)
+        del region
 
         # obtain complete sequence for the requested contig
         d = self._genome_sequence_for_contig(
-            contig=region.contig, inline_array=inline_array, chunks=chunks
+            contig=resolved_region.contig, inline_array=inline_array, chunks=chunks
         )
 
         # deal with region start and stop
-        if region.start:
-            slice_start = region.start - 1
+        if resolved_region.start:
+            slice_start = resolved_region.start - 1
         else:
             slice_start = None
-        if region.end:
-            slice_stop = region.end
+        if resolved_region.end:
+            slice_stop = resolved_region.end
         else:
             slice_stop = None
         loc_region = slice(slice_start, slice_stop)
 
         return d[loc_region]
 
+    @doc(
+        summary="Compute genome accessibility array.",
+        parameters=general_param_docs,
+        returns="An array of boolean values identifying accessible genome sites.",
+    )
     def is_accessible(
         self,
-        region,
-        site_mask=DEFAULT,
-    ):
-        """Compute genome accessibility array.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-
-        Returns
-        -------
-        a : numpy.ndarray
-            An array of boolean values identifying accessible genome sites.
-
-        """
+        region: region_param_type,
+        site_mask: site_mask_param_type = DEFAULT,
+    ) -> np.ndarray:
         debug = self._log.debug
 
         debug("resolve region")
@@ -1897,7 +1888,7 @@ class AnophelesDataResource(ABC):
 
         return is_accessible
 
-    def _snp_df(self, *, transcript):
+    def _snp_df(self, *, transcript: str) -> Tuple[Region, pd.DataFrame]:
         """Set up a dataframe with SNP site and filter columns."""
         debug = self._log.debug
 
@@ -1950,28 +1941,19 @@ class AnophelesDataResource(ABC):
             )
         return self._cache_annotator
 
-    def snp_effects(
-        self,
-        transcript,
-        site_mask=None,
-    ):
-        """Compute variant effects for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-
-        Returns
-        -------
-        df : pandas.DataFrame
+    @doc(
+        summary="Compute variant effects for a gene transcript.",
+        parameters=general_param_docs,
+        returns="""
             A dataframe of all possible SNP variants and their effects, one row
             per variant.
-
-        """
+        """,
+    )
+    def snp_effects(
+        self,
+        transcript: transcript_param_type,
+        site_mask: Optional[site_mask_param_type] = None,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         debug("setup initial dataframe of SNPs")
@@ -2076,64 +2058,23 @@ class AnophelesDataResource(ABC):
 
         return ds
 
+    @doc(
+        summary="Access SNP sites, site filters and genotype calls.",
+        parameters=general_param_docs,
+        returns="A dataset containing SNP sites, site filters and genotype calls.",
+    )
     def snp_calls(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        site_class=None,
-        inline_array=True,
-        chunks="native",
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Access SNP sites, site filters and genotype calls.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing SNP sites, site filters and genotype calls.
-
-        """
+        region: region_param_type,
+        sample_sets: Optional[sample_sets_param_type] = None,
+        sample_query: Optional[sample_query_param_type] = None,
+        site_mask: Optional[site_mask_param_type] = None,
+        site_class: Optional[site_class_param_type] = None,
+        inline_array: inline_array_param_type = inline_array_param_default,
+        chunks: chunks_param_type = chunks_param_default,
+        cohort_size: Optional[cohort_size_param_type] = None,
+        random_seed: random_seed_param_type = 42,
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("normalise parameters")
@@ -2241,50 +2182,26 @@ class AnophelesDataResource(ABC):
 
         return data, tooltips
 
+    @doc(
+        summary="Plot a genes track, using bokeh.",
+        parameters=dict(
+            **general_param_docs,
+            **genome_plot_param_docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_genes(
         self,
-        region,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=DEFAULT_GENES_TRACK_HEIGHT,
-        show=True,
-        toolbar_location="above",
-        x_range=None,
-        title="Genes",
-    ):
-        """Plot a genes track, using bokeh.
-
-        Parameters
-        ----------
-        region : str or Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If true, show the plot.
-        toolbar_location : str, optional
-            Location of bokeh toolbar.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-        title : str, optional
-            Plot title.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        region: region_param_type,
+        sizing_mode: sizing_mode_genome_plot_param_type = sizing_mode_genome_plot_param_default,
+        width: width_genome_plot_param_type = width_genome_plot_param_default,
+        height: genes_height_genome_plot_param_type = genes_height_genome_plot_param_default,
+        show: show_genome_plot_param_type = True,
+        toolbar_location: toolbar_location_genome_plot_param_type = toolbar_location_genome_plot_param_default,
+        x_range: Optional[x_range_genome_plot_param_type] = None,
+        title: title_genome_plot_param_type = "Genes",
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
 
         debug("handle region parameter - this determines the genome region to plot")
         region = self.resolve_region(region)
@@ -2298,7 +2215,7 @@ class AnophelesDataResource(ABC):
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bkmod.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end, bounds="auto")
 
         debug("select the genes overlapping the requested region")
         data, tooltips = self._plot_genes_setup_data(region=region)
@@ -2313,8 +2230,10 @@ class AnophelesDataResource(ABC):
         data.fillna("", inplace=True)
 
         debug("make a figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
@@ -2337,8 +2256,8 @@ class AnophelesDataResource(ABC):
 
         debug("add functionality to click through to vectorbase")
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
-        taptool = fig.select(type=bkmod.TapTool)
-        taptool.callback = bkmod.OpenURL(url=url)
+        taptool = fig.select(type=bokeh.models.TapTool)
+        taptool.callback = bokeh.models.OpenURL(url=url)
 
         debug("now plot the genes as rectangles")
         fig.quad(
@@ -2352,7 +2271,7 @@ class AnophelesDataResource(ABC):
         )
 
         debug("tidy up the plot")
-        fig.y_range = bkmod.Range1d(-0.4, 2.2)
+        fig.y_range = bokeh.models.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
         yticklabels = ["-", "+"]
@@ -2361,7 +2280,7 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -2405,38 +2324,18 @@ class AnophelesDataResource(ABC):
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
 
+    @doc(
+        summary="Access SNP sites and site filters.",
+        parameters=general_param_docs,
+        returns="A dataset containing SNP sites and site filters.",
+    )
     def snp_variants(
         self,
-        region,
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
+        region: region_param_type,
+        site_mask: Optional[site_mask_param_type] = None,
+        inline_array: inline_array_param_type = inline_array_param_default,
+        chunks: chunks_param_type = chunks_param_default,
     ):
-        """Access SNP sites and site filters.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing SNP sites and site filters.
-
-        """
         debug = self._log.debug
 
         debug("normalise parameters")
@@ -2473,48 +2372,28 @@ class AnophelesDataResource(ABC):
 
         return ds
 
+    @doc(
+        summary="Plot a transcript, using bokeh.",
+        parameters=dict(
+            **general_param_docs,
+            **genome_plot_param_docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_transcript(
         self,
-        transcript,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=DEFAULT_GENES_TRACK_HEIGHT,
-        show=True,
-        x_range=None,
-        toolbar_location="above",
-        title=True,
-    ):
-        """Plot a transcript, using bokeh.
-
-        Parameters
-        ----------
-        transcript : str
-            Transcript identifier, e.g., "AGAP004707-RD".
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If true, show the plot.
-        toolbar_location : str, optional
-            Location of bokeh toolbar.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-        title : str, optional
-            Plot title.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        transcript: transcript_param_type,
+        sizing_mode: sizing_mode_genome_plot_param_type = sizing_mode_genome_plot_param_default,
+        width: width_genome_plot_param_type = width_genome_plot_param_default,
+        height: height_genome_plot_param_type = genes_height_genome_plot_param_default,
+        show: show_genome_plot_param_type = True,
+        x_range: Optional[x_range_genome_plot_param_type] = None,
+        toolbar_location: toolbar_location_genome_plot_param_type = toolbar_location_genome_plot_param_default,
+        title: Union[
+            str, bool
+        ] = True,  # this type is a little different from plot_genes()
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
 
         debug("find the transcript annotation")
         df_genome_features = self.genome_features().set_index("ID")
@@ -2530,8 +2409,10 @@ class AnophelesDataResource(ABC):
         ]
 
         debug("make a figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
@@ -2620,35 +2501,29 @@ class AnophelesDataResource(ABC):
 
         debug("tidy up the figure")
         fig.yaxis.ticker = []
-        fig.y_range = bkmod.Range1d(-0.6, 0.6)
+        fig.y_range = bokeh.models.Range1d(-0.6, 0.6)
         self._bokeh_style_genome_xaxis(fig, parent.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
-    def igv(self, region, tracks=None):
-        """Create an IGV browser and display it within the notebook.
-
-        Parameters
-        ----------
-        region: str or Region
-            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
-        tracks : list of dict, optional
-            Configuration for any additional tracks.
-
-        Returns
-        -------
-        browser : igv_notebook.Browser
-
-        """
+    @doc(
+        summary="",
+        parameters=dict(
+            region=general_param_docs["region"],
+            tracks="Configuration for any additional tracks.",
+        ),
+        returns="IGV browser.",
+    )
+    def igv(
+        self, region: region_param_type, tracks: Optional[List] = None
+    ) -> igv_notebook.Browser:
         debug = self._log.debug
 
         debug("resolve region")
         region = self.resolve_region(region)
-
-        import igv_notebook
 
         config = {
             "reference": {
@@ -2678,30 +2553,26 @@ class AnophelesDataResource(ABC):
 
         return browser
 
+    @doc(
+        summary="""
+            Launch IGV and view sequence read alignments and SNP genotypes from
+            the given sample.
+        """,
+        parameters=dict(
+            region=general_param_docs["region"],
+            sample="Sample identifier.",
+            visibility_window="""
+                Zoom level in base pairs at which alignment and SNP data will become
+                visible.
+            """,
+        ),
+    )
     def view_alignments(
         self,
-        region,
-        sample,
-        visibility_window=20_000,
+        region: region_param_type,
+        sample: str,
+        visibility_window: int = 20_000,
     ):
-        """Launch IGV and view sequence read alignments and SNP genotypes from
-        the given sample.
-
-        Parameters
-        ----------
-        region: str or Region
-            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
-        sample : str
-            Sample identifier, e.g., "AR0001-C".
-        visibility_window : int, optional
-            Zoom level in base pairs at which alignment and SNP data will become
-            visible.
-
-        Notes
-        -----
-        Only samples from the Ag3.0 release are currently supported.
-
-        """
         debug = self._log.debug
 
         debug("look up sample set for sample")
@@ -3054,9 +2925,6 @@ class AnophelesDataResource(ABC):
     ):
         debug = self._log.debug
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         region = self.resolve_region(region)
 
         # pos axis
@@ -3075,11 +2943,13 @@ class AnophelesDataResource(ABC):
                 x_max = region.end
             else:
                 x_max = len(self.genome_sequence(region.contig))
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         debug("create a figure for plotting")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=f"{sample_id} ({sample_set})",
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -3109,7 +2979,7 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -3121,8 +2991,8 @@ class AnophelesDataResource(ABC):
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         height=200,
         circle_kwargs=None,
         show=True,
@@ -3206,10 +3076,10 @@ class AnophelesDataResource(ABC):
         window_size=20_000,
         sample_set=None,
         y_max=0.03,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         track_height=170,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        genes_height=genes_height_genome_plot_param_default,
         circle_kwargs=None,
         show=True,
     ):
@@ -3255,9 +3125,6 @@ class AnophelesDataResource(ABC):
         """
 
         debug = self._log.debug
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
 
         # normalise to support multiple samples
         if isinstance(sample, (list, tuple)):
@@ -3313,7 +3180,7 @@ class AnophelesDataResource(ABC):
         figs.append(fig_genes)
 
         debug("combine plots into a single figure")
-        fig_all = bklay.gridplot(
+        fig_all = bokeh.layouts.gridplot(
             figs,
             ncols=1,
             toolbar_location="above",
@@ -3322,7 +3189,7 @@ class AnophelesDataResource(ABC):
         )
 
         if show:
-            bkplt.show(fig_all)
+            bokeh.plotting.show(fig_all)
 
         return fig_all
 
@@ -3451,17 +3318,14 @@ class AnophelesDataResource(ABC):
         self,
         df_roh,
         region,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         height=100,
         show=True,
         x_range=None,
         title="Runs of homozygosity",
     ):
         debug = self._log.debug
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
 
         debug("handle region parameter - this determines the genome region to plot")
         region = self.resolve_region(region)
@@ -3475,7 +3339,7 @@ class AnophelesDataResource(ABC):
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bkmod.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end, bounds="auto")
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -3485,8 +3349,10 @@ class AnophelesDataResource(ABC):
         data["top"] = 0.8
 
         debug("make a figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
@@ -3517,13 +3383,13 @@ class AnophelesDataResource(ABC):
         )
 
         debug("tidy up the plot")
-        fig.y_range = bkmod.Range1d(0, 1)
+        fig.y_range = bokeh.models.Range1d(0, 1)
         fig.ygrid.visible = False
         fig.yaxis.ticker = []
         self._bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -3538,11 +3404,11 @@ class AnophelesDataResource(ABC):
         phet_nonroh=(0.003, 0.01),
         transition=1e-3,
         y_max=0.03,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         heterozygosity_height=170,
         roh_height=50,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        genes_height=genes_height_genome_plot_param_default,
         circle_kwargs=None,
         show=True,
     ):
@@ -3597,9 +3463,6 @@ class AnophelesDataResource(ABC):
         """
 
         debug = self._log.debug
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
 
         region = self.resolve_region(region)
 
@@ -3668,7 +3531,7 @@ class AnophelesDataResource(ABC):
         figs.append(fig_genes)
 
         debug("combine plots into a single figure")
-        fig_all = bklay.gridplot(
+        fig_all = bokeh.layouts.gridplot(
             figs,
             ncols=1,
             toolbar_location="above",
@@ -3677,7 +3540,7 @@ class AnophelesDataResource(ABC):
         )
 
         if show:
-            bkplt.show(fig_all)
+            bokeh.plotting.show(fig_all)
 
         return fig_all
 
@@ -4065,10 +3928,10 @@ class AnophelesDataResource(ABC):
         sample_query=None,
         site_mask=DEFAULT,
         cohort_size=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         track_height=80,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        genes_height=genes_height_genome_plot_param_default,
         max_snps=200_000,
         show=True,
     ):
@@ -4116,9 +3979,6 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
         debug("plot SNPs track")
         fig1 = self.plot_snps_track(
             region=region,
@@ -4144,7 +4004,7 @@ class AnophelesDataResource(ABC):
             show=False,
         )
 
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -4153,7 +4013,7 @@ class AnophelesDataResource(ABC):
         )
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -4179,8 +4039,8 @@ class AnophelesDataResource(ABC):
         sample_query=None,
         site_mask=DEFAULT,
         cohort_size=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         height=120,
         max_snps=200_000,
         x_range=None,
@@ -4231,10 +4091,6 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
-
-        import bokeh.models as bkmod
-        import bokeh.palettes as bkpal
-        import bokeh.plotting as bkplt
 
         debug("resolve and check region")
         region = self.resolve_region(region)
@@ -4292,12 +4148,14 @@ class AnophelesDataResource(ABC):
         data = pd.DataFrame(cols)
 
         debug("create figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         pos = data["pos"].values
         x_min = pos[0]
         x_max = pos[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         tooltips = [
             ("Position", "$x{0,0}"),
@@ -4312,7 +4170,7 @@ class AnophelesDataResource(ABC):
         for site_mask_id in self.site_mask_ids:
             tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
 
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title="SNPs",
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -4325,7 +4183,7 @@ class AnophelesDataResource(ABC):
             y_range=(0.5, 2.5),
             tooltips=tooltips,
         )
-        hover_tool = fig.select(type=bkmod.HoverTool)
+        hover_tool = fig.select(type=bokeh.models.HoverTool)
         hover_tool.names = ["snps"]
 
         debug("plot gaps in the reference genome")
@@ -4349,8 +4207,8 @@ class AnophelesDataResource(ABC):
         )
 
         debug("plot SNPs")
-        color_pass = bkpal.Colorblind6[3]
-        color_fail = bkpal.Colorblind6[5]
+        color_pass = bokeh.palettes.Colorblind6[3]
+        color_fail = bokeh.palettes.Colorblind6[5]
         data["left"] = data["pos"] - 0.4
         data["right"] = data["pos"] + 0.4
         data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
@@ -4367,7 +4225,7 @@ class AnophelesDataResource(ABC):
         )
 
         debug("tidy plot")
-        fig.yaxis.ticker = bkmod.FixedTicker(
+        fig.yaxis.ticker = bokeh.models.FixedTicker(
             ticks=[1, 2],
         )
         fig.yaxis.major_label_overrides = {
@@ -4375,12 +4233,12 @@ class AnophelesDataResource(ABC):
             2: "Segregating",
         }
         fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+        fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -4388,7 +4246,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute SNP allele frequencies for a gene transcript.
         """,
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="""
             A dataframe of SNP allele frequencies, one row per variant allele.
         """,
@@ -4601,7 +4459,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
         """,
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="""
             A dataframe of amino acid allele frequencies, one row per
             substitution.
@@ -4692,7 +4550,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             amino acid change allele frequencies.
         """,
-        parameters=dict(**general_params, **frequencies_advanced_params),
+        parameters=dict(**general_param_docs, **freq_adv_param_docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -4707,15 +4565,15 @@ class AnophelesDataResource(ABC):
     def aa_allele_frequencies_advanced(
         self,
         transcript: transcript_param_type,
-        area_by: area_by_param_type,
-        period_by: period_by_param_type,
+        area_by: area_by_freq_adv_param_type,
+        period_by: period_by_freq_adv_param_type,
         sample_sets: Optional[sample_sets_param_type] = None,
         sample_query: Optional[sample_query_param_type] = None,
         min_cohort_size: min_cohort_size_param_type = 10,
-        variant_query: Optional[variant_query_param_type] = None,
+        variant_query: Optional[variant_query_freq_adv_param_type] = None,
         site_mask: Optional[site_mask_param_type] = None,
-        nobs_mode: nobs_mode_param_type = "called",
-        ci_method: Optional[ci_method_param_type] = "wilson",
+        nobs_mode: nobs_mode_freq_adv_param_type = "called",
+        ci_method: Optional[ci_method_freq_adv_param_type] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -4955,7 +4813,7 @@ class AnophelesDataResource(ABC):
             Compute genetic diversity summary statistics for a cohort of
             individuals.
         """,
-        parameters=general_params,
+        parameters=general_param_docs,
         returns="""
             A pandas series with summary statistics and their confidence
             intervals.
@@ -6294,8 +6152,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         height=200,
         show=True,
         x_range=None,
@@ -6344,9 +6202,6 @@ class AnophelesDataResource(ABC):
             A plot showing windowed Fst statistic across chosen contig.
         """
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         # compute Fst
         x, fst = self.fst_gwss(
             contig=contig,
@@ -6363,13 +6218,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -6398,7 +6255,7 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -6413,10 +6270,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         track_height=190,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        genes_height=genes_height_genome_plot_param_default,
     ):
         """Run and plot a Fst genome-wide scan to investigate genetic
         differentiation between two cohorts.
@@ -6461,9 +6318,6 @@ class AnophelesDataResource(ABC):
             A plot showing windowed Fst statistic with gene track on x-axis.
         """
 
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
         # gwss track
         fig1 = self.plot_fst_gwss_track(
             contig=contig,
@@ -6494,7 +6348,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -6502,7 +6356,7 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
     def open_haplotypes(self, sample_set, analysis=DEFAULT):
         """Open haplotypes zarr.
@@ -6889,9 +6743,6 @@ class AnophelesDataResource(ABC):
 
         """
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         # get H12 values
         calibration_runs = self.h12_calibration(
             contig=contig,
@@ -6919,7 +6770,7 @@ class AnophelesDataResource(ABC):
         ]
 
         # make plot
-        fig = bkplt.figure(width=700, height=400, x_axis_type="log")
+        fig = bokeh.plotting.figure(width=700, height=400, x_axis_type="log")
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -6940,11 +6791,11 @@ class AnophelesDataResource(ABC):
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
+        fig.x_range = bokeh.models.Range1d(window_sizes[0], window_sizes[-1])
         if title is None:
             title = sample_query
         fig.title = title
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
     def h12_gwss(
         self,
@@ -7058,8 +6909,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         height=200,
         show=True,
         x_range=None,
@@ -7105,9 +6956,6 @@ class AnophelesDataResource(ABC):
             A plot showing windowed h12 statistic across chosen contig.
         """
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         # compute H12
         x, h12 = self.h12_gwss(
             contig=contig,
@@ -7123,13 +6971,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = sample_query
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -7158,7 +7008,7 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -7172,10 +7022,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         track_height=170,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        genes_height=genes_height_genome_plot_param_default,
     ):
         """Plot h12 GWSS data.
 
@@ -7216,9 +7066,6 @@ class AnophelesDataResource(ABC):
             A plot showing windowed h12 statistic with gene track on x-axis.
         """
 
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
         # gwss track
         fig1 = self.plot_h12_gwss_track(
             contig=contig,
@@ -7248,7 +7095,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -7256,7 +7103,7 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
     def h1x_gwss(
         self,
@@ -7393,8 +7240,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         height=200,
         show=True,
         x_range=None,
@@ -7445,9 +7292,6 @@ class AnophelesDataResource(ABC):
 
         """
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         # compute H1X
         x, h1x = self.h1x_gwss(
             contig=contig,
@@ -7464,13 +7308,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -7499,7 +7345,7 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -7514,10 +7360,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
+        sizing_mode=sizing_mode_genome_plot_param_default,
+        width=width_genome_plot_param_default,
         track_height=190,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        genes_height=genes_height_genome_plot_param_default,
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
@@ -7563,9 +7409,6 @@ class AnophelesDataResource(ABC):
 
         """
 
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
         # gwss track
         fig1 = self.plot_h1x_gwss_track(
             contig=contig,
@@ -7596,7 +7439,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -7604,7 +7447,7 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
     def plot_haplotype_clustering(
         self,
