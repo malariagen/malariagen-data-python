@@ -3101,7 +3101,7 @@ def test_ihs_gwss():
         sample_query=sample_query,
         sample_sets=sample_sets,
         window_size=window_size,
-        cohort_size=20,
+        max_cohort_size=20,
     )
 
     assert isinstance(x, np.ndarray)
