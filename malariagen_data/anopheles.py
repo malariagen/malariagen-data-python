@@ -7860,6 +7860,7 @@ class AnophelesDataResource(ABC):
 
     def _ihs_gwss(
         self,
+        *,
         contig,
         analysis,
         sample_sets,
@@ -7950,7 +7951,6 @@ class AnophelesDataResource(ABC):
             )
 
         if window_size:
-            # remove any NaNs prior to windowed percentiles
             ihs = allel.moving_statistic(
                 ihs, statistic=np.percentile, size=window_size, q=percentiles
             )
