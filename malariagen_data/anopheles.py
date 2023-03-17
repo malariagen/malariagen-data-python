@@ -1689,7 +1689,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Open SNP genotypes zarr for a given sample set.",
-        parameters=param_docs,
+        parameters=dict(sample_set="Sample set identifier."),
         returns="Zarr hierarchy.",
     )
     def open_snp_genotypes(self, sample_set: str) -> zarr.hierarchy.Group:
