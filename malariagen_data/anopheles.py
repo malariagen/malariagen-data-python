@@ -7860,6 +7860,7 @@ class AnophelesDataResource(ABC):
 
     def _ihs_gwss(
         self,
+        *,
         contig,
         analysis,
         sample_sets,
