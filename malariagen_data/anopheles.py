@@ -3000,7 +3000,7 @@ class AnophelesDataResource(ABC):
         region: base_params.region,
         window_size: int = 20_000,
         y_max: float = 0.03,
-        circle_kwargs: Mapping = None,
+        circle_kwargs: Optional[Mapping] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
