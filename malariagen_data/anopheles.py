@@ -67,7 +67,28 @@ AA_CHANGE_QUERY = (
 )
 
 
-# general parameter documentation
+class base_params:
+    region: TypeAlias = Union[str, Region]
+    release: TypeAlias = Union[str, Sequence[str]]
+    sample_sets: TypeAlias = Union[Sequence[str], str]
+    sample_query: TypeAlias = str
+    site_mask: TypeAlias = str
+    site_class: TypeAlias = str
+    cohort_size: TypeAlias = int
+    random_seed: TypeAlias = int
+    transcript: TypeAlias = str
+    min_cohort_size: TypeAlias = int
+    cohort: TypeAlias = Union[str, Tuple[str, str]]
+    cohorts: TypeAlias = Union[str, Mapping[str, str]]
+    n_jack: TypeAlias = int
+    confidence_level: TypeAlias = float
+    field: TypeAlias = str
+    inline_array: TypeAlias = bool
+    inline_array_default: inline_array = True
+    chunks: TypeAlias = str
+    chunks_default: chunks = "native"
+
+
 base_param_docs = dict(
     region="""
         Contig name, region string (formatted like "{contig}:{start}-{end}"), or
@@ -139,30 +160,18 @@ base_param_docs = dict(
 )
 
 
-# general parameter types
-class base_params:
-    region: TypeAlias = Union[str, Region]
-    release: TypeAlias = Union[str, Sequence[str]]
-    sample_sets: TypeAlias = Union[Sequence[str], str]
-    sample_query: TypeAlias = str
-    site_mask: TypeAlias = str
-    site_class: TypeAlias = str
-    cohort_size: TypeAlias = int
-    random_seed: TypeAlias = int
-    transcript: TypeAlias = str
-    min_cohort_size: TypeAlias = int
-    cohort: TypeAlias = Union[str, Tuple[str, str]]
-    cohorts: TypeAlias = Union[str, Mapping[str, str]]
-    n_jack: TypeAlias = int
-    confidence_level: TypeAlias = float
-    field: TypeAlias = str
-    inline_array: TypeAlias = bool
-    inline_array_default: inline_array = True
-    chunks: TypeAlias = str
-    chunks_default: chunks = "native"
+class freq_params:
+    drop_invariant: TypeAlias = bool
+    effects: TypeAlias = bool
+    area_by: TypeAlias = str
+    period_by: TypeAlias = Literal["year", "quarter", "month"]
+    variant_query: TypeAlias = str
+    nobs_mode: TypeAlias = Literal["called", "fixed"]
+    ci_method: TypeAlias = Literal[
+        "normal", "agresti_coull", "beta", "wilson", "binom_test"
+    ]
 
 
-# frequencies advanced parameter documentation
 freq_param_docs = dict(
     drop_invariant="""
         If True, drop variants not observed in the selected samples.
@@ -195,36 +204,7 @@ freq_param_docs = dict(
 )
 
 
-# frequencies advanced parameter types
-class freq_params:
-    drop_invariant: TypeAlias = bool
-    effects: TypeAlias = bool
-    area_by: TypeAlias = str
-    period_by: TypeAlias = Literal["year", "quarter", "month"]
-    variant_query: TypeAlias = str
-    nobs_mode: TypeAlias = Literal["called", "fixed"]
-    ci_method: TypeAlias = Literal[
-        "normal", "agresti_coull", "beta", "wilson", "binom_test"
-    ]
-
-
-# bokeh genome plotting parameter documentation
-genome_plot_param_docs = dict(
-    sizing_mode="""
-        Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
-    """,
-    width="Plot width in pixels (px).",
-    height="Plot height in pixels (px).",
-    track_height="Main track height in pixels (px).",
-    genes_height="Genes track height in pixels (px).",
-    show="If true, show the plot.",
-    toolbar_location="Location of bokeh toolbar.",
-    x_range="X axis range (for linking to other tracks).",
-    title="Plot title.",
-)
-
-
-# bokeh genome plotting parameter types
+# N.B., genome plots are always plotted with bokeh
 class genome_plot_params:
     sizing_mode: TypeAlias = Literal[
         "fixed",
@@ -246,6 +226,21 @@ class genome_plot_params:
     toolbar_location_default: toolbar_location = "above"
     x_range: TypeAlias = bokeh.models.Range1d
     title: TypeAlias = str
+
+
+genome_plot_param_docs = dict(
+    sizing_mode="""
+        Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
+    """,
+    width="Plot width in pixels (px).",
+    height="Plot height in pixels (px).",
+    track_height="Main track height in pixels (px).",
+    genes_height="Genes track height in pixels (px).",
+    show="If true, show the plot.",
+    toolbar_location="Location of bokeh toolbar.",
+    x_range="X axis range (for linking to other tracks).",
+    title="Plot title.",
+)
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -2849,41 +2844,35 @@ class AnophelesDataResource(ABC):
 
         return df
 
+    @doc(
+        summary="Access genome feature annotations.",
+        parameters=dict(
+            attributes="""
+                Attribute keys to unpack into columns. Provide "*" to unpack all
+                attributes.
+            """,
+            **base_param_docs,
+        ),
+        returns="A dataframe of genome annotations, one row per feature.",
+    )
     def genome_features(
-        self, region=None, attributes=("ID", "Parent", "Name", "description")
-    ):
-        """Access genome feature annotations.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all
-            attributes.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of genome annotations, one row per feature.
-
-        """
+        self,
+        region: Optional[base_params.region] = None,
+        attributes: Sequence[str] = ("ID", "Parent", "Name", "description"),
+    ) -> pd.DataFrame:
         debug = self._log.debug
         if region is not None:
             debug("handle region")
-            region = self.resolve_region(region)
+            resolved_region = self.resolve_region(region)
+            del region
 
             debug("normalise to list to simplify concatenation logic")
-            if isinstance(region, Region):
-                region = [region]
+            if isinstance(resolved_region, Region):
+                resolved_region = [resolved_region]
 
             debug("apply region query")
             parts = []
-            for r in region:
+            for r in resolved_region:
                 df_part = self._genome_features_for_contig(
                     contig=r.contig, attributes=attributes
                 )
