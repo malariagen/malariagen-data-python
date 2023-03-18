@@ -18,6 +18,8 @@ import ipinfo
 import numba
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import xarray as xr
 import zarr
 from numpydoc_decorator import doc
@@ -2718,30 +2720,27 @@ class AnophelesDataResource(ABC):
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
 
-    def plot_pca_variance(self, evr, width=900, height=400, **kwargs):
-        """Plot explained variance ratios from a principal components analysis
-        (PCA) using a plotly bar plot.
-
-        Parameters
-        ----------
-        evr : np.ndarray
-            An array of explained variance ratios, one per component.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        **kwargs
-            Passed through to px.bar().
-
-        Returns
-        -------
-        fig : Figure
-            A plotly figure.
-
-        """
+    @doc(
+        summary="""
+            Plot explained variance ratios from a principal components analysis
+            (PCA) using a plotly bar plot.
+        """,
+        parameters=dict(
+            evr="An array of explained variance ratios, one per component.",
+            width="Plot width in pixels (px).",
+            height="Plot height in pixels (px).",
+            kwargs="Passed through to px.bar().",
+        ),
+        returns="A plotly figure.",
+    )
+    def plot_pca_variance(
+        self,
+        evr: np.ndarray,
+        width: Optional[int] = 900,
+        height: Optional[int] = 400,
+        **kwargs,
+    ) -> go.Figure:
         debug = self._log.debug
-
-        import plotly.express as px
 
         debug("prepare plotting variables")
         y = evr * 100  # convert to percent
@@ -5294,8 +5293,6 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        import plotly.express as px
-
         debug("check len of input")
         if len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
@@ -5411,8 +5408,6 @@ class AnophelesDataResource(ABC):
 
         """
         debug = self._log.debug
-
-        import plotly.express as px
 
         debug("handle title")
         if title is True:
@@ -5721,8 +5716,6 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        import plotly.express as px
-
         debug(
             "set up data - copy and shuffle so that we don't get systematic over-plotting"
         )
@@ -5837,8 +5830,6 @@ class AnophelesDataResource(ABC):
         """
         debug = self._log.debug
 
-        import plotly.express as px
-
         debug(
             "set up data - copy and shuffle so that we don't get systematic over-plotting"
         )
@@ -5934,7 +5925,6 @@ class AnophelesDataResource(ABC):
 
         """
         debug = self._log.debug
-        import plotly.express as px
 
         debug("set up common plotting parameters")
         if plot_kwargs is None:
@@ -7528,7 +7518,6 @@ class AnophelesDataResource(ABC):
             Plotly figure.
 
         """
-        import plotly.express as px
         from scipy.cluster.hierarchy import linkage
 
         from .plotly_dendrogram import create_dendrogram
@@ -7752,7 +7741,6 @@ class AnophelesDataResource(ABC):
         from itertools import cycle
 
         import dash_cytoscape as cyto
-        import plotly.express as px
         from dash import dcc, html
         from dash.dependencies import Input, Output
         from jupyter_dash import JupyterDash
