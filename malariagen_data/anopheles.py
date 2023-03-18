@@ -223,6 +223,7 @@ class genome_plot_params:
     width: TypeAlias = Optional[int]  # always can be None
     width_default = None
     height: TypeAlias = int
+    track_height: TypeAlias = int
     genes_height: TypeAlias = int
     genes_height_default: genes_height = 120
     show: TypeAlias = bool
@@ -3039,62 +3040,33 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="Plot windowed heterozygosity for a single sample over a genome region.",
+        parameters=dict(
+            sample="Sample identifier or index within sample set.",
+            window_size="Number of sites per window.",
+            y_max="Y axis limit.",
+            circle_kwargs="Passed through to bokeh circle() function.",
+            **base_param_docs,
+            **genome_plot_param_docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_heterozygosity(
         self,
-        sample,
-        region,
-        site_mask=DEFAULT,
-        window_size=20_000,
-        sample_set=None,
-        y_max=0.03,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        track_height=170,
-        genes_height=genome_plot_params.genes_height_default,
-        circle_kwargs=None,
-        show=True,
+        sample: Union[str, int],
+        region: base_params.region,
+        window_size: int = 20_000,
+        y_max: float = 0.03,
+        circle_kwargs: Optional[Mapping] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        track_height: genome_plot_params.track_height = 170,
+        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+        show: genome_plot_params.show = True,
     ):
-        """Plot windowed heterozygosity for a single sample over a genome
-        region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        window_size : int, optional
-            Number of sites per window.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        y_max : float, optional
-            Y axis limit.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int, optional
-            Heterozygosity track height in pixels (px).
-        genes_height : int, optional
-            Genes track height in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
-
         debug = self._log.debug
 
         # normalise to support multiple samples
