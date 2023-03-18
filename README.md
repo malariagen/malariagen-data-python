@@ -1,4 +1,4 @@
-# `malariagen_data` - access MalariaGEN public data from Python
+# `malariagen_data` - access MalariaGEN data from Python
 
 This Python package provides convenience methods for accessing public
 data from MalariaGEN.
