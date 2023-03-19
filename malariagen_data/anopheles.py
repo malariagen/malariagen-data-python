@@ -250,7 +250,7 @@ genome_plot_param_docs = dict(
 
 
 class het_params:
-    sample: Union[str, int]
+    sample: TypeAlias = Union[str, int]
     window_size: TypeAlias = int
     window_size_default: window_size = 20_000
     phet_roh: TypeAlias = float
@@ -3285,10 +3285,11 @@ class AnophelesDataResource(ABC):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        region = self.resolve_region(region)
-        contig = region.contig
-        start = region.start
-        end = region.end
+        resolved_region = self.resolve_region(region)
+        del region
+        contig = resolved_region.contig
+        start = resolved_region.start
+        end = resolved_region.end
         if start is None:
             start = 0
         if end is None:
@@ -3343,7 +3344,7 @@ class AnophelesDataResource(ABC):
         fig.y_range = bokeh.models.Range1d(0, 1)
         fig.ygrid.visible = False
         fig.yaxis.ticker = []
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, resolved_region.contig)
 
         if show:
             bokeh.plotting.show(fig)
@@ -3383,12 +3384,13 @@ class AnophelesDataResource(ABC):
     ):
         debug = self._log.debug
 
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("compute windowed heterozygosity")
         sample_id, sample_set, windows, counts = self._sample_count_het(
             sample=sample,
-            region=region,
+            region=resolved_region,
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
@@ -3400,7 +3402,7 @@ class AnophelesDataResource(ABC):
             sample_set=sample_set,
             windows=windows,
             counts=counts,
-            region=region,
+            region=resolved_region,
             window_size=window_size,
             y_max=y_max,
             sizing_mode=sizing_mode,
@@ -3422,13 +3424,13 @@ class AnophelesDataResource(ABC):
             transition=transition,
             window_size=window_size,
             sample_id=sample_id,
-            contig=region.contig,
+            contig=resolved_region.contig,
         )
 
         debug("plot roh track")
         fig_roh = self.plot_roh_track(
             df_roh,
-            region=region,
+            region=resolved_region,
             sizing_mode=sizing_mode,
             width=width,
             height=roh_height,
@@ -3440,7 +3442,7 @@ class AnophelesDataResource(ABC):
 
         debug("plot genes track")
         fig_genes = self.plot_genes(
-            region=region,
+            region=resolved_region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
