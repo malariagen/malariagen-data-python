@@ -254,10 +254,10 @@ class roh_params:
     window_size_default: window_size = 20_000
     phet_roh: TypeAlias = float
     phet_roh_default: phet_roh = 0.001
-    phet_nonroh: TypeAlias = Tuple[float]
-    phet_nonroh_default: phet_roh = ((0.003, 0.01),)
+    phet_nonroh: TypeAlias = Tuple[float, ...]
+    phet_nonroh_default: phet_nonroh = (0.003, 0.01)
     transition: TypeAlias = float
-    transition_default: transition = (0.001,)
+    transition_default: transition = 0.001
 
 
 roh_param_docs = dict(
@@ -3233,12 +3233,13 @@ class AnophelesDataResource(ABC):
     ) -> pd.DataFrame:
         debug = self._log.debug
 
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("compute windowed heterozygosity")
         sample_id, sample_set, windows, counts = self._sample_count_het(
             sample=sample,
-            region=region,
+            region=resolved_region,
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
@@ -3253,7 +3254,7 @@ class AnophelesDataResource(ABC):
             transition=transition,
             window_size=window_size,
             sample_id=sample_id,
-            contig=region.contig,
+            contig=resolved_region.contig,
         )
 
         return df_roh
