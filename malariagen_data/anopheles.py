@@ -249,6 +249,28 @@ genome_plot_param_docs = dict(
 )
 
 
+class roh_params:
+    window_size: TypeAlias = int
+    window_size_default: window_size = 20_000
+    phet_roh: TypeAlias = float
+    phet_roh_default: phet_roh = 0.001
+    phet_nonroh: TypeAlias = Tuple[float]
+    phet_nonroh_default: phet_roh = ((0.003, 0.01),)
+    transition: TypeAlias = float
+    transition_default: transition = (0.001,)
+
+
+roh_param_docs = dict(
+    window_size="Number of sites per window.",
+    phet_roh="Probability of observing a heterozygote in a ROH.",
+    phet_nonroh="One or more probabilities of observing a heterozygote outside a ROH.",
+    transition="""
+        Probability of moving between states. A larger window size may call
+        for a larger transitional probability.
+    """,
+)
+
+
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(ABC):
@@ -3187,50 +3209,28 @@ class AnophelesDataResource(ABC):
 
         return sample_id, sample_set, windows, counts
 
-    def roh_hmm(
-        self,
-        sample,
-        region,
-        window_size=20_000,
-        site_mask=DEFAULT,
-        sample_set=None,
-        phet_roh=0.001,
-        phet_nonroh=(0.003, 0.01),
-        transition=1e-3,
-    ):
-        """Infer runs of homozygosity for a single sample over a genome region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        window_size : int, optional
-            Number of sites per window.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        phet_roh: float, optional
-            Probability of observing a heterozygote in a ROH.
-        phet_nonroh: tuple of floats, optional
-            One or more probabilities of observing a heterozygote outside a ROH.
-        transition: float, optional
-           Probability of moving between states. A larger window size may call
-           for a larger transitional probability.
-
-        Returns
-        -------
-        df_roh : pandas.DataFrame
+    @doc(
+        summary="Infer runs of homozygosity for a single sample over a genome region.",
+        parameters=dict(
+            **base_params,
+            **roh_params,
+        ),
+        returns="""
             A DataFrame where each row provides data about a single run of
             homozygosity.
-
-        """
+        """,
+    )
+    def roh_hmm(
+        self,
+        sample: Union[str, int],
+        region: base_params.region,
+        window_size: roh_params.window_size = roh_params.window_size_default,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        phet_roh: roh_params.phet_roh = roh_params.phet_roh_default,
+        phet_nonroh: roh_params.phet_nonroh = roh_params.phet_nonroh_default,
+        transition: roh_params.transition = roh_params.transition_default,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         region = self.resolve_region(region)
