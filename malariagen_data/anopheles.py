@@ -69,6 +69,7 @@ AA_CHANGE_QUERY = (
 
 
 class base_params:
+    # parameter types and default values
     region: TypeAlias = Union[str, Region]
     release: TypeAlias = Union[str, Sequence[str]]
     sample_set: TypeAlias = str
@@ -90,82 +91,83 @@ class base_params:
     chunks: TypeAlias = str
     chunks_default: chunks = "native"
 
-
-base_param_docs = dict(
-    region="""
-        Contig name, region string (formatted like "{contig}:{start}-{end}"), or
-        identifier of a genome feature such as a gene or transcript.
-    """,
-    release="""
-        Release version identifier.
-    """,
-    sample_set="""
-        Sample set identifier.
-    """,
-    sample_sets="""
-        List of sample sets and/or releases. Can also be a single sample set or
-        release.
-    """,
-    sample_query="""
-        A pandas query string to be evaluated against the sample metadata.
-    """,
-    site_mask="""
-        Which site filters mask to apply. See the `site_mask_ids` property for
-        available values.
-    """,
-    site_class="""
-        Select sites belonging to one of the following classes: CDS_DEG_4,
-        (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-        degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-        INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-        longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-        5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-        splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-        untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-        a gene).
-    """,
-    cohort_size="""
-        Randomly down-sample to the given cohort size.
-    """,
-    min_cohort_size="""
-        Minimum cohort size.
-    """,
-    random_seed="""
-        Random seed used for reproducible down-sampling.
-    """,
-    transcript="""
-        Gene transcript identifier.
-    """,
-    cohort="""
-        Either a string giving one of the predefined cohort labels, or a
-        pair of strings giving a custom cohort label and a sample query.
-    """,
-    cohorts="""
-        Either a string giving the name of a predefined cohort set (e.g.,
-        "admin1_month") or a dict mapping custom cohort labels to sample
-        queries.
-    """,
-    n_jack="""
-        Number of blocks to divide the data into for the block jackknife
-        estimation of confidence intervals. N.B., larger is not necessarily
-        better.
-    """,
-    confidence_level="""
-        Confidence level to use for confidence interval calculation. E.g., 0.95
-        means 95% confidence interval.
-    """,
-    field="""
-        Array or column to access.
-    """,
-    inline_array="Passed through to dask `from_array()`.",
-    chunks="""
-        If 'auto' let dask decide chunk size. If 'native' use native zarr
-        chunks. Also, can be a target size, e.g., '200 MiB'.
-    """,
-)
+    # parameter documentation
+    docs = dict(
+        region="""
+            Contig name, region string (formatted like "{contig}:{start}-{end}"), or
+            identifier of a genome feature such as a gene or transcript.
+        """,
+        release="""
+            Release version identifier.
+        """,
+        sample_set="""
+            Sample set identifier.
+        """,
+        sample_sets="""
+            List of sample sets and/or releases. Can also be a single sample set or
+            release.
+        """,
+        sample_query="""
+            A pandas query string to be evaluated against the sample metadata.
+        """,
+        site_mask="""
+            Which site filters mask to apply. See the `site_mask_ids` property for
+            available values.
+        """,
+        site_class="""
+            Select sites belonging to one of the following classes: CDS_DEG_4,
+            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+            a gene).
+        """,
+        cohort_size="""
+            Randomly down-sample to the given cohort size.
+        """,
+        min_cohort_size="""
+            Minimum cohort size.
+        """,
+        random_seed="""
+            Random seed used for reproducible down-sampling.
+        """,
+        transcript="""
+            Gene transcript identifier.
+        """,
+        cohort="""
+            Either a string giving one of the predefined cohort labels, or a
+            pair of strings giving a custom cohort label and a sample query.
+        """,
+        cohorts="""
+            Either a string giving the name of a predefined cohort set (e.g.,
+            "admin1_month") or a dict mapping custom cohort labels to sample
+            queries.
+        """,
+        n_jack="""
+            Number of blocks to divide the data into for the block jackknife
+            estimation of confidence intervals. N.B., larger is not necessarily
+            better.
+        """,
+        confidence_level="""
+            Confidence level to use for confidence interval calculation. E.g., 0.95
+            means 95% confidence interval.
+        """,
+        field="""
+            Array or column to access.
+        """,
+        inline_array="Passed through to dask `from_array()`.",
+        chunks="""
+            If 'auto' let dask decide chunk size. If 'native' use native zarr
+            chunks. Also, can be a target size, e.g., '200 MiB'.
+        """,
+    )
 
 
 class freq_params:
+    # parameter types and default values
     drop_invariant: TypeAlias = bool
     effects: TypeAlias = bool
     area_by: TypeAlias = str
@@ -176,41 +178,42 @@ class freq_params:
         "normal", "agresti_coull", "beta", "wilson", "binom_test"
     ]
 
-
-freq_param_docs = dict(
-    drop_invariant="""
-        If True, drop variants not observed in the selected samples.
-    """,
-    effects="""
-        If True, add SNP effects.
-    """,
-    area_by="""
-        Column name in the sample metadata to use to group samples spatially. E.g.,
-        use "admin1_iso" or "admin1_name" to group by level 1 administrative
-        divisions, or use "admin2_name" to group by level 2 administrative
-        divisions.
-    """,
-    period_by="""
-        Length of time to group samples temporally.
-    """,
-    variant_query="""
-        A pandas query to be evaluated against variants.
-    """,
-    nobs_mode="""
-        Method for calculating the denominator when computing frequencies. If
-        "called" then use the number of called alleles, i.e., number of samples
-        with non-missing genotype calls multiplied by 2. If "fixed" then use the
-        number of samples multiplied by 2.
-    """,
-    ci_method="""
-        Method to use for computing confidence intervals, passed through to
-        `statsmodels.stats.proportion.proportion_confint`.
-    """,
-)
+    # parameter documentation
+    docs = dict(
+        drop_invariant="""
+            If True, drop variants not observed in the selected samples.
+        """,
+        effects="""
+            If True, add SNP effects.
+        """,
+        area_by="""
+            Column name in the sample metadata to use to group samples spatially. E.g.,
+            use "admin1_iso" or "admin1_name" to group by level 1 administrative
+            divisions, or use "admin2_name" to group by level 2 administrative
+            divisions.
+        """,
+        period_by="""
+            Length of time to group samples temporally.
+        """,
+        variant_query="""
+            A pandas query to be evaluated against variants.
+        """,
+        nobs_mode="""
+            Method for calculating the denominator when computing frequencies. If
+            "called" then use the number of called alleles, i.e., number of samples
+            with non-missing genotype calls multiplied by 2. If "fixed" then use the
+            number of samples multiplied by 2.
+        """,
+        ci_method="""
+            Method to use for computing confidence intervals, passed through to
+            `statsmodels.stats.proportion.proportion_confint`.
+        """,
+    )
 
 
 # N.B., genome plots are always plotted with bokeh
 class genome_plot_params:
+    # parameter types and default values
     sizing_mode: TypeAlias = Literal[
         "fixed",
         "stretch_width",
@@ -233,23 +236,24 @@ class genome_plot_params:
     x_range: TypeAlias = bokeh.models.Range1d
     title: TypeAlias = str
 
-
-genome_plot_param_docs = dict(
-    sizing_mode="""
-        Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
-    """,
-    width="Plot width in pixels (px).",
-    height="Plot height in pixels (px).",
-    track_height="Main track height in pixels (px).",
-    genes_height="Genes track height in pixels (px).",
-    show="If true, show the plot.",
-    toolbar_location="Location of bokeh toolbar.",
-    x_range="X axis range (for linking to other tracks).",
-    title="Plot title.",
-)
+    # parameter documentation
+    docs = dict(
+        sizing_mode="""
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
+        """,
+        width="Plot width in pixels (px).",
+        height="Plot height in pixels (px).",
+        track_height="Main track height in pixels (px).",
+        genes_height="Genes track height in pixels (px).",
+        show="If true, show the plot.",
+        toolbar_location="Location of bokeh toolbar.",
+        x_range="X axis range (for linking to other tracks).",
+        title="Plot title.",
+    )
 
 
 class het_params:
+    # parameter types and default values
     sample: TypeAlias = Union[str, int]
     window_size: TypeAlias = int
     window_size_default: window_size = 20_000
@@ -264,23 +268,23 @@ class het_params:
     circle_kwargs: TypeAlias = Mapping
     df_roh: TypeAlias = pd.DataFrame
 
-
-het_param_docs = dict(
-    sample="Sample identifier or index within sample set.",
-    window_size="Number of sites per window.",
-    phet_roh="Probability of observing a heterozygote in a ROH.",
-    phet_nonroh="One or more probabilities of observing a heterozygote outside a ROH.",
-    transition="""
-        Probability of moving between states. A larger window size may call
-        for a larger transitional probability.
-    """,
-    y_max="Y axis limit.",
-    circle_kwargs="Passed through to bokeh circle() function.",
-    df_roh="""
-        A DataFrame where each row provides data about a single run of
-        homozygosity.
-    """,
-)
+    # parameter documentation
+    docs = dict(
+        sample="Sample identifier or index within sample set.",
+        window_size="Number of sites per window.",
+        phet_roh="Probability of observing a heterozygote in a ROH.",
+        phet_nonroh="One or more probabilities of observing a heterozygote outside a ROH.",
+        transition="""
+            Probability of moving between states. A larger window size may call
+            for a larger transitional probability.
+        """,
+        y_max="Y axis limit.",
+        circle_kwargs="Passed through to bokeh circle() function.",
+        df_roh="""
+            A DataFrame where each row provides data about a single run of
+            homozygosity.
+        """,
+    )
 
 
 # work around pycharm failing to recognise that doc() is callable
@@ -661,7 +665,7 @@ class AnophelesDataResource(ABC):
             Compute SNP allele counts. This returns the number of times each
             SNP allele was observed in the selected samples.
         """,
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
@@ -721,7 +725,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             SNP allele frequencies.
         """,
-        parameters=dict(**base_param_docs, **freq_param_docs),
+        parameters=dict(**base_params.docs, **freq_params.docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -1254,7 +1258,7 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Open site filters zarr.",
         parameters=dict(
-            mask=base_param_docs["site_mask"],  # same param but named differently here
+            mask=base_params.docs["site_mask"],  # same param but named differently here
         ),
         returns="Zarr hierarchy.",
     )
@@ -1291,7 +1295,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access a dataframe of sample sets",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="A dataframe of sample sets, one row per sample set.",
     )
     def sample_sets(
@@ -1446,7 +1450,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access sample metadata for one or more sample sets.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="A dataframe of sample metadata, one row per sample.",
     )
     def sample_metadata(
@@ -1561,8 +1565,8 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Access SNP site filters.",
         parameters=dict(
-            mask=base_param_docs["site_mask"],  # same param but different name here
-            **base_param_docs,
+            mask=base_params.docs["site_mask"],  # same param but different name here
+            **base_params.docs,
         ),
         returns="""
             An array of boolean values identifying sites that pass the filters.
@@ -1634,7 +1638,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP site data (positions and alleles).",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="""
             An array of either SNP positions, reference alleles or alternate
             alleles.
@@ -1688,7 +1692,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Convert a genome region into a standard data structure.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="An instance of the `Region` class.",
     )
     def resolve_region(self, region: base_params.region) -> Region:
@@ -1761,7 +1765,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP genotypes and associated data.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="""
             An array of either genotypes (GT), genotype quality (GQ), allele
             depths (AD) or mapping quality (MQ) values.
@@ -1854,7 +1858,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access the reference genome sequence.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="""
             An array of nucleotides giving the reference genome sequence for the
             given contig.
@@ -1889,7 +1893,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Compute genome accessibility array.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="An array of boolean values identifying accessible genome sites.",
     )
     def is_accessible(
@@ -1981,7 +1985,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Compute variant effects for a gene transcript.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="""
             A dataframe of all possible SNP variants and their effects, one row
             per variant.
@@ -2098,7 +2102,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP sites, site filters and genotype calls.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="A dataset containing SNP sites, site filters and genotype calls.",
     )
     def snp_calls(
@@ -2224,8 +2228,8 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot a genes track, using bokeh.",
         parameters=dict(
-            **base_param_docs,
-            **genome_plot_param_docs,
+            **base_params.docs,
+            **genome_plot_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -2368,7 +2372,7 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP sites and site filters.",
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="A dataset containing SNP sites and site filters.",
     )
     def snp_variants(
@@ -2418,8 +2422,8 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot a transcript, using bokeh.",
         parameters=dict(
-            **base_param_docs,
-            **genome_plot_param_docs,
+            **base_params.docs,
+            **genome_plot_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -2555,7 +2559,7 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="",
         parameters=dict(
-            region=base_param_docs["region"],
+            region=base_params.docs["region"],
             tracks="Configuration for any additional tracks.",
         ),
         returns="IGV browser.",
@@ -2602,7 +2606,7 @@ class AnophelesDataResource(ABC):
             the given sample.
         """,
         parameters=dict(
-            region=base_param_docs["region"],
+            region=base_params.docs["region"],
             sample="Sample identifier.",
             visibility_window="""
                 Zoom level in base pairs at which alignment and SNP data will become
@@ -2891,7 +2895,7 @@ class AnophelesDataResource(ABC):
                 Attribute keys to unpack into columns. Provide "*" to unpack all
                 attributes.
             """,
-            **base_param_docs,
+            **base_params.docs,
         ),
         returns="A dataframe of genome annotations, one row per feature.",
     )
@@ -3021,9 +3025,9 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         parameters=dict(
-            **het_param_docs,
-            **genome_plot_param_docs,
-            **base_param_docs,
+            **het_params.docs,
+            **genome_plot_params.docs,
+            **base_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -3075,9 +3079,9 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         parameters=dict(
-            **het_param_docs,
-            **genome_plot_param_docs,
-            **base_param_docs,
+            **het_params.docs,
+            **genome_plot_params.docs,
+            **base_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -3218,10 +3222,10 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
         parameters=dict(
-            **het_param_docs,
-            **base_param_docs,
+            **het_params.docs,
+            **base_params.docs,
         ),
-        returns=het_param_docs["df_roh"],
+        returns=het_params.docs["df_roh"],
     )
     def roh_hmm(
         self,
@@ -3265,9 +3269,9 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot a runs of homozygosity track.",
         parameters=dict(
-            **het_param_docs,
-            **genome_plot_param_docs,
-            **base_param_docs,
+            **het_params.docs,
+            **genome_plot_params.docs,
+            **base_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -3357,9 +3361,9 @@ class AnophelesDataResource(ABC):
             single sample over a genome region.
         """,
         parameters=dict(
-            **het_param_docs,
-            **genome_plot_param_docs,
-            **base_param_docs,
+            **het_params.docs,
+            **genome_plot_params.docs,
+            **base_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -4167,7 +4171,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute SNP allele frequencies for a gene transcript.
         """,
-        parameters=dict(**base_param_docs, **freq_param_docs),
+        parameters=dict(**base_params.docs, **freq_params.docs),
         returns="""
             A dataframe of SNP allele frequencies, one row per variant allele.
         """,
@@ -4380,7 +4384,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
         """,
-        parameters=dict(**base_param_docs, **freq_param_docs),
+        parameters=dict(**base_params.docs, **freq_params.docs),
         returns="""
             A dataframe of amino acid allele frequencies, one row per
             substitution.
@@ -4471,7 +4475,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             amino acid change allele frequencies.
         """,
-        parameters=dict(**base_param_docs, **freq_param_docs),
+        parameters=dict(**base_params.docs, **freq_params.docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -4734,7 +4738,7 @@ class AnophelesDataResource(ABC):
             Compute genetic diversity summary statistics for a cohort of
             individuals.
         """,
-        parameters=base_param_docs,
+        parameters=base_params.docs,
         returns="""
             A pandas series with summary statistics and their confidence
             intervals.
