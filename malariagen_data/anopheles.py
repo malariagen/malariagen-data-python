@@ -249,7 +249,8 @@ genome_plot_param_docs = dict(
 )
 
 
-class roh_params:
+class het_params:
+    sample: Union[str, int]
     window_size: TypeAlias = int
     window_size_default: window_size = 20_000
     phet_roh: TypeAlias = float
@@ -258,15 +259,26 @@ class roh_params:
     phet_nonroh_default: phet_nonroh = (0.003, 0.01)
     transition: TypeAlias = float
     transition_default: transition = 0.001
+    y_max: TypeAlias = float
+    y_max_default: y_max = 0.03
+    circle_kwargs: TypeAlias = Mapping
+    df_roh: TypeAlias = pd.DataFrame
 
 
-roh_param_docs = dict(
+het_param_docs = dict(
+    sample="Sample identifier or index within sample set.",
     window_size="Number of sites per window.",
     phet_roh="Probability of observing a heterozygote in a ROH.",
     phet_nonroh="One or more probabilities of observing a heterozygote outside a ROH.",
     transition="""
         Probability of moving between states. A larger window size may call
         for a larger transitional probability.
+    """,
+    y_max="Y axis limit.",
+    circle_kwargs="Passed through to bokeh circle() function.",
+    df_roh="""
+        A DataFrame where each row provides data about a single run of
+        homozygosity.
     """,
 )
 
@@ -3009,22 +3021,19 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         parameters=dict(
-            sample="Sample identifier or index within sample set.",
-            window_size="Number of sites per window.",
-            y_max="Y axis limit.",
-            circle_kwargs="Passed through to bokeh circle() function.",
-            **base_param_docs,
+            **het_param_docs,
             **genome_plot_param_docs,
+            **base_param_docs,
         ),
         returns="Bokeh figure.",
     )
     def plot_heterozygosity_track(
         self,
-        sample: Union[str, int],
+        sample: het_params.sample,
         region: base_params.region,
-        window_size: int = 20_000,
-        y_max: float = 0.03,
-        circle_kwargs: Optional[Mapping] = None,
+        window_size: het_params.window_size = het_params.window_size_default,
+        y_max: het_params.y_max = het_params.y_max_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
@@ -3066,22 +3075,19 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         parameters=dict(
-            sample="Sample identifier or index within sample set.",
-            window_size="Number of sites per window.",
-            y_max="Y axis limit.",
-            circle_kwargs="Passed through to bokeh circle() function.",
-            **base_param_docs,
+            **het_param_docs,
             **genome_plot_param_docs,
+            **base_param_docs,
         ),
         returns="Bokeh figure.",
     )
     def plot_heterozygosity(
         self,
-        sample: Union[str, int],
+        sample: het_params.sample,
         region: base_params.region,
-        window_size: int = 20_000,
-        y_max: float = 0.03,
-        circle_kwargs: Optional[Mapping] = None,
+        window_size: het_params.window_size = het_params.window_size_default,
+        y_max: het_params.y_max = het_params.y_max_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
@@ -3212,26 +3218,22 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
         parameters=dict(
-            sample="Sample identifier or index within sample set.",
+            **het_param_docs,
             **base_param_docs,
-            **roh_param_docs,
         ),
-        returns="""
-            A DataFrame where each row provides data about a single run of
-            homozygosity.
-        """,
+        returns=het_param_docs["df_roh"],
     )
     def roh_hmm(
         self,
-        sample: Union[str, int],
+        sample: het_params.sample,
         region: base_params.region,
-        window_size: roh_params.window_size = roh_params.window_size_default,
+        window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
-        phet_roh: roh_params.phet_roh = roh_params.phet_roh_default,
-        phet_nonroh: roh_params.phet_nonroh = roh_params.phet_nonroh_default,
-        transition: roh_params.transition = roh_params.transition_default,
-    ) -> pd.DataFrame:
+        phet_roh: het_params.phet_roh = het_params.phet_roh_default,
+        phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
+        transition: het_params.transition = het_params.transition_default,
+    ) -> het_params.df_roh:
         debug = self._log.debug
 
         resolved_region = self.resolve_region(region)
@@ -3260,17 +3262,26 @@ class AnophelesDataResource(ABC):
 
         return df_roh
 
+    @doc(
+        summary="Plot a runs of homozygosity track.",
+        parameters=dict(
+            **het_param_docs,
+            **genome_plot_param_docs,
+            **base_param_docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_roh_track(
         self,
-        df_roh,
-        region,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        height=100,
-        show=True,
-        x_range=None,
-        title="Runs of homozygosity",
-    ):
+        df_roh: het_params.df_roh,
+        region: base_params.region,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        height: genome_plot_params.height = 100,
+        show: genome_plot_params.show = True,
+        x_range: Optional[genome_plot_params.x_range] = None,
+        title: genome_plot_params.title = "Runs of homozygosity",
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
@@ -3339,75 +3350,37 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="""
+            Plot windowed heterozygosity and inferred runs of homozygosity for a
+            single sample over a genome region.
+        """,
+        parameters=dict(
+            **het_param_docs,
+            **genome_plot_param_docs,
+            **base_param_docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_roh(
         self,
-        sample,
-        region,
-        window_size=20_000,
-        site_mask=DEFAULT,
-        sample_set=None,
-        phet_roh=0.001,
-        phet_nonroh=(0.003, 0.01),
-        transition=1e-3,
-        y_max=0.03,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        heterozygosity_height=170,
-        roh_height=50,
-        genes_height=genome_plot_params.genes_height_default,
-        circle_kwargs=None,
-        show=True,
+        sample: het_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        phet_roh: het_params.phet_roh = het_params.phet_roh_default,
+        phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
+        transition: het_params.transition = het_params.transition_default,
+        y_max: het_params.y_max = het_params.y_max_default,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        heterozygosity_height: genome_plot_params.height = 170,
+        roh_height: genome_plot_params.height = 50,
+        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        show: genome_plot_params.show = True,
     ):
-        """Plot windowed heterozygosity and inferred runs of homozygosity for a
-        single sample over a genome region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        window_size : int, optional
-            Number of sites per window.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        phet_roh: float, optional
-            Probability of observing a heterozygote in a ROH.
-        phet_nonroh: tuple of floats, optional
-            One or more probabilities of observing a heterozygote outside a ROH.
-        transition: float, optional
-           Probability of moving between states. A larger window size may call
-           for a larger transitional probability.
-        y_max : float, optional
-            Y axis limit.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        heterozygosity_height : int, optional
-            Heterozygosity track height in pixels (px).
-        roh_height : int, optional
-            ROH track height in pixels (px).
-        genes_height : int, optional
-            Genes track height in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
-
         debug = self._log.debug
 
         region = self.resolve_region(region)
