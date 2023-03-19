@@ -3212,8 +3212,9 @@ class AnophelesDataResource(ABC):
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
         parameters=dict(
-            **base_params,
-            **roh_params,
+            sample="Sample identifier or index within sample set.",
+            **base_param_docs,
+            **roh_param_docs,
         ),
         returns="""
             A DataFrame where each row provides data about a single run of
@@ -4191,7 +4192,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute SNP allele frequencies for a gene transcript.
         """,
-        parameters=base_param_docs,
+        parameters=dict(**base_param_docs, **freq_param_docs),
         returns="""
             A dataframe of SNP allele frequencies, one row per variant allele.
         """,
@@ -4404,7 +4405,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
         """,
-        parameters=base_param_docs,
+        parameters=dict(**base_param_docs, **freq_param_docs),
         returns="""
             A dataframe of amino acid allele frequencies, one row per
             substitution.
