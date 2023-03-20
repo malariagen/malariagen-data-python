@@ -15,6 +15,8 @@ import bokeh.plotting
 import dask.array as da
 import igv_notebook
 import ipinfo
+import ipyleaflet
+import ipywidgets
 import numba
 import numpy as np
 import pandas as pd
@@ -5078,6 +5080,7 @@ class AnophelesDataResource(ABC):
                 Plot height per row in pixels (px).
             """,
             kwargs="""
+                Passed through to `px.imshow()`.
             """,
             **plotly_params.docs,
         ),
@@ -5190,37 +5193,33 @@ class AnophelesDataResource(ABC):
 
         return fig
 
-    def plot_frequencies_time_series(
-        self, ds, height=None, width=None, title=True, **kwargs
-    ):
-        """Create a time series plot of variant frequencies using plotly.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by
-            `snp_allele_frequencies_advanced()`,
-            `aa_allele_frequencies_advanced()` or
-            `gene_cnv_frequencies_advanced()`.
-        height : int, optional
-            Height of plot in pixels (px).
-        width : int, optional
-            Width of plot in pixels (px).
-        title : bool or str, optional
-            If True, attempt to use metadata from input dataset as a plot
-            title. Otherwise, use supplied value as a title.
-        **kwargs
-            Passed through to `px.line()`.
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
+    @doc(
+        summary="Create a time series plot of variant frequencies using plotly.",
+        parameters=dict(
+            ds="""
+                A dataset of variant frequencies, such as returned by
+                `snp_allele_frequencies_advanced()`,
+                `aa_allele_frequencies_advanced()` or
+                `gene_cnv_frequencies_advanced()`.
+            """,
+            kwargs="Passed through to `px.line()`.",
+            **plotly_params.docs,
+        ),
+        returns="""
             A plotly figure containing line graphs. The resulting figure will
             have one panel per cohort, grouped into columns by taxon, and
             grouped into rows by area. Markers and lines show frequencies of
             variants.
-
-        """
+        """,
+    )
+    def plot_frequencies_time_series(
+        self,
+        ds: xr.Dataset,
+        height: plotly_params.height = None,
+        width: plotly_params.width = None,
+        title: plotly_params.title = True,
+        **kwargs,
+    ) -> go.Figure:
         debug = self._log.debug
 
         debug("handle title")
@@ -5310,34 +5309,39 @@ class AnophelesDataResource(ABC):
 
         return fig
 
-    def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
-        """Plot markers on a map showing variant frequencies for cohorts grouped
-        by area (space), period (time) and taxon.
-
-        Parameters
-        ----------
-        m : ipyleaflet.Map
-            The map on which to add the markers.
-        ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by
-            `snp_allele_frequencies_advanced()`,
-            `aa_allele_frequencies_advanced()` or
-            `gene_cnv_frequencies_advanced()`.
-        variant : int or str
-            Index or label of variant to plot.
-        taxon : str
-            Taxon to show markers for.
-        period : pd.Period
-            Time period to show markers for.
-        clear : bool, optional
-            If True, clear all layers (except the base layer) from the map
-            before adding new markers.
-
-        """
+    @doc(
+        summary="""
+            Plot markers on a map showing variant frequencies for cohorts grouped
+            by area (space), period (time) and taxon.
+        """,
+        parameters=dict(
+            m="The map on which to add the markers.",
+            # TODO possibly opportunity to factor out this as a common parameter
+            ds="""
+                A dataset of variant frequencies, such as returned by
+                `snp_allele_frequencies_advanced()`,
+                `aa_allele_frequencies_advanced()` or
+                `gene_cnv_frequencies_advanced()`.
+            """,
+            variant="Index or label of variant to plot.",
+            taxon="Taxon to show markers for.",
+            period="Time period to show markers for.",
+            clear="""
+                If True, clear all layers (except the base layer) from the map
+                before adding new markers.
+            """,
+        ),
+    )
+    def plot_frequencies_map_markers(
+        self,
+        m: ipyleaflet.Map,
+        ds: xr.Dataset,
+        variant: Union[int, str],
+        taxon: str,
+        period: pd.Period,
+        clear: bool = True,
+    ):
         debug = self._log.debug
-
-        import ipyleaflet
-        import ipywidgets
 
         debug("slice dataset to variant of interest")
         if isinstance(variant, int):
@@ -5402,41 +5406,41 @@ class AnophelesDataResource(ABC):
             )
             m.add(marker)
 
-    def plot_frequencies_interactive_map(
-        self,
-        ds,
-        center=(-2, 20),
-        zoom=3,
-        title=True,
-        epilogue=True,
-    ):
-        """Create an interactive map with markers showing variant frequencies or
-        cohorts grouped by area (space), period (time) and taxon.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by
-            `snp_allele_frequencies_advanced()`,
-            `aa_allele_frequencies_advanced()` or
-            `gene_cnv_frequencies_advanced()`.
-        center : tuple of int, optional
-            Location to center the map.
-        zoom : int, optional
-            Initial zoom level.
-        title : bool or str, optional
-            If True, attempt to use metadata from input dataset as a plot
-            title. Otherwise, use supplied value as a title.
-        epilogue : bool or str, optional
-            Additional text to display below the map.
-
-        Returns
-        -------
-        out : ipywidgets.Widget
+    @doc(
+        summary="""
+            Create an interactive map with markers showing variant frequencies or
+            cohorts grouped by area (space), period (time) and taxon.
+        """,
+        parameters=dict(
+            # TODO factor out as common parameter
+            ds="""
+                A dataset of variant frequencies, such as returned by
+                `snp_allele_frequencies_advanced()`,
+                `aa_allele_frequencies_advanced()` or
+                `gene_cnv_frequencies_advanced()`.
+            """,
+            # TODO factor out common map parameters
+            center="Location to center the map.",
+            zoom="Initial zoom level.",
+            title="""
+                If True, attempt to use metadata from input dataset as a plot
+                title. Otherwise, use supplied value as a title.
+            """,
+            epilogue="Additional text to display below the map.",
+        ),
+        returns="""
             An interactive map with widgets for selecting which variant, taxon
             and time period to display.
-
-        """
+        """,
+    )
+    def plot_frequencies_interactive_map(
+        self,
+        ds: xr.Dataset,
+        center: Tuple[int, int] = (-2, 20),
+        zoom: int = 3,
+        title: Union[bool, str] = True,
+        epilogue: Union[bool, str] = True,
+    ) -> ipywidgets.Widget:
         debug = self._log.debug
 
         import ipyleaflet
