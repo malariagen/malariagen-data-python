@@ -284,6 +284,52 @@ class het_params:
             A DataFrame where each row provides data about a single run of
             homozygosity.
         """,
+        heterozygosity_height="Height in pixels (px) of heterozygosity track.",
+        roh_height="Height in pixels (px) of runs of homozygosity track.",
+    )
+
+
+class pca_params:
+    # parameter types and default values
+    n_snps: TypeAlias = int
+    thin_offset: TypeAlias = int
+    thin_offset_default: thin_offset = 0
+    min_minor_ac: TypeAlias = int
+    min_minor_ac_default: min_minor_ac = 2
+    max_missing_an: TypeAlias = int
+    max_missing_an_default = 0
+    n_components: TypeAlias = int
+    n_components_default: n_components = 20
+    df_pca: TypeAlias = pd.DataFrame
+    evr: TypeAlias = np.ndarray
+
+    # parameter documentation
+    docs = dict(
+        n_snps="""
+            The desired number of SNPs to use when running the analysis.
+            SNPs will be evenly thinned to approximately this number.
+        """,
+        thin_offset="""
+            Starting index for SNP thinning. Change this to repeat the analysis
+            using a different set of SNPs.
+        """,
+        min_minor_ac="""
+            The minimum minor allele count. SNPs with a minor allele count
+            below this value will be excluded prior to thinning.
+        """,
+        max_missing_an="""
+            The maximum number of missing allele calls to accept. SNPs with
+            more than this value will be excluded prior to thinning. Set to 0
+            (default) to require no missing calls.
+        """,
+        n_components="""
+            Number of components to return.
+        """,
+        df_pca="""
+            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+            etc., added.
+        """,
+        evr="An array of explained variance ratios, one per component.",
     )
 
 
@@ -3618,47 +3664,28 @@ class AnophelesDataResource(ABC):
 
         return loc_ann
 
+    @doc(
+        summary="Load site annotations.",
+        parameters=base_params.docs,
+        returns="A dataset of site annotations.",
+    )
     def site_annotations(
         self,
-        region,
-        site_mask=None,
-        inline_array=True,
-        chunks="auto",
-    ):
-        """Load site annotations.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of site annotations.
-
-        """
+        region: base_params.region,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> xr.Dataset:
         # N.B., we default to chunks="auto" here for performance reasons
 
         debug = self._log.debug
 
         debug("resolve region")
-        region = self.resolve_region(region)
-        if isinstance(region, list):
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, list):
             raise TypeError("Multiple regions not supported.")
-        contig = region.contig
+        contig = resolved_region.contig
 
         debug("open site annotations zarr")
         root = self.open_site_annotations()
@@ -3690,29 +3717,23 @@ class AnophelesDataResource(ABC):
             chunks=chunks,
         )
         pos = pos.compute()
-        if region.start or region.end:
-            loc_region = locate_region(region, pos)
+        if resolved_region.start or resolved_region.end:
+            loc_region = locate_region(resolved_region, pos)
             pos = pos[loc_region]
         idx = pos - 1
         ds = ds.isel(variants=idx)
 
         return ds
 
-    def wgs_data_catalog(self, sample_set):
-        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
-        files for samples in a given sample set.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            One row per sample, columns provide URLs.
-
-        """
+    @doc(
+        summary="""
+            Load a data catalog providing URLs for downloading BAM, VCF and Zarr
+            files for samples in a given sample set.
+        """,
+        parameters=base_params.docs,
+        returns="One row per sample, columns provide URLs.",
+    )
+    def wgs_data_catalog(self, sample_set: base_params.sample_set):
         debug = self._log.debug
 
         debug("look up release for sample set")
@@ -3736,68 +3757,37 @@ class AnophelesDataResource(ABC):
 
         return df
 
+    @doc(
+        summary="""
+            Run a principal components analysis (PCA) using biallelic SNPs from
+            the selected genome region and samples.
+        """,
+        parameters=dict(
+            **base_params.docs,
+            **pca_params.docs,
+        ),
+        returns=dict(
+            df_pca=pca_params.docs["df_pca"],
+            evr=pca_params.docs["evr"],
+        ),
+        notes="""
+            This computation may take some time to run, depending on your computing
+            environment. Results of this computation will be cached and re-used if
+            the `results_cache` parameter was set when instantiating the Ag3 class.
+        """,
+    )
     def pca(
         self,
-        region,
-        n_snps,
-        thin_offset=0,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT,
-        min_minor_ac=2,
-        max_missing_an=0,
-        n_components=20,
-    ):
-        """Run a principal components analysis (PCA) using biallelic SNPs from
-        the selected genome region and samples.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        n_snps : int
-            The desired number of SNPs to use when running the analysis.
-            SNPs will be evenly thinned to approximately this number.
-        thin_offset : int, optional
-            Starting index for SNP thinning. Change this to repeat the analysis
-            using a different set of SNPs.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        min_minor_ac : int, optional
-            The minimum minor allele count. SNPs with a minor allele count
-            below this value will be excluded prior to thinning.
-        max_missing_an : int, optional
-            The maximum number of missing allele calls to accept. SNPs with
-            more than this value will be excluded prior to thinning. Set to 0
-            (default) to require no missing calls.
-        n_components : int, optional
-            Number of components to return.
-
-        Returns
-        -------
-        df_pca : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        evr : np.ndarray
-            An array of explained variance ratios, one per component.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
+        region: base_params.region,
+        n_snps: pca_params.n_snps,
+        thin_offset: pca_params.thin_offset = pca_params.thin_offset_default,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        min_minor_ac: pca_params.min_minor_ac = pca_params.min_minor_ac_default,
+        max_missing_an: pca_params.max_missing_an = pca_params.max_missing_an_default,
+        n_components: pca_params.n_components = pca_params.n_components_default,
+    ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         debug = self._log.debug
 
         # change this name if you ever change the behaviour of this function, to
@@ -3846,62 +3836,33 @@ class AnophelesDataResource(ABC):
 
         return df_pca, evr
 
+    @doc(
+        summary="""
+            Plot SNPs in a given genome region. SNPs are shown as rectangles,
+            with segregating and non-segregating SNPs positioned on different levels,
+            and coloured by site filter.
+        """,
+        parameters=dict(
+            max_snps="Maximum number of SNPs to show.",
+            **genome_plot_params.docs,
+            **base_params.docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_snps(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT,
-        cohort_size=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        track_height=80,
-        genes_height=genome_plot_params.genes_height_default,
-        max_snps=200_000,
-        show=True,
-    ):
-        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
-        with segregating and non-segregating SNPs positioned on different levels,
-        and coloured by site filter.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Width of plot in pixels (px).
-        track_height : int, optional
-            Height of SNPs track in pixels (px).
-        genes_height : int, optional
-            Height of genes track in pixels (px).
-        max_snps : int, optional
-            Maximum number of SNPs to show.
-        show : bool, optional
-            If True, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        track_height: genome_plot_params.height = 80,
+        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+        max_snps: int = 200_000,
+        show: genome_plot_params.show = True,
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
         debug("plot SNPs track")
@@ -3942,94 +3903,63 @@ class AnophelesDataResource(ABC):
 
         return fig
 
-    def open_site_annotations(self):
-        """Open site annotations zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
-
+    @doc(
+        summary="Open site annotations zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_site_annotations(self) -> zarr.hierarchy.Group:
         if self._cache_site_annotations is None:
             path = f"{self._base_path}/{self._site_annotations_zarr_path}"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
+    @doc(
+        summary="""
+            Plot SNPs in a given genome region. SNPs are shown as rectangles,
+            with segregating and non-segregating SNPs positioned on different levels,
+            and coloured by site filter.
+        """,
+        parameters=dict(
+            max_snps="Maximum number of SNPs to show.",
+            **genome_plot_params.docs,
+            **base_params.docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_snps_track(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT,
-        cohort_size=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        height=120,
-        max_snps=200_000,
-        x_range=None,
-        show=True,
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        height: genome_plot_params.height = 120,
+        max_snps: int = 200_000,
+        x_range: Optional[genome_plot_params.x_range] = None,
+        show: genome_plot_params.show = True,
     ):
-        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
-        with segregating and non-segregating SNPs positioned on different levels,
-        and coloured by site filter.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Width of plot in pixels (px).
-        height : int, optional
-            Height of plot in pixels (px).
-        max_snps : int, optional
-            Maximum number of SNPs to plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-        show : bool, optional
-            If True, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
         debug = self._log.debug
 
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("resolve and check region")
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
+
         if (
-            (region.start is None)
-            or (region.end is None)
-            or ((region.end - region.start) > max_snps)
+            (resolved_region.start is None)
+            or (resolved_region.end is None)
+            or ((resolved_region.end - resolved_region.start) > max_snps)
         ):
             raise ValueError("Region is too large, please provide a smaller region.")
 
         debug("compute allele counts")
         ac = allel.AlleleCountsArray(
             self.snp_allele_counts(
-                region=region,
+                region=resolved_region,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 site_mask=None,
@@ -4043,7 +3973,7 @@ class AnophelesDataResource(ABC):
 
         debug("obtain SNP variants data")
         ds_sites = self.snp_variants(
-            region=region,
+            region=resolved_region,
         ).compute()
 
         debug("build a dataframe")
@@ -4112,7 +4042,7 @@ class AnophelesDataResource(ABC):
         hover_tool.names = ["snps"]
 
         debug("plot gaps in the reference genome")
-        seq = self.genome_sequence(region=region.contig).compute()
+        seq = self.genome_sequence(region=resolved_region.contig).compute()
         is_n = (seq == b"N") | (seq == b"n")
         loc_n_start = ~is_n[:-1] & is_n[1:]
         loc_n_stop = is_n[:-1] & ~is_n[1:]
@@ -4157,7 +4087,7 @@ class AnophelesDataResource(ABC):
             1: "Non-segregating",
             2: "Segregating",
         }
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
+        fig.xaxis.axis_label = f"Contig {resolved_region.contig} position (bp)"
         fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
         fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
