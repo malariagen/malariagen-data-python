@@ -347,6 +347,47 @@ class pca_params:
     )
 
 
+class plotly_params:
+    # parameter types and default values
+    # N.B., most of these parameters are always able to take None
+    # and so we set as Optional here, rather than having to repeat
+    # that for each function doc.
+    x_label: TypeAlias = Optional[str]
+    y_label: TypeAlias = Optional[str]
+    width: TypeAlias = Optional[int]
+    height: TypeAlias = Optional[int]
+    aspect: TypeAlias = Optional[Literal["equal", "auto"]]
+    title: TypeAlias = Optional[Union[str, bool]]
+    text_auto: TypeAlias = Union[bool, str]
+    color_continuous_scale: TypeAlias = Optional[Union[str, List[str]]]
+    colorbar: TypeAlias = bool
+
+    # parameter documentation
+    docs = dict(
+        x_label="X axis label.",
+        y_label="Y axis label.",
+        width="Plot width in pixels (px).",
+        height="Plot height in pixels (px).",
+        aspect="Aspect ratio, see https://plotly.com/python-api-reference/generated/plotly.express.imshow",
+        title="""
+            If True, attempt to use metadata from input dataset as a plot title.
+            Otherwise, use supplied value as a title.
+        """,
+        text_auto="""
+            If True or a string, single-channel img values will be displayed as text. A
+            string like '.2f' will be interpreted as a texttemplate numeric formatting
+            directive.
+        """,
+        color_continuous_scale="""
+            Colormap used to map scalar data to colors (for a 2D image). This
+            parameter is not used for RGB or RGBA images. If a string is provided,
+            it should be the name of a known color scale, and if a list is provided,
+            it should be a list of CSS-compatible colors.
+        """,
+        colorbar="If False, do not display a color bar.",
+    )
+
+
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(ABC):
@@ -5010,78 +5051,64 @@ class AnophelesDataResource(ABC):
 
         return results
 
-    # Start of plot functions
-
+    @doc(
+        summary="""
+            Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
+            from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+        """,
+        parameters=dict(
+            df="""
+                A DataFrame of frequencies, e.g., output from
+                `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+            """,
+            index="""
+                One or more column headers that are present in the input dataframe.
+                This becomes the heatmap y-axis row labels. The column/s must
+                produce a unique index.
+            """,
+            max_len="""
+                Displaying large styled dataframes may cause ipython notebooks to
+                crash. If the input dataframe is larger than this value, an error
+                will be raised.
+            """,
+            col_width="""
+                Plot width per column in pixels (px).
+            """,
+            row_height="""
+                Plot height per row in pixels (px).
+            """,
+            kwargs="""
+            """,
+            **plotly_params.docs,
+        ),
+        returns="Plotly figure.",
+        notes="""
+            It's recommended to filter the input DataFrame to just rows of interest,
+            i.e., fewer rows than `max_len`.
+        """,
+    )
     def plot_frequencies_heatmap(
         self,
-        df,
-        index="label",
-        max_len=100,
-        x_label="Cohorts",
-        y_label="Variants",
-        colorbar=True,
-        col_width=40,
-        width=None,
-        row_height=20,
-        height=None,
-        text_auto=".0%",
-        aspect="auto",
-        color_continuous_scale="Reds",
-        title=True,
+        df: pd.DataFrame,
+        index: Union[str, List[str]] = "label",
+        max_len: Optional[int] = 100,
+        col_width: int = 40,
+        row_height: int = 20,
+        x_label: plotly_params.x_label = "Cohorts",
+        y_label: plotly_params.y_label = "Variants",
+        colorbar: plotly_params.colorbar = True,
+        width: plotly_params.width = None,
+        height: plotly_params.height = None,
+        text_auto: plotly_params.text_auto = ".0%",
+        aspect: plotly_params.aspect = "auto",
+        color_continuous_scale: plotly_params.color_continuous_scale = "Reds",
+        title: plotly_params.title = True,
         **kwargs,
-    ):
-        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
-        from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
-        It's recommended to filter the input DataFrame to just rows of interest,
-        i.e., fewer rows than `max_len`.
-
-        Parameters
-        ----------
-        df : pandas DataFrame
-           A DataFrame of frequencies, e.g., output from
-           `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
-        index : str or list of str
-            One or more column headers that are present in the input dataframe.
-            This becomes the heatmap y-axis row labels. The column/s must
-            produce a unique index.
-        max_len : int, optional
-            Displaying large styled dataframes may cause ipython notebooks to
-            crash.
-        x_label : str, optional
-            This is the x-axis label that will be displayed on the heatmap.
-        y_label : str, optional
-            This is the y-axis label that will be displayed on the heatmap.
-        colorbar : bool, optional
-            If False, colorbar is not output.
-        col_width : int, optional
-            Plot width per column in pixels (px).
-        width : int, optional
-            Plot width in pixels (px), overrides col_width.
-        row_height : int, optional
-            Plot height per row in pixels (px).
-        height : int, optional
-            Plot height in pixels (px), overrides row_height.
-        text_auto : str, optional
-            Formatting for frequency values.
-        aspect : str, optional
-            Control the aspect ratio of the heatmap.
-        color_continuous_scale : str, optional
-            Color scale to use.
-        title : bool or str, optional
-            If True, attempt to use metadata from input dataset as a plot
-            title. Otherwise, use supplied value as a title.
-        **kwargs
-            Other parameters are passed through to px.imshow().
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
-
-        """
+    ) -> go.Figure:
         debug = self._log.debug
 
         debug("check len of input")
-        if len(df) > max_len:
+        if max_len and len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
 
         debug("handle title")
