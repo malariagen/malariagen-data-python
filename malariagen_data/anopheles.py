@@ -70,6 +70,7 @@ AA_CHANGE_QUERY = (
 
 class base_params:
     # parameter types and default values
+    contig: TypeAlias = str
     region: TypeAlias = Union[str, Region]
     release: TypeAlias = Union[str, Sequence[str]]
     sample_set: TypeAlias = str
@@ -93,9 +94,14 @@ class base_params:
 
     # parameter documentation
     docs = dict(
+        contig="""
+            Reference genome contig name. See the `contigs` property for valid contig
+            names.
+        """,
         region="""
-            Contig name, region string (formatted like "{contig}:{start}-{end}"), or
-            identifier of a genome feature such as a gene or transcript.
+            Region of the reference genome. Can be a contig name, region string
+            (formatted like "{contig}:{start}-{end}"), or identifier of a genome
+            feature such as a gene or transcript.
         """,
         release="""
             Release version identifier.
@@ -109,6 +115,14 @@ class base_params:
         """,
         sample_query="""
             A pandas query string to be evaluated against the sample metadata.
+        """,
+        cohort1_query="""
+            A pandas query string to be evaluated against the sample metadata,
+            to select samples for the first cohort.
+        """,
+        cohort2_query="""
+            A pandas query string to be evaluated against the sample metadata,
+            to select samples for the second cohort.
         """,
         site_mask="""
             Which site filters mask to apply. See the `site_mask_ids` property for
@@ -4849,42 +4863,31 @@ class AnophelesDataResource(ABC):
 
         return df_stats
 
+    @doc(
+        summary="""
+            Create a pivot table showing numbers of samples available by space,
+            time and taxon.
+        """,
+        parameters=dict(
+            index="Sample metadata columns to use for the pivot table index.",
+            columns="Sample metadata columns to use for the pivot table columns.",
+            **base_params.docs,
+        ),
+        returns="Pivot table of sample counts.",
+    )
     def count_samples(
         self,
-        sample_sets=None,
-        sample_query=None,
-        index=(
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        index: Union[str, Tuple[str, ...]] = (
             "country",
             "admin1_iso",
             "admin1_name",
             "admin2_name",
             "year",
         ),
-        columns="taxon",
-    ):
-        """Create a pivot table showing numbers of samples available by space,
-        time and taxon.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        index : str or tuple of str
-            Sample metadata columns to use for the index.
-        columns : str or tuple of str
-            Sample metadata columns to use for the columns.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            Pivot table of sample counts.
-
-        """
+        columns: Union[str, Tuple[str, ...]] = "taxon",
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         debug("load sample metadata")
@@ -4903,51 +4906,36 @@ class AnophelesDataResource(ABC):
 
         return df_pivot
 
+    @doc(
+        summary="""
+            Run a Fst genome-wide scan to investigate genetic differentiation
+            between two cohorts.
+        """,
+        parameters=dict(
+            # N.B., window size can mean different things for different functions
+            window_size="Number of sites per window.",
+            **base_params.docs,
+        ),
+        returns=dict(
+            x="An array containing the window centre point genomic positions",
+            fst="An array with Fst statistic values for each window.",
+        ),
+    )
     def fst_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask=DEFAULT,
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run a Fst genome-wide scan to investigate genetic differentiation
-        between two cohorts.
+        contig: base_params.contig,
+        window_size: int,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        # TODO could generalise, do this on a region rather than a contig
 
-        Parameters
-        ----------
-        contig: str
-            Chromosome arm (e.g., "2L")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        fst : numpy.ndarray
-            An array with Fst statistic values for each window.
-        """
+        # TODO better to support min_cohort_size and max_cohort_size here
+        # rather than just a fixed cohort_size
 
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
