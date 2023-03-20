@@ -4286,22 +4286,14 @@ class AnophelesDataResource(ABC):
             self._cache_cohort_metadata[sample_set] = df
         return df.copy()
 
-    def sample_cohorts(self, sample_sets=None):
-        """Access cohorts metadata for one or more sample sets.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of cohort metadata, one row per sample.
-
-        """
+    @doc(
+        summary="Access cohorts metadata for one or more sample sets.",
+        parameters=base_params.docs,
+        returns="A dataframe of cohort metadata, one row per sample.",
+    )
+    def sample_cohorts(
+        self, sample_sets: Optional[base_params.sample_sets] = None
+    ) -> pd.DataFrame:
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
@@ -4763,71 +4755,29 @@ class AnophelesDataResource(ABC):
 
         return pd.Series(stats)
 
-    def diversity_stats(
-        self,
-        cohorts,
-        cohort_size,
-        region,
-        site_mask=DEFAULT,
-        site_class=None,
-        sample_query=None,
-        sample_sets=None,
-        random_seed=42,
-        n_jack=200,
-        confidence_level=0.95,
-    ):
-        """Compute genetic diversity summary statistics for multiple cohorts.
-
-        Parameters
-        ----------
-        cohorts : str or dict
-            Either a string giving one of the predefined cohort columns, or a
-            dictionary mapping cohort labels to sample queries.
-        cohort_size : int
-            Number of individuals to use for computation of summary statistics.
-            If the cohort is larger than this size, it will be randomly
-            down-sampled.
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        random_seed : int, optional
-            Seed for random number generator.
-        n_jack : int, optional
-            Number of blocks to divide the data into for the block jackknife
-            estimation of confidence intervals. N.B., larger is not necessarily
-            better.
-        confidence_level : float, optional
-            Confidence level to use for confidence interval calculation. 0.95
-            means 95% confidence interval.
-
-        Returns
-        -------
-        df_stats : pandas.DataFrame
+    @doc(
+        summary="""
+            Compute genetic diversity summary statistics for multiple cohorts.
+        """,
+        parameters=base_params.docs,
+        returns="""
             A DataFrame where each row provides summary statistics and their
             confidence intervals for a single cohort.
-
-        """
+        """,
+    )
+    def diversity_stats(
+        self,
+        cohorts: base_params.cohorts,
+        cohort_size: base_params.cohort_size,
+        region: base_params.region,
+        site_mask: base_params.site_mask = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        random_seed: base_params.random_seed = 42,
+        n_jack: base_params.n_jack = 200,
+        confidence_level: base_params.confidence_level = 0.95,
+    ) -> pd.DataFrame:
         debug = self._log.debug
         info = self._log.info
 
