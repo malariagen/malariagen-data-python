@@ -363,6 +363,13 @@ class plotly_params:
     text_auto: TypeAlias = Union[bool, str]
     color_continuous_scale: TypeAlias = Optional[Union[str, List[str]]]
     colorbar: TypeAlias = bool
+    x: TypeAlias = str
+    y: TypeAlias = str
+    z: TypeAlias = str
+    color: TypeAlias = Optional[str]
+    symbol: TypeAlias = Optional[str]
+    jitter_frac: TypeAlias = Optional[float]
+    marker_size: TypeAlias = int
 
     # parameter documentation
     docs = dict(
@@ -387,6 +394,13 @@ class plotly_params:
             it should be a list of CSS-compatible colors.
         """,
         colorbar="If False, do not display a color bar.",
+        x="Name of variable to plot on the X axis.",
+        y="Name of variable to plot on the Y axis.",
+        z="Name of variable to plot on the Z axis.",
+        color="Name of variable to use to color the markers.",
+        symbol="Name of the variable to use to choose marker symbols.",
+        jitter_frac="Randomly jitter points by this fraction of their range.",
+        marker_size="Marker size.",
     )
 
 
@@ -5485,53 +5499,36 @@ class AnophelesDataResource(ABC):
 
         return out
 
+    @doc(
+        summary="""
+            Plot sample coordinates from a principal components analysis (PCA)
+            as a plotly scatter plot.
+        """,
+        parameters=dict(
+            data="""
+                A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+                etc., added.
+            """,
+            kwargs="Passed through to `px.scatter()`",
+            **plotly_params.docs,
+            **base_params.docs,
+        ),
+        returns="Plotly figure.",
+    )
     def plot_pca_coords(
         self,
-        data,
-        x="PC1",
-        y="PC2",
-        color=None,
-        symbol=None,
-        jitter_frac=0.02,
-        random_seed=42,
-        width=900,
-        height=600,
-        marker_size=10,
+        data: pd.DataFrame,
+        x: plotly_params.x = "PC1",
+        y: plotly_params.y = "PC2",
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        jitter_frac: plotly_params.jitter_frac = 0.02,
+        random_seed: base_params.random_seed = 42,
+        width: plotly_params.width = 900,
+        height: plotly_params.height = 600,
+        marker_size: plotly_params.marker_size = 10,
         **kwargs,
-    ):
-        """Plot sample coordinates from a principal components analysis (PCA)
-        as a plotly scatter plot.
-
-        Parameters
-        ----------
-        data : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        x : str, optional
-            Name of principal component to plot on the X axis.
-        y : str, optional
-            Name of principal component to plot on the Y axis.
-        color : str, optional
-            Name of column in the input dataframe to use to color the markers.
-        symbol : str, optional
-            Name of column in the input dataframe to use to choose marker symbols.
-        jitter_frac : float, optional
-            Randomly jitter points by this fraction of their range.
-        random_seed : int, optional
-            Random seed for jitter.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        marker_size : int, optional
-            Marker size.
-
-        Returns
-        -------
-        fig : Figure
-            A plotly figure.
-
-        """
+    ) -> go.Figure:
         debug = self._log.debug
 
         debug(
@@ -5596,56 +5593,37 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="""
+            Plot sample coordinates from a principal components analysis (PCA)
+            as a plotly 3D scatter plot.
+        """,
+        parameters=dict(
+            data="""
+                A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+                etc., added.
+            """,
+            kwargs="Passed through to `px.scatter_3d()`",
+            **plotly_params.docs,
+            **base_params.docs,
+        ),
+        returns="Plotly figure.",
+    )
     def plot_pca_coords_3d(
         self,
-        data,
-        x="PC1",
-        y="PC2",
-        z="PC3",
-        color=None,
-        symbol=None,
-        jitter_frac=0.02,
-        random_seed=42,
-        width=900,
-        height=600,
-        marker_size=5,
+        data: pd.DataFrame,
+        x: plotly_params.x = "PC1",
+        y: plotly_params.y = "PC2",
+        z: plotly_params.z = "PC3",
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        jitter_frac: plotly_params.jitter_frac = 0.02,
+        random_seed: base_params.random_seed = 42,
+        width: plotly_params.width = 900,
+        height: plotly_params.height = 600,
+        marker_size: plotly_params.marker_size = 5,
         **kwargs,
-    ):
-        """Plot sample coordinates from a principal components analysis (PCA)
-        as a plotly 3D scatter plot.
-
-        Parameters
-        ----------
-        data : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        x : str, optional
-            Name of principal component to plot on the X axis.
-        y : str, optional
-            Name of principal component to plot on the Y axis.
-        z : str, optional
-            Name of principal component to plot on the Z axis.
-        color : str, optional
-            Name of column in the input dataframe to use to color the markers.
-        symbol : str, optional
-            Name of column in the input dataframe to use to choose marker symbols.
-        jitter_frac : float, optional
-            Randomly jitter points by this fraction of their range.
-        random_seed : int, optional
-            Random seed for jitter.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        marker_size : int, optional
-            Marker size.
-
-        Returns
-        -------
-        fig : Figure
-            A plotly figure.
-
-        """
+    ) -> go.Figure:
         debug = self._log.debug
 
         debug(
