@@ -209,7 +209,7 @@ class h12_params:
     )
 
 
-class freq_params:
+class frq_params:
     # parameter types and default values
     drop_invariant: TypeAlias = bool
     effects: TypeAlias = bool
@@ -885,7 +885,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             SNP allele frequencies.
         """,
-        parameters=dict(**base_params.docs, **freq_params.docs),
+        parameters=dict(**base_params.docs, **frq_params.docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -900,16 +900,16 @@ class AnophelesDataResource(ABC):
     def snp_allele_frequencies_advanced(
         self,
         transcript: base_params.transcript,
-        area_by: freq_params.area_by,
-        period_by: freq_params.period_by,
+        area_by: frq_params.area_by,
+        period_by: frq_params.period_by,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
-        drop_invariant: freq_params.drop_invariant = True,
-        variant_query: Optional[freq_params.variant_query] = None,
+        drop_invariant: frq_params.drop_invariant = True,
+        variant_query: Optional[frq_params.variant_query] = None,
         site_mask: Optional[base_params.site_mask] = None,
-        nobs_mode: freq_params.nobs_mode = "called",
-        ci_method: Optional[freq_params.ci_method] = "wilson",
+        nobs_mode: frq_params.nobs_mode = "called",
+        ci_method: Optional[frq_params.ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -4215,7 +4215,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute SNP allele frequencies for a gene transcript.
         """,
-        parameters=dict(**base_params.docs, **freq_params.docs),
+        parameters=dict(**base_params.docs, **frq_params.docs),
         returns="""
             A dataframe of SNP allele frequencies, one row per variant allele.
         """,
@@ -4232,8 +4232,8 @@ class AnophelesDataResource(ABC):
         min_cohort_size: base_params.min_cohort_size = 10,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
-        drop_invariant: freq_params.drop_invariant = True,
-        effects: freq_params.effects = True,
+        drop_invariant: frq_params.drop_invariant = True,
+        effects: frq_params.effects = True,
     ):
         debug = self._log.debug
 
@@ -4420,7 +4420,7 @@ class AnophelesDataResource(ABC):
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
         """,
-        parameters=dict(**base_params.docs, **freq_params.docs),
+        parameters=dict(**base_params.docs, **frq_params.docs),
         returns="""
             A dataframe of amino acid allele frequencies, one row per
             substitution.
@@ -4438,7 +4438,7 @@ class AnophelesDataResource(ABC):
         min_cohort_size: Optional[base_params.min_cohort_size] = 10,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
-        drop_invariant: freq_params.drop_invariant = True,
+        drop_invariant: frq_params.drop_invariant = True,
     ) -> pd.DataFrame:
         debug = self._log.debug
 
@@ -4511,7 +4511,7 @@ class AnophelesDataResource(ABC):
             Group samples by taxon, area (space) and period (time), then compute
             amino acid change allele frequencies.
         """,
-        parameters=dict(**base_params.docs, **freq_params.docs),
+        parameters=dict(**base_params.docs, **frq_params.docs),
         returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
@@ -4526,15 +4526,15 @@ class AnophelesDataResource(ABC):
     def aa_allele_frequencies_advanced(
         self,
         transcript: base_params.transcript,
-        area_by: freq_params.area_by,
-        period_by: freq_params.period_by,
+        area_by: frq_params.area_by,
+        period_by: frq_params.period_by,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
-        variant_query: Optional[freq_params.variant_query] = None,
+        variant_query: Optional[frq_params.variant_query] = None,
         site_mask: Optional[base_params.site_mask] = None,
-        nobs_mode: freq_params.nobs_mode = "called",
-        ci_method: Optional[freq_params.ci_method] = "wilson",
+        nobs_mode: frq_params.nobs_mode = "called",
+        ci_method: Optional[frq_params.ci_method] = "wilson",
     ) -> xr.Dataset:
         debug = self._log.debug
 
