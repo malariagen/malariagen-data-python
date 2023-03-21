@@ -28,7 +28,9 @@ from bokeh import palettes
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
-from typing_extensions import Literal, TypeAlias
+from typing_extensions import Annotated, Literal, TypeAlias
+from typing_extensions import get_args as typing_get_args
+from typing_extensions import get_origin as typing_get_origin
 
 try:
     # noinspection PyPackageRequirements
@@ -68,6 +70,21 @@ DEFAULT = "default"
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
+
+
+class Params(type):
+    """Utility metaclass to help with defining and documenting sets of parameters."""
+
+    @property
+    def docs(self):
+        """Return annotations for any annotated members."""
+        d = dict()
+        for k, v in self.__dict__.items():
+            if not k[0] == "_" and typing_get_origin(v) == Annotated:
+                args = typing_get_args(v)
+                # assume the first annotation is a documentation string
+                d[k] = args[1]
+        return d
 
 
 class base_params:
@@ -182,29 +199,27 @@ class base_params:
     )
 
 
-class hap_params:
-    analysis: TypeAlias = str
-
-    docs = dict(
-        analysis="""
+class hap_params(metaclass=Params):
+    analysis = Annotated[
+        str,
+        """
             Which haplotype phasing analysis to use. See the
             `phasing_analysis_ids` property for available values.
         """,
-    )
+    ]
 
 
 class h12_params:
-    window_sizes: TypeAlias = Tuple[int, ...]
+    window_sizes = Tuple[int, ...]
     window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
     window_size: TypeAlias = int
 
     docs = dict(
         window_sizes="""
-            The sizes of windows used to calculate h12 over. Multiple window
-            sizes should be used to calibrate the optimal size for h12 analysis.
+            The sizes of windows (number of SNPs) used to calculate statistics within.
         """,
         window_size="""
-            The size of windows (number of SNPs) used to calculate h12 over.
+            The size of windows (number of SNPs) used to calculate statistics within.
         """,
     )
 
@@ -6715,52 +6730,32 @@ class AnophelesDataResource(ABC):
 
         bokeh.plotting.show(fig)
 
+    @doc(
+        summary="""
+            Run a H1X genome-wide scan to detect genome regions with
+            shared selective sweeps between two cohorts.
+        """,
+        parameters=dict(
+            **h12_params.docs,
+            **hap_params.docs,
+            **base_params.docs,
+        ),
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            h1x="An array with H1X statistic values for each window.",
+        ),
+    )
     def h1x_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        analysis=DEFAULT,
-        sample_sets=None,
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run a H1X genome-wide scan to detect genome regions with
-        shared selective sweeps between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "2RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        h1x : numpy.ndarray
-            An array with H1X statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h1x_gwss_cache_name
