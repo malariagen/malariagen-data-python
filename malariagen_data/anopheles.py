@@ -182,6 +182,17 @@ class base_params:
     )
 
 
+class hap_params:
+    analysis: TypeAlias = str
+
+    docs = dict(
+        analysis="""
+            Which haplotype phasing analysis to use. See the
+            `phasing_analysis_ids` property for available values.
+        """,
+    )
+
+
 class freq_params:
     # parameter types and default values
     drop_invariant: TypeAlias = bool
@@ -6096,22 +6107,19 @@ class AnophelesDataResource(ABC):
 
         bokeh.plotting.show(fig)
 
-    def open_haplotypes(self, sample_set, analysis=DEFAULT):
-        """Open haplotypes zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier, e.g., "AG1000G-AO".
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open haplotypes zarr.",
+        parameters=dict(
+            **base_params.docs,
+            **hap_params.docs,
+        ),
+        returns="Zarr hierarchy.",
+    )
+    def open_haplotypes(
+        self,
+        sample_set: base_params.sample_set,
+        analysis: hap_params.analysis = DEFAULT,
+    ) -> zarr.hierarchy.Group:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotypes[(sample_set, analysis)]
@@ -6128,20 +6136,16 @@ class AnophelesDataResource(ABC):
             self._cache_haplotypes[(sample_set, analysis)] = root
         return root
 
-    def open_haplotype_sites(self, analysis=DEFAULT):
-        """Open haplotype sites zarr.
-
-        Parameters
-        ----------
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open haplotype sites zarr.",
+        parameters=dict(
+            **hap_params.docs,
+        ),
+        returns="Zarr hierarchy.",
+    )
+    def open_haplotype_sites(
+        self, analysis: hap_params.analysis = DEFAULT
+    ) -> zarr.hierarchy.Group:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotype_sites[analysis]
@@ -6216,65 +6220,39 @@ class AnophelesDataResource(ABC):
 
         return ds
 
+    @doc(
+        summary="Access haplotype data.",
+        parameters=dict(
+            **hap_params.docs,
+            **base_params.docs,
+        ),
+        returns="A dataset of haplotypes and associated data.",
+    )
     def haplotypes(
         self,
-        region,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        inline_array=True,
-        chunks="native",
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Access haplotype data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"] or ["2RL", "3RL"].
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of haplotypes and associated data.
-
-        """
+        region: base_params.region,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        resolved_region = self.resolve_region(region)
+        del region
+
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
         debug("build dataset")
         lx = []
-        for r in region:
+        for r in resolved_region:
             ly = []
 
             for s in sample_sets:
