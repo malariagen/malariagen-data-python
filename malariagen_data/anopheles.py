@@ -193,6 +193,22 @@ class hap_params:
     )
 
 
+class h12_params:
+    window_sizes: TypeAlias = Tuple[int, ...]
+    window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
+    window_size: TypeAlias = int
+
+    docs = dict(
+        window_sizes="""
+            The sizes of windows used to calculate h12 over. Multiple window
+            sizes should be used to calibrate the optimal size for h12 analysis.
+        """,
+        window_size="""
+            The size of windows (number of SNPs) used to calculate h12 over.
+        """,
+    )
+
+
 class freq_params:
     # parameter types and default values
     drop_invariant: TypeAlias = bool
@@ -239,7 +255,7 @@ class freq_params:
 
 
 # N.B., genome plots are always plotted with bokeh
-class genome_plot_params:
+class gplt_params:
     # parameter types and default values
     sizing_mode: TypeAlias = Literal[
         "fixed",
@@ -2373,20 +2389,20 @@ class AnophelesDataResource(ABC):
         summary="Plot a genes track, using bokeh.",
         parameters=dict(
             **base_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
         ),
         returns="Bokeh figure.",
     )
     def plot_genes(
         self,
         region: base_params.region,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
-        show: genome_plot_params.show = True,
-        toolbar_location: genome_plot_params.toolbar_location = genome_plot_params.toolbar_location_default,
-        x_range: Optional[genome_plot_params.x_range] = None,
-        title: genome_plot_params.title = "Genes",
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        x_range: Optional[gplt_params.x_range] = None,
+        title: gplt_params.title = "Genes",
     ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
@@ -2567,19 +2583,19 @@ class AnophelesDataResource(ABC):
         summary="Plot a transcript, using bokeh.",
         parameters=dict(
             **base_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
         ),
         returns="Bokeh figure.",
     )
     def plot_transcript(
         self,
         transcript: base_params.transcript,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.height = genome_plot_params.genes_height_default,
-        show: genome_plot_params.show = True,
-        x_range: Optional[genome_plot_params.x_range] = None,
-        toolbar_location: genome_plot_params.toolbar_location = genome_plot_params.toolbar_location_default,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
         title: Union[
             str, bool
         ] = True,  # this type is a little different from plot_genes()
@@ -3170,7 +3186,7 @@ class AnophelesDataResource(ABC):
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         parameters=dict(
             **het_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
             **base_params.docs,
         ),
         returns="Bokeh figure.",
@@ -3184,11 +3200,11 @@ class AnophelesDataResource(ABC):
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.height = 200,
-        show: genome_plot_params.show = True,
-        x_range: Optional[genome_plot_params.x_range] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
     ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
@@ -3224,7 +3240,7 @@ class AnophelesDataResource(ABC):
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         parameters=dict(
             **het_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
             **base_params.docs,
         ),
         returns="Bokeh figure.",
@@ -3238,11 +3254,11 @@ class AnophelesDataResource(ABC):
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        track_height: genome_plot_params.track_height = 170,
-        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
-        show: genome_plot_params.show = True,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
     ):
         debug = self._log.debug
 
@@ -3414,7 +3430,7 @@ class AnophelesDataResource(ABC):
         summary="Plot a runs of homozygosity track.",
         parameters=dict(
             **het_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
             **base_params.docs,
         ),
         returns="Bokeh figure.",
@@ -3423,12 +3439,12 @@ class AnophelesDataResource(ABC):
         self,
         df_roh: het_params.df_roh,
         region: base_params.region,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.height = 100,
-        show: genome_plot_params.show = True,
-        x_range: Optional[genome_plot_params.x_range] = None,
-        title: genome_plot_params.title = "Runs of homozygosity",
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 100,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        title: gplt_params.title = "Runs of homozygosity",
     ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
@@ -3506,7 +3522,7 @@ class AnophelesDataResource(ABC):
         """,
         parameters=dict(
             **het_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
             **base_params.docs,
         ),
         returns="Bokeh figure.",
@@ -3522,13 +3538,13 @@ class AnophelesDataResource(ABC):
         phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
         transition: het_params.transition = het_params.transition_default,
         y_max: het_params.y_max = het_params.y_max_default,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        heterozygosity_height: genome_plot_params.height = 170,
-        roh_height: genome_plot_params.height = 50,
-        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        heterozygosity_height: gplt_params.height = 170,
+        roh_height: gplt_params.height = 50,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
-        show: genome_plot_params.show = True,
+        show: gplt_params.show = True,
     ):
         debug = self._log.debug
 
@@ -3942,7 +3958,7 @@ class AnophelesDataResource(ABC):
         """,
         parameters=dict(
             max_snps="Maximum number of SNPs to show.",
-            **genome_plot_params.docs,
+            **gplt_params.docs,
             **base_params.docs,
         ),
         returns="Bokeh figure.",
@@ -3954,12 +3970,12 @@ class AnophelesDataResource(ABC):
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: base_params.site_mask = DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        track_height: genome_plot_params.height = 80,
-        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.height = 80,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         max_snps: int = 200_000,
-        show: genome_plot_params.show = True,
+        show: gplt_params.show = True,
     ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
@@ -4020,7 +4036,7 @@ class AnophelesDataResource(ABC):
         """,
         parameters=dict(
             max_snps="Maximum number of SNPs to show.",
-            **genome_plot_params.docs,
+            **gplt_params.docs,
             **base_params.docs,
         ),
         returns="Bokeh figure.",
@@ -4032,12 +4048,12 @@ class AnophelesDataResource(ABC):
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: base_params.site_mask = DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.height = 120,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 120,
         max_snps: int = 200_000,
-        x_range: Optional[genome_plot_params.x_range] = None,
-        show: genome_plot_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        show: gplt_params.show = True,
     ):
         debug = self._log.debug
 
@@ -5960,7 +5976,7 @@ class AnophelesDataResource(ABC):
         parameters=dict(
             window_size="Number of sites per window.",
             **base_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
         ),
         returns="Bokeh figure.",
     )
@@ -5974,12 +5990,12 @@ class AnophelesDataResource(ABC):
         site_mask: base_params.site_mask = DEFAULT,
         cohort_size: base_params.cohort_size = 30,
         random_seed: base_params.random_seed = 42,
-        title: Optional[genome_plot_params.title] = None,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.height = 200,
-        show: genome_plot_params.show = True,
-        x_range: Optional[genome_plot_params.x_range] = None,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
     ) -> bokeh.plotting.figure:
         # compute Fst
         x, fst = self.fst_gwss(
@@ -6046,9 +6062,8 @@ class AnophelesDataResource(ABC):
         parameters=dict(
             window_size="Number of sites per window.",
             **base_params.docs,
-            **genome_plot_params.docs,
+            **gplt_params.docs,
         ),
-        returns="Bokeh figure.",
     )
     def plot_fst_gwss(
         self,
@@ -6060,13 +6075,12 @@ class AnophelesDataResource(ABC):
         site_mask: base_params.site_mask = DEFAULT,
         cohort_size: base_params.cohort_size = 30,
         random_seed: base_params.random_seed = 42,
-        title: Optional[genome_plot_params.title] = None,
-        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
-        width: genome_plot_params.width = genome_plot_params.width_default,
-        height: genome_plot_params.height = 200,
-        track_height: genome_plot_params.track_height = 190,
-        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
-    ) -> bokeh.plotting.figure:
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 190,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+    ) -> None:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
             contig=contig,
@@ -6315,48 +6329,28 @@ class AnophelesDataResource(ABC):
 
         return ds
 
-    def h12_calibration(
-        self,
-        contig,
-        analysis=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        cohort_size=30,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-    ):
-        """Generate h12 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate h12 over. Multiple window
-            sizes should be used to calibrate the optimal size for h12 analysis.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        calibration runs : list of numpy.ndarray
+    @doc(
+        summary="Generate h12 GWSS calibration data for different window sizes.",
+        parameters=dict(
+            **h12_params.docs,
+            **hap_params.docs,
+            **base_params.docs,
+        ),
+        returns="""
             A list of H12 calibration run arrays for each window size, containing
             values and percentiles.
-
-        """
-
+        """,
+    )
+    def h12_calibration(
+        self,
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> List[np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h12_calibration_cache_name
@@ -6414,51 +6408,29 @@ class AnophelesDataResource(ABC):
 
         return calibration_runs
 
+    @doc(
+        summary="Plot h12 GWSS calibration data for different window sizes.",
+        parameters=dict(
+            title="Plot title.",
+            show="If True, show the plot.",
+            **h12_params.docs,
+            **hap_params.docs,
+            **base_params.docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_h12_calibration(
         self,
-        contig,
-        analysis=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        cohort_size=30,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-        title=None,
-    ):
-        """Plot h12 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate h12 over. Multiple window
-            sizes should be used to calibrate the optimal size for h12 analysis.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-
-        Returns
-        -------
-        fig : figure
-            A plot showing h12 calibration run percentiles for different window
-            sizes.
-
-        """
-
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[str] = None,
+        show: bool = True,
+    ) -> bokeh.plotting.figure:
         # get H12 values
         calibration_runs = self.h12_calibration(
             contig=contig,
@@ -6511,49 +6483,32 @@ class AnophelesDataResource(ABC):
         if title is None:
             title = sample_query
         fig.title = title
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+        return fig
 
+    @doc(
+        summary="Run h12 genome-wide selection scan.",
+        parameters=dict(
+            **h12_params.docs,
+            **hap_params.docs,
+            **base_params.docs,
+        ),
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            h12="An array with h12 statistic values for each window.",
+        ),
+    )
     def h12_gwss(
         self,
-        contig,
-        window_size,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run h12 GWSS.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        h12 : numpy.ndarray
-            An array with h12 statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h12_gwss_cache_name
@@ -6615,63 +6570,32 @@ class AnophelesDataResource(ABC):
 
         return results
 
+    @doc(
+        summary="Plot h12 GWSS data.",
+        parameters=dict(
+            **h12_params.docs,
+            **hap_params.docs,
+            **gplt_params.docs,
+            **base_params.docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_h12_gwss_track(
         self,
-        contig,
-        window_size,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Plot h12 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed h12 statistic across chosen contig.
-        """
-
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> bokeh.plotting.figure:
         # compute H12
         x, h12 = self.h12_gwss(
             contig=contig,
@@ -6728,60 +6652,30 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="Plot h12 GWSS data.",
+        parameters=dict(
+            **h12_params.docs,
+            **hap_params.docs,
+            **gplt_params.docs,
+            **base_params.docs,
+        ),
+    )
     def plot_h12_gwss(
         self,
-        contig,
-        window_size,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        track_height=170,
-        genes_height=genome_plot_params.genes_height_default,
-    ):
-        """Plot h12 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed h12 statistic with gene track on x-axis.
-        """
-
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+    ) -> None:
         # gwss track
         fig1 = self.plot_h12_gwss_track(
             contig=contig,
@@ -6956,8 +6850,8 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         height=200,
         show=True,
         x_range=None,
@@ -7076,10 +6970,10 @@ class AnophelesDataResource(ABC):
         cohort_size=30,
         random_seed=42,
         title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         track_height=190,
-        genes_height=genome_plot_params.genes_height_default,
+        genes_height=gplt_params.genes_height_default,
     ):
         """Run and plot a H1X genome-wide scan to detect genome regions
         with shared selective sweeps between two cohorts.
@@ -7422,8 +7316,8 @@ class AnophelesDataResource(ABC):
         max_cohort_size=50,
         random_seed=42,
         title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         height=200,
         show=True,
         x_range=None,
@@ -7613,10 +7507,10 @@ class AnophelesDataResource(ABC):
         max_cohort_size=50,
         random_seed=42,
         title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         track_height=170,
-        genes_height=genome_plot_params.genes_height_default,
+        genes_height=gplt_params.genes_height_default,
     ):
         """Plot ihs GWSS data.
 

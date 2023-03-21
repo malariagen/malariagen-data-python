@@ -11,7 +11,7 @@ import pandas as pd
 import xarray as xr
 import zarr
 
-from .anopheles import AnophelesDataResource, genome_plot_params
+from .anopheles import AnophelesDataResource, gplt_params
 
 try:
     # noinspection PyPackageRequirements
@@ -1902,8 +1902,8 @@ class Ag3(AnophelesDataResource):
         region,
         sample_set=None,
         y_max="auto",
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         height=200,
         circle_kwargs=None,
         line_kwargs=None,
@@ -2036,10 +2036,10 @@ class Ag3(AnophelesDataResource):
         region,
         sample_set=None,
         y_max="auto",
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         track_height=170,
-        genes_height=genome_plot_params.genes_height_default,
+        genes_height=gplt_params.genes_height_default,
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
@@ -2130,8 +2130,8 @@ class Ag3(AnophelesDataResource):
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         row_height=7,
         height=None,
         show=True,
@@ -2294,11 +2294,11 @@ class Ag3(AnophelesDataResource):
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
+        sizing_mode=gplt_params.sizing_mode_default,
+        width=gplt_params.width_default,
         row_height=7,
         track_height=None,
-        genes_height=genome_plot_params.genes_height_default,
+        genes_height=gplt_params.genes_height_default,
         show=True,
     ):
         """Plot CNV HMM data for multiple samples as a heatmap, with a genes
