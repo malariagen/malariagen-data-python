@@ -370,6 +370,21 @@ class plotly_params:
     symbol: TypeAlias = Optional[str]
     jitter_frac: TypeAlias = Optional[float]
     marker_size: TypeAlias = int
+    template: TypeAlias = Optional[
+        Literal[
+            "ggplot2",
+            "seaborn",
+            "simple_white",
+            "plotly",
+            "plotly_white",
+            "plotly_dark",
+            "presentation",
+            "xgridoff",
+            "ygridoff",
+            "gridon",
+            "none",
+        ]
+    ]
 
     # parameter documentation
     docs = dict(
@@ -401,6 +416,7 @@ class plotly_params:
         symbol="Name of the variable to use to choose marker symbols.",
         jitter_frac="Randomly jitter points by this fraction of their range.",
         marker_size="Marker size.",
+        template="The figure template name (must be a key in plotly.io.templates).",
     )
 
 
@@ -5687,39 +5703,29 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="Plot diversity summary statistics for multiple cohorts.",
+        parameters=dict(
+            df_stats="Output from `diversity_stats()`.",
+            bar_plot_height="Height of bar plots in pixels (px).",
+            bar_width="Width per bar in pixels (px).",
+            scatter_plot_height="Height of scatter plot in pixels (px).",
+            scatter_plot_width="Width of scatter plot in pixels (px).",
+            plot_kwargs="Extra plotting parameters.",
+            **plotly_params.docs,
+        ),
+    )
     def plot_diversity_stats(
         self,
-        df_stats,
-        color=None,
-        bar_plot_height=450,
-        bar_width=30,
-        scatter_plot_height=500,
-        scatter_plot_width=500,
-        template="plotly_white",
-        plot_kwargs=None,
+        df_stats: pd.DataFrame,
+        color: plotly_params.color = None,
+        bar_plot_height: int = 450,
+        bar_width: int = 30,
+        scatter_plot_height: int = 500,
+        scatter_plot_width: int = 500,
+        template: plotly_params.template = "plotly_white",
+        plot_kwargs: Optional[Mapping] = None,
     ):
-        """Plot diversity statistics.
-
-        Parameters
-        ----------
-        df_stats : pandas.DataFrame
-            Output from diversity_stats().
-        color : str, optional
-            Column to color by.
-        bar_plot_height : int, optional
-            Height of bar plots in pixels (px).
-        bar_width : int, optional
-            Width per bar in pixels (px).
-        scatter_plot_height : int, optional
-            Height of scatter plot in pixels (px).
-        scatter_plot_width : int, optional
-            Width of scatter plot in pixels (px).
-        template : str, optional
-            Plotly template.
-        plot_kwargs : dict, optional
-            Extra plotting parameters
-
-        """
         debug = self._log.debug
 
         debug("set up common plotting parameters")
@@ -5814,6 +5820,7 @@ class AnophelesDataResource(ABC):
         )
         fig.show()
 
+    # TODO use @doc here - wait until changes come in
     def plot_samples_interactive_map(
         self,
         sample_sets=None,
@@ -5934,67 +5941,35 @@ class AnophelesDataResource(ABC):
 
         return samples_map
 
+    @doc(
+        summary="""
+            Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        """,
+        parameters=dict(
+            window_size="Number of sites per window.",
+            **base_params.docs,
+            **genome_plot_params.docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_fst_gwss_track(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask=DEFAULT,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Run and plot a Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "X")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers or a
-            release identifier or a list of release identifiers.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed Fst statistic across chosen contig.
-        """
-
+        contig: base_params.contig,
+        window_size: int,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[genome_plot_params.title] = None,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        height: genome_plot_params.height = 200,
+        show: genome_plot_params.show = True,
+        x_range: Optional[genome_plot_params.x_range] = None,
+    ) -> bokeh.plotting.figure:
         # compute Fst
         x, fst = self.fst_gwss(
             contig=contig,
@@ -6052,65 +6027,35 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="""
+            Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        """,
+        parameters=dict(
+            window_size="Number of sites per window.",
+            **base_params.docs,
+            **genome_plot_params.docs,
+        ),
+        returns="Bokeh figure.",
+    )
     def plot_fst_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask=DEFAULT,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=genome_plot_params.sizing_mode_default,
-        width=genome_plot_params.width_default,
-        track_height=190,
-        genes_height=genome_plot_params.genes_height_default,
-    ):
-        """Run and plot a Fst genome-wide scan to investigate genetic
-        differentiation between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "X")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers or a
-            release identifier or a list of release identifiers.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed Fst statistic with gene track on x-axis.
-        """
-
+        contig: base_params.contig,
+        window_size: int,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[genome_plot_params.title] = None,
+        sizing_mode: genome_plot_params.sizing_mode = genome_plot_params.sizing_mode_default,
+        width: genome_plot_params.width = genome_plot_params.width_default,
+        height: genome_plot_params.height = 200,
+        track_height: genome_plot_params.track_height = 190,
+        genes_height: genome_plot_params.genes_height = genome_plot_params.genes_height_default,
+    ) -> bokeh.plotting.figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
             contig=contig,
@@ -8438,6 +8383,9 @@ def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
     dists *= h.shape[1]
     # Return the maximum
     return dists.max()
+
+
+# TODO could use faster hashing of haplotypes
 
 
 def _haplotype_frequencies(h):
