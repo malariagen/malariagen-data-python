@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
+from bokeh import palettes
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
 
@@ -7768,6 +7769,591 @@ class AnophelesDataResource(ABC):
             cohort2_query=cohort2_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            random_seed=random_seed,
+            title=title,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=track_height,
+            show=False,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+        )
+
+        # combine plots into a single figure
+        fig = bklay.gridplot(
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
+
+        bkplt.show(fig)
+
+    def ihs_gwss(
+        self,
+        contig,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        window_size=200,
+        percentiles=(50, 75, 100),
+        standardize=True,
+        standardization_bins=None,
+        standardization_n_bins=20,
+        standardization_diagnostics=False,
+        filter_min_maf=0.05,
+        compute_min_maf=0.05,
+        min_ehh=0.05,
+        max_gap=200_000,
+        gap_scale=20_000,
+        include_edges=True,
+        use_threads=True,
+        min_cohort_size=15,
+        max_cohort_size=50,
+        random_seed=42,
+    ):
+        """Run iHS GWSS.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        window_size : int, optional
+            The size of window in number of SNPs used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        percentiles : int or list of int, optional
+            If window size is specified, this returns the iHS percentiles
+            for each window.
+        standardize : bool, optional
+            If True, standardize iHS values by alternate allele counts
+        standardization_bins : list of floats, optional
+            If provided, use these allele count bins to standardize iHS values.
+        standardization_n_bins : int, optional
+            Number of allele count bins to use for standardization.
+            Overrides standardization_bins.
+        standardization_diagnostics : bool, optional
+            If True, plot some diagnostics about the standardization.
+        filter_min_maf : float, optional
+            Minimum minor allele frequency to use for filtering prior to passing
+            haplotypes to allel.ihs function
+        compute_min_maf : float, optional
+            Do not compute integrated haplotype homozygosity for variants with
+            minor allele frequency below this threshold.
+        min_ehh : float, optional
+            Minimum EHH beyond which to truncate integrated haplotype homozygosity
+            calculation.
+        max_gap : int, optional
+            Do not report scores if EHH spans a gap larger than this number of base pairs
+        gap_scale : int, optional
+            Rescale distance between variants if gap is larger than this value
+        include_edges : bool, optional
+            If True, report scores even if EHH does not decay below min_ehh at the
+            end of the chromosome.
+        use_threads : bool, optional
+            If True, use multiple threads to compute iHS.
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to this value if the number of
+            samples in the cohort is greater.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        x : numpy.ndarray
+            An array containing the window centre point genomic positions.
+        ihs : numpy.ndarray
+            An array with iHS statistic values for each window.
+
+        """
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = self._ihs_gwss_cache_name
+
+        params = dict(
+            contig=contig,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
+            window_size=window_size,
+            percentiles=percentiles,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            include_edges=include_edges,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            use_threads=use_threads,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._ihs_gwss(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        ihs = results["ihs"]
+
+        return x, ihs
+
+    def _ihs_gwss(
+        self,
+        *,
+        contig,
+        analysis,
+        sample_sets,
+        sample_query,
+        window_size,
+        percentiles,
+        standardize,
+        standardization_bins,
+        standardization_n_bins,
+        standardization_diagnostics,
+        filter_min_maf,
+        compute_min_maf,
+        min_ehh,
+        max_gap,
+        gap_scale,
+        include_edges,
+        use_threads,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+    ):
+        ds_haps = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+        )
+
+        if min_cohort_size is not None:
+            n_samples = ds_haps.dims["samples"]
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
+                )
+        if max_cohort_size is not None:
+            n_samples = ds_haps.dims["samples"]
+            if n_samples > max_cohort_size:
+                rng = np.random.default_rng(seed=random_seed)
+                loc_downsample = rng.choice(
+                    n_samples, size=max_cohort_size, replace=False
+                )
+                loc_downsample.sort()
+                ds_haps = ds_haps.isel(samples=loc_downsample)
+
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht = gt.to_haplotypes().compute()
+
+        ac = ht.count_alleles(max_allele=1)
+        pos = ds_haps["variant_position"].values
+
+        if filter_min_maf > 0:
+            af = ac.to_frequencies()
+            maf = np.min(af, axis=1)
+            maf_filter = maf > filter_min_maf
+            ht = ht.compress(maf_filter, axis=0)
+            pos = pos[maf_filter]
+            ac = ac[maf_filter]
+
+        # compute iHS
+        ihs = allel.ihs(
+            h=ht,
+            pos=pos,
+            min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            include_edges=include_edges,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            use_threads=use_threads,
+        )
+
+        # remove any NaNs
+        na_mask = ~np.isnan(ihs)
+        ihs = ihs[na_mask]
+        pos = pos[na_mask]
+        ac = ac[na_mask]
+
+        # take absolute value
+        ihs = np.fabs(ihs)
+
+        if standardize:
+            ihs, _ = allel.standardize_by_allele_count(
+                score=ihs,
+                aac=ac[:, 1],
+                bins=standardization_bins,
+                n_bins=standardization_n_bins,
+                diagnostics=standardization_diagnostics,
+            )
+
+        if window_size:
+            ihs = allel.moving_statistic(
+                ihs, statistic=np.percentile, size=window_size, q=percentiles
+            )
+            pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=pos, ihs=ihs)
+
+        return results
+
+    def plot_ihs_gwss_track(
+        self,
+        contig,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        window_size=200,
+        percentiles=(50, 75, 100),
+        bokeh_palette=palettes.Blues,
+        standardize=True,
+        standardization_bins=None,
+        standardization_n_bins=20,
+        standardization_diagnostics=False,
+        filter_min_maf=0.05,
+        compute_min_maf=0.05,
+        min_ehh=0.05,
+        max_gap=200000,
+        gap_scale=20000,
+        include_edges=True,
+        use_threads=True,
+        min_cohort_size=15,
+        max_cohort_size=50,
+        random_seed=42,
+        title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        height=200,
+        show=True,
+        x_range=None,
+    ):
+        """Plot iHS GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        window_size : int, optional
+            The size of window in number of SNPs used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        percentiles : int or list of int, optional
+            If window size is specified, these iHS percentiles are returned
+            for each window.
+        bokeh_palette : bokeh.palettes, optional
+            Bokeh palette to use for plotting multiple percentile values.
+        standardize : bool, optional
+            If True, standardize iHS values by allele count.
+        standardization_bins : array_like, optional
+            If provided, use these bins for standardization.
+        standardization_n_bins : int, optional
+            Number of allele count bins to use for standardization.
+            Overrides standardization_bins.
+        standardization_diagnostics : bool, optional
+            If True, plot some diagnostics about the standardization.
+        filter_min_maf : float, optional
+            Minimum minor allele frequency to use for filtering prior to passing
+            haplotypes to allel.ihs function
+        compute_min_maf : float, optional
+            Do not compute integrated haplotype homozygosity for variants with
+            minor allele frequency below this threshold.
+        min_ehh : float, optional
+            Minimum EHH beyond which to truncate integrated haplotype homozygosity
+            calculation.
+        max_gap : int, optional
+            Do not report scores if EHH spans a gap larger than this number of base pairs
+        gap_scale : int, optional
+            Rescale distance between variants if gap is larger than this value
+        include_edges : bool, optional
+            If True, report scores even if EHH does not decay below min_ehh at the
+            end of the chromosome.
+        use_threads : bool, optional
+            If True, use multiple threads to compute iHS.
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to this value if the number of
+            samples in the cohort is greater.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
+        width : int, optional
+            Plot width in pixels (px).
+        height : int. optional
+            Plot height in pixels (px).
+        show : bool, optional
+            If True, show the plot.
+        x_range : bokeh.models.Range1d, optional
+            X axis range (for linking to other tracks).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing iHS statistic across the chosen contig.
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # compute ihs
+        x, ihs = self.ihs_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            percentiles=percentiles,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        if title is None:
+            title = sample_query
+        fig = bkplt.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            sizing_mode=sizing_mode,
+            width=width,
+            height=height,
+            toolbar_location="above",
+            x_range=x_range,
+        )
+
+        if window_size:
+            if not isinstance(percentiles, list):
+                percentiles = [percentiles]
+
+        # add an empty dimension to ihs array if 1D
+        ihs = np.reshape(ihs, (ihs.shape[0], -1))
+        for i in range(ihs.shape[1]):
+            ihs_perc = ihs[:, i]
+            if ihs.shape[1] >= 3:
+                color = bokeh_palette[ihs.shape[1]][i]
+            elif ihs.shape[1] == 2:
+                color = bokeh_palette[3][i]
+            else:
+                color = None
+
+            # plot ihs
+            fig.circle(
+                x=x,
+                y=ihs_perc,
+                size=3,
+                line_width=0.15,
+                line_color="black",
+                fill_color=color,
+            )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "ihs"
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bkplt.show(fig)
+
+        return fig
+
+    def plot_ihs_gwss(
+        self,
+        contig,
+        analysis=DEFAULT,
+        sample_sets=None,
+        sample_query=None,
+        window_size=200,
+        percentiles=(50, 75, 100),
+        bokeh_palette=palettes.Blues,
+        standardize=True,
+        standardization_bins=None,
+        standardization_n_bins=20,
+        standardization_diagnostics=False,
+        filter_min_maf=0.05,
+        compute_min_maf=0.05,
+        min_ehh=0.05,
+        max_gap=200_000,
+        gap_scale=20_000,
+        include_edges=False,
+        use_threads=True,
+        min_cohort_size=15,
+        max_cohort_size=50,
+        random_seed=42,
+        title=None,
+        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
+        width=DEFAULT_GENOME_PLOT_WIDTH,
+        track_height=170,
+        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+    ):
+        """Plot ihs GWSS data.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        analysis : str
+            Which phasing analysis to use. See the `phasing_analysis_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        window_size : int, optional
+            The size of window in number of SNPs used to summarise iHS over.
+            If None, per-variant iHS values are returned.
+        percentiles : int or list of int, optional
+            If window size is specified, these iHS percentiles are returned
+            for each window.
+        bokeh_palette : bokeh.palettes, optional
+            Bokeh palette to use for plotting multiple percentile values.
+        standardize : bool, optional
+            If True, standardize iHS values by allele count.
+        standardization_bins : array_like, optional
+            If provided, use these bins for standardization.
+        standardization_n_bins : int, optional
+            Number of allele count bins to use for standardization.
+            Overrides standardization_bins.
+        standardization_diagnostics : bool, optional
+            If True, plot some diagnostics about the standardization.
+        filter_min_maf : float, optional
+            Minimum minor allele frequency to use for filtering prior to passing
+            haplotypes to allel.ihs function
+        compute_min_maf : float, optional
+            Do not compute integrated haplotype homozygosity for variants with
+            minor allele frequency below this threshold.
+        min_ehh : float, optional
+            Minimum EHH beyond which to truncate integrated haplotype homozygosity
+            calculation.
+        max_gap : int, optional
+            Do not report scores if EHH spans a gap larger than this number of base pairs
+        gap_scale : int, optional
+            Rescale distance between variants if gap is larger than this value
+        include_edges : bool, optional
+            If True, report scores even if EHH does not decay below min_ehh at the
+            end of the chromosome.
+        use_threads : bool, optional
+            If True, use multiple threads to compute iHS.
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to this value if the number of
+            samples in the cohort is greater.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+        sizing_mode : str, optional
+            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
+        width : int, optional
+            Plot width in pixels (px).
+        track_height : int. optional
+            GWSS track height in pixels (px).
+        genes_height : int. optional
+            Gene track height in pixels (px).
+
+        Returns
+        -------
+        fig : figure
+            A plot showing windowed ihs statistic with gene track on x-axis.
+        """
+
+        import bokeh.layouts as bklay
+        import bokeh.plotting as bkplt
+
+        # gwss track
+        fig1 = self.plot_ihs_gwss_track(
+            contig=contig,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            window_size=window_size,
+            percentiles=percentiles,
+            bokeh_palette=bokeh_palette,
+            standardize=standardize,
+            standardization_bins=standardization_bins,
+            standardization_n_bins=standardization_n_bins,
+            standardization_diagnostics=standardization_diagnostics,
+            filter_min_maf=filter_min_maf,
+            compute_min_maf=compute_min_maf,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
             title=title,
             sizing_mode=sizing_mode,
