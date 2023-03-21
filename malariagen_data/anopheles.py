@@ -15,8 +15,6 @@ import bokeh.plotting
 import dask.array as da
 import igv_notebook
 import ipinfo
-import ipyleaflet
-import ipywidgets
 import numba
 import numpy as np
 import pandas as pd
@@ -5406,7 +5404,7 @@ class AnophelesDataResource(ABC):
     )
     def plot_frequencies_map_markers(
         self,
-        m: ipyleaflet.Map,
+        m,
         ds: xr.Dataset,
         variant: Union[int, str],
         taxon: str,
@@ -5414,6 +5412,8 @@ class AnophelesDataResource(ABC):
         clear: bool = True,
     ):
         debug = self._log.debug
+        import ipyleaflet
+        import ipywidgets
 
         debug("slice dataset to variant of interest")
         if isinstance(variant, int):
@@ -5512,7 +5512,7 @@ class AnophelesDataResource(ABC):
         zoom: int = 3,
         title: Union[bool, str] = True,
         epilogue: Union[bool, str] = True,
-    ) -> ipywidgets.Widget:
+    ):
         debug = self._log.debug
 
         import ipyleaflet
