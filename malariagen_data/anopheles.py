@@ -711,7 +711,7 @@ class hapclust_params:
 class hapnet_params:
     max_dist: TypeAlias = Annotated[
         int,
-        "",
+        "Join network components up to a maximum distance of 2 SNP differences.",
     ]
     max_dist_default: max_dist = 2
     color: TypeAlias = Annotated[
