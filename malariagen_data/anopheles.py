@@ -6,7 +6,7 @@ from collections import Counter
 from itertools import cycle
 from pathlib import Path
 from textwrap import dedent
-from typing import Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -23,7 +23,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import xarray as xr
 import zarr
-from bokeh import palettes
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
@@ -672,6 +671,97 @@ class ihs_params:
     ]
     use_threads: TypeAlias = Annotated[
         bool, "If True, use multiple threads to compute iHS."
+    ]
+    palette: TypeAlias = Annotated[
+        str, "Name of bokeh palette to use for plotting multiple percentiles."
+    ]
+    palette_default: palette = "Blues"
+
+
+class hapclust_params:
+    linkage_method: TypeAlias = Annotated[
+        Literal[
+            "single", "complete", "average", "weighted", "centroid", "median", "ward"
+        ],
+        """
+        The linkage algorithm to use. See the Linkage Methods section of the
+        scipy.cluster.hierarchy.linkage docs for full descriptions.
+        """,
+    ]
+    linkage_method_default: linkage_method = "single"
+    count_sort: TypeAlias = Annotated[
+        bool,
+        """
+        For each node n, the order (visually, from left-to-right) n's two descendant
+        links are plotted is determined by this parameter. If True, the child with
+        the minimum number of original objects in its cluster is plotted first. Note
+        distance_sort and count_sort cannot both be True.
+        """,
+    ]
+    distance_sort: TypeAlias = Annotated[
+        bool,
+        """
+        For each node n, the order (visually, from left-to-right) n's two descendant
+        links are plotted is determined by this parameter. If True, The child with the
+        minimum distance between its direct descendants is plotted first.
+        """,
+    ]
+
+
+class hapnet_params:
+    max_dist: TypeAlias = Annotated[
+        int,
+        "",
+    ]
+    max_dist_default: max_dist = 2
+    color: TypeAlias = Annotated[
+        str,
+        """
+        Identifies a column in the sample metadata which determines the colour
+        of pie chart segments within nodes.
+        """,
+    ]
+    color_discrete_sequence: TypeAlias = Annotated[
+        List, "Provide a list of colours to use."
+    ]
+    color_discrete_map: TypeAlias = Annotated[
+        Mapping, "Provide an explicit mapping from values to colours."
+    ]
+    category_order: TypeAlias = Annotated[
+        List,
+        "Control the order in which values appear in the legend.",
+    ]
+    node_size_factor: TypeAlias = Annotated[
+        int,
+        "Control the sizing of nodes.",
+    ]
+    node_size_factor_default: node_size_factor = 50
+    layout: TypeAlias = Annotated[
+        str,
+        "Name of the network layout to use to position nodes.",
+    ]
+    layout_default: layout = "cose"
+    layout_params: TypeAlias = Annotated[
+        Mapping,
+        "Additional parameters to the layout algorithm.",
+    ]
+
+
+class dash_params:
+    height: TypeAlias = Annotated[int, "Height of the Dash app in pixels (px)."]
+    width: TypeAlias = Annotated[Union[int, str], "Width of the Dash app."]
+    server_mode: TypeAlias = Annotated[
+        Literal["inline", "external", "jupyterlab"],
+        """
+        Controls how the Jupyter Dash app will be launched. See
+        https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
+        more information.
+        """,
+    ]
+    server_mode_default: server_mode = "inline"
+    server_port: TypeAlias = Annotated[
+        int,
+        "Manually override the port on which the Dash app will run.",
     ]
 
 
@@ -7197,9 +7287,6 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Run and plot iHS GWSS data.",
-        parameters=dict(
-            bokeh_palette="Bokeh palette to use for plotting multiple percentile values.",
-        ),
     )
     def plot_ihs_gwss_track(
         self,
@@ -7223,7 +7310,7 @@ class AnophelesDataResource(ABC):
         min_cohort_size: base_params.min_cohort_size = 15,
         max_cohort_size: base_params.max_cohort_size = 50,
         random_seed: base_params.random_seed = 42,
-        bokeh_palette=palettes.Blues,
+        palette: ihs_params.palette = ihs_params.palette_default,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -7285,6 +7372,7 @@ class AnophelesDataResource(ABC):
 
         # add an empty dimension to ihs array if 1D
         ihs = np.reshape(ihs, (ihs.shape[0], -1))
+        bokeh_palette = bokeh.palettes.all_palettes[palette]
         for i in range(ihs.shape[1]):
             ihs_perc = ihs[:, i]
             if ihs.shape[1] >= 3:
@@ -7315,9 +7403,6 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Run and plot iHS GWSS data.",
-        parameters=dict(
-            bokeh_palette="Bokeh palette to use for plotting multiple percentile values.",
-        ),
     )
     def plot_ihs_gwss(
         self,
@@ -7341,7 +7426,7 @@ class AnophelesDataResource(ABC):
         min_cohort_size: base_params.min_cohort_size = 15,
         max_cohort_size: base_params.max_cohort_size = 50,
         random_seed: base_params.random_seed = 42,
-        bokeh_palette=palettes.Blues,
+        palette: ihs_params.palette = ihs_params.palette_default,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -7356,7 +7441,7 @@ class AnophelesDataResource(ABC):
             sample_query=sample_query,
             window_size=window_size,
             percentiles=percentiles,
-            bokeh_palette=bokeh_palette,
+            palette=palette,
             standardize=standardize,
             standardization_bins=standardization_bins,
             standardization_n_bins=standardization_n_bins,
@@ -7401,79 +7486,31 @@ class AnophelesDataResource(ABC):
 
         bokeh.plotting.show(fig)
 
-    # TODO use @doc
+    @doc(
+        summary="""
+            Hierarchically cluster haplotypes in region and produce an interactive plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to `px.scatter()`.",
+        ),
+    )
     def plot_haplotype_clustering(
         self,
-        region,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        color=None,
-        symbol=None,
-        linkage_method="single",
-        count_sort=True,
-        distance_sort=False,
-        cohort_size=None,
-        random_seed=42,
-        width=1000,
-        height=500,
+        region: base_params.region,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
+        count_sort: hapclust_params.count_sort = True,
+        distance_sort: hapclust_params.distance_sort = False,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        width: plotly_params.width = 1000,
+        height: plotly_params.height = 500,
         **kwargs,
-    ):
-        """Hierarchically cluster haplotypes in region and produce an interactive plot.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"] or ["2RL", "X"].
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        color : str, optional
-            Identifies a column in the sample metadata which determines the colour
-            of dendrogram leaves (haplotypes).
-        symbol : str, optional
-            Identifies a column in the sample metadata which determines the shape
-            of dendrogram leaves (haplotypes).
-        linkage_method: str, optional
-            The linkage algorithm to use, valid options are 'single', 'complete',
-            'average', 'weighted', 'centroid', 'median' and 'ward'. See the Linkage
-            Methods section of the scipy.cluster.hierarchy.linkage docs for full
-            descriptions.
-        count_sort: bool, optional
-            For each node n, the order (visually, from left-to-right) n's two descendant
-            links are plotted is determined by this parameter. If True, the child with
-            the minimum number of original objects in its cluster is plotted first. Note
-            distance_sort and count_sort cannot both be True.
-        distance_sort: bool, optional
-            For each node n, the order (visually, from left-to-right) n's two descendant
-            links are plotted is determined by this parameter. If True, The child with the
-            minimum distance between its direct descendants is plotted first.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        width : int, optional
-            The figure width in pixels
-        height: int, optional
-            The figure height in pixels
-
-        Returns
-        -------
-        fig : Figure
-            Plotly figure.
-
-        """
+    ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
 
         from .plotly_dendrogram import create_dendrogram
@@ -7611,90 +7648,41 @@ class AnophelesDataResource(ABC):
 
         return fig
 
-    # TODO use @doc
+    @doc(
+        summary="""
+            Construct a median-joining haplotype network and display it using
+            Cytoscape.
+        """,
+        extended_summary="""
+            A haplotype network provides a visualisation of the genetic distance
+            between haplotype_ Each node in the network represents a unique
+            haplotype. The size (area) of the node is scaled by the number of
+            times that unique haplotype was observed within the selected samples.
+            A connection between two nodes represents a single SNP difference
+            between the corresponding haplotypes.
+        """,
+    )
     def plot_haplotype_network(
         self,
-        region,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        max_dist=2,
-        color=None,
-        color_discrete_sequence=None,
-        color_discrete_map=None,
-        category_orders=None,
-        node_size_factor=50,
-        server_mode="inline",
-        height=650,
-        width="100%",
-        layout="cose",
-        layout_params=None,
-        server_port=None,
+        region: base_params.region,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,
+        color: Optional[hapnet_params.color] = None,
+        color_discrete_sequence: Optional[hapnet_params.color_discrete_sequence] = None,
+        color_discrete_map: Optional[hapnet_params.color_discrete_map] = None,
+        category_orders: Optional[hapnet_params.category_order] = None,
+        node_size_factor: hapnet_params.node_size_factor = hapnet_params.node_size_factor_default,
+        layout: hapnet_params.layout = hapnet_params.layout_default,
+        layout_params: Optional[hapnet_params.layout_params] = None,
+        server_port: Optional[dash_params.server_port] = None,
+        server_mode: Optional[
+            dash_params.server_mode
+        ] = dash_params.server_mode_default,
+        height: dash_params.height = 650,
+        width: Optional[dash_params.width] = "100%",
     ):
-        """Construct a median-joining haplotype network and display it using
-        Cytoscape.
-
-        A haplotype network provides a visualisation of the genetic distance
-        between haplotype_ Each node in the network represents a unique
-        haplotype. The size (area) of the node is scaled by the number of
-        times that unique haplotype was observed within the selected samples.
-        A connection between two nodes represents a single SNP difference
-        between the corresponding haplotypes.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"] or ["2RL", "X"].
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        max_dist : int, optional
-            Join network components up to a maximum distance of 2 SNP
-            differences.
-        color : str, optional
-            Identifies a column in the sample metadata which determines the colour
-            of pie chart segments within nodes.
-        color_discrete_sequence : list, optional
-            Provide a list of colours to use.
-        color_discrete_map : dict, optional
-            Provide an explicit mapping from values to colours.
-        category_orders : list, optional
-            Control the order in which values appear in the legend.
-        node_size_factor : int, optional
-            Control the sizing of nodes.
-        server_mode : {"inline", "external", "jupyterlab"}
-            Controls how the Jupyter Dash app will be launched. See
-            https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
-            more information.
-        height : int, optional
-            Height of the plot.
-        width : int, optional
-            Width of the plot.
-        layout : str
-            Name of the network layout to use to position nodes.
-        layout_params
-            Additional parameters to the layout algorithm.
-        server_port
-            Manually override the port on which the Dash app will run.
-
-        Returns
-        -------
-        app
-            The running Dash app.
-
-        """
-
         import dash_cytoscape as cyto
         from dash import dcc, html
         from dash.dependencies import Input, Output
@@ -7826,22 +7814,23 @@ class AnophelesDataResource(ABC):
         ]
 
         debug("define node style")
-        node_stylesheet = {
-            "selector": "node",
-            "style": {
-                "width": "data(width)",
-                "height": "data(width)",
-                "pie-size": "100%",
-            },
+        node_style = {
+            "width": "data(width)",
+            "height": "data(width)",
+            "pie-size": "100%",
         }
-        if color:
+        if color and color_discrete_map is not None:
             # here are the styles which control the display of nodes as pie
             # charts
             for i, (v, c) in enumerate(color_discrete_map.items()):
-                node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
-                node_stylesheet["style"][
+                node_style[f"pie-{i + 1}-background-color"] = c
+                node_style[
                     f"pie-{i + 1}-background-size"
                 ] = f"mapData({v}, 0, 100, 0, 100)"
+        node_stylesheet = {
+            "selector": "node",
+            "style": node_style,
+        }
         debug(node_stylesheet)
 
         debug("define edge style")
@@ -7882,13 +7871,9 @@ class AnophelesDataResource(ABC):
         if layout_params is None:
             graph_layout_params = dict()
         else:
-            graph_layout_params = layout_params.copy()
+            graph_layout_params = dict(**layout_params)
         graph_layout_params["name"] = layout
-        # expected type 'str', got 'int'
-        # noinspection PyTypeChecker
         graph_layout_params.setdefault("padding", 10)
-        # expected type 'str', got 'bool'
-        # noinspection PyTypeChecker
         graph_layout_params.setdefault("animate", False)
 
         cytoscape_component = cyto.Cytoscape(
@@ -7974,16 +7959,20 @@ class AnophelesDataResource(ABC):
                     text += f" ({color_texts})"
                 return text
 
-        debug("launch the dash app")
-        run_params = dict()
-        if server_mode is not None:
-            run_params["mode"] = server_mode
-        if server_port is not None:
-            run_params["port"] = server_port
+        debug("set up run parameters")
+        # workaround weird mypy bug here
+        run_params: Dict[str, Any] = dict()
         if height is not None:
             run_params["height"] = height
         if width is not None:
             run_params["width"] = width
+        if server_port is not None:
+            run_params["port"] = server_port
+        if server_mode is not None:
+            run_params["mode"] = server_mode
+
+        debug("launch the dash app")
+        # TODO I don't think this actually returns anything
         return app.run_server(**run_params)
 
 
@@ -8048,6 +8037,7 @@ def _h1x(ha, hb):
 
 def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     """Compute H1X in moving windows.
+
     Parameters
     ----------
     ha : array_like, int, shape (n_variants, n_haplotypes)
@@ -8063,6 +8053,7 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     step : int, optional
         The number of variants between start positions of windows. If not
         given, defaults to the window size, i.e., non-overlapping windows.
+
     Returns
     -------
     h1x : ndarray, float, shape (n_windows,)

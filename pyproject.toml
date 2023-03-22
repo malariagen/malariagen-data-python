@@ -57,7 +57,7 @@ tqdm = "*"
 dash = "*"
 dash-cytoscape = "*"
 jupyter-dash = "*"
-numpydoc_decorator = ">=1.7.0"
+numpydoc_decorator = ">=1.8.0"
 # needed for PY37
 typing_extensions = "*"
 
