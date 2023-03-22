@@ -2699,14 +2699,14 @@ files = [
 
 [[package]]
 name = "numpydoc-decorator"
-version = "1.5.0"
+version = "1.7.0"
 description = ""
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.11"
 files = [
-    {file = "numpydoc_decorator-1.5.0-py3-none-any.whl", hash = "sha256:ca6b643fa58bf49d2f466e75955dfd2cb72b048973d32a25a41d1e17cd09319e"},
-    {file = "numpydoc_decorator-1.5.0.tar.gz", hash = "sha256:c96e830fa58d7529bf80aad0e79caa9c0c42735976aa2afdc561edaee5ca0410"},
+    {file = "numpydoc_decorator-1.7.0-py3-none-any.whl", hash = "sha256:ba687a18f8d474e0279299e54a71a6cae018ad11950624f307b117a49a3d11e6"},
+    {file = "numpydoc_decorator-1.7.0.tar.gz", hash = "sha256:fb3365f00afa1eb1cf40184a61fc847047fa7a1b10a121ae930bf37132002e56"},
 ]
 
 [package.dependencies]
@@ -4554,4 +4554,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.11"
-content-hash = "f079f7f09d317e826ab4e0f89b5917c8173607f34daf2740d39642e5e4266829"
+content-hash = "94c1a780de6e2a5d49c5638dcccf7b388107779b1a245092450cf6fe2a3e8a7c"

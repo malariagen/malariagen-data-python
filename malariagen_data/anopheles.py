@@ -602,7 +602,7 @@ class ihs_params:
     ]
     window_size_default: window_size = 200
     percentiles: TypeAlias = Annotated[
-        Tuple[int, ...],
+        Union[int, Tuple[int, ...]],
         """
         If window size is specified, this returns the iHS percentiles
         for each window.
@@ -910,6 +910,11 @@ class AnophelesDataResource(ABC):
     @abstractmethod
     def _h1x_gwss_cache_name(self):
         raise NotImplementedError("Must override _h1x_gwss_cache_name")
+
+    @property
+    @abstractmethod
+    def _ihs_gwss_cache_name(self):
+        raise NotImplementedError("Must override _ihs_gwss_cache_name")
 
     @property
     def _geneset_gff3_path(self):
@@ -7275,8 +7280,8 @@ class AnophelesDataResource(ABC):
         )
 
         if window_size:
-            if not isinstance(percentiles, list):
-                percentiles = [percentiles]
+            if isinstance(percentiles, int):
+                percentiles = (percentiles,)
 
         # add an empty dimension to ihs array if 1D
         ihs = np.reshape(ihs, (ihs.shape[0], -1))
