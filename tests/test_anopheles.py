@@ -608,6 +608,36 @@ def test_snp_allele_frequencies__dup_samples(
 
 
 @pytest.mark.parametrize(
+    "subclass, transcript, sample_sets",
+    [
+        (
+            Ag3,
+            "foobar",
+            "3.0",
+        ),
+        (
+            Af1,
+            "foobar",
+            "1.0",
+        ),
+    ],
+)
+def test_snp_allele_frequencies__bad_transcript(
+    subclass,
+    transcript,
+    sample_sets,
+):
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
+    with pytest.raises(ValueError):
+        anoph.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+        )
+
+
+@pytest.mark.parametrize(
     "subclass, cohorts_analysis, transcript, sample_set",
     [
         (
