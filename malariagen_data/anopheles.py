@@ -6321,7 +6321,6 @@ class AnophelesDataResource(ABC):
             Height of the map, e.g. "500px",
         icon : object, optional
             Icon used for the map marker. It can be an instance of ipyleaflet's Icon, AwesomeIcon or DivIcon.
-            When none is specified, icon defaults to the "circle" AwesomeIcon.
 
         Returns
         -------
@@ -6413,9 +6412,6 @@ class AnophelesDataResource(ABC):
         samples_map.layout.height = height
 
         debug("add markers")
-        # TODO: mosquito & mosquito-net icons were added to Font Awesome in 4.10. (ipyleaflet has 4.7.0.)
-        if icon is None:
-            icon = ipyleaflet.AwesomeIcon(name="circle")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
         for _, row in pivot_location_taxon.reset_index().iterrows():
             title = (
@@ -6453,27 +6449,15 @@ class AnophelesDataResource(ABC):
             value=basemap_abbrev_selected,
         )
 
-        def on_basemap_dropdown_change(change):
+        def _on_basemap_dropdown_change(change):
             basemap_abbrev_selected_new = change["new"]
             new_basemap_provider = basemap_abbrevs[basemap_abbrev_selected_new]
             samples_map.clear_layers()
             samples_map.add_layer(new_basemap_provider)
 
-        basemap_dropdown.observe(on_basemap_dropdown_change, "value")
+        basemap_dropdown.observe(_on_basemap_dropdown_change, "value")
 
-        interactive_widget = ipywidgets.interactive(
-            self.plot_samples_interactive_map,
-            sample_sets=ipywidgets.fixed(sample_sets),
-            sample_query=ipywidgets.fixed(sample_query),
-            basemap=basemap_dropdown,
-            center=ipywidgets.fixed(center),
-            zoom=ipywidgets.fixed(zoom),
-            min_samples=ipywidgets.fixed(min_samples),
-            height=ipywidgets.fixed(height),
-            icon=ipywidgets.fixed(icon),
-        )
-
-        out = ipywidgets.VBox([interactive_widget, samples_map])
+        out = ipywidgets.VBox([basemap_dropdown, samples_map])
 
         return out
 
