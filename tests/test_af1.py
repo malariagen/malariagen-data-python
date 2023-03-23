@@ -1391,3 +1391,34 @@ def test_fst_gwss():
     assert_allclose(fst[0], -0.102647, rtol=1e-5), fst[0]
     assert np.all(fst <= 1)
     assert np.all(np.logical_and(fst >= -0.4, fst <= 1))
+
+
+def test_g123_gwss():
+    af1 = setup_af1()
+    sample_query = "country == 'Ghana'"
+    contig = "3RL"
+    site_mask = "funestus"
+    sample_sets = "1.0"
+    window_size = 1000
+
+    x, g123 = af1.g123_gwss(
+        contig=contig,
+        site_mask=site_mask,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        min_cohort_size=20,
+        max_cohort_size=50,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(g123, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 15845
+    assert len(x) == len(g123)
+
+    # check some values
+    assert_allclose(x[0], 141187.406)
+    assert_allclose(g123[11353], 0.022400000000000007)

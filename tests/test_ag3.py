@@ -3114,3 +3114,34 @@ def test_ihs_gwss():
     # check some values
     assert_allclose(x[0], 510232.847)
     assert_allclose(ihs[:, 2][100], 2.3467595962486327)
+
+
+def test_g123_gwss():
+    ag3 = setup_ag3()
+    sample_query = "country == 'Ghana'"
+    contig = "3L"
+    site_mask = "gamb_colu"
+    sample_sets = "3.0"
+    window_size = 1000
+
+    x, g123 = ag3.g123_gwss(
+        contig=contig,
+        site_mask=site_mask,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        min_cohort_size=20,
+        max_cohort_size=50,
+    )
+
+    # check dataset
+    assert isinstance(x, np.ndarray)
+    assert isinstance(g123, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 28707
+    assert len(x) == len(g123)
+
+    # check some values
+    assert_allclose(x[0], 15815.929)
+    assert_allclose(g123[11353], 0.024800000000000006)
