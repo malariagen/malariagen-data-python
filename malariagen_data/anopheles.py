@@ -6368,43 +6368,10 @@ class AnophelesDataResource(ABC):
             df_location_aggs, on=location_composite_key, validate="one_to_one"
         )
 
-        debug("create basemap")
-        basemap_abbrevs = {
-            "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
-            "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
-            "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
-            "positron": ipyleaflet.basemaps.CartoDB.Positron,
-            "satellite": ipyleaflet.basemaps.Gaode.Satellite,
-            "terrain": ipyleaflet.basemaps.Stamen.Terrain,
-            "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
-            "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
-            "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
-            "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
-        }
-
-        # Get basemap_provider
-        if isinstance(basemap, str):
-            basemap_str = basemap.lower()
-            if basemap_str not in basemap_abbrevs:
-                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
-            basemap_provider = basemap_abbrevs[basemap_str]
-        elif basemap is None:
-            basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
-        else:
-            basemap_provider = basemap
-
-        # Get basemap_abbrev_selected
-        basemap_abbrev_selected = None
-        if basemap_provider in basemap_abbrevs.values():
-            basemap_abbrev_selected = list(basemap_abbrevs.keys())[
-                list(basemap_abbrevs.values()).index(basemap_provider)
-            ]
-
         debug("create samples map")
         samples_map = ipyleaflet.Map(
             center=center,
             zoom=zoom,
-            basemap=basemap_provider,
         )
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
         samples_map.add_control(scale_control)
@@ -6442,24 +6409,70 @@ class AnophelesDataResource(ABC):
                 )
                 samples_map.add_control(marker)
 
+        debug("handle basemap")
+        basemap_providers_dict = _get_basemap_abbrevs()
+
+        # Determine basemap_provider via basemap
+        if isinstance(basemap, str):
+            # Interpret string
+            # Support case-insensitive basemap abbreviations
+            basemap_str = basemap.lower()
+            if basemap_str not in basemap_providers_dict:
+                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
+            basemap_provider = basemap_providers_dict[basemap_str]
+        elif basemap is None:
+            # Default
+            basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
+        else:
+            # Expect dict or TileProvider or TileLayer
+            basemap_provider = basemap
+            if basemap_provider not in basemap_providers_dict.values():
+                # Support user-specified basemap, otherwise "TraitError: Invalid selection"
+                basemap_providers_dict[""] = basemap_provider
+
         debug("set up interactive controls")
-        basemap_dropdown = ipywidgets.Dropdown(
-            description="Basemap: ",
-            options=list(basemap_abbrevs.keys()),
-            value=basemap_abbrev_selected,
+        controls = ipywidgets.interactive(
+            self.set_basemap_provider,
+            m=ipywidgets.fixed(samples_map),
+            basemap_provider=ipywidgets.Dropdown(
+                options=basemap_providers_dict,
+                description="Basemap: ",
+                value=basemap_provider,
+            ),
         )
 
-        def _on_basemap_dropdown_change(change):
-            basemap_abbrev_selected_new = change["new"]
-            new_basemap_provider = basemap_abbrevs[basemap_abbrev_selected_new]
-            samples_map.clear_layers()
-            samples_map.add_layer(new_basemap_provider)
+        debug("lay out widgets")
+        components = [controls, samples_map]
 
-        basemap_dropdown.observe(_on_basemap_dropdown_change, "value")
-
-        out = ipywidgets.VBox([basemap_dropdown, samples_map])
+        out = ipywidgets.VBox(components)
 
         return out
+
+    def set_basemap_provider(self, m, basemap_provider):
+        """Set the basemap provider of the specified map to the specified basemap provider.
+
+        Parameters
+        ----------
+        m : ipyleaflet.Map
+            The map to set the basemap provider of.
+        basemap_provider : dict or TileProvider or TileLayer
+            Basemap from ipyleaflet or other TileLayer provider.
+
+        """
+        debug = self._log.debug
+
+        debug("set basemap_provider")
+
+        # FIXME: m._layer_ids is empty list, causes LayerException: Could not substitute layer: layer not on map.
+        # import ipyleaflet
+        # m.substitute_layer(
+        #     m.layers[0],
+        #     ipyleaflet.basemap_to_tiles(basemap_provider)
+        # )
+
+        # FIXME: This will clear all layers, but not markers added via .add_control(marker)
+        m.clear_layers()
+        m.add_layer(basemap_provider)
 
     def plot_fst_gwss_track(
         self,
@@ -9046,3 +9059,29 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     out = np.array([_h1x(ha[i:j], hb[i:j]) for i, j in windows])
 
     return out
+
+
+def _get_basemap_abbrevs():
+    """Get the dict of basemap abbreviations.
+
+    Returns
+    -------
+    basemap_abbrevs : dict
+        A dictionary where each key is a basemap abbreviation string, e.g. "mapnik",
+        and each value is a corresponding TileProvider, e.g. `ipyleaflet.basemaps.OpenStreetMap.Mapnik`.
+    """
+    import ipyleaflet
+
+    basemap_abbrevs = {
+        "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
+        "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
+        "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
+        "positron": ipyleaflet.basemaps.CartoDB.Positron,
+        "satellite": ipyleaflet.basemaps.Gaode.Satellite,
+        "terrain": ipyleaflet.basemaps.Stamen.Terrain,
+        "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
+        "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
+        "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
+        "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
+    }
+    return basemap_abbrevs
