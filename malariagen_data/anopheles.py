@@ -6,7 +6,7 @@ from collections import Counter
 from itertools import cycle
 from pathlib import Path
 from textwrap import dedent
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -4712,7 +4712,7 @@ class AnophelesDataResource(ABC):
 
         debug("group and sum to collapse multi variant allele changes")
         freq_cols = [col for col in df_ns_snps if col.startswith("frq")]
-        agg = {c: np.nansum for c in freq_cols}
+        agg: Dict[str, Union[Callable, str]] = {c: np.nansum for c in freq_cols}
         keep_cols = (
             "contig",
             "transcript",
@@ -5520,7 +5520,7 @@ class AnophelesDataResource(ABC):
             title = ds.attrs.get("title", None)
 
         debug("extract cohorts into a dataframe")
-        cohort_vars = [v for v in ds if v.startswith("cohort_")]
+        cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
 
@@ -6437,7 +6437,7 @@ class AnophelesDataResource(ABC):
         chunks: base_params.chunks = base_params.chunks_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-    ) -> xr.Dataset:
+    ) -> Optional[xr.Dataset]:
         debug = self._log.debug
 
         debug("normalise parameters")

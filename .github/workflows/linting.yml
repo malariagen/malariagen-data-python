@@ -21,4 +21,4 @@ jobs:
               run: pip install mypy
             - name: Run mypy
               run: |
-                  mypy malariagen_data --ignore-missing-imports
+                  mypy malariagen_data tests --ignore-missing-imports

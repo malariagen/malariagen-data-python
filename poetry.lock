@@ -1018,14 +1018,14 @@ devel = ["colorama", "json-spec", "jsonschema", "pylint", "pytest", "pytest-benc
 
 [[package]]
 name = "filelock"
-version = "3.10.1"
+version = "3.10.4"
 description = "A platform independent file lock."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "filelock-3.10.1-py3-none-any.whl", hash = "sha256:0bee209da99ac6da8ba71ee2fe2f29e7e0dfa84dd1020743a3fe8afda0e52b53"},
-    {file = "filelock-3.10.1.tar.gz", hash = "sha256:09c5116de0578e26b9b29d7543606df58f296dd040341a14b08c625449ee4c9a"},
+    {file = "filelock-3.10.4-py3-none-any.whl", hash = "sha256:6d332dc5c896f18ba93a21d987155e97c434a96d3fe4042ca70d0b3b46e3b470"},
+    {file = "filelock-3.10.4.tar.gz", hash = "sha256:9fc1734dbddcdcd4aaa02c160dd94db5272b92dfa859b44ec8df28e160b751f0"},
 ]
 
 [package.extras]
@@ -1239,14 +1239,14 @@ grpcio-gcp = ["grpcio-gcp (>=0.2.2,<1.0dev)"]
 
 [[package]]
 name = "google-auth"
-version = "2.16.2"
+version = "2.16.3"
 description = "Google Authentication Library"
 category = "main"
 optional = false
 python-versions = ">=2.7,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*"
 files = [
-    {file = "google-auth-2.16.2.tar.gz", hash = "sha256:07e14f34ec288e3f33e00e2e3cc40c8942aa5d4ceac06256a28cd8e786591420"},
-    {file = "google_auth-2.16.2-py2.py3-none-any.whl", hash = "sha256:2fef3cf94876d1a0e204afece58bb4d83fb57228aaa366c64045039fda6770a2"},
+    {file = "google-auth-2.16.3.tar.gz", hash = "sha256:611779ce33a3aee265b94b74d4bb8c188f33010f5814761250a0ebbde94cc745"},
+    {file = "google_auth-2.16.3-py2.py3-none-any.whl", hash = "sha256:4dfcfd8ecd1cf03ddc97fddfb3b1f2973ea4f3f664aa0d8cfaf582ef9f0c60e7"},
 ]
 
 [package.dependencies]
@@ -2024,14 +2024,14 @@ files = [
 
 [[package]]
 name = "jupyterlab-server"
-version = "2.20.0"
+version = "2.21.0"
 description = "A set of server components for JupyterLab and JupyterLab like applications."
 category = "dev"
 optional = false
 python-versions = ">=3.7"
 files = [
-    {file = "jupyterlab_server-2.20.0-py3-none-any.whl", hash = "sha256:0203f96913187a9e7a6c8cef3556b499d2be67f014ad4ce9b76c8dcdcadb2367"},
-    {file = "jupyterlab_server-2.20.0.tar.gz", hash = "sha256:75e81a8ef23f561b70f5c9a76de2ab9ebb291358b371d6260f51af7e347da719"},
+    {file = "jupyterlab_server-2.21.0-py3-none-any.whl", hash = "sha256:ff1e7a81deb2dcb433215d469000988590fd5a5733574aa2698d643a6c9b3ace"},
+    {file = "jupyterlab_server-2.21.0.tar.gz", hash = "sha256:b4f5b48eaae1be83e2fd6fb77ac49d9b639be4ca4bd2e05b5368d29632a93725"},
 ]
 
 [package.dependencies]
@@ -2047,7 +2047,7 @@ requests = ">=2.28"
 [package.extras]
 docs = ["autodoc-traits", "docutils (<0.20)", "jinja2 (<3.2.0)", "mistune (<3)", "myst-parser", "pydata-sphinx-theme", "sphinx", "sphinx-copybutton", "sphinxcontrib-openapi"]
 openapi = ["openapi-core (>=0.16.1,<0.17.0)", "ruamel-yaml"]
-test = ["codecov", "ipykernel", "jupyterlab-server[openapi]", "openapi-spec-validator (>=0.5.1,<0.6.0)", "pytest (>=7.0)", "pytest-console-scripts", "pytest-cov", "pytest-jupyter[server] (>=0.6.2)", "pytest-timeout", "requests-mock", "sphinxcontrib-spelling", "strict-rfc3339", "werkzeug"]
+test = ["codecov", "hatch", "ipykernel", "jupyterlab-server[openapi]", "openapi-spec-validator (>=0.5.1,<0.6.0)", "pytest (>=7.0)", "pytest-console-scripts", "pytest-cov", "pytest-jupyter[server] (>=0.6.2)", "pytest-timeout", "requests-mock", "sphinxcontrib-spelling", "strict-rfc3339", "werkzeug"]
 
 [[package]]
 name = "jupyterlab-widgets"
@@ -2699,14 +2699,14 @@ files = [
 
 [[package]]
 name = "numpydoc-decorator"
-version = "1.8.0"
+version = "1.9.0"
 description = ""
 category = "main"
 optional = false
 python-versions = ">=3.7.1,<3.11"
 files = [
-    {file = "numpydoc_decorator-1.8.0-py3-none-any.whl", hash = "sha256:1f95dc899e745a95f24d3b0b096b5bab60643e08a30a9eb51178eb4dec3b5b1b"},
-    {file = "numpydoc_decorator-1.8.0.tar.gz", hash = "sha256:3b8f4801339ec88079c9c3467f20b37f4f8e31cbe5ed72429aa041388ac7ae03"},
+    {file = "numpydoc_decorator-1.9.0-py3-none-any.whl", hash = "sha256:31f3e5c0e56a6c068bb3b18cf9a3e5caa94930eb5315558cc8a6efa00c411225"},
+    {file = "numpydoc_decorator-1.9.0.tar.gz", hash = "sha256:926ac094d4423561a06d4c851f555bfafd0fd723a6f2d47b8449ae9d2f579c32"},
 ]
 
 [package.dependencies]
@@ -4554,4 +4554,4 @@ testing = ["big-O", "flake8 (<5)", "jaraco.functools", "jaraco.itertools", "more
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.7.1,<3.11"
-content-hash = "1e51bf3caea3fd452113ff8d1d5d9966e94bb462bcd6575d574f351f9b3931ff"
+content-hash = "792597b4cfb011a79920e9c98d11da915430690ec7460feb99e0ad67ebd35e71"
