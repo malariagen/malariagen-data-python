@@ -5831,6 +5831,7 @@ class AnophelesDataResource(ABC):
                 m.remove_layer(layer)
 
         debug("add markers")
+        markers = []
         for x in df_markers.itertuples():
             marker = ipyleaflet.CircleMarker()
             marker.location = (x.cohort_lat_mean, x.cohort_lon_mean)
@@ -5851,7 +5852,11 @@ class AnophelesDataResource(ABC):
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
-            m.add_layer(marker)
+            markers.append(marker)
+        marker_cluster = ipyleaflet.MarkerCluster(
+            markers=markers, name="marker cluster"
+        )
+        m.add_layer(marker_cluster)
 
     def plot_frequencies_interactive_map(
         self,
@@ -6401,6 +6406,7 @@ class AnophelesDataResource(ABC):
         samples_map.layout.height = height
 
         debug("add markers")
+        markers = []
         taxa = df_samples["taxon"].dropna().sort_values().unique()
         for _, row in pivot_location_taxon.reset_index().iterrows():
             title = (
@@ -6429,7 +6435,12 @@ class AnophelesDataResource(ABC):
                     title=title,
                     icon=icon,
                 )
-                samples_map.add_layer(marker)
+                markers.append(marker)
+
+        marker_cluster = ipyleaflet.MarkerCluster(
+            markers=markers, name="marker cluster"
+        )
+        samples_map.add_layer(marker_cluster)
 
         return samples_map
 
