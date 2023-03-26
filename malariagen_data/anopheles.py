@@ -5831,7 +5831,6 @@ class AnophelesDataResource(ABC):
                 m.remove_layer(layer)
 
         debug("add markers")
-        markers = []
         for x in df_markers.itertuples():
             marker = ipyleaflet.CircleMarker()
             marker.location = (x.cohort_lat_mean, x.cohort_lon_mean)
@@ -5852,11 +5851,7 @@ class AnophelesDataResource(ABC):
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
-            markers.append(marker)
-        marker_cluster = ipyleaflet.MarkerCluster(
-            markers=markers, name="marker cluster"
-        )
-        m.add_layer(marker_cluster)
+            m.add_layer(marker)
 
     def plot_frequencies_interactive_map(
         self,
@@ -6302,7 +6297,6 @@ class AnophelesDataResource(ABC):
         zoom=3,
         min_samples=1,
         height="500px",
-        icon=None,
     ):
         """Plot an interactive map showing sampling locations using ipyleaflet.
 
@@ -6328,8 +6322,6 @@ class AnophelesDataResource(ABC):
             location.
         height : str, optional
             Height of the map, e.g. "500px",
-        icon : object, optional
-            Icon used for the map marker. It can be an instance of ipyleaflet's Icon, AwesomeIcon or DivIcon.
 
         Returns
         -------
@@ -6406,7 +6398,6 @@ class AnophelesDataResource(ABC):
         samples_map.layout.height = height
 
         debug("add markers")
-        markers = []
         taxa = df_samples["taxon"].dropna().sort_values().unique()
         for _, row in pivot_location_taxon.reset_index().iterrows():
             title = (
@@ -6433,14 +6424,8 @@ class AnophelesDataResource(ABC):
                     location=(row.latitude, row.longitude),
                     draggable=False,
                     title=title,
-                    icon=icon,
                 )
-                markers.append(marker)
-
-        marker_cluster = ipyleaflet.MarkerCluster(
-            markers=markers, name="marker cluster"
-        )
-        samples_map.add_layer(marker_cluster)
+                samples_map.add_layer(marker)
 
         return samples_map
 
