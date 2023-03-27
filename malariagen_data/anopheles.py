@@ -16,12 +16,14 @@ import bokeh.plotting
 import dask.array as da
 import igv_notebook
 import ipinfo
+import ipyleaflet
 import numba
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import xarray as xr
+import xyzservices
 import zarr
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
@@ -315,6 +317,22 @@ class map_params:
     center_default: center = (-2, 20)
     zoom: TypeAlias = Annotated[int, "Initial zoom level."]
     zoom_default: zoom = 3
+    basemap: TypeAlias = Annotated[
+        Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
+        """
+        Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
+        basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
+        """,
+    ]
+    basemap_default: basemap = "mapnik"
+    height: TypeAlias = Annotated[
+        Union[int, str], "Height of the map in pixels (px) or other units."
+    ]
+    height_default: height = 500
+    width: TypeAlias = Annotated[
+        Union[int, str], "Width of the map in pixels (px) or other units."
+    ]
+    width_default: width = "100%"
 
 
 class gplt_params:
@@ -6054,51 +6072,36 @@ class AnophelesDataResource(ABC):
         )
         fig.show()
 
-    # TODO use @doc here - wait until changes come in
+    @doc(
+        summary="""
+            Plot an interactive map showing sampling locations using ipyleaflet.
+        """,
+        parameters=dict(
+            min_samples="""
+                Minimum number of samples required to show a marker for a given
+                location.
+            """,
+        ),
+        returns="Ipyleaflet map widget.",
+    )
     def plot_samples_interactive_map(
         self,
-        sample_sets=None,
-        sample_query=None,
-        basemap=None,
-        center=(-2, 20),
-        zoom=3,
-        min_samples=1,
-        height="500px",
-    ):
-        """Plot an interactive map showing sampling locations using ipyleaflet.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers or a
-            release identifier or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        basemap : dict or TileProvider or TileLayer or str
-            Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
-            basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
-            When none is specified, basemap defaults to TileProvider ipyleaflet.basemaps.Esri.WorldImagery.
-        center : tuple of int, optional
-            Location to center the map.
-        zoom : int, optional
-            Initial zoom level.
-        min_samples : int, optional
-            Minimum number of samples required to show a marker for a given
-            location.
-        height : str, optional
-            Height of the map, e.g. "500px",
-
-        Returns
-        -------
-        samples_map : ipyleaflet.Map
-            Ipyleaflet map widget.
-
-        """
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        basemap: map_params.basemap = map_params.basemap_default,
+        center: map_params.center = map_params.center_default,
+        zoom: map_params.zoom = map_params.zoom_default,
+        min_samples: int = 1,
+        height: map_params.height = map_params.height_default,
+        width: map_params.width = map_params.width_default,
+    ) -> ipyleaflet.Map:
         debug = self._log.debug
 
-        import ipyleaflet
+        # normalise height and width to string
+        if isinstance(height, int):
+            height = f"{height}px"
+        if isinstance(width, int):
+            width = f"{width}px"
 
         debug("load sample metadata")
         df_samples = self.sample_metadata(
@@ -6161,8 +6164,8 @@ class AnophelesDataResource(ABC):
         )
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
         samples_map.add_control(scale_control)
-        # make the map a bit taller than the default
         samples_map.layout.height = height
+        samples_map.layout.width = width
 
         debug("add markers")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
