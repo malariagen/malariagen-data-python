@@ -5670,7 +5670,7 @@ class AnophelesDataResource(ABC):
         debug("clear existing layers in the map")
         if clear:
             for layer in m.layers[1:]:
-                m.remove(layer)
+                m.remove_layer(layer)
 
         debug("add markers")
         for x in df_markers.itertuples():
@@ -5693,7 +5693,7 @@ class AnophelesDataResource(ABC):
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
-            m.add(marker)
+            m.add_layer(marker)
 
     @doc(
         summary="""
@@ -6063,6 +6063,7 @@ class AnophelesDataResource(ABC):
         center=(-2, 20),
         zoom=3,
         min_samples=1,
+        height="500px",
     ):
         """Plot an interactive map showing sampling locations using ipyleaflet.
 
@@ -6075,8 +6076,10 @@ class AnophelesDataResource(ABC):
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        basemap : dict
-            Basemap description coming from ipyleaflet.basemaps.
+        basemap : dict or TileProvider or TileLayer or str
+            Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
+            basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
+            When none is specified, basemap defaults to TileProvider ipyleaflet.basemaps.Esri.WorldImagery.
         center : tuple of int, optional
             Location to center the map.
         zoom : int, optional
@@ -6084,6 +6087,8 @@ class AnophelesDataResource(ABC):
         min_samples : int, optional
             Minimum number of samples required to show a marker for a given
             location.
+        height : str, optional
+            Height of the map, e.g. "500px",
 
         Returns
         -------
@@ -6130,18 +6135,34 @@ class AnophelesDataResource(ABC):
             df_location_aggs, on=location_composite_key, validate="one_to_one"
         )
 
+        debug("handle basemap")
+        basemap_providers_dict = _get_basemap_abbrevs()
+
+        # Determine basemap_provider via basemap
+        if isinstance(basemap, str):
+            # Interpret string
+            # Support case-insensitive basemap abbreviations
+            basemap_str = basemap.lower()
+            if basemap_str not in basemap_providers_dict:
+                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
+            basemap_provider = basemap_providers_dict[basemap_str]
+        elif basemap is None:
+            # Default
+            basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
+        else:
+            # Expect dict or TileProvider or TileLayer
+            basemap_provider = basemap
+
         debug("create a map")
-        if basemap is None:
-            basemap = ipyleaflet.basemaps.Esri.WorldImagery
         samples_map = ipyleaflet.Map(
             center=center,
             zoom=zoom,
-            basemap=basemap,
+            basemap=basemap_provider,
         )
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
         samples_map.add_control(scale_control)
         # make the map a bit taller than the default
-        samples_map.layout.height = "500px"
+        samples_map.layout.height = height
 
         debug("add markers")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
@@ -6171,7 +6192,7 @@ class AnophelesDataResource(ABC):
                     draggable=False,
                     title=title,
                 )
-                samples_map.add_control(marker)
+                samples_map.add_layer(marker)
 
         return samples_map
 
@@ -8074,3 +8095,29 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     out = np.array([_h1x(ha[i:j], hb[i:j]) for i, j in windows])
 
     return out
+
+
+def _get_basemap_abbrevs():
+    """Get the dict of basemap abbreviations.
+
+    Returns
+    -------
+    basemap_abbrevs : dict
+        A dictionary where each key is a basemap abbreviation string, e.g. "mapnik",
+        and each value is a corresponding TileProvider, e.g. `ipyleaflet.basemaps.OpenStreetMap.Mapnik`.
+    """
+    import ipyleaflet
+
+    basemap_abbrevs = {
+        "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
+        "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
+        "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
+        "positron": ipyleaflet.basemaps.CartoDB.Positron,
+        "satellite": ipyleaflet.basemaps.Gaode.Satellite,
+        "terrain": ipyleaflet.basemaps.Stamen.Terrain,
+        "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
+        "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
+        "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
+        "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
+    }
+    return basemap_abbrevs
