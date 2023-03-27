@@ -945,7 +945,8 @@ def test_g123_calibration(
         sample_query=sample_query,
         sample_sets=sample_sets,
         window_sizes=window_sizes,
-        cohort_size=20,
+        min_cohort_size=20,
+        max_cohort_size=50,
     )
 
     # check dataset
