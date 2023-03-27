@@ -67,10 +67,10 @@ SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
+G123_CALIBRATION_CACHE_NAME = "ag3_g123_calibration_v1"
 G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
-
 DEFAULT_SITE_MASK = "gamb_colu_arab"
 
 
@@ -146,6 +146,7 @@ class Ag3(AnophelesDataResource):
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _g123_gwss_cache_name = G123_GWSS_CACHE_NAME
+    _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("gamb_colu_arab", "gamb_colu", "arab")
@@ -702,6 +703,38 @@ class Ag3(AnophelesDataResource):
             contig=contig,
             inline_array=inline_array,
             chunks=chunks,
+        )
+
+    def _haplotype_sites_for_contig(
+        self, *, contig, analysis, field, inline_array, chunks
+    ):
+        """Access haplotype site data for a single contig/chromosome."""
+
+        if contig in self.virtual_contigs:
+            contig_r, contig_l = _chrom_to_contigs(contig)
+
+            pos_r = super()._haplotype_sites_for_contig(
+                contig=contig_r,
+                analysis=analysis,
+                field=field,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            pos_l = super()._haplotype_sites_for_contig(
+                contig=contig_l,
+                analysis=analysis,
+                field=field,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            max_r = super().genome_sequence(region=contig_r).shape[0]
+            pos_l = pos_l + max_r
+
+            return da.concatenate([pos_r, pos_l])
+
+        return super()._haplotype_sites_for_contig(
+            contig=contig,
+            analysis=analysis,
         )
 
     def _haplotypes_for_contig(

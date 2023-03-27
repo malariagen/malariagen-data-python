@@ -37,6 +37,7 @@ FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
 G123_GWSS_CACHE_NAME = "af1_g123_gwss_v1"
+G123_CALIBRATION_CACHE_NAME = "af1_g123_calibration_v1"
 H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
 
@@ -110,6 +111,7 @@ class Af1(AnophelesDataResource):
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _g123_gwss_cache_name = G123_GWSS_CACHE_NAME
+    _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("funestus",)

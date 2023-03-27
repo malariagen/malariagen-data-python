@@ -6690,6 +6690,14 @@ class AnophelesDataResource(ABC):
             self._cache_haplotype_sites[analysis] = root
         return root
 
+    def _haplotype_sites_for_contig(
+        self, *, contig, analysis, field, inline_array, chunks
+    ):
+        sites = self.open_haplotype_sites(analysis=analysis)
+        arr = sites[f"{contig}/variants/{field}"]
+        arr = da_from_zarr(arr, inline_array=inline_array, chunks=chunks)
+        return arr
+
     def _haplotypes_for_contig(
         self, *, contig, sample_set, analysis, inline_array, chunks
     ):
@@ -6698,6 +6706,9 @@ class AnophelesDataResource(ABC):
         debug("open zarr")
         root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
         sites = self.open_haplotype_sites(analysis=analysis)
+
+        debug("variant_position")
+        pos = sites[f"{contig}/variants/POS"]
 
         # some sample sets have no data for a given analysis, handle this
         # TODO consider returning a dataset with 0 length samples dimension instead, would
@@ -6708,8 +6719,6 @@ class AnophelesDataResource(ABC):
         coords = dict()
         data_vars = dict()
 
-        debug("variant_position")
-        pos = sites[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
             da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
@@ -8343,6 +8352,7 @@ class AnophelesDataResource(ABC):
         self,
         contig,
         window_size,
+        sites=DEFAULT,
         site_mask=DEFAULT,
         sample_sets=None,
         sample_query=None,
@@ -8358,6 +8368,12 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L" or "3RL")
         window_size : int
             The size of windows used to calculate g123 over.
+        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+            How to filter sites. 'all' includes all sites that pass
+            site filters, 'segregating' includes only segregating sites for
+            the given cohort, or a phasing analysis identifier can be
+            provided to use sites from the phased haplotype data, which is an
+            approximation to finding segregating sites in the entire ag3/af1 cohort.
         site_mask : str
             Which site filters mask to apply. See the `site_mask_ids`
             property for available values.
@@ -8389,9 +8405,15 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._g123_gwss_cache_name
 
+        assert sites in self.site_mask_ids or sites in [
+            "all",
+            "segregating",
+        ], "sites parameter must be one of 'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'"
+
         params = dict(
             contig=contig,
-            site_mask=self._prep_site_mask_param(site_mask=site_mask),
+            sites=sites,
+            site_mask=site_mask,
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
@@ -8418,6 +8440,7 @@ class AnophelesDataResource(ABC):
     def _g123_gwss(
         self,
         contig,
+        sites,
         site_mask,
         window_size,
         sample_sets,
@@ -8426,11 +8449,12 @@ class AnophelesDataResource(ABC):
         max_cohort_size,
         random_seed,
     ):
+        debug = self._log.debug
         ds_snps = self.snp_calls(
             region=contig,
-            site_mask=site_mask,
             sample_query=sample_query,
             sample_sets=sample_sets,
+            site_mask=site_mask,
             random_seed=random_seed,
         )
 
@@ -8451,12 +8475,30 @@ class AnophelesDataResource(ABC):
                 ds_snps = ds_snps.isel(samples=loc_downsample)
 
         gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
-        with self._dask_progress(desc="Load Genotypes"):
+        with self._dask_progress(desc="Load genotypes"):
             gt = gt.compute()
         pos = ds_snps["variant_position"].values
 
-        g123 = allel.moving_statistic(gt, statistic=self._garud_g123, size=window_size)
+        if sites in self.site_mask_ids:
+            debug("subsetting to haplotype positions")
+            haplotype_pos = self._haplotype_sites_for_contig(
+                contig=contig,
+                analysis=sites,
+                field="POS",
+                inline_array=True,
+                chunks="native",
+            )
+            hap_site_mask = np.in1d(pos, haplotype_pos.values)
+            pos = pos[hap_site_mask]
+            gt = gt.compress(hap_site_mask, axis=0)
+        elif sites == "segregating":
+            debug("subsetting to segregating sites")
+            ac = gt.count_alleles(max_allele=3)
+            seg = ac.is_segregating()
+            pos = pos[seg]
+            gt = gt.compress(seg, axis=0)
 
+        g123 = allel.moving_statistic(gt, statistic=self._garud_g123, size=window_size)
         x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, g123=g123)
@@ -8467,6 +8509,7 @@ class AnophelesDataResource(ABC):
         self,
         contig,
         window_size,
+        sites,
         site_mask=DEFAULT,
         sample_sets=None,
         sample_query=None,
@@ -8488,6 +8531,12 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L" or "3RL")
         window_size : int
             The size of windows used to calculate g123 over.
+        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+            How to filter sites. 'all' includes all sites that pass
+            site filters, 'segregating' includes only segregating sites for
+            the given cohort, or a phasing analysis identifier can be
+            provided to use sites from the phased haplotype data, which is an
+            approximation to finding segregating sites in the entire ag3/af1 cohort.
         site_mask : str
             Which site filters mask to apply. See the `site_mask_ids`
             property for available values.
@@ -8531,6 +8580,7 @@ class AnophelesDataResource(ABC):
         # compute G123
         x, g123 = self.g123_gwss(
             contig=contig,
+            sites=sites,
             site_mask=site_mask,
             window_size=window_size,
             min_cohort_size=min_cohort_size,
@@ -8587,6 +8637,7 @@ class AnophelesDataResource(ABC):
         self,
         contig,
         window_size,
+        sites,
         site_mask=DEFAULT,
         sample_sets=None,
         sample_query=None,
@@ -8607,6 +8658,12 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L" or "3RL")
         window_size : int
             The size of windows used to calculate g123 over.
+        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+            How to filter sites. 'all' includes all sites that pass
+            site filters, 'segregating' includes only segregating sites for
+            the given cohort, or a phasing analysis identifier can be
+            provided to use sites from the phased haplotype data, which is an
+            approximation to finding segregating sites in the entire ag3/af1 cohort.
         site_mask : str
             Which site filters mask to apply. See the `site_mask_ids`
             property for available values.
@@ -8648,6 +8705,7 @@ class AnophelesDataResource(ABC):
         # gwss track
         fig1 = self.plot_g123_gwss_track(
             contig=contig,
+            sites=sites,
             site_mask=site_mask,
             window_size=window_size,
             sample_sets=sample_sets,
@@ -8683,6 +8741,272 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
+        bkplt.show(fig)
+
+    def g123_calibration(
+        self,
+        contig,
+        sites,
+        site_mask=DEFAULT,
+        sample_query=None,
+        sample_sets=None,
+        min_cohort_size=20,
+        max_cohort_size=50,
+        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
+        random_seed=42,
+    ):
+        """Generate g123 GWSS calibration data for different window sizes.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+            How to filter sites. 'all' includes all sites that pass
+            site filters, 'segregating' includes only segregating sites for
+            the given cohort, or a phasing analysis identifier can be
+            provided to use sites from the phased haplotype data, which is an
+            approximation to finding segregating sites in the entire ag3/af1 cohort.
+        site_mask : str
+            Which site_mask to use. See the `phasing_site_mask_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size if the number of
+            samples in the cohort is greater than this value.
+        window_sizes : int or list of int, optional
+            The sizes of windows used to calculate g123 over. Multiple window
+            sizes should be used to calibrate the optimal size for g123 site_mask.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+
+        Returns
+        -------
+        calibration runs : list of numpy.ndarray
+            A list of g123 calibration run arrays for each window size, containing
+            values and percentiles.
+
+        """
+
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = self._g123_calibration_cache_name
+
+        params = dict(
+            contig=contig,
+            sites=sites,
+            site_mask=self._prep_site_mask_param(site_mask=site_mask),
+            window_sizes=window_sizes,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            calibration_runs = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            calibration_runs = self._g123_calibration(**params)
+            self.results_cache_set(name=name, params=params, results=calibration_runs)
+
+        return calibration_runs
+
+    def _g123_calibration(
+        self,
+        contig,
+        sites,
+        site_mask,
+        sample_query,
+        sample_sets,
+        min_cohort_size,
+        max_cohort_size,
+        window_sizes,
+        random_seed,
+    ):
+        debug = self._log.debug
+        ds_snps = self.snp_calls(
+            region=contig,
+            site_mask=site_mask,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        if min_cohort_size is not None:
+            n_samples = ds_snps.dims["samples"]
+            if n_samples < min_cohort_size:
+                raise ValueError(
+                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
+                )
+        if max_cohort_size is not None:
+            n_samples = ds_snps.dims["samples"]
+            if n_samples > max_cohort_size:
+                rng = np.random.default_rng(seed=random_seed)
+                loc_downsample = rng.choice(
+                    n_samples, size=max_cohort_size, replace=False
+                )
+                loc_downsample.sort()
+                ds_snps = ds_snps.isel(samples=loc_downsample)
+
+        gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
+        with self._dask_progress(desc="Load Genotypes"):
+            gt = gt.compute()
+        pos = ds_snps["variant_position"].values
+
+        if sites in self.site_mask_ids:
+            debug("subsetting to haplotype positions")
+            haplotype_pos = self._haplotype_sites_for_contig(
+                contig=contig,
+                analysis=sites,
+                field="POS",
+                inline_array=True,
+                chunks="native",
+            )
+            hap_site_mask = np.in1d(pos, haplotype_pos.values)
+            gt = gt.compress(hap_site_mask, axis=0)
+        elif sites == "segregating":
+            debug("subsetting to segregating sites")
+            ac = gt.count_alleles(max_allele=3)
+            seg = ac.is_segregating()
+            gt = gt.compress(seg, axis=0)
+
+        calibration_runs = dict()
+        for window_size in self._progress(window_sizes, desc="Compute g123"):
+            g123 = allel.moving_statistic(
+                gt, statistic=self._garud_g123, size=window_size
+            )
+            calibration_runs[str(window_size)] = g123
+
+        return calibration_runs
+
+    def plot_g123_calibration(
+        self,
+        contig,
+        sites,
+        site_mask=DEFAULT,
+        sample_query=None,
+        sample_sets=None,
+        min_cohort_size=20,
+        max_cohort_size=50,
+        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
+        random_seed=42,
+        title=None,
+    ):
+        """Plot g123 GWSS calibration data for different window sizes.
+
+        Parameters
+        ----------
+        contig: str
+            Contig name (e.g., "2L" or "3RL")
+        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+            How to filter sites. 'all' includes all sites that pass
+            site filters, 'segregating' includes only segregating sites for
+            the given cohort, or a phasing analysis identifier can be
+            provided to use sites from the phased haplotype data, which is an
+            approximation to finding segregating sites in the entire ag3/af1 cohort.
+        site_mask : str
+            Which site_mask to use. See the `phasing_site_mask_ids`
+            property for available values.
+        sample_sets : str or list of str, optional
+            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
+            release identifier (e.g., "3.0") or a list of release identifiers.
+        sample_query : str, optional
+            A pandas query string which will be evaluated against the sample
+            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        min_cohort_size : int, optional
+            If provided, raise a ValueError if the number of samples in the cohort is
+            less than this value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size if the number of
+            samples in the cohort is greater than this value.
+        window_sizes : int or list of int, optional
+            The sizes of windows used to calculate g123 over. Multiple window
+            sizes should be used to calibrate the optimal size for g123 site_mask.
+        random_seed : int, optional
+            Random seed used for down-sampling.
+        title : str, optional
+            If provided, title string is used to label plot.
+
+        Returns
+        -------
+        fig : figure
+            A plot showing g123 calibration run percentiles for different window
+            sizes.
+
+        """
+
+        import bokeh.models as bkmod
+        import bokeh.plotting as bkplt
+
+        # get g123 values
+        calibration_runs = self.g123_calibration(
+            contig=contig,
+            sites=sites,
+            site_mask=site_mask,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            window_sizes=window_sizes,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        # compute summaries
+        q50 = [np.median(calibration_runs[str(window)]) for window in window_sizes]
+        q25 = [
+            np.percentile(calibration_runs[str(window)], 25) for window in window_sizes
+        ]
+        q75 = [
+            np.percentile(calibration_runs[str(window)], 75) for window in window_sizes
+        ]
+        q05 = [
+            np.percentile(calibration_runs[str(window)], 5) for window in window_sizes
+        ]
+        q95 = [
+            np.percentile(calibration_runs[str(window)], 95) for window in window_sizes
+        ]
+
+        # make plot
+        fig = bkplt.figure(width=700, height=400, x_axis_type="log")
+        fig.patch(
+            window_sizes + window_sizes[::-1],
+            q75 + q25[::-1],
+            alpha=0.75,
+            line_width=2,
+            legend_label="25-75%",
+        )
+        fig.patch(
+            window_sizes + window_sizes[::-1],
+            q95 + q05[::-1],
+            alpha=0.5,
+            line_width=2,
+            legend_label="5-95%",
+        )
+        fig.line(
+            window_sizes, q50, line_color="black", line_width=4, legend_label="median"
+        )
+        fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
+
+        fig.xaxis.ticker = window_sizes
+        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
+        if title is None:
+            title = sample_query
+        fig.title = title
         bkplt.show(fig)
 
     def plot_haplotype_clustering(
