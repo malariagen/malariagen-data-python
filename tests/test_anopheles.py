@@ -919,3 +919,41 @@ def test_h12_calibration(
 
     # check keys
     assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
+
+
+@pytest.mark.parametrize(
+    "subclass, sample_query, contig, site_mask, sample_sets",
+    [
+        (Ag3, "country == 'Ghana'", "3L", "gamb_colu", "3.0"),
+        (Af1, "country == 'Ghana'", "3RL", "funestus", "1.0"),
+    ],
+)
+@pytest.mark.parametrize(
+    "window_sizes",
+    [[100, 200, 500], [10000, 20000]],
+)
+def test_g123_calibration(
+    subclass, sample_query, contig, site_mask, sample_sets, window_sizes
+):
+    url = f"simplecache::{subclass._gcs_url}"
+    anoph = setup_subclass(subclass, url)
+
+    calibration_runs = anoph.g123_calibration(
+        contig=contig,
+        sites=site_mask,
+        site_mask=site_mask,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        window_sizes=window_sizes,
+        cohort_size=20,
+    )
+
+    # check dataset
+    assert isinstance(calibration_runs, dict)
+    assert isinstance(calibration_runs[str(window_sizes[0])], np.ndarray)
+
+    # check dimensions
+    assert len(calibration_runs) == len(window_sizes)
+
+    # check keys
+    assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
