@@ -3140,9 +3140,9 @@ def test_g123_gwss():
     assert isinstance(g123, np.ndarray)
 
     # check dimensions
-    assert len(x) == 28707
+    assert len(x) == 11354
     assert len(x) == len(g123)
 
     # check some values
-    assert_allclose(x[0], 15815.929)
-    assert_allclose(g123[11353], 0.024800000000000006)
+    assert_allclose(x[0], 27701.195)
+    assert_allclose(g123[11353], 0.18799999999999997)

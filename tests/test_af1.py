@@ -1404,6 +1404,7 @@ def test_g123_gwss():
     x, g123 = af1.g123_gwss(
         contig=contig,
         site_mask=site_mask,
+        sites=site_mask,
         sample_query=sample_query,
         sample_sets=sample_sets,
         window_size=window_size,
@@ -1420,5 +1421,5 @@ def test_g123_gwss():
     assert len(x) == len(g123)
 
     # check some values
-    assert_allclose(x[0], 141187.406)
+    assert_allclose(x[0], 185756.747)
     assert_allclose(g123[11353], 0.022400000000000007)

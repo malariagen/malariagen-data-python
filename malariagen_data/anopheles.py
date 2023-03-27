@@ -8508,8 +8508,8 @@ class AnophelesDataResource(ABC):
                 field="POS",
                 inline_array=True,
                 chunks="native",
-            )
-            hap_site_mask = np.in1d(pos, haplotype_pos.values)
+            ).compute()
+            hap_site_mask = np.in1d(pos, haplotype_pos)
             pos = pos[hap_site_mask]
             gt = gt.compress(hap_site_mask, axis=0)
         elif sites == "segregating":
@@ -8896,8 +8896,8 @@ class AnophelesDataResource(ABC):
                 field="POS",
                 inline_array=True,
                 chunks="native",
-            )
-            hap_site_mask = np.in1d(pos, haplotype_pos.values)
+            ).compute()
+            hap_site_mask = np.in1d(pos, haplotype_pos)
             gt = gt.compress(hap_site_mask, axis=0)
         elif sites == "segregating":
             debug("subsetting to segregating sites")
