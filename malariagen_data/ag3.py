@@ -735,6 +735,9 @@ class Ag3(AnophelesDataResource):
         return super()._haplotype_sites_for_contig(
             contig=contig,
             analysis=analysis,
+            field=field,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
     def _haplotypes_for_contig(

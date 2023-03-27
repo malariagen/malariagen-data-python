@@ -3126,6 +3126,7 @@ def test_g123_gwss():
 
     x, g123 = ag3.g123_gwss(
         contig=contig,
+        sites=site_mask,
         site_mask=site_mask,
         sample_query=sample_query,
         sample_sets=sample_sets,
