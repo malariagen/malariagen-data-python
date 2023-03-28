@@ -2639,17 +2639,6 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Access SNP sites, site filters and genotype calls.",
-        parameters=dict(
-            # TODO factor out to base_params
-            min_cohort_size="""
-                If provided, return a ValueError if the cohort size is smaller than
-                the given value.
-            """,
-            max_cohort_size="""
-                If provided, randomly down-sample to the given cohort size if the
-                cohort size is larger than the given value.
-            """,
-        ),
         returns="A dataset containing SNP sites, site filters and genotype calls.",
     )
     def snp_calls(
@@ -2662,8 +2651,8 @@ class AnophelesDataResource(ABC):
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
         cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size=None,  # TODO typing
-        max_cohort_size=None,  # TODO typing
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> xr.Dataset:
         debug = self._log.debug
@@ -2717,8 +2706,8 @@ class AnophelesDataResource(ABC):
         debug("concatenate data from multiple regions")
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
-        debug("apply site filters")
         if site_mask is not None:
+            debug("apply site filters")
             ds = dask_compress_dataset(
                 ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
             )
@@ -2726,8 +2715,8 @@ class AnophelesDataResource(ABC):
         debug("add call_genotype_mask")
         ds["call_genotype_mask"] = ds["call_genotype"] < 0
 
-        debug("handle sample query")
         if sample_query is not None:
+            debug("handle sample query")
             if isinstance(sample_query, str):
                 df_samples = self.sample_metadata(sample_sets=sample_sets)
                 loc_samples = df_samples.eval(sample_query).values
@@ -2738,35 +2727,30 @@ class AnophelesDataResource(ABC):
                 loc_samples = sample_query
             ds = ds.isel(samples=loc_samples)
 
-        debug("handle cohort size")
         if cohort_size is not None:
+            debug("handle cohort size")
+            # overrides min and max
+            min_cohort_size = cohort_size
+            max_cohort_size = cohort_size
+
+        if min_cohort_size is not None:
+            debug("handle min cohort size")
             n_samples = ds.dims["samples"]
-            if n_samples < cohort_size:
+            if n_samples < min_cohort_size:
                 raise ValueError(
-                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
                 )
-            rng = np.random.default_rng(seed=random_seed)
-            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
-            loc_downsample.sort()
-            ds = ds.isel(samples=loc_downsample)
 
-        if cohort_size is None:
-            if min_cohort_size is not None:
-                n_samples = ds.dims["samples"]
-                if n_samples < min_cohort_size:
-                    raise ValueError(
-                        f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                    )
-
-            if max_cohort_size is not None:
-                n_samples = ds.dims["samples"]
-                if n_samples > max_cohort_size:
-                    rng = np.random.default_rng(seed=random_seed)
-                    loc_downsample = rng.choice(
-                        n_samples, size=max_cohort_size, replace=False
-                    )
-                    loc_downsample.sort()
-                    ds = ds.isel(samples=loc_downsample)
+        if max_cohort_size is not None:
+            debug("handle max cohort size")
+            n_samples = ds.dims["samples"]
+            if n_samples > max_cohort_size:
+                rng = np.random.default_rng(seed=random_seed)
+                loc_downsample = rng.choice(
+                    n_samples, size=max_cohort_size, replace=False
+                )
+                loc_downsample.sort()
+                ds = ds.isel(samples=loc_downsample)
 
         return ds
 
@@ -2794,7 +2778,6 @@ class AnophelesDataResource(ABC):
 
     @doc(
         summary="Plot a genes track, using bokeh.",
-        returns="Bokeh figure.",
     )
     def plot_genes(
         self,

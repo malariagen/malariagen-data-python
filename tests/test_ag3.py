@@ -73,7 +73,7 @@ def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
     return Ag3(url, **kwargs)
 
 
-def test_ag3_repr():
+def test_repr():
     ag3 = setup_ag3(check_location=True)
     assert isinstance(ag3, Ag3)
     r = repr(ag3)
