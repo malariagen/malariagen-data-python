@@ -289,6 +289,11 @@ class AnophelesDataResource(ABC):
 
     @property
     @abstractmethod
+    def _g123_calibration_cache_name(self):
+        raise NotImplementedError("Must override _g123_calibration_cache_name")
+
+    @property
+    @abstractmethod
     def _h12_gwss_cache_name(self):
         raise NotImplementedError("Must override _h12_gwss_cache_name")
 
@@ -2089,6 +2094,8 @@ class AnophelesDataResource(ABC):
         inline_array=True,
         chunks="native",
         cohort_size=None,
+        min_cohort_size=None,
+        max_cohort_size=None,
         random_seed=42,
     ):
         """Access SNP sites, site filters and genotype calls.
@@ -2127,7 +2134,14 @@ class AnophelesDataResource(ABC):
             If 'auto' let dask decide chunk size. If 'native' use native zarr
             chunks. Also, can be a target size, e.g., '200 MiB'.
         cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
+            If provided, randomly down-sample to the given cohort size. A ValueError
+            will be raised if the cohort size is smaller than the given value.
+        max_cohort_size : int, optional
+            If provided, randomly down-sample to the given cohort size if the
+            cohort size is larger than the given value.
+        min_cohort_size : int, optional
+            If provided, return a ValueError if the cohort size is smaller than
+            the given value.
         random_seed : int, optional
             Random seed used for down-sampling.
 
@@ -2219,6 +2233,24 @@ class AnophelesDataResource(ABC):
             loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
             loc_downsample.sort()
             ds = ds.isel(samples=loc_downsample)
+
+        if cohort_size is None:
+            if min_cohort_size is not None:
+                n_samples = ds.dims["samples"]
+                if n_samples < min_cohort_size:
+                    raise ValueError(
+                        f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
+                    )
+
+            if max_cohort_size is not None:
+                n_samples = ds.dims["samples"]
+                if n_samples > max_cohort_size:
+                    rng = np.random.default_rng(seed=random_seed)
+                    loc_downsample = rng.choice(
+                        n_samples, size=max_cohort_size, replace=False
+                    )
+                    loc_downsample.sort()
+                    ds = ds.isel(samples=loc_downsample)
 
         return ds
 
@@ -8389,12 +8421,13 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L" or "3RL")
         window_size : int
             The size of windows used to calculate g123 over.
-        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+        sites: str
             How to filter sites. 'all' includes all sites that pass
             site filters, 'segregating' includes only segregating sites for
             the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the phased haplotype data, which is an
-            approximation to finding segregating sites in the entire ag3/af1 cohort.
+            provided to use sites from the haplotype data, which is an
+            approximation to finding segregating sites in the entire Ag3.0
+            (gambiae complex) or Af1.0 (funestus) cohort.
         site_mask : str
             Which site filters mask to apply. See the `site_mask_ids`
             property for available values.
@@ -8426,10 +8459,13 @@ class AnophelesDataResource(ABC):
         # invalidate any previously cached data
         name = self._g123_gwss_cache_name
 
-        assert sites in self.site_mask_ids or sites in [
-            "all",
-            "segregating",
-        ], "sites parameter must be one of 'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'"
+        if sites == DEFAULT:
+            sites = self._default_phasing_analysis
+            valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+        if sites not in valid_sites:
+            raise ValueError(
+                f"Invalid value for `sites` parameter, must be one of {valid_sites}."
+            )
 
         params = dict(
             contig=contig,
@@ -8470,54 +8506,16 @@ class AnophelesDataResource(ABC):
         max_cohort_size,
         random_seed,
     ):
-        debug = self._log.debug
-        ds_snps = self.snp_calls(
-            region=contig,
-            sample_query=sample_query,
-            sample_sets=sample_sets,
+        gt, pos = self._load_gt_for_g123(
+            contig=contig,
+            sites=sites,
             site_mask=site_mask,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
-
-        if min_cohort_size is not None:
-            n_samples = ds_snps.dims["samples"]
-            if n_samples < min_cohort_size:
-                raise ValueError(
-                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                )
-        if max_cohort_size is not None:
-            n_samples = ds_snps.dims["samples"]
-            if n_samples > max_cohort_size:
-                rng = np.random.default_rng(seed=random_seed)
-                loc_downsample = rng.choice(
-                    n_samples, size=max_cohort_size, replace=False
-                )
-                loc_downsample.sort()
-                ds_snps = ds_snps.isel(samples=loc_downsample)
-
-        gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
-        with self._dask_progress(desc="Load genotypes"):
-            gt = gt.compute()
-        pos = ds_snps["variant_position"].values
-
-        if sites in self.site_mask_ids:
-            debug("subsetting to haplotype positions")
-            haplotype_pos = self._haplotype_sites_for_contig(
-                contig=contig,
-                analysis=sites,
-                field="POS",
-                inline_array=True,
-                chunks="native",
-            ).compute()
-            hap_site_mask = np.in1d(pos, haplotype_pos)
-            pos = pos[hap_site_mask]
-            gt = gt.compress(hap_site_mask, axis=0)
-        elif sites == "segregating":
-            debug("subsetting to segregating sites")
-            ac = gt.count_alleles(max_allele=3)
-            seg = ac.is_segregating()
-            pos = pos[seg]
-            gt = gt.compress(seg, axis=0)
 
         g123 = allel.moving_statistic(gt, statistic=self._garud_g123, size=window_size)
         x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
@@ -8552,12 +8550,13 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L" or "3RL")
         window_size : int
             The size of windows used to calculate g123 over.
-        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+        sites: str
             How to filter sites. 'all' includes all sites that pass
             site filters, 'segregating' includes only segregating sites for
             the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the phased haplotype data, which is an
-            approximation to finding segregating sites in the entire ag3/af1 cohort.
+            provided to use sites from the haplotype data, which is an
+            approximation to finding segregating sites in the entire Ag3.0
+            (gambiae complex) or Af1.0 (funestus) cohort.
         site_mask : str
             Which site filters mask to apply. See the `site_mask_ids`
             property for available values.
@@ -8679,14 +8678,15 @@ class AnophelesDataResource(ABC):
             Contig name (e.g., "2L" or "3RL")
         window_size : int
             The size of windows used to calculate g123 over.
-        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+        sites: str
             How to filter sites. 'all' includes all sites that pass
             site filters, 'segregating' includes only segregating sites for
             the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the phased haplotype data, which is an
-            approximation to finding segregating sites in the entire ag3/af1 cohort.
+            provided to use sites from the haplotype data, which is an
+            approximation to finding segregating sites in the entire Ag3.0
+            (gambiae complex) or Af1.0 (funestus) cohort.
         site_mask : str
-            Which site filters mask to apply. See the `site_mask_ids`
+            Which site mask to use. See the `site_mask_ids`
             property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
@@ -8764,10 +8764,58 @@ class AnophelesDataResource(ABC):
 
         bkplt.show(fig)
 
-    def g123_calibration(
+    def _load_gt_for_g123(
         self,
         contig,
         sites,
+        site_mask,
+        sample_sets,
+        sample_query,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+    ):
+        debug = self._log.debug
+        ds_snps = self.snp_calls(
+            region=contig,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
+        with self._dask_progress(desc="Load genotypes"):
+            gt = gt.compute()
+        pos = ds_snps["variant_position"].values
+
+        if sites in self.phasing_analysis_ids:
+            debug("subsetting to haplotype positions")
+            haplotype_pos = self._haplotype_sites_for_contig(
+                contig=contig,
+                analysis=sites,
+                field="POS",
+                inline_array=True,
+                chunks="native",
+            ).compute()
+            hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
+            pos = pos[hap_site_mask]
+            gt = gt.compress(hap_site_mask, axis=0)
+        elif sites == "segregating":
+            debug("subsetting to segregating sites")
+            ac = gt.count_alleles(max_allele=3)
+            seg = ac.is_segregating()
+            pos = pos[seg]
+            gt = gt.compress(seg, axis=0)
+
+        return gt, pos
+
+    def g123_calibration(
+        self,
+        contig,
+        sites=DEFAULT,
         site_mask=DEFAULT,
         sample_query=None,
         sample_sets=None,
@@ -8782,14 +8830,15 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+        sites: str
             How to filter sites. 'all' includes all sites that pass
             site filters, 'segregating' includes only segregating sites for
             the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the phased haplotype data, which is an
-            approximation to finding segregating sites in the entire ag3/af1 cohort.
+            provided to use sites from the haplotype data, which is an
+            approximation to finding segregating sites in the entire Ag3.0
+            (gambiae complex) or Af1.0 (funestus) cohort.
         site_mask : str
-            Which site_mask to use. See the `phasing_site_mask_ids`
+            Which site mask to use. See the `site_mask_ids`
             property for available values.
         sample_sets : str or list of str, optional
             Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
@@ -8858,52 +8907,16 @@ class AnophelesDataResource(ABC):
         window_sizes,
         random_seed,
     ):
-        debug = self._log.debug
-        ds_snps = self.snp_calls(
-            region=contig,
+        gt, _ = self._load_gt_for_g123(
+            contig=contig,
+            sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,
             sample_sets=sample_sets,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
-
-        if min_cohort_size is not None:
-            n_samples = ds_snps.dims["samples"]
-            if n_samples < min_cohort_size:
-                raise ValueError(
-                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                )
-        if max_cohort_size is not None:
-            n_samples = ds_snps.dims["samples"]
-            if n_samples > max_cohort_size:
-                rng = np.random.default_rng(seed=random_seed)
-                loc_downsample = rng.choice(
-                    n_samples, size=max_cohort_size, replace=False
-                )
-                loc_downsample.sort()
-                ds_snps = ds_snps.isel(samples=loc_downsample)
-
-        gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
-        with self._dask_progress(desc="Load Genotypes"):
-            gt = gt.compute()
-        pos = ds_snps["variant_position"].values
-
-        if sites in self.site_mask_ids:
-            debug("subsetting to haplotype positions")
-            haplotype_pos = self._haplotype_sites_for_contig(
-                contig=contig,
-                analysis=sites,
-                field="POS",
-                inline_array=True,
-                chunks="native",
-            ).compute()
-            hap_site_mask = np.in1d(pos, haplotype_pos)
-            gt = gt.compress(hap_site_mask, axis=0)
-        elif sites == "segregating":
-            debug("subsetting to segregating sites")
-            ac = gt.count_alleles(max_allele=3)
-            seg = ac.is_segregating()
-            gt = gt.compress(seg, axis=0)
 
         calibration_runs = dict()
         for window_size in self._progress(window_sizes, desc="Compute g123"):
@@ -8933,12 +8946,13 @@ class AnophelesDataResource(ABC):
         ----------
         contig: str
             Contig name (e.g., "2L" or "3RL")
-        sites: str, {'all', 'segregating', 'gamb_colu', 'gamb_colu_arab', 'arab'}
+        sites: str
             How to filter sites. 'all' includes all sites that pass
             site filters, 'segregating' includes only segregating sites for
             the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the phased haplotype data, which is an
-            approximation to finding segregating sites in the entire ag3/af1 cohort.
+            provided to use sites from the haplotype data, which is an
+            approximation to finding segregating sites in the entire Ag3.0
+            (gambiae complex) or Af1.0 (funestus) cohort.
         site_mask : str
             Which site_mask to use. See the `phasing_site_mask_ids`
             property for available values.
