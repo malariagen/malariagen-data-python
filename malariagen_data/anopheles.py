@@ -146,11 +146,18 @@ class base_params:
     ]
     cohort_size: TypeAlias = Annotated[
         int,
-        "Randomly down-sample to the given cohort size.",
+        """
+        Randomly down-sample to this value if the number of samples in the
+        cohort is greater. Raise an error if the number of samples is less
+        than this value.
+        """,
     ]
     min_cohort_size: TypeAlias = Annotated[
         int,
-        "Minimum cohort size.",
+        """
+        Minimum cohort size. Raise an error if the number of samples is
+        less than this value.
+        """,
     ]
     max_cohort_size: TypeAlias = Annotated[
         int,
@@ -241,6 +248,37 @@ class h12_params:
         The size of windows (number of SNPs) used to calculate statistics within.
         """,
     ]
+
+
+class g123_params:
+    """Parameter definitions for G123 analysis functions."""
+
+    sites: TypeAlias = Annotated[
+        str,
+        """
+        Which sites to use: 'all' includes all sites that pass
+        site filters; 'segregating' includes only segregating sites for
+        the given cohort; or a phasing analysis identifier can be
+        provided to use sites from the haplotype data, which is an
+        approximation to finding segregating sites in the entire Ag3.0
+        (gambiae complex) or Af1.0 (funestus) cohort.
+        """,
+    ]
+    window_sizes: TypeAlias = Annotated[
+        Tuple[int, ...],
+        """
+        The sizes of windows (number of sites) used to calculate statistics within.
+        """,
+    ]
+    window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
+    window_size: TypeAlias = Annotated[
+        int,
+        """
+        The size of windows (number of sites) used to calculate statistics within.
+        """,
+    ]
+    min_cohort_size_default: base_params.min_cohort_size = 20
+    max_cohort_size_default: base_params.max_cohort_size = 50
 
 
 class fst_params:
@@ -7565,77 +7603,55 @@ class AnophelesDataResource(ABC):
         bokeh.plotting.show(fig)
 
     def _garud_g123(self, gt):
-        """Compute Garud's G1, G12, G123, G2/G1."""
-        f = _diplotype_frequencies(gt)
-        # convert dict to array of sorted frequencies
-        f = np.sort(np.fromiter(f.values(), dtype=float))[::-1]
+        """Compute Garud's G123."""
+
+        # compute diplotype frequencies
+        frq_counter = _diplotype_frequencies(gt)
+
+        # convert to array of sorted frequencies
+        f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+        # compute G123
+        g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
+
+        # These other statistics are not currently needed, but leaving here
+        # commented out for future reference...
 
         # compute G1
         # g1 = np.sum(f**2)
+
         # compute G12
         # g12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)  # type: ignore[index]
-        # compute G123
-        g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)  # type: ignore[index]
+
         # compute G2/G1
         # g2 = g1 - f[0] ** 2  # type: ignore[index]
         # g2_g1 = g2 / g1
 
         return g123
 
+    @doc(
+        summary="Run a G123 genome-wide selection scan.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            g123="An array with G123 statistic values for each window.",
+        ),
+    )
     def g123_gwss(
         self,
-        contig,
-        window_size,
-        sites=DEFAULT,
-        site_mask=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        random_seed=42,
-    ):
-        """Run g123 GWSS.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate g123 over.
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        g123 : numpy.ndarray
-            An array with g123 statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        window_size: g123_params.window_size,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._g123_gwss_cache_name
@@ -7677,6 +7693,7 @@ class AnophelesDataResource(ABC):
 
     def _g123_gwss(
         self,
+        *,
         contig,
         sites,
         site_mask,
@@ -7687,7 +7704,7 @@ class AnophelesDataResource(ABC):
         max_cohort_size,
         random_seed,
     ):
-        gt, pos = self._load_gt_for_g123(
+        gt, pos = self._load_data_for_g123(
             contig=contig,
             sites=sites,
             site_mask=site_mask,
@@ -7705,79 +7722,31 @@ class AnophelesDataResource(ABC):
 
         return results
 
+    @doc(
+        summary="Plot G123 GWSS data.",
+    )
     def plot_g123_gwss_track(
         self,
-        contig,
-        window_size,
-        sites,
-        site_mask=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        random_seed=42,
-        title=None,
-        sizing_mode=gplt_params.sizing_mode_default,
-        width=gplt_params.width_default,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Plot g123 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate g123 over.
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed g123 statistic across chosen contig.
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: g123_params.window_size,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> gplt_params.figure:
         # compute G123
         x, g123 = self.g123_gwss(
             contig=contig,
@@ -7795,13 +7764,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = sample_query
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -7830,80 +7801,34 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="Plot G123 GWSS data.",
+    )
     def plot_g123_gwss(
         self,
-        contig,
-        window_size,
-        sites,
-        site_mask=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        random_seed=42,
-        title=None,
-        sizing_mode=gplt_params.sizing_mode_default,
-        width=gplt_params.width_default,
-        track_height=170,
-        genes_height=gplt_params.genes_height_default,
+        contig: base_params.contig,
+        window_size: g123_params.window_size,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
     ):
-        """Plot g123 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate g123 over.
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site mask to use. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed g123 statistic with gene track on x-axis.
-        """
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
         # gwss track
         fig1 = self.plot_g123_gwss_track(
             contig=contig,
@@ -7935,7 +7860,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -7943,10 +7868,11 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
-    def _load_gt_for_g123(
+    def _load_data_for_g123(
         self,
+        *,
         contig,
         sites,
         site_mask,
@@ -7984,6 +7910,7 @@ class AnophelesDataResource(ABC):
             hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
             pos = pos[hap_site_mask]
             gt = gt.compress(hap_site_mask, axis=0)
+
         elif sites == "segregating":
             debug("subsetting to segregating sites")
             ac = gt.count_alleles(max_allele=3)
@@ -7991,63 +7918,34 @@ class AnophelesDataResource(ABC):
             pos = pos[seg]
             gt = gt.compress(seg, axis=0)
 
+        elif sites == "all":
+            debug("using all sites")
+
         return gt, pos
 
-    def g123_calibration(
-        self,
-        contig,
-        sites=DEFAULT,
-        site_mask=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-    ):
-        """Generate g123 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site mask to use. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate g123 over. Multiple window
-            sizes should be used to calibrate the optimal size for g123 site_mask.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        calibration runs : list of numpy.ndarray
+    @doc(
+        summary="Generate g123 GWSS calibration data for different window sizes.",
+        returns="""
             A list of g123 calibration run arrays for each window size, containing
             values and percentiles.
-
-        """
-
+        """,
+    )
+    def g123_calibration(
+        self,
+        contig: base_params.contig,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> List[np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._g123_calibration_cache_name
@@ -8078,6 +7976,7 @@ class AnophelesDataResource(ABC):
 
     def _g123_calibration(
         self,
+        *,
         contig,
         sites,
         site_mask,
@@ -8088,7 +7987,7 @@ class AnophelesDataResource(ABC):
         window_sizes,
         random_seed,
     ):
-        gt, _ = self._load_gt_for_g123(
+        gt, _ = self._load_data_for_g123(
             contig=contig,
             sites=sites,
             site_mask=site_mask,
@@ -8108,67 +8007,26 @@ class AnophelesDataResource(ABC):
 
         return calibration_runs
 
+    @doc(
+        summary="Plot g123 GWSS calibration data for different window sizes.",
+    )
     def plot_g123_calibration(
         self,
-        contig,
-        sites,
-        site_mask=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-        title=None,
+        contig: base_params.contig,
+        sites: g123_params.sites,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
     ):
-        """Plot g123 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site_mask to use. See the `phasing_site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate g123 over. Multiple window
-            sizes should be used to calibrate the optimal size for g123 site_mask.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-
-        Returns
-        -------
-        fig : figure
-            A plot showing g123 calibration run percentiles for different window
-            sizes.
-
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         # get g123 values
         calibration_runs = self.g123_calibration(
             contig=contig,
@@ -8198,7 +8056,7 @@ class AnophelesDataResource(ABC):
         ]
 
         # make plot
-        fig = bkplt.figure(width=700, height=400, x_axis_type="log")
+        fig = bokeh.plotting.figure(width=700, height=400, x_axis_type="log")
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -8219,11 +8077,11 @@ class AnophelesDataResource(ABC):
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
+        fig.x_range = bokeh.models.Range1d(window_sizes[0], window_sizes[-1])
         if title is None:
             title = sample_query
         fig.title = title
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
     @doc(
         summary="""
