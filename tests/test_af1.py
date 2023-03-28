@@ -26,7 +26,7 @@ def setup_af1(url="simplecache::gs://vo_afun_release/", **kwargs):
     return Af1(url, **kwargs)
 
 
-def test_ag3_repr():
+def test_repr():
     af1 = setup_af1(check_location=True)
     assert isinstance(af1, Af1)
     r = repr(af1)

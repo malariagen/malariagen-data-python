@@ -1,19 +1,24 @@
 name: linting
 on:
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
 jobs:
-  linting:
-    strategy:
-      fail-fast: true
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
-      - uses: pre-commit/action@v3.0.0
+    linting:
+        strategy:
+            fail-fast: true
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v3
+            - uses: actions/setup-python@v4
+              with:
+                  python-version: '3.10'
+            - uses: pre-commit/action@v3.0.0
+            - name: Install mypy
+              run: pip install mypy
+            - name: Run mypy
+              run: |
+                  mypy malariagen_data tests --ignore-missing-imports

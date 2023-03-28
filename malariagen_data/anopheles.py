@@ -3,20 +3,32 @@ import sys
 import warnings
 from abc import ABC, abstractmethod
 from collections import Counter
+from itertools import cycle
 from pathlib import Path
 from textwrap import dedent
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
+import bokeh.layouts
+import bokeh.models
+import bokeh.palettes
+import bokeh.plotting
 import dask.array as da
+import igv_notebook
 import ipinfo
+import ipyleaflet
 import numba
 import numpy as np
 import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import xarray as xr
+import xyzservices
 import zarr
-from bokeh import palettes
+from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
+from typing_extensions import Annotated, Literal, TypeAlias
 
 try:
     # noinspection PyPackageRequirements
@@ -52,17 +64,765 @@ from .util import (
 )
 
 DEFAULT = "default"
-# width in px for bokeh genome plots - leave as None to allow stretching
-DEFAULT_GENOME_PLOT_WIDTH = None
-# see also https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-DEFAULT_GENOME_PLOT_SIZING_MODE = "stretch_width"
-DEFAULT_GENES_TRACK_HEIGHT = 120  # height in px for bokeh genes track plots
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
 
 
+class base_params:
+    """Parameter definitions common to many functions."""
+
+    contig: TypeAlias = Annotated[
+        str,
+        """
+        Reference genome contig name. See the `contigs` property for valid contig
+        names.
+        """,
+    ]
+    region: TypeAlias = Annotated[
+        Union[str, Region],
+        """
+        Region of the reference genome. Can be a contig name, region string
+        (formatted like "{contig}:{start}-{end}"), or identifier of a genome
+        feature such as a gene or transcript.
+        """,
+    ]
+    release: TypeAlias = Annotated[
+        Union[str, Sequence[str]],
+        "Release version identifier.",
+    ]
+    sample_set: TypeAlias = Annotated[
+        str,
+        "Sample set identifier.",
+    ]
+    sample_sets: TypeAlias = Annotated[
+        Union[Sequence[str], str],
+        """
+        List of sample sets and/or releases. Can also be a single sample set or
+        release.
+        """,
+    ]
+    sample_query: TypeAlias = Annotated[
+        str,
+        """
+        A pandas query string to be evaluated against the sample metadata.
+        """,
+    ]
+    cohort1_query: TypeAlias = Annotated[
+        str,
+        """
+        A pandas query string to be evaluated against the sample metadata,
+        to select samples for the first cohort.
+        """,
+    ]
+    cohort2_query: TypeAlias = Annotated[
+        str,
+        """
+        A pandas query string to be evaluated against the sample metadata,
+        to select samples for the second cohort.
+        """,
+    ]
+    site_mask: TypeAlias = Annotated[
+        str,
+        """
+        Which site filters mask to apply. See the `site_mask_ids` property for
+        available values.
+        """,
+    ]
+    site_class: TypeAlias = Annotated[
+        str,
+        """
+        Select sites belonging to one of the following classes: CDS_DEG_4,
+        (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+        degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+        INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+        longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
+        5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
+        splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
+        untranslated region), INTERGENIC (intergenic, more than 10 kbp from
+        a gene).
+        """,
+    ]
+    cohort_size: TypeAlias = Annotated[
+        int,
+        """
+        Randomly down-sample to this value if the number of samples in the
+        cohort is greater. Raise an error if the number of samples is less
+        than this value.
+        """,
+    ]
+    min_cohort_size: TypeAlias = Annotated[
+        int,
+        """
+        Minimum cohort size. Raise an error if the number of samples is
+        less than this value.
+        """,
+    ]
+    max_cohort_size: TypeAlias = Annotated[
+        int,
+        """
+        Randomly down-sample to this value if the number of samples in the
+        cohort is greater.
+        """,
+    ]
+    random_seed: TypeAlias = Annotated[
+        int,
+        "Random seed used for reproducible down-sampling.",
+    ]
+    transcript: TypeAlias = Annotated[
+        str,
+        "Gene transcript identifier.",
+    ]
+    cohort: TypeAlias = Annotated[
+        Union[str, Tuple[str, str]],
+        """
+        Either a string giving one of the predefined cohort labels, or a
+        pair of strings giving a custom cohort label and a sample query.
+        """,
+    ]
+    cohorts: TypeAlias = Annotated[
+        Union[str, Mapping[str, str]],
+        """
+        Either a string giving the name of a predefined cohort set (e.g.,
+        "admin1_month") or a dict mapping custom cohort labels to sample
+        queries.
+        """,
+    ]
+    n_jack: TypeAlias = Annotated[
+        int,
+        """
+        Number of blocks to divide the data into for the block jackknife
+        estimation of confidence intervals. N.B., larger is not necessarily
+        better.
+        """,
+    ]
+    confidence_level: TypeAlias = Annotated[
+        float,
+        """
+        Confidence level to use for confidence interval calculation. E.g., 0.95
+        means 95% confidence interval.
+        """,
+    ]
+    field: TypeAlias = Annotated[str, "Name of array or column to access."]
+    inline_array: TypeAlias = Annotated[
+        bool,
+        "Passed through to dask `from_array()`.",
+    ]
+    inline_array_default: inline_array = True
+    chunks: TypeAlias = Annotated[
+        str,
+        """
+        If 'auto' let dask decide chunk size. If 'native' use native zarr
+        chunks. Also, can be a target size, e.g., '200 MiB'.
+        """,
+    ]
+    chunks_default: chunks = "native"
+
+
+class hap_params:
+    """Parameter definitions for haplotype functions."""
+
+    analysis: TypeAlias = Annotated[
+        str,
+        """
+        Which haplotype phasing analysis to use. See the
+        `phasing_analysis_ids` property for available values.
+        """,
+    ]
+
+
+class h12_params:
+    """Parameter definitions for H12 analysis functions."""
+
+    window_sizes: TypeAlias = Annotated[
+        Tuple[int, ...],
+        """
+        The sizes of windows (number of SNPs) used to calculate statistics within.
+        """,
+    ]
+    window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
+    window_size: TypeAlias = Annotated[
+        int,
+        """
+        The size of windows (number of SNPs) used to calculate statistics within.
+        """,
+    ]
+
+
+class g123_params:
+    """Parameter definitions for G123 analysis functions."""
+
+    sites: TypeAlias = Annotated[
+        str,
+        """
+        Which sites to use: 'all' includes all sites that pass
+        site filters; 'segregating' includes only segregating sites for
+        the given cohort; or a phasing analysis identifier can be
+        provided to use sites from the haplotype data, which is an
+        approximation to finding segregating sites in the entire Ag3.0
+        (gambiae complex) or Af1.0 (funestus) cohort.
+        """,
+    ]
+    window_sizes: TypeAlias = Annotated[
+        Tuple[int, ...],
+        """
+        The sizes of windows (number of sites) used to calculate statistics within.
+        """,
+    ]
+    window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
+    window_size: TypeAlias = Annotated[
+        int,
+        """
+        The size of windows (number of sites) used to calculate statistics within.
+        """,
+    ]
+    min_cohort_size_default: base_params.min_cohort_size = 20
+    max_cohort_size_default: base_params.max_cohort_size = 50
+
+
+class fst_params:
+    """Parameter definitions for Fst functions."""
+
+    # N.B., window size can mean different things for different functions
+    window_size: TypeAlias = Annotated[
+        int,
+        "The size of windows (number of sites) used to calculate statistics within.",
+    ]
+
+
+class frq_params:
+    """Parameter definitions for functions computing and plotting allele frequencies."""
+
+    drop_invariant: TypeAlias = Annotated[
+        bool,
+        """
+        If True, drop variants not observed in the selected samples.
+        """,
+    ]
+    effects: TypeAlias = Annotated[bool, "If True, add SNP effect annotations."]
+    area_by: TypeAlias = Annotated[
+        str,
+        """
+        Column name in the sample metadata to use to group samples spatially. E.g.,
+        use "admin1_iso" or "admin1_name" to group by level 1 administrative
+        divisions, or use "admin2_name" to group by level 2 administrative
+        divisions.
+        """,
+    ]
+    period_by: TypeAlias = Annotated[
+        Literal["year", "quarter", "month"],
+        "Length of time to group samples temporally.",
+    ]
+    variant_query: TypeAlias = Annotated[
+        str,
+        "A pandas query to be evaluated against variants.",
+    ]
+    nobs_mode: TypeAlias = Annotated[
+        Literal["called", "fixed"],
+        """
+        Method for calculating the denominator when computing frequencies. If
+        "called" then use the number of called alleles, i.e., number of samples
+        with non-missing genotype calls multiplied by 2. If "fixed" then use the
+        number of samples multiplied by 2.
+        """,
+    ]
+    nobs_mode_default: nobs_mode = "called"
+    ci_method: TypeAlias = Annotated[
+        Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"],
+        """
+        Method to use for computing confidence intervals, passed through to
+        `statsmodels.stats.proportion.proportion_confint`.
+        """,
+    ]
+    ci_method_default: ci_method = "wilson"
+    ds_frequencies_advanced: TypeAlias = Annotated[
+        xr.Dataset,
+        """
+        A dataset of variant frequencies, such as returned by
+        `snp_allele_frequencies_advanced()`,
+        `aa_allele_frequencies_advanced()` or
+        `gene_cnv_frequencies_advanced()`.
+        """,
+    ]
+
+
+class map_params:
+    center: TypeAlias = Annotated[
+        Tuple[int, int],
+        "Location to center the map.",
+    ]
+    center_default: center = (-2, 20)
+    zoom: TypeAlias = Annotated[int, "Initial zoom level."]
+    zoom_default: zoom = 3
+    basemap: TypeAlias = Annotated[
+        Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
+        """
+        Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
+        basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
+        """,
+    ]
+    basemap_default: basemap = "mapnik"
+    height: TypeAlias = Annotated[
+        Union[int, str], "Height of the map in pixels (px) or other units."
+    ]
+    height_default: height = 500
+    width: TypeAlias = Annotated[
+        Union[int, str], "Width of the map in pixels (px) or other units."
+    ]
+    width_default: width = "100%"
+
+
+class gplt_params:
+    """Parameters for genome plotting functions. N.B., genome plots are always
+    plotted with bokeh."""
+
+    sizing_mode: TypeAlias = Annotated[
+        Literal[
+            "fixed",
+            "stretch_width",
+            "stretch_height",
+            "stretch_both",
+            "scale_width",
+            "scale_height",
+            "scale_both",
+        ],
+        """
+        Bokeh plot sizing mode, see also
+        https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
+        """,
+    ]
+    sizing_mode_default: sizing_mode = "stretch_width"
+    width: TypeAlias = Annotated[
+        Optional[int],  # always can be None
+        "Plot width in pixels (px).",
+    ]
+    width_default: width = None
+    height: TypeAlias = Annotated[
+        int,
+        "Plot height in pixels (px).",
+    ]
+    track_height: TypeAlias = Annotated[
+        int,
+        "Main track height in pixels (px).",
+    ]
+    genes_height: TypeAlias = Annotated[
+        int,
+        "Genes track height in pixels (px).",
+    ]
+    genes_height_default: genes_height = 120
+    show: TypeAlias = Annotated[
+        bool,
+        "If true, show the plot.",
+    ]
+    toolbar_location: TypeAlias = Annotated[
+        Literal["above", "below", "left", "right"],
+        "Location of bokeh toolbar.",
+    ]
+    toolbar_location_default: toolbar_location = "above"
+    x_range: TypeAlias = Annotated[
+        bokeh.models.Range1d,
+        "X axis range (for linking to other tracks).",
+    ]
+    title: TypeAlias = Annotated[
+        Union[str, bool],
+        "Plot title. If True, a title may be automatically generated.",
+    ]
+    figure: TypeAlias = Annotated[
+        bokeh.plotting.figure,
+        "A bokeh figure.",
+    ]
+
+
+class het_params:
+    """Parameters for functions related to heterozygosity and runs of homozygosity."""
+
+    sample: TypeAlias = Annotated[
+        Union[str, int],
+        "Sample identifier or index within sample set.",
+    ]
+    window_size: TypeAlias = Annotated[
+        int,
+        "Number of sites per window.",
+    ]
+    window_size_default: window_size = 20_000
+    phet_roh: TypeAlias = Annotated[
+        float,
+        "Probability of observing a heterozygote in a ROH.",
+    ]
+    phet_roh_default: phet_roh = 0.001
+    phet_nonroh: TypeAlias = Annotated[
+        Tuple[float, ...],
+        "One or more probabilities of observing a heterozygote outside a ROH.",
+    ]
+    phet_nonroh_default: phet_nonroh = (0.003, 0.01)
+    transition: TypeAlias = Annotated[
+        float,
+        """
+        Probability of moving between states. A larger window size may call
+        for a larger transitional probability.
+        """,
+    ]
+    transition_default: transition = 0.001
+    y_max: TypeAlias = Annotated[
+        float,
+        "Y axis limit.",
+    ]
+    y_max_default: y_max = 0.03
+    circle_kwargs: TypeAlias = Annotated[
+        Mapping,
+        "Passed through to bokeh circle() function.",
+    ]
+    df_roh: TypeAlias = Annotated[
+        pd.DataFrame,
+        """
+        A DataFrame where each row provides data about a single run of
+        homozygosity.
+        """,
+    ]
+    heterozygosity_height: TypeAlias = Annotated[
+        int,
+        "Height in pixels (px) of heterozygosity track.",
+    ]
+    roh_height: TypeAlias = Annotated[
+        int,
+        "Height in pixels (px) of runs of homozygosity track.",
+    ]
+
+
+class pca_params:
+    """Parameters for PCA functions."""
+
+    n_snps: TypeAlias = Annotated[
+        int,
+        """
+        The desired number of SNPs to use when running the analysis.
+        SNPs will be evenly thinned to approximately this number.
+        """,
+    ]
+    thin_offset: TypeAlias = Annotated[
+        int,
+        """
+        Starting index for SNP thinning. Change this to repeat the analysis
+        using a different set of SNPs.
+        """,
+    ]
+    thin_offset_default: thin_offset = 0
+    min_minor_ac: TypeAlias = Annotated[
+        int,
+        """
+        The minimum minor allele count. SNPs with a minor allele count
+        below this value will be excluded prior to thinning.
+        """,
+    ]
+    min_minor_ac_default: min_minor_ac = 2
+    max_missing_an: TypeAlias = Annotated[
+        int,
+        """
+        The maximum number of missing allele calls to accept. SNPs with
+        more than this value will be excluded prior to thinning. Set to 0
+        (default) to require no missing calls.
+        """,
+    ]
+    max_missing_an_default = 0
+    n_components: TypeAlias = Annotated[
+        int,
+        "Number of components to return.",
+    ]
+    n_components_default: n_components = 20
+    df_pca: TypeAlias = Annotated[
+        pd.DataFrame,
+        """
+        A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
+        etc., added.
+        """,
+    ]
+    evr: TypeAlias = Annotated[
+        np.ndarray,
+        "An array of explained variance ratios, one per component.",
+    ]
+
+
+class plotly_params:
+    """Parameters for any plotting functions using plotly."""
+
+    # N.B., most of these parameters are always able to take None
+    # and so we set as Optional here, rather than having to repeat
+    # that for each function doc.
+
+    x_label: TypeAlias = Annotated[
+        Optional[str],
+        "X axis label.",
+    ]
+    y_label: TypeAlias = Annotated[
+        Optional[str],
+        "Y axis label.",
+    ]
+    width: TypeAlias = Annotated[
+        Optional[int],
+        "Plot width in pixels (px).",
+    ]
+    height: TypeAlias = Annotated[
+        Optional[int],
+        "Plot height in pixels (px).",
+    ]
+    aspect: TypeAlias = Annotated[
+        Optional[Literal["equal", "auto"]],
+        "Aspect ratio, see also https://plotly.com/python-api-reference/generated/plotly.express.imshow",
+    ]
+    title: TypeAlias = Annotated[
+        Optional[Union[str, bool]],
+        """
+        If True, attempt to use metadata from input dataset as a plot title.
+        Otherwise, use supplied value as a title.
+        """,
+    ]
+    text_auto: TypeAlias = Annotated[
+        Union[bool, str],
+        """
+        If True or a string, single-channel img values will be displayed as text. A
+        string like '.2f' will be interpreted as a texttemplate numeric formatting
+        directive.
+        """,
+    ]
+    color_continuous_scale: TypeAlias = Annotated[
+        Optional[Union[str, List[str]]],
+        """
+        Colormap used to map scalar data to colors (for a 2D image). This
+        parameter is not used for RGB or RGBA images. If a string is provided,
+        it should be the name of a known color scale, and if a list is provided,
+        it should be a list of CSS-compatible colors.
+        """,
+    ]
+    colorbar: TypeAlias = Annotated[
+        bool,
+        "If False, do not display a color bar.",
+    ]
+    x: TypeAlias = Annotated[
+        str,
+        "Name of variable to plot on the X axis.",
+    ]
+    y: TypeAlias = Annotated[
+        str,
+        "Name of variable to plot on the Y axis.",
+    ]
+    z: TypeAlias = Annotated[
+        str,
+        "Name of variable to plot on the Z axis.",
+    ]
+    color: TypeAlias = Annotated[
+        Optional[str],
+        "Name of variable to use to color the markers.",
+    ]
+    symbol: TypeAlias = Annotated[
+        Optional[str],
+        "Name of the variable to use to choose marker symbols.",
+    ]
+    jitter_frac: TypeAlias = Annotated[
+        Optional[float],
+        "Randomly jitter points by this fraction of their range.",
+    ]
+    marker_size: TypeAlias = Annotated[
+        int,
+        "Marker size.",
+    ]
+    template: TypeAlias = Annotated[
+        Optional[
+            Literal[
+                "ggplot2",
+                "seaborn",
+                "simple_white",
+                "plotly",
+                "plotly_white",
+                "plotly_dark",
+                "presentation",
+                "xgridoff",
+                "ygridoff",
+                "gridon",
+                "none",
+            ]
+        ],
+        "The figure template name (must be a key in plotly.io.templates).",
+    ]
+    figure: TypeAlias = Annotated[go.Figure, "A plotly figure."]
+
+
+class ihs_params:
+    window_size: TypeAlias = Annotated[
+        int,
+        """
+        The size of window in number of SNPs used to summarise iHS over.
+        If None, per-variant iHS values are returned.
+        """,
+    ]
+    window_size_default: window_size = 200
+    percentiles: TypeAlias = Annotated[
+        Union[int, Tuple[int, ...]],
+        """
+        If window size is specified, this returns the iHS percentiles
+        for each window.
+        """,
+    ]
+    percentiles_default: percentiles = (50, 75, 100)
+    standardize: TypeAlias = Annotated[
+        bool, "If True, standardize iHS values by alternate allele counts."
+    ]
+    standardization_bins: TypeAlias = Annotated[
+        Tuple[float, ...],
+        "If provided, use these allele count bins to standardize iHS values.",
+    ]
+    standardization_n_bins: TypeAlias = Annotated[
+        int,
+        """
+        Number of allele count bins to use for standardization.
+        Overrides standardization_bins.
+        """,
+    ]
+    standardization_n_bins_default: standardization_n_bins = 20
+    standardization_diagnostics: TypeAlias = Annotated[
+        bool, "If True, plot some diagnostics about the standardization."
+    ]
+    filter_min_maf: TypeAlias = Annotated[
+        float,
+        """
+        Minimum minor allele frequency to use for filtering prior to passing
+        haplotypes to allel.ihs function
+        """,
+    ]
+    filter_min_maf_default: filter_min_maf = 0.05
+    compute_min_maf: TypeAlias = Annotated[
+        float,
+        """
+        Do not compute integrated haplotype homozygosity for variants with
+        minor allele frequency below this threshold.
+        """,
+    ]
+    compute_min_maf_default: compute_min_maf = 0.05
+    min_ehh: TypeAlias = Annotated[
+        float,
+        """
+        Minimum EHH beyond which to truncate integrated haplotype homozygosity
+        calculation.
+        """,
+    ]
+    min_ehh_default: min_ehh = 0.05
+    max_gap: TypeAlias = Annotated[
+        int,
+        """
+        Do not report scores if EHH spans a gap larger than this number of
+        base pairs.
+        """,
+    ]
+    max_gap_default: max_gap = 200_000
+    gap_scale: TypeAlias = Annotated[
+        int, "Rescale distance between variants if gap is larger than this value."
+    ]
+    gap_scale_default: gap_scale = 20_000
+    include_edges: TypeAlias = Annotated[
+        bool,
+        """
+        If True, report scores even if EHH does not decay below min_ehh at the
+        end of the chromosome.
+        """,
+    ]
+    use_threads: TypeAlias = Annotated[
+        bool, "If True, use multiple threads to compute iHS."
+    ]
+    palette: TypeAlias = Annotated[
+        str, "Name of bokeh palette to use for plotting multiple percentiles."
+    ]
+    palette_default: palette = "Blues"
+
+
+class hapclust_params:
+    linkage_method: TypeAlias = Annotated[
+        Literal[
+            "single", "complete", "average", "weighted", "centroid", "median", "ward"
+        ],
+        """
+        The linkage algorithm to use. See the Linkage Methods section of the
+        scipy.cluster.hierarchy.linkage docs for full descriptions.
+        """,
+    ]
+    linkage_method_default: linkage_method = "single"
+    count_sort: TypeAlias = Annotated[
+        bool,
+        """
+        For each node n, the order (visually, from left-to-right) n's two descendant
+        links are plotted is determined by this parameter. If True, the child with
+        the minimum number of original objects in its cluster is plotted first. Note
+        distance_sort and count_sort cannot both be True.
+        """,
+    ]
+    distance_sort: TypeAlias = Annotated[
+        bool,
+        """
+        For each node n, the order (visually, from left-to-right) n's two descendant
+        links are plotted is determined by this parameter. If True, The child with the
+        minimum distance between its direct descendants is plotted first.
+        """,
+    ]
+
+
+class hapnet_params:
+    max_dist: TypeAlias = Annotated[
+        int,
+        "Join network components up to a maximum distance of 2 SNP differences.",
+    ]
+    max_dist_default: max_dist = 2
+    color: TypeAlias = Annotated[
+        str,
+        """
+        Identifies a column in the sample metadata which determines the colour
+        of pie chart segments within nodes.
+        """,
+    ]
+    color_discrete_sequence: TypeAlias = Annotated[
+        List, "Provide a list of colours to use."
+    ]
+    color_discrete_map: TypeAlias = Annotated[
+        Mapping, "Provide an explicit mapping from values to colours."
+    ]
+    category_order: TypeAlias = Annotated[
+        List,
+        "Control the order in which values appear in the legend.",
+    ]
+    node_size_factor: TypeAlias = Annotated[
+        int,
+        "Control the sizing of nodes.",
+    ]
+    node_size_factor_default: node_size_factor = 50
+    layout: TypeAlias = Annotated[
+        str,
+        "Name of the network layout to use to position nodes.",
+    ]
+    layout_default: layout = "cose"
+    layout_params: TypeAlias = Annotated[
+        Mapping,
+        "Additional parameters to the layout algorithm.",
+    ]
+
+
+class dash_params:
+    height: TypeAlias = Annotated[int, "Height of the Dash app in pixels (px)."]
+    width: TypeAlias = Annotated[Union[int, str], "Width of the Dash app."]
+    server_mode: TypeAlias = Annotated[
+        Literal["inline", "external", "jupyterlab"],
+        """
+        Controls how the Jupyter Dash app will be launched. See
+        https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
+        more information.
+        """,
+    ]
+    server_mode_default: server_mode = "inline"
+    server_port: TypeAlias = Annotated[
+        int,
+        "Manually override the port on which the Dash app will run.",
+    ]
+
+
+# work around pycharm failing to recognise that doc() is callable
+# noinspection PyCallingNonCallable
 class AnophelesDataResource(ABC):
     """Base class for Anopheles data resources."""
 
@@ -308,6 +1068,11 @@ class AnophelesDataResource(ABC):
         raise NotImplementedError("Must override _h1x_gwss_cache_name")
 
     @property
+    @abstractmethod
+    def _ihs_gwss_cache_name(self):
+        raise NotImplementedError("Must override _ihs_gwss_cache_name")
+
+    @property
     def _geneset_gff3_path(self):
         return self._config.get("GENESET_GFF3_PATH")
 
@@ -444,68 +1209,35 @@ class AnophelesDataResource(ABC):
         np.savez_compressed(results_path, **results)
         debug(f"saved {name}/{cache_key}")
 
-    def snp_allele_counts(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        site_class=None,
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Compute SNP allele counts. This returns the number of times each
-        SNP allele was observed in the selected samples.
-
-        Parameters
-        ----------
-        region : str or Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ac : np.ndarray
+    @doc(
+        summary="""
+            Compute SNP allele counts. This returns the number of times each
+            SNP allele was observed in the selected samples.
+        """,
+        returns="""
             A numpy array of shape (n_variants, 4), where the first column has
             the reference allele (0) counts, the second column has the first
             alternate allele (1) counts, the third column has the second
             alternate allele (2) counts, and the fourth column has the third
             alternate allele (3) counts.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
-
+        """,
+        notes="""
+            This computation may take some time to run, depending on your
+            computing environment. Results of this computation will be cached
+            and re-used if the `results_cache` parameter was set when
+            instantiating the class.
+        """,
+    )
+    def snp_allele_counts(
+        self,
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+    ) -> np.ndarray:
         # change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data
         name = self._snp_allele_counts_results_cache_name
@@ -536,62 +1268,12 @@ class AnophelesDataResource(ABC):
         ac = results["ac"]
         return ac
 
-    def snp_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        drop_invariant=True,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        SNP allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples
-            spatially. E.g., use "admin1_iso" or "admin1_name" to group by level
-            1 administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        variant_query : str, optional
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
+    @doc(
+        summary="""
+            Group samples by taxon, area (space) and period (time), then compute
+            SNP allele frequencies.
+        """,
+        returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
             arrays with data about the cohorts, such as the area, period, taxon
@@ -600,8 +1282,22 @@ class AnophelesDataResource(ABC):
             contig, position, reference and alternate alleles. Variables
             prefixed with "event" are 2-dimensional arrays with the allele
             counts and frequency calculations.
-
-        """
+        """,
+    )
+    def snp_allele_frequencies_advanced(
+        self,
+        transcript: base_params.transcript,
+        area_by: frq_params.area_by,
+        period_by: frq_params.period_by,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: base_params.min_cohort_size = 10,
+        drop_invariant: frq_params.drop_invariant = True,
+        variant_query: Optional[frq_params.variant_query] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        nobs_mode: frq_params.nobs_mode = frq_params.nobs_mode_default,
+        ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("check parameters")
@@ -780,12 +1476,10 @@ class AnophelesDataResource(ABC):
     @staticmethod
     def _bokeh_style_genome_xaxis(fig, contig):
         """Standard styling for X axis of genome plots."""
-        import bokeh.models as bkmod
-
         fig.xaxis.axis_label = f"Contig {contig} position (bp)"
-        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+        fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
     @staticmethod
     def _locate_cohorts(*, cohorts, df_samples):
@@ -1019,9 +1713,11 @@ class AnophelesDataResource(ABC):
         # moving window computation of het counts
         from allel.stats.roh import _hmm_derive_transition_matrix
 
-        # Unresolved references
         # noinspection PyUnresolvedReferences
-        from pomegranate import HiddenMarkovModel, PoissonDistribution
+        from pomegranate import (  # pyright: ignore
+            HiddenMarkovModel,
+            PoissonDistribution,
+        )
 
         # het probabilities
         het_px = np.concatenate([(phet_roh,), phet_nonroh])
@@ -1106,19 +1802,11 @@ class AnophelesDataResource(ABC):
         else:
             raise RuntimeError(f"Unexpected release path: {path!r}")
 
-    def open_site_filters(self, mask):
-        """Open site filters zarr.
-
-        Parameters
-        ----------
-        mask : str
-            Mask to use, e.g. "gamb_colu".
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open site filters zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_site_filters(self, mask: base_params.site_mask) -> zarr.hierarchy.Group:
         try:
             return self._cache_site_filters[mask]
         except KeyError:
@@ -1128,14 +1816,11 @@ class AnophelesDataResource(ABC):
             self._cache_site_filters[mask] = root
             return root
 
-    def open_snp_sites(self):
-        """Open SNP sites zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open SNP sites zarr",
+        returns="Zarr hierarchy.",
+    )
+    def open_snp_sites(self) -> zarr.hierarchy.Group:
         if self._cache_snp_sites is None:
             path = f"{self._base_path}/{self._major_version_gcs_str}/snp_genotypes/all/sites/"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -1152,21 +1837,14 @@ class AnophelesDataResource(ABC):
         df["release"] = release
         return df
 
-    def sample_sets(self, release=None):
-        """Access a dataframe of sample sets.
-
-        Parameters
-        ----------
-        release : str, optional
-            Release identifier, e.g. give "3.0" to access the v3.0 data release.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of sample sets, one row per sample set.
-
-        """
-
+    @doc(
+        summary="Access a dataframe of sample sets",
+        returns="A dataframe of sample sets, one row per sample set.",
+    )
+    def sample_sets(
+        self,
+        release: Optional[base_params.release] = None,
+    ) -> pd.DataFrame:
         if release is None:
             # retrieve sample sets from all available releases
             release = self.releases
@@ -1203,25 +1881,27 @@ class AnophelesDataResource(ABC):
 
         return df.copy()
 
-    def _prep_sample_sets_param(self, *, sample_sets):
+    def _prep_sample_sets_param(
+        self, *, sample_sets: Optional[base_params.sample_sets]
+    ) -> List[str]:
         """Common handling for the `sample_sets` parameter. For convenience, we
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
 
         if sample_sets is None:
             # all available sample sets
-            sample_sets = self.sample_sets()["sample_set"].tolist()
+            prepped_sample_sets = self.sample_sets()["sample_set"].tolist()
 
         elif isinstance(sample_sets, str):
             if sample_sets.startswith(f"{self._major_version_int}."):
                 # convenience, can use a release identifier to denote all sample sets in a release
-                sample_sets = self.sample_sets(release=sample_sets)[
+                prepped_sample_sets = self.sample_sets(release=sample_sets)[
                     "sample_set"
                 ].tolist()
 
             else:
                 # single sample set, normalise to always return a list
-                sample_sets = [sample_sets]
+                prepped_sample_sets = [sample_sets]
 
         elif isinstance(sample_sets, (list, tuple)):
             # list or tuple of sample sets or releases
@@ -1235,7 +1915,6 @@ class AnophelesDataResource(ABC):
                     prepped_sample_sets.append(sp)
                 else:
                     prepped_sample_sets.extend(sp)
-            sample_sets = prepped_sample_sets
 
         else:
             raise TypeError(
@@ -1243,14 +1922,15 @@ class AnophelesDataResource(ABC):
             )
 
         # check all sample sets selected at most once
-        counter = Counter(sample_sets)
+        counter = Counter(prepped_sample_sets)
         for k, v in counter.items():
+            # TODO could relax here, just remove any duplicates for the user
             if v > 1:
                 raise ValueError(
                     f"Bad value for sample_sets parameter, {k:!r} selected more than once."
                 )
 
-        return sample_sets
+        return prepped_sample_sets
 
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
@@ -1311,30 +1991,15 @@ class AnophelesDataResource(ABC):
             self._cache_general_metadata[sample_set] = df
         return df.copy()
 
+    @doc(
+        summary="Access sample metadata for one or more sample sets.",
+        returns="A dataframe of sample metadata, one row per sample.",
+    )
     def sample_metadata(
         self,
-        sample_sets=None,
-        sample_query=None,
-    ):
-        """Access sample metadata for one or more sample sets.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-
-        Returns
-        -------
-        df_samples : pandas.DataFrame
-            A dataframe of sample metadata, one row per sample.
-
-        """
-
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+    ) -> pd.DataFrame:
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         cache_key = tuple(sample_sets)
 
@@ -1370,25 +2035,26 @@ class AnophelesDataResource(ABC):
 
         return df_samples.copy()
 
-    def add_extra_metadata(self, data, on="sample_id"):
-        """Add extra sample metadata, e.g., including additional columns
-        which you would like to use to query and group samples.
-
-        Parameters
-        ----------
-        data : DataFrame
-            A data frame with one row per sample. Must include either a
-            "sample_id" or "partner_sample_id" column.
-        on : {"sample_id", "partner_sample_id"}
-            Name of column to use when merging with sample metadata.
-
-        Notes
-        -----
-        The values in the column containing sample identifiers must be
-        unique.
-
-        """
-
+    @doc(
+        summary="""
+            Add extra sample metadata, e.g., including additional columns
+            which you would like to use to query and group samples.
+        """,
+        parameters=dict(
+            data="""
+                A data frame with one row per sample. Must include either a
+                "sample_id" or "partner_sample_id" column.
+            """,
+            on="""
+                Name of column to use when merging with sample metadata.
+            """,
+        ),
+        notes="""
+            The values in the column containing sample identifiers must be
+            unique.
+        """,
+    )
+    def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
         # check parameters
         if not isinstance(data, pd.DataFrame):
             raise TypeError("`data` parameter must be a pandas DataFrame")
@@ -1412,8 +2078,10 @@ class AnophelesDataResource(ABC):
         # store extra metadata
         self._extra_metadata.append((on, data.copy()))
 
+    @doc(
+        summary="Clear any extra metadata previously added",
+    )
     def clear_extra_metadata(self):
-        """Clear any extra metadata previously added."""
         self._extra_metadata = []
 
     def _site_filters(
@@ -1436,44 +2104,25 @@ class AnophelesDataResource(ABC):
             d = d[loc_region]
         return d
 
+    @doc(
+        summary="Access SNP site filters.",
+        returns="""
+            An array of boolean values identifying sites that pass the filters.
+        """,
+    )
     def site_filters(
         self,
-        region,
-        mask,
-        field="filter_pass",
-        inline_array=True,
-        chunks="native",
-    ):
-        """Access SNP site filters.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        mask : str
-            Mask to use, e.g. "gamb_colu"
-        field : str, optional
-            Array to access.
-        inline_array : bool, optional
-            Passed through to dask.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
-            An array of boolean values identifying sites that pass the filters.
-
-        """
-
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        region: base_params.region,
+        mask: base_params.site_mask,
+        field: base_params.field = "filter_pass",
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
+        # resolve the region parameter to a standard type
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         d = da.concatenate(
             [
@@ -1484,7 +2133,7 @@ class AnophelesDataResource(ABC):
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-                for r in region
+                for r in resolved_region
             ]
         )
 
@@ -1525,47 +2174,28 @@ class AnophelesDataResource(ABC):
             ret = ret[loc_region]
         return ret
 
+    @doc(
+        summary="Access SNP site data (positions and alleles).",
+        returns="""
+            An array of either SNP positions ("POS"), reference alleles ("REF") or
+            alternate alleles ("ALT").
+        """,
+    )
     def snp_sites(
         self,
-        region,
-        field,
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
-    ):
-        """Access SNP site data (positions and alleles).
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        field : {"POS", "REF", "ALT"}
-            Array to access.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
-            An array of either SNP positions, reference alleles or alternate
-            alleles.
-
-        """
+        region: base_params.region,
+        field: base_params.field,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
         debug = self._log.debug
 
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        # resolve the region parameter to a standard type
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("access SNP sites and concatenate over regions")
         ret = da.concatenate(
@@ -1576,7 +2206,7 @@ class AnophelesDataResource(ABC):
                     chunks=chunks,
                     inline_array=inline_array,
                 )
-                for r in region
+                for r in resolved_region
             ],
             axis=0,
         )
@@ -1584,7 +2214,7 @@ class AnophelesDataResource(ABC):
         debug("apply site mask if requested")
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region,
+                region=resolved_region,
                 mask=site_mask,
                 chunks=chunks,
                 inline_array=inline_array,
@@ -1597,23 +2227,11 @@ class AnophelesDataResource(ABC):
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
-    def resolve_region(self, region):
-        """Convert a genome region into a standard data structure.
-
-        Parameters
-        ----------
-        region: str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-
-        Returns
-        -------
-        out : Region
-            A named tuple with attributes contig, start and end.
-
-        """
-
+    @doc(
+        summary="Convert a genome region into a standard data structure.",
+        returns="An instance of the `Region` class.",
+    )
+    def resolve_region(self, region: base_params.region) -> Region:
         return resolve_region(self, region)
 
     def _prep_region_cache_param(self, *, region):
@@ -1646,18 +2264,13 @@ class AnophelesDataResource(ABC):
 
         return sample_sets, sample_query
 
-    def open_snp_genotypes(self, sample_set):
-        """Open SNP genotypes zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open SNP genotypes zarr for a given sample set.",
+        returns="Zarr hierarchy.",
+    )
+    def open_snp_genotypes(
+        self, sample_set: base_params.sample_set
+    ) -> zarr.hierarchy.Group:
         try:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
@@ -1670,8 +2283,14 @@ class AnophelesDataResource(ABC):
             return root
 
     def _snp_genotypes_for_contig(
-        self, *, contig, sample_set, field, inline_array, chunks
-    ):
+        self,
+        *,
+        contig: str,
+        sample_set: str,
+        field: str,
+        inline_array: bool,
+        chunks: str,
+    ) -> da.Array:
         """Access SNP genotypes for a single contig and a single sample set."""
         assert isinstance(contig, str)
         assert isinstance(sample_set, str)
@@ -1681,64 +2300,37 @@ class AnophelesDataResource(ABC):
 
         return d
 
-    def snp_genotypes(
-        self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        field="GT",
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
-    ):
-        """Access SNP genotypes and associated data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        field : {"GT", "GQ", "AD", "MQ"}
-            Array to access.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
+    @doc(
+        summary="Access SNP genotypes and associated data.",
+        returns="""
             An array of either genotypes (GT), genotype quality (GQ), allele
             depths (AD) or mapping quality (MQ) values.
-
-        """
+        """,
+    )
+    def snp_genotypes(
+        self,
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        field: base_params.field = "GT",
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
         debug = self._log.debug
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("normalise region to list to simplify concatenation logic")
-        if isinstance(region, Region):
-            region = [region]
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("concatenate multiple sample sets and/or contigs")
         lx = []
-        for r in region:
+        for r in resolved_region:
             ly = []
 
             for s in sample_sets:
@@ -1768,7 +2360,7 @@ class AnophelesDataResource(ABC):
         debug("apply site filters if requested")
         if site_mask is not None:
             loc_sites = self.site_filters(
-                region=region,
+                region=resolved_region,
                 mask=site_mask,
             )
             d = da_compress(loc_sites, d, axis=0)
@@ -1781,15 +2373,11 @@ class AnophelesDataResource(ABC):
 
         return d
 
-    def open_genome(self):
-        """Open the reference genome zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-            Zarr hierarchy containing the reference genome sequence.
-
-        """
+    @doc(
+        summary="Open the reference genome zarr.",
+        returns="Zarr hierarchy containing the reference genome sequence.",
+    )
+    def open_genome(self) -> zarr.hierarchy.Group:
         if self._cache_genome is None:
             path = f"{self._base_path}/{self._genome_zarr_path}"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -1804,95 +2392,70 @@ class AnophelesDataResource(ABC):
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
-    def genome_sequence(self, region, inline_array=True, chunks="native"):
-        """Access the reference genome sequence.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
+    @doc(
+        summary="Access the reference genome sequence.",
+        returns="""
             An array of nucleotides giving the reference genome sequence for the
             given contig.
-
-        """
-        region = self.resolve_region(region)
+        """,
+    )
+    def genome_sequence(
+        self,
+        region: base_params.region,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
+        resolved_region: Region = self.resolve_region(region)
+        del region
 
         # obtain complete sequence for the requested contig
         d = self._genome_sequence_for_contig(
-            contig=region.contig, inline_array=inline_array, chunks=chunks
+            contig=resolved_region.contig, inline_array=inline_array, chunks=chunks
         )
 
         # deal with region start and stop
-        if region.start:
-            slice_start = region.start - 1
+        if resolved_region.start:
+            slice_start = resolved_region.start - 1
         else:
             slice_start = None
-        if region.end:
-            slice_stop = region.end
+        if resolved_region.end:
+            slice_stop = resolved_region.end
         else:
             slice_stop = None
         loc_region = slice(slice_start, slice_stop)
 
         return d[loc_region]
 
+    @doc(
+        summary="Compute genome accessibility array.",
+        returns="An array of boolean values identifying accessible genome sites.",
+    )
     def is_accessible(
         self,
-        region,
-        site_mask=DEFAULT,
-    ):
-        """Compute genome accessibility array.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-
-        Returns
-        -------
-        a : numpy.ndarray
-            An array of boolean values identifying accessible genome sites.
-
-        """
+        region: base_params.region,
+        site_mask: base_params.site_mask = DEFAULT,
+    ) -> np.ndarray:
         debug = self._log.debug
 
         debug("resolve region")
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("determine contig sequence length")
-        seq_length = self.genome_sequence(region).shape[0]
+        seq_length = self.genome_sequence(resolved_region).shape[0]
 
         debug("set up output")
         is_accessible = np.zeros(seq_length, dtype=bool)
 
-        pos = self.snp_sites(region=region, field="POS").compute()
-        if region.start:
-            offset = region.start
+        pos = self.snp_sites(region=resolved_region, field="POS").compute()
+        if resolved_region.start:
+            offset = resolved_region.start
         else:
             offset = 1
 
         debug("access site filters")
         filter_pass = self.site_filters(
-            region=region,
+            region=resolved_region,
             mask=site_mask,
         ).compute()
 
@@ -1901,7 +2464,7 @@ class AnophelesDataResource(ABC):
 
         return is_accessible
 
-    def _snp_df(self, *, transcript):
+    def _snp_df(self, *, transcript: str) -> Tuple[Region, pd.DataFrame]:
         """Set up a dataframe with SNP site and filter columns."""
         debug = self._log.debug
 
@@ -1958,28 +2521,18 @@ class AnophelesDataResource(ABC):
             )
         return self._cache_annotator
 
-    def snp_effects(
-        self,
-        transcript,
-        site_mask=None,
-    ):
-        """Compute variant effects for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID (AgamP4.12), e.g., "AGAP004707-RA".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-
-        Returns
-        -------
-        df : pandas.DataFrame
+    @doc(
+        summary="Compute variant effects for a gene transcript.",
+        returns="""
             A dataframe of all possible SNP variants and their effects, one row
             per variant.
-
-        """
+        """,
+    )
+    def snp_effects(
+        self,
+        transcript: base_params.transcript,
+        site_mask: Optional[base_params.site_mask] = None,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         debug("setup initial dataframe of SNPs")
@@ -2084,85 +2637,36 @@ class AnophelesDataResource(ABC):
 
         return ds
 
+    @doc(
+        summary="Access SNP sites, site filters and genotype calls.",
+        returns="A dataset containing SNP sites, site filters and genotype calls.",
+    )
     def snp_calls(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        site_class=None,
-        inline_array=True,
-        chunks="native",
-        cohort_size=None,
-        min_cohort_size=None,
-        max_cohort_size=None,
-        random_seed=42,
-    ):
-        """Access SNP sites, site filters and genotype calls.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size. A ValueError
-            will be raised if the cohort size is smaller than the given value. Overrides
-            min_cohort_size and max_cohort_size.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the
-            cohort size is larger than the given value.
-        min_cohort_size : int, optional
-            If provided, return a ValueError if the cohort size is smaller than
-            the given value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing SNP sites, site filters and genotype calls.
-
-        """
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("access SNP calls and concatenate multiple sample sets and/or regions")
         lx = []
-        for r in region:
+        for r in resolved_region:
             ly = []
             for s in sample_sets:
                 y = self._snp_calls_for_contig(
@@ -2202,8 +2706,8 @@ class AnophelesDataResource(ABC):
         debug("concatenate data from multiple regions")
         ds = xarray_concat(lx, dim=DIM_VARIANT)
 
-        debug("apply site filters")
         if site_mask is not None:
+            debug("apply site filters")
             ds = dask_compress_dataset(
                 ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
             )
@@ -2211,8 +2715,8 @@ class AnophelesDataResource(ABC):
         debug("add call_genotype_mask")
         ds["call_genotype_mask"] = ds["call_genotype"] < 0
 
-        debug("handle sample query")
         if sample_query is not None:
+            debug("handle sample query")
             if isinstance(sample_query, str):
                 df_samples = self.sample_metadata(sample_sets=sample_sets)
                 loc_samples = df_samples.eval(sample_query).values
@@ -2223,35 +2727,30 @@ class AnophelesDataResource(ABC):
                 loc_samples = sample_query
             ds = ds.isel(samples=loc_samples)
 
-        debug("handle cohort size")
         if cohort_size is not None:
+            debug("handle cohort size")
+            # overrides min and max
+            min_cohort_size = cohort_size
+            max_cohort_size = cohort_size
+
+        if min_cohort_size is not None:
+            debug("handle min cohort size")
             n_samples = ds.dims["samples"]
-            if n_samples < cohort_size:
+            if n_samples < min_cohort_size:
                 raise ValueError(
-                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
                 )
-            rng = np.random.default_rng(seed=random_seed)
-            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
-            loc_downsample.sort()
-            ds = ds.isel(samples=loc_downsample)
 
-        if cohort_size is None:
-            if min_cohort_size is not None:
-                n_samples = ds.dims["samples"]
-                if n_samples < min_cohort_size:
-                    raise ValueError(
-                        f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                    )
-
-            if max_cohort_size is not None:
-                n_samples = ds.dims["samples"]
-                if n_samples > max_cohort_size:
-                    rng = np.random.default_rng(seed=random_seed)
-                    loc_downsample = rng.choice(
-                        n_samples, size=max_cohort_size, replace=False
-                    )
-                    loc_downsample.sort()
-                    ds = ds.isel(samples=loc_downsample)
+        if max_cohort_size is not None:
+            debug("handle max cohort size")
+            n_samples = ds.dims["samples"]
+            if n_samples > max_cohort_size:
+                rng = np.random.default_rng(seed=random_seed)
+                loc_downsample = rng.choice(
+                    n_samples, size=max_cohort_size, replace=False
+                )
+                loc_downsample.sort()
+                ds = ds.isel(samples=loc_downsample)
 
         return ds
 
@@ -2277,56 +2776,30 @@ class AnophelesDataResource(ABC):
 
         return data, tooltips
 
+    @doc(
+        summary="Plot a genes track, using bokeh.",
+    )
     def plot_genes(
         self,
-        region,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=DEFAULT_GENES_TRACK_HEIGHT,
-        show=True,
-        toolbar_location="above",
-        x_range=None,
-        title="Genes",
-    ):
-        """Plot a genes track, using bokeh.
-
-        Parameters
-        ----------
-        region : str or Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If true, show the plot.
-        toolbar_location : str, optional
-            Location of bokeh toolbar.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-        title : str, optional
-            Plot title.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        region: base_params.region,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        x_range: Optional[gplt_params.x_range] = None,
+        title: gplt_params.title = "Genes",
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         debug("handle region parameter - this determines the genome region to plot")
-        region = self.resolve_region(region)
-        contig = region.contig
-        start = region.start
-        end = region.end
+        resolved_region = self.resolve_region(region)
+        del region
+
+        debug("handle region bounds")
+        contig = resolved_region.contig
+        start = resolved_region.start
+        end = resolved_region.end
         if start is None:
             start = 0
         if end is None:
@@ -2334,10 +2807,10 @@ class AnophelesDataResource(ABC):
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bkmod.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end, bounds="auto")
 
         debug("select the genes overlapping the requested region")
-        data, tooltips = self._plot_genes_setup_data(region=region)
+        data, tooltips = self._plot_genes_setup_data(region=resolved_region)
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -2349,8 +2822,10 @@ class AnophelesDataResource(ABC):
         data.fillna("", inplace=True)
 
         debug("make a figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
@@ -2373,8 +2848,8 @@ class AnophelesDataResource(ABC):
 
         debug("add functionality to click through to vectorbase")
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
-        taptool = fig.select(type=bkmod.TapTool)
-        taptool.callback = bkmod.OpenURL(url=url)
+        taptool = fig.select(type=bokeh.models.TapTool)
+        taptool.callback = bokeh.models.OpenURL(url=url)
 
         debug("now plot the genes as rectangles")
         fig.quad(
@@ -2388,16 +2863,16 @@ class AnophelesDataResource(ABC):
         )
 
         debug("tidy up the plot")
-        fig.y_range = bkmod.Range1d(-0.4, 2.2)
+        fig.y_range = bokeh.models.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
         yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
@@ -2441,48 +2916,28 @@ class AnophelesDataResource(ABC):
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
 
+    @doc(
+        summary="Access SNP sites and site filters.",
+        returns="A dataset containing SNP sites and site filters.",
+    )
     def snp_variants(
         self,
-        region,
-        site_mask=None,
-        inline_array=True,
-        chunks="native",
+        region: base_params.region,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ):
-        """Access SNP sites and site filters.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing SNP sites and site filters.
-
-        """
         debug = self._log.debug
 
         debug("normalise parameters")
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
 
         debug("access SNP data and concatenate multiple regions")
         lx = []
-        for r in region:
+        for r in resolved_region:
             debug("access variants")
             x = self._snp_variants_for_contig(
                 contig=r.contig,
@@ -2509,48 +2964,22 @@ class AnophelesDataResource(ABC):
 
         return ds
 
+    @doc(
+        summary="Plot a transcript, using bokeh.",
+        returns="Bokeh figure.",
+    )
     def plot_transcript(
         self,
-        transcript,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=DEFAULT_GENES_TRACK_HEIGHT,
-        show=True,
-        x_range=None,
-        toolbar_location="above",
-        title=True,
-    ):
-        """Plot a transcript, using bokeh.
-
-        Parameters
-        ----------
-        transcript : str
-            Transcript identifier, e.g., "AGAP004707-RD".
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If true, show the plot.
-        toolbar_location : str, optional
-            Location of bokeh toolbar.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-        title : str, optional
-            Plot title.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        transcript: base_params.transcript,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        title: gplt_params.title = True,
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
 
         debug("find the transcript annotation")
         df_genome_features = self.genome_features().set_index("ID")
@@ -2566,8 +2995,10 @@ class AnophelesDataResource(ABC):
         ]
 
         debug("make a figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
@@ -2656,35 +3087,28 @@ class AnophelesDataResource(ABC):
 
         debug("tidy up the figure")
         fig.yaxis.ticker = []
-        fig.y_range = bkmod.Range1d(-0.6, 0.6)
+        fig.y_range = bokeh.models.Range1d(-0.6, 0.6)
         self._bokeh_style_genome_xaxis(fig, parent.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
-    def igv(self, region, tracks=None):
-        """Create an IGV browser and display it within the notebook.
-
-        Parameters
-        ----------
-        region: str or Region
-            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
-        tracks : list of dict, optional
-            Configuration for any additional tracks.
-
-        Returns
-        -------
-        browser : igv_notebook.Browser
-
-        """
+    @doc(
+        summary="",
+        parameters=dict(
+            tracks="Configuration for any additional tracks.",
+        ),
+        returns="IGV browser.",
+    )
+    def igv(
+        self, region: base_params.region, tracks: Optional[List] = None
+    ) -> igv_notebook.Browser:
         debug = self._log.debug
 
         debug("resolve region")
         region = self.resolve_region(region)
-
-        import igv_notebook
 
         config = {
             "reference": {
@@ -2714,30 +3138,25 @@ class AnophelesDataResource(ABC):
 
         return browser
 
+    @doc(
+        summary="""
+            Launch IGV and view sequence read alignments and SNP genotypes from
+            the given sample.
+        """,
+        parameters=dict(
+            sample="Sample identifier.",
+            visibility_window="""
+                Zoom level in base pairs at which alignment and SNP data will become
+                visible.
+            """,
+        ),
+    )
     def view_alignments(
         self,
-        region,
-        sample,
-        visibility_window=20_000,
+        region: base_params.region,
+        sample: str,
+        visibility_window: int = 20_000,
     ):
-        """Launch IGV and view sequence read alignments and SNP genotypes from
-        the given sample.
-
-        Parameters
-        ----------
-        region: str or Region
-            Genomic region defined with coordinates, e.g., "2L:2422600-2422700".
-        sample : str
-            Sample identifier, e.g., "AR0001-C".
-        visibility_window : int, optional
-            Zoom level in base pairs at which alignment and SNP data will become
-            visible.
-
-        Notes
-        -----
-        Only samples from the Ag3.0 release are currently supported.
-
-        """
         debug = self._log.debug
 
         debug("look up sample set for sample")
@@ -2755,11 +3174,12 @@ class AnophelesDataResource(ABC):
         debug(vcf_url)
 
         debug("parse region")
-        region = self.resolve_region(region)
-        contig = region.contig
+        resolved_region = self.resolve_region(region)
+        del region
+        contig = resolved_region.contig
 
         # begin creating tracks
-        tracks = []
+        tracks: List[Dict] = []
 
         # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
         debug("set up site filters tracks")
@@ -2794,7 +3214,7 @@ class AnophelesDataResource(ABC):
         )
 
         debug("create IGV browser")
-        self.igv(region=region, tracks=tracks)
+        self.igv(region=resolved_region, tracks=tracks)
 
     def _pca(
         self,
@@ -2876,30 +3296,24 @@ class AnophelesDataResource(ABC):
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
 
-    def plot_pca_variance(self, evr, width=900, height=400, **kwargs):
-        """Plot explained variance ratios from a principal components analysis
-        (PCA) using a plotly bar plot.
-
-        Parameters
-        ----------
-        evr : np.ndarray
-            An array of explained variance ratios, one per component.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        **kwargs
-            Passed through to px.bar().
-
-        Returns
-        -------
-        fig : Figure
-            A plotly figure.
-
-        """
+    @doc(
+        summary="""
+            Plot explained variance ratios from a principal components analysis
+            (PCA) using a plotly bar plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to px.bar().",
+        ),
+        returns="A plotly figure.",
+    )
+    def plot_pca_variance(
+        self,
+        evr: pca_params.evr,
+        width: plotly_params.width = 900,
+        height: plotly_params.height = 400,
+        **kwargs,
+    ) -> go.Figure:
         debug = self._log.debug
-
-        import plotly.express as px
 
         debug("prepare plotting variables")
         y = evr * 100  # convert to percent
@@ -3008,41 +3422,34 @@ class AnophelesDataResource(ABC):
 
         return df
 
+    @doc(
+        summary="Access genome feature annotations.",
+        parameters=dict(
+            attributes="""
+                Attribute keys to unpack into columns. Provide "*" to unpack all
+                attributes.
+            """,
+        ),
+        returns="A dataframe of genome annotations, one row per feature.",
+    )
     def genome_features(
-        self, region=None, attributes=("ID", "Parent", "Name", "description")
-    ):
-        """Access genome feature annotations.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all
-            attributes.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of genome annotations, one row per feature.
-
-        """
+        self,
+        region: Optional[base_params.region] = None,
+        attributes: Sequence[str] = ("ID", "Parent", "Name", "description"),
+    ) -> pd.DataFrame:
         debug = self._log.debug
         if region is not None:
             debug("handle region")
-            region = self.resolve_region(region)
+            resolved_region = self.resolve_region(region)
+            del region
 
             debug("normalise to list to simplify concatenation logic")
-            if isinstance(region, Region):
-                region = [region]
+            if isinstance(resolved_region, Region):
+                resolved_region = [resolved_region]
 
             debug("apply region query")
             parts = []
-            for r in region:
+            for r in resolved_region:
                 df_part = self._genome_features_for_contig(
                     contig=r.contig, attributes=attributes
                 )
@@ -3090,9 +3497,6 @@ class AnophelesDataResource(ABC):
     ):
         debug = self._log.debug
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         region = self.resolve_region(region)
 
         # pos axis
@@ -3111,11 +3515,13 @@ class AnophelesDataResource(ABC):
                 x_max = region.end
             else:
                 x_max = len(self.genome_sequence(region.contig))
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         debug("create a figure for plotting")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=f"{sample_id} ({sample_set})",
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -3145,65 +3551,29 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, region.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="Plot windowed heterozygosity for a single sample over a genome region.",
+        returns="Bokeh figure.",
+    )
     def plot_heterozygosity_track(
         self,
-        sample,
-        region,
-        site_mask=DEFAULT,
-        window_size=20_000,
-        sample_set=None,
-        y_max=0.03,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        circle_kwargs=None,
-        show=True,
-        x_range=None,
-    ):
-        """Plot windowed heterozygosity for a single sample over a genome
-        region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        window_size : int, optional
-            Number of sites per window.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        y_max : float, optional
-            Y axis limit.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        show : bool, optional
-            If true, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        sample: het_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        y_max: het_params.y_max = het_params.y_max_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> bokeh.plotting.figure:
         debug = self._log.debug
 
         debug("compute windowed heterozygosity")
@@ -3234,66 +3604,26 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="Plot windowed heterozygosity for a single sample over a genome region.",
+        returns="Bokeh figure.",
+    )
     def plot_heterozygosity(
         self,
-        sample,
-        region,
-        site_mask=DEFAULT,
-        window_size=20_000,
-        sample_set=None,
-        y_max=0.03,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=170,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-        circle_kwargs=None,
-        show=True,
+        sample: het_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        y_max: het_params.y_max = het_params.y_max_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
     ):
-        """Plot windowed heterozygosity for a single sample over a genome
-        region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        window_size : int, optional
-            Number of sites per window.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        y_max : float, optional
-            Y axis limit.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int, optional
-            Heterozygosity track height in pixels (px).
-        genes_height : int, optional
-            Genes track height in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
-
         debug = self._log.debug
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
 
         # normalise to support multiple samples
         if isinstance(sample, (list, tuple)):
@@ -3349,7 +3679,7 @@ class AnophelesDataResource(ABC):
         figs.append(fig_genes)
 
         debug("combine plots into a single figure")
-        fig_all = bklay.gridplot(
+        fig_all = bokeh.layouts.gridplot(
             figs,
             ncols=1,
             toolbar_location="above",
@@ -3358,7 +3688,7 @@ class AnophelesDataResource(ABC):
         )
 
         if show:
-            bkplt.show(fig_all)
+            bokeh.plotting.show(fig_all)
 
         return fig_all
 
@@ -3412,58 +3742,29 @@ class AnophelesDataResource(ABC):
 
         return sample_id, sample_set, windows, counts
 
+    @doc(
+        summary="Infer runs of homozygosity for a single sample over a genome region.",
+    )
     def roh_hmm(
         self,
-        sample,
-        region,
-        window_size=20_000,
-        site_mask=DEFAULT,
-        sample_set=None,
-        phet_roh=0.001,
-        phet_nonroh=(0.003, 0.01),
-        transition=1e-3,
-    ):
-        """Infer runs of homozygosity for a single sample over a genome region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        window_size : int, optional
-            Number of sites per window.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        phet_roh: float, optional
-            Probability of observing a heterozygote in a ROH.
-        phet_nonroh: tuple of floats, optional
-            One or more probabilities of observing a heterozygote outside a ROH.
-        transition: float, optional
-           Probability of moving between states. A larger window size may call
-           for a larger transitional probability.
-
-        Returns
-        -------
-        df_roh : pandas.DataFrame
-            A DataFrame where each row provides data about a single run of
-            homozygosity.
-
-        """
+        sample: het_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        phet_roh: het_params.phet_roh = het_params.phet_roh_default,
+        phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
+        transition: het_params.transition = het_params.transition_default,
+    ) -> het_params.df_roh:
         debug = self._log.debug
 
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("compute windowed heterozygosity")
         sample_id, sample_set, windows, counts = self._sample_count_het(
             sample=sample,
-            region=region,
+            region=resolved_region,
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
@@ -3478,32 +3779,33 @@ class AnophelesDataResource(ABC):
             transition=transition,
             window_size=window_size,
             sample_id=sample_id,
-            contig=region.contig,
+            contig=resolved_region.contig,
         )
 
         return df_roh
 
+    @doc(
+        summary="Plot a runs of homozygosity track.",
+    )
     def plot_roh_track(
         self,
-        df_roh,
-        region,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=100,
-        show=True,
-        x_range=None,
-        title="Runs of homozygosity",
-    ):
+        df_roh: het_params.df_roh,
+        region: base_params.region,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 100,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        title: gplt_params.title = "Runs of homozygosity",
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         debug("handle region parameter - this determines the genome region to plot")
-        region = self.resolve_region(region)
-        contig = region.contig
-        start = region.start
-        end = region.end
+        resolved_region = self.resolve_region(region)
+        del region
+        contig = resolved_region.contig
+        start = resolved_region.start
+        end = resolved_region.end
         if start is None:
             start = 0
         if end is None:
@@ -3511,7 +3813,7 @@ class AnophelesDataResource(ABC):
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bkmod.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end, bounds="auto")
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -3521,8 +3823,10 @@ class AnophelesDataResource(ABC):
         data["top"] = 0.8
 
         debug("make a figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
-        fig = bkplt.figure(
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        fig = bokeh.plotting.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
@@ -3553,96 +3857,50 @@ class AnophelesDataResource(ABC):
         )
 
         debug("tidy up the plot")
-        fig.y_range = bkmod.Range1d(0, 1)
+        fig.y_range = bokeh.models.Range1d(0, 1)
         fig.ygrid.visible = False
         fig.yaxis.ticker = []
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, resolved_region.contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="""
+            Plot windowed heterozygosity and inferred runs of homozygosity for a
+            single sample over a genome region.
+        """,
+    )
     def plot_roh(
         self,
-        sample,
-        region,
-        window_size=20_000,
-        site_mask=DEFAULT,
-        sample_set=None,
-        phet_roh=0.001,
-        phet_nonroh=(0.003, 0.01),
-        transition=1e-3,
-        y_max=0.03,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        heterozygosity_height=170,
-        roh_height=50,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-        circle_kwargs=None,
-        show=True,
-    ):
-        """Plot windowed heterozygosity and inferred runs of homozygosity for a
-        single sample over a genome region.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        window_size : int, optional
-            Number of sites per window.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_set : str, optional
-            Sample set identifier. Not needed if sample parameter gives a sample
-            identifier.
-        phet_roh: float, optional
-            Probability of observing a heterozygote in a ROH.
-        phet_nonroh: tuple of floats, optional
-            One or more probabilities of observing a heterozygote outside a ROH.
-        transition: float, optional
-           Probability of moving between states. A larger window size may call
-           for a larger transitional probability.
-        y_max : float, optional
-            Y axis limit.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        heterozygosity_height : int, optional
-            Heterozygosity track height in pixels (px).
-        roh_height : int, optional
-            ROH track height in pixels (px).
-        genes_height : int, optional
-            Genes track height in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
-
+        sample: het_params.sample,
+        region: base_params.region,
+        window_size: het_params.window_size = het_params.window_size_default,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_set: Optional[base_params.sample_set] = None,
+        phet_roh: het_params.phet_roh = het_params.phet_roh_default,
+        phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
+        transition: het_params.transition = het_params.transition_default,
+        y_max: het_params.y_max = het_params.y_max_default,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        heterozygosity_height: gplt_params.height = 170,
+        roh_height: gplt_params.height = 50,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
 
         debug("compute windowed heterozygosity")
         sample_id, sample_set, windows, counts = self._sample_count_het(
             sample=sample,
-            region=region,
+            region=resolved_region,
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
@@ -3654,7 +3912,7 @@ class AnophelesDataResource(ABC):
             sample_set=sample_set,
             windows=windows,
             counts=counts,
-            region=region,
+            region=resolved_region,
             window_size=window_size,
             y_max=y_max,
             sizing_mode=sizing_mode,
@@ -3676,13 +3934,13 @@ class AnophelesDataResource(ABC):
             transition=transition,
             window_size=window_size,
             sample_id=sample_id,
-            contig=region.contig,
+            contig=resolved_region.contig,
         )
 
         debug("plot roh track")
         fig_roh = self.plot_roh_track(
             df_roh,
-            region=region,
+            region=resolved_region,
             sizing_mode=sizing_mode,
             width=width,
             height=roh_height,
@@ -3694,7 +3952,7 @@ class AnophelesDataResource(ABC):
 
         debug("plot genes track")
         fig_genes = self.plot_genes(
-            region=region,
+            region=resolved_region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
@@ -3704,7 +3962,7 @@ class AnophelesDataResource(ABC):
         figs.append(fig_genes)
 
         debug("combine plots into a single figure")
-        fig_all = bklay.gridplot(
+        fig_all = bokeh.layouts.gridplot(
             figs,
             ncols=1,
             toolbar_location="above",
@@ -3713,7 +3971,7 @@ class AnophelesDataResource(ABC):
         )
 
         if show:
-            bkplt.show(fig_all)
+            bokeh.plotting.show(fig_all)
 
         return fig_all
 
@@ -3866,47 +4124,27 @@ class AnophelesDataResource(ABC):
 
         return loc_ann
 
+    @doc(
+        summary="Load site annotations.",
+        returns="A dataset of site annotations.",
+    )
     def site_annotations(
         self,
-        region,
-        site_mask=None,
-        inline_array=True,
-        chunks="auto",
-    ):
-        """Load site annotations.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        inline_array : bool, optional
-            Passed through to dask.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of site annotations.
-
-        """
+        region: base_params.region,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> xr.Dataset:
         # N.B., we default to chunks="auto" here for performance reasons
 
         debug = self._log.debug
 
         debug("resolve region")
-        region = self.resolve_region(region)
-        if isinstance(region, list):
+        resolved_region = self.resolve_region(region)
+        del region
+        if isinstance(resolved_region, list):
             raise TypeError("Multiple regions not supported.")
-        contig = region.contig
+        contig = resolved_region.contig
 
         debug("open site annotations zarr")
         root = self.open_site_annotations()
@@ -3938,29 +4176,22 @@ class AnophelesDataResource(ABC):
             chunks=chunks,
         )
         pos = pos.compute()
-        if region.start or region.end:
-            loc_region = locate_region(region, pos)
+        if resolved_region.start or resolved_region.end:
+            loc_region = locate_region(resolved_region, pos)
             pos = pos[loc_region]
         idx = pos - 1
         ds = ds.isel(variants=idx)
 
         return ds
 
-    def wgs_data_catalog(self, sample_set):
-        """Load a data catalog providing URLs for downloading BAM, VCF and Zarr
-        files for samples in a given sample set.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            One row per sample, columns provide URLs.
-
-        """
+    @doc(
+        summary="""
+            Load a data catalog providing URLs for downloading BAM, VCF and Zarr
+            files for samples in a given sample set.
+        """,
+        returns="One row per sample, columns provide URLs.",
+    )
+    def wgs_data_catalog(self, sample_set: base_params.sample_set):
         debug = self._log.debug
 
         debug("look up release for sample set")
@@ -3984,68 +4215,30 @@ class AnophelesDataResource(ABC):
 
         return df
 
+    @doc(
+        summary="""
+            Run a principal components analysis (PCA) using biallelic SNPs from
+            the selected genome region and samples.
+        """,
+        returns=("df_pca", "evr"),
+        notes="""
+            This computation may take some time to run, depending on your computing
+            environment. Results of this computation will be cached and re-used if
+            the `results_cache` parameter was set when instantiating the Ag3 class.
+        """,
+    )
     def pca(
         self,
-        region,
-        n_snps,
-        thin_offset=0,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT,
-        min_minor_ac=2,
-        max_missing_an=0,
-        n_components=20,
-    ):
-        """Run a principal components analysis (PCA) using biallelic SNPs from
-        the selected genome region and samples.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        n_snps : int
-            The desired number of SNPs to use when running the analysis.
-            SNPs will be evenly thinned to approximately this number.
-        thin_offset : int, optional
-            Starting index for SNP thinning. Change this to repeat the analysis
-            using a different set of SNPs.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        min_minor_ac : int, optional
-            The minimum minor allele count. SNPs with a minor allele count
-            below this value will be excluded prior to thinning.
-        max_missing_an : int, optional
-            The maximum number of missing allele calls to accept. SNPs with
-            more than this value will be excluded prior to thinning. Set to 0
-            (default) to require no missing calls.
-        n_components : int, optional
-            Number of components to return.
-
-        Returns
-        -------
-        df_pca : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        evr : np.ndarray
-            An array of explained variance ratios, one per component.
-
-        Notes
-        -----
-        This computation may take some time to run, depending on your computing
-        environment. Results of this computation will be cached and re-used if
-        the `results_cache` parameter was set when instantiating the Ag3 class.
-
-        """
+        region: base_params.region,
+        n_snps: pca_params.n_snps,
+        thin_offset: pca_params.thin_offset = pca_params.thin_offset_default,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        min_minor_ac: pca_params.min_minor_ac = pca_params.min_minor_ac_default,
+        max_missing_an: pca_params.max_missing_an = pca_params.max_missing_an_default,
+        n_components: pca_params.n_components = pca_params.n_components_default,
+    ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         debug = self._log.debug
 
         # change this name if you ever change the behaviour of this function, to
@@ -4094,66 +4287,31 @@ class AnophelesDataResource(ABC):
 
         return df_pca, evr
 
+    @doc(
+        summary="""
+            Plot SNPs in a given genome region. SNPs are shown as rectangles,
+            with segregating and non-segregating SNPs positioned on different levels,
+            and coloured by site filter.
+        """,
+        parameters=dict(
+            max_snps="Maximum number of SNPs to show.",
+        ),
+    )
     def plot_snps(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT,
-        cohort_size=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=80,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-        max_snps=200_000,
-        show=True,
-    ):
-        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
-        with segregating and non-segregating SNPs positioned on different levels,
-        and coloured by site filter.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Width of plot in pixels (px).
-        track_height : int, optional
-            Height of SNPs track in pixels (px).
-        genes_height : int, optional
-            Height of genes track in pixels (px).
-        max_snps : int, optional
-            Maximum number of SNPs to show.
-        show : bool, optional
-            If True, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.height = 80,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        max_snps: int = 200_000,
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         debug = self._log.debug
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
 
         debug("plot SNPs track")
         fig1 = self.plot_snps_track(
@@ -4180,7 +4338,7 @@ class AnophelesDataResource(ABC):
             show=False,
         )
 
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -4189,102 +4347,64 @@ class AnophelesDataResource(ABC):
         )
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
-    def open_site_annotations(self):
-        """Open site annotations zarr.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
-
+    @doc(
+        summary="Open site annotations zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_site_annotations(self) -> zarr.hierarchy.Group:
         if self._cache_site_annotations is None:
             path = f"{self._base_path}/{self._site_annotations_zarr_path}"
             store = init_zarr_store(fs=self._fs, path=path)
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
+    @doc(
+        summary="""
+            Plot SNPs in a given genome region. SNPs are shown as rectangles,
+            with segregating and non-segregating SNPs positioned on different levels,
+            and coloured by site filter.
+        """,
+        parameters=dict(
+            max_snps="Maximum number of SNPs to show.",
+        ),
+    )
     def plot_snps_track(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=DEFAULT,
-        cohort_size=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=120,
-        max_snps=200_000,
-        x_range=None,
-        show=True,
-    ):
-        """Plot SNPs in a given genome region. SNPs are shown as rectangles,
-        with segregating and non-segregating SNPs positioned on different levels,
-        and coloured by site filter.
-
-        Parameters
-        ----------
-        region : str
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "country == 'Burkina Faso'".
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size before
-            computing allele counts.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Width of plot in pixels (px).
-        height : int, optional
-            Height of plot in pixels (px).
-        max_snps : int, optional
-            Maximum number of SNPs to plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-        show : bool, optional
-            If True, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 120,
+        max_snps: int = 200_000,
+        x_range: Optional[gplt_params.x_range] = None,
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
-        import bokeh.models as bkmod
-        import bokeh.palettes as bkpal
-        import bokeh.plotting as bkplt
-
         debug("resolve and check region")
-        region = self.resolve_region(region)
+        resolved_region = self.resolve_region(region)
+        del region
+
         if (
-            (region.start is None)
-            or (region.end is None)
-            or ((region.end - region.start) > max_snps)
+            (resolved_region.start is None)
+            or (resolved_region.end is None)
+            or ((resolved_region.end - resolved_region.start) > max_snps)
         ):
             raise ValueError("Region is too large, please provide a smaller region.")
 
         debug("compute allele counts")
         ac = allel.AlleleCountsArray(
             self.snp_allele_counts(
-                region=region,
+                region=resolved_region,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 site_mask=None,
@@ -4298,7 +4418,7 @@ class AnophelesDataResource(ABC):
 
         debug("obtain SNP variants data")
         ds_sites = self.snp_variants(
-            region=region,
+            region=resolved_region,
         ).compute()
 
         debug("build a dataframe")
@@ -4328,12 +4448,14 @@ class AnophelesDataResource(ABC):
         data = pd.DataFrame(cols)
 
         debug("create figure")
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         pos = data["pos"].values
         x_min = pos[0]
         x_max = pos[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         tooltips = [
             ("Position", "$x{0,0}"),
@@ -4348,7 +4470,7 @@ class AnophelesDataResource(ABC):
         for site_mask_id in self.site_mask_ids:
             tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
 
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title="SNPs",
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -4361,11 +4483,11 @@ class AnophelesDataResource(ABC):
             y_range=(0.5, 2.5),
             tooltips=tooltips,
         )
-        hover_tool = fig.select(type=bkmod.HoverTool)
+        hover_tool = fig.select(type=bokeh.models.HoverTool)
         hover_tool.names = ["snps"]
 
         debug("plot gaps in the reference genome")
-        seq = self.genome_sequence(region=region.contig).compute()
+        seq = self.genome_sequence(region=resolved_region.contig).compute()
         is_n = (seq == b"N") | (seq == b"n")
         loc_n_start = ~is_n[:-1] & is_n[1:]
         loc_n_stop = is_n[:-1] & ~is_n[1:]
@@ -4385,8 +4507,8 @@ class AnophelesDataResource(ABC):
         )
 
         debug("plot SNPs")
-        color_pass = bkpal.Colorblind6[3]
-        color_fail = bkpal.Colorblind6[5]
+        color_pass = bokeh.palettes.Colorblind6[3]
+        color_fail = bokeh.palettes.Colorblind6[5]
         data["left"] = data["pos"] - 0.4
         data["right"] = data["pos"] + 0.4
         data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
@@ -4403,75 +4525,46 @@ class AnophelesDataResource(ABC):
         )
 
         debug("tidy plot")
-        fig.yaxis.ticker = bkmod.FixedTicker(
+        fig.yaxis.ticker = bokeh.models.FixedTicker(
             ticks=[1, 2],
         )
         fig.yaxis.major_label_overrides = {
             1: "Non-segregating",
             2: "Segregating",
         }
-        fig.xaxis.axis_label = f"Contig {region.contig} position (bp)"
-        fig.xaxis.ticker = bkmod.AdaptiveTicker(min_interval=1)
+        fig.xaxis.axis_label = f"Contig {resolved_region.contig} position (bp)"
+        fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bkmod.NumeralTickFormatter(format="0,0")
+        fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="""
+            Compute SNP allele frequencies for a gene transcript.
+        """,
+        returns="""
+            A dataframe of SNP allele frequencies, one row per variant allele.
+        """,
+        notes="""
+            Cohorts with fewer samples than `min_cohort_size` will be excluded from
+            output data frame.
+        """,
+    )
     def snp_allele_frequencies(
         self,
-        transcript,
-        cohorts,
-        sample_query=None,
-        min_cohort_size=10,
-        site_mask=None,
-        sample_sets=None,
-        drop_invariant=True,
-        effects=True,
-    ):
-        """Compute per variant allele frequencies for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int
-            Minimum cohort size. Any cohorts below this size are omitted.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-        effects : bool, optional
-            If True, add SNP effect columns.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of SNP frequencies, one row per variant.
-
-        Notes
-        -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from
-        output.
-
-        """
+        transcript: base_params.transcript,
+        cohorts: base_params.cohorts,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: base_params.min_cohort_size = 10,
+        site_mask: Optional[base_params.site_mask] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        drop_invariant: frq_params.drop_invariant = True,
+        effects: frq_params.effects = True,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         debug("check parameters")
@@ -4637,22 +4730,13 @@ class AnophelesDataResource(ABC):
             self._cache_cohort_metadata[sample_set] = df
         return df.copy()
 
-    def sample_cohorts(self, sample_sets=None):
-        """Access cohorts metadata for one or more sample sets.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of cohort metadata, one row per sample.
-
-        """
+    @doc(
+        summary="Access cohorts metadata for one or more sample sets.",
+        returns="A dataframe of cohort metadata, one row per sample.",
+    )
+    def sample_cohorts(
+        self, sample_sets: Optional[base_params.sample_sets] = None
+    ) -> pd.DataFrame:
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         # concatenate multiple sample sets
@@ -4661,57 +4745,29 @@ class AnophelesDataResource(ABC):
 
         return df
 
+    @doc(
+        summary="""
+            Compute amino acid substitution frequencies for a gene transcript.
+        """,
+        returns="""
+            A dataframe of amino acid allele frequencies, one row per
+            substitution.
+        """,
+        notes="""
+            Cohorts with fewer samples than `min_cohort_size` will be excluded from
+            output data frame.
+        """,
+    )
     def aa_allele_frequencies(
         self,
-        transcript,
-        cohorts,
-        sample_query=None,
-        min_cohort_size=10,
-        site_mask=None,
-        sample_sets=None,
-        drop_invariant=True,
-    ):
-        """Compute per amino acid allele frequencies for a gene transcript.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RA".
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int
-            Minimum cohort size, below which allele frequencies are not
-            calculated for cohorts.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, variants with no alternate allele calls in any cohorts are
-            dropped from the result.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of amino acid allele frequencies, one row per
-            replacement.
-
-        Notes
-        -----
-        Cohorts with fewer samples than min_cohort_size will be excluded from
-        output.
-
-        """
+        transcript: base_params.transcript,
+        cohorts: base_params.cohorts,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = 10,
+        site_mask: Optional[base_params.site_mask] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        drop_invariant: frq_params.drop_invariant = True,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         df_snps = self.snp_allele_frequencies(
@@ -4736,7 +4792,7 @@ class AnophelesDataResource(ABC):
 
         debug("group and sum to collapse multi variant allele changes")
         freq_cols = [col for col in df_ns_snps if col.startswith("frq")]
-        agg = {c: np.nansum for c in freq_cols}
+        agg: Dict[str, Union[Callable, str]] = {c: np.nansum for c in freq_cols}
         keep_cols = (
             "contig",
             "transcript",
@@ -4778,68 +4834,35 @@ class AnophelesDataResource(ABC):
 
         return df_aaf
 
-    def aa_allele_frequencies_advanced(
-        self,
-        transcript,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=10,
-        variant_query=None,
-        site_mask=None,
-        nobs_mode="called",  # or "fixed"
-        ci_method="wilson",
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
-        amino acid change allele counts and frequencies.
-
-        Parameters
-        ----------
-        transcript : str
-            Gene transcript ID, e.g., "AGAP004707-RD".
-        area_by : str
-            Column name in the sample metadata to use to group samples spatially.
-            E.g., use "admin1_iso" or "admin1_name" to group by level 1
-            administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        variant_query : str, optional
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        nobs_mode : {"called", "fixed"}
-            Method for calculating the denominator when computing frequencies.
-            If "called" then use the number of called alleles, i.e., number of
-            samples with non-missing genotype calls multiplied by 2. If "fixed"
-            then use the number of samples multiplied by 2.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
+    @doc(
+        summary="""
+            Group samples by taxon, area (space) and period (time), then compute
+            amino acid change allele frequencies.
+        """,
+        returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
             arrays with data about the cohorts, such as the area, period, taxon
-            and cohort size. Variables prefixed with "variant" are 1-dimensional
-            arrays with data about the variants, such as the contig, position,
-            reference and alternate alleles. Variables prefixed with "event" are
-            2-dimensional arrays with the allele counts and frequency
-            calculations.
-
-        """
+            and cohort size. Variables prefixed with "variant" are
+            1-dimensional arrays with data about the variants, such as the
+            contig, position, reference and alternate alleles. Variables
+            prefixed with "event" are 2-dimensional arrays with the allele
+            counts and frequency calculations.
+        """,
+    )
+    def aa_allele_frequencies_advanced(
+        self,
+        transcript: base_params.transcript,
+        area_by: frq_params.area_by,
+        period_by: frq_params.period_by,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: base_params.min_cohort_size = 10,
+        variant_query: Optional[frq_params.variant_query] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        nobs_mode: frq_params.nobs_mode = "called",
+        ci_method: Optional[frq_params.ci_method] = "wilson",
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("begin by computing SNP allele frequencies")
@@ -5073,69 +5096,28 @@ class AnophelesDataResource(ABC):
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
+    @doc(
+        summary="""
+            Compute genetic diversity summary statistics for a cohort of
+            individuals.
+        """,
+        returns="""
+            A pandas series with summary statistics and their confidence
+            intervals.
+        """,
+    )
     def cohort_diversity_stats(
         self,
-        cohort,
-        cohort_size,
-        region,
-        site_mask=DEFAULT,
-        site_class=None,
-        sample_sets=None,
-        random_seed=42,
-        n_jack=200,
-        confidence_level=0.95,
-    ):
-        """Compute genetic diversity summary statistics for a cohort of
-        individuals.
-
-        Parameters
-        ----------
-        cohort : str or (str, str)
-            Either a string giving one of the predefined cohort labels, or a
-            pair of strings giving a custom cohort label and a sample query to
-            select samples in the cohort.
-        cohort_size : int
-            Number of individuals to use for computation of summary statistics.
-            If the cohort is larger than this size, it will be randomly
-            down-sampled.
-        region : str
-            Chromosome arm, gene name or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers  or a
-            release identifier or a list of release identifiers.
-        random_seed : int, optional
-            Seed for random number generator.
-        n_jack : int, optional
-            Number of blocks to divide the data into for the block jackknife
-            estimation of confidence intervals. N.B., larger is not necessarily
-            better.
-        confidence_level : float, optional
-            Confidence level to use for confidence interval calculation. 0.95
-            means 95% confidence interval.
-
-        Returns
-        -------
-        stats : pandas.Series
-            A series with summary statistics and their confidence intervals.
-
-        """
-
+        cohort: base_params.cohort,
+        cohort_size: base_params.cohort_size,
+        region: base_params.region,
+        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        random_seed: base_params.random_seed = 42,
+        n_jack: base_params.n_jack = 200,
+        confidence_level: base_params.confidence_level = 0.95,
+    ) -> pd.Series:
         debug = self._log.debug
 
         debug("process cohort parameter")
@@ -5213,71 +5195,28 @@ class AnophelesDataResource(ABC):
 
         return pd.Series(stats)
 
-    def diversity_stats(
-        self,
-        cohorts,
-        cohort_size,
-        region,
-        site_mask=DEFAULT,
-        site_class=None,
-        sample_query=None,
-        sample_sets=None,
-        random_seed=42,
-        n_jack=200,
-        confidence_level=0.95,
-    ):
-        """Compute genetic diversity summary statistics for multiple cohorts.
-
-        Parameters
-        ----------
-        cohorts : str or dict
-            Either a string giving one of the predefined cohort columns, or a
-            dictionary mapping cohort labels to sample queries.
-        cohort_size : int
-            Number of individuals to use for computation of summary statistics.
-            If the cohort is larger than this size, it will be randomly
-            down-sampled.
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        site_class : str, optional
-            Select sites belonging to one of the following classes: CDS_DEG_4,
-            (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-            degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-            INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-            longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-            5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-            splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-            untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-            a gene).
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        random_seed : int, optional
-            Seed for random number generator.
-        n_jack : int, optional
-            Number of blocks to divide the data into for the block jackknife
-            estimation of confidence intervals. N.B., larger is not necessarily
-            better.
-        confidence_level : float, optional
-            Confidence level to use for confidence interval calculation. 0.95
-            means 95% confidence interval.
-
-        Returns
-        -------
-        df_stats : pandas.DataFrame
+    @doc(
+        summary="""
+            Compute genetic diversity summary statistics for multiple cohorts.
+        """,
+        returns="""
             A DataFrame where each row provides summary statistics and their
             confidence intervals for a single cohort.
-
-        """
+        """,
+    )
+    def diversity_stats(
+        self,
+        cohorts: base_params.cohorts,
+        cohort_size: base_params.cohort_size,
+        region: base_params.region,
+        site_mask: base_params.site_mask = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        random_seed: base_params.random_seed = 42,
+        n_jack: base_params.n_jack = 200,
+        confidence_level: base_params.confidence_level = 0.95,
+    ) -> pd.DataFrame:
         debug = self._log.debug
         info = self._log.info
 
@@ -5349,42 +5288,30 @@ class AnophelesDataResource(ABC):
 
         return df_stats
 
+    @doc(
+        summary="""
+            Create a pivot table showing numbers of samples available by space,
+            time and taxon.
+        """,
+        parameters=dict(
+            index="Sample metadata columns to use for the pivot table index.",
+            columns="Sample metadata columns to use for the pivot table columns.",
+        ),
+        returns="Pivot table of sample counts.",
+    )
     def count_samples(
         self,
-        sample_sets=None,
-        sample_query=None,
-        index=(
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        index: Union[str, Tuple[str, ...]] = (
             "country",
             "admin1_iso",
             "admin1_name",
             "admin2_name",
             "year",
         ),
-        columns="taxon",
-    ):
-        """Create a pivot table showing numbers of samples available by space,
-        time and taxon.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        index : str or tuple of str
-            Sample metadata columns to use for the index.
-        columns : str or tuple of str
-            Sample metadata columns to use for the columns.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            Pivot table of sample counts.
-
-        """
+        columns: Union[str, Tuple[str, ...]] = "taxon",
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         debug("load sample metadata")
@@ -5403,51 +5330,31 @@ class AnophelesDataResource(ABC):
 
         return df_pivot
 
+    @doc(
+        summary="""
+            Run a Fst genome-wide scan to investigate genetic differentiation
+            between two cohorts.
+        """,
+        returns=dict(
+            x="An array containing the window centre point genomic positions",
+            fst="An array with Fst statistic values for each window.",
+        ),
+    )
     def fst_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask=DEFAULT,
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run a Fst genome-wide scan to investigate genetic differentiation
-        between two cohorts.
+        contig: base_params.contig,
+        window_size: fst_params.window_size,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        # TODO could generalise, do this on a region rather than a contig
 
-        Parameters
-        ----------
-        contig: str
-            Chromosome arm (e.g., "2L")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        fst : numpy.ndarray
-            An array with Fst statistic values for each window.
-        """
+        # TODO better to support min_cohort_size and max_cohort_size here
+        # rather than just a fixed cohort_size
 
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -5522,80 +5429,63 @@ class AnophelesDataResource(ABC):
 
         return results
 
-    # Start of plot functions
-
+    @doc(
+        summary="""
+            Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
+            from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+        """,
+        parameters=dict(
+            df="""
+                A DataFrame of frequencies, e.g., output from
+                `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
+            """,
+            index="""
+                One or more column headers that are present in the input dataframe.
+                This becomes the heatmap y-axis row labels. The column/s must
+                produce a unique index.
+            """,
+            max_len="""
+                Displaying large styled dataframes may cause ipython notebooks to
+                crash. If the input dataframe is larger than this value, an error
+                will be raised.
+            """,
+            col_width="""
+                Plot width per column in pixels (px).
+            """,
+            row_height="""
+                Plot height per row in pixels (px).
+            """,
+            kwargs="""
+                Passed through to `px.imshow()`.
+            """,
+        ),
+        notes="""
+            It's recommended to filter the input DataFrame to just rows of interest,
+            i.e., fewer rows than `max_len`.
+        """,
+    )
     def plot_frequencies_heatmap(
         self,
-        df,
-        index="label",
-        max_len=100,
-        x_label="Cohorts",
-        y_label="Variants",
-        colorbar=True,
-        col_width=40,
-        width=None,
-        row_height=20,
-        height=None,
-        text_auto=".0%",
-        aspect="auto",
-        color_continuous_scale="Reds",
-        title=True,
+        df: pd.DataFrame,
+        index: Union[str, List[str]] = "label",
+        max_len: Optional[int] = 100,
+        col_width: int = 40,
+        row_height: int = 20,
+        x_label: plotly_params.x_label = "Cohorts",
+        y_label: plotly_params.y_label = "Variants",
+        colorbar: plotly_params.colorbar = True,
+        width: plotly_params.width = None,
+        height: plotly_params.height = None,
+        text_auto: plotly_params.text_auto = ".0%",
+        aspect: plotly_params.aspect = "auto",
+        color_continuous_scale: plotly_params.color_continuous_scale = "Reds",
+        title: plotly_params.title = True,
         **kwargs,
-    ):
-        """Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
-        from `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
-        It's recommended to filter the input DataFrame to just rows of interest,
-        i.e., fewer rows than `max_len`.
-
-        Parameters
-        ----------
-        df : pandas DataFrame
-           A DataFrame of frequencies, e.g., output from
-           `snp_allele_frequencies()` or `gene_cnv_frequencies()`.
-        index : str or list of str
-            One or more column headers that are present in the input dataframe.
-            This becomes the heatmap y-axis row labels. The column/s must
-            produce a unique index.
-        max_len : int, optional
-            Displaying large styled dataframes may cause ipython notebooks to
-            crash.
-        x_label : str, optional
-            This is the x-axis label that will be displayed on the heatmap.
-        y_label : str, optional
-            This is the y-axis label that will be displayed on the heatmap.
-        colorbar : bool, optional
-            If False, colorbar is not output.
-        col_width : int, optional
-            Plot width per column in pixels (px).
-        width : int, optional
-            Plot width in pixels (px), overrides col_width.
-        row_height : int, optional
-            Plot height per row in pixels (px).
-        height : int, optional
-            Plot height in pixels (px), overrides row_height.
-        text_auto : str, optional
-            Formatting for frequency values.
-        aspect : str, optional
-            Control the aspect ratio of the heatmap.
-        color_continuous_scale : str, optional
-            Color scale to use.
-        title : bool or str, optional
-            If True, attempt to use metadata from input dataset as a plot
-            title. Otherwise, use supplied value as a title.
-        **kwargs
-            Other parameters are passed through to px.imshow().
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
-
-        """
+    ) -> plotly_params.figure:
         debug = self._log.debug
 
-        import plotly.express as px
-
         debug("check len of input")
-        if len(df) > max_len:
+        if max_len and len(df) > max_len:
             raise ValueError(f"Input DataFrame is longer than {max_len}")
 
         debug("handle title")
@@ -5677,47 +5567,40 @@ class AnophelesDataResource(ABC):
 
         return fig
 
-    def plot_frequencies_time_series(
-        self, ds, height=None, width=None, title=True, **kwargs
-    ):
-        """Create a time series plot of variant frequencies using plotly.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by
-            `snp_allele_frequencies_advanced()`,
-            `aa_allele_frequencies_advanced()` or
-            `gene_cnv_frequencies_advanced()`.
-        height : int, optional
-            Height of plot in pixels (px).
-        width : int, optional
-            Width of plot in pixels (px).
-        title : bool or str, optional
-            If True, attempt to use metadata from input dataset as a plot
-            title. Otherwise, use supplied value as a title.
-        **kwargs
-            Passed through to `px.line()`.
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
+    @doc(
+        summary="Create a time series plot of variant frequencies using plotly.",
+        parameters=dict(
+            ds="""
+                A dataset of variant frequencies, such as returned by
+                `snp_allele_frequencies_advanced()`,
+                `aa_allele_frequencies_advanced()` or
+                `gene_cnv_frequencies_advanced()`.
+            """,
+            kwargs="Passed through to `px.line()`.",
+        ),
+        returns="""
             A plotly figure containing line graphs. The resulting figure will
             have one panel per cohort, grouped into columns by taxon, and
             grouped into rows by area. Markers and lines show frequencies of
             variants.
-
-        """
+        """,
+    )
+    def plot_frequencies_time_series(
+        self,
+        ds: xr.Dataset,
+        height: plotly_params.height = None,
+        width: plotly_params.width = None,
+        title: plotly_params.title = True,
+        **kwargs,
+    ) -> plotly_params.figure:
         debug = self._log.debug
-
-        import plotly.express as px
 
         debug("handle title")
         if title is True:
             title = ds.attrs.get("title", None)
 
         debug("extract cohorts into a dataframe")
-        cohort_vars = [v for v in ds if v.startswith("cohort_")]
+        cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
 
@@ -5799,32 +5682,33 @@ class AnophelesDataResource(ABC):
 
         return fig
 
-    def plot_frequencies_map_markers(self, m, ds, variant, taxon, period, clear=True):
-        """Plot markers on a map showing variant frequencies for cohorts grouped
-        by area (space), period (time) and taxon.
-
-        Parameters
-        ----------
-        m : ipyleaflet.Map
-            The map on which to add the markers.
-        ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by
-            `snp_allele_frequencies_advanced()`,
-            `aa_allele_frequencies_advanced()` or
-            `gene_cnv_frequencies_advanced()`.
-        variant : int or str
-            Index or label of variant to plot.
-        taxon : str
-            Taxon to show markers for.
-        period : pd.Period
-            Time period to show markers for.
-        clear : bool, optional
-            If True, clear all layers (except the base layer) from the map
-            before adding new markers.
-
-        """
+    @doc(
+        summary="""
+            Plot markers on a map showing variant frequencies for cohorts grouped
+            by area (space), period (time) and taxon.
+        """,
+        parameters=dict(
+            m="The map on which to add the markers.",
+            variant="Index or label of variant to plot.",
+            taxon="Taxon to show markers for.",
+            period="Time period to show markers for.",
+            clear="""
+                If True, clear all layers (except the base layer) from the map
+                before adding new markers.
+            """,
+        ),
+    )
+    def plot_frequencies_map_markers(
+        self,
+        m,
+        ds: frq_params.ds_frequencies_advanced,
+        variant: Union[int, str],
+        taxon: str,
+        period: pd.Period,
+        clear: bool = True,
+    ):
         debug = self._log.debug
-
+        # only import here because of some problems importing globally
         import ipyleaflet
         import ipywidgets
 
@@ -5891,41 +5775,31 @@ class AnophelesDataResource(ABC):
             )
             m.add_layer(marker)
 
-    def plot_frequencies_interactive_map(
-        self,
-        ds,
-        center=(-2, 20),
-        zoom=3,
-        title=True,
-        epilogue=True,
-    ):
-        """Create an interactive map with markers showing variant frequencies or
-        cohorts grouped by area (space), period (time) and taxon.
-
-        Parameters
-        ----------
-        ds : xarray.Dataset
-            A dataset of variant frequencies, such as returned by
-            `snp_allele_frequencies_advanced()`,
-            `aa_allele_frequencies_advanced()` or
-            `gene_cnv_frequencies_advanced()`.
-        center : tuple of int, optional
-            Location to center the map.
-        zoom : int, optional
-            Initial zoom level.
-        title : bool or str, optional
-            If True, attempt to use metadata from input dataset as a plot
-            title. Otherwise, use supplied value as a title.
-        epilogue : bool or str, optional
-            Additional text to display below the map.
-
-        Returns
-        -------
-        out : ipywidgets.Widget
+    @doc(
+        summary="""
+            Create an interactive map with markers showing variant frequencies or
+            cohorts grouped by area (space), period (time) and taxon.
+        """,
+        parameters=dict(
+            title="""
+                If True, attempt to use metadata from input dataset as a plot
+                title. Otherwise, use supplied value as a title.
+            """,
+            epilogue="Additional text to display below the map.",
+        ),
+        returns="""
             An interactive map with widgets for selecting which variant, taxon
             and time period to display.
-
-        """
+        """,
+    )
+    def plot_frequencies_interactive_map(
+        self,
+        ds: frq_params.ds_frequencies_advanced,
+        center: map_params.center = map_params.center_default,
+        zoom: map_params.zoom = map_params.zoom_default,
+        title: Union[bool, str] = True,
+        epilogue: Union[bool, str] = True,
+    ):
         debug = self._log.debug
 
         import ipyleaflet
@@ -5970,56 +5844,30 @@ class AnophelesDataResource(ABC):
 
         return out
 
+    @doc(
+        summary="""
+            Plot sample coordinates from a principal components analysis (PCA)
+            as a plotly scatter plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to `px.scatter()`",
+        ),
+    )
     def plot_pca_coords(
         self,
-        data,
-        x="PC1",
-        y="PC2",
-        color=None,
-        symbol=None,
-        jitter_frac=0.02,
-        random_seed=42,
-        width=900,
-        height=600,
-        marker_size=10,
+        data: pca_params.df_pca,
+        x: plotly_params.x = "PC1",
+        y: plotly_params.y = "PC2",
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        jitter_frac: plotly_params.jitter_frac = 0.02,
+        random_seed: base_params.random_seed = 42,
+        width: plotly_params.width = 900,
+        height: plotly_params.height = 600,
+        marker_size: plotly_params.marker_size = 10,
         **kwargs,
-    ):
-        """Plot sample coordinates from a principal components analysis (PCA)
-        as a plotly scatter plot.
-
-        Parameters
-        ----------
-        data : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        x : str, optional
-            Name of principal component to plot on the X axis.
-        y : str, optional
-            Name of principal component to plot on the Y axis.
-        color : str, optional
-            Name of column in the input dataframe to use to color the markers.
-        symbol : str, optional
-            Name of column in the input dataframe to use to choose marker symbols.
-        jitter_frac : float, optional
-            Randomly jitter points by this fraction of their range.
-        random_seed : int, optional
-            Random seed for jitter.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        marker_size : int, optional
-            Marker size.
-
-        Returns
-        -------
-        fig : Figure
-            A plotly figure.
-
-        """
+    ) -> plotly_params.figure:
         debug = self._log.debug
-
-        import plotly.express as px
 
         debug(
             "set up data - copy and shuffle so that we don't get systematic over-plotting"
@@ -6083,59 +5931,31 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="""
+            Plot sample coordinates from a principal components analysis (PCA)
+            as a plotly 3D scatter plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to `px.scatter_3d()`",
+        ),
+    )
     def plot_pca_coords_3d(
         self,
-        data,
-        x="PC1",
-        y="PC2",
-        z="PC3",
-        color=None,
-        symbol=None,
-        jitter_frac=0.02,
-        random_seed=42,
-        width=900,
-        height=600,
-        marker_size=5,
+        data: pca_params.df_pca,
+        x: plotly_params.x = "PC1",
+        y: plotly_params.y = "PC2",
+        z: plotly_params.z = "PC3",
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        jitter_frac: plotly_params.jitter_frac = 0.02,
+        random_seed: base_params.random_seed = 42,
+        width: plotly_params.width = 900,
+        height: plotly_params.height = 600,
+        marker_size: plotly_params.marker_size = 5,
         **kwargs,
-    ):
-        """Plot sample coordinates from a principal components analysis (PCA)
-        as a plotly 3D scatter plot.
-
-        Parameters
-        ----------
-        data : pandas.DataFrame
-            A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-            etc., added.
-        x : str, optional
-            Name of principal component to plot on the X axis.
-        y : str, optional
-            Name of principal component to plot on the Y axis.
-        z : str, optional
-            Name of principal component to plot on the Z axis.
-        color : str, optional
-            Name of column in the input dataframe to use to color the markers.
-        symbol : str, optional
-            Name of column in the input dataframe to use to choose marker symbols.
-        jitter_frac : float, optional
-            Randomly jitter points by this fraction of their range.
-        random_seed : int, optional
-            Random seed for jitter.
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        marker_size : int, optional
-            Marker size.
-
-        Returns
-        -------
-        fig : Figure
-            A plotly figure.
-
-        """
+    ) -> plotly_params.figure:
         debug = self._log.debug
-
-        import plotly.express as px
 
         debug(
             "set up data - copy and shuffle so that we don't get systematic over-plotting"
@@ -6198,41 +6018,29 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="Plot diversity summary statistics for multiple cohorts.",
+        parameters=dict(
+            df_stats="Output from `diversity_stats()`.",
+            bar_plot_height="Height of bar plots in pixels (px).",
+            bar_width="Width per bar in pixels (px).",
+            scatter_plot_height="Height of scatter plot in pixels (px).",
+            scatter_plot_width="Width of scatter plot in pixels (px).",
+            plot_kwargs="Extra plotting parameters.",
+        ),
+    )
     def plot_diversity_stats(
         self,
-        df_stats,
-        color=None,
-        bar_plot_height=450,
-        bar_width=30,
-        scatter_plot_height=500,
-        scatter_plot_width=500,
-        template="plotly_white",
-        plot_kwargs=None,
+        df_stats: pd.DataFrame,
+        color: plotly_params.color = None,
+        bar_plot_height: int = 450,
+        bar_width: int = 30,
+        scatter_plot_height: int = 500,
+        scatter_plot_width: int = 500,
+        template: plotly_params.template = "plotly_white",
+        plot_kwargs: Optional[Mapping] = None,
     ):
-        """Plot diversity statistics.
-
-        Parameters
-        ----------
-        df_stats : pandas.DataFrame
-            Output from diversity_stats().
-        color : str, optional
-            Column to color by.
-        bar_plot_height : int, optional
-            Height of bar plots in pixels (px).
-        bar_width : int, optional
-            Width per bar in pixels (px).
-        scatter_plot_height : int, optional
-            Height of scatter plot in pixels (px).
-        scatter_plot_width : int, optional
-            Width of scatter plot in pixels (px).
-        template : str, optional
-            Plotly template.
-        plot_kwargs : dict, optional
-            Extra plotting parameters
-
-        """
         debug = self._log.debug
-        import plotly.express as px
 
         debug("set up common plotting parameters")
         if plot_kwargs is None:
@@ -6326,50 +6134,36 @@ class AnophelesDataResource(ABC):
         )
         fig.show()
 
+    @doc(
+        summary="""
+            Plot an interactive map showing sampling locations using ipyleaflet.
+        """,
+        parameters=dict(
+            min_samples="""
+                Minimum number of samples required to show a marker for a given
+                location.
+            """,
+        ),
+        returns="Ipyleaflet map widget.",
+    )
     def plot_samples_interactive_map(
         self,
-        sample_sets=None,
-        sample_query=None,
-        basemap=None,
-        center=(-2, 20),
-        zoom=3,
-        min_samples=1,
-        height="500px",
-    ):
-        """Plot an interactive map showing sampling locations using ipyleaflet.
-
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers or a
-            release identifier or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        basemap : dict or TileProvider or TileLayer or str
-            Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
-            basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
-            When none is specified, basemap defaults to TileProvider ipyleaflet.basemaps.Esri.WorldImagery.
-        center : tuple of int, optional
-            Location to center the map.
-        zoom : int, optional
-            Initial zoom level.
-        min_samples : int, optional
-            Minimum number of samples required to show a marker for a given
-            location.
-        height : str, optional
-            Height of the map, e.g. "500px",
-
-        Returns
-        -------
-        samples_map : ipyleaflet.Map
-            Ipyleaflet map widget.
-
-        """
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        basemap: map_params.basemap = map_params.basemap_default,
+        center: map_params.center = map_params.center_default,
+        zoom: map_params.zoom = map_params.zoom_default,
+        min_samples: int = 1,
+        height: map_params.height = map_params.height_default,
+        width: map_params.width = map_params.width_default,
+    ) -> ipyleaflet.Map:
         debug = self._log.debug
 
-        import ipyleaflet
+        # normalise height and width to string
+        if isinstance(height, int):
+            height = f"{height}px"
+        if isinstance(width, int):
+            width = f"{width}px"
 
         debug("load sample metadata")
         df_samples = self.sample_metadata(
@@ -6432,8 +6226,8 @@ class AnophelesDataResource(ABC):
         )
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
         samples_map.add_control(scale_control)
-        # make the map a bit taller than the default
         samples_map.layout.height = height
+        samples_map.layout.width = width
 
         debug("add markers")
         taxa = df_samples["taxon"].dropna().sort_values().unique()
@@ -6467,70 +6261,29 @@ class AnophelesDataResource(ABC):
 
         return samples_map
 
+    @doc(
+        summary="""
+            Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        """,
+    )
     def plot_fst_gwss_track(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask=DEFAULT,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Run and plot a Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "X")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers or a
-            release identifier or a list of release identifiers.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed Fst statistic across chosen contig.
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: fst_params.window_size,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> gplt_params.figure:
         # compute Fst
         x, fst = self.fst_gwss(
             contig=contig,
@@ -6547,13 +6300,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -6582,72 +6337,32 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="""
+            Run and plot a Fst genome-wide scan to investigate genetic
+            differentiation between two cohorts.
+        """,
+    )
     def plot_fst_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        sample_sets=None,
-        site_mask=DEFAULT,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=190,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-    ):
-        """Run and plot a Fst genome-wide scan to investigate genetic
-        differentiation between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "X")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier or a list of
-            sample set identifiers or a
-            release identifier or a list of release identifiers.
-        site_mask : str, optional
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed Fst statistic with gene track on x-axis.
-        """
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: fst_params.window_size,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        site_mask: base_params.site_mask = DEFAULT,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 190,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+    ) -> None:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
             contig=contig,
@@ -6678,7 +6393,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -6686,24 +6401,17 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
-    def open_haplotypes(self, sample_set, analysis=DEFAULT):
-        """Open haplotypes zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-            Sample set identifier, e.g., "AG1000G-AO".
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open haplotypes zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_haplotypes(
+        self,
+        sample_set: base_params.sample_set,
+        analysis: hap_params.analysis = DEFAULT,
+    ) -> zarr.hierarchy.Group:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotypes[(sample_set, analysis)]
@@ -6720,20 +6428,13 @@ class AnophelesDataResource(ABC):
             self._cache_haplotypes[(sample_set, analysis)] = root
         return root
 
-    def open_haplotype_sites(self, analysis=DEFAULT):
-        """Open haplotype sites zarr.
-
-        Parameters
-        ----------
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @doc(
+        summary="Open haplotype sites zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_haplotype_sites(
+        self, analysis: hap_params.analysis = DEFAULT
+    ) -> zarr.hierarchy.Group:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotype_sites[analysis]
@@ -6817,65 +6518,35 @@ class AnophelesDataResource(ABC):
 
         return ds
 
+    @doc(
+        summary="Access haplotype data.",
+        returns="A dataset of haplotypes and associated data.",
+    )
     def haplotypes(
         self,
-        region,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        inline_array=True,
-        chunks="native",
-        cohort_size=None,
-        random_seed=42,
-    ):
-        """Access haplotype data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"] or ["2RL", "3RL"].
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of haplotypes and associated data.
-
-        """
+        region: base_params.region,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+    ) -> Optional[xr.Dataset]:
         debug = self._log.debug
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        resolved_region = self.resolve_region(region)
+        del region
+
+        if isinstance(resolved_region, Region):
+            resolved_region = [resolved_region]
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
         debug("build dataset")
         lx = []
-        for r in region:
+        for r in resolved_region:
             ly = []
 
             for s in sample_sets:
@@ -6938,48 +6609,23 @@ class AnophelesDataResource(ABC):
 
         return ds
 
-    def h12_calibration(
-        self,
-        contig,
-        analysis=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        cohort_size=30,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-    ):
-        """Generate h12 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate h12 over. Multiple window
-            sizes should be used to calibrate the optimal size for h12 analysis.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        calibration runs : list of numpy.ndarray
+    @doc(
+        summary="Generate h12 GWSS calibration data for different window sizes.",
+        returns="""
             A list of H12 calibration run arrays for each window size, containing
             values and percentiles.
-
-        """
-
+        """,
+    )
+    def h12_calibration(
+        self,
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> List[np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h12_calibration_cache_name
@@ -7037,54 +6683,25 @@ class AnophelesDataResource(ABC):
 
         return calibration_runs
 
+    @doc(
+        summary="Plot h12 GWSS calibration data for different window sizes.",
+        parameters=dict(
+            title="Plot title.",
+            show="If True, show the plot.",
+        ),
+    )
     def plot_h12_calibration(
         self,
-        contig,
-        analysis=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        cohort_size=30,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-        title=None,
-    ):
-        """Plot h12 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate h12 over. Multiple window
-            sizes should be used to calibrate the optimal size for h12 analysis.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-
-        Returns
-        -------
-        fig : figure
-            A plot showing h12 calibration run percentiles for different window
-            sizes.
-
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[str] = None,
+        show: bool = True,
+    ) -> gplt_params.figure:
         # get H12 values
         calibration_runs = self.h12_calibration(
             contig=contig,
@@ -7112,7 +6729,7 @@ class AnophelesDataResource(ABC):
         ]
 
         # make plot
-        fig = bkplt.figure(width=700, height=400, x_axis_type="log")
+        fig = bokeh.plotting.figure(width=700, height=400, x_axis_type="log")
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -7133,53 +6750,31 @@ class AnophelesDataResource(ABC):
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
+        fig.x_range = bokeh.models.Range1d(window_sizes[0], window_sizes[-1])
         if title is None:
             title = sample_query
         fig.title = title
-        bkplt.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+        return fig
 
+    @doc(
+        summary="Run h12 genome-wide selection scan.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            h12="An array with h12 statistic values for each window.",
+        ),
+    )
     def h12_gwss(
         self,
-        contig,
-        window_size,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run h12 GWSS.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        h12 : numpy.ndarray
-            An array with h12 statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h12_gwss_cache_name
@@ -7241,66 +6836,26 @@ class AnophelesDataResource(ABC):
 
         return results
 
+    @doc(
+        summary="Plot h12 GWSS data.",
+        returns="Bokeh figure.",
+    )
     def plot_h12_gwss_track(
         self,
-        contig,
-        window_size,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Plot h12 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed h12 statistic across chosen contig.
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> bokeh.plotting.figure:
         # compute H12
         x, h12 = self.h12_gwss(
             contig=contig,
@@ -7316,13 +6871,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = sample_query
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -7351,67 +6908,28 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="Plot h12 GWSS data.",
+    )
     def plot_h12_gwss(
         self,
-        contig,
-        window_size,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=170,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-    ):
-        """Plot h12 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed h12 statistic with gene track on x-axis.
-        """
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+    ) -> None:
         # gwss track
         fig1 = self.plot_h12_gwss_track(
             contig=contig,
@@ -7441,7 +6959,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -7449,54 +6967,29 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
+    @doc(
+        summary="""
+            Run a H1X genome-wide scan to detect genome regions with
+            shared selective sweeps between two cohorts.
+        """,
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            h1x="An array with H1X statistic values for each window.",
+        ),
+    )
     def h1x_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        analysis=DEFAULT,
-        sample_sets=None,
-        cohort_size=30,
-        random_seed=42,
-    ):
-        """Run a H1X genome-wide scan to detect genome regions with
-        shared selective sweeps between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "2RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        h1x : numpy.ndarray
-            An array with H1X statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: base_params.cohort_size = 30,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h1x_gwss_cache_name
@@ -7575,72 +7068,29 @@ class AnophelesDataResource(ABC):
 
         return results
 
+    @doc(
+        summary="""
+            Run and plot a H1X genome-wide scan to detect genome regions
+            with shared selective sweeps between two cohorts.
+        """
+    )
     def plot_h1x_gwss_track(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        analysis=DEFAULT,
-        sample_sets=None,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Run and plot a H1X genome-wide scan to detect genome regions
-        with shared selective sweeps between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed H1X statistic across chosen contig.
-
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        cohort1_query: base_params.cohort1_query,
+        cohort2_query: base_params.cohort2_query,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> gplt_params.figure:
         # compute H1X
         x, h1x = self.h1x_gwss(
             contig=contig,
@@ -7657,13 +7107,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -7692,73 +7144,32 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="""
+            Run and plot a H1X genome-wide scan to detect genome regions
+            with shared selective sweeps between two cohorts.
+        """
+    )
     def plot_h1x_gwss(
         self,
-        contig,
-        window_size,
-        cohort1_query,
-        cohort2_query,
-        analysis=DEFAULT,
-        sample_sets=None,
-        cohort_size=30,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=190,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-    ):
-        """Run and plot a H1X genome-wide scan to detect genome regions
-        with shared selective sweeps between two cohorts.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate h12 over.
-        cohort1_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        cohort2_query : str
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed H1X statistic with gene track on x-axis.
-
-        """
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        cohort1_query: base_params.cohort1_query,
+        cohort2_query: base_params.cohort2_query,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = 30,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 190,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+    ) -> None:
         # gwss track
         fig1 = self.plot_h1x_gwss_track(
             contig=contig,
@@ -7789,7 +7200,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -7797,97 +7208,38 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
+    @doc(
+        summary="Run iHS GWSS.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            ihs="An array with iHS statistic values for each window.",
+        ),
+    )
     def ihs_gwss(
         self,
-        contig,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        window_size=200,
-        percentiles=(50, 75, 100),
-        standardize=True,
-        standardization_bins=None,
-        standardization_n_bins=20,
-        standardization_diagnostics=False,
-        filter_min_maf=0.05,
-        compute_min_maf=0.05,
-        min_ehh=0.05,
-        max_gap=200_000,
-        gap_scale=20_000,
-        include_edges=True,
-        use_threads=True,
-        min_cohort_size=15,
-        max_cohort_size=50,
-        random_seed=42,
-    ):
-        """Run iHS GWSS.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        window_size : int, optional
-            The size of window in number of SNPs used to summarise iHS over.
-            If None, per-variant iHS values are returned.
-        percentiles : int or list of int, optional
-            If window size is specified, this returns the iHS percentiles
-            for each window.
-        standardize : bool, optional
-            If True, standardize iHS values by alternate allele counts
-        standardization_bins : list of floats, optional
-            If provided, use these allele count bins to standardize iHS values.
-        standardization_n_bins : int, optional
-            Number of allele count bins to use for standardization.
-            Overrides standardization_bins.
-        standardization_diagnostics : bool, optional
-            If True, plot some diagnostics about the standardization.
-        filter_min_maf : float, optional
-            Minimum minor allele frequency to use for filtering prior to passing
-            haplotypes to allel.ihs function
-        compute_min_maf : float, optional
-            Do not compute integrated haplotype homozygosity for variants with
-            minor allele frequency below this threshold.
-        min_ehh : float, optional
-            Minimum EHH beyond which to truncate integrated haplotype homozygosity
-            calculation.
-        max_gap : int, optional
-            Do not report scores if EHH spans a gap larger than this number of base pairs
-        gap_scale : int, optional
-            Rescale distance between variants if gap is larger than this value
-        include_edges : bool, optional
-            If True, report scores even if EHH does not decay below min_ehh at the
-            end of the chromosome.
-        use_threads : bool, optional
-            If True, use multiple threads to compute iHS.
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to this value if the number of
-            samples in the cohort is greater.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        ihs : numpy.ndarray
-            An array with iHS statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        window_size: ihs_params.window_size = ihs_params.window_size_default,
+        percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
+        standardize: ihs_params.standardize = True,
+        standardization_bins: Optional[ihs_params.standardization_bins] = None,
+        standardization_n_bins: ihs_params.standardization_n_bins = ihs_params.standardization_n_bins_default,
+        standardization_diagnostics: ihs_params.standardization_diagnostics = False,
+        filter_min_maf: ihs_params.filter_min_maf = ihs_params.filter_min_maf_default,
+        compute_min_maf: ihs_params.compute_min_maf = ihs_params.compute_min_maf_default,
+        min_ehh: ihs_params.min_ehh = ihs_params.min_ehh_default,
+        max_gap: ihs_params.max_gap = ihs_params.max_gap_default,
+        gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
+        include_edges: ihs_params.include_edges = True,
+        use_threads: ihs_params.use_threads = True,
+        min_cohort_size: base_params.min_cohort_size = 15,
+        max_cohort_size: base_params.max_cohort_size = 50,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._ihs_gwss_cache_name
@@ -8032,117 +7384,39 @@ class AnophelesDataResource(ABC):
 
         return results
 
+    @doc(
+        summary="Run and plot iHS GWSS data.",
+    )
     def plot_ihs_gwss_track(
         self,
-        contig,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        window_size=200,
-        percentiles=(50, 75, 100),
-        bokeh_palette=palettes.Blues,
-        standardize=True,
-        standardization_bins=None,
-        standardization_n_bins=20,
-        standardization_diagnostics=False,
-        filter_min_maf=0.05,
-        compute_min_maf=0.05,
-        min_ehh=0.05,
-        max_gap=200000,
-        gap_scale=20000,
-        include_edges=True,
-        use_threads=True,
-        min_cohort_size=15,
-        max_cohort_size=50,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Plot iHS GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        window_size : int, optional
-            The size of window in number of SNPs used to summarise iHS over.
-            If None, per-variant iHS values are returned.
-        percentiles : int or list of int, optional
-            If window size is specified, these iHS percentiles are returned
-            for each window.
-        bokeh_palette : bokeh.palettes, optional
-            Bokeh palette to use for plotting multiple percentile values.
-        standardize : bool, optional
-            If True, standardize iHS values by allele count.
-        standardization_bins : array_like, optional
-            If provided, use these bins for standardization.
-        standardization_n_bins : int, optional
-            Number of allele count bins to use for standardization.
-            Overrides standardization_bins.
-        standardization_diagnostics : bool, optional
-            If True, plot some diagnostics about the standardization.
-        filter_min_maf : float, optional
-            Minimum minor allele frequency to use for filtering prior to passing
-            haplotypes to allel.ihs function
-        compute_min_maf : float, optional
-            Do not compute integrated haplotype homozygosity for variants with
-            minor allele frequency below this threshold.
-        min_ehh : float, optional
-            Minimum EHH beyond which to truncate integrated haplotype homozygosity
-            calculation.
-        max_gap : int, optional
-            Do not report scores if EHH spans a gap larger than this number of base pairs
-        gap_scale : int, optional
-            Rescale distance between variants if gap is larger than this value
-        include_edges : bool, optional
-            If True, report scores even if EHH does not decay below min_ehh at the
-            end of the chromosome.
-        use_threads : bool, optional
-            If True, use multiple threads to compute iHS.
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to this value if the number of
-            samples in the cohort is greater.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing iHS statistic across the chosen contig.
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        window_size: ihs_params.window_size = ihs_params.window_size_default,
+        percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
+        standardize: ihs_params.standardize = True,
+        standardization_bins: Optional[ihs_params.standardization_bins] = None,
+        standardization_n_bins: ihs_params.standardization_n_bins = ihs_params.standardization_n_bins_default,
+        standardization_diagnostics: ihs_params.standardization_diagnostics = False,
+        filter_min_maf: ihs_params.filter_min_maf = ihs_params.filter_min_maf_default,
+        compute_min_maf: ihs_params.compute_min_maf = ihs_params.compute_min_maf_default,
+        min_ehh: ihs_params.min_ehh = ihs_params.min_ehh_default,
+        max_gap: ihs_params.max_gap = ihs_params.max_gap_default,
+        gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
+        include_edges: ihs_params.include_edges = True,
+        use_threads: ihs_params.use_threads = True,
+        min_cohort_size: base_params.min_cohort_size = 15,
+        max_cohort_size: base_params.max_cohort_size = 50,
+        random_seed: base_params.random_seed = 42,
+        palette: ihs_params.palette = ihs_params.palette_default,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> gplt_params.figure:
         # compute ihs
         x, ihs = self.ihs_gwss(
             contig=contig,
@@ -8171,13 +7445,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = sample_query
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -8190,11 +7466,12 @@ class AnophelesDataResource(ABC):
         )
 
         if window_size:
-            if not isinstance(percentiles, list):
-                percentiles = [percentiles]
+            if isinstance(percentiles, int):
+                percentiles = (percentiles,)
 
         # add an empty dimension to ihs array if 1D
         ihs = np.reshape(ihs, (ihs.shape[0], -1))
+        bokeh_palette = bokeh.palettes.all_palettes[palette]
         for i in range(ihs.shape[1]):
             ihs_perc = ihs[:, i]
             if ihs.shape[1] >= 3:
@@ -8219,118 +7496,42 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="Run and plot iHS GWSS data.",
+    )
     def plot_ihs_gwss(
         self,
-        contig,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        window_size=200,
-        percentiles=(50, 75, 100),
-        bokeh_palette=palettes.Blues,
-        standardize=True,
-        standardization_bins=None,
-        standardization_n_bins=20,
-        standardization_diagnostics=False,
-        filter_min_maf=0.05,
-        compute_min_maf=0.05,
-        min_ehh=0.05,
-        max_gap=200_000,
-        gap_scale=20_000,
-        include_edges=False,
-        use_threads=True,
-        min_cohort_size=15,
-        max_cohort_size=50,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=170,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
-    ):
-        """Plot ihs GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        window_size : int, optional
-            The size of window in number of SNPs used to summarise iHS over.
-            If None, per-variant iHS values are returned.
-        percentiles : int or list of int, optional
-            If window size is specified, these iHS percentiles are returned
-            for each window.
-        bokeh_palette : bokeh.palettes, optional
-            Bokeh palette to use for plotting multiple percentile values.
-        standardize : bool, optional
-            If True, standardize iHS values by allele count.
-        standardization_bins : array_like, optional
-            If provided, use these bins for standardization.
-        standardization_n_bins : int, optional
-            Number of allele count bins to use for standardization.
-            Overrides standardization_bins.
-        standardization_diagnostics : bool, optional
-            If True, plot some diagnostics about the standardization.
-        filter_min_maf : float, optional
-            Minimum minor allele frequency to use for filtering prior to passing
-            haplotypes to allel.ihs function
-        compute_min_maf : float, optional
-            Do not compute integrated haplotype homozygosity for variants with
-            minor allele frequency below this threshold.
-        min_ehh : float, optional
-            Minimum EHH beyond which to truncate integrated haplotype homozygosity
-            calculation.
-        max_gap : int, optional
-            Do not report scores if EHH spans a gap larger than this number of base pairs
-        gap_scale : int, optional
-            Rescale distance between variants if gap is larger than this value
-        include_edges : bool, optional
-            If True, report scores even if EHH does not decay below min_ehh at the
-            end of the chromosome.
-        use_threads : bool, optional
-            If True, use multiple threads to compute iHS.
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to this value if the number of
-            samples in the cohort is greater.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed ihs statistic with gene track on x-axis.
-        """
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        window_size: ihs_params.window_size = ihs_params.window_size_default,
+        percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
+        standardize: ihs_params.standardize = True,
+        standardization_bins: Optional[ihs_params.standardization_bins] = None,
+        standardization_n_bins: ihs_params.standardization_n_bins = ihs_params.standardization_n_bins_default,
+        standardization_diagnostics: ihs_params.standardization_diagnostics = False,
+        filter_min_maf: ihs_params.filter_min_maf = ihs_params.filter_min_maf_default,
+        compute_min_maf: ihs_params.compute_min_maf = ihs_params.compute_min_maf_default,
+        min_ehh: ihs_params.min_ehh = ihs_params.min_ehh_default,
+        max_gap: ihs_params.max_gap = ihs_params.max_gap_default,
+        gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
+        include_edges: ihs_params.include_edges = True,
+        use_threads: ihs_params.use_threads = True,
+        min_cohort_size: base_params.min_cohort_size = 15,
+        max_cohort_size: base_params.max_cohort_size = 50,
+        random_seed: base_params.random_seed = 42,
+        palette: ihs_params.palette = ihs_params.palette_default,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+    ) -> None:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
             contig=contig,
@@ -8339,7 +7540,7 @@ class AnophelesDataResource(ABC):
             sample_query=sample_query,
             window_size=window_size,
             percentiles=percentiles,
-            bokeh_palette=bokeh_palette,
+            palette=palette,
             standardize=standardize,
             standardization_bins=standardization_bins,
             standardization_n_bins=standardization_n_bins,
@@ -8374,7 +7575,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -8382,80 +7583,58 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
     def _garud_g123(self, gt):
-        """Compute Garud's G1, G12, G123, G2/G1."""
-        f = _diplotype_frequencies(gt)
-        # convert dict to array of sorted frequencies
-        f = np.sort(np.fromiter(f.values(), dtype=float))[::-1]
+        """Compute Garud's G123."""
+
+        # compute diplotype frequencies
+        frq_counter = _diplotype_frequencies(gt)
+
+        # convert to array of sorted frequencies
+        f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+        # compute G123
+        g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
+
+        # These other statistics are not currently needed, but leaving here
+        # commented out for future reference...
 
         # compute G1
         # g1 = np.sum(f**2)
+
         # compute G12
         # g12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)  # type: ignore[index]
-        # compute G123
-        g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)  # type: ignore[index]
+
         # compute G2/G1
         # g2 = g1 - f[0] ** 2  # type: ignore[index]
         # g2_g1 = g2 / g1
 
         return g123
 
+    @doc(
+        summary="Run a G123 genome-wide selection scan.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            g123="An array with G123 statistic values for each window.",
+        ),
+    )
     def g123_gwss(
         self,
-        contig,
-        window_size,
-        sites=DEFAULT,
-        site_mask=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        random_seed=42,
-    ):
-        """Run g123 GWSS.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate g123 over.
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        x : numpy.ndarray
-            An array containing the window centre point genomic positions.
-        g123 : numpy.ndarray
-            An array with g123 statistic values for each window.
-
-        """
+        contig: base_params.contig,
+        window_size: g123_params.window_size,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._g123_gwss_cache_name
@@ -8497,6 +7676,7 @@ class AnophelesDataResource(ABC):
 
     def _g123_gwss(
         self,
+        *,
         contig,
         sites,
         site_mask,
@@ -8507,7 +7687,7 @@ class AnophelesDataResource(ABC):
         max_cohort_size,
         random_seed,
     ):
-        gt, pos = self._load_gt_for_g123(
+        gt, pos = self._load_data_for_g123(
             contig=contig,
             sites=sites,
             site_mask=site_mask,
@@ -8525,79 +7705,31 @@ class AnophelesDataResource(ABC):
 
         return results
 
+    @doc(
+        summary="Plot G123 GWSS data.",
+    )
     def plot_g123_gwss_track(
         self,
-        contig,
-        window_size,
-        sites,
-        site_mask=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        height=200,
-        show=True,
-        x_range=None,
-    ):
-        """Plot g123 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate g123 over.
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site filters mask to apply. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int. optional
-            Plot height in pixels (px).
-        show : bool, optional
-            If True, show the plot.
-        x_range : bokeh.models.Range1d, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed g123 statistic across chosen contig.
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
+        contig: base_params.contig,
+        window_size: g123_params.window_size,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+    ) -> gplt_params.figure:
         # compute G123
         x, g123 = self.g123_gwss(
             contig=contig,
@@ -8615,13 +7747,15 @@ class AnophelesDataResource(ABC):
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
         # create a figure
-        xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
         if title is None:
             title = sample_query
-        fig = bkplt.figure(
+        fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
@@ -8650,80 +7784,34 @@ class AnophelesDataResource(ABC):
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
-            bkplt.show(fig)
+            bokeh.plotting.show(fig)
 
         return fig
 
+    @doc(
+        summary="Plot G123 GWSS data.",
+    )
     def plot_g123_gwss(
         self,
-        contig,
-        window_size,
-        sites,
-        site_mask=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        random_seed=42,
-        title=None,
-        sizing_mode=DEFAULT_GENOME_PLOT_SIZING_MODE,
-        width=DEFAULT_GENOME_PLOT_WIDTH,
-        track_height=170,
-        genes_height=DEFAULT_GENES_TRACK_HEIGHT,
+        contig: base_params.contig,
+        window_size: g123_params.window_size,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
     ):
-        """Plot g123 GWSS data.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        window_size : int
-            The size of windows used to calculate g123 over.
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site mask to use. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int. optional
-            GWSS track height in pixels (px).
-        genes_height : int. optional
-            Gene track height in pixels (px).
-
-        Returns
-        -------
-        fig : figure
-            A plot showing windowed g123 statistic with gene track on x-axis.
-        """
-
-        import bokeh.layouts as bklay
-        import bokeh.plotting as bkplt
-
         # gwss track
         fig1 = self.plot_g123_gwss_track(
             contig=contig,
@@ -8755,7 +7843,7 @@ class AnophelesDataResource(ABC):
         )
 
         # combine plots into a single figure
-        fig = bklay.gridplot(
+        fig = bokeh.layouts.gridplot(
             [fig1, fig2],
             ncols=1,
             toolbar_location="above",
@@ -8763,10 +7851,11 @@ class AnophelesDataResource(ABC):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
-    def _load_gt_for_g123(
+    def _load_data_for_g123(
         self,
+        *,
         contig,
         sites,
         site_mask,
@@ -8804,6 +7893,7 @@ class AnophelesDataResource(ABC):
             hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
             pos = pos[hap_site_mask]
             gt = gt.compress(hap_site_mask, axis=0)
+
         elif sites == "segregating":
             debug("subsetting to segregating sites")
             ac = gt.count_alleles(max_allele=3)
@@ -8811,63 +7901,34 @@ class AnophelesDataResource(ABC):
             pos = pos[seg]
             gt = gt.compress(seg, axis=0)
 
+        elif sites == "all":
+            debug("using all sites")
+
         return gt, pos
 
-    def g123_calibration(
-        self,
-        contig,
-        sites=DEFAULT,
-        site_mask=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-    ):
-        """Generate g123 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site mask to use. See the `site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate g123 over. Multiple window
-            sizes should be used to calibrate the optimal size for g123 site_mask.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-
-        Returns
-        -------
-        calibration runs : list of numpy.ndarray
+    @doc(
+        summary="Generate g123 GWSS calibration data for different window sizes.",
+        returns="""
             A list of g123 calibration run arrays for each window size, containing
             values and percentiles.
-
-        """
-
+        """,
+    )
+    def g123_calibration(
+        self,
+        contig: base_params.contig,
+        sites: g123_params.sites = DEFAULT,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> List[np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._g123_calibration_cache_name
@@ -8898,6 +7959,7 @@ class AnophelesDataResource(ABC):
 
     def _g123_calibration(
         self,
+        *,
         contig,
         sites,
         site_mask,
@@ -8908,7 +7970,7 @@ class AnophelesDataResource(ABC):
         window_sizes,
         random_seed,
     ):
-        gt, _ = self._load_gt_for_g123(
+        gt, _ = self._load_data_for_g123(
             contig=contig,
             sites=sites,
             site_mask=site_mask,
@@ -8928,67 +7990,26 @@ class AnophelesDataResource(ABC):
 
         return calibration_runs
 
+    @doc(
+        summary="Plot g123 GWSS calibration data for different window sizes.",
+    )
     def plot_g123_calibration(
         self,
-        contig,
-        sites,
-        site_mask=DEFAULT,
-        sample_query=None,
-        sample_sets=None,
-        min_cohort_size=20,
-        max_cohort_size=50,
-        window_sizes=(100, 200, 500, 1000, 2000, 5000, 10000, 20000),
-        random_seed=42,
-        title=None,
+        contig: base_params.contig,
+        sites: g123_params.sites,
+        site_mask: base_params.site_mask = DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = g123_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = g123_params.max_cohort_size_default,
+        window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
     ):
-        """Plot g123 GWSS calibration data for different window sizes.
-
-        Parameters
-        ----------
-        contig: str
-            Contig name (e.g., "2L" or "3RL")
-        sites: str
-            How to filter sites. 'all' includes all sites that pass
-            site filters, 'segregating' includes only segregating sites for
-            the given cohort, or a phasing analysis identifier can be
-            provided to use sites from the haplotype data, which is an
-            approximation to finding segregating sites in the entire Ag3.0
-            (gambiae complex) or Af1.0 (funestus) cohort.
-        site_mask : str
-            Which site_mask to use. See the `phasing_site_mask_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        min_cohort_size : int, optional
-            If provided, raise a ValueError if the number of samples in the cohort is
-            less than this value.
-        max_cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size if the number of
-            samples in the cohort is greater than this value.
-        window_sizes : int or list of int, optional
-            The sizes of windows used to calculate g123 over. Multiple window
-            sizes should be used to calibrate the optimal size for g123 site_mask.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        title : str, optional
-            If provided, title string is used to label plot.
-
-        Returns
-        -------
-        fig : figure
-            A plot showing g123 calibration run percentiles for different window
-            sizes.
-
-        """
-
-        import bokeh.models as bkmod
-        import bokeh.plotting as bkplt
-
         # get g123 values
         calibration_runs = self.g123_calibration(
             contig=contig,
@@ -9018,7 +8039,7 @@ class AnophelesDataResource(ABC):
         ]
 
         # make plot
-        fig = bkplt.figure(width=700, height=400, x_axis_type="log")
+        fig = bokeh.plotting.figure(width=700, height=400, x_axis_type="log")
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -9039,85 +8060,37 @@ class AnophelesDataResource(ABC):
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bkmod.Range1d(window_sizes[0], window_sizes[-1])
+        fig.x_range = bokeh.models.Range1d(window_sizes[0], window_sizes[-1])
         if title is None:
             title = sample_query
         fig.title = title
-        bkplt.show(fig)
+        bokeh.plotting.show(fig)
 
+    @doc(
+        summary="""
+            Hierarchically cluster haplotypes in region and produce an interactive plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to `px.scatter()`.",
+        ),
+    )
     def plot_haplotype_clustering(
         self,
-        region,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        color=None,
-        symbol=None,
-        linkage_method="single",
-        count_sort=True,
-        distance_sort=False,
-        cohort_size=None,
-        random_seed=42,
-        width=1000,
-        height=500,
+        region: base_params.region,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
+        count_sort: hapclust_params.count_sort = True,
+        distance_sort: hapclust_params.distance_sort = False,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        width: plotly_params.width = 1000,
+        height: plotly_params.height = 500,
         **kwargs,
-    ):
-        """Hierarchically cluster haplotypes in region and produce an interactive plot.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"] or ["2RL", "X"].
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        color : str, optional
-            Identifies a column in the sample metadata which determines the colour
-            of dendrogram leaves (haplotypes).
-        symbol : str, optional
-            Identifies a column in the sample metadata which determines the shape
-            of dendrogram leaves (haplotypes).
-        linkage_method: str, optional
-            The linkage algorithm to use, valid options are 'single', 'complete',
-            'average', 'weighted', 'centroid', 'median' and 'ward'. See the Linkage
-            Methods section of the scipy.cluster.hierarchy.linkage docs for full
-            descriptions.
-        count_sort: bool, optional
-            For each node n, the order (visually, from left-to-right) n's two descendant
-            links are plotted is determined by this parameter. If True, the child with
-            the minimum number of original objects in its cluster is plotted first. Note
-            distance_sort and count_sort cannot both be True.
-        distance_sort: bool, optional
-            For each node n, the order (visually, from left-to-right) n's two descendant
-            links are plotted is determined by this parameter. If True, The child with the
-            minimum distance between its direct descendants is plotted first.
-        cohort_size : int, optional
-            If provided, randomly down-sample to the given cohort size.
-        random_seed : int, optional
-            Random seed used for down-sampling.
-        width : int, optional
-            The figure width in pixels
-        height: int, optional
-            The figure height in pixels
-
-        Returns
-        -------
-        fig : Figure
-            Plotly figure.
-
-        """
-        import plotly.express as px
+    ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
 
         from .plotly_dendrogram import create_dendrogram
@@ -9255,93 +8228,42 @@ class AnophelesDataResource(ABC):
 
         return fig
 
+    @doc(
+        summary="""
+            Construct a median-joining haplotype network and display it using
+            Cytoscape.
+        """,
+        extended_summary="""
+            A haplotype network provides a visualisation of the genetic distance
+            between haplotype_ Each node in the network represents a unique
+            haplotype. The size (area) of the node is scaled by the number of
+            times that unique haplotype was observed within the selected samples.
+            A connection between two nodes represents a single SNP difference
+            between the corresponding haplotypes.
+        """,
+    )
     def plot_haplotype_network(
         self,
-        region,
-        analysis=DEFAULT,
-        sample_sets=None,
-        sample_query=None,
-        max_dist=2,
-        color=None,
-        color_discrete_sequence=None,
-        color_discrete_map=None,
-        category_orders=None,
-        node_size_factor=50,
-        server_mode="inline",
-        height=650,
-        width="100%",
-        layout="cose",
-        layout_params=None,
-        server_port=None,
+        region: base_params.region,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,
+        color: Optional[hapnet_params.color] = None,
+        color_discrete_sequence: Optional[hapnet_params.color_discrete_sequence] = None,
+        color_discrete_map: Optional[hapnet_params.color_discrete_map] = None,
+        category_orders: Optional[hapnet_params.category_order] = None,
+        node_size_factor: hapnet_params.node_size_factor = hapnet_params.node_size_factor_default,
+        layout: hapnet_params.layout = hapnet_params.layout_default,
+        layout_params: Optional[hapnet_params.layout_params] = None,
+        server_port: Optional[dash_params.server_port] = None,
+        server_mode: Optional[
+            dash_params.server_mode
+        ] = dash_params.server_mode_default,
+        height: dash_params.height = 650,
+        width: Optional[dash_params.width] = "100%",
     ):
-        """Construct a median-joining haplotype network and display it using
-        Cytoscape.
-
-        A haplotype network provides a visualisation of the genetic distance
-        between haplotypes. Each node in the network represents a unique
-        haplotype. The size (area) of the node is scaled by the number of
-        times that unique haplotype was observed within the selected samples.
-        A connection between two nodes represents a single SNP difference
-        between the corresponding haplotypes.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"] or ["2RL", "X"].
-        analysis : str
-            Which phasing analysis to use. See the `phasing_analysis_ids`
-            property for available values.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        max_dist : int, optional
-            Join network components up to a maximum distance of 2 SNP
-            differences.
-        color : str, optional
-            Identifies a column in the sample metadata which determines the colour
-            of pie chart segments within nodes.
-        color_discrete_sequence : list, optional
-            Provide a list of colours to use.
-        color_discrete_map : dict, optional
-            Provide an explicit mapping from values to colours.
-        category_orders : list, optional
-            Control the order in which values appear in the legend.
-        node_size_factor : int, optional
-            Control the sizing of nodes.
-        server_mode : {"inline", "external", "jupyterlab"}
-            Controls how the Jupyter Dash app will be launched. See
-            https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
-            more information.
-        height : int, optional
-            Height of the plot.
-        width : int, optional
-            Width of the plot.
-        layout : str
-            Name of the network layout to use to position nodes.
-        layout_params
-            Additional parameters to the layout algorithm.
-        server_port
-            Manually override the port on which the Dash app will run.
-
-        Returns
-        -------
-        app
-            The running Dash app.
-
-        """
-
-        from itertools import cycle
-
         import dash_cytoscape as cyto
-        import plotly.express as px
         from dash import dcc, html
         from dash.dependencies import Input, Output
         from jupyter_dash import JupyterDash
@@ -9472,22 +8394,23 @@ class AnophelesDataResource(ABC):
         ]
 
         debug("define node style")
-        node_stylesheet = {
-            "selector": "node",
-            "style": {
-                "width": "data(width)",
-                "height": "data(width)",
-                "pie-size": "100%",
-            },
+        node_style = {
+            "width": "data(width)",
+            "height": "data(width)",
+            "pie-size": "100%",
         }
-        if color:
+        if color and color_discrete_map is not None:
             # here are the styles which control the display of nodes as pie
             # charts
             for i, (v, c) in enumerate(color_discrete_map.items()):
-                node_stylesheet["style"][f"pie-{i + 1}-background-color"] = c
-                node_stylesheet["style"][
+                node_style[f"pie-{i + 1}-background-color"] = c
+                node_style[
                     f"pie-{i + 1}-background-size"
                 ] = f"mapData({v}, 0, 100, 0, 100)"
+        node_stylesheet = {
+            "selector": "node",
+            "style": node_style,
+        }
         debug(node_stylesheet)
 
         debug("define edge style")
@@ -9528,13 +8451,9 @@ class AnophelesDataResource(ABC):
         if layout_params is None:
             graph_layout_params = dict()
         else:
-            graph_layout_params = layout_params.copy()
+            graph_layout_params = dict(**layout_params)
         graph_layout_params["name"] = layout
-        # expected type 'str', got 'int'
-        # noinspection PyTypeChecker
         graph_layout_params.setdefault("padding", 10)
-        # expected type 'str', got 'bool'
-        # noinspection PyTypeChecker
         graph_layout_params.setdefault("animate", False)
 
         cytoscape_component = cyto.Cytoscape(
@@ -9620,16 +8539,20 @@ class AnophelesDataResource(ABC):
                     text += f" ({color_texts})"
                 return text
 
-        debug("launch the dash app")
-        run_params = dict()
-        if server_mode is not None:
-            run_params["mode"] = server_mode
-        if server_port is not None:
-            run_params["port"] = server_port
+        debug("set up run parameters")
+        # workaround weird mypy bug here
+        run_params: Dict[str, Any] = dict()
         if height is not None:
             run_params["height"] = height
         if width is not None:
             run_params["width"] = width
+        if server_port is not None:
+            run_params["port"] = server_port
+        if server_mode is not None:
+            run_params["mode"] = server_mode
+
+        debug("launch the dash app")
+        # TODO I don't think this actually returns anything
         return app.run_server(**run_params)
 
 
@@ -9663,6 +8586,7 @@ def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
 def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
+    # TODO could use faster hashing
     n = gt.shape[1]
     hashes = [hash(gt[:, i].tobytes()) for i in range(n)]
     counts = Counter(hashes)
@@ -9673,6 +8597,7 @@ def _diplotype_frequencies(gt):
 def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
     haplotype hash values to frequencies."""
+    # TODO could use faster hashing
     n = h.shape[1]
     hashes = [hash(h[:, i].tobytes()) for i in range(n)]
     counts = Counter(hashes)
@@ -9701,6 +8626,7 @@ def _h1x(ha, hb):
 
 def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     """Compute H1X in moving windows.
+
     Parameters
     ----------
     ha : array_like, int, shape (n_variants, n_haplotypes)
@@ -9716,6 +8642,7 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     step : int, optional
         The number of variants between start positions of windows. If not
         given, defaults to the window size, i.e., non-overlapping windows.
+
     Returns
     -------
     h1x : ndarray, float, shape (n_windows,)
