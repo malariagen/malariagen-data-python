@@ -8461,7 +8461,7 @@ class AnophelesDataResource(ABC):
 
         if sites == DEFAULT:
             sites = self._default_phasing_analysis
-            valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+        valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
             raise ValueError(
                 f"Invalid value for `sites` parameter, must be one of {valid_sites}."
