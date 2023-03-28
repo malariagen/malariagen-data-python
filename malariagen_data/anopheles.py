@@ -2135,7 +2135,8 @@ class AnophelesDataResource(ABC):
             chunks. Also, can be a target size, e.g., '200 MiB'.
         cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size. A ValueError
-            will be raised if the cohort size is smaller than the given value.
+            will be raised if the cohort size is smaller than the given value. Overrides
+            min_cohort_size and max_cohort_size.
         max_cohort_size : int, optional
             If provided, randomly down-sample to the given cohort size if the
             cohort size is larger than the given value.
