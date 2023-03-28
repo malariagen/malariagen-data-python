@@ -14,7 +14,7 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.8,<3.11"
+python = ">=3.8,<3.12"
 numpy = "*"
 scipy = "*"
 pandas = "*"
