@@ -45,7 +45,7 @@ tqdm = "*"
 dash = "*"
 dash-cytoscape = "*"
 jupyter-dash = "*"
-numpydoc_decorator = ">=1.10.0"
+numpydoc_decorator = ">=2.0.0"
 typing_extensions = "*"
 
 [tool.poetry.dev-dependencies]
