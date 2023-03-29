@@ -1,49 +1,48 @@
 name: notebooks
 on:
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master
+    push:
+        branches:
+            - master
+    pull_request:
+        branches:
+            - master
 jobs:
-  notebooks:
-    strategy:
-      fail-fast: true
-      matrix:
-        python-version: ["3.7"]
-        poetry-version: ["1.3.1"]
-        os: [ubuntu-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
+    notebooks:
+        strategy:
+            fail-fast: true
+            matrix:
+                python-version: ['3.10']
+                poetry-version: ['1.4.1']
+                os: [ubuntu-latest]
+        runs-on: ${{ matrix.os }}
+        steps:
+            - name: Checkout source
+              uses: actions/checkout@v3
 
-      - name: Checkout source
-        uses: actions/checkout@v3
+            - name: Restore GCS cache
+              uses: actions/cache/restore@v3
+              with:
+                  path: gcs_cache
+                  key: gcs_cache_notebooks
 
-      - name: Restore GCS cache
-        uses: actions/cache/restore@v3
-        with:
-          path: gcs_cache
-          key: gcs_cache_notebooks
+            - name: Install poetry
+              run: pipx install poetry==${{ matrix.poetry-version }}
 
-      - name: Install poetry
-        run: pipx install poetry==${{ matrix.poetry-version }}
+            - name: Setup python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: ${{ matrix.python-version }}
+                  cache: 'poetry'
 
-      - name: Setup python
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'poetry'
+            - name: Install dependencies
+              run: poetry install
 
-      - name: Install dependencies
-        run: poetry install
+            - name: Run notebooks
+              run: poetry run jupyter nbconvert --execute notebooks/* --inplace
 
-      - name: Run notebooks
-        run: poetry run jupyter nbconvert --execute notebooks/* --inplace
-
-      - name: Save GCS cache
-        uses: actions/cache/save@v3
-        if: always()
-        with:
-          path: gcs_cache
-          key: gcs_cache_notebooks
+            - name: Save GCS cache
+              uses: actions/cache/save@v3
+              if: always()
+              with:
+                  path: gcs_cache
+                  key: gcs_cache_notebooks
