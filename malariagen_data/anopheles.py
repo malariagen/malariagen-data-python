@@ -6531,8 +6531,8 @@ class AnophelesDataResource(ABC):
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
         cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort] = None,
-        max_cohort_size: Optional[base_params.max_cohort] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> Optional[xr.Dataset]:
         debug = self._log.debug
