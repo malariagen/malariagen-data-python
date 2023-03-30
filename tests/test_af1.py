@@ -1346,6 +1346,8 @@ def test_h1x_gwss():
         cohort2_query=cohort2_query,
         window_size=window_size,
         cohort_size=None,
+        min_cohort_size=None,
+        max_cohort_size=None,
     )
 
     # check data
@@ -1376,6 +1378,8 @@ def test_fst_gwss():
         cohort2_query=cohort2_query,
         window_size=window_size,
         cohort_size=None,
+        min_cohort_size=None,
+        max_cohort_size=None,
     )
 
     # check data
