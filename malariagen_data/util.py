@@ -3,12 +3,21 @@ import json
 import logging
 import re
 import sys
+import warnings
 from collections.abc import Mapping
 from enum import Enum
+from textwrap import dedent, fill
+from typing import Optional
 from urllib.parse import unquote_plus
+
+try:
+    from google import colab
+except ImportError:
+    colab = None
 
 import allel
 import dask.array as da
+import ipinfo
 import numpy as np
 import pandas
 import pandas as pd
@@ -715,3 +724,35 @@ def plotly_discrete_legend(
     )
 
     return fig
+
+
+def check_colab_location(*, gcs_url: str, url: str) -> Optional[ipinfo.details.Details]:
+    """
+    Sometimes, colab will allocate a VM outside the US, e.g., in
+    Europe or Asia. Because the MalariaGEN GCS buckets are located
+    in the US, this is usually bad for performance, because of
+    increased latency and lower bandwidth. Add a check for this and
+    issue a warning if not in the US.
+    """
+
+    details = None
+    if colab and gcs_url in url:
+        try:
+            details = ipinfo.getHandler().getDetails()
+            if details.country != "US":
+                warnings.warn(
+                    fill(
+                        dedent(
+                            """
+                    Your currently allocated Google Colab VM is not located in the US.
+                    This usually means that data access will be substantially slower.
+                    If possible, select "Runtime > Disconnect and delete runtime" from
+                    the menu to request a new VM and try again.
+                """
+                        )
+                    )
+                )
+        except OSError:
+            pass
+
+    return details

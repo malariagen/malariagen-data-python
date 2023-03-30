@@ -1,11 +1,8 @@
-import json
-import sys
 import warnings
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from collections import Counter
 from itertools import cycle
 from pathlib import Path
-from textwrap import dedent
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
@@ -15,7 +12,6 @@ import bokeh.palettes
 import bokeh.plotting
 import dask.array as da
 import igv_notebook
-import ipinfo
 import ipyleaflet
 import numba
 import numpy as np
@@ -30,13 +26,8 @@ from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
 from typing_extensions import Annotated, Literal, TypeAlias
 
-try:
-    # noinspection PyPackageRequirements
-    from google import colab
-except ImportError:
-    colab = None
-
 from . import veff
+from .anoph.base import AnophelesBase, base_params
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
@@ -44,13 +35,11 @@ from .util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     CacheMiss,
-    LoggingHelper,
     Region,
     da_compress,
     da_from_zarr,
     dask_compress_dataset,
     hash_params,
-    init_filesystem,
     init_zarr_store,
     jackknife_ci,
     jitter,
@@ -68,156 +57,6 @@ DEFAULT = "default"
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
-
-
-class base_params:
-    """Parameter definitions common to many functions."""
-
-    contig: TypeAlias = Annotated[
-        str,
-        """
-        Reference genome contig name. See the `contigs` property for valid contig
-        names.
-        """,
-    ]
-    region: TypeAlias = Annotated[
-        Union[str, Region],
-        """
-        Region of the reference genome. Can be a contig name, region string
-        (formatted like "{contig}:{start}-{end}"), or identifier of a genome
-        feature such as a gene or transcript.
-        """,
-    ]
-    release: TypeAlias = Annotated[
-        Union[str, Sequence[str]],
-        "Release version identifier.",
-    ]
-    sample_set: TypeAlias = Annotated[
-        str,
-        "Sample set identifier.",
-    ]
-    sample_sets: TypeAlias = Annotated[
-        Union[Sequence[str], str],
-        """
-        List of sample sets and/or releases. Can also be a single sample set or
-        release.
-        """,
-    ]
-    sample_query: TypeAlias = Annotated[
-        str,
-        """
-        A pandas query string to be evaluated against the sample metadata.
-        """,
-    ]
-    cohort1_query: TypeAlias = Annotated[
-        str,
-        """
-        A pandas query string to be evaluated against the sample metadata,
-        to select samples for the first cohort.
-        """,
-    ]
-    cohort2_query: TypeAlias = Annotated[
-        str,
-        """
-        A pandas query string to be evaluated against the sample metadata,
-        to select samples for the second cohort.
-        """,
-    ]
-    site_mask: TypeAlias = Annotated[
-        str,
-        """
-        Which site filters mask to apply. See the `site_mask_ids` property for
-        available values.
-        """,
-    ]
-    site_class: TypeAlias = Annotated[
-        str,
-        """
-        Select sites belonging to one of the following classes: CDS_DEG_4,
-        (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-        degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-        INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-        longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-        5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-        splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-        untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-        a gene).
-        """,
-    ]
-    cohort_size: TypeAlias = Annotated[
-        int,
-        """
-        Randomly down-sample to this value if the number of samples in the
-        cohort is greater. Raise an error if the number of samples is less
-        than this value.
-        """,
-    ]
-    min_cohort_size: TypeAlias = Annotated[
-        int,
-        """
-        Minimum cohort size. Raise an error if the number of samples is
-        less than this value.
-        """,
-    ]
-    max_cohort_size: TypeAlias = Annotated[
-        int,
-        """
-        Randomly down-sample to this value if the number of samples in the
-        cohort is greater.
-        """,
-    ]
-    random_seed: TypeAlias = Annotated[
-        int,
-        "Random seed used for reproducible down-sampling.",
-    ]
-    transcript: TypeAlias = Annotated[
-        str,
-        "Gene transcript identifier.",
-    ]
-    cohort: TypeAlias = Annotated[
-        Union[str, Tuple[str, str]],
-        """
-        Either a string giving one of the predefined cohort labels, or a
-        pair of strings giving a custom cohort label and a sample query.
-        """,
-    ]
-    cohorts: TypeAlias = Annotated[
-        Union[str, Mapping[str, str]],
-        """
-        Either a string giving the name of a predefined cohort set (e.g.,
-        "admin1_month") or a dict mapping custom cohort labels to sample
-        queries.
-        """,
-    ]
-    n_jack: TypeAlias = Annotated[
-        int,
-        """
-        Number of blocks to divide the data into for the block jackknife
-        estimation of confidence intervals. N.B., larger is not necessarily
-        better.
-        """,
-    ]
-    confidence_level: TypeAlias = Annotated[
-        float,
-        """
-        Confidence level to use for confidence interval calculation. E.g., 0.95
-        means 95% confidence interval.
-        """,
-    ]
-    field: TypeAlias = Annotated[str, "Name of array or column to access."]
-    inline_array: TypeAlias = Annotated[
-        bool,
-        "Passed through to dask `from_array()`.",
-    ]
-    inline_array_default: inline_array = True
-    chunks: TypeAlias = Annotated[
-        str,
-        """
-        If 'auto' let dask decide chunk size. If 'native' use native zarr
-        chunks. Also, can be a target size, e.g., '200 MiB'.
-        """,
-    ]
-    chunks_default: chunks = "native"
 
 
 class hap_params:
@@ -823,38 +662,47 @@ class dash_params:
 
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
-class AnophelesDataResource(ABC):
+class AnophelesDataResource(AnophelesBase):
     """Base class for Anopheles data resources."""
 
     def __init__(
         self,
         url,
         config_path,
-        cohorts_analysis=None,
-        site_filters_analysis=None,
-        bokeh_output_notebook=True,
-        results_cache=None,
-        log=sys.stdout,
-        debug=False,
-        show_progress=True,
-        check_location=True,
-        pre=False,
-        **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
+        cohorts_analysis,
+        site_filters_analysis,
+        bokeh_output_notebook,
+        results_cache,
+        log,
+        debug,
+        show_progress,
+        check_location,
+        pre,
+        gcs_url: str,
+        major_version_int: int,
+        major_version_path: str,
+        **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
-        self._url = url
-        self._pre = pre
+        AnophelesBase.__init__(
+            self,
+            url=url,
+            config_path=config_path,
+            bokeh_output_notebook=bokeh_output_notebook,
+            log=log,
+            debug=debug,
+            show_progress=show_progress,
+            check_location=check_location,
+            pre=pre,
+            gcs_url=gcs_url,
+            major_version_number=major_version_int,
+            major_version_path=major_version_path,
+            **storage_kwargs,
+        )
+
+        # set up attributes
         self._site_filters_analysis = site_filters_analysis
-        self._debug = debug
-        self._show_progress = show_progress
-
-        # set up logging
-        self._log = LoggingHelper(name=__name__, out=log, debug=debug)
-
-        # set up filesystem
-        self._fs, self._base_path = init_filesystem(url, **kwargs)
 
         # set up caches
-        self._cache_releases = None
         self._cache_sample_sets = dict()
         self._cache_sample_set_to_release = None
         self._cache_general_metadata = dict()
@@ -876,55 +724,15 @@ class AnophelesDataResource(ABC):
             results_cache = Path(results_cache).expanduser().resolve()
         self._results_cache = results_cache
 
-        # get bokeh to output plots to the notebook - this is a common gotcha,
-        # users forget to do this and wonder why bokeh plots don't show
-        if bokeh_output_notebook:
-            import bokeh.io as bkio
-
-            bkio.output_notebook(hide_banner=True)
-
-        # Occasionally, colab will allocate a VM outside the US, e.g., in
-        # Europe or Asia. Because the MalariaGEN data GCS bucket is located
-        # in the US, this is usually bad for performance, because of
-        # increased latency and lower bandwidth. Add a check for this and
-        # issue a warning if not in the US.
-        client_details = None
-        if check_location:
-            try:
-                client_details = ipinfo.getHandler().getDetails()
-                if (
-                    self._gcs_url in self._url
-                    and colab
-                    and client_details.country != "US"
-                ):
-                    warnings.warn(
-                        dedent(
-                            """
-                        Your currently allocated Google Colab VM is not located in the US.
-                        This usually means that data access will be substantially slower.
-                        If possible, select "Runtime > Disconnect and delete runtime" from
-                        the menu to request a new VM and try again.
-                    """
-                        )
-                    )
-            except OSError:
-                pass
-        self._client_details = client_details
-
-        # load config
-        path = f"{self._base_path}/{config_path}"
-        with self._fs.open(path) as f:
-            self._config = json.load(f)
-
         # set analysis versions
 
         if cohorts_analysis is None:
-            self._cohorts_analysis = self._config.get("DEFAULT_COHORTS_ANALYSIS")
+            self._cohorts_analysis = self.config.get("DEFAULT_COHORTS_ANALYSIS")
         else:
             self._cohorts_analysis = cohorts_analysis
 
         if site_filters_analysis is None:
-            self._site_filters_analysis = self._config.get(
+            self._site_filters_analysis = self.config.get(
                 "DEFAULT_SITE_FILTERS_ANALYSIS"
             )
         else:
@@ -936,66 +744,9 @@ class AnophelesDataResource(ABC):
     # Start of @property
 
     @property
-    def _client_location(self):
-        details = self._client_details
-        if details is not None:
-            region = details.region
-            country = details.country
-            location = f"{region}, {country}"
-            if colab:
-                location += " (colab)"
-            elif hasattr(details, "hostname"):
-                hostname = details.hostname
-                if hostname.endswith("googleusercontent.com"):
-                    location += " (Google Cloud)"
-        else:
-            location = "unknown"
-        return location
-
-    @property
-    def releases(self):
-        """The releases for which data are available at the given storage
-        location."""
-        if self._cache_releases is None:
-            if self._pre:
-                # Here we discover which releases are available, by listing the storage
-                # directory and examining the subdirectories. This may include "pre-releases"
-                # where data may be incomplete.
-                sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
-                releases = tuple(
-                    sorted(
-                        [
-                            self._path_to_release(d)
-                            for d in sub_dirs
-                            # FIXME: this matches v3 and v3.1, but also v3001.1
-                            if d.startswith(f"v{self._major_version_int}")
-                            and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
-                        ]
-                    )
-                )
-                if len(releases) == 0:
-                    raise ValueError("No releases found.")
-                self._cache_releases = releases
-            else:
-                self._cache_releases = self._public_releases
-        return self._cache_releases
-
-    # Start of @property @abstractmethod
-
-    @property
     @abstractmethod
     def contigs(self):
         raise NotImplementedError("Must override contigs")
-
-    @property
-    @abstractmethod
-    def _major_version_int(self):
-        raise NotImplementedError("Must override _major_version_int")
-
-    @property
-    @abstractmethod
-    def _major_version_gcs_str(self):
-        raise NotImplementedError("Must override _major_version_gcs_str")
 
     @property
     @abstractmethod
@@ -1021,11 +772,6 @@ class AnophelesDataResource(ABC):
     @abstractmethod
     def _genome_ref_name(self):
         raise NotImplementedError("Must override _genome_ref_name")
-
-    @property
-    @abstractmethod
-    def _gcs_url(self):
-        raise NotImplementedError("Must override _gcs_url")
 
     @property
     @abstractmethod
@@ -1077,28 +823,11 @@ class AnophelesDataResource(ABC):
         return self._config.get("GENESET_GFF3_PATH")
 
     @property
-    def _public_releases(self):
-        releases = self._config.get("PUBLIC_RELEASES")
-        if releases is not None:
-            releases = tuple(releases)
-        return releases
-
-    @property
     @abstractmethod
     def _site_annotations_zarr_path(self):
         raise NotImplementedError("Must override _site_annotations_zarr_path")
 
     # Start of @abstractmethod
-
-    @abstractmethod
-    def __repr__(self):
-        # Not all children have species calls or cohorts data.
-        raise NotImplementedError("Must override __repr__")
-
-    @abstractmethod
-    def _repr_html_(self):
-        # Not all children have species calls or cohorts data.
-        raise NotImplementedError("Must override _repr_html_")
 
     @property
     @abstractmethod
@@ -1451,7 +1180,8 @@ class AnophelesDataResource(ABC):
         self._add_frequency_ci(ds_out, ci_method)
 
         debug("tidy up display by sorting variables")
-        ds_out = ds_out[sorted(ds_out)]
+        sorted_vars: List[str] = sorted([str(k) for k in ds_out.keys()])
+        ds_out = ds_out[sorted_vars]
 
         debug("add metadata")
         gene_name = self._transcript_to_gene_name(transcript)
@@ -1768,40 +1498,6 @@ class AnophelesDataResource(ABC):
 
     # Start of undecorated functions
 
-    # Note regarding release identifiers and storage paths. Within the
-    # data storage, we have used path segments like "v3", "v3.1", "v3.2",
-    # etc., to separate data from different releases. There is an inconsistency
-    # in this convention, because the "v3" should have been "v3.0". To
-    # make the API more consistent, we would like to use consistent release
-    # identifiers like "3.0", "3.1", "3.2", etc., as parameter values and
-    # when release identifiers are added to returned dataframes. In order to
-    # achieve this, below we define two functions that allow mapping between
-    # these consistent release identifiers, and the less consistent release
-    # storage path segments.
-
-    def _release_to_path(self, release):
-        """Compatibility function, allows us to use release identifiers like "3.0"
-        and "3.1" in the public API, and map these internally into storage path
-        segments."""
-        if release == f"{self._major_version_int}.0":
-            # special case
-            return self._major_version_gcs_str
-        elif release.startswith(f"{self._major_version_int}."):
-            return f"v{release}"
-        else:
-            raise ValueError(f"Invalid release: {release!r}")
-
-    def _path_to_release(self, path):
-        """Compatibility function, allows us to use release identifiers like "3.0"
-        and "3.1" in the public API, and map these internally into storage path
-        segments."""
-        if path == self._major_version_gcs_str:
-            return f"{self._major_version_int}.0"
-        elif path.startswith(f"v{self._major_version_int}."):
-            return path[1:]
-        else:
-            raise RuntimeError(f"Unexpected release path: {path!r}")
-
     @doc(
         summary="Open site filters zarr.",
         returns="Zarr hierarchy.",
@@ -1893,7 +1589,7 @@ class AnophelesDataResource(ABC):
             prepped_sample_sets = self.sample_sets()["sample_set"].tolist()
 
         elif isinstance(sample_sets, str):
-            if sample_sets.startswith(f"{self._major_version_int}."):
+            if sample_sets.startswith(f"{self._major_version_number}."):
                 # convenience, can use a release identifier to denote all sample sets in a release
                 prepped_sample_sets = self.sample_sets(release=sample_sets)[
                     "sample_set"
