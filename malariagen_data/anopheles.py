@@ -7343,12 +7343,12 @@ class AnophelesDataResource(ABC):
         cohort2_query: base_params.cohort2_query,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[h12_params.cohort_size] = h12_params.cohort_size_default,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
-            h12_params.min_cohort_size
+            base_params.min_cohort_size
         ] = h12_params.min_cohort_size_default,
         max_cohort_size: Optional[
-            h12_params.max_cohort_size
+            base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
