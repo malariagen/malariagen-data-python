@@ -7707,10 +7707,10 @@ class AnophelesDataResource(ABC):
         include_edges: ihs_params.include_edges = True,
         use_threads: ihs_params.use_threads = True,
         min_cohort_size: Optional[
-            ihs_params.min_cohort_size
+            base_params.min_cohort_size
         ] = ihs_params.min_cohort_size_default,
         max_cohort_size: Optional[
-            ihs_params.max_cohort_size
+            base_params.max_cohort_size
         ] = ihs_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         palette: ihs_params.palette = ihs_params.palette_default,
