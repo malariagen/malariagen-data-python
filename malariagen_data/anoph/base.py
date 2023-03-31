@@ -165,31 +165,33 @@ class AnophelesBase:
         *,
         url: str,
         config_path: str,
-        bokeh_output_notebook: bool,
-        log: Optional[Union[str, IO]],
-        debug: bool,
-        show_progress: bool,
-        check_location: bool,
         pre: bool,
         gcs_url: str,
         major_version_number: int,
         major_version_path: str,
-        **storage_kwargs,
+        bokeh_output_notebook: bool = False,
+        log: Optional[Union[str, IO]] = None,
+        debug: bool = False,
+        show_progress: bool = False,
+        check_location: bool = False,
+        storage_options: Optional[Mapping] = None,
     ):
         self._url = url
         self._config_path = config_path
-        self._debug = debug
-        self._show_progress = show_progress
         self._pre = pre
         self._gcs_url = gcs_url
         self._major_version_number = major_version_number
         self._major_version_path = major_version_path
+        self._debug = debug
+        self._show_progress = show_progress
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
 
         # Set up fsspec filesystem.
-        self._fs, self._base_path = init_filesystem(url, **storage_kwargs)
+        if storage_options is None:
+            storage_options = dict()
+        self._fs, self._base_path = init_filesystem(url, **storage_options)
 
         # Lazily load config.
         self._config: Optional[Dict] = None
