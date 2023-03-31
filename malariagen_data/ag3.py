@@ -323,7 +323,7 @@ class Ag3(AnophelesDataResource):
             df = self._cache_species_calls[key]
 
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             if self._species_analysis == "aim_20220528":
@@ -792,7 +792,7 @@ class Ag3(AnophelesDataResource):
         try:
             return self._cache_cnv_hmm[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/hmm/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -993,7 +993,7 @@ class Ag3(AnophelesDataResource):
         try:
             return self._cache_cnv_coverage_calls[key]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
             # N.B., not all sample_set/analysis combinations exist, need to check
@@ -1181,7 +1181,7 @@ class Ag3(AnophelesDataResource):
         try:
             return self._cache_cnv_discordant_read_calls[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/discordant_read_calls/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -2475,7 +2475,7 @@ class Ag3(AnophelesDataResource):
         return ds.copy(deep=False)
 
     def _aim_calls_dataset(self, *, aims, sample_set):
-        release = self._lookup_release(sample_set=sample_set)
+        release = self.lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release)
         path = f"gs://vo_agam_release/{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
         store = init_zarr_store(fs=self._fs, path=path)
