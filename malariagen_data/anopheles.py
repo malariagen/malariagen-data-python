@@ -248,7 +248,7 @@ class h12_params:
         The size of windows (number of SNPs) used to calculate statistics within.
         """,
     ]
-    cohort_size_default: base_params.cohort_size = None
+    cohort_size_default: Optional[base_params.cohort_size] = None
     min_cohort_size_default: base_params.min_cohort_size = 15
     max_cohort_size_default: base_params.max_cohort_size = 50
 
@@ -292,7 +292,7 @@ class fst_params:
         int,
         "The size of windows (number of sites) used to calculate statistics within.",
     ]
-    cohort_size_default: base_params.cohort_size = None
+    cohort_size_default: Optional[base_params.cohort_size] = None
     min_cohort_size_default: base_params.min_cohort_size = 15
     max_cohort_size_default: base_params.max_cohort_size = 50
 
