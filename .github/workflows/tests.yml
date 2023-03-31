@@ -19,12 +19,6 @@ jobs:
             - name: Checkout source
               uses: actions/checkout@v3
 
-            - name: Restore GCS cache
-              uses: actions/cache/restore@v3
-              with:
-                  path: gcs_cache
-                  key: gcs_cache_tests
-
             - name: Install poetry
               run: pipx install poetry==${{ matrix.poetry-version }}
 
@@ -37,8 +31,18 @@ jobs:
             - name: Install dependencies
               run: poetry install
 
-            - name: Run tests
-              run: poetry run pytest -v
+            # Run a subset of tests first which run quickly to fail fast.
+            - name: Run fast unit tests
+              run: poetry run pytest -v tests/anoph
+
+            - name: Restore GCS cache
+              uses: actions/cache/restore@v3
+              with:
+                  path: gcs_cache
+                  key: gcs_cache_tests
+
+            - name: Run full test suite
+              run: poetry run pytest -v tests
 
             - name: Save GCS cache
               uses: actions/cache/save@v3

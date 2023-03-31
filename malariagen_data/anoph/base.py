@@ -1,6 +1,5 @@
 import json
-from collections.abc import Mapping
-from typing import IO, Dict, Optional, Sequence, Tuple, Union
+from typing import IO, Dict, Mapping, Optional, Sequence, Tuple, Union
 
 import bokeh.io
 import pandas as pd
