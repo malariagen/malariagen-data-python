@@ -248,9 +248,9 @@ class h12_params:
         The size of windows (number of SNPs) used to calculate statistics within.
         """,
     ]
-    cohort_size_default: cohort_size = None
-    min_cohort_size_default: min_cohort_size = 15
-    max_cohort_size_default: max_cohort_size = 50
+    cohort_size_default: base_params.cohort_size = None
+    min_cohort_size_default: base_params.min_cohort_size = 15
+    max_cohort_size_default: base_params.max_cohort_size = 50
 
 
 class g123_params:
@@ -292,9 +292,9 @@ class fst_params:
         int,
         "The size of windows (number of sites) used to calculate statistics within.",
     ]
-    cohort_size_default: cohort_size = None
-    min_cohort_size_default: min_cohort_size = 15
-    max_cohort_size_default: max_cohort_size = 50
+    cohort_size_default: base_params.cohort_size = None
+    min_cohort_size_default: base_params.min_cohort_size = 15
+    max_cohort_size_default: base_params.max_cohort_size = 50
 
 
 class frq_params:
@@ -662,8 +662,8 @@ class ihs_params:
         """,
     ]
     window_size_default: window_size = 200
-    min_cohort_size_default: min_cohort_size = 15
-    max_cohort_size_default: max_cohort_size = 50
+    min_cohort_size_default: base_params.min_cohort_size = 15
+    max_cohort_size_default: base_params.max_cohort_size = 50
     percentiles: TypeAlias = Annotated[
         Union[int, Tuple[int, ...]],
         """
