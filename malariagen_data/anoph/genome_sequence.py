@@ -8,36 +8,39 @@ from .base import AnophelesBase
 
 
 class AnophelesGenomeSequenceData(AnophelesBase):
-    def __init__(
-        self,
-        *,
-        contigs,
-        genome_fasta_path,
-        genome_fai_path,
-        genome_zarr_path,
-        genome_ref_id,
-        genome_ref_name,
-        **kwargs,
-    ):
+    def __init__(self, **kwargs):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
-        # to the superclass constructor.
+        # to the superclass constructor, and the superclass constructor
+        # is called first.
         super().__init__(**kwargs)
-
-        # Store attributes.
-        self._contigs = contigs
-        self._genome_fasta_path = genome_fasta_path
-        self._genome_fai_path = genome_fai_path
-        self._genome_zarr_path = genome_zarr_path
-        self._genome_ref_id = genome_ref_id
-        self._genome_ref_name = genome_ref_name
 
         # Initialize cache attributes.
         self._cache_genome = None
 
     @property
-    def contigs(self) -> Tuple[str]:
-        return self._contigs
+    def contigs(self) -> Tuple[str, ...]:
+        return tuple(self.config["CONTIGS"])
+
+    @property
+    def _genome_zarr_path(self) -> str:
+        return self.config["GENOME_ZARR_PATH"]
+
+    @property
+    def _genome_fasta_path(self) -> str:
+        return self.config["GENOME_FASTA_PATH"]
+
+    @property
+    def _genome_fai_path(self) -> str:
+        return self.config["GENOME_FAI_PATH"]
+
+    @property
+    def _genome_ref_id(self) -> str:
+        return self.config["GENOME_REF_ID"]
+
+    @property
+    def _genome_ref_name(self) -> str:
+        return self.config["GENOME_REF_NAME"]
 
     @doc(
         summary="Open the reference genome zarr.",

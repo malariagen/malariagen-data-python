@@ -33,8 +33,8 @@ from .util import (
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
 
-MAJOR_VERSION_INT = 3
-MAJOR_VERSION_GCS_STR = "v3"
+MAJOR_VERSION_NUMBER = 3
+MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 
 GCS_URL = "gs://vo_agam_release/"
@@ -176,8 +176,8 @@ class Ag3(AnophelesDataResource):
             check_location=check_location,
             pre=pre,
             gcs_url=GCS_URL,
-            major_version_number=MAJOR_VERSION_INT,
-            major_version_path=MAJOR_VERSION_GCS_STR,
+            major_version_number=MAJOR_VERSION_NUMBER,
+            major_version_path=MAJOR_VERSION_PATH,
             **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
 

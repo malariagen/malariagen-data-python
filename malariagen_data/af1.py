@@ -10,8 +10,8 @@ except ImportError:
 
 import malariagen_data  # used for .__version__
 
-MAJOR_VERSION_INT = 1
-MAJOR_VERSION_GCS_STR = "v1.0"
+MAJOR_VERSION_NUMBER = 1
+MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 
 GCS_URL = "gs://vo_afun_release/"
@@ -147,8 +147,8 @@ class Af1(AnophelesDataResource):
             check_location=check_location,
             pre=pre,
             gcs_url=GCS_URL,
-            major_version_number=MAJOR_VERSION_INT,
-            major_version_path=MAJOR_VERSION_GCS_STR,
+            major_version_number=MAJOR_VERSION_NUMBER,
+            major_version_path=MAJOR_VERSION_PATH,
             **storage_kwargs,  # used by fsspec via init_filesystem(url, **kwargs)
         )
 
