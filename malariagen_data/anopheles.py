@@ -87,6 +87,9 @@ class h12_params:
         The size of windows (number of SNPs) used to calculate statistics within.
         """,
     ]
+    cohort_size_default: Optional[base_params.cohort_size] = None
+    min_cohort_size_default: base_params.min_cohort_size = 15
+    max_cohort_size_default: base_params.max_cohort_size = 50
 
 
 class g123_params:
@@ -128,6 +131,9 @@ class fst_params:
         int,
         "The size of windows (number of sites) used to calculate statistics within.",
     ]
+    cohort_size_default: Optional[base_params.cohort_size] = None
+    min_cohort_size_default: base_params.min_cohort_size = 15
+    max_cohort_size_default: base_params.max_cohort_size = 50
 
 
 class frq_params:
@@ -495,6 +501,8 @@ class ihs_params:
         """,
     ]
     window_size_default: window_size = 200
+    min_cohort_size_default: base_params.min_cohort_size = 15
+    max_cohort_size_default: base_params.max_cohort_size = 50
     percentiles: TypeAlias = Annotated[
         Union[int, Tuple[int, ...]],
         """
@@ -4980,7 +4988,13 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = fst_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = fst_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # TODO could generalise, do this on a region rather than a contig
@@ -5000,6 +5014,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             site_mask=self._prep_site_mask_param(site_mask=site_mask),
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -5024,6 +5040,8 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query,
         site_mask,
         cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         random_seed,
     ):
         ds_snps1 = self.snp_calls(
@@ -5032,6 +5050,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -5041,6 +5061,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -5907,7 +5929,13 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = fst_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = fst_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -5921,6 +5949,8 @@ class AnophelesDataResource(AnophelesBase):
             contig=contig,
             window_size=window_size,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
             sample_sets=sample_sets,
@@ -5987,7 +6017,13 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = fst_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = fst_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -6004,6 +6040,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
             title=title,
             sizing_mode=sizing_mode,
@@ -6163,6 +6201,8 @@ class AnophelesDataResource(AnophelesBase):
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
         cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> Optional[xr.Dataset]:
         debug = self._log.debug
@@ -6229,15 +6269,29 @@ class AnophelesDataResource(AnophelesBase):
 
         debug("handle cohort size")
         if cohort_size is not None:
+            debug("handle cohort size")
+            # overrides min and max
+            min_cohort_size = cohort_size
+            max_cohort_size = cohort_size
+
+        if min_cohort_size is not None:
+            debug("handle min cohort size")
             n_samples = ds.dims["samples"]
-            if n_samples < cohort_size:
+            if n_samples < min_cohort_size:
                 raise ValueError(
-                    f"not enough samples ({n_samples}) for cohort size ({cohort_size})"
+                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
                 )
-            rng = np.random.default_rng(seed=random_seed)
-            loc_downsample = rng.choice(n_samples, size=cohort_size, replace=False)
-            loc_downsample.sort()
-            ds = ds.isel(samples=loc_downsample)
+
+        if max_cohort_size is not None:
+            debug("handle max cohort size")
+            n_samples = ds.dims["samples"]
+            if n_samples > max_cohort_size:
+                rng = np.random.default_rng(seed=random_seed)
+                loc_downsample = rng.choice(
+                    n_samples, size=max_cohort_size, replace=False
+                )
+                loc_downsample.sort()
+                ds = ds.isel(samples=loc_downsample)
 
         return ds
 
@@ -6254,7 +6308,13 @@ class AnophelesDataResource(AnophelesBase):
         analysis: hap_params.analysis = DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
     ) -> List[np.ndarray]:
@@ -6272,6 +6332,8 @@ class AnophelesDataResource(AnophelesBase):
             # are different in the haplotype data.
             sample_query=sample_query,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6291,6 +6353,8 @@ class AnophelesDataResource(AnophelesBase):
         sample_query,
         sample_sets,
         cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         window_sizes,
         random_seed,
     ):
@@ -6301,6 +6365,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_query=sample_query,
             analysis=analysis,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6328,7 +6394,13 @@ class AnophelesDataResource(AnophelesBase):
         analysis: hap_params.analysis = DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[str] = None,
@@ -6342,6 +6414,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_sets=sample_sets,
             window_sizes=window_sizes,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6404,7 +6478,13 @@ class AnophelesDataResource(AnophelesBase):
         analysis: hap_params.analysis = DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
@@ -6421,6 +6501,8 @@ class AnophelesDataResource(AnophelesBase):
             # are different in the haplotype data.
             sample_query=sample_query,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6444,6 +6526,8 @@ class AnophelesDataResource(AnophelesBase):
         sample_sets,
         sample_query,
         cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         random_seed,
     ):
         ds_haps = self.haplotypes(
@@ -6452,6 +6536,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_query=sample_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6479,7 +6565,13 @@ class AnophelesDataResource(AnophelesBase):
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -6494,6 +6586,8 @@ class AnophelesDataResource(AnophelesBase):
             analysis=analysis,
             window_size=window_size,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             sample_query=sample_query,
             sample_sets=sample_sets,
             random_seed=random_seed,
@@ -6554,7 +6648,13 @@ class AnophelesDataResource(AnophelesBase):
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -6570,6 +6670,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_sets=sample_sets,
             sample_query=sample_query,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
             title=title,
             sizing_mode=sizing_mode,
@@ -6619,7 +6721,13 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query: base_params.sample_query,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: base_params.cohort_size = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
@@ -6637,6 +6745,8 @@ class AnophelesDataResource(AnophelesBase):
             cohort2_query=cohort2_query,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6661,6 +6771,8 @@ class AnophelesDataResource(AnophelesBase):
         cohort1_query,
         cohort2_query,
         cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         random_seed,
     ):
         # access haplotype datasets for each cohort
@@ -6670,6 +6782,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_query=cohort1_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
         ds2 = self.haplotypes(
@@ -6678,6 +6792,8 @@ class AnophelesDataResource(AnophelesBase):
             sample_query=cohort2_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -6714,7 +6830,13 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query: base_params.cohort2_query,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[base_params.cohort_size] = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -6729,6 +6851,8 @@ class AnophelesDataResource(AnophelesBase):
             analysis=analysis,
             window_size=window_size,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
             sample_sets=sample_sets,
@@ -6794,7 +6918,13 @@ class AnophelesDataResource(AnophelesBase):
         cohort2_query: base_params.cohort2_query,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[base_params.cohort_size] = 30,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -6811,6 +6941,8 @@ class AnophelesDataResource(AnophelesBase):
             cohort2_query=cohort2_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
             title=title,
             sizing_mode=sizing_mode,
@@ -6868,8 +7000,12 @@ class AnophelesDataResource(AnophelesBase):
         gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
         include_edges: ihs_params.include_edges = True,
         use_threads: ihs_params.use_threads = True,
-        min_cohort_size: base_params.min_cohort_size = 15,
-        max_cohort_size: base_params.max_cohort_size = 50,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = ihs_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = ihs_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
@@ -6943,23 +7079,10 @@ class AnophelesDataResource(AnophelesBase):
             analysis=analysis,
             sample_query=sample_query,
             sample_sets=sample_sets,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
         )
-
-        if min_cohort_size is not None:
-            n_samples = ds_haps.dims["samples"]
-            if n_samples < min_cohort_size:
-                raise ValueError(
-                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                )
-        if max_cohort_size is not None:
-            n_samples = ds_haps.dims["samples"]
-            if n_samples > max_cohort_size:
-                rng = np.random.default_rng(seed=random_seed)
-                loc_downsample = rng.choice(
-                    n_samples, size=max_cohort_size, replace=False
-                )
-                loc_downsample.sort()
-                ds_haps = ds_haps.isel(samples=loc_downsample)
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):
@@ -7038,8 +7161,12 @@ class AnophelesDataResource(AnophelesBase):
         gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
         include_edges: ihs_params.include_edges = True,
         use_threads: ihs_params.use_threads = True,
-        min_cohort_size: base_params.min_cohort_size = 15,
-        max_cohort_size: base_params.max_cohort_size = 50,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = ihs_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = ihs_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         palette: ihs_params.palette = ihs_params.palette_default,
         title: Optional[gplt_params.title] = None,
@@ -7154,8 +7281,12 @@ class AnophelesDataResource(AnophelesBase):
         gap_scale: ihs_params.gap_scale = ihs_params.gap_scale_default,
         include_edges: ihs_params.include_edges = True,
         use_threads: ihs_params.use_threads = True,
-        min_cohort_size: base_params.min_cohort_size = 15,
-        max_cohort_size: base_params.max_cohort_size = 50,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = ihs_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = ihs_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         palette: ihs_params.palette = ihs_params.palette_default,
         title: Optional[gplt_params.title] = None,
