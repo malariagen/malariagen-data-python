@@ -10,32 +10,28 @@ jobs:
     notebooks:
         strategy:
             fail-fast: true
-            matrix:
-                python-version: ['3.10']
-                poetry-version: ['1.4.1']
-                os: [ubuntu-latest]
-        runs-on: ${{ matrix.os }}
+        runs-on: ubuntu-latest
         steps:
             - name: Checkout source
               uses: actions/checkout@v3
+
+            - name: Install poetry
+              run: pipx install poetry==1.4.1
+
+            - name: Setup python
+              uses: actions/setup-python@v4
+              with:
+                  python-version: '3.10'
+                  cache: 'poetry'
+
+            - name: Install dependencies
+              run: poetry install
 
             - name: Restore GCS cache
               uses: actions/cache/restore@v3
               with:
                   path: gcs_cache
                   key: gcs_cache_notebooks
-
-            - name: Install poetry
-              run: pipx install poetry==${{ matrix.poetry-version }}
-
-            - name: Setup python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: ${{ matrix.python-version }}
-                  cache: 'poetry'
-
-            - name: Install dependencies
-              run: poetry install
 
             - name: Run notebooks
               run: poetry run jupyter nbconvert --execute notebooks/* --inplace

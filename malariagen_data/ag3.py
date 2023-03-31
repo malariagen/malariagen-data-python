@@ -31,7 +31,7 @@ from .util import (
 )
 
 # silence dask performance warnings
-dask.config.set(**{"array.slicing.split_large_chunks": False})
+dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
 
 MAJOR_VERSION_INT = 3
 MAJOR_VERSION_GCS_STR = "v3"
@@ -127,8 +127,6 @@ class Ag3(AnophelesDataResource):
 
     contigs = CONTIGS
     virtual_contigs = "2RL", "3RL"
-    _major_version_int = MAJOR_VERSION_INT
-    _major_version_gcs_str = MAJOR_VERSION_GCS_STR
     _genome_fasta_path = GENOME_FASTA_PATH
     _genome_fai_path = GENOME_FAI_PATH
     _genome_zarr_path = GENOME_ZARR_PATH
@@ -163,7 +161,7 @@ class Ag3(AnophelesDataResource):
         species_analysis=None,
         site_filters_analysis=None,
         pre=False,
-        **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
+        **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
         super().__init__(
             url=url,
@@ -177,7 +175,10 @@ class Ag3(AnophelesDataResource):
             show_progress=show_progress,
             check_location=check_location,
             pre=pre,
-            **kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
+            gcs_url=GCS_URL,
+            major_version_number=MAJOR_VERSION_INT,
+            major_version_path=MAJOR_VERSION_GCS_STR,
+            **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
         )
 
         # set species analysis version - this is Ag specific currently, hence
@@ -238,7 +239,7 @@ class Ag3(AnophelesDataResource):
             f"Species analysis        : {self._species_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : malariagen_data {malariagen_data.__version__}\n"
-            f"Client location         : {self._client_location}\n"
+            f"Client location         : {self.client_location}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
@@ -308,7 +309,7 @@ class Ag3(AnophelesDataResource):
                         <th style="text-align: left">
                             Client location
                         </th>
-                        <td>{self._client_location}</td>
+                        <td>{self.client_location}</td>
                     </tr>
                 </tbody>
             </table>
@@ -322,7 +323,7 @@ class Ag3(AnophelesDataResource):
             df = self._cache_species_calls[key]
 
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             if self._species_analysis == "aim_20220528":
@@ -791,7 +792,7 @@ class Ag3(AnophelesDataResource):
         try:
             return self._cache_cnv_hmm[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/hmm/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -992,7 +993,7 @@ class Ag3(AnophelesDataResource):
         try:
             return self._cache_cnv_coverage_calls[key]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/coverage_calls/{analysis}/zarr"
             # N.B., not all sample_set/analysis combinations exist, need to check
@@ -1180,7 +1181,7 @@ class Ag3(AnophelesDataResource):
         try:
             return self._cache_cnv_discordant_read_calls[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/discordant_read_calls/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -2474,7 +2475,7 @@ class Ag3(AnophelesDataResource):
         return ds.copy(deep=False)
 
     def _aim_calls_dataset(self, *, aims, sample_set):
-        release = self._lookup_release(sample_set=sample_set)
+        release = self.lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release)
         path = f"gs://vo_agam_release/{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
         store = init_zarr_store(fs=self._fs, path=path)

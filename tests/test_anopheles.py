@@ -58,9 +58,9 @@ def test_sample_sets(subclass, url, release, sample_sets_count):
     assert len(df_sample_sets) == sample_sets_count
     assert tuple(df_sample_sets.columns) == ("sample_set", "sample_count", "release")
 
-    # test duplicates not allowed
-    with pytest.raises(ValueError):
-        anoph.sample_sets(release=[release, release])
+    # test duplicates are handled
+    df_dup = anoph.sample_sets(release=[release, release])
+    assert_frame_equal(df_sample_sets, df_dup)
 
     # test default is all public releases
     df_default = anoph.sample_sets()
