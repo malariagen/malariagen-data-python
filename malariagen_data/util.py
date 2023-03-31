@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import Optional
+from typing import IO, Optional, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -542,7 +542,9 @@ class CacheMiss(Exception):
 
 
 class LoggingHelper:
-    def __init__(self, name, out, debug=False):
+    def __init__(
+        self, *, name: str, out: Optional[Union[str, IO]], debug: bool = False
+    ):
         # set up a logger
         logger = logging.getLogger(name)
         if debug:
@@ -553,11 +555,11 @@ class LoggingHelper:
         self._logger = logger
 
         # set up handler
-        handler = None
-        if isinstance(out, str):
-            handler = logging.FileHandler(out)
-        elif hasattr(out, "write"):
+        handler: Optional[logging.StreamHandler] = None
+        if hasattr(out, "write"):
             handler = logging.StreamHandler(out)
+        elif isinstance(out, str):
+            handler = logging.FileHandler(out)
         self._handler = handler
 
         # configure handler

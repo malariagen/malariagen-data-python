@@ -3,6 +3,7 @@ from collections.abc import Mapping
 from typing import IO, Dict, Optional, Sequence, Tuple, Union
 
 import bokeh.io
+import pandas as pd
 from numpydoc_decorator import doc
 from typing_extensions import Annotated, TypeAlias
 
@@ -166,7 +167,7 @@ class AnophelesBase:
         url: str,
         config_path: str,
         bokeh_output_notebook: bool,
-        log: Union[str, IO],
+        log: Optional[Union[str, IO]],
         debug: bool,
         show_progress: bool,
         check_location: bool,
@@ -209,6 +210,8 @@ class AnophelesBase:
 
         # Set up cache attributes.
         self._cache_releases: Optional[Tuple[str, ...]] = None
+        self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
+        self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
 
     def open_file(self, path):
         full_path = f"{self._base_path}/{path}"
@@ -313,3 +316,73 @@ class AnophelesBase:
         else:
             location = "unknown"
         return location
+
+    def _read_sample_sets(self, *, single_release: str):
+        """Read the manifest of sample sets for a single release."""
+        # Construct a path for the manifest file.
+        release_path = self._release_to_path(single_release)
+        manifest_path = f"{release_path}/manifest.tsv"
+
+        # Read the manifest into a pandas dataframe.
+        with self.open_file(manifest_path) as f:
+            df = pd.read_csv(f, sep="\t", na_values="")
+
+        # Add a "release" column for convenience.
+        df["release"] = single_release
+        return df
+
+    @doc(
+        summary="Access a dataframe of sample sets",
+        returns="A dataframe of sample sets, one row per sample set.",
+    )
+    def sample_sets(
+        self,
+        release: Optional[base_params.release] = None,
+    ) -> pd.DataFrame:
+        if release is None:
+            # Retrieve sample sets from all available releases.
+            release = self.releases
+
+        if isinstance(release, str):
+            # Retrieve sample sets for a single release.
+
+            if release not in self.releases:
+                raise ValueError(f"Release not available: {release!r}")
+
+            try:
+                df = self._cache_sample_sets[release]
+
+            except KeyError:
+                # Read and cache dataframe for performance.
+                df = self._read_sample_sets(single_release=release)
+                self._cache_sample_sets[release] = df
+
+        elif isinstance(release, Sequence):
+            # Ensure no duplicates.
+            releases = list(set(release))
+
+            # Retrieve and concatenate sample sets from multiple releases.
+            df = pd.concat(
+                [self.sample_sets(release=r) for r in releases],
+                axis=0,
+                ignore_index=True,
+            )
+
+        else:
+            raise TypeError
+
+        # Return copy to ensure cached dataframes aren't modified by user.
+        return df.copy()
+
+    @doc(
+        summary="Find which release a sample set was included in.",
+    )
+    def lookup_release(self, sample_set: base_params.sample_set):
+        if self._cache_sample_set_to_release is None:
+            df_sample_sets = self.sample_sets().set_index("sample_set")
+            self._cache_sample_set_to_release = df_sample_sets["release"].to_dict()
+
+        try:
+            return self._cache_sample_set_to_release[sample_set]
+        except KeyError:
+            raise ValueError(f"No release found for sample set {sample_set!r}")

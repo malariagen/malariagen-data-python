@@ -679,7 +679,7 @@ class AnophelesDataResource(AnophelesBase):
         check_location,
         pre,
         gcs_url: str,
-        major_version_int: int,
+        major_version_number: int,
         major_version_path: str,
         **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
     ):
@@ -694,7 +694,7 @@ class AnophelesDataResource(AnophelesBase):
             check_location=check_location,
             pre=pre,
             gcs_url=gcs_url,
-            major_version_number=major_version_int,
+            major_version_number=major_version_number,
             major_version_path=major_version_path,
             **storage_kwargs,
         )
@@ -703,22 +703,21 @@ class AnophelesDataResource(AnophelesBase):
         self._site_filters_analysis = site_filters_analysis
 
         # set up caches
-        self._cache_sample_sets = dict()
-        self._cache_sample_set_to_release = None
-        self._cache_general_metadata = dict()
-        self._cache_site_filters = dict()
+        # TODO review type annotations here, maybe can tighten
+        self._cache_general_metadata: Dict = dict()
+        self._cache_site_filters: Dict = dict()
         self._cache_snp_sites = None
-        self._cache_snp_genotypes = dict()
+        self._cache_snp_genotypes: Dict = dict()
         self._cache_genome = None
         self._cache_annotator = None
-        self._cache_genome_features = dict()
-        self._cache_geneset = dict()
-        self._cache_sample_metadata = dict()
+        self._cache_genome_features: Dict = dict()
+        self._cache_geneset: Dict = dict()
+        self._cache_sample_metadata: Dict = dict()
         self._cache_site_annotations = None
-        self._cache_locate_site_class = dict()
-        self._cache_cohort_metadata = dict()
-        self._cache_haplotypes = dict()
-        self._cache_haplotype_sites = dict()
+        self._cache_locate_site_class: Dict = dict()
+        self._cache_cohort_metadata: Dict = dict()
+        self._cache_haplotypes: Dict = dict()
+        self._cache_haplotype_sites: Dict = dict()
 
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
@@ -739,7 +738,7 @@ class AnophelesDataResource(AnophelesBase):
             self._site_filters_analysis = site_filters_analysis
 
         # set up extra metadata
-        self._extra_metadata = []
+        self._extra_metadata: List = []
 
     # Start of @property
 
@@ -1506,7 +1505,7 @@ class AnophelesDataResource(AnophelesBase):
         try:
             return self._cache_site_filters[mask]
         except KeyError:
-            path = f"{self._base_path}/{self._major_version_gcs_str}/site_filters/{self._site_filters_analysis}/{mask}/"
+            path = f"{self._base_path}/{self._major_version_path}/site_filters/{self._site_filters_analysis}/{mask}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[mask] = root
@@ -1518,64 +1517,13 @@ class AnophelesDataResource(AnophelesBase):
     )
     def open_snp_sites(self) -> zarr.hierarchy.Group:
         if self._cache_snp_sites is None:
-            path = f"{self._base_path}/{self._major_version_gcs_str}/snp_genotypes/all/sites/"
+            path = (
+                f"{self._base_path}/{self._major_version_path}/snp_genotypes/all/sites/"
+            )
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
-
-    def _read_sample_sets(self, *, release):
-        """Read the manifest of sample sets for a given release."""
-        release_path = self._release_to_path(release)
-        path = f"{self._base_path}/{release_path}/manifest.tsv"
-        with self._fs.open(path) as f:
-            df = pd.read_csv(f, sep="\t", na_values="")
-        df["release"] = release
-        return df
-
-    @doc(
-        summary="Access a dataframe of sample sets",
-        returns="A dataframe of sample sets, one row per sample set.",
-    )
-    def sample_sets(
-        self,
-        release: Optional[base_params.release] = None,
-    ) -> pd.DataFrame:
-        if release is None:
-            # retrieve sample sets from all available releases
-            release = self.releases
-
-        if isinstance(release, str):
-            # retrieve sample sets for a single release
-
-            if release not in self.releases:
-                raise ValueError(f"Release not available: {release!r}")
-
-            try:
-                df = self._cache_sample_sets[release]
-
-            except KeyError:
-                df = self._read_sample_sets(release=release)
-                self._cache_sample_sets[release] = df
-
-        elif isinstance(release, (list, tuple)):
-            # check no duplicates
-            counter = Counter(release)
-            for k, v in counter.items():
-                if v > 1:
-                    raise ValueError(f"Duplicate values: {k!r}.")
-
-            # retrieve sample sets from multiple releases
-            df = pd.concat(
-                [self.sample_sets(release=r) for r in release],
-                axis=0,
-                ignore_index=True,
-            )
-
-        else:
-            raise TypeError
-
-        return df.copy()
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
@@ -1633,24 +1581,12 @@ class AnophelesDataResource(AnophelesBase):
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
 
-    def _lookup_release(self, *, sample_set):
-        """Find which release a sample set was included in."""
-
-        if self._cache_sample_set_to_release is None:
-            df_sample_sets = self.sample_sets().set_index("sample_set")
-            self._cache_sample_set_to_release = df_sample_sets["release"].to_dict()
-
-        try:
-            return self._cache_sample_set_to_release[sample_set]
-        except KeyError:
-            raise ValueError(f"No release found for sample set {sample_set!r}")
-
     def _read_general_metadata(self, *, sample_set):
         """Read metadata for a single sample set."""
         try:
             df = self._cache_general_metadata[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
             dtype = {
@@ -1970,7 +1906,7 @@ class AnophelesDataResource(AnophelesBase):
         try:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/snp_genotypes/all/{sample_set}/"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -3891,7 +3827,7 @@ class AnophelesDataResource(AnophelesBase):
         debug = self._log.debug
 
         debug("look up release for sample set")
-        release = self._lookup_release(sample_set=sample_set)
+        release = self.lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release=release)
 
         debug("load data catalog")
@@ -4375,7 +4311,7 @@ class AnophelesDataResource(AnophelesBase):
         try:
             df = self._cache_cohort_metadata[sample_set]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path_prefix = f"{self._base_path}/{release_path}/metadata"
             path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
@@ -6112,7 +6048,7 @@ class AnophelesDataResource(AnophelesBase):
         try:
             return self._cache_haplotypes[(sample_set, analysis)]
         except KeyError:
-            release = self._lookup_release(sample_set=sample_set)
+            release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
@@ -6135,7 +6071,7 @@ class AnophelesDataResource(AnophelesBase):
         try:
             return self._cache_haplotype_sites[analysis]
         except KeyError:
-            path = f"{self._base_path}/{self._major_version_gcs_str}/snp_haplotypes/sites/{analysis}/zarr"
+            path = f"{self._base_path}/{self._major_version_path}/snp_haplotypes/sites/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
