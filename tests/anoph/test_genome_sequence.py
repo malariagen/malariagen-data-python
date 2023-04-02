@@ -1,4 +1,5 @@
 import pytest
+from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -7,7 +8,7 @@ from malariagen_data.anoph.genome_sequence import AnophelesGenomeSequenceData
 # import zarr
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def ag3_api(ag3_fixture):
     return AnophelesGenomeSequenceData(
         url=ag3_fixture.url,
@@ -19,7 +20,7 @@ def ag3_api(ag3_fixture):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def af1_api(af1_fixture):
     return AnophelesGenomeSequenceData(
         url=af1_fixture.url,
@@ -31,14 +32,24 @@ def af1_api(af1_fixture):
     )
 
 
-def test_contigs_ag3(ag3_api, ag3_fixture):
-    contigs = ag3_api.contigs
+def case_ag3(ag3_fixture, ag3_api):
+    return ag3_fixture, ag3_api
+
+
+def case_af1(af1_fixture, af1_api):
+    return af1_fixture, af1_api
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_contigs(fixture, api):
+    contigs = api.contigs
     assert isinstance(contigs, tuple)
     assert all([isinstance(c, str) for c in contigs])
-    assert contigs == tuple(ag3_fixture.config["CONTIGS"])
+    assert contigs == tuple(fixture.config["CONTIGS"])
 
 
-def test_open_genome_ag3(ag3_api):
+@parametrize_with_cases("fixture,api", cases=".")
+def test_open_genome(fixture, api):
     # TODO
     # root = api.open_genome()
     # assert isinstance(root, zarr.hierarchy.Group)

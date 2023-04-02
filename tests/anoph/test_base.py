@@ -1,13 +1,14 @@
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
+from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.base import AnophelesBase
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def ag3_api(ag3_fixture):
     return AnophelesBase(
         url=ag3_fixture.url,
@@ -19,7 +20,7 @@ def ag3_api(ag3_fixture):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def af1_api(af1_fixture):
     return AnophelesBase(
         url=af1_fixture.url,
@@ -31,47 +32,61 @@ def af1_api(af1_fixture):
     )
 
 
-def test_config_ag3(ag3_api, ag3_fixture):
-    config = ag3_api.config
+def case_ag3(ag3_fixture, ag3_api):
+    return ag3_fixture, ag3_api
+
+
+def case_af1(af1_fixture, af1_api):
+    return af1_fixture, af1_api
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_config(fixture, api):
+    config = api.config
     assert isinstance(config, dict)
-    assert config == ag3_fixture.config
+    assert config == fixture.config
 
 
-def test_releases_ag3(ag3_api, ag3_fixture):
-    releases = ag3_api.releases
+@parametrize_with_cases("fixture,api", cases=".")
+def test_releases(fixture, api):
+    releases = api.releases
     assert isinstance(releases, tuple)
     assert len(releases) > 0
     assert all([isinstance(r, str) for r in releases])
-    assert releases == ag3_fixture.releases
+    assert releases == fixture.releases
 
 
-def test_client_location_ag3(ag3_api):
-    location = ag3_api.client_location
+@parametrize_with_cases("fixture,api", cases=".")
+def test_client_location(fixture, api):
+    location = api.client_location
     assert isinstance(location, str)
 
 
-def test_sample_sets_default_ag3(ag3_api):
-    df = ag3_api.sample_sets()
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_sets_default(fixture, api):
+    df = api.sample_sets()
     assert isinstance(df, pd.DataFrame)
     assert df.columns.tolist() == ["sample_set", "sample_count", "release"]
     assert len(df) > 0
 
 
-def test_sample_sets_release_ag3(ag3_api, ag3_fixture):
-    releases = ag3_api.releases
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_sets_release(fixture, api):
+    releases = api.releases
     for release in releases:
-        df = ag3_api.sample_sets(release=release)
+        df = api.sample_sets(release=release)
         assert isinstance(df, pd.DataFrame)
         assert df.columns.tolist() == ["sample_set", "sample_count", "release"]
         assert len(df) > 0
-        manifest = ag3_fixture.release_manifests[release]
+        manifest = fixture.release_manifests[release]
         assert_frame_equal(df[["sample_set", "sample_count"]], manifest)
         assert (df["release"] == release).all()
 
 
-def test_lookup_release_ag3(ag3_api):
-    releases = ag3_api.releases
+@parametrize_with_cases("fixture,api", cases=".")
+def test_lookup_release_ag3(fixture, api):
+    releases = api.releases
     for release in releases:
-        df_ss = ag3_api.sample_sets(release=release)
+        df_ss = api.sample_sets(release=release)
         for s in df_ss["sample_set"]:
-            assert ag3_api.lookup_release(s) == release
+            assert api.lookup_release(s) == release

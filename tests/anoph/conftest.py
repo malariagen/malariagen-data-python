@@ -8,8 +8,7 @@ import pytest
 # We are going to create some data locally which follows
 # the same layout and format of the real data in GCS,
 # but which is much smaller and so can be used for faster
-# test runs. This data is referred to here as the
-# "data fixture".
+# test runs.
 
 
 cwd = Path(__file__).parent.resolve()
@@ -104,6 +103,8 @@ class Af1Fixture:
         self.path.mkdir(parents=True, exist_ok=True)
 
         # Create fixture data.
+        self.releases = ("1.0",)
+        self.release_manifests = dict()
         self.init_config()
         self.init_public_release_manifest()
 
@@ -145,6 +146,7 @@ class Af1Fixture:
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
+        self.release_manifests["1.0"] = manifest
 
 
 @pytest.fixture(scope="session")
