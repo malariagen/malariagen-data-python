@@ -5,6 +5,19 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+# N.B., this file (conftest.py) is handled in a special way
+# by pytest. In short, this file is a place to define any
+# fixtures which are needed across multiple test modules
+# within the current directory. For more information see the
+# following links:
+#
+# https://docs.pytest.org/en/6.2.x/fixture.html#conftest-py-sharing-fixtures-across-multiple-files
+# https://stackoverflow.com/questions/34466027/in-pytest-what-is-the-use-of-conftest-py-files
+#
+# Note that any fixtures defined here are automatically available
+# in test modules, they do not need to be imported.
+
+
 # We are going to create some data locally which follows
 # the same layout and format of the real data in GCS,
 # but which is much smaller and so can be used for faster
@@ -147,6 +160,11 @@ class Af1Fixture:
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
         self.release_manifests["1.0"] = manifest
+
+
+# For the following data fixtures we will use the "session" scope
+# so that the fixture data will be created only once per test
+# session (i.e., per invocation of pytest).
 
 
 @pytest.fixture(scope="session")
