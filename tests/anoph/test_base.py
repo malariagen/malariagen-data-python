@@ -32,6 +32,18 @@ def af1_api(af1_fixture):
     )
 
 
+# N.B., here we use pytest_cases to parametrize tests. Each
+# function whose name begins with "case_" defines a set of
+# inputs to the test functions. See the documentation for
+# pytest_cases for more information. See e.g.:
+#
+# https://smarie.github.io/python-pytest-cases/#basic-usage
+#
+# We use this approach here because we want to use fixtures
+# as test parameters, which is otherwise hard to do with
+# pytest alone.
+
+
 def case_ag3(ag3_fixture, ag3_api):
     return ag3_fixture, ag3_api
 
