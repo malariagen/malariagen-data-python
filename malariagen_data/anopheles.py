@@ -709,10 +709,9 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
         gcs_url: str,
         major_version_number: int,
         major_version_path: str,
-        **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
+        **storage_options,  # used by fsspec via init_filesystem(url, **kwargs)
     ):
-        AnophelesBase.__init__(
-            self,
+        super().__init__(
             url=url,
             config_path=config_path,
             bokeh_output_notebook=bokeh_output_notebook,
@@ -724,7 +723,7 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
             gcs_url=gcs_url,
             major_version_number=major_version_number,
             major_version_path=major_version_path,
-            **storage_kwargs,
+            storage_options=storage_options,
         )
 
         # set up attributes
