@@ -566,8 +566,8 @@ def test_snp_allele_frequencies__str_cohorts(
     )
     df_coh = anoph.sample_cohorts(sample_sets=sample_sets)
     coh_nm = "cohort_" + cohorts
-    coh_counts = df_coh[coh_nm].dropna().value_counts().to_frame()
-    cohort_labels = coh_counts[coh_counts[coh_nm] >= min_cohort_size].index.to_list()
+    coh_counts = df_coh[coh_nm].dropna().value_counts()
+    cohort_labels = coh_counts[coh_counts >= min_cohort_size].index.to_list()
     frq_cohort_labels = ["frq_" + s for s in cohort_labels]
     expected_fields = universal_fields + frq_cohort_labels + ["max_af"]
 
