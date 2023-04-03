@@ -104,7 +104,7 @@ def test_sample_sets_release(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_lookup_release_ag3(fixture, api):
+def test_lookup_release(fixture, api):
     releases = api.releases
     for release in releases:
         df_ss = api.sample_sets(release=release)
