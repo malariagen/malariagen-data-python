@@ -28,6 +28,7 @@ from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
 from .anoph.base import AnophelesBase, base_params
+from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
@@ -668,10 +669,29 @@ class dash_params:
     ]
 
 
+# N.B., we are in the process of breaking up the AnophelesDataResource
+# class into multiple parent classes like AnophelesGenomeSequenceData
+# and AnophelesBase. This is work in progress, and further PRs are
+# expected to factor out functions defined here in to separate classes.
+# For more information, see:
+#
+# https://github.com/malariagen/malariagen-data-python/issues/366
+#
+# N.B., we are making use of multiple inheritance here, using co-operative
+# classes. Because of the way that multiple inheritance works in Python,
+# it is important that these parent classes are provided in a particular
+# order. Otherwise the linearization of parent classes will fail. For
+# more information about superclass linearization and method resolution
+# order in Python, the following links may be useful.
+#
+# https://en.wikipedia.org/wiki/C3_linearization
+# https://rhettinger.wordpress.com/2011/05/26/super-considered-super/
+
+
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
-class AnophelesDataResource(AnophelesBase):
-    """Base class for Anopheles data resources."""
+class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
+    """Anopheles data resources."""
 
     def __init__(
         self,
@@ -716,7 +736,6 @@ class AnophelesDataResource(AnophelesBase):
         self._cache_site_filters: Dict = dict()
         self._cache_snp_sites = None
         self._cache_snp_genotypes: Dict = dict()
-        self._cache_genome = None
         self._cache_annotator = None
         self._cache_genome_features: Dict = dict()
         self._cache_geneset: Dict = dict()
@@ -749,36 +768,6 @@ class AnophelesDataResource(AnophelesBase):
         self._extra_metadata: List = []
 
     # Start of @property
-
-    @property
-    @abstractmethod
-    def contigs(self):
-        raise NotImplementedError("Must override contigs")
-
-    @property
-    @abstractmethod
-    def _genome_fasta_path(self):
-        raise NotImplementedError("Must override _genome_fasta_path")
-
-    @property
-    @abstractmethod
-    def _genome_fai_path(self):
-        raise NotImplementedError("Must override _genome_fai_path")
-
-    @property
-    @abstractmethod
-    def _genome_zarr_path(self):
-        raise NotImplementedError("Must override _genome_zarr_path")
-
-    @property
-    @abstractmethod
-    def _genome_ref_id(self):
-        raise NotImplementedError("Must override _genome_ref_id")
-
-    @property
-    @abstractmethod
-    def _genome_ref_name(self):
-        raise NotImplementedError("Must override _genome_ref_name")
 
     @property
     @abstractmethod
@@ -2012,59 +2001,6 @@ class AnophelesDataResource(AnophelesBase):
             d = da.compress(loc_samples, d, axis=1)
 
         return d
-
-    @doc(
-        summary="Open the reference genome zarr.",
-        returns="Zarr hierarchy containing the reference genome sequence.",
-    )
-    def open_genome(self) -> zarr.hierarchy.Group:
-        if self._cache_genome is None:
-            path = f"{self._base_path}/{self._genome_zarr_path}"
-            store = init_zarr_store(fs=self._fs, path=path)
-            self._cache_genome = zarr.open_consolidated(store=store)
-        return self._cache_genome
-
-    def _genome_sequence_for_contig(self, *, contig, inline_array, chunks):
-        """Obtain the genome sequence for a given contig as an array."""
-        assert contig in self.contigs
-        genome = self.open_genome()
-        z = genome[contig]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
-
-    @doc(
-        summary="Access the reference genome sequence.",
-        returns="""
-            An array of nucleotides giving the reference genome sequence for the
-            given contig.
-        """,
-    )
-    def genome_sequence(
-        self,
-        region: base_params.region,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> da.Array:
-        resolved_region: Region = self.resolve_region(region)
-        del region
-
-        # obtain complete sequence for the requested contig
-        d = self._genome_sequence_for_contig(
-            contig=resolved_region.contig, inline_array=inline_array, chunks=chunks
-        )
-
-        # deal with region start and stop
-        if resolved_region.start:
-            slice_start = resolved_region.start - 1
-        else:
-            slice_start = None
-        if resolved_region.end:
-            slice_stop = resolved_region.end
-        else:
-            slice_stop = None
-        loc_region = slice(slice_start, slice_stop)
-
-        return d[loc_region]
 
     @doc(
         summary="Compute genome accessibility array.",

@@ -35,7 +35,7 @@ def af1_api(af1_fixture):
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
-# pytest_cases for more information. See e.g.:
+# pytest_cases for more information, e.g.:
 #
 # https://smarie.github.io/python-pytest-cases/#basic-usage
 #
@@ -77,22 +77,30 @@ def test_client_location(fixture, api):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sample_sets_default(fixture, api):
     df = api.sample_sets()
+    releases = api.releases
+    expected = pd.concat(
+        [fixture.release_manifests[release] for release in releases],
+        axis=0,
+        ignore_index=True,
+    )
+    expected.reset_index(inplace=True, drop=True)
     assert isinstance(df, pd.DataFrame)
     assert df.columns.tolist() == ["sample_set", "sample_count", "release"]
     assert len(df) > 0
+    assert_frame_equal(df[["sample_set", "sample_count"]], expected)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sample_sets_release(fixture, api):
     releases = api.releases
     for release in releases:
-        df = api.sample_sets(release=release)
-        assert isinstance(df, pd.DataFrame)
-        assert df.columns.tolist() == ["sample_set", "sample_count", "release"]
-        assert len(df) > 0
-        manifest = fixture.release_manifests[release]
-        assert_frame_equal(df[["sample_set", "sample_count"]], manifest)
-        assert (df["release"] == release).all()
+        df_ss = api.sample_sets(release=release)
+        assert isinstance(df_ss, pd.DataFrame)
+        assert df_ss.columns.tolist() == ["sample_set", "sample_count", "release"]
+        assert len(df_ss) > 0
+        expected = fixture.release_manifests[release]
+        assert_frame_equal(df_ss[["sample_set", "sample_count"]], expected)
+        assert (df_ss["release"] == release).all()
 
 
 @parametrize_with_cases("fixture,api", cases=".")

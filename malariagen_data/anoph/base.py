@@ -284,7 +284,7 @@ class AnophelesBase:
         """
     )
     def _discover_releases(self) -> Tuple[str, ...]:
-        sub_dirs = [p.split("/")[-1] for p in self._fs.ls(self._base_path)]
+        sub_dirs = sorted([p.split("/")[-1] for p in self._fs.ls(self._base_path)])
         discovered_releases = tuple(
             sorted(
                 [
@@ -360,7 +360,7 @@ class AnophelesBase:
 
         elif isinstance(release, Sequence):
             # Ensure no duplicates.
-            releases = list(set(release))
+            releases = sorted(set(release))
 
             # Retrieve and concatenate sample sets from multiple releases.
             df = pd.concat(

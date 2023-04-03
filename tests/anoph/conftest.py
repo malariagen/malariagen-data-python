@@ -2,8 +2,10 @@ import json
 import shutil
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import pytest
+import zarr
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any
@@ -11,20 +13,36 @@ import pytest
 # within the current directory. For more information see the
 # following links:
 #
-# https://docs.pytest.org/en/6.2.x/fixture.html#conftest-py-sharing-fixtures-across-multiple-files
+# https://docs.pytest.org/en/7.2.x/reference/fixtures.html#conftest-py-sharing-fixtures-across-multiple-files
 # https://stackoverflow.com/questions/34466027/in-pytest-what-is-the-use-of-conftest-py-files
 #
 # Note that any fixtures defined here are automatically available
 # in test modules, they do not need to be imported.
-
-
-# We are going to create some data locally which follows
-# the same layout and format of the real data in GCS,
-# but which is much smaller and so can be used for faster
-# test runs.
-
+#
+# In the "Fixture" classes below we are going to create some
+# data locally which follows the same layout and format of the
+# real data in GCS, but which is much smaller and so can be used
+# for faster test runs.
 
 cwd = Path(__file__).parent.resolve()
+
+
+def simulate_contig(*, low, high):
+    size = np.random.randint(low=low, high=high)
+    seq = np.random.choice(
+        [b"A", b"C", b"G", b"T", b"N", b"a", b"c", b"g", b"t", b"n"],
+        size=size,
+    )
+    return seq
+
+
+def simulate_genome(*, path, contigs, low, high):
+    path.mkdir(parents=True, exist_ok=True)
+    root = zarr.open(path, mode="w")
+    for contig in contigs:
+        seq = simulate_contig(low=low, high=high)
+        root.create_dataset(name=contig, data=seq)
+    zarr.consolidate_metadata(path)
 
 
 class Ag3Fixture:
@@ -45,6 +63,7 @@ class Ag3Fixture:
         self.init_config()
         self.init_public_release_manifest()
         self.init_pre_release_manifest()
+        self.init_genome_sequence()
 
     def init_config(self):
         self.config = {
@@ -67,6 +86,10 @@ class Ag3Fixture:
         with config_path.open(mode="w") as f:
             json.dump(self.config, f)
 
+    @property
+    def contigs(self):
+        return tuple(self.config["CONTIGS"])
+
     def init_public_release_manifest(self):
         # Here we create a release manifest for an Ag3-style
         # public release. Note this is not the exact same data
@@ -77,7 +100,7 @@ class Ag3Fixture:
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [81, 181],
+                "sample_count": [31, 42],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -96,11 +119,18 @@ class Ag3Fixture:
                     "1177-VO-ML-LEHMANN-VMF00015",
                     "1237-VO-BJ-DJOGBENOU-VMF00050",
                 ],
-                "sample_count": [23, 90],
+                "sample_count": [23, 27],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
         self.release_manifests["3.1"] = manifest
+
+    def init_genome_sequence(self):
+        # Here we simulate a reference genome in a simple way
+        # but with much smaller contigs. The data are stored
+        # using zarr as with the real data releases.
+        path = self.path / self.config["GENOME_ZARR_PATH"]
+        simulate_genome(path=path, contigs=self.contigs, low=100_000, high=200_000)
 
 
 class Af1Fixture:
@@ -120,6 +150,7 @@ class Af1Fixture:
         self.release_manifests = dict()
         self.init_config()
         self.init_public_release_manifest()
+        self.init_genome_sequence()
 
     def init_config(self):
         self.config = {
@@ -141,6 +172,10 @@ class Af1Fixture:
         with config_path.open(mode="w") as f:
             json.dump(self.config, f)
 
+    @property
+    def contigs(self):
+        return tuple(self.config["CONTIGS"])
+
     def init_public_release_manifest(self):
         # Here we create a release manifest for an Af1-style
         # public release. Note this is not the exact same data
@@ -155,16 +190,30 @@ class Af1Fixture:
                     "1230-VO-GA-CF-AYALA-VMF00045",
                     "1231-VO-MULTI-WONDJI-VMF00043",
                 ],
-                "sample_count": [36, 50, 320],
+                "sample_count": [36, 50, 32],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
         self.release_manifests["1.0"] = manifest
 
+    def init_genome_sequence(self):
+        # Here we simulate a reference genome in a simple way
+        # but with much smaller contigs. The data are stored
+        # using zarr as with the real data releases.
+        path = self.path / self.config["GENOME_ZARR_PATH"]
+        simulate_genome(path=path, contigs=self.contigs, low=100_000, high=300_000)
+
 
 # For the following data fixtures we will use the "session" scope
 # so that the fixture data will be created only once per test
 # session (i.e., per invocation of pytest).
+#
+# Recreating these test data ensures that any change to the code
+# here which creates the fixtures will immediately be reflected
+# in a change to the fixture data.
+#
+# However, only recreating the data once per test session minimises
+# the amount of work needed to create the data.
 
 
 @pytest.fixture(scope="session")

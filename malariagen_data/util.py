@@ -389,14 +389,13 @@ def _prep_geneset_attributes_arg(attributes):
 
 
 def _handle_region_feature(resource, region):
-    gene_annotation = resource.genome_features(attributes=["ID"])
-    results = gene_annotation.query(f"ID == '{region}'")
-    if not results.empty:
-        # the region is a feature ID
-        feature = results.squeeze()
-        return Region(feature.contig, int(feature.start), int(feature.end))
-    else:
-        return None
+    if hasattr(resource, "genome_features"):
+        gene_annotation = resource.genome_features(attributes=["ID"])
+        results = gene_annotation.query(f"ID == '{region}'")
+        if not results.empty:
+            # the region is a feature ID
+            feature = results.squeeze()
+            return Region(feature.contig, int(feature.start), int(feature.end))
 
 
 def _valid_contigs(resource):
