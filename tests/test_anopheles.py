@@ -399,11 +399,11 @@ def test_sample_metadata_derivations(subclass):
     assert np.all(df_samples.query("month == -1")["quarter"] == -1)
 
     # Check that quarter is derived from month, in cases where it is not -1
-    df_samples_with_quarter = df_samples.query("quarter != -1")
-    df_derived_quarters = (
-        df_samples_with_quarter["month"].astype("datetime64[M]").dt.quarter
-    )
-    assert np.all(df_samples_with_quarter["quarter"] == df_derived_quarters)
+    assert (df_samples.query("month == -1")["quarter"] == -1).all()
+    assert (df_samples.query("month in [1, 2, 3]")["quarter"] == 1).all()
+    assert (df_samples.query("month in [4, 5, 6]")["quarter"] == 2).all()
+    assert (df_samples.query("month in [7, 8, 9]")["quarter"] == 3).all()
+    assert (df_samples.query("month in [10, 11, 12]")["quarter"] == 4).all()
 
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
