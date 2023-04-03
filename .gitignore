@@ -3,7 +3,8 @@
 __pycache__
 *.pyc
 dist
-
+.coverage
+coverage.xml
 .ipynb_checkpoints/
 gcs_cache
 results_cache
