@@ -55,6 +55,8 @@ typing_extensions = "*"
 [tool.poetry.dev-dependencies]
 pytest = "*"
 pytest-xdist = "*"
+pytest-cases = "*"
+pytest-cov = "*"
 notebook = "*"
 jupyterlab = "*"
 pre-commit = "*"
