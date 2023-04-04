@@ -1,4 +1,5 @@
 import json
+import random
 import shutil
 from pathlib import Path
 
@@ -43,6 +44,329 @@ def simulate_genome(*, path, contigs, low, high):
         seq = simulate_contig(low=low, high=high)
         root.create_dataset(name=contig, data=seq)
     zarr.consolidate_metadata(path)
+    return root
+
+
+def simulate_exons(
+    contig,
+    strand,
+    gene_ix,
+    gene_size,
+    transcript_ix,
+    transcript_id,
+    transcript_start,
+    transcript_end,
+    exon_type,
+    utr5_type,
+    utr3_type,
+    cds_type,
+    n_exons_low,
+    n_exons_high,
+    intron_size_low,
+    intron_size_high,
+    exon_size_low,
+    exon_size_high,
+    source,
+):
+    # Note that this doesn't correctly model the style of GFF for
+    # funestus, because here each exon has a single parent transcript,
+    # whereas in the funestus annotations, exons can be shared between
+    # transcripts.
+
+    exons = []
+    exon_end = transcript_start
+    for exon_ix in range(random.randint(n_exons_low, n_exons_high)):
+        exon_id = f"exon-{gene_ix}-{transcript_ix}-{exon_ix}"
+        intron_size = random.randint(intron_size_low, min(gene_size, intron_size_high))
+        exon_start = exon_end + intron_size
+        if exon_start >= transcript_end:
+            # Stop making exons, no more space left in the transcript.
+            break
+        exon_size = random.randint(exon_size_low, exon_size_high)
+        exon_end = min(exon_start + exon_size, transcript_end)
+        assert exon_end > exon_start
+        exon = (
+            contig,
+            source,
+            exon_type,
+            exon_start,
+            exon_end,
+            ".",
+            strand,
+            ".",
+            f"ID={exon_id};Parent={transcript_id}",
+        )
+        yield exon
+        exons.append(exon)
+
+    # Note that this is not perfect, because sometimes we end up
+    # without any CDSs. Also in reality, an exon can contain
+    # part of a UTR and part of a CDS, but that is harder to
+    # simulate. So keep things simple for now.
+    if strand == "-":
+        # Take exons in reverse order.
+        exons == exons[::-1]
+    for exon_ix, exon in enumerate(exons):
+        first_exon = exon_ix == 0
+        last_exon = exon_ix == len(exons) - 1
+        if first_exon:
+            feature_type = utr5_type
+            phase = "."
+        elif last_exon:
+            feature_type = utr3_type
+            phase = "."
+        else:
+            feature_type = cds_type
+            # Cheat a little, random phase.
+            phase = random.choice([1, 2, 3])
+        feature = (
+            contig,
+            source,
+            feature_type,
+            exon[3],
+            exon[4],
+            ".",
+            strand,
+            phase,
+            f"Parent={transcript_id}",
+        )
+        yield feature
+
+
+def simulate_transcripts(
+    contig,
+    strand,
+    gene_ix,
+    gene_id,
+    gene_start,
+    gene_end,
+    transcript_type,
+    exon_type,
+    utr5_type,
+    utr3_type,
+    cds_type,
+    n_transcripts_low,
+    n_transcripts_high,
+    n_exons_low,
+    n_exons_high,
+    intron_size_low,
+    intron_size_high,
+    exon_size_low,
+    exon_size_high,
+    source,
+):
+    # Note that this always models transcripts as starting and ending at
+    # the same coordinates as the parent gene, which is not strictly
+    # accurate in real data.
+
+    gene_size = gene_end - gene_start
+    for transcript_ix in range(random.randint(n_transcripts_low, n_transcripts_high)):
+        transcript_id = f"transcript-{gene_ix}-{transcript_ix}"
+        transcript_start = gene_start
+        transcript_end = gene_end
+        assert transcript_end > transcript_start
+        transcript = (
+            contig,
+            source,
+            transcript_type,
+            transcript_start,
+            transcript_end,
+            ".",
+            strand,
+            ".",
+            f"ID={transcript_id};Parent={gene_id}",
+        )
+        yield transcript
+
+        yield from simulate_exons(
+            contig=contig,
+            strand=strand,
+            gene_ix=gene_ix,
+            gene_size=gene_size,
+            transcript_ix=transcript_ix,
+            transcript_id=transcript_id,
+            transcript_start=transcript_start,
+            transcript_end=transcript_end,
+            exon_type=exon_type,
+            utr5_type=utr5_type,
+            utr3_type=utr3_type,
+            cds_type=cds_type,
+            n_exons_low=n_exons_low,
+            n_exons_high=n_exons_high,
+            intron_size_low=intron_size_low,
+            intron_size_high=intron_size_high,
+            exon_size_low=exon_size_low,
+            exon_size_high=exon_size_high,
+            source=source,
+        )
+
+
+def simulate_genes(
+    *,
+    contig,
+    contig_size,
+    # TODO check types
+    gene_type,
+    transcript_type,
+    exon_type,
+    utr5_type,
+    utr3_type,
+    cds_type,
+    inter_size_low,
+    inter_size_high,
+    gene_size_low,
+    gene_size_high,
+    n_transcripts_low,
+    n_transcripts_high,
+    n_exons_low,
+    n_exons_high,
+    intron_size_low,
+    intron_size_high,
+    exon_size_low,
+    exon_size_high,
+    source,
+    max_genes,
+):
+    # Keep track of where we are on the contig. This allows for overlapping
+    # features on opposite strands.
+    cur_fwd = 1
+    cur_rev = 1
+
+    # Simulate genes.
+    for gene_ix in range(max_genes):
+        gene_id = f"gene-{gene_ix}"
+        strand = random.choice(["+", "-"])
+        inter_size = random.randint(inter_size_low, inter_size_high)
+        gene_size = random.randint(gene_size_low, gene_size_high)
+        if strand == "+":
+            gene_start = cur_fwd + inter_size
+        else:
+            gene_start = cur_rev + inter_size
+        if gene_start >= contig_size:
+            # Bail out, no more space left on the contig.
+            return
+        gene_end = min(gene_start + gene_size, contig_size)
+        assert gene_end > gene_start
+        gene = (
+            contig,
+            source,
+            gene_type,
+            gene_start,
+            gene_end,
+            ".",
+            strand,
+            ".",
+            f"ID={gene_id}",
+        )
+        yield gene
+
+        yield from simulate_transcripts(
+            contig=contig,
+            strand=strand,
+            gene_ix=gene_ix,
+            gene_id=gene_id,
+            gene_start=gene_start,
+            gene_end=gene_end,
+            transcript_type=transcript_type,
+            exon_type=exon_type,
+            utr5_type=utr5_type,
+            utr3_type=utr3_type,
+            cds_type=cds_type,
+            n_transcripts_low=n_transcripts_low,
+            n_transcripts_high=n_transcripts_high,
+            n_exons_low=n_exons_low,
+            n_exons_high=n_exons_high,
+            intron_size_low=intron_size_low,
+            intron_size_high=intron_size_high,
+            exon_size_low=exon_size_low,
+            exon_size_high=exon_size_high,
+            source=source,
+        )
+
+        # Update state.
+        if strand == "+":
+            cur_fwd = gene_end
+        else:
+            cur_rev = gene_end
+
+
+def simulate_gff(
+    *,
+    path,
+    contigs,
+    genome,
+    # TODO check types
+    gene_type="gene",
+    transcript_type="transcript",
+    exon_type="exon",
+    utr5_type="utr5",
+    utr3_type="utr3",
+    cds_type="cds",
+    inter_size_low=1_000,
+    inter_size_high=10_000,
+    gene_size_low=300,
+    gene_size_high=30_000,
+    n_transcripts_low=1,
+    n_transcripts_high=3,
+    n_exons_low=1,
+    n_exons_high=5,
+    intron_size_low=10,
+    intron_size_high=1_000,
+    exon_size_low=10,
+    exon_size_high=1_000,
+    source="random",
+    max_genes=1_000,
+):
+    dfs = []
+    for contig in contigs:
+        contig_size = genome[contig].shape[0]
+        sim = simulate_genes(
+            contig=contig,
+            contig_size=contig_size,
+            gene_type=gene_type,
+            transcript_type=transcript_type,
+            exon_type=exon_type,
+            utr5_type=utr5_type,
+            utr3_type=utr3_type,
+            cds_type=cds_type,
+            inter_size_low=inter_size_low,
+            inter_size_high=inter_size_high,
+            gene_size_low=gene_size_low,
+            gene_size_high=gene_size_high,
+            n_transcripts_low=n_transcripts_low,
+            n_transcripts_high=n_transcripts_high,
+            n_exons_low=n_exons_low,
+            n_exons_high=n_exons_high,
+            intron_size_low=intron_size_low,
+            intron_size_high=intron_size_high,
+            exon_size_low=exon_size_low,
+            exon_size_high=exon_size_high,
+            source=source,
+            max_genes=max_genes,
+        )
+        df = pd.DataFrame(
+            sim,
+            columns=[
+                "seqid",
+                "source",
+                "type",
+                "start",
+                "end",
+                "score",
+                "strand",
+                "phase",
+                "attributes",
+            ],
+        )
+        dfs.append(df)
+    df_gf = pd.concat(dfs, axis=0, ignore_index=True)
+    df_gf.to_csv(
+        path,
+        sep="\t",
+        header=False,
+        index=False,
+    )
+    return df_gf
 
 
 class Ag3Fixture:
@@ -64,6 +388,7 @@ class Ag3Fixture:
         self.init_public_release_manifest()
         self.init_pre_release_manifest()
         self.init_genome_sequence()
+        self.init_genome_features()
 
     def init_config(self):
         self.config = {
@@ -130,7 +455,16 @@ class Ag3Fixture:
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
         path = self.path / self.config["GENOME_ZARR_PATH"]
-        simulate_genome(path=path, contigs=self.contigs, low=100_000, high=200_000)
+        self.genome = simulate_genome(
+            path=path, contigs=self.contigs, low=100_000, high=200_000
+        )
+
+    def init_genome_features(self):
+        path = self.path / self.config["GENESET_GFF3_PATH"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.genome_features = simulate_gff(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
 
 
 class Af1Fixture:
@@ -151,6 +485,7 @@ class Af1Fixture:
         self.init_config()
         self.init_public_release_manifest()
         self.init_genome_sequence()
+        self.init_genome_features()
 
     def init_config(self):
         self.config = {
@@ -201,7 +536,19 @@ class Af1Fixture:
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
         path = self.path / self.config["GENOME_ZARR_PATH"]
-        simulate_genome(path=path, contigs=self.contigs, low=100_000, high=300_000)
+        self.genome = simulate_genome(
+            path=path, contigs=self.contigs, low=100_000, high=300_000
+        )
+
+    def init_genome_features(self):
+        path = self.path / self.config["GENESET_GFF3_PATH"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        self.genome_features = simulate_gff(
+            path=path,
+            contigs=self.contigs,
+            genome=self.genome,
+            gene_type="protein_coding_gene",
+        )
 
 
 # For the following data fixtures we will use the "session" scope

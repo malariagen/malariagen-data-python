@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections import Counter
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -28,6 +28,7 @@ from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
 from .anoph.base import AnophelesBase, base_params
+from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .mjn import median_joining_network, mjn_graph
 from .util import (
@@ -46,10 +47,8 @@ from .util import (
     jitter,
     locate_region,
     plotly_discrete_legend,
-    read_gff3,
     resolve_region,
     type_error,
-    unpack_gff3_attributes,
     xarray_concat,
 )
 
@@ -217,67 +216,6 @@ class map_params:
         Union[int, str], "Width of the map in pixels (px) or other units."
     ]
     width_default: width = "100%"
-
-
-class gplt_params:
-    """Parameters for genome plotting functions. N.B., genome plots are always
-    plotted with bokeh."""
-
-    sizing_mode: TypeAlias = Annotated[
-        Literal[
-            "fixed",
-            "stretch_width",
-            "stretch_height",
-            "stretch_both",
-            "scale_width",
-            "scale_height",
-            "scale_both",
-        ],
-        """
-        Bokeh plot sizing mode, see also
-        https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
-        """,
-    ]
-    sizing_mode_default: sizing_mode = "stretch_width"
-    width: TypeAlias = Annotated[
-        Optional[int],  # always can be None
-        "Plot width in pixels (px).",
-    ]
-    width_default: width = None
-    height: TypeAlias = Annotated[
-        int,
-        "Plot height in pixels (px).",
-    ]
-    track_height: TypeAlias = Annotated[
-        int,
-        "Main track height in pixels (px).",
-    ]
-    genes_height: TypeAlias = Annotated[
-        int,
-        "Genes track height in pixels (px).",
-    ]
-    genes_height_default: genes_height = 120
-    show: TypeAlias = Annotated[
-        bool,
-        "If true, show the plot.",
-    ]
-    toolbar_location: TypeAlias = Annotated[
-        Literal["above", "below", "left", "right"],
-        "Location of bokeh toolbar.",
-    ]
-    toolbar_location_default: toolbar_location = "above"
-    x_range: TypeAlias = Annotated[
-        bokeh.models.Range1d,
-        "X axis range (for linking to other tracks).",
-    ]
-    title: TypeAlias = Annotated[
-        Union[str, bool],
-        "Plot title. If True, a title may be automatically generated.",
-    ]
-    figure: TypeAlias = Annotated[
-        bokeh.plotting.figure,
-        "A bokeh figure.",
-    ]
 
 
 class het_params:
@@ -690,7 +628,11 @@ class dash_params:
 
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
-class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
+class AnophelesDataResource(
+    AnophelesGenomeFeaturesData,
+    AnophelesGenomeSequenceData,
+    AnophelesBase,
+):
     """Anopheles data resources."""
 
     def __init__(
@@ -737,7 +679,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
         self._cache_snp_genotypes: Dict = dict()
         self._cache_annotator = None
         self._cache_genome_features: Dict = dict()
-        self._cache_geneset: Dict = dict()
         self._cache_sample_metadata: Dict = dict()
         self._cache_site_annotations = None
         self._cache_locate_site_class: Dict = dict()
@@ -812,10 +753,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
     @abstractmethod
     def _ihs_gwss_cache_name(self):
         raise NotImplementedError("Must override _ihs_gwss_cache_name")
-
-    @property
-    def _geneset_gff3_path(self):
-        return self._config.get("GENESET_GFF3_PATH")
 
     @property
     @abstractmethod
@@ -1197,14 +1134,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
         raise NotImplementedError("Must override _setup_taxon_colors")
 
     # Start of @staticmethod
-
-    @staticmethod
-    def _bokeh_style_genome_xaxis(fig, contig):
-        """Standard styling for X axis of genome plots."""
-        fig.xaxis.axis_label = f"Contig {contig} position (bp)"
-        fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
-        fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
     @staticmethod
     def _locate_cohorts(*, cohorts, df_samples):
@@ -1848,10 +1777,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
 
         return ret
 
-    def geneset(self, *args, **kwargs):
-        """Deprecated, this method has been renamed to genome_features()."""
-        return self.genome_features(*args, **kwargs)
-
     @doc(
         summary="Convert a genome region into a standard data structure.",
         returns="An instance of the `Region` class.",
@@ -2330,124 +2255,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
         """Deprecated, this method has been renamed to snp_calls()."""
         return self.snp_calls(*args, **kwargs)
 
-    def _plot_genes_setup_data(self, *, region):
-        # default implementation - can be overridden if different attributes
-        # used in GFF
-
-        df_genome_features = self.genome_features(
-            region=region, attributes=["ID", "Name", "Parent", "description"]
-        )
-        data = df_genome_features.query("type == 'gene'").copy()
-
-        tooltips = [
-            ("ID", "@ID"),
-            ("Name", "@Name"),
-            ("Description", "@description"),
-            ("Location", "@contig:@start{,}-@end{,}"),
-        ]
-
-        return data, tooltips
-
-    @doc(
-        summary="Plot a genes track, using bokeh.",
-    )
-    def plot_genes(
-        self,
-        region: base_params.region,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.genes_height = gplt_params.genes_height_default,
-        show: gplt_params.show = True,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
-        x_range: Optional[gplt_params.x_range] = None,
-        title: gplt_params.title = "Genes",
-    ) -> bokeh.plotting.figure:
-        debug = self._log.debug
-
-        debug("handle region parameter - this determines the genome region to plot")
-        resolved_region = self.resolve_region(region)
-        del region
-
-        debug("handle region bounds")
-        contig = resolved_region.contig
-        start = resolved_region.start
-        end = resolved_region.end
-        if start is None:
-            start = 0
-        if end is None:
-            end = len(self.genome_sequence(contig))
-
-        debug("define x axis range")
-        if x_range is None:
-            x_range = bokeh.models.Range1d(start, end, bounds="auto")
-
-        debug("select the genes overlapping the requested region")
-        data, tooltips = self._plot_genes_setup_data(region=resolved_region)
-
-        debug(
-            "we're going to plot each gene as a rectangle, so add some additional columns"
-        )
-        data["bottom"] = np.where(data["strand"] == "+", 1, 0)
-        data["top"] = data["bottom"] + 0.8
-
-        debug("tidy up missing values for presentation")
-        data.fillna("", inplace=True)
-
-        debug("make a figure")
-        xwheel_zoom = bokeh.models.WheelZoomTool(
-            dimensions="width", maintain_focus=False
-        )
-        fig = bokeh.plotting.figure(
-            title=title,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=height,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "tap",
-                "hover",
-            ],
-            toolbar_location=toolbar_location,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            tooltips=tooltips,
-            x_range=x_range,
-        )
-
-        debug("add functionality to click through to vectorbase")
-        url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
-        taptool = fig.select(type=bokeh.models.TapTool)
-        taptool.callback = bokeh.models.OpenURL(url=url)
-
-        debug("now plot the genes as rectangles")
-        fig.quad(
-            bottom="bottom",
-            top="top",
-            left="start",
-            right="end",
-            source=data,
-            line_width=0.5,
-            fill_alpha=0.5,
-        )
-
-        debug("tidy up the plot")
-        fig.y_range = bokeh.models.Range1d(-0.4, 2.2)
-        fig.ygrid.visible = False
-        yticks = [0.4, 1.4]
-        yticklabels = ["-", "+"]
-        fig.yaxis.ticker = yticks
-        fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
-        self._bokeh_style_genome_xaxis(fig, contig)
-
-        if show:
-            bokeh.plotting.show(fig)
-
-        return fig
-
     def _snp_allele_counts(
         self,
         *,
@@ -2535,137 +2342,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
             )
 
         return ds
-
-    @doc(
-        summary="Plot a transcript, using bokeh.",
-        returns="Bokeh figure.",
-    )
-    def plot_transcript(
-        self,
-        transcript: base_params.transcript,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.height = gplt_params.genes_height_default,
-        show: gplt_params.show = True,
-        x_range: Optional[gplt_params.x_range] = None,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
-        title: gplt_params.title = True,
-    ) -> bokeh.plotting.figure:
-        debug = self._log.debug
-
-        debug("find the transcript annotation")
-        df_genome_features = self.genome_features().set_index("ID")
-        parent = df_genome_features.loc[transcript]
-
-        if title is True:
-            title = f"{transcript} ({parent.strand})"
-
-        debug("define tooltips for hover")
-        tooltips = [
-            ("Type", "@type"),
-            ("Location", "@contig:@start{,}-@end{,}"),
-        ]
-
-        debug("make a figure")
-        xwheel_zoom = bokeh.models.WheelZoomTool(
-            dimensions="width", maintain_focus=False
-        )
-        fig = bokeh.plotting.figure(
-            title=title,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=height,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "hover"],
-            toolbar_location=toolbar_location,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            tooltips=tooltips,
-            x_range=x_range,
-        )
-
-        debug("find child components of the transcript")
-        data = df_genome_features.set_index("Parent").loc[transcript].copy()
-        data["bottom"] = -0.4
-        data["top"] = 0.4
-
-        debug("plot exons")
-        exons = data.query("type == 'exon'")
-        fig.quad(
-            bottom="bottom",
-            top="top",
-            left="start",
-            right="end",
-            source=exons,
-            fill_color=None,
-            line_color="black",
-            line_width=0.5,
-            fill_alpha=0,
-        )
-
-        debug("plot introns")
-        for intron_start, intron_end in zip(exons[:-1]["end"], exons[1:]["start"]):
-            intron_midpoint = (intron_start + intron_end) / 2
-            line_data = pd.DataFrame(
-                {
-                    "x": [intron_start, intron_midpoint, intron_end],
-                    "y": [0, 0.1, 0],
-                    "type": "intron",
-                    "contig": parent.contig,
-                    "start": intron_start,
-                    "end": intron_end,
-                }
-            )
-            fig.line(
-                x="x",
-                y="y",
-                source=line_data,
-                line_width=1,
-                line_color="black",
-            )
-
-        debug("plot UTRs")
-        fig.quad(
-            bottom="bottom",
-            top="top",
-            left="start",
-            right="end",
-            source=data.query("type == 'five_prime_UTR'"),
-            fill_color="green",
-            line_width=0,
-            fill_alpha=0.5,
-        )
-        fig.quad(
-            bottom="bottom",
-            top="top",
-            left="start",
-            right="end",
-            source=data.query("type == 'three_prime_UTR'"),
-            fill_color="red",
-            line_width=0,
-            fill_alpha=0.5,
-        )
-
-        debug("plot CDSs")
-        fig.quad(
-            bottom="bottom",
-            top="top",
-            left="start",
-            right="end",
-            source=data.query("type == 'CDS'"),
-            fill_color="blue",
-            line_width=0,
-            fill_alpha=0.5,
-        )
-
-        debug("tidy up the figure")
-        fig.yaxis.ticker = []
-        fig.y_range = bokeh.models.Range1d(-0.6, 0.6)
-        self._bokeh_style_genome_xaxis(fig, parent.contig)
-
-        if show:
-            bokeh.plotting.show(fig)
-
-        return fig
 
     @doc(
         summary="",
@@ -2969,75 +2645,6 @@ class AnophelesDataResource(AnophelesGenomeSequenceData, AnophelesBase):
         assert isinstance(region, Region)
 
         return str(region)
-
-    def _genome_features_for_contig(self, *, contig, attributes):
-        """Obtain the genome features for a given contig as a pandas DataFrame."""
-        debug = self._log.debug
-
-        if attributes is not None:
-            attributes = tuple(attributes)
-
-        try:
-            df = self._cache_genome_features[attributes]
-
-        except KeyError:
-            path = f"{self._base_path}/{self._geneset_gff3_path}"
-            with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression="gzip")
-            if attributes is not None:
-                df = unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_genome_features[attributes] = df
-
-        if contig is not None:
-            debug("apply contig query")
-            return df.query(f"contig == '{contig}'")
-
-        return df
-
-    @doc(
-        summary="Access genome feature annotations.",
-        parameters=dict(
-            attributes="""
-                Attribute keys to unpack into columns. Provide "*" to unpack all
-                attributes.
-            """,
-        ),
-        returns="A dataframe of genome annotations, one row per feature.",
-    )
-    def genome_features(
-        self,
-        region: Optional[base_params.region] = None,
-        attributes: Sequence[str] = ("ID", "Parent", "Name", "description"),
-    ) -> pd.DataFrame:
-        debug = self._log.debug
-        if region is not None:
-            debug("handle region")
-            resolved_region = self.resolve_region(region)
-            del region
-
-            debug("normalise to list to simplify concatenation logic")
-            if isinstance(resolved_region, Region):
-                resolved_region = [resolved_region]
-
-            debug("apply region query")
-            parts = []
-            for r in resolved_region:
-                df_part = self._genome_features_for_contig(
-                    contig=r.contig, attributes=attributes
-                )
-                if r.end is not None:
-                    df_part = df_part.query(f"start <= {r.end}")
-                if r.start is not None:
-                    df_part = df_part.query(f"end >= {r.start}")
-                parts.append(df_part)
-            df = pd.concat(parts, axis=0)
-            return df.reset_index(drop=True).copy()
-
-        return (
-            self._genome_features_for_contig(contig=None, attributes=attributes)
-            .reset_index(drop=True)
-            .copy()
-        )
 
     def _lookup_sample(self, sample, sample_set=None):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")

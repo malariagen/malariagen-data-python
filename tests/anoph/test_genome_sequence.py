@@ -29,7 +29,7 @@ def af1_api(af1_fixture):
         gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
-        pre=True,
+        pre=False,
     )
 
 
