@@ -8,7 +8,7 @@ coverage.xml
 .ipynb_checkpoints/
 gcs_cache
 results_cache
-tests/anoph/fixture
+tests/anoph/fixture/simulated
 
 # emacs
 *~

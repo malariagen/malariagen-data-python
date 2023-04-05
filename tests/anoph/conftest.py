@@ -316,7 +316,7 @@ class Gff3Simulator:
 class Ag3Fixture:
     def __init__(self):
         self.bucket = "vo_agam_release"
-        self.path = (cwd / "fixture" / self.bucket).resolve()
+        self.path = (cwd / "fixture" / "simulated" / self.bucket).resolve()
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -416,7 +416,7 @@ class Ag3Fixture:
 class Af1Fixture:
     def __init__(self):
         self.bucket = "vo_afun_release"
-        self.path = (cwd / "fixture" / self.bucket).resolve()
+        self.path = (cwd / "fixture" / "simulated" / self.bucket).resolve()
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
