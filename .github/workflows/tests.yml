@@ -37,7 +37,7 @@ jobs:
               uses: actions/cache/restore@v3
               with:
                   path: gcs_cache
-                  key: gcs_cache_tests
+                  key: gcs_cache_tests_20230405
 
             - name: Run full test suite
               run: poetry run pytest -v tests
@@ -47,4 +47,4 @@ jobs:
               if: always()
               with:
                   path: gcs_cache
-                  key: gcs_cache_tests
+                  key: gcs_cache_tests_20230405
