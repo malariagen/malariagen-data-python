@@ -1,4 +1,4 @@
-from typing import Dict, Literal, Optional, Sequence, Tuple, Union
+from typing import Dict, Literal, Optional, Tuple, Union
 
 import bokeh.models
 import bokeh.plotting
@@ -92,7 +92,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self._gff_default_attributes = gff_default_attributes
 
         # Setup caches.
-        self._cache_genome_features: Dict[str, pd.DataFrame] = dict()
+        self._cache_genome_features: Dict[
+            Optional[Tuple[str, ...]], pd.DataFrame
+        ] = dict()
 
     @property
     def _geneset_gff3_path(self):
@@ -102,10 +104,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
-    def _genome_features(self, *, attributes):
-        if attributes is not None:
-            attributes = tuple(attributes)
-
+    def _genome_features(self, *, attributes: Optional[Tuple[str, ...]]):
         try:
             df = self._cache_genome_features[attributes]
 
@@ -119,48 +118,49 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return df
 
-    def _genome_features_for_contig(self, *, contig, attributes):
+    def _genome_features_for_contig(
+        self, *, contig: str, attributes: Optional[Tuple[str, ...]]
+    ):
         debug = self._log.debug
 
         df = self._genome_features(attributes=attributes)
 
-        debug("apply contig query")
+        debug("Apply contig query.")
         return df.query(f"contig == '{contig}'")
 
     @doc(
         summary="Access genome feature annotations.",
-        parameters=dict(
-            attributes="""
-                Attribute keys to unpack into columns. Provide "*" to unpack all
-                attributes.
-            """,
-        ),
         returns="A dataframe of genome annotations, one row per feature.",
     )
     def genome_features(
         self,
         region: Optional[base_params.region] = None,
-        attributes: Optional[Sequence[str]] = DEFAULT,
+        attributes: base_params.gff_attributes = DEFAULT,
     ) -> pd.DataFrame:
         debug = self._log.debug
 
-        if attributes == DEFAULT:
-            attributes = self._gff_default_attributes
+        if attributes is None:
+            attributes_normed: Optional[Tuple[str, ...]] = attributes
+        elif attributes == DEFAULT:
+            attributes_normed = self._gff_default_attributes
+        else:
+            attributes_normed = tuple(attributes)
+        del attributes
 
         if region is not None:
-            debug("handle region")
+            debug("Handle region.")
             resolved_region = resolve_region(self, region)
             del region
 
-            debug("normalise to list to simplify concatenation logic")
+            debug("Normalise to list to simplify concatenation logic.")
             if isinstance(resolved_region, Region):
                 resolved_region = [resolved_region]
 
-            debug("apply region query")
+            debug("Apply region query.")
             parts = []
             for r in resolved_region:
                 df_part = self._genome_features_for_contig(
-                    contig=r.contig, attributes=attributes
+                    contig=r.contig, attributes=attributes_normed
                 )
                 if r.end is not None:
                     df_part = df_part.query(f"start <= {r.end}")
@@ -171,7 +171,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             return df.reset_index(drop=True).copy()
 
         return (
-            self._genome_features(attributes=attributes).reset_index(drop=True).copy()
+            self._genome_features(attributes=attributes_normed)
+            .reset_index(drop=True)
+            .copy()
         )
 
     @doc(
@@ -190,20 +192,20 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     ) -> gplt_params.figure:
         debug = self._log.debug
 
-        debug("find the transcript annotation")
+        debug("Find the transcript annotation.")
         df_genome_features = self.genome_features().set_index("ID")
         parent = df_genome_features.loc[transcript]
 
         if title is True:
             title = f"{transcript} ({parent.strand})"
 
-        debug("define tooltips for hover")
+        debug("Define tooltips for hover.")
         tooltips = [
             ("Type", "@type"),
             ("Location", "@contig:@start{,}-@end{,}"),
         ]
 
-        debug("make a figure")
+        debug("Make a figure.")
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
@@ -220,12 +222,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             x_range=x_range,
         )
 
-        debug("find child components of the transcript")
+        debug("Find child components of the transcript.")
         data = df_genome_features.set_index("Parent").loc[transcript].copy()
         data["bottom"] = -0.4
         data["top"] = 0.4
 
-        debug("plot exons")
+        debug("Plot exons.")
         exons = data.query("type == 'exon'")
         fig.quad(
             bottom="bottom",
@@ -239,7 +241,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             fill_alpha=0,
         )
 
-        debug("plot introns")
+        debug("Plot introns.")
         for intron_start, intron_end in zip(exons[:-1]["end"], exons[1:]["start"]):
             intron_midpoint = (intron_start + intron_end) / 2
             line_data = pd.DataFrame(
@@ -260,7 +262,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
                 line_color="black",
             )
 
-        debug("plot UTRs")
+        debug("Plot UTRs.")
         fig.quad(
             bottom="bottom",
             top="top",
@@ -282,7 +284,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             fill_alpha=0.5,
         )
 
-        debug("plot CDSs")
+        debug("Plot CDSs.")
         fig.quad(
             bottom="bottom",
             top="top",
@@ -294,7 +296,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             fill_alpha=0.5,
         )
 
-        debug("tidy up the figure")
+        debug("Tidy up the figure.")
         fig.yaxis.ticker = []
         fig.y_range = bokeh.models.Range1d(-0.6, 0.6)
         self._bokeh_style_genome_xaxis(fig, parent.contig)

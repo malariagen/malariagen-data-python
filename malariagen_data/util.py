@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, Optional, Union
+from typing import IO, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -63,7 +63,7 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, compression="gzip"):
+def read_gff3(buf, compression: Optional[str] = "gzip"):
     # read as dataframe
     df = pandas.read_csv(
         buf,
@@ -80,22 +80,25 @@ def read_gff3(buf, compression="gzip"):
     return df
 
 
-def unpack_gff3_attributes(df, attributes):
+def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     df = df.copy()
 
     # discover all attribute keys
     all_attributes = set()
     for a in df["attributes"]:
         all_attributes.update(a.keys())
-    all_attributes = sorted(all_attributes)
+    all_attributes_sorted = tuple(sorted(all_attributes))
 
-    if attributes == tuple("*"):
-        attributes = all_attributes
+    # handle request for all attributes
+    if attributes == ("*",):
+        attributes = all_attributes_sorted
 
     # unpack attributes into columns
     for key in attributes:
-        if key not in all_attributes:
-            raise ValueError(f"'{key}' not in attributes set. Options {all_attributes}")
+        if key not in all_attributes_sorted:
+            raise ValueError(
+                f"'{key}' not in attributes set. Options {all_attributes_sorted}"
+            )
         df[key] = df["attributes"].apply(lambda v: v.get(key, np.nan))
     del df["attributes"]
 

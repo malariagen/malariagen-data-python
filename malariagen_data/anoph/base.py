@@ -159,6 +159,13 @@ class base_params:
         """,
     ]
     chunks_default: chunks = "native"
+    gff_attributes: TypeAlias = Annotated[
+        Optional[Sequence[str]],
+        """
+        GFF attribute keys to unpack into dataframe columns. Provide ("*",) to unpack all
+        attributes.
+        """,
+    ]
 
 
 class AnophelesBase:

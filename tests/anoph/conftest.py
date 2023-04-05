@@ -353,7 +353,7 @@ class Ag3Fixture:
         }
         config_path = self.path / "v3-config.json"
         with config_path.open(mode="w") as f:
-            json.dump(self.config, f)
+            json.dump(self.config, f, indent=4)
 
     @property
     def contigs(self):
@@ -451,7 +451,7 @@ class Af1Fixture:
         }
         config_path = self.path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
-            json.dump(self.config, f)
+            json.dump(self.config, f, indent=4)
 
     @property
     def contigs(self):
