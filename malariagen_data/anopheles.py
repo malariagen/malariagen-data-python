@@ -27,7 +27,7 @@ from tqdm.dask import TqdmCallback
 from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
-from .anoph.base import AnophelesBase, base_params
+from .anoph.base import DEFAULT, AnophelesBase, base_params
 from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .mjn import median_joining_network, mjn_graph
@@ -51,8 +51,6 @@ from .util import (
     type_error,
     xarray_concat,
 )
-
-DEFAULT = "default"
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
@@ -651,7 +649,9 @@ class AnophelesDataResource(
         gcs_url: str,
         major_version_number: int,
         major_version_path: str,
-        **storage_options,  # used by fsspec via init_filesystem(url, **kwargs)
+        gff_gene_type: str,
+        gff_default_attributes: Tuple[str],
+        storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
     ):
         super().__init__(
             url=url,
@@ -666,6 +666,8 @@ class AnophelesDataResource(
             major_version_number=major_version_number,
             major_version_path=major_version_path,
             storage_options=storage_options,
+            gff_gene_type=gff_gene_type,
+            gff_default_attributes=gff_default_attributes,
         )
 
         # set up attributes

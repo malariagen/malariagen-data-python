@@ -1,4 +1,4 @@
-from typing import Literal, Optional, Sequence, Union
+from typing import Dict, Literal, Optional, Sequence, Tuple, Union
 
 import bokeh.models
 import bokeh.plotting
@@ -8,7 +8,7 @@ from numpydoc_decorator import doc
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import Region, read_gff3, resolve_region, unpack_gff3_attributes
-from .base import base_params
+from .base import DEFAULT, base_params
 from .genome_sequence import AnophelesGenomeSequenceData
 
 
@@ -74,13 +74,25 @@ class gplt_params:
 
 
 class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
-    def __init__(self, **kwargs):
+    def __init__(
+        self,
+        *,
+        gff_gene_type: str,
+        gff_default_attributes: Tuple[str],
+        **kwargs,
+    ):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        self._cache_genome_features = dict()
+        # TODO Consider moving these parameters to configuration, as they could
+        # change if the GFF ever changed.
+        self._gff_gene_type = gff_gene_type
+        self._gff_default_attributes = gff_default_attributes
+
+        # Setup caches.
+        self._cache_genome_features: Dict[str, pd.DataFrame] = dict()
 
     @property
     def _geneset_gff3_path(self):
@@ -128,9 +140,13 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def genome_features(
         self,
         region: Optional[base_params.region] = None,
-        attributes: Sequence[str] = ("ID", "Parent", "Name", "description"),
+        attributes: Optional[Sequence[str]] = DEFAULT,
     ) -> pd.DataFrame:
         debug = self._log.debug
+
+        if attributes == DEFAULT:
+            attributes = self._gff_default_attributes
+
         if region is not None:
             debug("handle region")
             resolved_region = resolve_region(self, region)
@@ -390,21 +406,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return fig
 
     def _plot_genes_setup_data(self, *, region):
-        # default implementation - can be overridden if different attributes
-        # used in GFF
-
-        df_genome_features = self.genome_features(
-            region=region, attributes=["ID", "Name", "Parent", "description"]
-        )
-        data = df_genome_features.query("type == 'gene'").copy()
-
-        tooltips = [
-            ("ID", "@ID"),
-            ("Name", "@Name"),
-            ("Description", "@description"),
-            ("Location", "@contig:@start{,}-@end{,}"),
-        ]
-
+        attributes = [a for a in self._gff_default_attributes if a != "Parent"]
+        df_genome_features = self.genome_features(region=region, attributes=attributes)
+        data = df_genome_features.query(f"type == '{self._gff_gene_type}'").copy()
+        tooltips = [(a.capitalize(), f"@{a}") for a in attributes]
+        tooltips += [("Location", "@contig:@start{,}-@end{,}")]
         return data, tooltips
 
     @staticmethod

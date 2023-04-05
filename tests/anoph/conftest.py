@@ -1,6 +1,7 @@
 import json
 import random
 import shutil
+import string
 from pathlib import Path
 
 import numpy as np
@@ -226,6 +227,7 @@ def simulate_genes(
     exon_size_high,
     source,
     max_genes,
+    attrs,
 ):
     # Keep track of where we are on the contig. This allows for overlapping
     # features on opposite strands.
@@ -247,6 +249,12 @@ def simulate_genes(
             return
         gene_end = min(gene_start + gene_size, contig_size)
         assert gene_end > gene_start
+        gene_attrs = f"ID={gene_id}"
+        for attr in attrs:
+            random_str = "".join(
+                random.choices(string.ascii_uppercase + string.digits, k=5)
+            )
+            gene_attrs += f";{attr}={random_str}"
         gene = (
             contig,
             source,
@@ -256,7 +264,7 @@ def simulate_genes(
             ".",
             strand,
             ".",
-            f"ID={gene_id}",
+            gene_attrs,
         )
         yield gene
 
@@ -293,15 +301,13 @@ def simulate_genes(
 def simulate_gff(
     *,
     path,
-    contigs,
-    genome,
-    # TODO check types
+    contig_sizes,
     gene_type="gene",
-    transcript_type="transcript",
+    transcript_type="mRNA",
     exon_type="exon",
-    utr5_type="utr5",
-    utr3_type="utr3",
-    cds_type="cds",
+    utr5_type="five_prime_UTR",
+    utr3_type="three_prime_UTR",
+    cds_type="CDS",
     inter_size_low=1_000,
     inter_size_high=10_000,
     gene_size_low=300,
@@ -316,10 +322,10 @@ def simulate_gff(
     exon_size_high=1_000,
     source="random",
     max_genes=1_000,
+    attrs=("Name", "description"),
 ):
     dfs = []
-    for contig in contigs:
-        contig_size = genome[contig].shape[0]
+    for contig, contig_size in contig_sizes.items():
         sim = simulate_genes(
             contig=contig,
             contig_size=contig_size,
@@ -343,6 +349,7 @@ def simulate_gff(
             exon_size_high=exon_size_high,
             source=source,
             max_genes=max_genes,
+            attrs=attrs,
         )
         df = pd.DataFrame(
             sim,
@@ -458,12 +465,16 @@ class Ag3Fixture:
         self.genome = simulate_genome(
             path=path, contigs=self.contigs, low=100_000, high=200_000
         )
+        self.contig_sizes = {
+            contig: self.genome[contig].shape[0] for contig in self.contigs
+        }
 
     def init_genome_features(self):
         path = self.path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
         self.genome_features = simulate_gff(
-            path=path, contigs=self.contigs, genome=self.genome
+            path=path,
+            contig_sizes=self.contig_sizes,
         )
 
 
@@ -539,15 +550,20 @@ class Af1Fixture:
         self.genome = simulate_genome(
             path=path, contigs=self.contigs, low=100_000, high=300_000
         )
+        self.contig_sizes = {
+            contig: self.genome[contig].shape[0] for contig in self.contigs
+        }
 
     def init_genome_features(self):
         path = self.path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
         self.genome_features = simulate_gff(
             path=path,
-            contigs=self.contigs,
-            genome=self.genome,
+            contig_sizes=self.contig_sizes,
+            # Af1 has a different gene type
             gene_type="protein_coding_gene",
+            # Af1 has different attributes
+            attrs=("Note", "description"),
         )
 
 

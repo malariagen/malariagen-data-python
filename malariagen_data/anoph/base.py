@@ -1,5 +1,5 @@
 import json
-from typing import IO, Dict, Mapping, Optional, Sequence, Tuple, Union
+from typing import IO, Dict, Final, Mapping, Optional, Sequence, Tuple, Union
 
 import bokeh.io
 import pandas as pd
@@ -7,6 +7,8 @@ from numpydoc_decorator import doc
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import LoggingHelper, Region, check_colab_location, init_filesystem
+
+DEFAULT: Final[str] = "default"
 
 
 class base_params:

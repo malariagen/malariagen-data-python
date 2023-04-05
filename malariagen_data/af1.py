@@ -1,36 +1,14 @@
 import sys
 
-from .anopheles import AnophelesDataResource
-
-try:
-    # noinspection PyPackageRequirements
-    from google import colab
-except ImportError:
-    colab = None
-
 import malariagen_data  # used for .__version__
+
+from .anopheles import AnophelesDataResource
 
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
-
 GCS_URL = "gs://vo_afun_release/"
-
-GENOME_FASTA_PATH = (
-    "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.fa"
-)
-GENOME_FAI_PATH = (
-    "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.fa.fai"
-)
-GENOME_ZARR_PATH = (
-    "reference/genome/idAnoFuneDA-416_04/idAnoFuneDA-416_04_1.curated_primary.zarr"
-)
 SITE_ANNOTATIONS_ZARR_PATH = "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr"
-GENOME_REF_ID = "idAnoFuneDA-416_04"
-GENOME_REF_NAME = "Anopheles funestus"
-
-CONTIGS = "2RL", "3RL", "X"
-
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
@@ -40,7 +18,6 @@ G123_GWSS_CACHE_NAME = "af1_g123_gwss_v1"
 G123_CALIBRATION_CACHE_NAME = "af1_g123_calibration_v1"
 H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
-
 DEFAULT_SITE_MASK = "funestus"
 
 
@@ -96,13 +73,7 @@ class Af1(AnophelesDataResource):
 
     """
 
-    contigs = CONTIGS
-    _genome_fasta_path = GENOME_FASTA_PATH
-    _genome_fai_path = GENOME_FAI_PATH
-    _genome_zarr_path = GENOME_ZARR_PATH
-    _genome_ref_id = GENOME_REF_ID
-    _genome_ref_name = GENOME_REF_NAME
-    _gcs_url = GCS_URL
+    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
@@ -114,7 +85,6 @@ class Af1(AnophelesDataResource):
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("funestus",)
     _default_site_mask = DEFAULT_SITE_MASK
-    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _cohorts_analysis = None
     _site_filters_analysis = None
     phasing_analysis_ids = ("funestus",)
@@ -132,7 +102,7 @@ class Af1(AnophelesDataResource):
         cohorts_analysis=None,
         site_filters_analysis=None,
         pre=False,
-        **storage_kwargs,  # used by fsspec via init_filesystem(url, **kwargs)
+        **storage_options,  # used by fsspec via init_filesystem()
     ):
         super().__init__(
             url=url,
@@ -149,7 +119,9 @@ class Af1(AnophelesDataResource):
             gcs_url=GCS_URL,
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
-            **storage_kwargs,  # used by fsspec via init_filesystem(url, **kwargs)
+            gff_gene_type="protein_coding_gene",
+            gff_default_attributes=("ID", "Parent", "Note", "description"),
+            storage_options=storage_options,  # used by fsspec via init_filesystem()
         )
 
     @staticmethod
@@ -271,61 +243,6 @@ class Af1(AnophelesDataResource):
         parent_name = parent
 
         return parent_name
-
-    def genome_features(
-        self, region=None, attributes=("ID", "Parent", "Note", "description")
-    ):
-        """Access genome feature annotations.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Contig name (e.g., "2RL"), gene name (e.g., "LOC125767311"), genomic
-            region defined with coordinates (e.g., "2RL:44,989,425-44,998,059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["2RL", "3RL"].
-        attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all
-            attributes.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of genome annotations, one row per feature.
-
-        """
-
-        # Here we override the superclass implementation in order to provide a
-        # different default value for the `attributes` parameter, because the
-        # genome annotations don't include a "Name" attribute but do include a
-        # "Note" attribute which is probably useful to include instead.
-        #
-        # Also, we take the opportunity to customise the docstring to use
-        # examples specific to funestus.
-        #
-        # See also https://github.com/malariagen/malariagen-data-python/issues/306
-
-        return super().genome_features(region=region, attributes=attributes)
-
-    def _plot_genes_setup_data(self, *, region):
-        # Here we override the superclass implementation because the
-        # gene annotations don't include a "Name" attribute.
-        #
-        # Also, the type needed is "protein_coding_gene".
-
-        df_genome_features = self.genome_features(
-            region=region, attributes=["ID", "Parent", "description"]
-        )
-        data = df_genome_features.query("type == 'protein_coding_gene'").copy()
-
-        tooltips = [
-            ("ID", "@ID"),
-            ("Description", "@description"),
-            ("Location", "@contig:@start{,}-@end{,}"),
-        ]
-
-        return data, tooltips
 
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks
