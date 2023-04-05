@@ -2738,7 +2738,6 @@ class AnophelesDataResource(
 
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
-        returns="Bokeh figure.",
     )
     def plot_heterozygosity_track(
         self,
@@ -2754,7 +2753,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-    ) -> bokeh.plotting.figure:
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         debug("compute windowed heterozygosity")
@@ -6097,7 +6096,6 @@ class AnophelesDataResource(
 
     @doc(
         summary="Plot h12 GWSS data.",
-        returns="Bokeh figure.",
     )
     def plot_h12_gwss_track(
         self,
@@ -6120,7 +6118,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-    ) -> bokeh.plotting.figure:
+    ) -> gplt_params.figure:
         # compute H12
         x, h12 = self.h12_gwss(
             contig=contig,

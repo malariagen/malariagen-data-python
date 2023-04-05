@@ -68,7 +68,7 @@ class gplt_params:
         "Plot title. If True, a title may be automatically generated.",
     ]
     figure: TypeAlias = Annotated[
-        bokeh.plotting.figure,
+        bokeh.plotting.Figure,
         "A bokeh figure.",
     ]
 
@@ -176,7 +176,6 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
     @doc(
         summary="Plot a transcript, using bokeh.",
-        returns="Bokeh figure.",
     )
     def plot_transcript(
         self,
@@ -188,7 +187,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         x_range: Optional[gplt_params.x_range] = None,
         toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
         title: gplt_params.title = True,
-    ) -> bokeh.plotting.figure:
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         debug("find the transcript annotation")
@@ -318,7 +317,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
         x_range: Optional[gplt_params.x_range] = None,
         title: gplt_params.title = "Genes",
-    ) -> bokeh.plotting.figure:
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")

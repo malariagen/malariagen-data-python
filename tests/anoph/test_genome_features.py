@@ -1,5 +1,6 @@
 import random
 
+import bokeh.plotting
 import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -58,7 +59,7 @@ gff3_cols = [
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_genome_features_no_attributes(fixture, api):
+def test_genome_features_no_attributes(fixture, api: AnophelesGenomeFeaturesData):
     df_gf = api.genome_features(attributes=None)
     assert isinstance(df_gf, pd.DataFrame)
     expected_cols = gff3_cols + ["attributes"]
@@ -68,14 +69,14 @@ def test_genome_features_no_attributes(fixture, api):
         assert contig in fixture.contigs
 
 
-def test_genome_features_default_attributes_ag3(ag3_api):
+def test_genome_features_default_attributes_ag3(ag3_api: AnophelesGenomeFeaturesData):
     df_gf = ag3_api.genome_features()
     assert isinstance(df_gf, pd.DataFrame)
     expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
     assert df_gf.columns.to_list() == expected_cols
 
 
-def test_genome_features_default_attributes_af1(af1_api):
+def test_genome_features_default_attributes_af1(af1_api: AnophelesGenomeFeaturesData):
     df_gf = af1_api.genome_features()
     assert isinstance(df_gf, pd.DataFrame)
     expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
@@ -83,7 +84,7 @@ def test_genome_features_default_attributes_af1(af1_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_genome_features_region_contig(fixture, api):
+def test_genome_features_region_contig(fixture, api: AnophelesGenomeFeaturesData):
     for contig in fixture.contigs:
         df_gf = api.genome_features(region=contig, attributes=None)
         expected_cols = gff3_cols + ["attributes"]
@@ -93,7 +94,7 @@ def test_genome_features_region_contig(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_genome_features_region_string(fixture, api):
+def test_genome_features_region_string(fixture, api: AnophelesGenomeFeaturesData):
     for contig in fixture.contigs:
         contig_size = fixture.contig_sizes[contig]
         region_start = random.randint(1, contig_size)
@@ -107,3 +108,19 @@ def test_genome_features_region_string(fixture, api):
             assert (df_gf["contig"] == contig).all()
             assert (df_gf["end"] >= region_start).all()
             assert (df_gf["start"] <= region_end).all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_genes(fixture, api: AnophelesGenomeFeaturesData):
+    for contig in fixture.contigs:
+        fig = api.plot_genes(region=contig, show=False)
+        assert isinstance(fig, bokeh.plotting.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
+    for contig in fixture.contigs:
+        df_transcripts = api.genome_features(region=contig).query("type == 'mRNA'")
+        transcript = random.choice(df_transcripts["ID"].values)
+        fig = api.plot_transcript(transcript=transcript, show=False)
+        assert isinstance(fig, bokeh.plotting.Figure)

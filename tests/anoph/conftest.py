@@ -141,7 +141,7 @@ class Gff3Simulator:
 
         # Simulate genes.
         for gene_ix in range(self.max_genes):
-            gene_id = f"gene-{gene_ix}"
+            gene_id = f"gene-{contig}-{gene_ix}"
             strand = random.choice(["+", "-"])
             inter_size = random.randint(self.inter_size_low, self.inter_size_high)
             gene_size = random.randint(self.gene_size_low, self.gene_size_high)
@@ -206,7 +206,7 @@ class Gff3Simulator:
         for transcript_ix in range(
             random.randint(self.n_transcripts_low, self.n_transcripts_high)
         ):
-            transcript_id = f"transcript-{gene_ix}-{transcript_ix}"
+            transcript_id = f"transcript-{contig}-{gene_ix}-{transcript_ix}"
             transcript_start = gene_start
             transcript_end = gene_end
             assert transcript_end > transcript_start
@@ -254,7 +254,7 @@ class Gff3Simulator:
         exons = []
         exon_end = transcript_start
         for exon_ix in range(random.randint(self.n_exons_low, self.n_exons_high)):
-            exon_id = f"exon-{gene_ix}-{transcript_ix}-{exon_ix}"
+            exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
             intron_size = random.randint(
                 self.intron_size_low, min(gene_size, self.intron_size_high)
             )
