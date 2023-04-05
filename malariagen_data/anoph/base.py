@@ -160,9 +160,9 @@ class base_params:
     ]
     chunks_default: chunks = "native"
     gff_attributes: TypeAlias = Annotated[
-        Optional[Sequence[str]],
+        Optional[Union[Sequence[str], str]],
         """
-        GFF attribute keys to unpack into dataframe columns. Provide ("*",) to unpack all
+        GFF attribute keys to unpack into dataframe columns. Provide "*" to unpack all
         attributes.
         """,
     ]

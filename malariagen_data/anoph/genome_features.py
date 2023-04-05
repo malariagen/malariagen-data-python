@@ -92,9 +92,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self._gff_default_attributes = gff_default_attributes
 
         # Setup caches.
-        self._cache_genome_features: Dict[
-            Optional[Tuple[str, ...]], pd.DataFrame
-        ] = dict()
+        self._cache_genome_features: Dict[Tuple[str, ...], pd.DataFrame] = dict()
 
     @property
     def _geneset_gff3_path(self):
@@ -104,7 +102,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
-    def _genome_features(self, *, attributes: Optional[Tuple[str, ...]]):
+    def _genome_features(self, *, attributes: Tuple[str, ...]):
         try:
             df = self._cache_genome_features[attributes]
 
@@ -112,21 +110,32 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             path = f"{self._base_path}/{self._geneset_gff3_path}"
             with self._fs.open(path, mode="rb") as f:
                 df = read_gff3(f, compression="gzip")
-            if attributes is not None:
+            if attributes:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
 
         return df
 
-    def _genome_features_for_contig(
-        self, *, contig: str, attributes: Optional[Tuple[str, ...]]
-    ):
+    def _genome_features_for_contig(self, *, contig: str, attributes: Tuple[str, ...]):
         debug = self._log.debug
 
         df = self._genome_features(attributes=attributes)
 
         debug("Apply contig query.")
         return df.query(f"contig == '{contig}'")
+
+    def _prep_gff_attributes(
+        self, attributes: base_params.gff_attributes
+    ) -> Tuple[str, ...]:
+        if attributes is None:
+            attributes_normed: Tuple[str, ...] = ()
+        elif attributes == DEFAULT:
+            attributes_normed = self._gff_default_attributes
+        elif isinstance(attributes, str):
+            attributes_normed = (attributes,)
+        else:
+            attributes_normed = tuple(attributes)
+        return attributes_normed
 
     @doc(
         summary="Access genome feature annotations.",
@@ -139,12 +148,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     ) -> pd.DataFrame:
         debug = self._log.debug
 
-        if attributes is None:
-            attributes_normed: Optional[Tuple[str, ...]] = attributes
-        elif attributes == DEFAULT:
-            attributes_normed = self._gff_default_attributes
-        else:
-            attributes_normed = tuple(attributes)
+        attributes_normed = self._prep_gff_attributes(attributes)
         del attributes
 
         if region is not None:
