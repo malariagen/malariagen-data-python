@@ -140,11 +140,13 @@ def gh334_api(fixture_dir):
         major_version_path="v1.0",
         pre=False,
         gff_gene_type="protein_coding_gene",
-        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        gff_default_attributes=("ID", "Parent"),
     )
 
 
 def test_gh334(gh334_api):
     # Accommodate exons with multiple parents
     # https://github.com/malariagen/malariagen-data-python/issues/334
-    assert False, "TODO"
+    transcript = "LOC125767311_t2"
+    df_gf = gh334_api.genome_feature_children(parent=transcript)
+    assert len(df_gf) == 20

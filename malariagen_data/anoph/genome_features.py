@@ -5,6 +5,7 @@ import bokeh.plotting
 import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc
+from pandas.io.common import infer_compression
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import Region, read_gff3, resolve_region, unpack_gff3_attributes
@@ -108,8 +109,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         except KeyError:
             path = f"{self._base_path}/{self._geneset_gff3_path}"
+            compression = infer_compression(path, compression="infer")
             with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression="gzip")
+                df = read_gff3(f, compression=compression)
             if attributes:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
@@ -180,9 +182,28 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             .copy()
         )
 
-    @doc(
-        summary="Plot a transcript, using bokeh.",
-    )
+    def genome_feature_children(
+        self, parent: str, attributes: base_params.gff_attributes = DEFAULT
+    ) -> pd.DataFrame:
+        # Normalise attributes and ensure Parent is included.
+        attributes_normed = self._prep_gff_attributes(attributes)
+        if "Parent" not in attributes_normed:
+            attributes_normed += ("Parent",)
+
+        # Obtain dataframe of all genome features.
+        df_gf = self._genome_features(attributes=attributes_normed).copy()
+
+        # Split the Parent column and explode.
+        # See also https://github.com/malariagen/malariagen-data-python/issues/334
+        df_gf["Parent"] = df_gf["Parent"].str.split(",")
+        df_gf = df_gf.explode(column="Parent", ignore_index=True)
+
+        # Query to find children of the requested parent.
+        df_children = df_gf.query(f"Parent == '{parent}'")
+
+        return df_children.copy()
+
+    @doc(summary="Plot a transcript, using bokeh.")
     def plot_transcript(
         self,
         transcript: base_params.transcript,
@@ -227,7 +248,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         )
 
         debug("Find child components of the transcript.")
-        data = df_genome_features.set_index("Parent").loc[transcript].copy()
+        data = self.genome_feature_children(parent=transcript, attributes=None)
         data["bottom"] = -0.4
         data["top"] = 0.4
 
