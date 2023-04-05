@@ -26,7 +26,11 @@ import zarr
 # real data in GCS, but which is much smaller and so can be used
 # for faster test runs.
 
-cwd = Path(__file__).parent.resolve()
+
+@pytest.fixture(scope="session")
+def fixture_dir():
+    cwd = Path(__file__).parent.resolve()
+    return cwd / "fixture"
 
 
 def simulate_contig(*, low, high):
@@ -313,10 +317,9 @@ class Gff3Simulator:
             yield feature
 
 
-class Ag3Fixture:
-    def __init__(self):
-        self.bucket = "vo_agam_release"
-        self.path = (cwd / "fixture" / "simulated" / self.bucket).resolve()
+class Ag3Simulator:
+    def __init__(self, path):
+        self.path = path
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -413,10 +416,9 @@ class Ag3Fixture:
         self.genome_features = simulator.simulate_gff(path=path)
 
 
-class Af1Fixture:
-    def __init__(self):
-        self.bucket = "vo_afun_release"
-        self.path = (cwd / "fixture" / "simulated" / self.bucket).resolve()
+class Af1Simulator:
+    def __init__(self, path):
+        self.path = path
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -515,10 +517,14 @@ class Af1Fixture:
 
 
 @pytest.fixture(scope="session")
-def ag3_fixture():
-    return Ag3Fixture()
+def ag3_sim_fixture(fixture_dir):
+    bucket = "vo_agam_release"
+    path = (fixture_dir / "simulated" / bucket).resolve()
+    return Ag3Simulator(path=path)
 
 
 @pytest.fixture(scope="session")
-def af1_fixture():
-    return Af1Fixture()
+def af1_sim_fixture(fixture_dir):
+    bucket = "vo_afun_release"
+    path = (fixture_dir / "simulated" / bucket).resolve()
+    return Af1Simulator(path=path)

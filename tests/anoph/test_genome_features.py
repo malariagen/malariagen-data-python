@@ -11,9 +11,9 @@ from malariagen_data.anoph.genome_features import AnophelesGenomeFeaturesData
 
 
 @pytest.fixture
-def ag3_api(ag3_fixture):
+def ag3_sim_api(ag3_sim_fixture):
     return AnophelesGenomeFeaturesData(
-        url=ag3_fixture.url,
+        url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
@@ -25,9 +25,9 @@ def ag3_api(ag3_fixture):
 
 
 @pytest.fixture
-def af1_api(af1_fixture):
+def af1_sim_api(af1_sim_fixture):
     return AnophelesGenomeFeaturesData(
-        url=af1_fixture.url,
+        url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
@@ -38,12 +38,12 @@ def af1_api(af1_fixture):
     )
 
 
-def case_ag3(ag3_fixture, ag3_api):
-    return ag3_fixture, ag3_api
+def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
+    return ag3_sim_fixture, ag3_sim_api
 
 
-def case_af1(af1_fixture, af1_api):
-    return af1_fixture, af1_api
+def case_af1_sim(af1_sim_fixture, af1_sim_api):
+    return af1_sim_fixture, af1_sim_api
 
 
 gff3_cols = [
@@ -69,15 +69,19 @@ def test_genome_features_no_attributes(fixture, api: AnophelesGenomeFeaturesData
         assert contig in fixture.contigs
 
 
-def test_genome_features_default_attributes_ag3(ag3_api: AnophelesGenomeFeaturesData):
-    df_gf = ag3_api.genome_features()
+def test_genome_features_default_attributes_ag3(
+    ag3_sim_api: AnophelesGenomeFeaturesData,
+):
+    df_gf = ag3_sim_api.genome_features()
     assert isinstance(df_gf, pd.DataFrame)
     expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
     assert df_gf.columns.to_list() == expected_cols
 
 
-def test_genome_features_default_attributes_af1(af1_api: AnophelesGenomeFeaturesData):
-    df_gf = af1_api.genome_features()
+def test_genome_features_default_attributes_af1(
+    af1_sim_api: AnophelesGenomeFeaturesData,
+):
+    df_gf = af1_sim_api.genome_features()
     assert isinstance(df_gf, pd.DataFrame)
     expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
     assert df_gf.columns.to_list() == expected_cols
@@ -124,3 +128,23 @@ def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
         transcript = random.choice(df_transcripts["ID"].values)
         fig = api.plot_transcript(transcript=transcript, show=False)
         assert isinstance(fig, bokeh.plotting.Figure)
+
+
+@pytest.fixture
+def gh334_api(fixture_dir):
+    return AnophelesGenomeFeaturesData(
+        url=(fixture_dir / "gh334").as_uri(),
+        config_path="config.json",
+        gcs_url=None,
+        major_version_number=1,
+        major_version_path="v1.0",
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+    )
+
+
+def test_gh334(gh334_api):
+    # Accommodate exons with multiple parents
+    # https://github.com/malariagen/malariagen-data-python/issues/334
+    assert False, "TODO"
