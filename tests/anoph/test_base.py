@@ -9,9 +9,9 @@ from malariagen_data.anoph.base import AnophelesBase
 
 
 @pytest.fixture
-def ag3_api(ag3_fixture):
+def ag3_sim_api(ag3_sim_fixture):
     return AnophelesBase(
-        url=ag3_fixture.url,
+        url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
@@ -21,9 +21,9 @@ def ag3_api(ag3_fixture):
 
 
 @pytest.fixture
-def af1_api(af1_fixture):
+def af1_sim_api(af1_sim_fixture):
     return AnophelesBase(
-        url=af1_fixture.url,
+        url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
@@ -44,12 +44,12 @@ def af1_api(af1_fixture):
 # pytest alone.
 
 
-def case_ag3(ag3_fixture, ag3_api):
-    return ag3_fixture, ag3_api
+def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
+    return ag3_sim_fixture, ag3_sim_api
 
 
-def case_af1(af1_fixture, af1_api):
-    return af1_fixture, af1_api
+def case_af1_sim(af1_sim_fixture, af1_sim_api):
+    return af1_sim_fixture, af1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")

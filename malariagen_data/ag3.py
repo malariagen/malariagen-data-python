@@ -11,16 +11,9 @@ import pandas as pd
 import xarray as xr
 import zarr
 
-from .anopheles import AnophelesDataResource, gplt_params
-
-try:
-    # noinspection PyPackageRequirements
-    from google import colab
-except ImportError:
-    colab = None
-
 import malariagen_data  # used for .__version__
 
+from .anopheles import AnophelesDataResource, gplt_params
 from .util import (
     DIM_SAMPLE,
     DIM_VARIANT,
@@ -36,27 +29,11 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
 MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
-
 GCS_URL = "gs://vo_agam_release/"
-
-GENOME_FASTA_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa"
-)
-GENOME_FAI_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.fa.fai"
-)
-GENOME_ZARR_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_CHROMOSOMES_AgamP4.zarr"
-)
 SITE_ANNOTATIONS_ZARR_PATH = (
     "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
 )
-GENOME_REF_ID = "AgamP4"
-GENOME_REF_NAME = "Anopheles gambiae (PEST)"
-
-CONTIGS = "2R", "2L", "3R", "3L", "X"
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
-
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
 SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
@@ -125,14 +102,8 @@ class Ag3(AnophelesDataResource):
 
     """
 
-    contigs = CONTIGS
     virtual_contigs = "2RL", "3RL"
-    _genome_fasta_path = GENOME_FASTA_PATH
-    _genome_fai_path = GENOME_FAI_PATH
-    _genome_zarr_path = GENOME_ZARR_PATH
-    _genome_ref_id = GENOME_REF_ID
-    _genome_ref_name = GENOME_REF_NAME
-    _gcs_url = GCS_URL
+    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
@@ -144,7 +115,6 @@ class Ag3(AnophelesDataResource):
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("gamb_colu_arab", "gamb_colu", "arab")
     _default_site_mask = DEFAULT_SITE_MASK
-    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     phasing_analysis_ids = ("gamb_colu_arab", "gamb_colu", "arab")
     _default_phasing_analysis = "gamb_colu_arab"
 
@@ -161,7 +131,7 @@ class Ag3(AnophelesDataResource):
         species_analysis=None,
         site_filters_analysis=None,
         pre=False,
-        **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
+        **storage_options,  # used by fsspec via init_filesystem()
     ):
         super().__init__(
             url=url,
@@ -178,7 +148,9 @@ class Ag3(AnophelesDataResource):
             gcs_url=GCS_URL,
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
-            **storage_kwargs,  # used by simplecache, init_filesystem(url, **kwargs)
+            gff_gene_type="gene",
+            gff_default_attributes=("ID", "Parent", "Name", "description"),
+            storage_options=storage_options,  # used by fsspec via init_filesystem()
         )
 
         # set species analysis version - this is Ag specific currently, hence
