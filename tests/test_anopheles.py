@@ -164,13 +164,18 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
     assert len(df_samples_multi) == expected_len
 
     # duplicate sample sets
-    with pytest.raises(ValueError):
-        anoph.sample_metadata(sample_sets=[major_release, major_release])
-    with pytest.raises(ValueError):
-        # test_ag3.py used AG1000G-UG here instead of AG1000G-X
-        anoph.sample_metadata(sample_sets=[sample_set, sample_set])
-    with pytest.raises(ValueError):
-        anoph.sample_metadata(sample_sets=[sample_set, major_release])
+    assert_frame_equal(
+        anoph.sample_metadata(sample_sets=[major_release]),
+        anoph.sample_metadata(sample_sets=[major_release, major_release]),
+    )
+    assert_frame_equal(
+        anoph.sample_metadata(sample_sets=[sample_set]),
+        anoph.sample_metadata(sample_sets=[sample_set, sample_set]),
+    )
+    assert_frame_equal(
+        anoph.sample_metadata(sample_sets=[major_release]),
+        anoph.sample_metadata(sample_sets=[major_release, sample_set]),
+    )
 
     # default is all public releases
     df_default = anoph.sample_metadata()

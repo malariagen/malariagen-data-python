@@ -1,5 +1,5 @@
 import json
-from typing import IO, Dict, Final, Mapping, Optional, Sequence, Tuple, Union
+from typing import IO, Dict, Final, List, Mapping, Optional, Sequence, Tuple, Union
 
 import bokeh.io
 import pandas as pd
@@ -396,3 +396,52 @@ class AnophelesBase:
             return self._cache_sample_set_to_release[sample_set]
         except KeyError:
             raise ValueError(f"No release found for sample set {sample_set!r}")
+
+    def _prep_sample_sets_param(
+        self, *, sample_sets: Optional[base_params.sample_sets]
+    ) -> List[str]:
+        """Common handling for the `sample_sets` parameter. For convenience, we
+        allow this to be a single sample set, or a list of sample sets, or a
+        release identifier, or a list of release identifiers."""
+
+        all_sample_sets = self.sample_sets()["sample_set"].to_list()
+
+        if sample_sets is None:
+            # All available sample sets.
+            prepped_sample_sets = all_sample_sets
+
+        elif isinstance(sample_sets, str):
+            if sample_sets.startswith(f"{self._major_version_number}."):
+                # Convenience, can use a release identifier to denote all sample sets in a release.
+                prepped_sample_sets = self.sample_sets(release=sample_sets)[
+                    "sample_set"
+                ].to_list()
+
+            else:
+                # Single sample set, normalise to always return a list.
+                prepped_sample_sets = [sample_sets]
+
+        elif isinstance(sample_sets, Sequence):
+            # List or tuple of sample sets or releases.
+            prepped_sample_sets = []
+            for s in sample_sets:
+                # Make a recursive call to handle the case where s is a release identifier.
+                sp = self._prep_sample_sets_param(sample_sets=s)
+
+                # Make sure we end up with a flat list of sample sets.
+                prepped_sample_sets.extend(sp)
+
+        else:
+            raise TypeError(
+                f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
+            )
+
+        # Ensure all sample sets selected at most once.
+        prepped_sample_sets = sorted(set(prepped_sample_sets))
+
+        # Check for bad sample sets.
+        for s in prepped_sample_sets:
+            if s not in all_sample_sets:
+                raise ValueError(f"Sample set {s!r} not found.")
+
+        return prepped_sample_sets
