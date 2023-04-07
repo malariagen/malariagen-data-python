@@ -110,3 +110,46 @@ def test_lookup_release(fixture, api):
         df_ss = api.sample_sets(release=release)
         for s in df_ss["sample_set"]:
             assert api.lookup_release(s) == release
+
+
+def test_prep_sample_sets_param(ag3_sim_api: AnophelesBase):
+    assert ag3_sim_api._prep_sample_sets_param(sample_sets="3.0") == [
+        "AG1000G-AO",
+        "AG1000G-BF-A",
+    ]
+    assert ag3_sim_api._prep_sample_sets_param(sample_sets="3.1") == [
+        "1177-VO-ML-LEHMANN-VMF00015",
+        "1237-VO-BJ-DJOGBENOU-VMF00050",
+    ]
+    assert ag3_sim_api._prep_sample_sets_param(sample_sets=["3.0", "3.1"]) == [
+        "1177-VO-ML-LEHMANN-VMF00015",
+        "1237-VO-BJ-DJOGBENOU-VMF00050",
+        "AG1000G-AO",
+        "AG1000G-BF-A",
+    ]
+    assert ag3_sim_api._prep_sample_sets_param(sample_sets=None) == [
+        "1177-VO-ML-LEHMANN-VMF00015",
+        "1237-VO-BJ-DJOGBENOU-VMF00050",
+        "AG1000G-AO",
+        "AG1000G-BF-A",
+    ]
+    assert ag3_sim_api._prep_sample_sets_param(sample_sets="AG1000G-AO") == [
+        "AG1000G-AO"
+    ]
+    assert ag3_sim_api._prep_sample_sets_param(
+        sample_sets=["AG1000G-AO", "AG1000G-BF-A"]
+    ) == ["AG1000G-AO", "AG1000G-BF-A"]
+    assert ag3_sim_api._prep_sample_sets_param(
+        sample_sets=("AG1000G-AO", "AG1000G-BF-A")
+    ) == ["AG1000G-AO", "AG1000G-BF-A"]
+    assert ag3_sim_api._prep_sample_sets_param(
+        sample_sets=["AG1000G-AO", "AG1000G-BF-A", "AG1000G-AO"]
+    ) == ["AG1000G-AO", "AG1000G-BF-A"]
+    assert ag3_sim_api._prep_sample_sets_param(sample_sets=["3.0", "AG1000G-AO"]) == [
+        "AG1000G-AO",
+        "AG1000G-BF-A",
+    ]
+    with pytest.raises(ValueError):
+        ag3_sim_api._prep_sample_sets_param(sample_sets=["AG1000G-AO", "foobar"])
+    with pytest.raises(TypeError):
+        ag3_sim_api._prep_sample_sets_param(sample_sets=3.1)  # type: ignore

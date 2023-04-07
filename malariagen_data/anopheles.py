@@ -1452,57 +1452,6 @@ class AnophelesDataResource(
             self._cache_snp_sites = root
         return self._cache_snp_sites
 
-    def _prep_sample_sets_param(
-        self, *, sample_sets: Optional[base_params.sample_sets]
-    ) -> List[str]:
-        """Common handling for the `sample_sets` parameter. For convenience, we
-        allow this to be a single sample set, or a list of sample sets, or a
-        release identifier, or a list of release identifiers."""
-
-        if sample_sets is None:
-            # all available sample sets
-            prepped_sample_sets = self.sample_sets()["sample_set"].tolist()
-
-        elif isinstance(sample_sets, str):
-            if sample_sets.startswith(f"{self._major_version_number}."):
-                # convenience, can use a release identifier to denote all sample sets in a release
-                prepped_sample_sets = self.sample_sets(release=sample_sets)[
-                    "sample_set"
-                ].tolist()
-
-            else:
-                # single sample set, normalise to always return a list
-                prepped_sample_sets = [sample_sets]
-
-        elif isinstance(sample_sets, (list, tuple)):
-            # list or tuple of sample sets or releases
-            prepped_sample_sets = []
-            for s in sample_sets:
-                # make a recursive call to handle the case where s is a release identifier
-                sp = self._prep_sample_sets_param(sample_sets=s)
-
-                # make sure we end up with a flat list of sample sets
-                if isinstance(sp, str):
-                    prepped_sample_sets.append(sp)
-                else:
-                    prepped_sample_sets.extend(sp)
-
-        else:
-            raise TypeError(
-                f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
-            )
-
-        # check all sample sets selected at most once
-        counter = Counter(prepped_sample_sets)
-        for k, v in counter.items():
-            # TODO could relax here, just remove any duplicates for the user
-            if v > 1:
-                raise ValueError(
-                    f"Bad value for sample_sets parameter, {k:!r} selected more than once."
-                )
-
-        return prepped_sample_sets
-
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
         disable = self._debug or not self._show_progress
