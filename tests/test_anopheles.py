@@ -600,13 +600,19 @@ def test_snp_allele_frequencies__dup_samples(
     transcript,
     sample_set,
 ):
+    # Expect automatically deduplicate any sample sets.
     anoph = setup_subclass_cached(subclass)
-    with pytest.raises(ValueError):
-        anoph.snp_allele_frequencies(
-            transcript=transcript,
-            cohorts="admin1_year",
-            sample_sets=[sample_set, sample_set],
-        )
+    df = anoph.snp_allele_frequencies(
+        transcript=transcript,
+        cohorts="admin1_year",
+        sample_sets=[sample_set],
+    )
+    df_dup = anoph.snp_allele_frequencies(
+        transcript=transcript,
+        cohorts="admin1_year",
+        sample_sets=[sample_set, sample_set],
+    )
+    assert_frame_equal(df, df_dup)
 
 
 @pytest.mark.parametrize(
@@ -658,13 +664,19 @@ def test_snp_allele_frequencies__bad_transcript(
 def test_aa_allele_frequencies__dup_samples(
     subclass, cohorts_analysis, transcript, sample_set
 ):
+    # Expect automatically deduplicate sample sets.
     anoph = setup_subclass_cached(subclass=subclass, cohorts_analysis=cohorts_analysis)
-    with pytest.raises(ValueError):
-        anoph.aa_allele_frequencies(
-            transcript=transcript,
-            cohorts="admin1_year",
-            sample_sets=[sample_set, sample_set],
-        )
+    df = anoph.aa_allele_frequencies(
+        transcript=transcript,
+        cohorts="admin1_year",
+        sample_sets=[sample_set],
+    )
+    df_dup = anoph.aa_allele_frequencies(
+        transcript=transcript,
+        cohorts="admin1_year",
+        sample_sets=[sample_set, sample_set],
+    )
+    assert_frame_equal(df, df_dup)
 
 
 @pytest.mark.parametrize(
@@ -688,13 +700,19 @@ def test_snp_allele_frequencies_advanced__dup_samples(
     subclass, cohorts_analysis, transcript, sample_set
 ):
     anoph = setup_subclass_cached(subclass=subclass, cohorts_analysis=cohorts_analysis)
-    with pytest.raises(ValueError):
-        anoph.snp_allele_frequencies_advanced(
-            transcript=transcript,
-            area_by="admin1_iso",
-            period_by="year",
-            sample_sets=[sample_set, sample_set],
-        )
+    ds = anoph.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets=[sample_set],
+    )
+    ds_dup = anoph.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets=[sample_set, sample_set],
+    )
+    assert ds.dims == ds_dup.dims
 
 
 @pytest.mark.parametrize(
@@ -718,13 +736,19 @@ def test_aa_allele_frequencies_advanced__dup_samples(
     subclass, cohorts_analysis, transcript, sample_set
 ):
     anoph = setup_subclass_cached(subclass=subclass, cohorts_analysis=cohorts_analysis)
-    with pytest.raises(ValueError):
-        anoph.aa_allele_frequencies_advanced(
-            transcript=transcript,
-            area_by="admin1_iso",
-            period_by="year",
-            sample_sets=[sample_set, sample_set],
-        )
+    ds_dup = anoph.aa_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets=[sample_set, sample_set],
+    )
+    ds = anoph.aa_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets=[sample_set],
+    )
+    assert ds.dims == ds_dup.dims
 
 
 @pytest.mark.parametrize(

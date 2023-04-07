@@ -1726,12 +1726,17 @@ def test_gene_cnv_frequencies__drop_invariant():
 
 def test_gene_cnv_frequencies__dup_samples():
     ag3 = setup_ag3(cohorts_analysis="20211101")
-    with pytest.raises(ValueError):
-        ag3.gene_cnv_frequencies(
-            region="3L",
-            cohorts="admin1_year",
-            sample_sets=["AG1000G-FR", "AG1000G-FR"],
-        )
+    df_dup = ag3.gene_cnv_frequencies(
+        region="3L",
+        cohorts="admin1_year",
+        sample_sets=["AG1000G-FR", "AG1000G-FR"],
+    )
+    df = ag3.gene_cnv_frequencies(
+        region="3L",
+        cohorts="admin1_year",
+        sample_sets=["AG1000G-FR"],
+    )
+    assert_frame_equal(df, df_dup)
 
 
 def test_gene_cnv_frequencies__multi_contig_x():
@@ -2767,13 +2772,19 @@ def test_gene_cnv_frequencies_advanced__missing_samples():
 
 def test_gene_cnv_frequencies_advanced__dup_samples():
     ag3 = setup_ag3(cohorts_analysis="20211101")
-    with pytest.raises(ValueError):
-        ag3.gene_cnv_frequencies_advanced(
-            region="3L",
-            area_by="admin1_iso",
-            period_by="year",
-            sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
-        )
+    ds_dup = ag3.gene_cnv_frequencies_advanced(
+        region="3L",
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets=["AG1000G-BF-A", "AG1000G-BF-A"],
+    )
+    ds = ag3.gene_cnv_frequencies_advanced(
+        region="3L",
+        area_by="admin1_iso",
+        period_by="year",
+        sample_sets=["AG1000G-BF-A"],
+    )
+    assert ds.dims == ds_dup.dims
 
 
 @pytest.mark.parametrize(
