@@ -3842,8 +3842,10 @@ class AnophelesDataResource(
                     "taxon",
                     "cohort_admin1_year",
                     "cohort_admin1_month",
+                    "cohort_admin1_quarter",
                     "cohort_admin2_year",
                     "cohort_admin2_month",
+                    "cohort_admin2_quarter",
                 )
 
                 # Get sample ids as an index via general metadata (has caching)
