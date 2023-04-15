@@ -43,7 +43,7 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 
 def test_general_metadata_sample_set(ag3_sim_fixture, ag3_sim_api):
-    df = ag3_sim_api.general_metadata(sample_set="AG1000G-AO")
+    df = ag3_sim_api.general_metadata(sample_sets="AG1000G-AO")
     assert df.columns.to_list() == [
         "sample_id",
         "partner_sample_id",
