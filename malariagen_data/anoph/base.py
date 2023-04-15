@@ -223,9 +223,23 @@ class AnophelesBase:
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
 
-    def open_file(self, path):
+    def open_file(self, path: str):
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
+
+    def read_file(self, path: str):
+        full_path = f"{self._base_path}/{path}"
+        return self._fs.cat(full_path)
+
+    def read_files(self, paths: Sequence[str]):
+        # Prepend the base path.
+        full_paths = [f"{self._base_path}/{path}" for path in paths]
+        # Retrieve all files.
+        # TODO Explain in more detail what cat() is doing.
+        full_files = self._fs.cat(full_paths)
+        # Strip off the base path.
+        files = {k.split(self._base_path, 1)[1]: v for k, v in full_files.items()}
+        return files
 
     @property
     def config(self) -> Dict:
