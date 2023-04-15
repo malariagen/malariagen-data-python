@@ -336,6 +336,7 @@ class Ag3Simulator:
         self.init_pre_release_manifest()
         self.init_genome_sequence()
         self.init_genome_features()
+        self.init_general_metadata()
 
     def init_config(self):
         self.config = {
@@ -414,6 +415,47 @@ class Ag3Simulator:
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
+
+    def init_general_metadata(self):
+        # AG1000G-AO
+        release = "3.0"
+        release_path = "v3"
+        sample_set = "AG1000G-AO"
+        n_samples = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+        sample_id = [f"AR{i:05d}-C" for i in range(n_samples)]
+        partner_sample_id = [f"LUA{i:03d}" for i in range(n_samples)]
+        contributor = "Joao Pinto"
+        country = "Angola"
+        location = "Luanda"
+        year = 2009
+        month = 4
+        latitude = -8.884
+        longitude = 13.302
+        sex_call = np.random.choice(["M", "F"], size=n_samples)
+        df = pd.DataFrame(
+            dict(
+                sample_id=sample_id,
+                partner_sample_id=partner_sample_id,
+                contributor=contributor,
+                country=country,
+                location=location,
+                year=year,
+                month=month,
+                latitude=latitude,
+                longitude=longitude,
+                sex_call=sex_call,
+            )
+        )
+        parent_path = self.path / release_path / "metadata" / "general" / sample_set
+        parent_path.mkdir(parents=True, exist_ok=True)
+        path = parent_path / "samples.meta.csv"
+        df.to_csv(path, index=False)
+
+        # TODO other sample sets
 
 
 class Af1Simulator:
