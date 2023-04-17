@@ -48,7 +48,19 @@ class AnophelesSampleData(AnophelesBase):
             # Parse file data.
             path = file_paths[sample_set]
             data = files[path]
-            df = pd.read_csv(io.BytesIO(data))
+            dtype = {
+                "sample_id": object,
+                "partner_sample_id": object,
+                "contributor": object,
+                "country": object,
+                "location": object,
+                "year": "int64",
+                "month": "int64",
+                "latitude": "float64",
+                "longitude": "float64",
+                "sex_call": object,
+            }
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]
