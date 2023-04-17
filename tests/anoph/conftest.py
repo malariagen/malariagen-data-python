@@ -455,6 +455,52 @@ class Ag3Simulator:
         path = parent_path / "samples.meta.csv"
         df.to_csv(path, index=False)
 
+        # AG1000G-BF-A
+        release = "3.0"
+        release_path = "v3"
+        sample_set = "AG1000G-BF-A"
+        n_samples = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+        sample_id = [f"AB{i:05d}-Cx" for i in range(n_samples)]
+        partner_sample_id = [f"BF12-{i:03d}" for i in range(n_samples)]
+        contributor = "Austin Burt"
+        country = "Burkina Faso"
+        locations = random.choices(
+            [
+                ("Bana Village", 11.233, -4.472),
+                ("Pala", 11.151, -4.235),
+                ("Souroukoudinga", 11.238, -4.235),
+            ],
+            k=n_samples,
+        )
+        location = [loc[0] for loc in locations]
+        latitude = [loc[1] for loc in locations]
+        longitude = [loc[2] for loc in locations]
+        year = 2012
+        month = 7
+        sex_call = np.random.choice(["M", "F"], size=n_samples)
+        df = pd.DataFrame(
+            dict(
+                sample_id=sample_id,
+                partner_sample_id=partner_sample_id,
+                contributor=contributor,
+                country=country,
+                location=location,
+                year=year,
+                month=month,
+                latitude=latitude,
+                longitude=longitude,
+                sex_call=sex_call,
+            )
+        )
+        parent_path = self.path / release_path / "metadata" / "general" / sample_set
+        parent_path.mkdir(parents=True, exist_ok=True)
+        path = parent_path / "samples.meta.csv"
+        df.to_csv(path, index=False)
+
         # TODO other sample sets
 
 

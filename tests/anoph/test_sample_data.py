@@ -1,13 +1,8 @@
-# import dask.array as da
-# import numpy as np
 import pytest
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.sample_data import AnophelesSampleData
-
-# import zarr
-# from pytest_cases import parametrize_with_cases
 
 
 @pytest.fixture
@@ -77,7 +72,7 @@ general_metadata_column_types = {
 
 
 @pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-BF-A"])
-def test_general_metadata_single_sample_set(ag3_sim_fixture, ag3_sim_api, sample_set):
+def test_general_metadata__single_sample_set(ag3_sim_fixture, ag3_sim_api, sample_set):
     df = ag3_sim_api.general_metadata(sample_sets=sample_set)
 
     # Check column names.
@@ -93,17 +88,34 @@ def test_general_metadata_single_sample_set(ag3_sim_fixture, ag3_sim_api, sample
     assert len(df) == expected_len
 
 
-# def test_general_metadata_multiple_sample_sets(ag3_sim_fixture, ag3_sim_api):
-#     df = ag3_sim_api.general_metadata(sample_sets="AG1000G-AO")
+def test_general_metadata__multiple_sample_sets(ag3_sim_fixture, ag3_sim_api):
+    sample_sets = ["AG1000G-AO", "AG1000G-BF-A"]
+    df = ag3_sim_api.general_metadata(sample_sets=sample_sets)
 
-#     # Check column names.
-#     assert df.columns.to_list() == general_metadata_column_names
+    # Check column names.
+    assert df.columns.to_list() == general_metadata_column_names
 
-#     # Check column types.
-#     for c in df.columns:
-#         assert df[c].dtype == general_metadata_column_types[c]
+    # Check column types.
+    for c in df.columns:
+        assert df[c].dtype == general_metadata_column_types[c]
 
-#     # Check number of rows.
-#     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-#     expected_len = sample_count.loc["AG1000G-AO"]
-#     assert len(df) == expected_len
+    # Check number of rows.
+    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    expected_len = sum([sample_count.loc[s] for s in sample_sets])
+    assert len(df) == expected_len
+
+
+def test_general_metadata__release(ag3_sim_fixture, ag3_sim_api):
+    release = "3.0"
+    df = ag3_sim_api.general_metadata(sample_sets=release)
+
+    # Check column names.
+    assert df.columns.to_list() == general_metadata_column_names
+
+    # Check column types.
+    for c in df.columns:
+        assert df[c].dtype == general_metadata_column_types[c]
+
+    # Check number of rows.
+    expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
+    assert len(df) == expected_len
