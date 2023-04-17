@@ -244,12 +244,16 @@ class AnophelesBase:
 
     def read_files(self, paths: Iterable[str]):
         # Prepend the base path.
-        full_paths = [f"{self._base_path}{path}" for path in paths]
+        prefix = self._base_path + "/"
+        full_paths = [f"{prefix}{path}" for path in paths]
+
         # Retrieve all files.
         # TODO Explain in more detail what cat() is doing.
         full_files = self._fs.cat(full_paths)
-        # Strip off the base path.
-        files = {k.split(self._base_path, 1)[1]: v for k, v in full_files.items()}
+
+        # Strip off the prefix.
+        files = {k.split(prefix, 1)[1]: v for k, v in full_files.items()}
+
         return files
 
     @property

@@ -22,7 +22,7 @@ class AnophelesSampleData(AnophelesBase):
         for sample_set in sample_sets:
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release=release)
-            path = f"/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
+            path = f"{release_path}/metadata/general/{sample_set}/samples.meta.csv"
             paths[sample_set] = path
         return paths
 
