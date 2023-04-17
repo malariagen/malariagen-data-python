@@ -1,5 +1,16 @@
 import json
-from typing import IO, Dict, Final, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    IO,
+    Dict,
+    Final,
+    Iterable,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import bokeh.io
 import pandas as pd
@@ -231,9 +242,9 @@ class AnophelesBase:
         full_path = f"{self._base_path}/{path}"
         return self._fs.cat(full_path)
 
-    def read_files(self, paths: Sequence[str]):
+    def read_files(self, paths: Iterable[str]):
         # Prepend the base path.
-        full_paths = [f"{self._base_path}/{path}" for path in paths]
+        full_paths = [f"{self._base_path}{path}" for path in paths]
         # Retrieve all files.
         # TODO Explain in more detail what cat() is doing.
         full_files = self._fs.cat(full_paths)
