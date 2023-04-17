@@ -30,7 +30,7 @@ class AnophelesSampleData(AnophelesBase):
         paths = self._general_metadata_paths(sample_sets=sample_sets_prepped)
         files = self.read_files(paths=list(paths.values()))
         dfs = []
-        for sample_set in sample_sets:
+        for sample_set in sample_sets_prepped:
             path = paths[sample_set]
             data = files[path]
             df = pd.read_csv(io.BytesIO(data))
