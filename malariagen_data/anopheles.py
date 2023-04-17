@@ -3834,17 +3834,33 @@ class AnophelesDataResource(
                 )
             except Exception:
                 # Specify cohort_cols
-                cohort_cols = (
-                    "country_iso",
-                    "admin1_name",
-                    "admin1_iso",
-                    "admin2_name",
-                    "taxon",
-                    "cohort_admin1_year",
-                    "cohort_admin1_month",
-                    "cohort_admin2_year",
-                    "cohort_admin2_month",
-                )
+                if self._cohorts_analysis < "20230223":
+                    cohort_cols = (
+                        "country_iso",
+                        "admin1_name",
+                        "admin1_iso",
+                        "admin2_name",
+                        "taxon",
+                        "cohort_admin1_year",
+                        "cohort_admin1_month",
+                        "cohort_admin2_year",
+                        "cohort_admin2_month",
+                    )
+                # cohorts analyses from "20230223" (will) include quarter columns
+                else:
+                    cohort_cols = (
+                        "country_iso",
+                        "admin1_name",
+                        "admin1_iso",
+                        "admin2_name",
+                        "taxon",
+                        "cohort_admin1_year",
+                        "cohort_admin1_month",
+                        "cohort_admin1_quarter",
+                        "cohort_admin2_year",
+                        "cohort_admin2_month",
+                        "cohort_admin2_quarter",
+                    )
 
                 # Get sample ids as an index via general metadata (has caching)
                 df_general = self._read_general_metadata(sample_set=sample_set)
