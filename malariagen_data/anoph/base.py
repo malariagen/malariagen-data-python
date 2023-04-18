@@ -208,7 +208,11 @@ class AnophelesBase:
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
 
-        # Set up fsspec filesystem.
+        # Set up fsspec filesystem. N.B., we use fsspec here to allow for
+        # accessing different types of storage. fsspec will automatically
+        # detect which type of storage to use based on the URL provided.
+        # E.g., if the URL begins with "gs://" then a GCSFileSystem will
+        # be used to read from Google Cloud Storage.
         if storage_options is None:
             storage_options = dict()
         self._fs, self._base_path = init_filesystem(url, **storage_options)
@@ -241,7 +245,7 @@ class AnophelesBase:
     def read_files(self, paths: Iterable[str]) -> Mapping[str, bytes]:
         # Prepend the base path.
         prefix = self._base_path + "/"
-        full_paths = [f"{prefix}{path}" for path in paths]
+        full_paths = [prefix + path for path in paths]
 
         # Retrieve all files. N.B., depending on what type of storage is
         # being used, the cat() function may be able to read multiple files
