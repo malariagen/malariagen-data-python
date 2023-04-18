@@ -234,21 +234,25 @@ class AnophelesBase:
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
 
-    def open_file(self, path: str):
+    def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
-    def read_file(self, path: str):
-        full_path = f"{self._base_path}/{path}"
-        return self._fs.cat(full_path)
-
-    def read_files(self, paths: Iterable[str]):
+    def read_files(self, paths: Iterable[str]) -> Mapping[str, bytes]:
         # Prepend the base path.
         prefix = self._base_path + "/"
         full_paths = [f"{prefix}{path}" for path in paths]
 
-        # Retrieve all files.
-        # TODO Explain in more detail what cat() is doing.
+        # Retrieve all files. N.B., depending on what type of storage is
+        # being used, the cat() function may be able to read multiple files
+        # concurrently. E.g., this is true if the file system is a
+        # GCSFileSystem, which achieves concurrency by using async I/O under the
+        # hood. This is a useful performance optimisation, because reading a
+        # file from GCS incurs some latency, and so reading many small files
+        # from GCS can be slow if files are not read concurrently. Hence we
+        # want to make use of cat() here and provide paths for all files to
+        # read concurrently. For more information see:
+        # https://filesystem-spec.readthedocs.io/en/latest/async.html
         full_files = self._fs.cat(full_paths)
 
         # Strip off the prefix.

@@ -37,43 +37,38 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-general_metadata_column_names = [
-    "sample_id",
-    "partner_sample_id",
-    "contributor",
-    "country",
-    "location",
-    "year",
-    "month",
-    "latitude",
-    "longitude",
-    "sex_call",
-    "sample_set",
-    "release",
-    "quarter",
-]
+def validate_general_metadata(df):
+    general_metadata_column_names = [
+        "sample_id",
+        "partner_sample_id",
+        "contributor",
+        "country",
+        "location",
+        "year",
+        "month",
+        "latitude",
+        "longitude",
+        "sex_call",
+        "sample_set",
+        "release",
+        "quarter",
+    ]
 
-
-general_metadata_column_types = {
-    "sample_id": object,
-    "partner_sample_id": object,
-    "contributor": object,
-    "country": object,
-    "location": object,
-    "year": "int",
-    "month": int,
-    "latitude": float,
-    "longitude": float,
-    "sex_call": object,
-    "sample_set": object,
-    "release": object,
-    "quarter": int,
-}
-
-
-@pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-BF-A"])
-def test_general_metadata__single_sample_set(ag3_sim_fixture, ag3_sim_api, sample_set):
-    df = ag3_sim_api.general_metadata(sample_sets=sample_set)
+    general_metadata_column_types = {
+        "sample_id": object,
+        "partner_sample_id": object,
+        "contributor": object,
+        "country": object,
+        "location": object,
+        "year": "int",
+        "month": int,
+        "latitude": float,
+        "longitude": float,
+        "sex_call": object,
+        "sample_set": object,
+        "release": object,
+        "quarter": int,
+    }
 
     # Check column names.
     assert df.columns.to_list() == general_metadata_column_names
@@ -81,6 +76,12 @@ def test_general_metadata__single_sample_set(ag3_sim_fixture, ag3_sim_api, sampl
     # Check column types.
     for c in df.columns:
         assert df[c].dtype == general_metadata_column_types[c]
+
+
+@pytest.mark.parametrize("sample_set", ["AG1000G-AO", "AG1000G-BF-A"])
+def test_general_metadata__single_sample_set(ag3_sim_api, sample_set):
+    df = ag3_sim_api.general_metadata(sample_sets=sample_set)
+    validate_general_metadata(df)
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -88,16 +89,10 @@ def test_general_metadata__single_sample_set(ag3_sim_fixture, ag3_sim_api, sampl
     assert len(df) == expected_len
 
 
-def test_general_metadata__multiple_sample_sets(ag3_sim_fixture, ag3_sim_api):
+def test_general_metadata__multiple_sample_sets(ag3_sim_api):
     sample_sets = ["AG1000G-AO", "AG1000G-BF-A"]
     df = ag3_sim_api.general_metadata(sample_sets=sample_sets)
-
-    # Check column names.
-    assert df.columns.to_list() == general_metadata_column_names
-
-    # Check column types.
-    for c in df.columns:
-        assert df[c].dtype == general_metadata_column_types[c]
+    validate_general_metadata(df)
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -105,16 +100,10 @@ def test_general_metadata__multiple_sample_sets(ag3_sim_fixture, ag3_sim_api):
     assert len(df) == expected_len
 
 
-def test_general_metadata__release(ag3_sim_fixture, ag3_sim_api):
+def test_general_metadata__release(ag3_sim_api):
     release = "3.0"
     df = ag3_sim_api.general_metadata(sample_sets=release)
-
-    # Check column names.
-    assert df.columns.to_list() == general_metadata_column_names
-
-    # Check column types.
-    for c in df.columns:
-        assert df[c].dtype == general_metadata_column_types[c]
+    validate_general_metadata(df)
 
     # Check number of rows.
     expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()

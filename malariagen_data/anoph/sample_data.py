@@ -1,8 +1,9 @@
 import io
 from collections.abc import Mapping
-from typing import Dict, List
+from typing import Dict, List, Optional
 
 import pandas as pd
+from numpydoc_decorator import doc
 
 from .base import AnophelesBase, base_params
 
@@ -26,9 +27,16 @@ class AnophelesSampleData(AnophelesBase):
             paths[sample_set] = path
         return paths
 
-    def general_metadata(self, sample_sets: base_params.sample_sets = None):
-        # TODO docstring
-
+    @doc(
+        summary="""
+            Read general sample metadata for one or more sample sets into a pandas
+            DataFrame.
+        """,
+        returns="A pandas DataFrame, one row per sample.",
+    )
+    def general_metadata(
+        self, sample_sets: Optional[base_params.sample_sets] = None
+    ) -> pd.DataFrame:
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
