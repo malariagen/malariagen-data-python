@@ -5,6 +5,7 @@ from typing import (
     Final,
     Iterable,
     List,
+    Literal,
     Mapping,
     Optional,
     Sequence,
@@ -209,7 +210,7 @@ class AnophelesBase:
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
 
         # Set up fsspec filesystem. N.B., we use fsspec here to allow for
-        # accessing different types of storage. fsspec will automatically
+        # accessing different types of storage - fsspec will automatically
         # detect which type of storage to use based on the URL provided.
         # E.g., if the URL begins with "gs://" then a GCSFileSystem will
         # be used to read from Google Cloud Storage.
@@ -242,7 +243,13 @@ class AnophelesBase:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
-    def read_files(self, paths: Iterable[str]) -> Mapping[str, bytes]:
+    def read_files(
+        self,
+        paths: Iterable[str],
+        on_error: Literal["raise", "omit", "return"] = "return",
+    ) -> Mapping[str, bytes]:
+        # TODO Add caching?
+
         # Prepend the base path.
         prefix = self._base_path + "/"
         full_paths = [prefix + path for path in paths]
@@ -257,7 +264,7 @@ class AnophelesBase:
         # want to make use of cat() here and provide paths for all files to
         # read concurrently. For more information see:
         # https://filesystem-spec.readthedocs.io/en/latest/async.html
-        full_files = self._fs.cat(full_paths)
+        full_files = self._fs.cat(full_paths, on_error=on_error)
 
         # Strip off the prefix.
         files = {k.split(prefix, 1)[1]: v for k, v in full_files.items()}

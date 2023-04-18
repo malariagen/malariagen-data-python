@@ -349,7 +349,7 @@ class Ag3Simulator:
             "GENOME_REF_NAME": "Anopheles gambiae (PEST)",
             "CONTIGS": ["2R", "2L", "3R", "3L", "X"],
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr",
-            "DEFAULT_SPECIES_ANALYSIS": "aim_20220528",
+            "DEFAULT_AIM_ANALYSIS": "20220528",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
             "DEFAULT_COHORTS_ANALYSIS": "20230223",
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
