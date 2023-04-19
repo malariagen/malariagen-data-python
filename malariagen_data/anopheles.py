@@ -30,7 +30,7 @@ from . import veff
 from .anoph.base import DEFAULT, AnophelesBase, base_params
 from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
-from .anoph.sample_data import AnophelesSampleData
+from .anoph.sample_metadata import AnophelesSampleMetadata
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
@@ -628,7 +628,7 @@ class dash_params:
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
-    AnophelesSampleData,
+    AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
     AnophelesBase,

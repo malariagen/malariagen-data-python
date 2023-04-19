@@ -7,7 +7,7 @@ from numpydoc_decorator import doc
 from .base import AnophelesBase, base_params
 
 
-class AnophelesSampleData(AnophelesBase):
+class AnophelesSampleMetadata(AnophelesBase):
     def __init__(
         self,
         cohorts_analysis: Optional[str] = None,
@@ -33,7 +33,10 @@ class AnophelesSampleData(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns = aim_metadata_columns
-        self._aim_metadata_dtype = aim_metadata_dtype
+        self._aim_metadata_dtype: Dict[str, Any] = dict()
+        if isinstance(aim_metadata_dtype, Mapping):
+            self._aim_metadata_dtype.update(aim_metadata_dtype)
+        self._aim_metadata_dtype["sample_id"] = object
 
         # Initialize cache attributes.
         # TODO
@@ -188,15 +191,16 @@ class AnophelesSampleData(AnophelesBase):
         cols = self._cohorts_metadata_columns
         if cols:
             # All columns are string columns.
-            return {c: object for c in cols}
+            dtype = {c: object for c in cols}
+            dtype["sample_id"] = object
+            return dtype
 
     def _parse_cohorts_metadata(
         self, *, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Parse CSV data.
-            dtype = self._cohorts_metadata_dtype.copy()
-            dtype["sample_id"] = object
+            dtype = self._cohorts_metadata_dtype
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
@@ -308,9 +312,9 @@ class AnophelesSampleData(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Parse CSV data.
-            dtype = self._aim_metadata_dtype.copy()
-            dtype["sample_id"] = object
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            df = pd.read_csv(
+                io.BytesIO(data), dtype=self._aim_metadata_dtype, na_values=""
+            )
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]
@@ -392,8 +396,8 @@ class AnophelesSampleData(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
-        # TODO Concurrent reading.
-        # TODO Caching.
+        # TODO Concurrent reading?
+        # TODO Caching?
 
         # Build a dataframe from all available metadata.
         df_samples = self.general_metadata(sample_sets=sample_sets)

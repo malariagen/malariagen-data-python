@@ -2,12 +2,12 @@ import pytest
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.sample_data import AnophelesSampleData
+from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
 
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
-    return AnophelesSampleData(
+    return AnophelesSampleMetadata(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         gcs_url=_ag3.GCS_URL,
@@ -35,7 +35,7 @@ def ag3_sim_api(ag3_sim_fixture):
 
 @pytest.fixture
 def af1_sim_api(af1_sim_fixture):
-    return AnophelesSampleData(
+    return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         gcs_url=_af1.GCS_URL,
