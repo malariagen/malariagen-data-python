@@ -118,18 +118,15 @@ def test_prep_sample_sets_param(ag3_sim_api: AnophelesBase):
         "AG1000G-BF-A",
     ]
     assert ag3_sim_api._prep_sample_sets_param(sample_sets="3.1") == [
-        "1177-VO-ML-LEHMANN-VMF00015",
-        "1237-VO-BJ-DJOGBENOU-VMF00050",
+        "1177-VO-ML-LEHMANN-VMF00004",
     ]
     assert ag3_sim_api._prep_sample_sets_param(sample_sets=["3.0", "3.1"]) == [
-        "1177-VO-ML-LEHMANN-VMF00015",
-        "1237-VO-BJ-DJOGBENOU-VMF00050",
+        "1177-VO-ML-LEHMANN-VMF00004",
         "AG1000G-AO",
         "AG1000G-BF-A",
     ]
     assert ag3_sim_api._prep_sample_sets_param(sample_sets=None) == [
-        "1177-VO-ML-LEHMANN-VMF00015",
-        "1237-VO-BJ-DJOGBENOU-VMF00050",
+        "1177-VO-ML-LEHMANN-VMF00004",
         "AG1000G-AO",
         "AG1000G-BF-A",
     ]

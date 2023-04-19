@@ -333,6 +333,8 @@ class AnophelesSampleData(AnophelesBase):
             # Revert sample_id index to column.
             df.reset_index(inplace=True)
 
+            return df
+
         elif isinstance(data, Exception):
             # Unexpected error.
             raise data
