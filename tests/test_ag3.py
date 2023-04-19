@@ -15,15 +15,15 @@ from malariagen_data import Ag3, Region
 from malariagen_data.ag3 import _cn_mode
 from malariagen_data.util import locate_region, resolve_region
 
-expected_species_legacy = {
-    "gambiae",
-    "coluzzii",
-    "arabiensis",
-    "intermediate_arabiensis_gambiae",
-    "intermediate_gambiae_coluzzii",
-}
+# expected_species_legacy = {
+#     "gambiae",
+#     "coluzzii",
+#     "arabiensis",
+#     "intermediate_arabiensis_gambiae",
+#     "intermediate_gambiae_coluzzii",
+# }
 
-expected_species = {
+expected_aim_species = {
     "gambiae",
     "coluzzii",
     "arabiensis",
@@ -42,21 +42,21 @@ expected_aim_species_cols = (
     "aim_species",
 )
 
-expected_aim_species_cols_legacy = (
-    "aim_species_fraction_colu",
-    "aim_species_fraction_arab",
-    "aim_species_gambcolu_arabiensis",
-    "aim_species_gambiae_coluzzii",
-    "aim_species",
-)
+# expected_aim_species_cols_legacy = (
+#     "aim_species_fraction_colu",
+#     "aim_species_fraction_arab",
+#     "aim_species_gambcolu_arabiensis",
+#     "aim_species_gambiae_coluzzii",
+#     "aim_species",
+# )
 
-expected_pca_species_cols_legacy = (
-    "pca_species_pc1",
-    "pca_species_pc2",
-    "pca_species_gambcolu_arabiensis",
-    "pca_species_gambiae_coluzzii",
-    "pca_species",
-)
+# expected_pca_species_cols_legacy = (
+#     "pca_species_pc1",
+#     "pca_species_pc2",
+#     "pca_species_gambcolu_arabiensis",
+#     "pca_species_gambiae_coluzzii",
+#     "pca_species",
+# )
 
 
 def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
@@ -80,8 +80,8 @@ def test_repr():
     assert isinstance(r, str)
 
 
-def test_sample_metadata_with_aim_species():
-    ag3 = setup_ag3(species_analysis="aim_20220528")
+def test_sample_metadata_with_aim_metadata():
+    ag3 = setup_ag3(aim_analysis="20220528")
 
     expected_cols = (
         "sample_id",
@@ -108,89 +108,84 @@ def test_sample_metadata_with_aim_species():
     # AIM species calls, included by default
     df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
     assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
-    assert set(df_samples_aim["aim_species"].dropna()) == expected_species
+    assert set(df_samples_aim["aim_species"].dropna()) == expected_aim_species
 
 
-def test_sample_metadata_with_aim_species_legacy():
-    # TODO this is legacy, deprecate at some point
-    ag3 = setup_ag3(species_analysis="aim_20200422")
+# def test_sample_metadata_with_aim_species_legacy():
+#     # TODO this is legacy, deprecate at some point
+#     ag3 = setup_ag3(species_analysis="aim_20200422")
 
-    expected_cols = (
-        "sample_id",
-        "partner_sample_id",
-        "contributor",
-        "country",
-        "location",
-        "year",
-        "month",
-        "latitude",
-        "longitude",
-        "sex_call",
-        "sample_set",
-        "release",
-        "quarter",
-        "aim_species_fraction_colu",
-        "aim_species_fraction_arab",
-        "aim_species_gambcolu_arabiensis",
-        "aim_species_gambiae_coluzzii",
-        "aim_species",
-    )
+#     expected_cols = (
+#         "sample_id",
+#         "partner_sample_id",
+#         "contributor",
+#         "country",
+#         "location",
+#         "year",
+#         "month",
+#         "latitude",
+#         "longitude",
+#         "sex_call",
+#         "sample_set",
+#         "release",
+#         "quarter",
+#         "aim_species_fraction_colu",
+#         "aim_species_fraction_arab",
+#         "aim_species_gambcolu_arabiensis",
+#         "aim_species_gambiae_coluzzii",
+#         "aim_species",
+#     )
 
-    # AIM species calls, included by default
-    df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
-    assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
-    assert set(df_samples_aim["aim_species"].dropna()) == expected_species_legacy
-
-
-def test_sample_metadata_with_pca_species():
-    # TODO this is legacy, deprecate at some point
-    ag3 = setup_ag3(species_analysis="pca_20200422")
-
-    expected_cols = (
-        "sample_id",
-        "partner_sample_id",
-        "contributor",
-        "country",
-        "location",
-        "year",
-        "month",
-        "latitude",
-        "longitude",
-        "sex_call",
-        "sample_set",
-        "release",
-        "quarter",
-        "pca_species_pc1",
-        "pca_species_pc2",
-        "pca_species_gambcolu_arabiensis",
-        "pca_species_gambiae_coluzzii",
-        "pca_species",
-    )
-
-    # PCA species calls
-    df_samples_pca = ag3.sample_metadata(sample_sets="3.0")
-    assert tuple(df_samples_pca.columns[: len(expected_cols)]) == expected_cols
-    assert (
-        set(df_samples_pca["pca_species"].dropna()).difference(expected_species_legacy)
-        == set()
-    )
+#     # AIM species calls, included by default
+#     df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
+#     assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
+#     assert set(df_samples_aim["aim_species"].dropna()) == expected_species_legacy
 
 
-@pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
-def test_sample_metadata_without_species_calls(analysis):
-    expected_cols = None
-    if analysis == "aim_20220528":
-        expected_cols = expected_aim_species_cols
-    if analysis == "aim_20200422":
-        expected_cols = expected_aim_species_cols_legacy
-    if analysis == "pca_20200422":
-        expected_cols = expected_pca_species_cols_legacy
+# def test_sample_metadata_with_pca_species():
+#     # TODO this is legacy, deprecate at some point
+#     ag3 = setup_ag3(species_analysis="pca_20200422")
+
+#     expected_cols = (
+#         "sample_id",
+#         "partner_sample_id",
+#         "contributor",
+#         "country",
+#         "location",
+#         "year",
+#         "month",
+#         "latitude",
+#         "longitude",
+#         "sex_call",
+#         "sample_set",
+#         "release",
+#         "quarter",
+#         "pca_species_pc1",
+#         "pca_species_pc2",
+#         "pca_species_gambcolu_arabiensis",
+#         "pca_species_gambiae_coluzzii",
+#         "pca_species",
+#     )
+
+#     # PCA species calls
+#     df_samples_pca = ag3.sample_metadata(sample_sets="3.0")
+#     assert tuple(df_samples_pca.columns[: len(expected_cols)]) == expected_cols
+#     assert (
+#         set(df_samples_pca["pca_species"].dropna()).difference(expected_species_legacy)
+#         == set()
+#     )
+
+
+def test_sample_metadata_without_aim_metadata():
+    # TODO Fix this test.
+    analysis = "20220528"
+    expected_cols = expected_aim_species_cols
 
     working_dir = os.path.dirname(os.path.abspath(__file__))
     test_data_path = os.path.join(
         working_dir, "anopheles_test_data", "test_missing_species_calls"
     )
-    ag3 = Ag3(test_data_path, species_analysis=analysis)
+    ag3 = Ag3(test_data_path, aim_analysis=analysis)
     df_samples = ag3.sample_metadata(sample_sets="3.0")
 
     for c in expected_cols:
@@ -208,50 +203,31 @@ def test_sample_metadata_without_species_calls(analysis):
         None,
     ],
 )
-@pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
-def test_species_calls(sample_sets, analysis):
-    ag3 = setup_ag3(species_analysis=analysis)
+def test_aim_metadata(sample_sets):
+    analysis = "20220528"
+    ag3 = setup_ag3(aim_analysis=analysis)
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
-    df_species = ag3.species_calls(sample_sets=sample_sets)
-    assert len(df_species) == len(df_samples)
-    assert_array_equal(df_samples["sample_id"], df_species["sample_id"])
-    if analysis == "aim_20220528":
-        assert (
-            set(df_species["aim_species"].dropna()).difference(expected_species)
-            == set()
-        )
-    if analysis == "aim_20200422":
-        assert (
-            set(df_species["aim_species"].dropna()).difference(expected_species_legacy)
-            == set()
-        )
-    if analysis == "pca_20200422":
-        assert (
-            set(df_species["pca_species"].dropna()).difference(expected_species_legacy)
-            == set()
-        )
+    df_aim = ag3.aim_metadata(sample_sets=sample_sets)
+    assert len(df_aim) == len(df_samples)
+    assert_array_equal(df_samples["sample_id"], df_aim["sample_id"])
+    assert set(df_aim["aim_species"].dropna()).difference(expected_aim_species) == set()
 
 
-@pytest.mark.parametrize("analysis", ["aim_20220528", "aim_20200422", "pca_20200422"])
-def test_missing_species_calls(analysis):
-    expected_cols = None
-    if analysis == "aim_20220528":
-        expected_cols = expected_aim_species_cols
-    if analysis == "aim_20200422":
-        expected_cols = expected_aim_species_cols_legacy
-    if analysis == "pca_20200422":
-        expected_cols = expected_pca_species_cols_legacy
+def test_aim_metadata_missing():
+    # TODO Fix this test.
+    analysis = "20220528"
+    expected_cols = expected_aim_species_cols
 
     working_dir = os.path.dirname(os.path.abspath(__file__))
     test_data_path = os.path.join(
         working_dir, "anopheles_test_data", "test_missing_species_calls"
     )
-    ag3 = Ag3(test_data_path, species_analysis=analysis)
-    df_species = ag3.species_calls(sample_sets="3.0")
+    ag3 = Ag3(test_data_path, aim_analysis=analysis)
+    df_aim = ag3.aim_metadata(sample_sets="3.0")
 
     for c in expected_cols:
-        assert c in df_species
-        assert df_species[c].isnull().all()
+        assert c in df_aim
+        assert df_aim[c].isnull().all()
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
@@ -1951,7 +1927,7 @@ def test_haplotypes__sample_query(sample_query):
     "sample_sets",
     ["3.0", "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
 )
-def test_sample_cohorts(sample_sets):
+def test_cohorts_metadata(sample_sets):
     ag3 = setup_ag3(cohorts_analysis="20211101")
 
     expected_cols = (
@@ -1967,7 +1943,7 @@ def test_sample_cohorts(sample_sets):
         "cohort_admin2_month",
     )
 
-    df_coh = ag3.sample_cohorts(sample_sets=sample_sets)
+    df_coh = ag3.cohorts_metadata(sample_sets=sample_sets)
     df_meta = ag3.sample_metadata(sample_sets=sample_sets)
 
     assert tuple(df_coh.columns) == expected_cols

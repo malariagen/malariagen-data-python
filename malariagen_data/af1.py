@@ -85,8 +85,6 @@ class Af1(AnophelesDataResource):
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("funestus",)
     _default_site_mask = DEFAULT_SITE_MASK
-    _cohorts_analysis = None
-    _site_filters_analysis = None
     phasing_analysis_ids = ("funestus",)
     _default_phasing_analysis = "funestus"
 
@@ -108,6 +106,9 @@ class Af1(AnophelesDataResource):
             url=url,
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
+            aim_analysis=None,
+            aim_metadata_columns=None,
+            aim_metadata_dtype=None,
             site_filters_analysis=site_filters_analysis,
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
@@ -220,11 +221,11 @@ class Af1(AnophelesDataResource):
         """
         return html
 
-    def _sample_metadata(self, *, sample_set):
-        df = self._read_general_metadata(sample_set=sample_set)
-        df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
-        df = df.merge(df_cohorts, on="sample_id", sort=False)
-        return df
+    # def _sample_metadata(self, *, sample_set):
+    #     df = self._read_general_metadata(sample_set=sample_set)
+    #     df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
+    #     df = df.merge(df_cohorts, on="sample_id", sort=False)
+    #     return df
 
     def _transcript_to_gene_name(self, transcript):
         df_genome_features = self.genome_features().set_index("ID")

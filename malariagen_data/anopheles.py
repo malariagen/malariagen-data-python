@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections import Counter
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -30,6 +30,7 @@ from . import veff
 from .anoph.base import DEFAULT, AnophelesBase, base_params
 from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
+from .anoph.sample_data import AnophelesSampleData
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
@@ -627,6 +628,7 @@ class dash_params:
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesSampleData,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
     AnophelesBase,
@@ -637,7 +639,10 @@ class AnophelesDataResource(
         self,
         url,
         config_path,
-        cohorts_analysis,
+        cohorts_analysis: Optional[str],
+        aim_analysis: Optional[str],
+        aim_metadata_columns: Optional[Sequence[str]],
+        aim_metadata_dtype: Optional[Mapping[str, Any]],
         site_filters_analysis,
         bokeh_output_notebook,
         results_cache,
@@ -668,6 +673,10 @@ class AnophelesDataResource(
             storage_options=storage_options,
             gff_gene_type=gff_gene_type,
             gff_default_attributes=gff_default_attributes,
+            cohorts_analysis=cohorts_analysis,
+            aim_analysis=aim_analysis,
+            aim_metadata_columns=aim_metadata_columns,
+            aim_metadata_dtype=aim_metadata_dtype,
         )
 
         # set up attributes
@@ -675,16 +684,16 @@ class AnophelesDataResource(
 
         # set up caches
         # TODO review type annotations here, maybe can tighten
-        self._cache_general_metadata: Dict = dict()
+        # self._cache_general_metadata: Dict = dict()
+        # self._cache_sample_metadata: Dict = dict()
+        # self._cache_cohort_metadata: Dict = dict()
         self._cache_site_filters: Dict = dict()
         self._cache_snp_sites = None
         self._cache_snp_genotypes: Dict = dict()
         self._cache_annotator = None
         self._cache_genome_features: Dict = dict()
-        self._cache_sample_metadata: Dict = dict()
         self._cache_site_annotations = None
         self._cache_locate_site_class: Dict = dict()
-        self._cache_cohort_metadata: Dict = dict()
         self._cache_haplotypes: Dict = dict()
         self._cache_haplotype_sites: Dict = dict()
 
@@ -694,10 +703,10 @@ class AnophelesDataResource(
 
         # set analysis versions
 
-        if cohorts_analysis is None:
-            self._cohorts_analysis = self.config.get("DEFAULT_COHORTS_ANALYSIS")
-        else:
-            self._cohorts_analysis = cohorts_analysis
+        # if cohorts_analysis is None:
+        #     self._cohorts_analysis = self.config.get("DEFAULT_COHORTS_ANALYSIS")
+        # else:
+        #     self._cohorts_analysis = cohorts_analysis
 
         if site_filters_analysis is None:
             self._site_filters_analysis = self.config.get(
@@ -706,8 +715,8 @@ class AnophelesDataResource(
         else:
             self._site_filters_analysis = site_filters_analysis
 
-        # set up extra metadata
-        self._extra_metadata: List = []
+        # # set up extra metadata
+        # self._extra_metadata: List = []
 
     # Start of @property
 
@@ -790,10 +799,10 @@ class AnophelesDataResource(
             )
         return site_mask
 
-    @abstractmethod
-    def _sample_metadata(self, sample_set):
-        # Not all children have species calls or cohorts data.
-        raise NotImplementedError("Must override _sample_metadata")
+    # @abstractmethod
+    # def _sample_metadata(self, sample_set):
+    #     # Not all children have species calls or cohorts data.
+    #     raise NotImplementedError("Must override _sample_metadata")
 
     @abstractmethod
     def _transcript_to_gene_name(self, transcript):
@@ -1457,137 +1466,137 @@ class AnophelesDataResource(
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
 
-    def _read_general_metadata(self, *, sample_set):
-        """Read metadata for a single sample set."""
-        try:
-            df = self._cache_general_metadata[sample_set]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
-            dtype = {
-                "sample_id": object,
-                "partner_sample_id": object,
-                "contributor": object,
-                "country": object,
-                "location": object,
-                "year": "int64",
-                "month": "int64",
-                "latitude": "float64",
-                "longitude": "float64",
-                "sex_call": object,
-            }
-            with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="", dtype=dtype)
+    # def _read_general_metadata(self, *, sample_set):
+    #     """Read metadata for a single sample set."""
+    #     try:
+    #         df = self._cache_general_metadata[sample_set]
+    #     except KeyError:
+    #         release = self.lookup_release(sample_set=sample_set)
+    #         release_path = self._release_to_path(release)
+    #         path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
+    #         dtype = {
+    #             "sample_id": object,
+    #             "partner_sample_id": object,
+    #             "contributor": object,
+    #             "country": object,
+    #             "location": object,
+    #             "year": "int64",
+    #             "month": "int64",
+    #             "latitude": "float64",
+    #             "longitude": "float64",
+    #             "sex_call": object,
+    #         }
+    #         with self._fs.open(path) as f:
+    #             df = pd.read_csv(f, na_values="", dtype=dtype)
 
-            # ensure all column names are lower case
-            df.columns = [c.lower() for c in df.columns]
+    #         # ensure all column names are lower case
+    #         df.columns = [c.lower() for c in df.columns]
 
-            # add a couple of columns for convenience
-            df["sample_set"] = sample_set
-            df["release"] = release
+    #         # add a couple of columns for convenience
+    #         df["sample_set"] = sample_set
+    #         df["release"] = release
 
-            # derive quarter from month
-            df["quarter"] = df.apply(
-                lambda row: ((row.month - 1) // 3) + 1 if row.month > 0 else -1,
-                axis="columns",
-            )
+    #         # derive quarter from month
+    #         df["quarter"] = df.apply(
+    #             lambda row: ((row.month - 1) // 3) + 1 if row.month > 0 else -1,
+    #             axis="columns",
+    #         )
 
-            self._cache_general_metadata[sample_set] = df
-        return df.copy()
+    #         self._cache_general_metadata[sample_set] = df
+    #     return df.copy()
 
-    @doc(
-        summary="Access sample metadata for one or more sample sets.",
-        returns="A dataframe of sample metadata, one row per sample.",
-    )
-    def sample_metadata(
-        self,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-    ) -> pd.DataFrame:
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        cache_key = tuple(sample_sets)
+    # @doc(
+    #     summary="Access sample metadata for one or more sample sets.",
+    #     returns="A dataframe of sample metadata, one row per sample.",
+    # )
+    # def sample_metadata(
+    #     self,
+    #     sample_sets: Optional[base_params.sample_sets] = None,
+    #     sample_query: Optional[base_params.sample_query] = None,
+    # ) -> pd.DataFrame:
+    #     sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+    #     cache_key = tuple(sample_sets)
 
-        try:
-            df_samples = self._cache_sample_metadata[cache_key]
+    #     try:
+    #         df_samples = self._cache_sample_metadata[cache_key]
 
-        except KeyError:
-            # concatenate multiple sample sets
-            dfs = []
-            # there can be some delay here due to network latency, so show progress
-            sample_sets_iterator = self._progress(
-                sample_sets, desc="Load sample metadata"
-            )
-            for s in sample_sets_iterator:
-                df = self._sample_metadata(sample_set=s)
-                dfs.append(df)
-            df_samples = pd.concat(dfs, axis=0, ignore_index=True)
-            self._cache_sample_metadata[cache_key] = df_samples
+    #     except KeyError:
+    #         # concatenate multiple sample sets
+    #         dfs = []
+    #         # there can be some delay here due to network latency, so show progress
+    #         sample_sets_iterator = self._progress(
+    #             sample_sets, desc="Load sample metadata"
+    #         )
+    #         for s in sample_sets_iterator:
+    #             df = self._sample_metadata(sample_set=s)
+    #             dfs.append(df)
+    #         df_samples = pd.concat(dfs, axis=0, ignore_index=True)
+    #         self._cache_sample_metadata[cache_key] = df_samples
 
-        # add extra metadata
-        for on, data in self._extra_metadata:
-            df_samples = df_samples.merge(data, how="left", on=on)
+    #     # add extra metadata
+    #     for on, data in self._extra_metadata:
+    #         df_samples = df_samples.merge(data, how="left", on=on)
 
-        # for convenience, apply a query
-        if sample_query is not None:
-            if isinstance(sample_query, str):
-                # assume a pandas query string
-                df_samples = df_samples.query(sample_query)
-            else:
-                # assume it is an indexer
-                df_samples = df_samples.iloc[sample_query]
-            df_samples = df_samples.reset_index(drop=True)
+    #     # for convenience, apply a query
+    #     if sample_query is not None:
+    #         if isinstance(sample_query, str):
+    #             # assume a pandas query string
+    #             df_samples = df_samples.query(sample_query)
+    #         else:
+    #             # assume it is an indexer
+    #             df_samples = df_samples.iloc[sample_query]
+    #         df_samples = df_samples.reset_index(drop=True)
 
-        return df_samples.copy()
+    #     return df_samples.copy()
 
-    @doc(
-        summary="""
-            Add extra sample metadata, e.g., including additional columns
-            which you would like to use to query and group samples.
-        """,
-        parameters=dict(
-            data="""
-                A data frame with one row per sample. Must include either a
-                "sample_id" or "partner_sample_id" column.
-            """,
-            on="""
-                Name of column to use when merging with sample metadata.
-            """,
-        ),
-        notes="""
-            The values in the column containing sample identifiers must be
-            unique.
-        """,
-    )
-    def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
-        # check parameters
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("`data` parameter must be a pandas DataFrame")
-        if on not in data.columns:
-            raise ValueError(f"dataframe does not contain column {on!r}")
-        if on not in {"sample_id", "partner_sample_id"}:
-            raise ValueError(
-                "`on` parameter must be either 'sample_id' or 'partner_sample_id'"
-            )
+    # @doc(
+    #     summary="""
+    #         Add extra sample metadata, e.g., including additional columns
+    #         which you would like to use to query and group samples.
+    #     """,
+    #     parameters=dict(
+    #         data="""
+    #             A data frame with one row per sample. Must include either a
+    #             "sample_id" or "partner_sample_id" column.
+    #         """,
+    #         on="""
+    #             Name of column to use when merging with sample metadata.
+    #         """,
+    #     ),
+    #     notes="""
+    #         The values in the column containing sample identifiers must be
+    #         unique.
+    #     """,
+    # )
+    # def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
+    #     # check parameters
+    #     if not isinstance(data, pd.DataFrame):
+    #         raise TypeError("`data` parameter must be a pandas DataFrame")
+    #     if on not in data.columns:
+    #         raise ValueError(f"dataframe does not contain column {on!r}")
+    #     if on not in {"sample_id", "partner_sample_id"}:
+    #         raise ValueError(
+    #             "`on` parameter must be either 'sample_id' or 'partner_sample_id'"
+    #         )
 
-        # check for uniqueness
-        if not data[on].is_unique:
-            raise ValueError(f"column {on!r} does not have unique values")
+    #     # check for uniqueness
+    #     if not data[on].is_unique:
+    #         raise ValueError(f"column {on!r} does not have unique values")
 
-        # check there are matching samples
-        df_samples = self.sample_metadata()
-        loc_isec = data[on].isin(df_samples[on])
-        if not loc_isec.any():
-            raise ValueError("no matching samples found")
+    #     # check there are matching samples
+    #     df_samples = self.sample_metadata()
+    #     loc_isec = data[on].isin(df_samples[on])
+    #     if not loc_isec.any():
+    #         raise ValueError("no matching samples found")
 
-        # store extra metadata
-        self._extra_metadata.append((on, data.copy()))
+    #     # store extra metadata
+    #     self._extra_metadata.append((on, data.copy()))
 
-    @doc(
-        summary="Clear any extra metadata previously added",
-    )
-    def clear_extra_metadata(self):
-        self._extra_metadata = []
+    # @doc(
+    #     summary="Clear any extra metadata previously added",
+    # )
+    # def clear_extra_metadata(self):
+    #     self._extra_metadata = []
 
     def _site_filters(
         self,
@@ -3803,76 +3812,76 @@ class AnophelesDataResource(
 
         return df_snps
 
-    def _read_cohort_metadata(self, *, sample_set):
-        """Read cohort metadata for a single sample set."""
-        try:
-            df = self._cache_cohort_metadata[sample_set]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path_prefix = f"{self._base_path}/{release_path}/metadata"
-            path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohort metadata files exist, need to handle errors
-            # N.B., allow a broad exception here, because it seems a variety
-            # of different exceptions may be thrown
-            # noinspection PyBroadException
-            try:
-                with self._fs.open(path) as f:
-                    df = pd.read_csv(f, na_values="")
+    # def _read_cohort_metadata(self, *, sample_set):
+    #     """Read cohort metadata for a single sample set."""
+    #     try:
+    #         df = self._cache_cohort_metadata[sample_set]
+    #     except KeyError:
+    #         release = self.lookup_release(sample_set=sample_set)
+    #         release_path = self._release_to_path(release)
+    #         path_prefix = f"{self._base_path}/{release_path}/metadata"
+    #         path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
+    #         # N.B., not all cohort metadata files exist, need to handle errors
+    #         # N.B., allow a broad exception here, because it seems a variety
+    #         # of different exceptions may be thrown
+    #         # noinspection PyBroadException
+    #         try:
+    #             with self._fs.open(path) as f:
+    #                 df = pd.read_csv(f, na_values="")
 
-                # ensure all column names are lower case
-                df.columns = [c.lower() for c in df.columns]
+    #             # ensure all column names are lower case
+    #             df.columns = [c.lower() for c in df.columns]
 
-                # rename some columns for consistent naming
-                df.rename(
-                    columns={
-                        "adm1_iso": "admin1_iso",
-                        "adm1_name": "admin1_name",
-                        "adm2_name": "admin2_name",
-                    },
-                    inplace=True,
-                )
-            except Exception:
-                # Specify cohort_cols
-                cohort_cols = (
-                    "country_iso",
-                    "admin1_name",
-                    "admin1_iso",
-                    "admin2_name",
-                    "taxon",
-                    "cohort_admin1_year",
-                    "cohort_admin1_month",
-                    "cohort_admin2_year",
-                    "cohort_admin2_month",
-                )
+    #             # rename some columns for consistent naming
+    #             df.rename(
+    #                 columns={
+    #                     "adm1_iso": "admin1_iso",
+    #                     "adm1_name": "admin1_name",
+    #                     "adm2_name": "admin2_name",
+    #                 },
+    #                 inplace=True,
+    #             )
+    #         except Exception:
+    #             # Specify cohort_cols
+    #             cohort_cols = (
+    #                 "country_iso",
+    #                 "admin1_name",
+    #                 "admin1_iso",
+    #                 "admin2_name",
+    #                 "taxon",
+    #                 "cohort_admin1_year",
+    #                 "cohort_admin1_month",
+    #                 "cohort_admin2_year",
+    #                 "cohort_admin2_month",
+    #             )
 
-                # Get sample ids as an index via general metadata (has caching)
-                df_general = self._read_general_metadata(sample_set=sample_set)
-                df_general.set_index("sample_id", inplace=True)
+    #             # Get sample ids as an index via general metadata (has caching)
+    #             df_general = self._read_general_metadata(sample_set=sample_set)
+    #             df_general.set_index("sample_id", inplace=True)
 
-                # Create a blank DataFrame with cohort_cols and sample_id index
-                df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
+    #             # Create a blank DataFrame with cohort_cols and sample_id index
+    #             df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
 
-                # Revert sample_id index to column
-                df.reset_index(inplace=True)
+    #             # Revert sample_id index to column
+    #             df.reset_index(inplace=True)
 
-            self._cache_cohort_metadata[sample_set] = df
-        return df.copy()
+    #         self._cache_cohort_metadata[sample_set] = df
+    #     return df.copy()
 
-    @doc(
-        summary="Access cohorts metadata for one or more sample sets.",
-        returns="A dataframe of cohort metadata, one row per sample.",
-    )
-    def sample_cohorts(
-        self, sample_sets: Optional[base_params.sample_sets] = None
-    ) -> pd.DataFrame:
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+    # @doc(
+    #     summary="Access cohorts metadata for one or more sample sets.",
+    #     returns="A dataframe of cohort metadata, one row per sample.",
+    # )
+    # def sample_cohorts(
+    #     self, sample_sets: Optional[base_params.sample_sets] = None
+    # ) -> pd.DataFrame:
+    #     sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
-        # concatenate multiple sample sets
-        dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
-        df = pd.concat(dfs, axis=0, ignore_index=True)
+    #     # concatenate multiple sample sets
+    #     dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
+    #     df = pd.concat(dfs, axis=0, ignore_index=True)
 
-        return df
+    #     return df
 
     @doc(
         summary="""

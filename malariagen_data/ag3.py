@@ -128,7 +128,7 @@ class Ag3(AnophelesDataResource):
         show_progress=True,
         check_location=True,
         cohorts_analysis=None,
-        species_analysis=None,
+        aim_analysis=None,
         site_filters_analysis=None,
         pre=False,
         **storage_options,  # used by fsspec via init_filesystem()
@@ -137,6 +137,23 @@ class Ag3(AnophelesDataResource):
             url=url,
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
+            aim_analysis=aim_analysis,
+            aim_metadata_columns=[
+                "aim_species_fraction_arab",
+                "aim_species_fraction_colu",
+                "aim_species_fraction_colu_no2l",
+                "aim_species_gambcolu_arabiensis",
+                "aim_species_gambiae_coluzzii",
+                "aim_species",
+            ],
+            aim_metadata_dtype={
+                "aim_species_fraction_arab": "float64",
+                "aim_species_fraction_colu": "float64",
+                "aim_species_fraction_colu_no2l": "float64",
+                "aim_species_gambcolu_arabiensis": object,
+                "aim_species_gambiae_coluzzii": object,
+                "aim_species": object,
+            },
             site_filters_analysis=site_filters_analysis,
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
@@ -153,15 +170,15 @@ class Ag3(AnophelesDataResource):
             storage_options=storage_options,  # used by fsspec via init_filesystem()
         )
 
-        # set species analysis version - this is Ag specific currently, hence
-        # not in parent class
-        if species_analysis is None:
-            self._species_analysis = self._config["DEFAULT_SPECIES_ANALYSIS"]
-        else:
-            self._species_analysis = species_analysis
+        # # set species analysis version - this is Ag specific currently, hence
+        # # not in parent class
+        # if species_analysis is None:
+        #     self._species_analysis = self._config["DEFAULT_SPECIES_ANALYSIS"]
+        # else:
+        #     self._species_analysis = species_analysis
 
         # set up caches
-        self._cache_species_calls = dict()
+        # self._cache_species_calls = dict()
         self._cache_cross_metadata = None
         self._cache_cnv_hmm = dict()
         self._cache_cnv_coverage_calls = dict()
@@ -208,7 +225,7 @@ class Ag3(AnophelesDataResource):
             f"Data releases available : {', '.join(self.releases)}\n"
             f"Results cache           : {self._results_cache}\n"
             f"Cohorts analysis        : {self._cohorts_analysis}\n"
-            f"Species analysis        : {self._species_analysis}\n"
+            f"AIM analysis            : {self._aim_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : malariagen_data {malariagen_data.__version__}\n"
             f"Client location         : {self.client_location}\n"
@@ -288,176 +305,176 @@ class Ag3(AnophelesDataResource):
         """
         return html
 
-    def _read_species_calls(self, *, sample_set):
-        """Read species calls for a single sample set."""
-        key = sample_set
-        try:
-            df = self._cache_species_calls[key]
+    # def _read_species_calls(self, *, sample_set):
+    #     """Read species calls for a single sample set."""
+    #     key = sample_set
+    #     try:
+    #         df = self._cache_species_calls[key]
 
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path_prefix = f"{self._base_path}/{release_path}/metadata"
-            if self._species_analysis == "aim_20220528":
-                path = f"{path_prefix}/species_calls_aim_20220528/{sample_set}/samples.species_aim.csv"
-                dtype = {
-                    "aim_species_gambcolu_arabiensis": object,
-                    "aim_species_gambiae_coluzzii": object,
-                    "aim_species": object,
-                }
-                # Specify species_cols in case the file is missing
-                species_cols = (
-                    "aim_species_fraction_arab",
-                    "aim_species_fraction_colu",
-                    "aim_species_fraction_colu_no2L",
-                    "aim_species_gambcolu_arabiensis",
-                    "aim_species_gambiae_coluzzii",
-                    "aim_species",
-                )
-            elif self._species_analysis == "aim_20200422":
-                # TODO this is legacy, deprecate at some point
-                path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_aim.csv"
-                dtype = {
-                    "species_gambcolu_arabiensis": object,
-                    "species_gambiae_coluzzii": object,
-                }
-                # Specify species_cols in case the file is missing
-                # N.B., these legacy column prefixes will be normalised downstream
-                species_cols = (
-                    "aim_fraction_colu",
-                    "aim_fraction_arab",
-                    "species_gambcolu_arabiensis",
-                    "species_gambiae_coluzzii",
-                )
-            elif self._species_analysis == "pca_20200422":
-                # TODO this is legacy, deprecate at some point
-                path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_pca.csv"
-                dtype = {
-                    "species_gambcolu_arabiensis": object,
-                    "species_gambiae_coluzzii": object,
-                }
-                # Specify species_cols in case the file is missing
-                # N.B., these legacy column prefixes will be normalised downstream
-                species_cols = (
-                    "PC1",
-                    "PC2",
-                    "species_gambcolu_arabiensis",
-                    "species_gambiae_coluzzii",
-                )
-            else:
-                raise ValueError(
-                    f"Unknown species calling analysis: {self._species_analysis!r}"
-                )
+    #     except KeyError:
+    #         release = self.lookup_release(sample_set=sample_set)
+    #         release_path = self._release_to_path(release)
+    #         path_prefix = f"{self._base_path}/{release_path}/metadata"
+    #         if self._species_analysis == "aim_20220528":
+    #             path = f"{path_prefix}/species_calls_aim_20220528/{sample_set}/samples.species_aim.csv"
+    #             dtype = {
+    #                 "aim_species_gambcolu_arabiensis": object,
+    #                 "aim_species_gambiae_coluzzii": object,
+    #                 "aim_species": object,
+    #             }
+    #             # Specify species_cols in case the file is missing
+    #             species_cols = (
+    #                 "aim_species_fraction_arab",
+    #                 "aim_species_fraction_colu",
+    #                 "aim_species_fraction_colu_no2L",
+    #                 "aim_species_gambcolu_arabiensis",
+    #                 "aim_species_gambiae_coluzzii",
+    #                 "aim_species",
+    #             )
+    #         elif self._species_analysis == "aim_20200422":
+    #             # TODO this is legacy, deprecate at some point
+    #             path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_aim.csv"
+    #             dtype = {
+    #                 "species_gambcolu_arabiensis": object,
+    #                 "species_gambiae_coluzzii": object,
+    #             }
+    #             # Specify species_cols in case the file is missing
+    #             # N.B., these legacy column prefixes will be normalised downstream
+    #             species_cols = (
+    #                 "aim_fraction_colu",
+    #                 "aim_fraction_arab",
+    #                 "species_gambcolu_arabiensis",
+    #                 "species_gambiae_coluzzii",
+    #             )
+    #         elif self._species_analysis == "pca_20200422":
+    #             # TODO this is legacy, deprecate at some point
+    #             path = f"{path_prefix}/species_calls_20200422/{sample_set}/samples.species_pca.csv"
+    #             dtype = {
+    #                 "species_gambcolu_arabiensis": object,
+    #                 "species_gambiae_coluzzii": object,
+    #             }
+    #             # Specify species_cols in case the file is missing
+    #             # N.B., these legacy column prefixes will be normalised downstream
+    #             species_cols = (
+    #                 "PC1",
+    #                 "PC2",
+    #                 "species_gambcolu_arabiensis",
+    #                 "species_gambiae_coluzzii",
+    #             )
+    #         else:
+    #             raise ValueError(
+    #                 f"Unknown species calling analysis: {self._species_analysis!r}"
+    #             )
 
-            # N.B., species calls do not always exist, need to handle FileNotFoundError
-            try:
-                with self._fs.open(path) as f:
-                    df = pd.read_csv(
-                        f,
-                        na_values=["", "NA"],
-                        # ensure correct dtype even where all values are missing
-                        dtype=dtype,
-                    )
-            except FileNotFoundError:
-                # Get sample ids as an index via general metadata (has caching)
-                df_general = self._read_general_metadata(sample_set=sample_set)
-                df_general.set_index("sample_id", inplace=True)
+    #         # N.B., species calls do not always exist, need to handle FileNotFoundError
+    #         try:
+    #             with self._fs.open(path) as f:
+    #                 df = pd.read_csv(
+    #                     f,
+    #                     na_values=["", "NA"],
+    #                     # ensure correct dtype even where all values are missing
+    #                     dtype=dtype,
+    #                 )
+    #         except FileNotFoundError:
+    #             # Get sample ids as an index via general metadata (has caching)
+    #             df_general = self._read_general_metadata(sample_set=sample_set)
+    #             df_general.set_index("sample_id", inplace=True)
 
-                # Create a blank DataFrame with species_cols and sample_id index
-                df = pd.DataFrame(columns=species_cols, index=df_general.index.copy())
+    #             # Create a blank DataFrame with species_cols and sample_id index
+    #             df = pd.DataFrame(columns=species_cols, index=df_general.index.copy())
 
-                # Revert sample_id index to column
-                df.reset_index(inplace=True)
+    #             # Revert sample_id index to column
+    #             df.reset_index(inplace=True)
 
-            # add a single species call column, for convenience
-            def consolidate_species(s):
-                species_gambcolu_arabiensis = s["species_gambcolu_arabiensis"]
-                species_gambiae_coluzzii = s["species_gambiae_coluzzii"]
-                if species_gambcolu_arabiensis == "arabiensis":
-                    return "arabiensis"
-                elif species_gambcolu_arabiensis == "intermediate":
-                    return "intermediate_arabiensis_gambiae"
-                elif species_gambcolu_arabiensis == "gamb_colu":
-                    # look at gambiae_vs_coluzzii
-                    if species_gambiae_coluzzii == "gambiae":
-                        return "gambiae"
-                    elif species_gambiae_coluzzii == "coluzzii":
-                        return "coluzzii"
-                    elif species_gambiae_coluzzii == "intermediate":
-                        return "intermediate_gambiae_coluzzii"
-                else:
-                    # some individuals, e.g., crosses, have a missing species call
-                    return np.nan
+    #         # add a single species call column, for convenience
+    #         def consolidate_species(s):
+    #             species_gambcolu_arabiensis = s["species_gambcolu_arabiensis"]
+    #             species_gambiae_coluzzii = s["species_gambiae_coluzzii"]
+    #             if species_gambcolu_arabiensis == "arabiensis":
+    #                 return "arabiensis"
+    #             elif species_gambcolu_arabiensis == "intermediate":
+    #                 return "intermediate_arabiensis_gambiae"
+    #             elif species_gambcolu_arabiensis == "gamb_colu":
+    #                 # look at gambiae_vs_coluzzii
+    #                 if species_gambiae_coluzzii == "gambiae":
+    #                     return "gambiae"
+    #                 elif species_gambiae_coluzzii == "coluzzii":
+    #                     return "coluzzii"
+    #                 elif species_gambiae_coluzzii == "intermediate":
+    #                     return "intermediate_gambiae_coluzzii"
+    #             else:
+    #                 # some individuals, e.g., crosses, have a missing species call
+    #                 return np.nan
 
-            if self._species_analysis == "aim_20200422":
-                # TODO this is legacy, deprecate at some point
-                df["species"] = df.apply(consolidate_species, axis=1)
-                # normalise column prefixes
-                df = df.rename(
-                    columns={
-                        "aim_fraction_arab": "aim_species_fraction_arab",
-                        "aim_fraction_colu": "aim_species_fraction_colu",
-                        "species_gambcolu_arabiensis": "aim_species_gambcolu_arabiensis",
-                        "species_gambiae_coluzzii": "aim_species_gambiae_coluzzii",
-                        "species": "aim_species",
-                    }
-                )
-            elif self._species_analysis == "pca_20200422":
-                # TODO this is legacy, deprecate at some point
-                df["species"] = df.apply(consolidate_species, axis=1)
-                # normalise column prefixes
-                df = df.rename(
-                    # normalise column prefixes
-                    columns={
-                        "PC1": "pca_species_PC1",
-                        "PC2": "pca_species_PC2",
-                        "species_gambcolu_arabiensis": "pca_species_gambcolu_arabiensis",
-                        "species_gambiae_coluzzii": "pca_species_gambiae_coluzzii",
-                        "species": "pca_species",
-                    }
-                )
+    #         if self._species_analysis == "aim_20200422":
+    #             # TODO this is legacy, deprecate at some point
+    #             df["species"] = df.apply(consolidate_species, axis=1)
+    #             # normalise column prefixes
+    #             df = df.rename(
+    #                 columns={
+    #                     "aim_fraction_arab": "aim_species_fraction_arab",
+    #                     "aim_fraction_colu": "aim_species_fraction_colu",
+    #                     "species_gambcolu_arabiensis": "aim_species_gambcolu_arabiensis",
+    #                     "species_gambiae_coluzzii": "aim_species_gambiae_coluzzii",
+    #                     "species": "aim_species",
+    #                 }
+    #             )
+    #         elif self._species_analysis == "pca_20200422":
+    #             # TODO this is legacy, deprecate at some point
+    #             df["species"] = df.apply(consolidate_species, axis=1)
+    #             # normalise column prefixes
+    #             df = df.rename(
+    #                 # normalise column prefixes
+    #                 columns={
+    #                     "PC1": "pca_species_PC1",
+    #                     "PC2": "pca_species_PC2",
+    #                     "species_gambcolu_arabiensis": "pca_species_gambcolu_arabiensis",
+    #                     "species_gambiae_coluzzii": "pca_species_gambiae_coluzzii",
+    #                     "species": "pca_species",
+    #                 }
+    #             )
 
-            # ensure all column names are lower case
-            df.columns = [c.lower() for c in df.columns]
+    #         # ensure all column names are lower case
+    #         df.columns = [c.lower() for c in df.columns]
 
-            self._cache_species_calls[key] = df
+    #         self._cache_species_calls[key] = df
 
-        return df.copy()
+    #     return df.copy()
 
-    def species_calls(self, sample_sets=None):
-        """Access species calls for one or more sample sets.
+    # def species_calls(self, sample_sets=None):
+    #     """Access species calls for one or more sample sets.
 
-        Parameters
-        ----------
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
+    #     Parameters
+    #     ----------
+    #     sample_sets : str or list of str, optional
+    #         Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
+    #         sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"] or a
+    #         release identifier (e.g., "3.0") or a list of release identifiers.
 
-        Returns
-        -------
-        df : pandas.DataFrame
-            A dataframe of species calls for one or more sample sets, one row
-            per sample.
+    #     Returns
+    #     -------
+    #     df : pandas.DataFrame
+    #         A dataframe of species calls for one or more sample sets, one row
+    #         per sample.
 
-        """
+    #     """
 
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+    #     sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
-        # concatenate multiple sample sets
-        dfs = [self._read_species_calls(sample_set=s) for s in sample_sets]
-        df = pd.concat(dfs, axis=0, ignore_index=True)
+    #     # concatenate multiple sample sets
+    #     dfs = [self._read_species_calls(sample_set=s) for s in sample_sets]
+    #     df = pd.concat(dfs, axis=0, ignore_index=True)
 
-        return df
+    #     return df
 
-    # TODO: generalise (species, cohorts) so we can abstract to parent class
-    def _sample_metadata(self, *, sample_set):
-        df = self._read_general_metadata(sample_set=sample_set)
-        df_species = self._read_species_calls(sample_set=sample_set)
-        df = df.merge(df_species, on="sample_id", sort=False)
-        df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
-        df = df.merge(df_cohorts, on="sample_id", sort=False)
-        return df
+    # # TODO: generalise (species, cohorts) so we can abstract to parent class
+    # def _sample_metadata(self, *, sample_set):
+    #     df = self._read_general_metadata(sample_set=sample_set)
+    #     df_species = self._read_species_calls(sample_set=sample_set)
+    #     df = df.merge(df_species, on="sample_id", sort=False)
+    #     df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
+    #     df = df.merge(df_cohorts, on="sample_id", sort=False)
+    #     return df
 
     def _transcript_to_gene_name(self, transcript):
         df_genome_features = self.genome_features().set_index("ID")

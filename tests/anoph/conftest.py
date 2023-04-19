@@ -1,8 +1,8 @@
 import json
-import random
 import shutil
 import string
 from pathlib import Path
+from random import choice, choices, randint
 
 import numpy as np
 import pandas as pd
@@ -146,9 +146,9 @@ class Gff3Simulator:
         # Simulate genes.
         for gene_ix in range(self.max_genes):
             gene_id = f"gene-{contig}-{gene_ix}"
-            strand = random.choice(["+", "-"])
-            inter_size = random.randint(self.inter_size_low, self.inter_size_high)
-            gene_size = random.randint(self.gene_size_low, self.gene_size_high)
+            strand = choice(["+", "-"])
+            inter_size = randint(self.inter_size_low, self.inter_size_high)
+            gene_size = randint(self.gene_size_low, self.gene_size_high)
             if strand == "+":
                 gene_start = cur_fwd + inter_size
             else:
@@ -161,7 +161,7 @@ class Gff3Simulator:
             gene_attrs = f"ID={gene_id}"
             for attr in self.attrs:
                 random_str = "".join(
-                    random.choices(string.ascii_uppercase + string.digits, k=5)
+                    choices(string.ascii_uppercase + string.digits, k=5)
                 )
                 gene_attrs += f";{attr}={random_str}"
             gene = (
@@ -208,7 +208,7 @@ class Gff3Simulator:
 
         gene_size = gene_end - gene_start
         for transcript_ix in range(
-            random.randint(self.n_transcripts_low, self.n_transcripts_high)
+            randint(self.n_transcripts_low, self.n_transcripts_high)
         ):
             transcript_id = f"transcript-{contig}-{gene_ix}-{transcript_ix}"
             transcript_start = gene_start
@@ -257,16 +257,16 @@ class Gff3Simulator:
 
         exons = []
         exon_end = transcript_start
-        for exon_ix in range(random.randint(self.n_exons_low, self.n_exons_high)):
+        for exon_ix in range(randint(self.n_exons_low, self.n_exons_high)):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
-            intron_size = random.randint(
+            intron_size = randint(
                 self.intron_size_low, min(gene_size, self.intron_size_high)
             )
             exon_start = exon_end + intron_size
             if exon_start >= transcript_end:
                 # Stop making exons, no more space left in the transcript.
                 break
-            exon_size = random.randint(self.exon_size_low, self.exon_size_high)
+            exon_size = randint(self.exon_size_low, self.exon_size_high)
             exon_end = min(exon_start + exon_size, transcript_end)
             assert exon_end > exon_start
             exon = (
@@ -302,7 +302,7 @@ class Gff3Simulator:
             else:
                 feature_type = self.cds_type
                 # Cheat a little, random phase.
-                phase = random.choice([1, 2, 3])
+                phase = choice([1, 2, 3])
             feature = (
                 contig,
                 self.source,
@@ -318,8 +318,10 @@ class Gff3Simulator:
 
 
 class Ag3Simulator:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, fixture_dir):
+        self.fixture_dir = fixture_dir
+        self.bucket = "vo_agam_release"
+        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -336,7 +338,7 @@ class Ag3Simulator:
         self.init_pre_release_manifest()
         self.init_genome_sequence()
         self.init_genome_features()
-        self.init_general_metadata()
+        self.init_metadata()
 
     def init_config(self):
         self.config = {
@@ -373,7 +375,7 @@ class Ag3Simulator:
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [31, 42],
+                "sample_count": [randint(10, 81), randint(10, 100)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -389,10 +391,9 @@ class Ag3Simulator:
         manifest = pd.DataFrame(
             {
                 "sample_set": [
-                    "1177-VO-ML-LEHMANN-VMF00015",
-                    "1237-VO-BJ-DJOGBENOU-VMF00050",
+                    "1177-VO-ML-LEHMANN-VMF00004",
                 ],
-                "sample_count": [23, 27],
+                "sample_count": [randint(10, 100)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -402,6 +403,7 @@ class Ag3Simulator:
         # Here we simulate a reference genome in a simple way
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
+        # TODO Use accurate base composition.
         path = self.path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
             path=path, contigs=self.contigs, low=100_000, high=200_000
@@ -416,97 +418,99 @@ class Ag3Simulator:
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
 
-    def init_general_metadata(self):
-        # AG1000G-AO
-        release = "3.0"
-        release_path = "v3"
-        sample_set = "AG1000G-AO"
-        n_samples = (
+    def write_metadata(self, release, release_path, sample_set):
+        # Here we take the approach of using some of the real metadata,
+        # but truncating it to the number of samples included in the
+        # simulated data resource.
+
+        n_samples_sim = (
             self.release_manifests[release]
             .set_index("sample_set")
             .loc[sample_set]["sample_count"]
         )
-        sample_id = [f"AR{i:05d}-C" for i in range(n_samples)]
-        partner_sample_id = [f"LUA{i:03d}" for i in range(n_samples)]
-        contributor = "Joao Pinto"
-        country = "Angola"
-        location = "Luanda"
-        year = 2009
-        month = 4
-        latitude = -8.884
-        longitude = 13.302
-        sex_call = np.random.choice(["M", "F"], size=n_samples)
-        df = pd.DataFrame(
-            dict(
-                sample_id=sample_id,
-                partner_sample_id=partner_sample_id,
-                contributor=contributor,
-                country=country,
-                location=location,
-                year=year,
-                month=month,
-                latitude=latitude,
-                longitude=longitude,
-                sex_call=sex_call,
-            )
-        )
-        parent_path = self.path / release_path / "metadata" / "general" / sample_set
-        parent_path.mkdir(parents=True, exist_ok=True)
-        path = parent_path / "samples.meta.csv"
-        df.to_csv(path, index=False)
 
-        # AG1000G-BF-A
-        release = "3.0"
-        release_path = "v3"
-        sample_set = "AG1000G-BF-A"
-        n_samples = (
-            self.release_manifests[release]
-            .set_index("sample_set")
-            .loc[sample_set]["sample_count"]
+        # General metadata.
+        src_path = (
+            self.fixture_dir
+            / "vo_agam_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
         )
-        sample_id = [f"AB{i:05d}-Cx" for i in range(n_samples)]
-        partner_sample_id = [f"BF12-{i:03d}" for i in range(n_samples)]
-        contributor = "Austin Burt"
-        country = "Burkina Faso"
-        locations = random.choices(
-            [
-                ("Bana Village", 11.233, -4.472),
-                ("Pala", 11.151, -4.235),
-                ("Souroukoudinga", 11.238, -4.235),
-            ],
-            k=n_samples,
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
         )
-        location = [loc[0] for loc in locations]
-        latitude = [loc[1] for loc in locations]
-        longitude = [loc[2] for loc in locations]
-        year = 2012
-        month = 7
-        sex_call = np.random.choice(["M", "F"], size=n_samples)
-        df = pd.DataFrame(
-            dict(
-                sample_id=sample_id,
-                partner_sample_id=partner_sample_id,
-                contributor=contributor,
-                country=country,
-                location=location,
-                year=year,
-                month=month,
-                latitude=latitude,
-                longitude=longitude,
-                sex_call=sex_call,
-            )
-        )
-        parent_path = self.path / release_path / "metadata" / "general" / sample_set
-        parent_path.mkdir(parents=True, exist_ok=True)
-        path = parent_path / "samples.meta.csv"
-        df.to_csv(path, index=False)
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
 
-        # TODO other sample sets
+        # AIM metadata.
+        src_path = (
+            self.fixture_dir
+            / "vo_agam_release"
+            / release_path
+            / "metadata"
+            / "species_calls_aim_20220528"
+            / sample_set
+            / "samples.species_aim.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "species_calls_aim_20220528"
+            / sample_set
+            / "samples.species_aim.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        # Cohorts metadata.
+        src_path = (
+            self.fixture_dir
+            / "vo_agam_release"
+            / release_path
+            / "metadata"
+            / "cohorts_20230223"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "cohorts_20230223"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+    def init_metadata(self):
+        self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
+        self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-BF-A")
+        self.write_metadata(
+            release="3.1", release_path="v3.1", sample_set="1177-VO-ML-LEHMANN-VMF00004"
+        )
 
 
 class Af1Simulator:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, fixture_dir):
+        self.fixture_dir = fixture_dir
+        self.bucket = "vo_afun_release"
+        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -606,13 +610,9 @@ class Af1Simulator:
 
 @pytest.fixture(scope="session")
 def ag3_sim_fixture(fixture_dir):
-    bucket = "vo_agam_release"
-    path = (fixture_dir / "simulated" / bucket).resolve()
-    return Ag3Simulator(path=path)
+    return Ag3Simulator(fixture_dir=fixture_dir)
 
 
 @pytest.fixture(scope="session")
 def af1_sim_fixture(fixture_dir):
-    bucket = "vo_afun_release"
-    path = (fixture_dir / "simulated" / bucket).resolve()
-    return Af1Simulator(path=path)
+    return Af1Simulator(fixture_dir=fixture_dir)
