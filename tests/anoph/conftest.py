@@ -153,10 +153,10 @@ class Gff3Simulator:
                 gene_start = cur_fwd + inter_size
             else:
                 gene_start = cur_rev + inter_size
-            if gene_start >= contig_size:
+            gene_end = gene_start + gene_size
+            if gene_end >= contig_size:
                 # Bail out, no more space left on the contig.
                 return
-            gene_end = min(gene_start + gene_size, contig_size)
             assert gene_end > gene_start
             gene_attrs = f"ID={gene_id}"
             for attr in self.attrs:
@@ -206,7 +206,6 @@ class Gff3Simulator:
         # the same coordinates as the parent gene, which is not strictly
         # accurate in real data.
 
-        gene_size = gene_end - gene_start
         for transcript_ix in range(
             randint(self.n_transcripts_low, self.n_transcripts_high)
         ):
@@ -231,7 +230,6 @@ class Gff3Simulator:
                 contig=contig,
                 strand=strand,
                 gene_ix=gene_ix,
-                gene_size=gene_size,
                 transcript_ix=transcript_ix,
                 transcript_id=transcript_id,
                 transcript_start=transcript_start,
@@ -244,7 +242,6 @@ class Gff3Simulator:
         contig,
         strand,
         gene_ix,
-        gene_size,
         transcript_ix,
         transcript_id,
         transcript_start,
@@ -255,12 +252,13 @@ class Gff3Simulator:
         # whereas in the funestus annotations, exons can be shared between
         # transcripts.
 
+        transcript_size = transcript_end - transcript_start
         exons = []
         exon_end = transcript_start
         for exon_ix in range(randint(self.n_exons_low, self.n_exons_high)):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
             intron_size = randint(
-                self.intron_size_low, min(gene_size, self.intron_size_high)
+                self.intron_size_low, min(transcript_size, self.intron_size_high)
             )
             exon_start = exon_end + intron_size
             if exon_start >= transcript_end:
