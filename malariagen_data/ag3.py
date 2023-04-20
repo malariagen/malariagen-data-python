@@ -278,9 +278,9 @@ class Ag3(AnophelesDataResource):
                     </tr>
                     <tr>
                         <th style="text-align: left">
-                            Species analysis
+                            AIM analysis
                         </th>
-                        <td>{self._species_analysis}</td>
+                        <td>{self._aim_analysis}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -2436,8 +2436,8 @@ class Ag3(AnophelesDataResource):
 
     def _results_cache_add_analysis_params(self, params):
         super()._results_cache_add_analysis_params(params)
-        # override parent class to add species analysis
-        params["species_analysis"] = self._species_analysis
+        # override parent class to add AIM analysis
+        params["aim_analysis"] = self._aim_analysis
 
     def aim_variants(self, aims):
         """Open ancestry informative marker variants.
