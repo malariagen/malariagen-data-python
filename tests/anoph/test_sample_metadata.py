@@ -53,27 +53,8 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-def validate_general_metadata(df):
-    expected_column_names = [
-        "sample_id",
-        "partner_sample_id",
-        "contributor",
-        "country",
-        "location",
-        "year",
-        "month",
-        "latitude",
-        "longitude",
-        "sex_call",
-        "sample_set",
-        "release",
-        "quarter",
-    ]
-    # Check column names.
-    assert df.columns.to_list() == expected_column_names
-
-    # Check column types.
-    expected_column_types = {
+def general_metadata_expected_columns():
+    return {
         "sample_id": "O",
         "partner_sample_id": "O",
         "contributor": "O",
@@ -88,8 +69,16 @@ def validate_general_metadata(df):
         "release": "O",
         "quarter": "i",
     }
+
+
+def validate_metadata(df, expected_columns):
+    # Check column names.
+    expected_column_names = list(expected_columns.keys())
+    assert df.columns.to_list() == expected_column_names
+
+    # Check column types.
     for c in df.columns:
-        assert df[c].dtype.kind == expected_column_types[c]
+        assert df[c].dtype.kind == expected_columns[c]
 
 
 @pytest.mark.parametrize(
@@ -97,7 +86,7 @@ def validate_general_metadata(df):
 )
 def test_general_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
     df = ag3_sim_api.general_metadata(sample_sets=sample_set)
-    validate_general_metadata(df)
+    validate_metadata(df, general_metadata_expected_columns())
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -115,7 +104,7 @@ def test_general_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
 )
 def test_general_metadata__af1_single_sample_set(af1_sim_api, sample_set):
     df = af1_sim_api.general_metadata(sample_sets=sample_set)
-    validate_general_metadata(df)
+    validate_metadata(df, general_metadata_expected_columns())
 
     # Check number of rows.
     sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -126,7 +115,7 @@ def test_general_metadata__af1_single_sample_set(af1_sim_api, sample_set):
 def test_general_metadata__ag3_multiple_sample_sets(ag3_sim_api):
     sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
     df = ag3_sim_api.general_metadata(sample_sets=sample_sets)
-    validate_general_metadata(df)
+    validate_metadata(df, general_metadata_expected_columns())
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -137,7 +126,7 @@ def test_general_metadata__ag3_multiple_sample_sets(ag3_sim_api):
 def test_general_metadata__af1_multiple_sample_sets(af1_sim_api):
     sample_sets = ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]
     df = af1_sim_api.general_metadata(sample_sets=sample_sets)
-    validate_general_metadata(df)
+    validate_metadata(df, general_metadata_expected_columns())
 
     # Check number of rows.
     sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -148,7 +137,7 @@ def test_general_metadata__af1_multiple_sample_sets(af1_sim_api):
 def test_general_metadata__ag3_release(ag3_sim_api):
     release = "3.0"
     df = ag3_sim_api.general_metadata(sample_sets=release)
-    validate_general_metadata(df)
+    validate_metadata(df, general_metadata_expected_columns())
 
     # Check number of rows.
     expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
@@ -158,28 +147,15 @@ def test_general_metadata__ag3_release(ag3_sim_api):
 def test_general_metadata__af1_release(af1_sim_api):
     release = "1.0"
     df = af1_sim_api.general_metadata(sample_sets=release)
-    validate_general_metadata(df)
+    validate_metadata(df, general_metadata_expected_columns())
 
     # Check number of rows.
     expected_len = af1_sim_api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
 
 
-def validate_aim_metadata(df):
-    expected_column_names = [
-        "sample_id",
-        "aim_species_fraction_arab",
-        "aim_species_fraction_colu",
-        "aim_species_fraction_colu_no2l",
-        "aim_species_gambcolu_arabiensis",
-        "aim_species_gambiae_coluzzii",
-        "aim_species",
-    ]
-    # Check column names.
-    assert df.columns.to_list() == expected_column_names
-
-    # Check column types.
-    expected_column_types = {
+def aim_metadata_expected_columns():
+    return {
         "sample_id": "O",
         "aim_species_fraction_arab": "f",
         "aim_species_fraction_colu": "f",
@@ -188,8 +164,10 @@ def validate_aim_metadata(df):
         "aim_species_gambiae_coluzzii": "O",
         "aim_species": "O",
     }
-    for c in df.columns:
-        assert df[c].dtype.kind == expected_column_types[c], c
+
+
+def validate_aim_metadata(df):
+    validate_metadata(df, aim_metadata_expected_columns())
 
     # Check some values.
     expected_species = {
@@ -237,58 +215,42 @@ def test_aim_metadata__ag3_release(ag3_sim_api):
     assert len(df) == expected_len
 
 
+def cohorts_metadata_expected_columns(has_quarter):
+    if has_quarter:
+        return {
+            "sample_id": "O",
+            "country_iso": "O",
+            "admin1_name": "O",
+            "admin1_iso": "O",
+            "admin2_name": "O",
+            "taxon": "O",
+            "cohort_admin1_year": "O",
+            "cohort_admin1_month": "O",
+            "cohort_admin1_quarter": "O",
+            "cohort_admin2_year": "O",
+            "cohort_admin2_month": "O",
+            "cohort_admin2_quarter": "O",
+        }
+    else:
+        return {
+            "sample_id": "O",
+            "country_iso": "O",
+            "admin1_name": "O",
+            "admin1_iso": "O",
+            "admin2_name": "O",
+            "taxon": "O",
+            "cohort_admin1_year": "O",
+            "cohort_admin1_month": "O",
+            "cohort_admin2_year": "O",
+            "cohort_admin2_month": "O",
+        }
+
+
 def validate_cohorts_metadata(df, has_quarter):
     # N.B., older cohorts metadata only has cohorts by year and month.
     # Newer cohorts metadata also has cohorts by quarter.
-    if has_quarter:
-        expected_column_names = [
-            "sample_id",
-            "country_iso",
-            "admin1_name",
-            "admin1_iso",
-            "admin2_name",
-            "taxon",
-            "cohort_admin1_year",
-            "cohort_admin1_month",
-            "cohort_admin1_quarter",
-            "cohort_admin2_year",
-            "cohort_admin2_month",
-            "cohort_admin2_quarter",
-        ]
-    else:
-        expected_column_names = [
-            "sample_id",
-            "country_iso",
-            "admin1_name",
-            "admin1_iso",
-            "admin2_name",
-            "taxon",
-            "cohort_admin1_year",
-            "cohort_admin1_month",
-            "cohort_admin2_year",
-            "cohort_admin2_month",
-        ]
-
-    # Check column names.
-    assert df.columns.to_list() == expected_column_names
-
-    # Check column types.
-    expected_column_types = {
-        "sample_id": "O",
-        "country_iso": "O",
-        "admin1_name": "O",
-        "admin1_iso": "O",
-        "admin2_name": "O",
-        "taxon": "O",
-        "cohort_admin1_year": "O",
-        "cohort_admin1_month": "O",
-        "cohort_admin1_quarter": "O",
-        "cohort_admin2_year": "O",
-        "cohort_admin2_month": "O",
-        "cohort_admin2_quarter": "O",
-    }
-    for c in df.columns:
-        assert df[c].dtype.kind == expected_column_types[c], c
+    expected_columns = cohorts_metadata_expected_columns(has_quarter=has_quarter)
+    validate_metadata(df, expected_columns)
 
 
 @pytest.mark.parametrize(
@@ -364,6 +326,31 @@ def test_cohorts_metadata__af1_release(af1_sim_api):
     assert len(df) == expected_len
 
 
-# TODO Test extra metadata.
+def sample_metadata_expected_columns(has_aims, has_cohorts_by_quarter):
+    expected_columns = general_metadata_expected_columns()
+    if has_aims:
+        expected_columns.update(aim_metadata_expected_columns())
+    expected_columns.update(
+        cohorts_metadata_expected_columns(has_quarter=has_cohorts_by_quarter)
+    )
+    return expected_columns
+
+
+@pytest.mark.parametrize(
+    "sample_set", ["AG1000G-AO", "AG1000G-BF-A", "1177-VO-ML-LEHMANN-VMF00004"]
+)
+def test_sample_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
+    df = ag3_sim_api.general_metadata(sample_sets=sample_set)
+    validate_metadata(
+        df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
+    )
+
+    # Check number of rows.
+    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    expected_len = sample_count.loc[sample_set]
+    assert len(df) == expected_len
+
 
 # TODO Test sample_metadata.
+
+# TODO Test extra metadata.
