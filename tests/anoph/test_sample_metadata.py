@@ -105,6 +105,24 @@ def test_general_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
     assert len(df) == expected_len
 
 
+@pytest.mark.parametrize(
+    "sample_set",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        "1230-VO-GA-CF-AYALA-VMF00045",
+        "1231-VO-MULTI-WONDJI-VMF00043",
+    ],
+)
+def test_general_metadata__af1_single_sample_set(af1_sim_api, sample_set):
+    df = af1_sim_api.general_metadata(sample_sets=sample_set)
+    validate_general_metadata(df)
+
+    # Check number of rows.
+    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    expected_len = sample_count.loc[sample_set]
+    assert len(df) == expected_len
+
+
 def test_general_metadata__ag3_multiple_sample_sets(ag3_sim_api):
     sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
     df = ag3_sim_api.general_metadata(sample_sets=sample_sets)
@@ -112,6 +130,17 @@ def test_general_metadata__ag3_multiple_sample_sets(ag3_sim_api):
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    expected_len = sum([sample_count.loc[s] for s in sample_sets])
+    assert len(df) == expected_len
+
+
+def test_general_metadata__af1_multiple_sample_sets(af1_sim_api):
+    sample_sets = ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]
+    df = af1_sim_api.general_metadata(sample_sets=sample_sets)
+    validate_general_metadata(df)
+
+    # Check number of rows.
+    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
     expected_len = sum([sample_count.loc[s] for s in sample_sets])
     assert len(df) == expected_len
 
@@ -126,7 +155,14 @@ def test_general_metadata__ag3_release(ag3_sim_api):
     assert len(df) == expected_len
 
 
-# TODO Test Af1 general metadata.
+def test_general_metadata__af1_release(af1_sim_api):
+    release = "1.0"
+    df = af1_sim_api.general_metadata(sample_sets=release)
+    validate_general_metadata(df)
+
+    # Check number of rows.
+    expected_len = af1_sim_api.sample_sets(release=release)["sample_count"].sum()
+    assert len(df) == expected_len
 
 
 def validate_aim_metadata(df):
@@ -201,21 +237,38 @@ def test_aim_metadata__ag3_release(ag3_sim_api):
     assert len(df) == expected_len
 
 
-def validate_cohorts_metadata(df):
-    expected_column_names = [
-        "sample_id",
-        "country_iso",
-        "admin1_name",
-        "admin1_iso",
-        "admin2_name",
-        "taxon",
-        "cohort_admin1_year",
-        "cohort_admin1_month",
-        "cohort_admin1_quarter",
-        "cohort_admin2_year",
-        "cohort_admin2_month",
-        "cohort_admin2_quarter",
-    ]
+def validate_cohorts_metadata(df, has_quarter):
+    # N.B., older cohorts metadata only has cohorts by year and month.
+    # Newer cohorts metadata also has cohorts by quarter.
+    if has_quarter:
+        expected_column_names = [
+            "sample_id",
+            "country_iso",
+            "admin1_name",
+            "admin1_iso",
+            "admin2_name",
+            "taxon",
+            "cohort_admin1_year",
+            "cohort_admin1_month",
+            "cohort_admin1_quarter",
+            "cohort_admin2_year",
+            "cohort_admin2_month",
+            "cohort_admin2_quarter",
+        ]
+    else:
+        expected_column_names = [
+            "sample_id",
+            "country_iso",
+            "admin1_name",
+            "admin1_iso",
+            "admin2_name",
+            "taxon",
+            "cohort_admin1_year",
+            "cohort_admin1_month",
+            "cohort_admin2_year",
+            "cohort_admin2_month",
+        ]
+
     # Check column names.
     assert df.columns.to_list() == expected_column_names
 
@@ -243,7 +296,7 @@ def validate_cohorts_metadata(df):
 )
 def test_cohorts_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
     df = ag3_sim_api.cohorts_metadata(sample_sets=sample_set)
-    validate_cohorts_metadata(df)
+    validate_cohorts_metadata(df, has_quarter=True)
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -251,10 +304,28 @@ def test_cohorts_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
     assert len(df) == expected_len
 
 
+@pytest.mark.parametrize(
+    "sample_set",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        "1230-VO-GA-CF-AYALA-VMF00045",
+        "1231-VO-MULTI-WONDJI-VMF00043",
+    ],
+)
+def test_cohorts_metadata__af1_single_sample_set(af1_sim_api, sample_set):
+    df = af1_sim_api.cohorts_metadata(sample_sets=sample_set)
+    validate_cohorts_metadata(df, has_quarter=False)
+
+    # Check number of rows.
+    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    expected_len = sample_count.loc[sample_set]
+    assert len(df) == expected_len
+
+
 def test_cohorts_metadata__ag3_multiple_sample_sets(ag3_sim_api):
     sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
     df = ag3_sim_api.cohorts_metadata(sample_sets=sample_sets)
-    validate_cohorts_metadata(df)
+    validate_cohorts_metadata(df, has_quarter=True)
 
     # Check number of rows.
     sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
@@ -262,17 +333,36 @@ def test_cohorts_metadata__ag3_multiple_sample_sets(ag3_sim_api):
     assert len(df) == expected_len
 
 
+def test_cohorts_metadata__af1_multiple_sample_sets(af1_sim_api):
+    sample_sets = ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]
+    df = af1_sim_api.cohorts_metadata(sample_sets=sample_sets)
+    validate_cohorts_metadata(df, has_quarter=False)
+
+    # Check number of rows.
+    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    expected_len = sum([sample_count.loc[s] for s in sample_sets])
+    assert len(df) == expected_len
+
+
 def test_cohorts_metadata__ag3_release(ag3_sim_api):
     release = "3.0"
     df = ag3_sim_api.cohorts_metadata(sample_sets=release)
-    validate_cohorts_metadata(df)
+    validate_cohorts_metadata(df, has_quarter=True)
 
     # Check number of rows.
     expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
 
 
-# TODO Test Af1 cohort metadata.
+def test_cohorts_metadata__af1_release(af1_sim_api):
+    release = "1.0"
+    df = af1_sim_api.cohorts_metadata(sample_sets=release)
+    validate_cohorts_metadata(df, has_quarter=False)
+
+    # Check number of rows.
+    expected_len = af1_sim_api.sample_sets(release=release)["sample_count"].sum()
+    assert len(df) == expected_len
+
 
 # TODO Test extra metadata.
 

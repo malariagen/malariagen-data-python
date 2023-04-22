@@ -421,13 +421,15 @@ class Ag3Simulator:
         # but truncating it to the number of samples included in the
         # simulated data resource.
 
+        # Look up the number of samples in this sample set within the
+        # simulated data resource.
         n_samples_sim = (
             self.release_manifests[release]
             .set_index("sample_set")
             .loc[sample_set]["sample_count"]
         )
 
-        # General metadata.
+        # Create general metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
             / "vo_agam_release"
@@ -450,7 +452,7 @@ class Ag3Simulator:
             for line in src.readlines()[: n_samples_sim + 1]:
                 print(line, file=dst)
 
-        # AIM metadata.
+        # Create AIM metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
             / "vo_agam_release"
@@ -473,7 +475,7 @@ class Ag3Simulator:
             for line in src.readlines()[: n_samples_sim + 1]:
                 print(line, file=dst)
 
-        # Cohorts metadata.
+        # Create cohorts metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
             / "vo_agam_release"
@@ -524,6 +526,7 @@ class Af1Simulator:
         self.init_public_release_manifest()
         self.init_genome_sequence()
         self.init_genome_features()
+        self.init_metadata()
 
     def init_config(self):
         self.config = {
@@ -592,6 +595,80 @@ class Af1Simulator:
             attrs=("Note", "description"),
         )
         self.genome_features = simulator.simulate_gff(path=path)
+
+    def write_metadata(self, release, release_path, sample_set):
+        # Here we take the approach of using some of the real metadata,
+        # but truncating it to the number of samples included in the
+        # simulated data resource.
+
+        # Look up the number of samples in this sample set within the
+        # simulated data resource.
+        n_samples_sim = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+
+        # Create general metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        # Create cohorts metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / release_path
+            / "metadata"
+            / "cohorts_20221129"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "cohorts_20221129"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+    def init_metadata(self):
+        self.write_metadata(
+            release="1.0", release_path="v1.0", sample_set="1229-VO-GH-DADZIE-VMF00095"
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1230-VO-GA-CF-AYALA-VMF00045",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1231-VO-MULTI-WONDJI-VMF00043",
+        )
 
 
 # For the following data fixtures we will use the "session" scope
