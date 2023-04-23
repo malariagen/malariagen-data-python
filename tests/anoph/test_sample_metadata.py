@@ -1,4 +1,7 @@
+import numpy as np
+import pandas as pd
 import pytest
+from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -424,4 +427,110 @@ def test_sample_metadata__af1_release(af1_sim_api):
     assert len(df) == expected_len
 
 
-# TODO Test extra metadata.
+@parametrize_with_cases("fixture,api", cases=".")
+def test_extra_metadata_errors(fixture, api):
+    # Bad type.
+    with pytest.raises(TypeError):
+        api.add_extra_metadata(data="foo")
+
+    bad_data = pd.DataFrame({"foo": [1, 2, 3], "bar": ["a", "b", "c"]})
+
+    # Missing sample identifier column.
+    with pytest.raises(ValueError):
+        api.add_extra_metadata(data=bad_data)
+
+    # Invalid sample identifier column.
+    with pytest.raises(ValueError):
+        api.add_extra_metadata(data=bad_data, on="foo")
+
+    # Duplicate identifiers.
+    df_samples = api.sample_metadata()
+    sample_id = df_samples["sample_id"].values
+    data_with_dups = pd.DataFrame(
+        {
+            "sample_id": [sample_id[0], sample_id[0], sample_id[1]],
+            "foo": [1, 2, 3],
+            "bar": ["a", "b", "c"],
+        }
+    )
+    with pytest.raises(ValueError):
+        api.add_extra_metadata(data=data_with_dups)
+
+    # No matching samples.
+    data_no_matches = pd.DataFrame(
+        {"sample_id": ["x", "y", "z"], "foo": [1, 2, 3], "bar": ["a", "b", "c"]}
+    )
+    with pytest.raises(ValueError):
+        api.add_extra_metadata(data=data_no_matches)
+
+
+@pytest.mark.parametrize(
+    "on",
+    [
+        "sample_id",
+        "partner_sample_id",
+    ],
+)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_extra_metadata(fixture, api, on):
+    # Load vanilla metadata.
+    df_samples = api.sample_metadata()
+    sample_id = df_samples[on].values
+
+    # Partially overlapping data.
+    extra1 = pd.DataFrame(
+        {
+            on: [sample_id[0], sample_id[1], "spam"],
+            "foo": [1, 2, 3],
+            "bar": ["a", "b", "c"],
+        }
+    )
+    extra2 = pd.DataFrame(
+        {
+            on: [sample_id[2], sample_id[3], "eggs"],
+            "baz": [True, False, True],
+            "qux": [42, 84, 126],
+        }
+    )
+    api.add_extra_metadata(data=extra1, on=on)
+    api.add_extra_metadata(data=extra2, on=on)
+    df_samples_extra = api.sample_metadata()
+    assert "foo" in df_samples_extra.columns
+    assert "bar" in df_samples_extra.columns
+    assert "baz" in df_samples_extra.columns
+    assert "qux" in df_samples_extra.columns
+    assert df_samples_extra.columns.tolist() == (
+        df_samples.columns.tolist() + ["foo", "bar", "baz", "qux"]
+    )
+    assert len(df_samples_extra) == len(df_samples)
+    df_samples_extra = df_samples_extra.set_index(on)
+    rec = df_samples_extra.loc[sample_id[0]]
+    assert rec["foo"] == 1
+    assert rec["bar"] == "a"
+    assert np.isnan(rec["baz"])
+    assert np.isnan(rec["qux"])
+    rec = df_samples_extra.loc[sample_id[1]]
+    assert rec["foo"] == 2
+    assert rec["bar"] == "b"
+    assert np.isnan(rec["baz"])
+    assert np.isnan(rec["qux"])
+    rec = df_samples_extra.loc[sample_id[2]]
+    assert np.isnan(rec["foo"])
+    assert np.isnan(rec["bar"])
+    assert rec["baz"]
+    assert rec["qux"] == 42
+    rec = df_samples_extra.loc[sample_id[3]]
+    assert np.isnan(rec["foo"])
+    assert np.isnan(rec["bar"])
+    assert not rec["baz"]
+    assert rec["qux"] == 84
+    with pytest.raises(KeyError):
+        _ = df_samples_extra.loc["spam"]
+    with pytest.raises(KeyError):
+        _ = df_samples_extra.loc["eggs"]
+
+    # Clear extra metadata.
+    api.clear_extra_metadata()
+    df_samples_cleared = api.sample_metadata()
+    assert df_samples_cleared.columns.tolist() == df_samples.columns.tolist()
+    assert len(df_samples_cleared) == len(df_samples)

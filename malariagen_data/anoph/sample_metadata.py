@@ -38,6 +38,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             self._aim_metadata_dtype.update(aim_metadata_dtype)
         self._aim_metadata_dtype["sample_id"] = object
 
+        # Set up extra metadata.
+        self._extra_metadata: List = []
+
         # Initialize cache attributes.
         # TODO
 
@@ -388,6 +391,55 @@ class AnophelesSampleMetadata(AnophelesBase):
         return df_ret
 
     @doc(
+        summary="""
+            Add extra sample metadata, e.g., including additional columns
+            which you would like to use to query and group samples.
+        """,
+        parameters=dict(
+            data="""
+                A data frame with one row per sample. Must include either a
+                "sample_id" or "partner_sample_id" column.
+            """,
+            on="""
+                Name of column to use when merging with sample metadata.
+            """,
+        ),
+        notes="""
+            The values in the column containing sample identifiers must be
+            unique.
+        """,
+    )
+    def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
+        # Check parameters.
+        if not isinstance(data, pd.DataFrame):
+            raise TypeError("`data` parameter must be a pandas DataFrame")
+        if on not in data.columns:
+            raise ValueError(f"dataframe does not contain column {on!r}")
+        if on not in {"sample_id", "partner_sample_id"}:
+            raise ValueError(
+                "`on` parameter must be either 'sample_id' or 'partner_sample_id'"
+            )
+
+        # Check for uniqueness.
+        if not data[on].is_unique:
+            raise ValueError(f"column {on!r} does not have unique values")
+
+        # check there are matching samples.
+        df_samples = self.sample_metadata()
+        loc_isec = data[on].isin(df_samples[on])
+        if not loc_isec.any():
+            raise ValueError("no matching samples found")
+
+        # store extra metadata
+        self._extra_metadata.append((on, data.copy()))
+
+    @doc(
+        summary="Clear any extra metadata previously added",
+    )
+    def clear_extra_metadata(self):
+        self._extra_metadata = []
+
+    @doc(
         summary="TODO",
         returns="TODO",
     )
@@ -396,7 +448,6 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
-        # TODO Concurrent reading?
         # TODO Caching?
 
         # Build a dataframe from all available metadata.
@@ -408,7 +459,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_cohorts = self.cohorts_metadata(sample_sets=sample_sets)
             df_samples = df_samples.merge(df_cohorts, on="sample_id", sort=False)
 
-        # TODO Extra metadata.
+        # Add extra metadata.
+        for on, data in self._extra_metadata:
+            df_samples = df_samples.merge(data, how="left", on=on)
 
         # For convenience, apply a query.
         if sample_query is not None:

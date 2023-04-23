@@ -715,9 +715,6 @@ class AnophelesDataResource(
         else:
             self._site_filters_analysis = site_filters_analysis
 
-        # # set up extra metadata
-        # self._extra_metadata: List = []
-
     # Start of @property
 
     @property
@@ -1548,55 +1545,6 @@ class AnophelesDataResource(
     #         df_samples = df_samples.reset_index(drop=True)
 
     #     return df_samples.copy()
-
-    # @doc(
-    #     summary="""
-    #         Add extra sample metadata, e.g., including additional columns
-    #         which you would like to use to query and group samples.
-    #     """,
-    #     parameters=dict(
-    #         data="""
-    #             A data frame with one row per sample. Must include either a
-    #             "sample_id" or "partner_sample_id" column.
-    #         """,
-    #         on="""
-    #             Name of column to use when merging with sample metadata.
-    #         """,
-    #     ),
-    #     notes="""
-    #         The values in the column containing sample identifiers must be
-    #         unique.
-    #     """,
-    # )
-    # def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
-    #     # check parameters
-    #     if not isinstance(data, pd.DataFrame):
-    #         raise TypeError("`data` parameter must be a pandas DataFrame")
-    #     if on not in data.columns:
-    #         raise ValueError(f"dataframe does not contain column {on!r}")
-    #     if on not in {"sample_id", "partner_sample_id"}:
-    #         raise ValueError(
-    #             "`on` parameter must be either 'sample_id' or 'partner_sample_id'"
-    #         )
-
-    #     # check for uniqueness
-    #     if not data[on].is_unique:
-    #         raise ValueError(f"column {on!r} does not have unique values")
-
-    #     # check there are matching samples
-    #     df_samples = self.sample_metadata()
-    #     loc_isec = data[on].isin(df_samples[on])
-    #     if not loc_isec.any():
-    #         raise ValueError("no matching samples found")
-
-    #     # store extra metadata
-    #     self._extra_metadata.append((on, data.copy()))
-
-    # @doc(
-    #     summary="Clear any extra metadata previously added",
-    # )
-    # def clear_extra_metadata(self):
-    #     self._extra_metadata = []
 
     def _site_filters(
         self,
