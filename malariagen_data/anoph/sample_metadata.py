@@ -248,8 +248,10 @@ class AnophelesSampleMetadata(AnophelesBase):
             raise TypeError
 
     @doc(
-        summary="TODO",
-        returns="TODO",
+        summary="""
+            Access cohort membership metadata for one or more sample sets.
+        """,
+        returns="A pandas DataFrame, one row per sample.",
     )
     def cohorts_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
@@ -350,8 +352,11 @@ class AnophelesSampleMetadata(AnophelesBase):
             raise TypeError
 
     @doc(
-        summary="TODO",
-        returns="TODO",
+        summary="""
+            Access ancestry-informative marker (AIM) metadata for one or more
+            sample sets.
+        """,
+        returns="A pandas DataFrame, one row per sample.",
     )
     def aim_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
@@ -440,15 +445,15 @@ class AnophelesSampleMetadata(AnophelesBase):
         self._extra_metadata = []
 
     @doc(
-        summary="TODO",
-        returns="TODO",
+        summary="Access sample metadata for one or more sample sets.",
+        returns="A dataframe of sample metadata, one row per sample.",
     )
     def sample_metadata(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
-        # TODO Caching?
+        # TODO Caching.
 
         # Build a dataframe from all available metadata.
         df_samples = self.general_metadata(sample_sets=sample_sets)

@@ -684,14 +684,10 @@ class AnophelesDataResource(
 
         # set up caches
         # TODO review type annotations here, maybe can tighten
-        # self._cache_general_metadata: Dict = dict()
-        # self._cache_sample_metadata: Dict = dict()
-        # self._cache_cohort_metadata: Dict = dict()
         self._cache_site_filters: Dict = dict()
         self._cache_snp_sites = None
         self._cache_snp_genotypes: Dict = dict()
         self._cache_annotator = None
-        self._cache_genome_features: Dict = dict()
         self._cache_site_annotations = None
         self._cache_locate_site_class: Dict = dict()
         self._cache_haplotypes: Dict = dict()
@@ -702,11 +698,6 @@ class AnophelesDataResource(
         self._results_cache = results_cache
 
         # set analysis versions
-
-        # if cohorts_analysis is None:
-        #     self._cohorts_analysis = self.config.get("DEFAULT_COHORTS_ANALYSIS")
-        # else:
-        #     self._cohorts_analysis = cohorts_analysis
 
         if site_filters_analysis is None:
             self._site_filters_analysis = self.config.get(
@@ -795,11 +786,6 @@ class AnophelesDataResource(
                 f"Invalid site mask, must be one of f{self.site_mask_ids}."
             )
         return site_mask
-
-    # @abstractmethod
-    # def _sample_metadata(self, sample_set):
-    #     # Not all children have species calls or cohorts data.
-    #     raise NotImplementedError("Must override _sample_metadata")
 
     @abstractmethod
     def _transcript_to_gene_name(self, transcript):
@@ -1462,45 +1448,6 @@ class AnophelesDataResource(
         # progress doesn't mix well with debug logging
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
-
-    # def _read_general_metadata(self, *, sample_set):
-    #     """Read metadata for a single sample set."""
-    #     try:
-    #         df = self._cache_general_metadata[sample_set]
-    #     except KeyError:
-    #         release = self.lookup_release(sample_set=sample_set)
-    #         release_path = self._release_to_path(release)
-    #         path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
-    #         dtype = {
-    #             "sample_id": object,
-    #             "partner_sample_id": object,
-    #             "contributor": object,
-    #             "country": object,
-    #             "location": object,
-    #             "year": "int64",
-    #             "month": "int64",
-    #             "latitude": "float64",
-    #             "longitude": "float64",
-    #             "sex_call": object,
-    #         }
-    #         with self._fs.open(path) as f:
-    #             df = pd.read_csv(f, na_values="", dtype=dtype)
-
-    #         # ensure all column names are lower case
-    #         df.columns = [c.lower() for c in df.columns]
-
-    #         # add a couple of columns for convenience
-    #         df["sample_set"] = sample_set
-    #         df["release"] = release
-
-    #         # derive quarter from month
-    #         df["quarter"] = df.apply(
-    #             lambda row: ((row.month - 1) // 3) + 1 if row.month > 0 else -1,
-    #             axis="columns",
-    #         )
-
-    #         self._cache_general_metadata[sample_set] = df
-    #     return df.copy()
 
     # @doc(
     #     summary="Access sample metadata for one or more sample sets.",
@@ -3759,93 +3706,6 @@ class AnophelesDataResource(
         df_snps.attrs["title"] = title
 
         return df_snps
-
-    # def _read_cohort_metadata(self, *, sample_set):
-    #     """Read cohort metadata for a single sample set."""
-    #     try:
-    #         df = self._cache_cohort_metadata[sample_set]
-    #     except KeyError:
-    #         release = self.lookup_release(sample_set=sample_set)
-    #         release_path = self._release_to_path(release)
-    #         path_prefix = f"{self._base_path}/{release_path}/metadata"
-    #         path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-    #         # N.B., not all cohort metadata files exist, need to handle errors
-    #         # N.B., allow a broad exception here, because it seems a variety
-    #         # of different exceptions may be thrown
-    #         # noinspection PyBroadException
-    #         try:
-    #             with self._fs.open(path) as f:
-    #                 df = pd.read_csv(f, na_values="")
-
-    #             # ensure all column names are lower case
-    #             df.columns = [c.lower() for c in df.columns]
-
-    #             # rename some columns for consistent naming
-    #             df.rename(
-    #                 columns={
-    #                     "adm1_iso": "admin1_iso",
-    #                     "adm1_name": "admin1_name",
-    #                     "adm2_name": "admin2_name",
-    #                 },
-    #                 inplace=True,
-    #             )
-    #         except Exception:
-    #             # Specify cohort_cols
-    #             if self._cohorts_analysis < "20230223":
-    #                 cohort_cols = (
-    #                     "country_iso",
-    #                     "admin1_name",
-    #                     "admin1_iso",
-    #                     "admin2_name",
-    #                     "taxon",
-    #                     "cohort_admin1_year",
-    #                     "cohort_admin1_month",
-    #                     "cohort_admin2_year",
-    #                     "cohort_admin2_month",
-    #                 )
-    #             # cohorts analyses from "20230223" (will) include quarter columns
-    #             else:
-    #                 cohort_cols = (
-    #                     "country_iso",
-    #                     "admin1_name",
-    #                     "admin1_iso",
-    #                     "admin2_name",
-    #                     "taxon",
-    #                     "cohort_admin1_year",
-    #                     "cohort_admin1_month",
-    #                     "cohort_admin1_quarter",
-    #                     "cohort_admin2_year",
-    #                     "cohort_admin2_month",
-    #                     "cohort_admin2_quarter",
-    #                 )
-
-    #             # Get sample ids as an index via general metadata (has caching)
-    #             df_general = self._read_general_metadata(sample_set=sample_set)
-    #             df_general.set_index("sample_id", inplace=True)
-
-    #             # Create a blank DataFrame with cohort_cols and sample_id index
-    #             df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
-
-    #             # Revert sample_id index to column
-    #             df.reset_index(inplace=True)
-
-    #         self._cache_cohort_metadata[sample_set] = df
-    #     return df.copy()
-
-    # @doc(
-    #     summary="Access cohorts metadata for one or more sample sets.",
-    #     returns="A dataframe of cohort metadata, one row per sample.",
-    # )
-    # def sample_cohorts(
-    #     self, sample_sets: Optional[base_params.sample_sets] = None
-    # ) -> pd.DataFrame:
-    #     sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-
-    #     # concatenate multiple sample sets
-    #     dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
-    #     df = pd.concat(dfs, axis=0, ignore_index=True)
-
-    #     return df
 
     @doc(
         summary="""
