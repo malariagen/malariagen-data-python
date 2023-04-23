@@ -1449,50 +1449,6 @@ class AnophelesDataResource(
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
 
-    # @doc(
-    #     summary="Access sample metadata for one or more sample sets.",
-    #     returns="A dataframe of sample metadata, one row per sample.",
-    # )
-    # def sample_metadata(
-    #     self,
-    #     sample_sets: Optional[base_params.sample_sets] = None,
-    #     sample_query: Optional[base_params.sample_query] = None,
-    # ) -> pd.DataFrame:
-    #     sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-    #     cache_key = tuple(sample_sets)
-
-    #     try:
-    #         df_samples = self._cache_sample_metadata[cache_key]
-
-    #     except KeyError:
-    #         # concatenate multiple sample sets
-    #         dfs = []
-    #         # there can be some delay here due to network latency, so show progress
-    #         sample_sets_iterator = self._progress(
-    #             sample_sets, desc="Load sample metadata"
-    #         )
-    #         for s in sample_sets_iterator:
-    #             df = self._sample_metadata(sample_set=s)
-    #             dfs.append(df)
-    #         df_samples = pd.concat(dfs, axis=0, ignore_index=True)
-    #         self._cache_sample_metadata[cache_key] = df_samples
-
-    #     # add extra metadata
-    #     for on, data in self._extra_metadata:
-    #         df_samples = df_samples.merge(data, how="left", on=on)
-
-    #     # for convenience, apply a query
-    #     if sample_query is not None:
-    #         if isinstance(sample_query, str):
-    #             # assume a pandas query string
-    #             df_samples = df_samples.query(sample_query)
-    #         else:
-    #             # assume it is an indexer
-    #             df_samples = df_samples.iloc[sample_query]
-    #         df_samples = df_samples.reset_index(drop=True)
-
-    #     return df_samples.copy()
-
     def _site_filters(
         self,
         *,
