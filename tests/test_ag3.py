@@ -1562,7 +1562,7 @@ def test_gene_cnv_frequencies(region, cohorts):
     if isinstance(cohorts, dict):
         frq_cols = ["frq_" + s for s in cohorts.keys()]
     if isinstance(cohorts, str):
-        df_coh = ag3.sample_cohorts(sample_sets="3.0")
+        df_coh = ag3.cohorts_metadata(sample_sets="3.0")
         coh_nm = "cohort_" + cohorts
         frq_cols = ["frq_" + s for s in list(df_coh[coh_nm].dropna().unique())]
 
