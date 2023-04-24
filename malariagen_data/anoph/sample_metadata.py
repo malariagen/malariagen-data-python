@@ -225,7 +225,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             # Cohorts metadata are missing for this sample set, fill with a blank
             # DataFrame.
 
-            # Get sample ids as an index via general metadata (TODO caching?).
+            # Get sample ids as an index via general metadata.
             df_general = self.general_metadata(sample_sets=sample_set)
             df_general.set_index("sample_id", inplace=True)
 
@@ -329,7 +329,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         elif isinstance(data, FileNotFoundError):
             # AIM data are missing for this sample set, fill with a blank DataFrame.
 
-            # Get sample ids as an index via general metadata (TODO caching?).
+            # Get sample ids as an index via general metadata.
             df_general = self.general_metadata(sample_sets=sample_set)
             df_general.set_index("sample_id", inplace=True)
 

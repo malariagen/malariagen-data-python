@@ -15,14 +15,6 @@ from malariagen_data import Ag3, Region
 from malariagen_data.ag3 import _cn_mode
 from malariagen_data.util import locate_region, resolve_region
 
-# expected_species_legacy = {
-#     "gambiae",
-#     "coluzzii",
-#     "arabiensis",
-#     "intermediate_arabiensis_gambiae",
-#     "intermediate_gambiae_coluzzii",
-# }
-
 expected_aim_species = {
     "gambiae",
     "coluzzii",
@@ -41,22 +33,6 @@ expected_aim_species_cols = (
     "aim_species_gambiae_coluzzii",
     "aim_species",
 )
-
-# expected_aim_species_cols_legacy = (
-#     "aim_species_fraction_colu",
-#     "aim_species_fraction_arab",
-#     "aim_species_gambcolu_arabiensis",
-#     "aim_species_gambiae_coluzzii",
-#     "aim_species",
-# )
-
-# expected_pca_species_cols_legacy = (
-#     "pca_species_pc1",
-#     "pca_species_pc2",
-#     "pca_species_gambcolu_arabiensis",
-#     "pca_species_gambiae_coluzzii",
-#     "pca_species",
-# )
 
 
 def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
@@ -111,73 +87,7 @@ def test_sample_metadata_with_aim_metadata():
     assert set(df_samples_aim["aim_species"].dropna()) == expected_aim_species
 
 
-# def test_sample_metadata_with_aim_species_legacy():
-#     # TODO this is legacy, deprecate at some point
-#     ag3 = setup_ag3(species_analysis="aim_20200422")
-
-#     expected_cols = (
-#         "sample_id",
-#         "partner_sample_id",
-#         "contributor",
-#         "country",
-#         "location",
-#         "year",
-#         "month",
-#         "latitude",
-#         "longitude",
-#         "sex_call",
-#         "sample_set",
-#         "release",
-#         "quarter",
-#         "aim_species_fraction_colu",
-#         "aim_species_fraction_arab",
-#         "aim_species_gambcolu_arabiensis",
-#         "aim_species_gambiae_coluzzii",
-#         "aim_species",
-#     )
-
-#     # AIM species calls, included by default
-#     df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
-#     assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
-#     assert set(df_samples_aim["aim_species"].dropna()) == expected_species_legacy
-
-
-# def test_sample_metadata_with_pca_species():
-#     # TODO this is legacy, deprecate at some point
-#     ag3 = setup_ag3(species_analysis="pca_20200422")
-
-#     expected_cols = (
-#         "sample_id",
-#         "partner_sample_id",
-#         "contributor",
-#         "country",
-#         "location",
-#         "year",
-#         "month",
-#         "latitude",
-#         "longitude",
-#         "sex_call",
-#         "sample_set",
-#         "release",
-#         "quarter",
-#         "pca_species_pc1",
-#         "pca_species_pc2",
-#         "pca_species_gambcolu_arabiensis",
-#         "pca_species_gambiae_coluzzii",
-#         "pca_species",
-#     )
-
-#     # PCA species calls
-#     df_samples_pca = ag3.sample_metadata(sample_sets="3.0")
-#     assert tuple(df_samples_pca.columns[: len(expected_cols)]) == expected_cols
-#     assert (
-#         set(df_samples_pca["pca_species"].dropna()).difference(expected_species_legacy)
-#         == set()
-#     )
-
-
 def test_sample_metadata_without_aim_metadata():
-    # TODO Fix this test.
     analysis = "20220528"
     expected_cols = expected_aim_species_cols
 

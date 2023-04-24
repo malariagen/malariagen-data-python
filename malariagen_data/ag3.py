@@ -171,7 +171,6 @@ class Ag3(AnophelesDataResource):
         )
 
         # set up caches
-        # self._cache_species_calls = dict()
         self._cache_cross_metadata = None
         self._cache_cnv_hmm = dict()
         self._cache_cnv_coverage_calls = dict()

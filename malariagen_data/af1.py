@@ -221,12 +221,6 @@ class Af1(AnophelesDataResource):
         """
         return html
 
-    # def _sample_metadata(self, *, sample_set):
-    #     df = self._read_general_metadata(sample_set=sample_set)
-    #     df_cohorts = self._read_cohort_metadata(sample_set=sample_set)
-    #     df = df.merge(df_cohorts, on="sample_id", sort=False)
-    #     return df
-
     def _transcript_to_gene_name(self, transcript):
         df_genome_features = self.genome_features().set_index("ID")
         rec_transcript = df_genome_features.loc[transcript]
