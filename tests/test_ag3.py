@@ -124,7 +124,6 @@ def test_aim_metadata(sample_sets):
 
 
 def test_aim_metadata_missing():
-    # TODO Fix this test.
     analysis = "20220528"
     expected_cols = expected_aim_species_cols
 

@@ -2,6 +2,7 @@ import io
 from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 import ipyleaflet
+import numpy as np
 import pandas as pd
 import xyzservices
 from numpydoc_decorator import doc
@@ -279,20 +280,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         elif isinstance(data, FileNotFoundError):
             # Cohorts metadata are missing for this sample set, fill with a blank
             # DataFrame.
-
-            # Get sample ids as an index via general metadata.
             df_general = self.general_metadata(sample_sets=sample_set)
-            df_general.set_index("sample_id", inplace=True)
-
-            # Create a blank DataFrame with cohorts metadata columns and sample_id index.
-            df = pd.DataFrame(
-                columns=self._cohorts_metadata_columns,
-                index=df_general.index.copy(),
-            )
-
-            # Revert sample_id index to column.
-            df.reset_index(inplace=True)
-
+            df = df_general[["sample_id"]].copy()
+            for c in self._cohorts_metadata_columns:
+                df[c] = np.nan
+            df = df.astype(self._cohorts_metadata_dtype)
             return df
 
         elif isinstance(data, Exception):
@@ -370,6 +362,8 @@ class AnophelesSampleMetadata(AnophelesBase):
     def _parse_aim_metadata(
         self, *, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
+        assert self._aim_metadata_columns is not None
+        assert self._aim_metadata_dtype is not None
         if isinstance(data, bytes):
             # Parse CSV data.
             df = pd.read_csv(
@@ -383,20 +377,11 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         elif isinstance(data, FileNotFoundError):
             # AIM data are missing for this sample set, fill with a blank DataFrame.
-
-            # Get sample ids as an index via general metadata.
             df_general = self.general_metadata(sample_sets=sample_set)
-            df_general.set_index("sample_id", inplace=True)
-
-            # Create a blank DataFrame with AIM metadata columns and sample_id index.
-            df = pd.DataFrame(
-                columns=self._aim_metadata_columns,
-                index=df_general.index.copy(),
-            )
-
-            # Revert sample_id index to column.
-            df.reset_index(inplace=True)
-
+            df = df_general[["sample_id"]].copy()
+            for c in self._aim_metadata_columns:
+                df[c] = np.nan
+            df = df.astype(self._aim_metadata_dtype)
             return df
 
         elif isinstance(data, Exception):

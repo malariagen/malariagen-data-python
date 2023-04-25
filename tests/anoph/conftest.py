@@ -416,7 +416,7 @@ class Ag3Simulator:
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
 
-    def write_metadata(self, release, release_path, sample_set):
+    def write_metadata(self, release, release_path, sample_set, aim=True, cohorts=True):
         # Here we take the approach of using some of the real metadata,
         # but truncating it to the number of samples included in the
         # simulated data resource.
@@ -452,46 +452,71 @@ class Ag3Simulator:
             for line in src.readlines()[: n_samples_sim + 1]:
                 print(line, file=dst)
 
-        # Create AIM metadata by sampling from some real metadata files.
-        src_path = (
-            self.fixture_dir
-            / "vo_agam_release"
-            / release_path
-            / "metadata"
-            / "species_calls_aim_20220528"
-            / sample_set
-            / "samples.species_aim.csv"
-        )
-        dst_path = (
-            self.path
-            / release_path
-            / "metadata"
-            / "species_calls_aim_20220528"
-            / sample_set
-            / "samples.species_aim.csv"
-        )
-        dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        if aim:
+            # Create AIM metadata by sampling from some real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_agam_release"
+                / release_path
+                / "metadata"
+                / "species_calls_aim_20220528"
+                / sample_set
+                / "samples.species_aim.csv"
+            )
+            dst_path = (
+                self.path
+                / release_path
+                / "metadata"
+                / "species_calls_aim_20220528"
+                / sample_set
+                / "samples.species_aim.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+                for line in src.readlines()[: n_samples_sim + 1]:
+                    print(line, file=dst)
 
-        # Create cohorts metadata by sampling from some real metadata files.
+        if cohorts:
+            # Create cohorts metadata by sampling from some real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_agam_release"
+                / release_path
+                / "metadata"
+                / "cohorts_20230223"
+                / sample_set
+                / "samples.cohorts.csv"
+            )
+            dst_path = (
+                self.path
+                / release_path
+                / "metadata"
+                / "cohorts_20230223"
+                / sample_set
+                / "samples.cohorts.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+                for line in src.readlines()[: n_samples_sim + 1]:
+                    print(line, file=dst)
+
+        # Create data catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
             / "vo_agam_release"
             / release_path
             / "metadata"
-            / "cohorts_20230223"
+            / "general"
             / sample_set
-            / "samples.cohorts.csv"
+            / "wgs_snp_data.csv"
         )
         dst_path = (
             self.path
             / release_path
             / "metadata"
-            / "cohorts_20230223"
+            / "general"
             / sample_set
-            / "samples.cohorts.csv"
+            / "wgs_snp_data.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
@@ -501,8 +526,14 @@ class Ag3Simulator:
     def init_metadata(self):
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-BF-A")
+        # Simulate situation where AIM and cohorts metadata are missing,
+        # do we correctly fill?
         self.write_metadata(
-            release="3.1", release_path="v3.1", sample_set="1177-VO-ML-LEHMANN-VMF00004"
+            release="3.1",
+            release_path="v3.1",
+            sample_set="1177-VO-ML-LEHMANN-VMF00004",
+            aim=False,
+            cohorts=False,
         )
 
 
@@ -649,6 +680,29 @@ class Af1Simulator:
             / "cohorts_20221129"
             / sample_set
             / "samples.cohorts.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        # Create data catalog by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:

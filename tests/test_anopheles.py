@@ -123,6 +123,7 @@ def test_releases(
     ],
 )
 def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
+    # TODO Migrate this test to tests/anoph for faster execution.
     anoph = setup_subclass_cached(subclass)
     df_sample_sets_major = anoph.sample_sets(release=major_release)
 

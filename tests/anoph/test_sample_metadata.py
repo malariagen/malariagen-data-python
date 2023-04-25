@@ -1,3 +1,4 @@
+import ipyleaflet
 import numpy as np
 import pandas as pd
 import pytest
@@ -173,7 +174,10 @@ def validate_aim_metadata(df):
         "intermediate_gambiae_coluzzii",
     }
     for v in df["aim_species"]:
-        assert v in expected_species
+        if isinstance(v, str):
+            assert v in expected_species
+        else:
+            assert np.isnan(v)
 
 
 @pytest.mark.parametrize(
@@ -419,6 +423,14 @@ def test_sample_metadata__af1_release(af1_sim_api):
     assert len(df) == expected_len
 
 
+def test_sample_metadata__ag3_query(ag3_sim_api):
+    df = ag3_sim_api.sample_metadata(sample_query="country == 'Burkina Faso'")
+    validate_metadata(
+        df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
+    )
+    assert (df["country"] == "Burkina Faso").all()
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_extra_metadata_errors(fixture, api):
     # Bad type.
@@ -526,3 +538,39 @@ def test_extra_metadata(fixture, api, on):
     df_samples_cleared = api.sample_metadata()
     assert df_samples_cleared.columns.tolist() == df_samples.columns.tolist()
     assert len(df_samples_cleared) == len(df_samples)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_count_samples(fixture, api):
+    df = api.count_samples()
+    assert isinstance(df, pd.DataFrame)
+
+    # Check the default index values.
+    assert df.index.names == (
+        "country",
+        "admin1_iso",
+        "admin1_name",
+        "admin2_name",
+        "year",
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_samples_interactive_map(fixture, api):
+    m = api.plot_samples_interactive_map()
+    assert isinstance(m, ipyleaflet.Map)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_wgs_data_catalog(fixture, api):
+    for rec in api.sample_sets()[["sample_set", "sample_count"]].itertuples():
+        df = api.wgs_data_catalog(sample_set=rec.sample_set)
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "sample_id",
+            "alignments_bam",
+            "snp_genotypes_vcf",
+            "snp_genotypes_zarr",
+        ]
+        assert df.columns.to_list() == expected_cols
+        assert len(df) == rec.sample_count
