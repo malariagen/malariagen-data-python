@@ -107,7 +107,6 @@ class Af1(AnophelesDataResource):
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=None,
-            aim_metadata_columns=None,
             aim_metadata_dtype=None,
             site_filters_analysis=site_filters_analysis,
             bokeh_output_notebook=bokeh_output_notebook,

@@ -1,5 +1,5 @@
 import io
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 
 import ipyleaflet
 import pandas as pd
@@ -67,7 +67,6 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         cohorts_analysis: Optional[str] = None,
         aim_analysis: Optional[str] = None,
-        aim_metadata_columns: Optional[Sequence[str]] = None,
         aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
         **kwargs,
     ):
@@ -87,9 +86,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         # N.B., the expected AIM metadata columns may vary between
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
-        self._aim_metadata_columns = aim_metadata_columns
+        self._aim_metadata_columns: Optional[List[str]] = None
         self._aim_metadata_dtype: Dict[str, Any] = dict()
         if isinstance(aim_metadata_dtype, Mapping):
+            self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
         self._aim_metadata_dtype["sample_id"] = object
 

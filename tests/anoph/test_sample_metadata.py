@@ -17,14 +17,6 @@ def ag3_sim_api(ag3_sim_fixture):
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
-        aim_metadata_columns=[
-            "aim_species_fraction_arab",
-            "aim_species_fraction_colu",
-            "aim_species_fraction_colu_no2l",
-            "aim_species_gambcolu_arabiensis",
-            "aim_species_gambiae_coluzzii",
-            "aim_species",
-        ],
         aim_metadata_dtype={
             "aim_species_fraction_arab": "float64",
             "aim_species_fraction_colu": "float64",

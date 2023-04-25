@@ -3,7 +3,7 @@ from abc import abstractmethod
 from collections import Counter
 from itertools import cycle
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -613,7 +613,6 @@ class AnophelesDataResource(
         config_path,
         cohorts_analysis: Optional[str],
         aim_analysis: Optional[str],
-        aim_metadata_columns: Optional[Sequence[str]],
         aim_metadata_dtype: Optional[Mapping[str, Any]],
         site_filters_analysis,
         bokeh_output_notebook,
@@ -647,7 +646,6 @@ class AnophelesDataResource(
             gff_default_attributes=gff_default_attributes,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
-            aim_metadata_columns=aim_metadata_columns,
             aim_metadata_dtype=aim_metadata_dtype,
         )
 

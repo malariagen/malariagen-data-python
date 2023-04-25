@@ -138,14 +138,6 @@ class Ag3(AnophelesDataResource):
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
-            aim_metadata_columns=[
-                "aim_species_fraction_arab",
-                "aim_species_fraction_colu",
-                "aim_species_fraction_colu_no2l",
-                "aim_species_gambcolu_arabiensis",
-                "aim_species_gambiae_coluzzii",
-                "aim_species",
-            ],
             aim_metadata_dtype={
                 "aim_species_fraction_arab": "float64",
                 "aim_species_fraction_colu": "float64",
