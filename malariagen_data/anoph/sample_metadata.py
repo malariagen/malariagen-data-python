@@ -143,12 +143,8 @@ class AnophelesSampleMetadata(AnophelesBase):
 
             return df
 
-        elif isinstance(data, Exception):
-            # Unexpected error.
-            raise data
-
         else:
-            raise TypeError
+            raise data
 
     @doc(
         summary="""
@@ -287,12 +283,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             df = df.astype(self._cohorts_metadata_dtype)
             return df
 
-        elif isinstance(data, Exception):
-            # Unexpected error.
-            raise data
-
         else:
-            raise TypeError
+            raise data
 
     @doc(
         summary="""
@@ -384,12 +376,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             df = df.astype(self._aim_metadata_dtype)
             return df
 
-        elif isinstance(data, Exception):
-            # Unexpected error.
-            raise data
-
         else:
-            raise TypeError
+            raise data
 
     @doc(
         summary="""

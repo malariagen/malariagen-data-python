@@ -555,9 +555,12 @@ def test_count_samples(fixture, api):
     )
 
 
+@pytest.mark.parametrize(
+    "basemap", ["satellite", None, ipyleaflet.basemaps.OpenTopoMap]
+)
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_samples_interactive_map(fixture, api):
-    m = api.plot_samples_interactive_map()
+def test_plot_samples_interactive_map(fixture, api, basemap):
+    m = api.plot_samples_interactive_map(basemap=basemap)
     assert isinstance(m, ipyleaflet.Map)
 
 
