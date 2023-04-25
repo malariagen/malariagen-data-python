@@ -1,10 +1,65 @@
 import io
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
+import ipyleaflet
 import pandas as pd
+import xyzservices
 from numpydoc_decorator import doc
+from typing_extensions import Annotated, TypeAlias
 
 from .base import AnophelesBase, base_params
+
+
+class map_params:
+    center: TypeAlias = Annotated[
+        Tuple[int, int],
+        "Location to center the map.",
+    ]
+    center_default: center = (-2, 20)
+    zoom: TypeAlias = Annotated[int, "Initial zoom level."]
+    zoom_default: zoom = 3
+    basemap: TypeAlias = Annotated[
+        Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
+        """
+        Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
+        basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
+        """,
+    ]
+    basemap_default: basemap = "mapnik"
+    height: TypeAlias = Annotated[
+        Union[int, str], "Height of the map in pixels (px) or other units."
+    ]
+    height_default: height = 500
+    width: TypeAlias = Annotated[
+        Union[int, str], "Width of the map in pixels (px) or other units."
+    ]
+    width_default: width = "100%"
+
+
+def _get_basemap_abbrevs():
+    """Get the dict of basemap abbreviations.
+
+    Returns
+    -------
+    basemap_abbrevs : dict
+        A dictionary where each key is a basemap abbreviation string, e.g. "mapnik",
+        and each value is a corresponding TileProvider, e.g. `ipyleaflet.basemaps.OpenStreetMap.Mapnik`.
+    """
+    import ipyleaflet
+
+    basemap_abbrevs = {
+        "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
+        "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
+        "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
+        "positron": ipyleaflet.basemaps.CartoDB.Positron,
+        "satellite": ipyleaflet.basemaps.Gaode.Satellite,
+        "terrain": ipyleaflet.basemaps.Stamen.Terrain,
+        "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
+        "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
+        "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
+        "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
+    }
+    return basemap_abbrevs
 
 
 class AnophelesSampleMetadata(AnophelesBase):
@@ -489,3 +544,201 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = df_samples.reset_index(drop=True)
 
         return df_samples.copy()
+
+    @doc(
+        summary="""
+            Create a pivot table showing numbers of samples available by space,
+            time and taxon.
+        """,
+        parameters=dict(
+            index="Sample metadata columns to use for the pivot table index.",
+            columns="Sample metadata columns to use for the pivot table columns.",
+        ),
+        returns="Pivot table of sample counts.",
+    )
+    def count_samples(
+        self,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        index: Union[str, Tuple[str, ...]] = (
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "year",
+        ),
+        columns: Union[str, Tuple[str, ...]] = "taxon",
+    ) -> pd.DataFrame:
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        # Create pivot table.
+        df_pivot = df_samples.pivot_table(
+            index=index,
+            columns=columns,
+            values="sample_id",
+            aggfunc="count",
+            fill_value=0,
+        )
+
+        return df_pivot
+
+    @doc(
+        summary="""
+            Plot an interactive map showing sampling locations using ipyleaflet.
+        """,
+        parameters=dict(
+            min_samples="""
+                Minimum number of samples required to show a marker for a given
+                location.
+            """,
+            count_by="""
+                Metadata column to report counts of samples by for each location.
+            """,
+        ),
+        returns="Ipyleaflet map widget.",
+    )
+    def plot_samples_interactive_map(
+        self,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        basemap: map_params.basemap = map_params.basemap_default,
+        center: map_params.center = map_params.center_default,
+        zoom: map_params.zoom = map_params.zoom_default,
+        height: map_params.height = map_params.height_default,
+        width: map_params.width = map_params.width_default,
+        min_samples: int = 1,
+        count_by: str = "taxon",
+    ) -> ipyleaflet.Map:
+        # Normalise height and width to string
+        if isinstance(height, int):
+            height = f"{height}px"
+        if isinstance(width, int):
+            width = f"{width}px"
+
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        # Pivot taxa by locations.
+        location_composite_key = [
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "latitude",
+            "longitude",
+        ]
+        df_pivot = df_samples.pivot_table(
+            index=location_composite_key,
+            columns=count_by,
+            values="sample_id",
+            aggfunc="count",
+            fill_value=0,
+        )
+
+        # Append aggregations to pivot.
+        df_location_aggs = df_samples.groupby(location_composite_key).agg(
+            {
+                "year": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+                "sample_set": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+                "contributor": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
+            }
+        )
+        df_pivot = df_pivot.merge(
+            df_location_aggs, on=location_composite_key, validate="one_to_one"
+        )
+
+        # Handle basemap.
+        basemap_providers_dict = _get_basemap_abbrevs()
+
+        # Determine basemap_provider via basemap
+        if isinstance(basemap, str):
+            # Interpret string
+            # Support case-insensitive basemap abbreviations
+            basemap_str = basemap.lower()
+            if basemap_str not in basemap_providers_dict:
+                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
+            basemap_provider = basemap_providers_dict[basemap_str]
+        elif basemap is None:
+            # Default
+            basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
+        else:
+            # Expect dict or TileProvider or TileLayer
+            basemap_provider = basemap
+
+        # Create a map.
+        samples_map = ipyleaflet.Map(
+            center=center,
+            zoom=zoom,
+            basemap=basemap_provider,
+        )
+        scale_control = ipyleaflet.ScaleControl(position="bottomleft")
+        samples_map.add_control(scale_control)
+        samples_map.layout.height = height
+        samples_map.layout.width = width
+
+        # Add markers.
+        count_factors = df_samples[count_by].dropna().sort_values().unique()
+        for _, row in df_pivot.reset_index().iterrows():
+            title = (
+                f"Location: {row.location} ({row.latitude:.3f}, {row.longitude:.3f})"
+            )
+            title += f"\nAdmin level 2: {row.admin2_name}"
+            title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
+            title += f"\nCountry: {row.country}"
+            title += f"\nYears: {row.year}"
+            title += f"\nSample sets: {row.sample_set}"
+            title += f"\nContributors: {row.contributor}"
+            title += "\nNo. specimens: "
+            all_n = 0
+            for factor in count_factors:
+                # Get the number of samples in this taxon
+                n = row[factor]
+                # Count the number of samples in all taxa
+                all_n += n
+                if n > 0:
+                    title += f"{n} {factor}; "
+            # Only show a marker when there are enough samples
+            if all_n >= min_samples:
+                marker = ipyleaflet.Marker(
+                    location=(row.latitude, row.longitude),
+                    draggable=False,
+                    title=title,
+                )
+                samples_map.add_layer(marker)
+
+        return samples_map
+
+    @doc(
+        summary="""
+            Load a data catalog providing URLs for downloading BAM, VCF and Zarr
+            files for samples in a given sample set.
+        """,
+        returns="One row per sample, columns provide URLs.",
+    )
+    def wgs_data_catalog(self, sample_set: base_params.sample_set):
+        # Look up release for sample set.
+        release = self.lookup_release(sample_set=sample_set)
+        release_path = self._release_to_path(release=release)
+
+        # Load data catalog.
+        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
+        with self._fs.open(path) as f:
+            df = pd.read_csv(f, na_values="")
+
+        # Normalise columns.
+        df = df[
+            [
+                "sample_id",
+                "alignments_bam",
+                "snp_genotypes_vcf",
+                "snp_genotypes_zarr",
+            ]
+        ]
+
+        return df
