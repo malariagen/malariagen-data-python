@@ -482,8 +482,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
         # Set up for caching.
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        cache_key = tuple(sample_sets)
+        prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+        cache_key = tuple(prepped_sample_sets)
 
         try:
             # Attempt to retrieve from the cache.
@@ -491,12 +492,12 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         except KeyError:
             # Build a dataframe from all available metadata.
-            df_samples = self.general_metadata(sample_sets=sample_sets)
+            df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
             if self._aim_analysis:
-                df_aim = self.aim_metadata(sample_sets=sample_sets)
+                df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
                 df_samples = df_samples.merge(df_aim, on="sample_id", sort=False)
             if self._cohorts_analysis:
-                df_cohorts = self.cohorts_metadata(sample_sets=sample_sets)
+                df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
                 df_samples = df_samples.merge(df_cohorts, on="sample_id", sort=False)
 
             # Store sample metadata in the cache.
