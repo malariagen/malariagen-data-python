@@ -31,7 +31,7 @@ jobs:
               uses: actions/cache/restore@v3
               with:
                   path: gcs_cache
-                  key: gcs_cache_notebooks_20230405
+                  key: gcs_cache_notebooks_20230425
 
             - name: Run notebooks
               run: poetry run jupyter nbconvert --execute notebooks/* --inplace
@@ -41,4 +41,4 @@ jobs:
               if: always()
               with:
                   path: gcs_cache
-                  key: gcs_cache_notebooks_20230405
+                  key: gcs_cache_notebooks_20230425

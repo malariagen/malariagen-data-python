@@ -1,5 +1,17 @@
 import json
-from typing import IO, Dict, Final, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    IO,
+    Dict,
+    Final,
+    Iterable,
+    List,
+    Literal,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+)
 
 import bokeh.io
 import pandas as pd
@@ -197,7 +209,11 @@ class AnophelesBase:
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
 
-        # Set up fsspec filesystem.
+        # Set up fsspec filesystem. N.B., we use fsspec here to allow for
+        # accessing different types of storage - fsspec will automatically
+        # detect which type of storage to use based on the URL provided.
+        # E.g., if the URL begins with "gs://" then a GCSFileSystem will
+        # be used to read from Google Cloud Storage.
         if storage_options is None:
             storage_options = dict()
         self._fs, self._base_path = init_filesystem(url, **storage_options)
@@ -222,10 +238,52 @@ class AnophelesBase:
         self._cache_releases: Optional[Tuple[str, ...]] = None
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
+        self._cache_files: Dict[str, bytes] = dict()
 
-    def open_file(self, path):
+    def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
+
+    def read_files(
+        self,
+        paths: Iterable[str],
+        on_error: Literal["raise", "omit", "return"] = "return",
+    ) -> Mapping[str, bytes]:
+        # Check for any cached files.
+        files = {
+            path: data for path, data in self._cache_files.items() if path in paths
+        }
+        paths_not_cached = [p for p in paths if p not in self._cache_files]
+
+        if paths_not_cached:
+            # Prepend the base path.
+            prefix = self._base_path + "/"
+            full_paths = [prefix + path for path in paths_not_cached]
+
+            # Retrieve all files. N.B., depending on what type of storage is
+            # being used, the cat() function may be able to read multiple files
+            # concurrently. E.g., this is true if the file system is a
+            # GCSFileSystem, which achieves concurrency by using async I/O under the
+            # hood. This is a useful performance optimisation, because reading a
+            # file from GCS incurs some latency, and so reading many small files
+            # from GCS can be slow if files are not read concurrently. Hence we
+            # want to make use of cat() here and provide paths for all files to
+            # read concurrently. For more information see:
+            # https://filesystem-spec.readthedocs.io/en/latest/async.html
+            full_path_files = self._fs.cat(full_paths, on_error=on_error)
+
+            # Strip off the prefix.
+            retrieved_files = {
+                k.split(prefix, 1)[1]: v for k, v in full_path_files.items()
+            }
+
+            # Update the cache.
+            self._cache_files.update(retrieved_files)
+
+            # Add retrieved files to the result.
+            files.update(retrieved_files)
+
+        return files
 
     @property
     def config(self) -> Dict:

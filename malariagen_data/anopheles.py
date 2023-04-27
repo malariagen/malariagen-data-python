@@ -12,14 +12,12 @@ import bokeh.palettes
 import bokeh.plotting
 import dask.array as da
 import igv_notebook
-import ipyleaflet
 import numba
 import numpy as np
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import xarray as xr
-import xyzservices
 import zarr
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
@@ -30,6 +28,7 @@ from . import veff
 from .anoph.base import DEFAULT, AnophelesBase, base_params
 from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
+from .anoph.sample_metadata import AnophelesSampleMetadata, map_params
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
@@ -188,32 +187,6 @@ class frq_params:
         `gene_cnv_frequencies_advanced()`.
         """,
     ]
-
-
-class map_params:
-    center: TypeAlias = Annotated[
-        Tuple[int, int],
-        "Location to center the map.",
-    ]
-    center_default: center = (-2, 20)
-    zoom: TypeAlias = Annotated[int, "Initial zoom level."]
-    zoom_default: zoom = 3
-    basemap: TypeAlias = Annotated[
-        Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
-        """
-        Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
-        basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
-        """,
-    ]
-    basemap_default: basemap = "mapnik"
-    height: TypeAlias = Annotated[
-        Union[int, str], "Height of the map in pixels (px) or other units."
-    ]
-    height_default: height = 500
-    width: TypeAlias = Annotated[
-        Union[int, str], "Width of the map in pixels (px) or other units."
-    ]
-    width_default: width = "100%"
 
 
 class het_params:
@@ -627,6 +600,7 @@ class dash_params:
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
     AnophelesBase,
@@ -637,7 +611,9 @@ class AnophelesDataResource(
         self,
         url,
         config_path,
-        cohorts_analysis,
+        cohorts_analysis: Optional[str],
+        aim_analysis: Optional[str],
+        aim_metadata_dtype: Optional[Mapping[str, Any]],
         site_filters_analysis,
         bokeh_output_notebook,
         results_cache,
@@ -668,6 +644,9 @@ class AnophelesDataResource(
             storage_options=storage_options,
             gff_gene_type=gff_gene_type,
             gff_default_attributes=gff_default_attributes,
+            cohorts_analysis=cohorts_analysis,
+            aim_analysis=aim_analysis,
+            aim_metadata_dtype=aim_metadata_dtype,
         )
 
         # set up attributes
@@ -675,16 +654,12 @@ class AnophelesDataResource(
 
         # set up caches
         # TODO review type annotations here, maybe can tighten
-        self._cache_general_metadata: Dict = dict()
         self._cache_site_filters: Dict = dict()
         self._cache_snp_sites = None
         self._cache_snp_genotypes: Dict = dict()
         self._cache_annotator = None
-        self._cache_genome_features: Dict = dict()
-        self._cache_sample_metadata: Dict = dict()
         self._cache_site_annotations = None
         self._cache_locate_site_class: Dict = dict()
-        self._cache_cohort_metadata: Dict = dict()
         self._cache_haplotypes: Dict = dict()
         self._cache_haplotype_sites: Dict = dict()
 
@@ -694,20 +669,12 @@ class AnophelesDataResource(
 
         # set analysis versions
 
-        if cohorts_analysis is None:
-            self._cohorts_analysis = self.config.get("DEFAULT_COHORTS_ANALYSIS")
-        else:
-            self._cohorts_analysis = cohorts_analysis
-
         if site_filters_analysis is None:
             self._site_filters_analysis = self.config.get(
                 "DEFAULT_SITE_FILTERS_ANALYSIS"
             )
         else:
             self._site_filters_analysis = site_filters_analysis
-
-        # set up extra metadata
-        self._extra_metadata: List = []
 
     # Start of @property
 
@@ -789,11 +756,6 @@ class AnophelesDataResource(
                 f"Invalid site mask, must be one of f{self.site_mask_ids}."
             )
         return site_mask
-
-    @abstractmethod
-    def _sample_metadata(self, sample_set):
-        # Not all children have species calls or cohorts data.
-        raise NotImplementedError("Must override _sample_metadata")
 
     @abstractmethod
     def _transcript_to_gene_name(self, transcript):
@@ -1456,138 +1418,6 @@ class AnophelesDataResource(
         # progress doesn't mix well with debug logging
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
-
-    def _read_general_metadata(self, *, sample_set):
-        """Read metadata for a single sample set."""
-        try:
-            df = self._cache_general_metadata[sample_set]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/samples.meta.csv"
-            dtype = {
-                "sample_id": object,
-                "partner_sample_id": object,
-                "contributor": object,
-                "country": object,
-                "location": object,
-                "year": "int64",
-                "month": "int64",
-                "latitude": "float64",
-                "longitude": "float64",
-                "sex_call": object,
-            }
-            with self._fs.open(path) as f:
-                df = pd.read_csv(f, na_values="", dtype=dtype)
-
-            # ensure all column names are lower case
-            df.columns = [c.lower() for c in df.columns]
-
-            # add a couple of columns for convenience
-            df["sample_set"] = sample_set
-            df["release"] = release
-
-            # derive quarter from month
-            df["quarter"] = df.apply(
-                lambda row: ((row.month - 1) // 3) + 1 if row.month > 0 else -1,
-                axis="columns",
-            )
-
-            self._cache_general_metadata[sample_set] = df
-        return df.copy()
-
-    @doc(
-        summary="Access sample metadata for one or more sample sets.",
-        returns="A dataframe of sample metadata, one row per sample.",
-    )
-    def sample_metadata(
-        self,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-    ) -> pd.DataFrame:
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        cache_key = tuple(sample_sets)
-
-        try:
-            df_samples = self._cache_sample_metadata[cache_key]
-
-        except KeyError:
-            # concatenate multiple sample sets
-            dfs = []
-            # there can be some delay here due to network latency, so show progress
-            sample_sets_iterator = self._progress(
-                sample_sets, desc="Load sample metadata"
-            )
-            for s in sample_sets_iterator:
-                df = self._sample_metadata(sample_set=s)
-                dfs.append(df)
-            df_samples = pd.concat(dfs, axis=0, ignore_index=True)
-            self._cache_sample_metadata[cache_key] = df_samples
-
-        # add extra metadata
-        for on, data in self._extra_metadata:
-            df_samples = df_samples.merge(data, how="left", on=on)
-
-        # for convenience, apply a query
-        if sample_query is not None:
-            if isinstance(sample_query, str):
-                # assume a pandas query string
-                df_samples = df_samples.query(sample_query)
-            else:
-                # assume it is an indexer
-                df_samples = df_samples.iloc[sample_query]
-            df_samples = df_samples.reset_index(drop=True)
-
-        return df_samples.copy()
-
-    @doc(
-        summary="""
-            Add extra sample metadata, e.g., including additional columns
-            which you would like to use to query and group samples.
-        """,
-        parameters=dict(
-            data="""
-                A data frame with one row per sample. Must include either a
-                "sample_id" or "partner_sample_id" column.
-            """,
-            on="""
-                Name of column to use when merging with sample metadata.
-            """,
-        ),
-        notes="""
-            The values in the column containing sample identifiers must be
-            unique.
-        """,
-    )
-    def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
-        # check parameters
-        if not isinstance(data, pd.DataFrame):
-            raise TypeError("`data` parameter must be a pandas DataFrame")
-        if on not in data.columns:
-            raise ValueError(f"dataframe does not contain column {on!r}")
-        if on not in {"sample_id", "partner_sample_id"}:
-            raise ValueError(
-                "`on` parameter must be either 'sample_id' or 'partner_sample_id'"
-            )
-
-        # check for uniqueness
-        if not data[on].is_unique:
-            raise ValueError(f"column {on!r} does not have unique values")
-
-        # check there are matching samples
-        df_samples = self.sample_metadata()
-        loc_isec = data[on].isin(df_samples[on])
-        if not loc_isec.any():
-            raise ValueError("no matching samples found")
-
-        # store extra metadata
-        self._extra_metadata.append((on, data.copy()))
-
-    @doc(
-        summary="Clear any extra metadata previously added",
-    )
-    def clear_extra_metadata(self):
-        self._extra_metadata = []
 
     def _site_filters(
         self,
@@ -3315,37 +3145,6 @@ class AnophelesDataResource(
 
     @doc(
         summary="""
-            Load a data catalog providing URLs for downloading BAM, VCF and Zarr
-            files for samples in a given sample set.
-        """,
-        returns="One row per sample, columns provide URLs.",
-    )
-    def wgs_data_catalog(self, sample_set: base_params.sample_set):
-        debug = self._log.debug
-
-        debug("look up release for sample set")
-        release = self.lookup_release(sample_set=sample_set)
-        release_path = self._release_to_path(release=release)
-
-        debug("load data catalog")
-        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
-        with self._fs.open(path) as f:
-            df = pd.read_csv(f, na_values="")
-
-        debug("normalise columns")
-        df = df[
-            [
-                "sample_id",
-                "alignments_bam",
-                "snp_genotypes_vcf",
-                "snp_genotypes_zarr",
-            ]
-        ]
-
-        return df
-
-    @doc(
-        summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
             the selected genome region and samples.
         """,
@@ -3802,93 +3601,6 @@ class AnophelesDataResource(
         df_snps.attrs["title"] = title
 
         return df_snps
-
-    def _read_cohort_metadata(self, *, sample_set):
-        """Read cohort metadata for a single sample set."""
-        try:
-            df = self._cache_cohort_metadata[sample_set]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path_prefix = f"{self._base_path}/{release_path}/metadata"
-            path = f"{path_prefix}/cohorts_{self._cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            # N.B., not all cohort metadata files exist, need to handle errors
-            # N.B., allow a broad exception here, because it seems a variety
-            # of different exceptions may be thrown
-            # noinspection PyBroadException
-            try:
-                with self._fs.open(path) as f:
-                    df = pd.read_csv(f, na_values="")
-
-                # ensure all column names are lower case
-                df.columns = [c.lower() for c in df.columns]
-
-                # rename some columns for consistent naming
-                df.rename(
-                    columns={
-                        "adm1_iso": "admin1_iso",
-                        "adm1_name": "admin1_name",
-                        "adm2_name": "admin2_name",
-                    },
-                    inplace=True,
-                )
-            except Exception:
-                # Specify cohort_cols
-                if self._cohorts_analysis < "20230223":
-                    cohort_cols = (
-                        "country_iso",
-                        "admin1_name",
-                        "admin1_iso",
-                        "admin2_name",
-                        "taxon",
-                        "cohort_admin1_year",
-                        "cohort_admin1_month",
-                        "cohort_admin2_year",
-                        "cohort_admin2_month",
-                    )
-                # cohorts analyses from "20230223" (will) include quarter columns
-                else:
-                    cohort_cols = (
-                        "country_iso",
-                        "admin1_name",
-                        "admin1_iso",
-                        "admin2_name",
-                        "taxon",
-                        "cohort_admin1_year",
-                        "cohort_admin1_month",
-                        "cohort_admin1_quarter",
-                        "cohort_admin2_year",
-                        "cohort_admin2_month",
-                        "cohort_admin2_quarter",
-                    )
-
-                # Get sample ids as an index via general metadata (has caching)
-                df_general = self._read_general_metadata(sample_set=sample_set)
-                df_general.set_index("sample_id", inplace=True)
-
-                # Create a blank DataFrame with cohort_cols and sample_id index
-                df = pd.DataFrame(columns=cohort_cols, index=df_general.index.copy())
-
-                # Revert sample_id index to column
-                df.reset_index(inplace=True)
-
-            self._cache_cohort_metadata[sample_set] = df
-        return df.copy()
-
-    @doc(
-        summary="Access cohorts metadata for one or more sample sets.",
-        returns="A dataframe of cohort metadata, one row per sample.",
-    )
-    def sample_cohorts(
-        self, sample_sets: Optional[base_params.sample_sets] = None
-    ) -> pd.DataFrame:
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-
-        # concatenate multiple sample sets
-        dfs = [self._read_cohort_metadata(sample_set=s) for s in sample_sets]
-        df = pd.concat(dfs, axis=0, ignore_index=True)
-
-        return df
 
     @doc(
         summary="""
@@ -4432,48 +4144,6 @@ class AnophelesDataResource(
         df_stats = pd.DataFrame(all_stats)
 
         return df_stats
-
-    @doc(
-        summary="""
-            Create a pivot table showing numbers of samples available by space,
-            time and taxon.
-        """,
-        parameters=dict(
-            index="Sample metadata columns to use for the pivot table index.",
-            columns="Sample metadata columns to use for the pivot table columns.",
-        ),
-        returns="Pivot table of sample counts.",
-    )
-    def count_samples(
-        self,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        index: Union[str, Tuple[str, ...]] = (
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
-            "year",
-        ),
-        columns: Union[str, Tuple[str, ...]] = "taxon",
-    ) -> pd.DataFrame:
-        debug = self._log.debug
-
-        debug("load sample metadata")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        debug("create pivot table")
-        df_pivot = df_samples.pivot_table(
-            index=index,
-            columns=columns,
-            values="sample_id",
-            aggfunc="count",
-            fill_value=0,
-        )
-
-        return df_pivot
 
     @doc(
         summary="""
@@ -5292,133 +4962,6 @@ class AnophelesDataResource(
             **plot_kwargs,
         )
         fig.show()
-
-    @doc(
-        summary="""
-            Plot an interactive map showing sampling locations using ipyleaflet.
-        """,
-        parameters=dict(
-            min_samples="""
-                Minimum number of samples required to show a marker for a given
-                location.
-            """,
-        ),
-        returns="Ipyleaflet map widget.",
-    )
-    def plot_samples_interactive_map(
-        self,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        basemap: map_params.basemap = map_params.basemap_default,
-        center: map_params.center = map_params.center_default,
-        zoom: map_params.zoom = map_params.zoom_default,
-        min_samples: int = 1,
-        height: map_params.height = map_params.height_default,
-        width: map_params.width = map_params.width_default,
-    ) -> ipyleaflet.Map:
-        debug = self._log.debug
-
-        # normalise height and width to string
-        if isinstance(height, int):
-            height = f"{height}px"
-        if isinstance(width, int):
-            width = f"{width}px"
-
-        debug("load sample metadata")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        debug("pivot taxa by locations")
-        location_composite_key = [
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
-            "location",
-            "latitude",
-            "longitude",
-        ]
-        pivot_location_taxon = df_samples.pivot_table(
-            index=location_composite_key,
-            columns=["taxon"],
-            values="sample_id",
-            aggfunc="count",
-            fill_value=0,
-        )
-
-        debug("append aggregations to pivot")
-        df_location_aggs = df_samples.groupby(location_composite_key).agg(
-            {
-                "year": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
-                "sample_set": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
-                "contributor": lambda x: ", ".join(str(y) for y in sorted(x.unique())),
-            }
-        )
-        pivot_location_taxon = pivot_location_taxon.merge(
-            df_location_aggs, on=location_composite_key, validate="one_to_one"
-        )
-
-        debug("handle basemap")
-        basemap_providers_dict = _get_basemap_abbrevs()
-
-        # Determine basemap_provider via basemap
-        if isinstance(basemap, str):
-            # Interpret string
-            # Support case-insensitive basemap abbreviations
-            basemap_str = basemap.lower()
-            if basemap_str not in basemap_providers_dict:
-                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
-            basemap_provider = basemap_providers_dict[basemap_str]
-        elif basemap is None:
-            # Default
-            basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
-        else:
-            # Expect dict or TileProvider or TileLayer
-            basemap_provider = basemap
-
-        debug("create a map")
-        samples_map = ipyleaflet.Map(
-            center=center,
-            zoom=zoom,
-            basemap=basemap_provider,
-        )
-        scale_control = ipyleaflet.ScaleControl(position="bottomleft")
-        samples_map.add_control(scale_control)
-        samples_map.layout.height = height
-        samples_map.layout.width = width
-
-        debug("add markers")
-        taxa = df_samples["taxon"].dropna().sort_values().unique()
-        for _, row in pivot_location_taxon.reset_index().iterrows():
-            title = (
-                f"Location: {row.location} ({row.latitude:.3f}, {row.longitude:.3f})"
-            )
-            title += f"\nAdmin level 2: {row.admin2_name}"
-            title += f"\nAdmin level 1: {row.admin1_name} ({row.admin1_iso})"
-            title += f"\nCountry: {row.country}"
-            title += f"\nYears: {row.year}"
-            title += f"\nSample sets: {row.sample_set}"
-            title += f"\nContributors: {row.contributor}"
-            title += "\nNo. specimens: "
-            all_n = 0
-            for taxon in taxa:
-                # Get the number of samples in this taxon
-                n = row[taxon]
-                # Count the number of samples in all taxa
-                all_n += n
-                if n > 0:
-                    title += f"{n} {taxon}; "
-            # Only show a marker when there are enough samples
-            if all_n >= min_samples:
-                marker = ipyleaflet.Marker(
-                    location=(row.latitude, row.longitude),
-                    draggable=False,
-                    title=title,
-                )
-                samples_map.add_layer(marker)
-
-        return samples_map
 
     @doc(
         summary="""
@@ -7926,29 +7469,3 @@ def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     out = np.array([_h1x(ha[i:j], hb[i:j]) for i, j in windows])
 
     return out
-
-
-def _get_basemap_abbrevs():
-    """Get the dict of basemap abbreviations.
-
-    Returns
-    -------
-    basemap_abbrevs : dict
-        A dictionary where each key is a basemap abbreviation string, e.g. "mapnik",
-        and each value is a corresponding TileProvider, e.g. `ipyleaflet.basemaps.OpenStreetMap.Mapnik`.
-    """
-    import ipyleaflet
-
-    basemap_abbrevs = {
-        "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
-        "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
-        "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
-        "positron": ipyleaflet.basemaps.CartoDB.Positron,
-        "satellite": ipyleaflet.basemaps.Gaode.Satellite,
-        "terrain": ipyleaflet.basemaps.Stamen.Terrain,
-        "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
-        "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
-        "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
-        "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
-    }
-    return basemap_abbrevs

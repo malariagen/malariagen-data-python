@@ -123,6 +123,7 @@ def test_releases(
     ],
 )
 def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
+    # TODO Migrate this test to tests/anoph for faster execution.
     anoph = setup_subclass_cached(subclass)
     df_sample_sets_major = anoph.sample_sets(release=major_release)
 
@@ -181,130 +182,6 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
     df_default = anoph.sample_metadata()
     df_all = anoph.sample_metadata(sample_sets=anoph.releases)
     assert_frame_equal(df_default, df_all)
-
-
-@pytest.mark.parametrize(
-    "subclass",
-    [
-        Ag3,
-        Af1,
-    ],
-)
-def test_extra_metadata_errors(subclass):
-    anoph = setup_subclass_cached(subclass)
-
-    # bad type
-    with pytest.raises(TypeError):
-        anoph.add_extra_metadata(data="foo")
-
-    bad_data = pd.DataFrame({"foo": [1, 2, 3], "bar": ["a", "b", "c"]})
-
-    # missing sample identifier column
-    with pytest.raises(ValueError):
-        anoph.add_extra_metadata(data=bad_data)
-    # invalid sample identifier column
-    with pytest.raises(ValueError):
-        anoph.add_extra_metadata(data=bad_data, on="foo")
-
-    # duplicate identifiers
-    df_samples = anoph.sample_metadata()
-    sample_id = df_samples["sample_id"].values
-    data_with_dups = pd.DataFrame(
-        {
-            "sample_id": [sample_id[0], sample_id[0], sample_id[1]],
-            "foo": [1, 2, 3],
-            "bar": ["a", "b", "c"],
-        }
-    )
-    with pytest.raises(ValueError):
-        anoph.add_extra_metadata(data=data_with_dups)
-
-    # no matching samples
-    data_no_matches = pd.DataFrame(
-        {"sample_id": ["x", "y", "z"], "foo": [1, 2, 3], "bar": ["a", "b", "c"]}
-    )
-    with pytest.raises(ValueError):
-        anoph.add_extra_metadata(data=data_no_matches)
-
-
-@pytest.mark.parametrize(
-    "subclass",
-    [
-        Ag3,
-        Af1,
-    ],
-)
-@pytest.mark.parametrize(
-    "on",
-    [
-        "sample_id",
-        "partner_sample_id",
-    ],
-)
-def test_extra_metadata(subclass, on):
-    anoph = setup_subclass_cached(subclass)
-
-    # load vanilla metadata
-    df_samples = anoph.sample_metadata()
-    sample_id = df_samples[on].values
-
-    # partially overlapping data
-    extra1 = pd.DataFrame(
-        {
-            on: [sample_id[0], sample_id[1], "spam"],
-            "foo": [1, 2, 3],
-            "bar": ["a", "b", "c"],
-        }
-    )
-    extra2 = pd.DataFrame(
-        {
-            on: [sample_id[2], sample_id[3], "eggs"],
-            "baz": [True, False, True],
-            "qux": [42, 84, 126],
-        }
-    )
-    anoph.add_extra_metadata(data=extra1, on=on)
-    anoph.add_extra_metadata(data=extra2, on=on)
-    df_samples_extra = anoph.sample_metadata()
-    assert "foo" in df_samples_extra.columns
-    assert "bar" in df_samples_extra.columns
-    assert "baz" in df_samples_extra.columns
-    assert "qux" in df_samples_extra.columns
-    assert df_samples_extra.columns.tolist() == (
-        df_samples.columns.tolist() + ["foo", "bar", "baz", "qux"]
-    )
-    assert len(df_samples_extra) == len(df_samples)
-    df_samples_extra = df_samples_extra.set_index(on)
-    rec = df_samples_extra.loc[sample_id[0]]
-    assert rec["foo"] == 1
-    assert rec["bar"] == "a"
-    assert np.isnan(rec["baz"])
-    assert np.isnan(rec["qux"])
-    rec = df_samples_extra.loc[sample_id[1]]
-    assert rec["foo"] == 2
-    assert rec["bar"] == "b"
-    assert np.isnan(rec["baz"])
-    assert np.isnan(rec["qux"])
-    rec = df_samples_extra.loc[sample_id[2]]
-    assert np.isnan(rec["foo"])
-    assert np.isnan(rec["bar"])
-    assert rec["baz"]
-    assert rec["qux"] == 42
-    rec = df_samples_extra.loc[sample_id[3]]
-    assert np.isnan(rec["foo"])
-    assert np.isnan(rec["bar"])
-    assert not rec["baz"]
-    assert rec["qux"] == 84
-    with pytest.raises(KeyError):
-        _ = df_samples_extra.loc["spam"]
-    with pytest.raises(KeyError):
-        _ = df_samples_extra.loc["eggs"]
-
-    # clear extra metadata
-    anoph.clear_extra_metadata()
-    df_samples_cleared = anoph.sample_metadata()
-    assert df_samples_cleared.columns.tolist() == df_samples.columns.tolist()
-    assert len(df_samples_cleared) == len(df_samples)
 
 
 @pytest.mark.parametrize(
@@ -567,7 +444,7 @@ def test_snp_allele_frequencies__str_cohorts(
         drop_invariant=True,
         effects=False,
     )
-    df_coh = anoph.sample_cohorts(sample_sets=sample_sets)
+    df_coh = anoph.cohorts_metadata(sample_sets=sample_sets)
     coh_nm = "cohort_" + cohorts
     coh_counts = df_coh[coh_nm].dropna().value_counts()
     cohort_labels = coh_counts[coh_counts >= min_cohort_size].index.to_list()

@@ -431,7 +431,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
         drop_invariant=True,
         effects=True,
     )
-    df_coh = af1.sample_cohorts(sample_sets="1.0")
+    df_coh = af1.cohorts_metadata(sample_sets="1.0")
     coh_nm = "cohort_" + cohorts
     coh_counts = df_coh[coh_nm].dropna().value_counts()
     cohort_labels = coh_counts[coh_counts >= min_cohort_size].index.to_list()
@@ -649,7 +649,7 @@ def test_haplotypes__sample_query(sample_query):
         ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
     ],
 )
-def test_sample_cohorts(sample_sets):
+def test_cohorts_metadata(sample_sets):
     af1 = setup_af1(cohorts_analysis="20221129")
 
     expected_cols = (
@@ -665,7 +665,7 @@ def test_sample_cohorts(sample_sets):
         "cohort_admin2_month",
     )
 
-    df_coh = af1.sample_cohorts(sample_sets=sample_sets)
+    df_coh = af1.cohorts_metadata(sample_sets=sample_sets)
     df_meta = af1.sample_metadata(sample_sets=sample_sets)
 
     assert tuple(df_coh.columns) == expected_cols

@@ -1,8 +1,8 @@
 import json
-import random
 import shutil
 import string
 from pathlib import Path
+from random import choice, choices, randint
 
 import numpy as np
 import pandas as pd
@@ -146,9 +146,9 @@ class Gff3Simulator:
         # Simulate genes.
         for gene_ix in range(self.max_genes):
             gene_id = f"gene-{contig}-{gene_ix}"
-            strand = random.choice(["+", "-"])
-            inter_size = random.randint(self.inter_size_low, self.inter_size_high)
-            gene_size = random.randint(self.gene_size_low, self.gene_size_high)
+            strand = choice(["+", "-"])
+            inter_size = randint(self.inter_size_low, self.inter_size_high)
+            gene_size = randint(self.gene_size_low, self.gene_size_high)
             if strand == "+":
                 gene_start = cur_fwd + inter_size
             else:
@@ -161,7 +161,7 @@ class Gff3Simulator:
             gene_attrs = f"ID={gene_id}"
             for attr in self.attrs:
                 random_str = "".join(
-                    random.choices(string.ascii_uppercase + string.digits, k=5)
+                    choices(string.ascii_uppercase + string.digits, k=5)
                 )
                 gene_attrs += f";{attr}={random_str}"
             gene = (
@@ -207,7 +207,7 @@ class Gff3Simulator:
         # accurate in real data.
 
         for transcript_ix in range(
-            random.randint(self.n_transcripts_low, self.n_transcripts_high)
+            randint(self.n_transcripts_low, self.n_transcripts_high)
         ):
             transcript_id = f"transcript-{contig}-{gene_ix}-{transcript_ix}"
             transcript_start = gene_start
@@ -255,16 +255,16 @@ class Gff3Simulator:
         transcript_size = transcript_end - transcript_start
         exons = []
         exon_end = transcript_start
-        for exon_ix in range(random.randint(self.n_exons_low, self.n_exons_high)):
+        for exon_ix in range(randint(self.n_exons_low, self.n_exons_high)):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
-            intron_size = random.randint(
+            intron_size = randint(
                 self.intron_size_low, min(transcript_size, self.intron_size_high)
             )
             exon_start = exon_end + intron_size
             if exon_start >= transcript_end:
                 # Stop making exons, no more space left in the transcript.
                 break
-            exon_size = random.randint(self.exon_size_low, self.exon_size_high)
+            exon_size = randint(self.exon_size_low, self.exon_size_high)
             exon_end = min(exon_start + exon_size, transcript_end)
             assert exon_end > exon_start
             exon = (
@@ -300,7 +300,7 @@ class Gff3Simulator:
             else:
                 feature_type = self.cds_type
                 # Cheat a little, random phase.
-                phase = random.choice([1, 2, 3])
+                phase = choice([1, 2, 3])
             feature = (
                 contig,
                 self.source,
@@ -316,8 +316,10 @@ class Gff3Simulator:
 
 
 class Ag3Simulator:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, fixture_dir):
+        self.fixture_dir = fixture_dir
+        self.bucket = "vo_agam_release"
+        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -334,6 +336,7 @@ class Ag3Simulator:
         self.init_pre_release_manifest()
         self.init_genome_sequence()
         self.init_genome_features()
+        self.init_metadata()
 
     def init_config(self):
         self.config = {
@@ -346,7 +349,7 @@ class Ag3Simulator:
             "GENOME_REF_NAME": "Anopheles gambiae (PEST)",
             "CONTIGS": ["2R", "2L", "3R", "3L", "X"],
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr",
-            "DEFAULT_SPECIES_ANALYSIS": "aim_20220528",
+            "DEFAULT_AIM_ANALYSIS": "20220528",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
             "DEFAULT_COHORTS_ANALYSIS": "20230223",
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
@@ -370,7 +373,7 @@ class Ag3Simulator:
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [31, 42],
+                "sample_count": [randint(10, 81), randint(10, 100)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -386,10 +389,9 @@ class Ag3Simulator:
         manifest = pd.DataFrame(
             {
                 "sample_set": [
-                    "1177-VO-ML-LEHMANN-VMF00015",
-                    "1237-VO-BJ-DJOGBENOU-VMF00050",
+                    "1177-VO-ML-LEHMANN-VMF00004",
                 ],
-                "sample_count": [23, 27],
+                "sample_count": [randint(10, 100)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -399,6 +401,7 @@ class Ag3Simulator:
         # Here we simulate a reference genome in a simple way
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
+        # TODO Use accurate base composition.
         path = self.path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
             path=path, contigs=self.contigs, low=100_000, high=200_000
@@ -413,10 +416,132 @@ class Ag3Simulator:
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
 
+    def write_metadata(self, release, release_path, sample_set, aim=True, cohorts=True):
+        # Here we take the approach of using some of the real metadata,
+        # but truncating it to the number of samples included in the
+        # simulated data resource.
+
+        # Look up the number of samples in this sample set within the
+        # simulated data resource.
+        n_samples_sim = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+
+        # Create general metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_agam_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        if aim:
+            # Create AIM metadata by sampling from some real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_agam_release"
+                / release_path
+                / "metadata"
+                / "species_calls_aim_20220528"
+                / sample_set
+                / "samples.species_aim.csv"
+            )
+            dst_path = (
+                self.path
+                / release_path
+                / "metadata"
+                / "species_calls_aim_20220528"
+                / sample_set
+                / "samples.species_aim.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+                for line in src.readlines()[: n_samples_sim + 1]:
+                    print(line, file=dst)
+
+        if cohorts:
+            # Create cohorts metadata by sampling from some real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_agam_release"
+                / release_path
+                / "metadata"
+                / "cohorts_20230223"
+                / sample_set
+                / "samples.cohorts.csv"
+            )
+            dst_path = (
+                self.path
+                / release_path
+                / "metadata"
+                / "cohorts_20230223"
+                / sample_set
+                / "samples.cohorts.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+                for line in src.readlines()[: n_samples_sim + 1]:
+                    print(line, file=dst)
+
+        # Create data catalog by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_agam_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+    def init_metadata(self):
+        self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
+        self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-BF-A")
+        # Simulate situation where AIM and cohorts metadata are missing,
+        # do we correctly fill?
+        self.write_metadata(
+            release="3.1",
+            release_path="v3.1",
+            sample_set="1177-VO-ML-LEHMANN-VMF00004",
+            aim=False,
+            cohorts=False,
+        )
+
 
 class Af1Simulator:
-    def __init__(self, path):
-        self.path = path
+    def __init__(self, fixture_dir):
+        self.fixture_dir = fixture_dir
+        self.bucket = "vo_afun_release"
+        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
         self.url = self.path.as_uri()
 
         # Clear out the fixture directory.
@@ -432,6 +557,7 @@ class Af1Simulator:
         self.init_public_release_manifest()
         self.init_genome_sequence()
         self.init_genome_features()
+        self.init_metadata()
 
     def init_config(self):
         self.config = {
@@ -501,6 +627,103 @@ class Af1Simulator:
         )
         self.genome_features = simulator.simulate_gff(path=path)
 
+    def write_metadata(self, release, release_path, sample_set):
+        # Here we take the approach of using some of the real metadata,
+        # but truncating it to the number of samples included in the
+        # simulated data resource.
+
+        # Look up the number of samples in this sample set within the
+        # simulated data resource.
+        n_samples_sim = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+
+        # Create general metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        # Create cohorts metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / release_path
+            / "metadata"
+            / "cohorts_20221129"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "cohorts_20221129"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        # Create data catalog by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path = (
+            self.path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+    def init_metadata(self):
+        self.write_metadata(
+            release="1.0", release_path="v1.0", sample_set="1229-VO-GH-DADZIE-VMF00095"
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1230-VO-GA-CF-AYALA-VMF00045",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1231-VO-MULTI-WONDJI-VMF00043",
+        )
+
 
 # For the following data fixtures we will use the "session" scope
 # so that the fixture data will be created only once per test
@@ -516,13 +739,9 @@ class Af1Simulator:
 
 @pytest.fixture(scope="session")
 def ag3_sim_fixture(fixture_dir):
-    bucket = "vo_agam_release"
-    path = (fixture_dir / "simulated" / bucket).resolve()
-    return Ag3Simulator(path=path)
+    return Ag3Simulator(fixture_dir=fixture_dir)
 
 
 @pytest.fixture(scope="session")
 def af1_sim_fixture(fixture_dir):
-    bucket = "vo_afun_release"
-    path = (fixture_dir / "simulated" / bucket).resolve()
-    return Af1Simulator(path=path)
+    return Af1Simulator(fixture_dir=fixture_dir)
