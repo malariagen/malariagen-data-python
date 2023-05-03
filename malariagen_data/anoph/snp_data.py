@@ -26,7 +26,7 @@ class AnophelesSnpData(AnophelesSampleMetadata):
         self._site_filters_analysis_override = site_filters_analysis
 
         # These will vary between data resources.
-        self._site_mask_ids = site_mask_ids
+        self._site_mask_ids = site_mask_ids or ()
         self._default_site_mask = default_site_mask
 
         # Set up caches.
@@ -44,7 +44,7 @@ class AnophelesSnpData(AnophelesSampleMetadata):
             return self.config.get("DEFAULT_SITE_FILTERS_ANALYSIS")
 
     @property
-    def site_mask_ids(self) -> Optional[Tuple[str, ...]]:
+    def site_mask_ids(self) -> Tuple[str, ...]:
         """Identifiers for the different site masks that are available.
         These are values than can be used for the `site_mask` parameter in any
         method making using of SNP data.
@@ -52,17 +52,18 @@ class AnophelesSnpData(AnophelesSampleMetadata):
         """
         return self._site_mask_ids
 
-    def _prep_site_mask_param(self, *, site_mask: base_params.site_mask):
+    def _prep_site_mask_param(self, *, site_mask: Optional[base_params.site_mask]):
         if site_mask is None:
-            # allowed
-            pass
+            # This is allowed, it means don't apply any site mask to the data.
+            site_mask_prepped = None
         elif site_mask == DEFAULT:
-            site_mask = self._default_site_mask
+            # Use whatever is the default site mask for this data resource.
+            site_mask_prepped = self._default_site_mask
         elif site_mask not in self.site_mask_ids:
             raise ValueError(
                 f"Invalid site mask, must be one of f{self.site_mask_ids}."
             )
-        return site_mask
+        return site_mask_prepped
 
     @doc(
         summary="Open SNP sites zarr",
