@@ -18,7 +18,6 @@ G123_GWSS_CACHE_NAME = "af1_g123_gwss_v1"
 G123_CALIBRATION_CACHE_NAME = "af1_g123_calibration_v1"
 H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
-DEFAULT_SITE_MASK = "funestus"
 
 
 class Af1(AnophelesDataResource):
@@ -83,8 +82,6 @@ class Af1(AnophelesDataResource):
     _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
-    site_mask_ids = ("funestus",)
-    _default_site_mask = DEFAULT_SITE_MASK
     phasing_analysis_ids = ("funestus",)
     _default_phasing_analysis = "funestus"
 
@@ -109,6 +106,8 @@ class Af1(AnophelesDataResource):
             aim_analysis=None,
             aim_metadata_dtype=None,
             site_filters_analysis=site_filters_analysis,
+            site_mask_ids=("funestus",),
+            default_site_mask="funestus",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,

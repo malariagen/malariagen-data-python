@@ -286,6 +286,12 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
+    def _require_cohorts_analysis(self):
+        if not self._cohorts_analysis:
+            raise NotImplementedError(
+                "Cohorts data not available for this data resource."
+            )
+
     @doc(
         summary="""
             Access cohort membership metadata for one or more sample sets.
@@ -295,11 +301,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def cohorts_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        # Not all data resources have cohorts metadata.
-        if not self._cohorts_analysis:
-            raise NotImplementedError(
-                "Cohorts metadata not available for this data resource."
-            )
+        self._require_cohorts_analysis()
 
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -379,6 +381,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
+    def _require_aim_analysis(self):
+        if not self._aim_analysis:
+            raise NotImplementedError("AIM data not available for this data resource.")
+
     @doc(
         summary="""
             Access ancestry-informative marker (AIM) metadata for one or more
@@ -389,11 +395,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def aim_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        # Not all data resources have AIM data.
-        if not self._aim_analysis:
-            raise NotImplementedError(
-                "AIM metadata not available for this data resource."
-            )
+        self._require_aim_analysis()
 
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)

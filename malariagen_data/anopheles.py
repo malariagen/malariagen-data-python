@@ -29,6 +29,7 @@ from .anoph.base import DEFAULT, AnophelesBase, base_params
 from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.sample_metadata import AnophelesSampleMetadata, map_params
+from .anoph.snp_data import AnophelesSnpData
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     DIM_ALLELE,
@@ -600,6 +601,7 @@ class dash_params:
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesSnpData,
     AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
@@ -614,8 +616,10 @@ class AnophelesDataResource(
         cohorts_analysis: Optional[str],
         aim_analysis: Optional[str],
         aim_metadata_dtype: Optional[Mapping[str, Any]],
-        site_filters_analysis,
-        bokeh_output_notebook,
+        site_filters_analysis: Optional[str],
+        site_mask_ids: Optional[Tuple[str, ...]],
+        default_site_mask: Optional[str],
+        bokeh_output_notebook: bool,
         results_cache,
         log,
         debug,
@@ -647,16 +651,13 @@ class AnophelesDataResource(
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
             aim_metadata_dtype=aim_metadata_dtype,
+            site_filters_analysis=site_filters_analysis,
+            site_mask_ids=site_mask_ids,
+            default_site_mask=default_site_mask,
         )
-
-        # set up attributes
-        self._site_filters_analysis = site_filters_analysis
 
         # set up caches
         # TODO review type annotations here, maybe can tighten
-        self._cache_site_filters: Dict = dict()
-        self._cache_snp_sites = None
-        self._cache_snp_genotypes: Dict = dict()
         self._cache_annotator = None
         self._cache_site_annotations = None
         self._cache_locate_site_class: Dict = dict()
@@ -666,17 +667,6 @@ class AnophelesDataResource(
         if results_cache is not None:
             results_cache = Path(results_cache).expanduser().resolve()
         self._results_cache = results_cache
-
-        # set analysis versions
-
-        if site_filters_analysis is None:
-            self._site_filters_analysis = self.config.get(
-                "DEFAULT_SITE_FILTERS_ANALYSIS"
-            )
-        else:
-            self._site_filters_analysis = site_filters_analysis
-
-    # Start of @property
 
     @property
     @abstractmethod
@@ -727,35 +717,6 @@ class AnophelesDataResource(
     @abstractmethod
     def _site_annotations_zarr_path(self):
         raise NotImplementedError("Must override _site_annotations_zarr_path")
-
-    # Start of @abstractmethod
-
-    @property
-    @abstractmethod
-    def site_mask_ids(self):
-        """Identifiers for the different site masks that are available.
-        These are values than can be used for the `site_mask` parameter in any
-        method making using of SNP data.
-
-        """
-        raise NotImplementedError("Must override _site_mask_ids")
-
-    @property
-    @abstractmethod
-    def _default_site_mask(self):
-        raise NotImplementedError("Must override _default_site_mask")
-
-    def _prep_site_mask_param(self, *, site_mask):
-        if site_mask is None:
-            # allowed
-            pass
-        elif site_mask == DEFAULT:
-            site_mask = self._default_site_mask
-        elif site_mask not in self.site_mask_ids:
-            raise ValueError(
-                f"Invalid site mask, must be one of f{self.site_mask_ids}."
-            )
-        return site_mask
 
     @abstractmethod
     def _transcript_to_gene_name(self, transcript):
@@ -1386,34 +1347,6 @@ class AnophelesDataResource(
 
     # Start of undecorated functions
 
-    @doc(
-        summary="Open site filters zarr.",
-        returns="Zarr hierarchy.",
-    )
-    def open_site_filters(self, mask: base_params.site_mask) -> zarr.hierarchy.Group:
-        try:
-            return self._cache_site_filters[mask]
-        except KeyError:
-            path = f"{self._base_path}/{self._major_version_path}/site_filters/{self._site_filters_analysis}/{mask}/"
-            store = init_zarr_store(fs=self._fs, path=path)
-            root = zarr.open_consolidated(store=store)
-            self._cache_site_filters[mask] = root
-            return root
-
-    @doc(
-        summary="Open SNP sites zarr",
-        returns="Zarr hierarchy.",
-    )
-    def open_snp_sites(self) -> zarr.hierarchy.Group:
-        if self._cache_snp_sites is None:
-            path = (
-                f"{self._base_path}/{self._major_version_path}/snp_genotypes/all/sites/"
-            )
-            store = init_zarr_store(fs=self._fs, path=path)
-            root = zarr.open_consolidated(store=store)
-            self._cache_snp_sites = root
-        return self._cache_snp_sites
-
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
         disable = self._debug or not self._show_progress
@@ -1594,24 +1527,6 @@ class AnophelesDataResource(
             sample_query = np.nonzero(loc_samples)[0].tolist()
 
         return sample_sets, sample_query
-
-    @doc(
-        summary="Open SNP genotypes zarr for a given sample set.",
-        returns="Zarr hierarchy.",
-    )
-    def open_snp_genotypes(
-        self, sample_set: base_params.sample_set
-    ) -> zarr.hierarchy.Group:
-        try:
-            return self._cache_snp_genotypes[sample_set]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path = f"{self._base_path}/{release_path}/snp_genotypes/all/{sample_set}/"
-            store = init_zarr_store(fs=self._fs, path=path)
-            root = zarr.open_consolidated(store=store)
-            self._cache_snp_genotypes[sample_set] = root
-            return root
 
     def _snp_genotypes_for_contig(
         self,

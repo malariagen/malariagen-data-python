@@ -43,7 +43,6 @@ G123_CALIBRATION_CACHE_NAME = "ag3_g123_calibration_v1"
 G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
-DEFAULT_SITE_MASK = "gamb_colu_arab"
 
 
 class Ag3(AnophelesDataResource):
@@ -113,8 +112,6 @@ class Ag3(AnophelesDataResource):
     _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
-    site_mask_ids = ("gamb_colu_arab", "gamb_colu", "arab")
-    _default_site_mask = DEFAULT_SITE_MASK
     phasing_analysis_ids = ("gamb_colu_arab", "gamb_colu", "arab")
     _default_phasing_analysis = "gamb_colu_arab"
 
@@ -147,6 +144,8 @@ class Ag3(AnophelesDataResource):
                 "aim_species": object,
             },
             site_filters_analysis=site_filters_analysis,
+            site_mask_ids=("gamb_colu_arab", "gamb_colu", "arab"),
+            default_site_mask="gamb_colu_arab",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,
