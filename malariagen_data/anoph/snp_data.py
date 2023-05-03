@@ -70,6 +70,8 @@ class AnophelesSnpData(AnophelesSampleMetadata):
         returns="Zarr hierarchy.",
     )
     def open_snp_sites(self) -> zarr.hierarchy.Group:
+        # Here we cache the opened zarr hierarchy, to avoid small delays
+        # reading zarr metadata.
         if self._cache_snp_sites is None:
             path = (
                 f"{self._base_path}/{self._major_version_path}/snp_genotypes/all/sites/"
@@ -86,6 +88,8 @@ class AnophelesSnpData(AnophelesSampleMetadata):
     def open_snp_genotypes(
         self, sample_set: base_params.sample_set
     ) -> zarr.hierarchy.Group:
+        # Here we cache the opened zarr hierarchy, to avoid small delays
+        # reading zarr metadata.
         try:
             return self._cache_snp_genotypes[sample_set]
         except KeyError:
@@ -109,6 +113,8 @@ class AnophelesSnpData(AnophelesSampleMetadata):
     )
     def open_site_filters(self, mask: base_params.site_mask) -> zarr.hierarchy.Group:
         self._require_site_filters_analysis()
+        # Here we cache the opened zarr hierarchy, to avoid small delays
+        # reading zarr metadata.
         try:
             return self._cache_site_filters[mask]
         except KeyError:
