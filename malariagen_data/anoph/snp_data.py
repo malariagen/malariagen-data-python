@@ -55,15 +55,16 @@ class AnophelesSnpData(AnophelesSampleMetadata):
     def _prep_site_mask_param(self, *, site_mask: Optional[base_params.site_mask]):
         if site_mask is None:
             # This is allowed, it means don't apply any site mask to the data.
-            site_mask_prepped = None
+            return None
         elif site_mask == DEFAULT:
             # Use whatever is the default site mask for this data resource.
-            site_mask_prepped = self._default_site_mask
-        elif site_mask not in self.site_mask_ids:
+            return self._default_site_mask
+        elif site_mask in self.site_mask_ids:
+            return site_mask
+        else:
             raise ValueError(
                 f"Invalid site mask, must be one of f{self.site_mask_ids}."
             )
-        return site_mask_prepped
 
     @doc(
         summary="Open SNP sites zarr",
