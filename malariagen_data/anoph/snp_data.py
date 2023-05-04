@@ -26,7 +26,7 @@ class AnophelesSnpData(AnophelesSampleMetadata):
         self._site_filters_analysis_override = site_filters_analysis
 
         # These will vary between data resources.
-        self._site_mask_ids = site_mask_ids or ()
+        self._site_mask_ids: Tuple[str, ...] = site_mask_ids or ()  # ensure tuple
         self._default_site_mask = default_site_mask
 
         # Set up caches.
