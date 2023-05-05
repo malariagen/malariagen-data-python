@@ -413,7 +413,7 @@ def _valid_contigs(resource):
     return valid_contigs
 
 
-def _parse_region(resource, region) -> Region:
+def parse_region(resource, region) -> Region:
     # Check type, fail early if bad.
     if not isinstance(region, (Region, Mapping, str)):
         raise TypeError("The region parameter must be a string, dict or Region object.")
@@ -462,10 +462,10 @@ def resolve_region(
 
     if isinstance(region, (list, tuple)):
         # Multiple regions, normalise to list and resolve components.
-        return [_parse_region(resource, r) for r in region]
+        return [parse_region(resource, r) for r in region]
 
     else:
-        return _parse_region(resource, region)
+        return parse_region(resource, region)
 
 
 def resolve_regions(

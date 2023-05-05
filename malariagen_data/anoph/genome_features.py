@@ -8,7 +8,7 @@ from numpydoc_decorator import doc
 from pandas.io.common import infer_compression
 from typing_extensions import Annotated, TypeAlias
 
-from ..util import Region, read_gff3, resolve_region, unpack_gff3_attributes
+from ..util import parse_region, read_gff3, resolve_regions, unpack_gff3_attributes
 from .base import DEFAULT, base_params
 from .genome_sequence import AnophelesGenomeSequenceData
 
@@ -155,16 +155,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if region is not None:
             debug("Handle region.")
-            resolved_region = resolve_region(self, region)
+            regions = resolve_regions(self, region)
             del region
-
-            debug("Normalise to list to simplify concatenation logic.")
-            if isinstance(resolved_region, Region):
-                resolved_region = [resolved_region]
 
             debug("Apply region query.")
             parts = []
-            for r in resolved_region:
+            for r in regions:
                 df_part = self._genome_features_for_contig(
                     contig=r.contig, attributes=attributes_normed
                 )
@@ -348,7 +344,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region = resolve_region(self, region)
+        resolved_region = parse_region(self, region)
         del region
 
         debug("handle region bounds")
