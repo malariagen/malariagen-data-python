@@ -6,6 +6,7 @@ from numpydoc_decorator import doc
 
 from ..util import (
     Region,
+    da_compress,
     da_concat,
     da_from_zarr,
     init_zarr_store,
@@ -133,7 +134,7 @@ class AnophelesSnpData(AnophelesSampleMetadata):
             self._cache_site_filters[mask] = root
             return root
 
-    def _site_filters_array(
+    def _site_filters_for_region(
         self,
         *,
         region: Region,
@@ -173,7 +174,7 @@ class AnophelesSnpData(AnophelesSampleMetadata):
         # Load arrays and concatenate if needed.
         d = da_concat(
             [
-                self._site_filters_array(
+                self._site_filters_for_region(
                     region=r,
                     mask=mask,
                     field=field,
@@ -185,3 +186,91 @@ class AnophelesSnpData(AnophelesSampleMetadata):
         )
 
         return d
+
+    def _snp_sites_for_contig(
+        self,
+        *,
+        contig: str,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ):
+        """Access SNP sites data for a single contig."""
+        root = self.open_snp_sites()
+        z = root[f"{contig}/variants/{field}"]
+        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return ret
+
+    def _snp_sites_for_region(
+        self,
+        *,
+        region: Region,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ) -> da.Array:
+        # Access data for the requested contig.
+        ret = self._snp_sites_for_contig(
+            contig=region.contig, field=field, inline_array=inline_array, chunks=chunks
+        )
+
+        # Deal with a region.
+        if region.start or region.end:
+            if field == "POS":
+                pos = ret
+            else:
+                pos = self._snp_sites_for_contig(
+                    contig=region.contig,
+                    field="POS",
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+            loc_region = locate_region(region, pos)
+            ret = ret[loc_region]
+
+        return ret
+
+    @doc(
+        summary="Access SNP site data (positions or alleles).",
+        returns="""
+            An array of either SNP positions ("POS"), reference alleles ("REF") or
+            alternate alleles ("ALT").
+        """,
+    )
+    def snp_sites(
+        self,
+        region: base_params.region,
+        field: base_params.field,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
+        # Resolve the region parameter to a standard type.
+        regions = resolve_regions(self, region)
+        del region
+
+        # Access SNP sites and concatenate over regions.
+        ret = da_concat(
+            [
+                self._snp_sites_for_region(
+                    region=r,
+                    field=field,
+                    chunks=chunks,
+                    inline_array=inline_array,
+                )
+                for r in regions
+            ],
+            axis=0,
+        )
+
+        # Apply site mask if requested.
+        if site_mask is not None:
+            loc_sites = self.site_filters(
+                region=regions,
+                mask=site_mask,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+            ret = da_compress(loc_sites, ret, axis=0)
+
+        return ret

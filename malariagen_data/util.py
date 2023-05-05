@@ -243,13 +243,14 @@ def _dask_compress_dataarray(a, indexer, dim):
     return v
 
 
-def da_compress(indexer, data, axis):
+def da_compress(
+    indexer: da.Array,
+    data: da.Array,
+    axis: int,
+):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # sanity checks
-    assert isinstance(data, da.Array)
-    assert isinstance(indexer, da.Array)
-    assert isinstance(axis, int)
     assert indexer.shape[0] == data.shape[axis]
 
     # useful variables

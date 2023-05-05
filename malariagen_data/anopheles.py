@@ -1352,95 +1352,11 @@ class AnophelesDataResource(
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
 
-    def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
-        """Access SNP sites data for a single contig."""
-        root = self.open_snp_sites()
-        z = root[f"{contig}/variants/{field}"]
-        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return ret
-
-    def _snp_sites(
-        self,
-        *,
-        region,
-        field,
-        inline_array,
-        chunks,
-    ):
-        assert isinstance(region, Region), type(region)
-
-        ret = self._snp_sites_for_contig(
-            contig=region.contig, field=field, inline_array=inline_array, chunks=chunks
-        )
-
-        if region.start or region.end:
-            if field == "POS":
-                pos = ret
-            else:
-                pos = self._snp_sites_for_contig(
-                    contig=region.contig,
-                    field="POS",
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-            loc_region = locate_region(region, pos)
-            ret = ret[loc_region]
-        return ret
-
-    @doc(
-        summary="Access SNP site data (positions and alleles).",
-        returns="""
-            An array of either SNP positions ("POS"), reference alleles ("REF") or
-            alternate alleles ("ALT").
-        """,
-    )
-    def snp_sites(
-        self,
-        region: base_params.region,
-        field: base_params.field,
-        site_mask: Optional[base_params.site_mask] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> da.Array:
-        debug = self._log.debug
-
-        # resolve the region parameter to a standard type
-        resolved_region = self.resolve_region(region)
-        del region
-        if isinstance(resolved_region, Region):
-            resolved_region = [resolved_region]
-
-        debug("access SNP sites and concatenate over regions")
-        ret = da.concatenate(
-            [
-                self._snp_sites(
-                    region=r,
-                    field=field,
-                    chunks=chunks,
-                    inline_array=inline_array,
-                )
-                for r in resolved_region
-            ],
-            axis=0,
-        )
-
-        debug("apply site mask if requested")
-        if site_mask is not None:
-            loc_sites = self.site_filters(
-                region=resolved_region,
-                mask=site_mask,
-                chunks=chunks,
-                inline_array=inline_array,
-            )
-            ret = da_compress(loc_sites, ret, axis=0)
-
-        return ret
-
     @doc(
         summary="Convert a genome region into a standard data structure.",
         returns="An instance of the `Region` class.",
     )
-    def resolve_region(self, region: base_params.region) -> Region:
+    def resolve_region(self, region: base_params.region) -> Union[Region, List[Region]]:
         return resolve_region(self, region)
 
     def _prep_region_cache_param(self, *, region):
