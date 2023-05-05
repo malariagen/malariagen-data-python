@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, Optional, Tuple, Union
+from typing import IO, List, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -23,6 +23,7 @@ import pandas
 import pandas as pd
 import plotly.express as px
 import xarray as xr
+import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
 
@@ -161,7 +162,9 @@ class SiteClass(Enum):
     INTRON_LAST = 10
 
 
-def da_from_zarr(z, inline_array, chunks="auto"):
+def da_from_zarr(
+    z: zarr.core.Array, inline_array: bool, chunks: str = "auto"
+) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 
     N.B., dask does have its own from_zarr() function, but we roll
@@ -409,28 +412,22 @@ def _valid_contigs(resource):
     return valid_contigs
 
 
-def resolve_region(resource, region):
-    """Parse the provided region and return `Region(contig, start, end)`.
-    Supports contig names, gene names and genomic coordinates"""
+def _parse_region(resource, region) -> Region:
+    # Check type, fail early if bad.
+    if not isinstance(region, (Region, Mapping, str)):
+        raise TypeError("The region parameter must be a string, dict or Region object.")
 
     if isinstance(region, Region):
-        # the region is already a Region, nothing to do
+        # The region is already a Region, nothing to do.
         return region
 
-    if isinstance(region, dict):
+    if isinstance(region, Mapping):
+        # The region is in dictionary form, convert to Region instance.
         return Region(
             contig=region.get("contig"),
             start=region.get("start"),
             end=region.get("end"),
         )
-
-    if isinstance(region, (list, tuple)):
-        # multiple regions, normalise to list and resolve components
-        return [resolve_region(resource, r) for r in region]
-
-    # check type, fail early if bad
-    if not isinstance(region, str):
-        raise TypeError("The region parameter must be a string or Region object.")
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -449,6 +446,36 @@ def resolve_region(resource, region):
     raise ValueError(
         f"Region {region!r} is not a valid contig, region string or feature ID."
     )
+
+
+def resolve_region(
+    resource,
+    region: Union[Region, dict, str, List, Tuple],
+) -> Union[Region, List[Region]]:
+    """Parse the provided region and return a `Region` object or list of
+    `Region` objects if multiple values provided.
+
+    Supports contig names, gene names and genomic coordinates.
+
+    """
+
+    if isinstance(region, (list, tuple)):
+        # Multiple regions, normalise to list and resolve components.
+        return [_parse_region(resource, r) for r in region]
+
+    else:
+        return _parse_region(resource, region)
+
+
+def resolve_regions(
+    resource,
+    region: Union[Region, dict, str, List, Tuple],
+) -> List[Region]:
+    r = resolve_region(resource, region)
+    if isinstance(r, list):
+        return r
+    else:
+        return [r]
 
 
 def locate_region(region, pos):
@@ -492,6 +519,13 @@ def xarray_concat(
             join=join,
             **kwargs,
         )
+
+
+def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
+    if len(arrays) == 1:
+        return arrays[0]
+    else:
+        return da.concatenate(arrays, **kwargs)
 
 
 def type_error(

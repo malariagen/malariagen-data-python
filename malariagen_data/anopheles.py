@@ -1352,61 +1352,6 @@ class AnophelesDataResource(
         disable = self._debug or not self._show_progress
         return tqdm(iterable, disable=disable, **kwargs)
 
-    def _site_filters(
-        self,
-        *,
-        region,
-        mask,
-        field,
-        inline_array,
-        chunks,
-    ):
-        assert isinstance(region, Region)
-        root = self.open_site_filters(mask=mask)
-        z = root[f"{region.contig}/variants/{field}"]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        if region.start or region.end:
-            root = self.open_snp_sites()
-            pos = root[f"{region.contig}/variants/POS"][:]
-            loc_region = locate_region(region, pos)
-            d = d[loc_region]
-        return d
-
-    @doc(
-        summary="Access SNP site filters.",
-        returns="""
-            An array of boolean values identifying sites that pass the filters.
-        """,
-    )
-    def site_filters(
-        self,
-        region: base_params.region,
-        mask: base_params.site_mask,
-        field: base_params.field = "filter_pass",
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> da.Array:
-        # resolve the region parameter to a standard type
-        resolved_region = self.resolve_region(region)
-        del region
-        if isinstance(resolved_region, Region):
-            resolved_region = [resolved_region]
-
-        d = da.concatenate(
-            [
-                self._site_filters(
-                    region=r,
-                    mask=mask,
-                    field=field,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                for r in resolved_region
-            ]
-        )
-
-        return d
-
     def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
         """Access SNP sites data for a single contig."""
         root = self.open_snp_sites()

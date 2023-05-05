@@ -1,9 +1,17 @@
 from typing import Dict, Optional, Tuple
 
+import dask.array as da
 import zarr
 from numpydoc_decorator import doc
 
-from ..util import init_zarr_store
+from ..util import (
+    Region,
+    da_concat,
+    da_from_zarr,
+    init_zarr_store,
+    locate_region,
+    resolve_regions,
+)
 from .base import DEFAULT, base_params
 from .sample_metadata import AnophelesSampleMetadata
 
@@ -124,3 +132,56 @@ class AnophelesSnpData(AnophelesSampleMetadata):
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[mask] = root
             return root
+
+    def _site_filters_array(
+        self,
+        *,
+        region: Region,
+        mask: base_params.site_mask,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ):
+        root = self.open_site_filters(mask=mask)
+        z = root[f"{region.contig}/variants/{field}"]
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        if region.start or region.end:
+            root = self.open_snp_sites()
+            pos = root[f"{region.contig}/variants/POS"][:]
+            loc_region = locate_region(region, pos)
+            d = d[loc_region]
+        return d
+
+    @doc(
+        summary="Access SNP site filters.",
+        returns="""
+            An array of boolean values identifying sites that pass the filters.
+        """,
+    )
+    def site_filters(
+        self,
+        region: base_params.region,
+        mask: base_params.site_mask,
+        field: base_params.field = "filter_pass",
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
+        # Resolve the region parameter to a standard type.
+        regions = resolve_regions(self, region)
+        del region
+
+        # Load arrays and concatenate if needed.
+        d = da_concat(
+            [
+                self._site_filters_array(
+                    region=r,
+                    mask=mask,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for r in regions
+            ]
+        )
+
+        return d
