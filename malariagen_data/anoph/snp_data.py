@@ -1,6 +1,7 @@
 from typing import Dict, Optional, Tuple
 
 import dask.array as da
+import numpy as np
 import zarr
 from numpydoc_decorator import doc
 
@@ -11,13 +12,15 @@ from ..util import (
     da_from_zarr,
     init_zarr_store,
     locate_region,
+    parse_region,
     resolve_regions,
 )
 from .base import DEFAULT, base_params
+from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
 
 
-class AnophelesSnpData(AnophelesSampleMetadata):
+class AnophelesSnpData(AnophelesSampleMetadata, AnophelesGenomeSequenceData):
     def __init__(
         self,
         site_filters_analysis: Optional[str] = None,
@@ -190,7 +193,7 @@ class AnophelesSnpData(AnophelesSampleMetadata):
     def _snp_sites_for_contig(
         self,
         *,
-        contig: str,
+        contig: base_params.contig,
         field: base_params.field,
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
@@ -274,3 +277,129 @@ class AnophelesSnpData(AnophelesSampleMetadata):
             ret = da_compress(loc_sites, ret, axis=0)
 
         return ret
+
+    def _snp_genotypes_for_contig(
+        self,
+        *,
+        contig: base_params.contig,
+        sample_set: base_params.sample_set,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ) -> da.Array:
+        """Access SNP genotypes for a single contig and a single sample set."""
+        root = self.open_snp_genotypes(sample_set=sample_set)
+        z = root[f"{contig}/calldata/{field}"]
+        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        return d
+
+    @doc(
+        summary="Access SNP genotypes and associated data.",
+        returns="""
+            An array of either genotypes (GT), genotype quality (GQ), allele
+            depths (AD) or mapping quality (MQ) values.
+        """,
+    )
+    def snp_genotypes(
+        self,
+        region: base_params.region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        field: base_params.field = "GT",
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
+        # Normalise parameters.
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        regions = resolve_regions(self, region)
+        del region
+
+        # Concatenate multiple sample sets and/or contigs.
+        lx = []
+        for r in regions:
+            contig = r.contig
+            ly = []
+
+            for s in sample_sets:
+                y = self._snp_genotypes_for_contig(
+                    contig=contig,
+                    sample_set=s,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                ly.append(y)
+
+            # Concatenate data from multiple sample sets.
+            x = da_concat(ly, axis=1)
+
+            # Locate region - do this only once, optimisation.
+            if r.start or r.end:
+                pos = self._snp_sites_for_contig(
+                    contig=contig, field="POS", inline_array=inline_array, chunks=chunks
+                )
+                loc_region = locate_region(r, pos)
+                x = x[loc_region]
+
+            lx.append(x)
+
+        # Concatenate data from multiple regions.
+        d = da_concat(lx, axis=0)
+
+        # Apply site filters if requested.
+        if site_mask is not None:
+            loc_sites = self.site_filters(
+                region=regions,
+                mask=site_mask,
+            )
+            d = da_compress(loc_sites, d, axis=0)
+
+        # Apply sample query if requested.
+        if sample_query is not None:
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            d = da.compress(loc_samples, d, axis=1)
+
+        return d
+
+    @doc(
+        summary="Compute genome accessibility array.",
+        returns="An array of boolean values identifying accessible genome sites.",
+    )
+    def is_accessible(
+        self,
+        region: base_params.region,
+        site_mask: base_params.site_mask = DEFAULT,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> np.ndarray:
+        resolved_region = parse_region(self, region)
+        del region
+
+        # Determine contig sequence length.
+        seq_length = self.genome_sequence(resolved_region).shape[0]
+
+        # Set up output.
+        is_accessible = np.zeros(seq_length, dtype=bool)
+
+        # Access SNP site positions.
+        pos = self.snp_sites(region=resolved_region, field="POS").compute()
+        if resolved_region.start:
+            offset = resolved_region.start
+        else:
+            offset = 1
+
+        # Access site filters.
+        filter_pass = self._site_filters_for_region(
+            region=resolved_region,
+            mask=site_mask,
+            field="filter_pass",
+            inline_array=inline_array,
+            chunks=chunks,
+        ).compute()
+
+        # Assign values from site filters.
+        is_accessible[pos - offset] = filter_pass
+
+        return is_accessible
