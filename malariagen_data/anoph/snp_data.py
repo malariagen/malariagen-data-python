@@ -2,18 +2,23 @@ from typing import Dict, Optional, Tuple
 
 import dask.array as da
 import numpy as np
+import xarray as xr
 import zarr
 from numpydoc_decorator import doc
 
-from ..util import (
+from ..util import (  # DIM_PLOIDY,; DIM_SAMPLE,
+    DIM_ALLELE,
+    DIM_VARIANT,
     Region,
     da_compress,
     da_concat,
     da_from_zarr,
+    dask_compress_dataset,
     init_zarr_store,
     locate_region,
     parse_region,
     resolve_regions,
+    xarray_concat,
 )
 from .base import DEFAULT, base_params
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -362,6 +367,96 @@ class AnophelesSnpData(AnophelesSampleMetadata, AnophelesGenomeSequenceData):
             d = da.compress(loc_samples, d, axis=1)
 
         return d
+
+    def _snp_variants_for_contig(
+        self,
+        *,
+        contig: base_params.contig,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ):
+        coords = dict()
+        data_vars = dict()
+        sites_root = self.open_snp_sites()
+
+        # Set up variant_position.
+        pos_z = sites_root[f"{contig}/variants/POS"]
+        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
+        coords["variant_position"] = [DIM_VARIANT], variant_position
+
+        # Set up variant_allele.
+        ref_z = sites_root[f"{contig}/variants/REF"]
+        alt_z = sites_root[f"{contig}/variants/ALT"]
+        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
+
+        # Set up variant_contig.
+        contig_index = self.contigs.index(contig)
+        variant_contig = da.full_like(
+            variant_position, fill_value=contig_index, dtype="u1"
+        )
+        coords["variant_contig"] = [DIM_VARIANT], variant_contig
+
+        # Set up site filters arrays.
+        for mask in self.site_mask_ids:
+            filters_root = self.open_site_filters(mask=mask)
+            z = filters_root[f"{contig}/variants/filter_pass"]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
+
+        # Set up attributes.
+        attrs = {"contigs": self.contigs}
+
+        # Create a dataset.
+        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+        return ds
+
+    @doc(
+        summary="Access SNP sites and site filters.",
+        returns="A dataset containing SNP sites and site filters.",
+    )
+    def snp_variants(
+        self,
+        region: base_params.region,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ):
+        # Normalise parameters.
+        regions = resolve_regions(self, region)
+        del region
+
+        # Access SNP data and concatenate multiple regions.
+        lx = []
+        for r in regions:
+            # Access variants.
+            x = self._snp_variants_for_contig(
+                contig=r.contig,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+
+            # Handle region.
+            if r.start or r.end:
+                pos = x["variant_position"].values
+                loc_region = locate_region(r, pos)
+                x = x.isel(variants=loc_region)
+
+            lx.append(x)
+
+        # Concatenate data from multiple regions.
+        ds = xarray_concat(lx, dim=DIM_VARIANT)
+
+        # Apply site filters.
+        if site_mask is not None:
+            ds = dask_compress_dataset(
+                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+            )
+
+        return ds
 
     @doc(
         summary="Compute genome accessibility array.",

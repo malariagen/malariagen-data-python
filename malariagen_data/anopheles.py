@@ -1478,50 +1478,6 @@ class AnophelesDataResource(
 
         return df_snps
 
-    def _snp_variants_for_contig(self, *, contig, inline_array, chunks):
-        debug = self._log.debug
-
-        coords = dict()
-        data_vars = dict()
-
-        debug("variant arrays")
-        sites_root = self.open_snp_sites()
-
-        debug("variant_position")
-        pos_z = sites_root[f"{contig}/variants/POS"]
-        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], variant_position
-
-        debug("variant_allele")
-        ref_z = sites_root[f"{contig}/variants/REF"]
-        alt_z = sites_root[f"{contig}/variants/ALT"]
-        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
-        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
-        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
-
-        debug("variant_contig")
-        contig_index = self.contigs.index(contig)
-        variant_contig = da.full_like(
-            variant_position, fill_value=contig_index, dtype="u1"
-        )
-        coords["variant_contig"] = [DIM_VARIANT], variant_contig
-
-        debug("site filters arrays")
-        for mask in self.site_mask_ids:
-            filters_root = self.open_site_filters(mask=mask)
-            z = filters_root[f"{contig}/variants/filter_pass"]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
-
-        debug("set up attributes")
-        attrs = {"contigs": self.contigs}
-
-        debug("create a dataset")
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-
-        return ds
-
     def _snp_calls_for_contig(self, *, contig, sample_set, inline_array, chunks):
         debug = self._log.debug
 
@@ -1721,54 +1677,6 @@ class AnophelesDataResource(
     def _dask_progress(self, **kwargs):
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
-
-    @doc(
-        summary="Access SNP sites and site filters.",
-        returns="A dataset containing SNP sites and site filters.",
-    )
-    def snp_variants(
-        self,
-        region: base_params.region,
-        site_mask: Optional[base_params.site_mask] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ):
-        debug = self._log.debug
-
-        debug("normalise parameters")
-        resolved_region = self.resolve_region(region)
-        del region
-        if isinstance(resolved_region, Region):
-            resolved_region = [resolved_region]
-
-        debug("access SNP data and concatenate multiple regions")
-        lx = []
-        for r in resolved_region:
-            debug("access variants")
-            x = self._snp_variants_for_contig(
-                contig=r.contig,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-
-            debug("handle region")
-            if r.start or r.end:
-                pos = x["variant_position"].values
-                loc_region = locate_region(r, pos)
-                x = x.isel(variants=loc_region)
-
-            lx.append(x)
-
-        debug("concatenate data from multiple regions")
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
-
-        debug("apply site filters")
-        if site_mask is not None:
-            ds = dask_compress_dataset(
-                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
-            )
-
-        return ds
 
     @doc(
         summary="",
