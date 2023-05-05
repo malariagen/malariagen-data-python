@@ -16,6 +16,8 @@ from typing import (
 import bokeh.io
 import pandas as pd
 from numpydoc_decorator import doc
+from tqdm.auto import tqdm
+from tqdm.dask import TqdmCallback
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import LoggingHelper, Region, check_colab_location, init_filesystem
@@ -239,6 +241,15 @@ class AnophelesBase:
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
         self._cache_files: Dict[str, bytes] = dict()
+
+    def _progress(self, iterable, **kwargs):
+        # progress doesn't mix well with debug logging
+        disable = self._debug or not self._show_progress
+        return tqdm(iterable, disable=disable, **kwargs)
+
+    def _dask_progress(self, **kwargs):
+        disable = not self._show_progress
+        return TqdmCallback(disable=disable, **kwargs)
 
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"

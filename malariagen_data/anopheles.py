@@ -20,8 +20,6 @@ import plotly.graph_objects as go
 import xarray as xr
 import zarr
 from numpydoc_decorator import doc
-from tqdm.auto import tqdm
-from tqdm.dask import TqdmCallback
 from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
@@ -39,7 +37,6 @@ from .util import (
     CacheMiss,
     Region,
     da_from_zarr,
-    dask_compress_dataset,
     hash_params,
     init_zarr_store,
     jackknife_ci,
@@ -1346,11 +1343,6 @@ class AnophelesDataResource(
 
     # Start of undecorated functions
 
-    def _progress(self, iterable, **kwargs):
-        # progress doesn't mix well with debug logging
-        disable = self._debug or not self._show_progress
-        return tqdm(iterable, disable=disable, **kwargs)
-
     @doc(
         summary="Convert a genome region into a standard data structure.",
         returns="An instance of the `Region` class.",
@@ -1478,162 +1470,6 @@ class AnophelesDataResource(
 
         return df_snps
 
-    def _snp_calls_for_contig(self, *, contig, sample_set, inline_array, chunks):
-        debug = self._log.debug
-
-        coords = dict()
-        data_vars = dict()
-
-        debug("call arrays")
-        calls_root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = calls_root[f"{contig}/calldata/GT"]
-        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = calls_root[f"{contig}/calldata/GQ"]
-        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = calls_root[f"{contig}/calldata/AD"]
-        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = calls_root[f"{contig}/calldata/MQ"]
-        call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
-        data_vars["call_genotype"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            call_genotype,
-        )
-        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
-        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
-        data_vars["call_AD"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE],
-            call_ad,
-        )
-
-        debug("sample arrays")
-        z = calls_root["samples"]
-        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        # decode to str, as it is stored as bytes objects
-        sample_id = sample_id.astype("U")
-        coords["sample_id"] = [DIM_SAMPLE], sample_id
-
-        debug("create a dataset")
-        ds = xr.Dataset(data_vars=data_vars, coords=coords)
-
-        return ds
-
-    @doc(
-        summary="Access SNP sites, site filters and genotype calls.",
-        returns="A dataset containing SNP sites, site filters and genotype calls.",
-    )
-    def snp_calls(
-        self,
-        region: base_params.region,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        site_mask: Optional[base_params.site_mask] = None,
-        site_class: Optional[base_params.site_class] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-    ) -> xr.Dataset:
-        debug = self._log.debug
-
-        debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        resolved_region = self.resolve_region(region)
-        del region
-        if isinstance(resolved_region, Region):
-            resolved_region = [resolved_region]
-
-        debug("access SNP calls and concatenate multiple sample sets and/or regions")
-        lx = []
-        for r in resolved_region:
-            ly = []
-            for s in sample_sets:
-                y = self._snp_calls_for_contig(
-                    contig=r.contig,
-                    sample_set=s,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                ly.append(y)
-
-            debug("concatenate data from multiple sample sets")
-            x = xarray_concat(ly, dim=DIM_SAMPLE)
-
-            debug("add variants variables")
-            v = self._snp_variants_for_contig(
-                contig=r.contig, inline_array=inline_array, chunks=chunks
-            )
-            x = xr.merge([v, x], compat="override", join="override")
-
-            debug("handle site class")
-            if site_class is not None:
-                loc_ann = self._locate_site_class(
-                    region=r.contig,
-                    site_class=site_class,
-                    site_mask=None,
-                )
-                x = x.isel(variants=loc_ann)
-
-            debug("handle region, do this only once - optimisation")
-            if r.start or r.end:
-                pos = x["variant_position"].values
-                loc_region = locate_region(r, pos)
-                x = x.isel(variants=loc_region)
-
-            lx.append(x)
-
-        debug("concatenate data from multiple regions")
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
-
-        if site_mask is not None:
-            debug("apply site filters")
-            ds = dask_compress_dataset(
-                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
-            )
-
-        debug("add call_genotype_mask")
-        ds["call_genotype_mask"] = ds["call_genotype"] < 0
-
-        if sample_query is not None:
-            debug("handle sample query")
-            if isinstance(sample_query, str):
-                df_samples = self.sample_metadata(sample_sets=sample_sets)
-                loc_samples = df_samples.eval(sample_query).values
-                if np.count_nonzero(loc_samples) == 0:
-                    raise ValueError(f"No samples found for query {sample_query!r}")
-            else:
-                # assume sample query is an indexer, e.g., a list of integers
-                loc_samples = sample_query
-            ds = ds.isel(samples=loc_samples)
-
-        if cohort_size is not None:
-            debug("handle cohort size")
-            # overrides min and max
-            min_cohort_size = cohort_size
-            max_cohort_size = cohort_size
-
-        if min_cohort_size is not None:
-            debug("handle min cohort size")
-            n_samples = ds.dims["samples"]
-            if n_samples < min_cohort_size:
-                raise ValueError(
-                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                )
-
-        if max_cohort_size is not None:
-            debug("handle max cohort size")
-            n_samples = ds.dims["samples"]
-            if n_samples > max_cohort_size:
-                rng = np.random.default_rng(seed=random_seed)
-                loc_downsample = rng.choice(
-                    n_samples, size=max_cohort_size, replace=False
-                )
-                loc_downsample.sort()
-                ds = ds.isel(samples=loc_downsample)
-
-        return ds
-
     def snp_dataset(self, *args, **kwargs):
         """Deprecated, this method has been renamed to snp_calls()."""
         return self.snp_calls(*args, **kwargs)
@@ -1673,10 +1509,6 @@ class AnophelesDataResource(
         results = dict(ac=ac.values)
 
         return results
-
-    def _dask_progress(self, **kwargs):
-        disable = not self._show_progress
-        return TqdmCallback(disable=disable, **kwargs)
 
     @doc(
         summary="",
@@ -2488,215 +2320,6 @@ class AnophelesDataResource(
 
         return fig_all
 
-    def _locate_site_class(
-        self,
-        *,
-        region,
-        site_mask,
-        site_class,
-    ):
-        debug = self._log.debug
-
-        # cache these data in memory to avoid repeated computation
-        cache_key = (region, site_mask, site_class)
-
-        try:
-            loc_ann = self._cache_locate_site_class[cache_key]
-
-        except KeyError:
-            debug("access site annotations data")
-            ds_ann = self.site_annotations(
-                region=region,
-                site_mask=site_mask,
-            )
-            codon_pos = ds_ann["codon_position"].data
-            codon_deg = ds_ann["codon_degeneracy"].data
-            seq_cls = ds_ann["seq_cls"].data
-            seq_flen = ds_ann["seq_flen"].data
-            seq_relpos_start = ds_ann["seq_relpos_start"].data
-            seq_relpos_stop = ds_ann["seq_relpos_stop"].data
-            site_class = site_class.upper()
-
-            debug("define constants used in site annotations data")
-            # FIXME: variable in function should be lowercase
-            SEQ_CLS_UNKNOWN = 0  # noqa
-            SEQ_CLS_UPSTREAM = 1
-            SEQ_CLS_DOWNSTREAM = 2
-            SEQ_CLS_5UTR = 3
-            SEQ_CLS_3UTR = 4
-            SEQ_CLS_CDS_FIRST = 5
-            SEQ_CLS_CDS_MID = 6
-            SEQ_CLS_CDS_LAST = 7
-            SEQ_CLS_INTRON_FIRST = 8
-            SEQ_CLS_INTRON_MID = 9
-            SEQ_CLS_INTRON_LAST = 10
-            CODON_DEG_UNKNOWN = 0  # noqa
-            CODON_DEG_0 = 1
-            CODON_DEG_2_SIMPLE = 2
-            CODON_DEG_2_COMPLEX = 3  # noqa
-            CODON_DEG_4 = 4
-
-            debug("set up site selection")
-
-            if site_class == "CDS_DEG_4":
-                # 4-fold degenerate coding sites
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_CDS_FIRST)
-                        | (seq_cls == SEQ_CLS_CDS_MID)
-                        | (seq_cls == SEQ_CLS_CDS_LAST)
-                    )
-                    & (codon_pos == 2)
-                    & (codon_deg == CODON_DEG_4)
-                )
-
-            elif site_class == "CDS_DEG_2_SIMPLE":
-                # 2-fold degenerate coding sites
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_CDS_FIRST)
-                        | (seq_cls == SEQ_CLS_CDS_MID)
-                        | (seq_cls == SEQ_CLS_CDS_LAST)
-                    )
-                    & (codon_pos == 2)
-                    & (codon_deg == CODON_DEG_2_SIMPLE)
-                )
-
-            elif site_class == "CDS_DEG_0":
-                # non-degenerate coding sites
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_CDS_FIRST)
-                    | (seq_cls == SEQ_CLS_CDS_MID)
-                    | (seq_cls == SEQ_CLS_CDS_LAST)
-                ) & (codon_deg == CODON_DEG_0)
-
-            elif site_class == "INTRON_SHORT":
-                # short introns, excluding splice regions
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_INTRON_FIRST)
-                        | (seq_cls == SEQ_CLS_INTRON_MID)
-                        | (seq_cls == SEQ_CLS_INTRON_LAST)
-                    )
-                    & (seq_flen < 100)
-                    & (seq_relpos_start > 10)
-                    & (seq_relpos_stop > 10)
-                )
-
-            elif site_class == "INTRON_LONG":
-                # long introns, excluding splice regions
-                loc_ann = (
-                    (
-                        (seq_cls == SEQ_CLS_INTRON_FIRST)
-                        | (seq_cls == SEQ_CLS_INTRON_MID)
-                        | (seq_cls == SEQ_CLS_INTRON_LAST)
-                    )
-                    & (seq_flen > 200)
-                    & (seq_relpos_start > 10)
-                    & (seq_relpos_stop > 10)
-                )
-
-            elif site_class == "INTRON_SPLICE_5PRIME":
-                # 5' intron splice regions
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_INTRON_FIRST)
-                    | (seq_cls == SEQ_CLS_INTRON_MID)
-                    | (seq_cls == SEQ_CLS_INTRON_LAST)
-                ) & (seq_relpos_start < 2)
-
-            elif site_class == "INTRON_SPLICE_3PRIME":
-                # 3' intron splice regions
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_INTRON_FIRST)
-                    | (seq_cls == SEQ_CLS_INTRON_MID)
-                    | (seq_cls == SEQ_CLS_INTRON_LAST)
-                ) & (seq_relpos_stop < 2)
-
-            elif site_class == "UTR_5PRIME":
-                # 5' UTR
-                loc_ann = seq_cls == SEQ_CLS_5UTR
-
-            elif site_class == "UTR_3PRIME":
-                # 3' UTR
-                loc_ann = seq_cls == SEQ_CLS_3UTR
-
-            elif site_class == "INTERGENIC":
-                # intergenic regions, distant from a gene
-                loc_ann = (
-                    (seq_cls == SEQ_CLS_UPSTREAM) & (seq_relpos_stop > 10_000)
-                ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
-
-            else:
-                raise NotImplementedError(site_class)
-
-            debug("compute site selection")
-            with self._dask_progress(desc=f"Locate {site_class} sites"):
-                loc_ann = loc_ann.compute()
-
-            self._cache_locate_site_class[cache_key] = loc_ann
-
-        return loc_ann
-
-    @doc(
-        summary="Load site annotations.",
-        returns="A dataset of site annotations.",
-    )
-    def site_annotations(
-        self,
-        region: base_params.region,
-        site_mask: Optional[base_params.site_mask] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> xr.Dataset:
-        # N.B., we default to chunks="auto" here for performance reasons
-
-        debug = self._log.debug
-
-        debug("resolve region")
-        resolved_region = self.resolve_region(region)
-        del region
-        if isinstance(resolved_region, list):
-            raise TypeError("Multiple regions not supported.")
-        contig = resolved_region.contig
-
-        debug("open site annotations zarr")
-        root = self.open_site_annotations()
-
-        debug("build a dataset")
-        ds = xr.Dataset()
-        for field in (
-            "codon_degeneracy",
-            "codon_nonsyn",
-            "codon_position",
-            "seq_cls",
-            "seq_flen",
-            "seq_relpos_start",
-            "seq_relpos_stop",
-        ):
-            data = da_from_zarr(
-                root[field][contig],
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            ds[field] = "variants", data
-
-        debug("subset to SNP positions")
-        pos = self.snp_sites(
-            region=contig,
-            field="POS",
-            site_mask=site_mask,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-        pos = pos.compute()
-        if resolved_region.start or resolved_region.end:
-            loc_region = locate_region(resolved_region, pos)
-            pos = pos[loc_region]
-        idx = pos - 1
-        ds = ds.isel(variants=idx)
-
-        return ds
-
     @doc(
         summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
@@ -2832,17 +2455,6 @@ class AnophelesDataResource(
             bokeh.plotting.show(fig)
 
         return fig
-
-    @doc(
-        summary="Open site annotations zarr.",
-        returns="Zarr hierarchy.",
-    )
-    def open_site_annotations(self) -> zarr.hierarchy.Group:
-        if self._cache_site_annotations is None:
-            path = f"{self._base_path}/{self._site_annotations_zarr_path}"
-            store = init_zarr_store(fs=self._fs, path=path)
-            self._cache_site_annotations = zarr.open_consolidated(store=store)
-        return self._cache_site_annotations
 
     @doc(
         summary="""
