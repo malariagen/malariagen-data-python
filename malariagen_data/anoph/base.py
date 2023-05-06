@@ -1,4 +1,5 @@
 import json
+from pathlib import Path
 from typing import (
     IO,
     Dict,
@@ -14,13 +15,21 @@ from typing import (
 )
 
 import bokeh.io
+import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
 from typing_extensions import Annotated, TypeAlias
 
-from ..util import LoggingHelper, Region, check_colab_location, init_filesystem
+from ..util import (
+    CacheMiss,
+    LoggingHelper,
+    Region,
+    check_colab_location,
+    hash_params,
+    init_filesystem,
+)
 
 DEFAULT: Final[str] = "default"
 
@@ -198,6 +207,7 @@ class AnophelesBase:
         show_progress: bool = False,
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
+        results_cache: Optional[str] = None,
     ):
         self._url = url
         self._config_path = config_path
@@ -241,6 +251,11 @@ class AnophelesBase:
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
         self._cache_files: Dict[str, bytes] = dict()
+
+        # Set up results cache directory path.
+        if results_cache is not None:
+            results_cache = Path(results_cache).expanduser().resolve().as_posix()
+        self._results_cache: Optional[str] = results_cache
 
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
@@ -514,3 +529,36 @@ class AnophelesBase:
                 raise ValueError(f"Sample set {s!r} not found.")
 
         return prepped_sample_sets
+
+    def _results_cache_add_analysis_params(self, params: dict):
+        # Expect sub-classes will override to add any analysis parameters.
+        pass
+
+    def results_cache_get(self, *, name, params):
+        name = type(self).__name__.lower() + "_" + name
+        if self._results_cache is None:
+            raise CacheMiss
+        params = params.copy()
+        self._results_cache_add_analysis_params(params)
+        cache_key, _ = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        results_path = cache_path / "results.npz"
+        if not results_path.exists():
+            raise CacheMiss
+        results = np.load(results_path)
+        return results
+
+    def results_cache_set(self, *, name, params, results):
+        name = type(self).__name__.lower() + "_" + name
+        if self._results_cache is None:
+            return
+        params = params.copy()
+        self._results_cache_add_analysis_params(params)
+        cache_key, params_json = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        cache_path.mkdir(exist_ok=True, parents=True)
+        params_path = cache_path / "params.json"
+        results_path = cache_path / "results.npz"
+        with params_path.open(mode="w") as f:
+            f.write(params_json)
+        np.savez_compressed(results_path, **results)

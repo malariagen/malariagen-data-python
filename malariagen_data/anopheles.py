@@ -2,7 +2,6 @@ import warnings
 from abc import abstractmethod
 from collections import Counter
 from itertools import cycle
-from pathlib import Path
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import allel
@@ -37,7 +36,6 @@ from .util import (
     CacheMiss,
     Region,
     da_from_zarr,
-    hash_params,
     init_zarr_store,
     jackknife_ci,
     jitter,
@@ -616,7 +614,7 @@ class AnophelesDataResource(
         site_mask_ids: Optional[Tuple[str, ...]],
         default_site_mask: Optional[str],
         bokeh_output_notebook: bool,
-        results_cache,
+        results_cache: Optional[str],
         log,
         debug,
         show_progress,
@@ -650,6 +648,7 @@ class AnophelesDataResource(
             site_filters_analysis=site_filters_analysis,
             site_mask_ids=site_mask_ids,
             default_site_mask=default_site_mask,
+            results_cache=results_cache,
         )
 
         # set up caches
@@ -659,10 +658,6 @@ class AnophelesDataResource(
         self._cache_locate_site_class: Dict = dict()
         self._cache_haplotypes: Dict = dict()
         self._cache_haplotype_sites: Dict = dict()
-
-        if results_cache is not None:
-            results_cache = Path(results_cache).expanduser().resolve()
-        self._results_cache = results_cache
 
     @property
     @abstractmethod
@@ -752,103 +747,6 @@ class AnophelesDataResource(
                 f"Invalid phasing analysis, must be one of f{self.phasing_analysis_ids}."
             )
         return analysis
-
-    def _results_cache_add_analysis_params(self, params):
-        # default implementation, can be overridden if additional analysis
-        # params are used
-        params["cohorts_analysis"] = self._cohorts_analysis
-        params["site_filters_analysis"] = self._site_filters_analysis
-
-    def results_cache_get(self, *, name, params):
-        debug = self._log.debug
-        if self._results_cache is None:
-            raise CacheMiss
-        params = params.copy()
-        self._results_cache_add_analysis_params(params)
-        cache_key, _ = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        results_path = cache_path / "results.npz"
-        if not results_path.exists():
-            raise CacheMiss
-        results = np.load(results_path)
-        debug(f"loaded {name}/{cache_key}")
-        return results
-
-    def results_cache_set(self, *, name, params, results):
-        debug = self._log.debug
-        if self._results_cache is None:
-            debug("no results cache has been configured, do nothing")
-            return
-        params = params.copy()
-        self._results_cache_add_analysis_params(params)
-        cache_key, params_json = hash_params(params)
-        cache_path = self._results_cache / name / cache_key
-        cache_path.mkdir(exist_ok=True, parents=True)
-        params_path = cache_path / "params.json"
-        results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
-        debug(f"saved {name}/{cache_key}")
-
-    @doc(
-        summary="""
-            Compute SNP allele counts. This returns the number of times each
-            SNP allele was observed in the selected samples.
-        """,
-        returns="""
-            A numpy array of shape (n_variants, 4), where the first column has
-            the reference allele (0) counts, the second column has the first
-            alternate allele (1) counts, the third column has the second
-            alternate allele (2) counts, and the fourth column has the third
-            alternate allele (3) counts.
-        """,
-        notes="""
-            This computation may take some time to run, depending on your
-            computing environment. Results of this computation will be cached
-            and re-used if the `results_cache` parameter was set when
-            instantiating the class.
-        """,
-    )
-    def snp_allele_counts(
-        self,
-        region: base_params.region,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        site_mask: Optional[base_params.site_mask] = None,
-        site_class: Optional[base_params.site_class] = None,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-    ) -> np.ndarray:
-        # change this name if you ever change the behaviour of this function,
-        # to invalidate any previously cached data
-        name = self._snp_allele_counts_results_cache_name
-
-        # normalize params for consistent hash value
-        sample_sets, sample_query = self._prep_sample_selection_cache_params(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-        region = self._prep_region_cache_param(region=region)
-        site_mask = self._prep_site_mask_param(site_mask=site_mask)
-        params = dict(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-        )
-
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._snp_allele_counts(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        ac = results["ac"]
-        return ac
 
     @doc(
         summary="""
@@ -1350,36 +1248,6 @@ class AnophelesDataResource(
     def resolve_region(self, region: base_params.region) -> Union[Region, List[Region]]:
         return resolve_region(self, region)
 
-    def _prep_region_cache_param(self, *, region):
-        """Obtain a normalised representation of a region parameter which can
-        be used with the results cache."""
-
-        # N.B., we need to convert to a dict, because cache saves params as
-        # JSON
-
-        region = self.resolve_region(region)
-        if isinstance(region, list):
-            region = [r.to_dict() for r in region]
-        else:
-            region = region.to_dict()
-        return region
-
-    def _prep_sample_selection_cache_params(self, *, sample_sets, sample_query):
-        # normalise sample sets
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-
-        # normalize sample_query
-        if isinstance(sample_query, str):
-            # resolve query to a list of integers for more cache hits - we
-            # do this because there are different ways to write the same pandas
-            # query, and so it's better to evaluate the query and use a list of
-            # integer indices instead
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            sample_query = np.nonzero(loc_samples)[0].tolist()
-
-        return sample_sets, sample_query
-
     def _snp_df(self, *, transcript: str) -> Tuple[Region, pd.DataFrame]:
         """Set up a dataframe with SNP site and filter columns."""
         debug = self._log.debug
@@ -1469,46 +1337,6 @@ class AnophelesDataResource(
         ann.get_effects(transcript=transcript, variants=df_snps)
 
         return df_snps
-
-    def snp_dataset(self, *args, **kwargs):
-        """Deprecated, this method has been renamed to snp_calls()."""
-        return self.snp_calls(*args, **kwargs)
-
-    def _snp_allele_counts(
-        self,
-        *,
-        region,
-        sample_sets,
-        sample_query,
-        site_mask,
-        site_class,
-        cohort_size,
-        random_seed,
-    ):
-        debug = self._log.debug
-
-        debug("access SNP calls")
-        ds_snps = self.snp_calls(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            random_seed=random_seed,
-        )
-        gt = ds_snps["call_genotype"]
-
-        debug("set up and run allele counts computation")
-        gt = allel.GenotypeDaskArray(gt.data)
-        ac = gt.count_alleles(max_allele=3)
-        with self._dask_progress(desc="Compute SNP allele counts"):
-            ac = ac.compute()
-
-        debug("return plain numpy array")
-        results = dict(ac=ac.values)
-
-        return results
 
     @doc(
         summary="",
@@ -2391,250 +2219,6 @@ class AnophelesDataResource(
         df_pca = pd.concat([df_samples, df_coords], axis="columns")
 
         return df_pca, evr
-
-    @doc(
-        summary="""
-            Plot SNPs in a given genome region. SNPs are shown as rectangles,
-            with segregating and non-segregating SNPs positioned on different levels,
-            and coloured by site filter.
-        """,
-        parameters=dict(
-            max_snps="Maximum number of SNPs to show.",
-        ),
-    )
-    def plot_snps(
-        self,
-        region: base_params.region,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        track_height: gplt_params.height = 80,
-        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-        max_snps: int = 200_000,
-        show: gplt_params.show = True,
-    ) -> gplt_params.figure:
-        debug = self._log.debug
-
-        debug("plot SNPs track")
-        fig1 = self.plot_snps_track(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=track_height,
-            max_snps=max_snps,
-            show=False,
-        )
-        fig1.xaxis.visible = False
-
-        debug("plot genes track")
-        fig2 = self.plot_genes(
-            region=region,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=genes_height,
-            x_range=fig1.x_range,
-            show=False,
-        )
-
-        fig = bokeh.layouts.gridplot(
-            [fig1, fig2],
-            ncols=1,
-            toolbar_location="above",
-            merge_tools=True,
-            sizing_mode=sizing_mode,
-        )
-
-        if show:
-            bokeh.plotting.show(fig)
-
-        return fig
-
-    @doc(
-        summary="""
-            Plot SNPs in a given genome region. SNPs are shown as rectangles,
-            with segregating and non-segregating SNPs positioned on different levels,
-            and coloured by site filter.
-        """,
-        parameters=dict(
-            max_snps="Maximum number of SNPs to show.",
-        ),
-    )
-    def plot_snps_track(
-        self,
-        region: base_params.region,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.height = 120,
-        max_snps: int = 200_000,
-        x_range: Optional[gplt_params.x_range] = None,
-        show: gplt_params.show = True,
-    ) -> gplt_params.figure:
-        debug = self._log.debug
-
-        site_mask = self._prep_site_mask_param(site_mask=site_mask)
-
-        debug("resolve and check region")
-        resolved_region = self.resolve_region(region)
-        del region
-
-        if (
-            (resolved_region.start is None)
-            or (resolved_region.end is None)
-            or ((resolved_region.end - resolved_region.start) > max_snps)
-        ):
-            raise ValueError("Region is too large, please provide a smaller region.")
-
-        debug("compute allele counts")
-        ac = allel.AlleleCountsArray(
-            self.snp_allele_counts(
-                region=resolved_region,
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                site_mask=None,
-                cohort_size=cohort_size,
-            )
-        )
-        an = ac.sum(axis=1)
-        is_seg = ac.is_segregating()
-        is_var = ac.is_variant()
-        allelism = ac.allelism()
-
-        debug("obtain SNP variants data")
-        ds_sites = self.snp_variants(
-            region=resolved_region,
-        ).compute()
-
-        debug("build a dataframe")
-        pos = ds_sites["variant_position"].values
-        alleles = ds_sites["variant_allele"].values.astype("U")
-        cols = {
-            "pos": pos,
-            "allele_0": alleles[:, 0],
-            "allele_1": alleles[:, 1],
-            "allele_2": alleles[:, 2],
-            "allele_3": alleles[:, 3],
-            "ac_0": ac[:, 0],
-            "ac_1": ac[:, 1],
-            "ac_2": ac[:, 2],
-            "ac_3": ac[:, 3],
-            "an": an,
-            "is_seg": is_seg,
-            "is_var": is_var,
-            "allelism": allelism,
-        }
-
-        for site_mask_id in self.site_mask_ids:
-            cols[f"pass_{site_mask_id}"] = ds_sites[
-                f"variant_filter_pass_{site_mask_id}"
-            ].values
-
-        data = pd.DataFrame(cols)
-
-        debug("create figure")
-        xwheel_zoom = bokeh.models.WheelZoomTool(
-            dimensions="width", maintain_focus=False
-        )
-        pos = data["pos"].values
-        x_min = pos[0]
-        x_max = pos[-1]
-        if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
-
-        tooltips = [
-            ("Position", "$x{0,0}"),
-            (
-                "Alleles",
-                "@allele_0 (@ac_0), @allele_1 (@ac_1), @allele_2 (@ac_2), @allele_3 (@ac_3)",
-            ),
-            ("No. alleles", "@allelism"),
-            ("Allele calls", "@an"),
-        ]
-
-        for site_mask_id in self.site_mask_ids:
-            tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
-
-        fig = bokeh.plotting.figure(
-            title="SNPs",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            sizing_mode=sizing_mode,
-            width=width,
-            height=height,
-            toolbar_location="above",
-            x_range=x_range,
-            y_range=(0.5, 2.5),
-            tooltips=tooltips,
-        )
-        hover_tool = fig.select(type=bokeh.models.HoverTool)
-        hover_tool.names = ["snps"]
-
-        debug("plot gaps in the reference genome")
-        seq = self.genome_sequence(region=resolved_region.contig).compute()
-        is_n = (seq == b"N") | (seq == b"n")
-        loc_n_start = ~is_n[:-1] & is_n[1:]
-        loc_n_stop = is_n[:-1] & ~is_n[1:]
-        n_starts = np.nonzero(loc_n_start)[0]
-        n_stops = np.nonzero(loc_n_stop)[0]
-        df_n_runs = pd.DataFrame(
-            {"left": n_starts + 1.6, "right": n_stops + 1.4, "top": 2.5, "bottom": 0.5}
-        )
-        fig.quad(
-            top="top",
-            bottom="bottom",
-            left="left",
-            right="right",
-            color="#cccccc",
-            source=df_n_runs,
-            name="gaps",
-        )
-
-        debug("plot SNPs")
-        color_pass = bokeh.palettes.Colorblind6[3]
-        color_fail = bokeh.palettes.Colorblind6[5]
-        data["left"] = data["pos"] - 0.4
-        data["right"] = data["pos"] + 0.4
-        data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
-        data["top"] = data["bottom"] + 0.8
-        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
-        fig.quad(
-            top="top",
-            bottom="bottom",
-            left="left",
-            right="right",
-            color="color",
-            source=data,
-            name="snps",
-        )
-
-        debug("tidy plot")
-        fig.yaxis.ticker = bokeh.models.FixedTicker(
-            ticks=[1, 2],
-        )
-        fig.yaxis.major_label_overrides = {
-            1: "Non-segregating",
-            2: "Segregating",
-        }
-        fig.xaxis.axis_label = f"Contig {resolved_region.contig} position (bp)"
-        fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
-        fig.xaxis.minor_tick_line_color = None
-        fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
-
-        if show:
-            bokeh.plotting.show(fig)
-
-        return fig
 
     @doc(
         summary="""

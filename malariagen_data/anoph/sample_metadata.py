@@ -718,3 +718,30 @@ class AnophelesSampleMetadata(AnophelesBase):
         ]
 
         return df
+
+    def _prep_sample_selection_cache_params(
+        self,
+        *,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+    ) -> Tuple[List[str], Optional[List[int]]]:
+        # Normalise sample sets.
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+
+        if sample_query:
+            # Resolve query to a list of integers for more cache hits - we
+            # do this because there are different ways to write the same pandas
+            # query, and so it's better to evaluate the query and use a list of
+            # integer indices instead.
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            idx_samples = np.nonzero(loc_samples)[0].tolist()
+        else:
+            idx_samples = None
+
+        return sample_sets, idx_samples
+
+    def _results_cache_add_analysis_params(self, params: dict):
+        super()._results_cache_add_analysis_params(params)
+        params["cohorts_analysis"] = self._cohorts_analysis
+        params["aim_analysis"] = self._aim_analysis
