@@ -2179,18 +2179,18 @@ class AnophelesDataResource(
         name = self._pca_results_cache_name
 
         debug("normalize params for consistent hash value")
-        sample_sets, sample_query = self._prep_sample_selection_cache_params(
+        sample_sets_prepped, idx_samples = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets, sample_query=sample_query
         )
-        region = self._prep_region_cache_param(region=region)
-        site_mask = self._prep_site_mask_param(site_mask=site_mask)
+        region_prepped = self._prep_region_cache_param(region=region)
+        site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
         params = dict(
-            region=region,
+            region=region_prepped,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            site_mask=site_mask,
+            sample_sets=sample_sets_prepped,
+            sample_query=idx_samples,
+            site_mask=site_mask_prepped,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             n_components=n_components,
