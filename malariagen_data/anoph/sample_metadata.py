@@ -728,7 +728,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Normalise sample sets.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
-        if sample_query:
+        # TODO This is a bit broken, typing doesn't handle the case where
+        # sample_query is a list of integer indices.
+
+        if isinstance(sample_query, str):
             # Resolve query to a list of integers for more cache hits - we
             # do this because there are different ways to write the same pandas
             # query, and so it's better to evaluate the query and use a list of
@@ -736,6 +739,10 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
             idx_samples = np.nonzero(loc_samples)[0].tolist()
+        elif sample_query is not None:
+            # Assume sample_query is already a list of integers.
+            # TODO Tighten up type check here?
+            idx_samples = sample_query
         else:
             idx_samples = None
 
