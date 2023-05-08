@@ -253,9 +253,9 @@ class AnophelesBase:
         self._cache_files: Dict[str, bytes] = dict()
 
         # Set up results cache directory path.
+        self._results_cache: Optional[Path] = None
         if results_cache is not None:
-            results_cache = Path(results_cache).expanduser().resolve().as_posix()
-        self._results_cache: Optional[str] = results_cache
+            self._results_cache = Path(results_cache).expanduser().resolve()
 
     def _progress(self, iterable, **kwargs):
         # progress doesn't mix well with debug logging
