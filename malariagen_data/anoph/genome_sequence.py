@@ -3,6 +3,7 @@ from typing import Tuple
 import dask.array as da
 import zarr
 from numpydoc_decorator import doc
+from typeguard import typechecked
 
 from ..util import Region, da_from_zarr, init_zarr_store, parse_region
 from .base import AnophelesBase, base_params
@@ -68,6 +69,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
             given contig.
         """,
     )
+    @typechecked
     def genome_sequence(
         self,
         region: base_params.region,

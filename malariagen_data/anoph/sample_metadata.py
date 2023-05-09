@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import xyzservices
 from numpydoc_decorator import doc
+from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
 from .base import AnophelesBase, base_params
@@ -153,6 +154,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="A pandas DataFrame, one row per sample.",
     )
+    @typechecked
     def general_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
@@ -167,7 +169,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
-        files: Mapping[str, bytes] = self.read_files(
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
             paths=file_paths.values(), on_error="return"
         )
 
@@ -298,6 +300,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="A pandas DataFrame, one row per sample.",
     )
+    @typechecked
     def cohorts_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
@@ -314,7 +317,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
-        files: Mapping[str, bytes] = self.read_files(
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
             paths=file_paths.values(), on_error="return"
         )
 
@@ -392,6 +395,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="A pandas DataFrame, one row per sample.",
     )
+    @typechecked
     def aim_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
@@ -408,7 +412,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
-        files: Mapping[str, bytes] = self.read_files(
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
             paths=file_paths.values(), on_error="return"
         )
 
@@ -444,6 +448,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             unique.
         """,
     )
+    @typechecked
     def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
         # Check parameters.
         if not isinstance(data, pd.DataFrame):
@@ -478,19 +483,19 @@ class AnophelesSampleMetadata(AnophelesBase):
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
     )
+    @typechecked
     def sample_metadata(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
-        # Validate parameters.
-        base_params.validate_sample_sets(sample_sets)
+        # Extra parameter checks.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Set up for caching.
+        # Normalise parameters.
         prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
         cache_key = tuple(prepped_sample_sets)
@@ -539,6 +544,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         ),
         returns="Pivot table of sample counts.",
     )
+    @typechecked
     def count_samples(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -583,11 +589,12 @@ class AnophelesSampleMetadata(AnophelesBase):
         ),
         returns="Ipyleaflet map widget.",
     )
+    @typechecked
     def plot_samples_interactive_map(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        basemap: map_params.basemap = map_params.basemap_default,
+        basemap: Optional[map_params.basemap] = map_params.basemap_default,
         center: map_params.center = map_params.center_default,
         zoom: map_params.zoom = map_params.zoom_default,
         height: map_params.height = map_params.height_default,
@@ -648,10 +655,10 @@ class AnophelesSampleMetadata(AnophelesBase):
                 raise ValueError("Basemap abbreviation not recognised:", basemap_str)
             basemap_provider = basemap_providers_dict[basemap_str]
         elif basemap is None:
-            # Default
+            # Default.
             basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
         else:
-            # Expect dict or TileProvider or TileLayer
+            # Expect dict or TileProvider or TileLayer.
             basemap_provider = basemap
 
         # Create a map.
@@ -704,6 +711,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="One row per sample, columns provide URLs.",
     )
+    @typechecked
     def wgs_data_catalog(self, sample_set: base_params.sample_set):
         # Look up release for sample set.
         release = self.lookup_release(sample_set=sample_set)
@@ -731,29 +739,21 @@ class AnophelesSampleMetadata(AnophelesBase):
         *,
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query],
+        sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Normalise sample sets.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
-        # TODO This is a bit broken, typing doesn't handle the case where
-        # sample_query is a list of integer indices.
-
-        if isinstance(sample_query, str):
+        if sample_query is not None:
             # Resolve query to a list of integers for more cache hits - we
             # do this because there are different ways to write the same pandas
             # query, and so it's better to evaluate the query and use a list of
             # integer indices instead.
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
-            idx_samples = np.nonzero(loc_samples)[0].tolist()
-        elif sample_query is not None:
-            # Assume sample_query is already a list of integers.
-            # TODO Tighten up type check here?
-            idx_samples = sample_query
-        else:
-            idx_samples = None
+            sample_indices = np.nonzero(loc_samples)[0].tolist()
 
-        return sample_sets, idx_samples
+        return sample_sets, sample_indices
 
     def _results_cache_add_analysis_params(self, params: dict):
         super()._results_cache_add_analysis_params(params)

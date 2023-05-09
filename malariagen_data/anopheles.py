@@ -1466,7 +1466,7 @@ class AnophelesDataResource(
         n_snps,
         thin_offset,
         sample_sets,
-        sample_query,
+        sample_indices,
         site_mask,
         min_minor_ac,
         max_missing_an,
@@ -1478,7 +1478,7 @@ class AnophelesDataResource(
         ds_snps = self.snp_calls(
             region=region,
             sample_sets=sample_sets,
-            sample_query=sample_query,
+            sample_indices=sample_indices,
             site_mask=site_mask,
         )
         debug(
@@ -1489,7 +1489,7 @@ class AnophelesDataResource(
         ac = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
-            sample_query=sample_query,
+            sample_indices=sample_indices,
             site_mask=site_mask,
         )
         n_chroms = ds_snps.dims["samples"] * 2
@@ -2179,8 +2179,13 @@ class AnophelesDataResource(
         name = self._pca_results_cache_name
 
         debug("normalize params for consistent hash value")
-        sample_sets_prepped, idx_samples = self._prep_sample_selection_cache_params(
-            sample_sets=sample_sets, sample_query=sample_query
+        (
+            sample_sets_prepped,
+            sample_indices_prepped,
+        ) = self._prep_sample_selection_cache_params(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_indices=None,
         )
         region_prepped = self._prep_region_cache_param(region=region)
         site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
@@ -2189,7 +2194,7 @@ class AnophelesDataResource(
             n_snps=n_snps,
             thin_offset=thin_offset,
             sample_sets=sample_sets_prepped,
-            sample_query=idx_samples,
+            sample_indices=sample_indices_prepped,
             site_mask=site_mask_prepped,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
@@ -2211,7 +2216,7 @@ class AnophelesDataResource(
         debug("add coords to sample metadata dataframe")
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
-            sample_query=sample_query,
+            sample_indices=sample_indices_prepped,
         )
         df_coords = pd.DataFrame(
             {f"PC{i + 1}": coords[:, i] for i in range(n_components)}

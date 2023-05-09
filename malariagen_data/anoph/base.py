@@ -20,15 +20,16 @@ import pandas as pd
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
+from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
     CacheMiss,
     LoggingHelper,
-    Region,
     check_colab_location,
     hash_params,
     init_filesystem,
+    single_region_param_type,
 )
 
 DEFAULT: Final[str] = "default"
@@ -45,12 +46,22 @@ class base_params:
         """,
     ]
 
-    region: TypeAlias = Annotated[
-        Union[str, Region],
+    single_region: TypeAlias = Annotated[
+        single_region_param_type,
         """
         Region of the reference genome. Can be a contig name, region string
         (formatted like "{contig}:{start}-{end}"), or identifier of a genome
         feature such as a gene or transcript.
+        """,
+    ]
+
+    region: TypeAlias = Annotated[
+        Union[single_region, Sequence[single_region]],
+        """
+        Region of the reference genome. Can be a contig name, region string
+        (formatted like "{contig}:{start}-{end}"), or identifier of a genome
+        feature such as a gene or transcript. Can also be a sequence (e.g., list)
+        of regions.
         """,
     ]
 
@@ -72,17 +83,6 @@ class base_params:
         """,
     ]
 
-    @staticmethod
-    def validate_sample_sets(value: Optional[sample_sets]):
-        if value is not None:
-            type_message = "The sample_sets parameter must be a string (str) or sequence of strings."
-            if not isinstance(value, (str, Sequence)):
-                raise TypeError(type_message)
-            if isinstance(value, Sequence):
-                for v in value:
-                    if not isinstance(v, str):
-                        raise TypeError(type_message)
-
     sample_query: TypeAlias = Annotated[
         str,
         """
@@ -90,12 +90,6 @@ class base_params:
         select samples to be included in the returned data.
         """,
     ]
-
-    @staticmethod
-    def validate_sample_query(value: Optional[sample_query]):
-        if value is not None:
-            if not isinstance(value, str):
-                raise TypeError("The sample_query parameter must be a string (str).")
 
     sample_indices: TypeAlias = Annotated[
         List[int],
@@ -108,20 +102,7 @@ class base_params:
     ]
 
     @staticmethod
-    def validate_sample_indices(value: Optional[sample_indices]):
-        if value is not None:
-            type_message = "The sample_indices parameter must be a list of integers."
-            if not isinstance(value, list):
-                raise TypeError(type_message)
-            if len(value) == 0:
-                raise ValueError("The sample_indices parameter is an empty list.")
-            for v in value:
-                if not isinstance(v, int):
-                    raise TypeError(type_message)
-
-    @classmethod
     def validate_sample_selection_params(
-        cls,
         *,
         sample_query: Optional[sample_query],
         sample_indices: Optional[sample_indices],
@@ -130,8 +111,6 @@ class base_params:
             raise ValueError(
                 "Please provide either sample_query or sample_indices, not both."
             )
-        cls.validate_sample_query(sample_query)
-        cls.validate_sample_indices(sample_indices)
 
     cohort1_query: TypeAlias = Annotated[
         str,
@@ -344,15 +323,17 @@ class AnophelesBase:
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
 
+    @typechecked
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
+    @typechecked
     def read_files(
         self,
         paths: Iterable[str],
         on_error: Literal["raise", "omit", "return"] = "return",
-    ) -> Mapping[str, bytes]:
+    ) -> Mapping[str, Union[bytes, Exception]]:
         # Check for any cached files.
         files = {
             path: data for path, data in self._cache_files.items() if path in paths
@@ -507,6 +488,7 @@ class AnophelesBase:
         summary="Access a dataframe of sample sets",
         returns="A dataframe of sample sets, one row per sample set.",
     )
+    @typechecked
     def sample_sets(
         self,
         release: Optional[base_params.release] = None,
@@ -549,6 +531,7 @@ class AnophelesBase:
     @doc(
         summary="Find which release a sample set was included in.",
     )
+    @typechecked
     def lookup_release(self, sample_set: base_params.sample_set):
         if self._cache_sample_set_to_release is None:
             df_sample_sets = self.sample_sets().set_index("sample_set")
@@ -584,8 +567,8 @@ class AnophelesBase:
                 prepped_sample_sets = [sample_sets]
 
         else:
+            # Sequence of sample sets or releases.
             assert isinstance(sample_sets, Sequence)
-            # List or tuple of sample sets or releases.
             prepped_sample_sets = []
             for s in sample_sets:
                 # Make a recursive call to handle the case where s is a release identifier.

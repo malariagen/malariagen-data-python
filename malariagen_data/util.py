@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, List, Optional, Tuple, Union
+from typing import IO, List, Optional, Sequence, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -26,6 +26,7 @@ import xarray as xr
 import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
+from typing_extensions import TypeAlias
 
 DIM_VARIANT = "variants"
 DIM_ALLELE = "alleles"
@@ -413,11 +414,14 @@ def _valid_contigs(resource):
     return valid_contigs
 
 
-def parse_region(resource, region) -> Region:
-    # Check type, fail early if bad.
-    if not isinstance(region, (Region, Mapping, str)):
-        raise TypeError("The region parameter must be a string, dict or Region object.")
+single_region_param_type: TypeAlias = Union[str, Region, Mapping]
 
+region_param_type: TypeAlias = Union[
+    single_region_param_type, Sequence[single_region_param_type]
+]
+
+
+def parse_region(resource, region: single_region_param_type) -> Region:
     if isinstance(region, Region):
         # The region is already a Region, nothing to do.
         return region
@@ -429,6 +433,8 @@ def parse_region(resource, region) -> Region:
             start=region.get("start"),
             end=region.get("end"),
         )
+
+    assert isinstance(region, str)
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -451,7 +457,7 @@ def parse_region(resource, region) -> Region:
 
 def resolve_region(
     resource,
-    region: Union[Region, dict, str, List, Tuple],
+    region: region_param_type,
 ) -> Union[Region, List[Region]]:
     """Parse the provided region and return a `Region` object or list of
     `Region` objects if multiple values provided.
@@ -459,24 +465,21 @@ def resolve_region(
     Supports contig names, gene names and genomic coordinates.
 
     """
-
-    if isinstance(region, (list, tuple)):
+    if isinstance(region, Sequence):
         # Multiple regions, normalise to list and resolve components.
         return [parse_region(resource, r) for r in region]
-
     else:
         return parse_region(resource, region)
 
 
 def resolve_regions(
     resource,
-    region: Union[Region, dict, str, List, Tuple],
+    region: region_param_type,
 ) -> List[Region]:
-    r = resolve_region(resource, region)
-    if isinstance(r, list):
-        return r
+    if isinstance(region, Sequence):
+        return [parse_region(resource, r) for r in region]
     else:
-        return [r]
+        return [parse_region(resource, region)]
 
 
 def locate_region(region, pos):
