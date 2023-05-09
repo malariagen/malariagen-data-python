@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, List, Optional, Sequence, Tuple, Union
+from typing import IO, List, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -417,7 +417,9 @@ def _valid_contigs(resource):
 single_region_param_type: TypeAlias = Union[str, Region, Mapping]
 
 region_param_type: TypeAlias = Union[
-    single_region_param_type, Sequence[single_region_param_type]
+    single_region_param_type,
+    List[single_region_param_type],
+    Tuple[single_region_param_type, ...],
 ]
 
 
@@ -465,7 +467,7 @@ def resolve_region(
     Supports contig names, gene names and genomic coordinates.
 
     """
-    if isinstance(region, Sequence):
+    if isinstance(region, (list, tuple)):
         # Multiple regions, normalise to list and resolve components.
         return [parse_region(resource, r) for r in region]
     else:
@@ -476,7 +478,7 @@ def resolve_regions(
     resource,
     region: region_param_type,
 ) -> List[Region]:
-    if isinstance(region, Sequence):
+    if isinstance(region, (list, tuple)):
         return [parse_region(resource, r) for r in region]
     else:
         return [parse_region(resource, region)]
