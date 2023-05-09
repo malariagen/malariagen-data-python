@@ -4120,7 +4120,7 @@ class AnophelesDataResource(
         ] = h12_params.max_cohort_size_default,
         window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
-    ) -> List[np.ndarray]:
+    ) -> Mapping[str, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._h12_calibration_cache_name
@@ -4160,7 +4160,7 @@ class AnophelesDataResource(
         max_cohort_size,
         window_sizes,
         random_seed,
-    ):
+    ) -> Mapping[str, np.ndarray]:
         # access haplotypes
         ds_haps = self.haplotypes(
             region=contig,
@@ -4177,7 +4177,7 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
-        calibration_runs = dict()
+        calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
             h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
             calibration_runs[str(window_size)] = h12
@@ -5507,7 +5507,7 @@ class AnophelesDataResource(
         ] = g123_params.max_cohort_size_default,
         window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
-    ) -> List[np.ndarray]:
+    ) -> Mapping[str, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._g123_calibration_cache_name
@@ -5548,7 +5548,7 @@ class AnophelesDataResource(
         max_cohort_size,
         window_sizes,
         random_seed,
-    ):
+    ) -> Mapping[str, np.ndarray]:
         gt, _ = self._load_data_for_g123(
             contig=contig,
             sites=sites,
@@ -5560,7 +5560,7 @@ class AnophelesDataResource(
             random_seed=random_seed,
         )
 
-        calibration_runs = dict()
+        calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute g123"):
             g123 = allel.moving_statistic(
                 gt, statistic=self._garud_g123, size=window_size
