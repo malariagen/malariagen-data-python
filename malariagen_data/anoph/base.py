@@ -29,6 +29,7 @@ from ..util import (
     check_colab_location,
     hash_params,
     init_filesystem,
+    region_param_type,
     single_region_param_type,
 )
 
@@ -56,7 +57,7 @@ class base_params:
     ]
 
     region: TypeAlias = Annotated[
-        Union[single_region, Sequence[single_region]],
+        region_param_type,
         """
         Region of the reference genome. Can be a contig name, region string
         (formatted like "{contig}:{start}-{end}"), or identifier of a genome

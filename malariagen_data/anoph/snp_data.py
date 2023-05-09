@@ -208,7 +208,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions = resolve_regions(self, region)
+        regions: List[Region] = resolve_regions(self, region)
         del region
 
         # Load arrays and concatenate if needed.
@@ -287,7 +287,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions = resolve_regions(self, region)
+        regions: List[Region] = resolve_regions(self, region)
         del region
 
         # Access SNP sites and concatenate over regions.
@@ -357,7 +357,7 @@ class AnophelesSnpData(
 
         # Normalise parameters.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions = resolve_regions(self, region)
+        regions: List[Region] = resolve_regions(self, region)
         del region
 
         # Concatenate multiple sample sets and/or contigs.
@@ -469,7 +469,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ):
         # Normalise parameters.
-        regions = resolve_regions(self, region)
+        regions: List[Region] = resolve_regions(self, region)
         del region
 
         # Access SNP data and concatenate multiple regions.

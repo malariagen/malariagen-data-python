@@ -9,7 +9,13 @@ from pandas.io.common import infer_compression
 from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
-from ..util import parse_region, read_gff3, resolve_regions, unpack_gff3_attributes
+from ..util import (
+    Region,
+    parse_region,
+    read_gff3,
+    resolve_regions,
+    unpack_gff3_attributes,
+)
 from .base import DEFAULT, base_params
 from .genome_sequence import AnophelesGenomeSequenceData
 
@@ -337,7 +343,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     @typechecked
     def plot_genes(
         self,
-        region: base_params.region,
+        region: base_params.single_region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.genes_height = gplt_params.genes_height_default,
@@ -349,7 +355,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region = parse_region(self, region)
+        resolved_region: Region = parse_region(self, region)
         del region
 
         debug("handle region bounds")
