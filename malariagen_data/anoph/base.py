@@ -44,6 +44,7 @@ class base_params:
         names.
         """,
     ]
+
     region: TypeAlias = Annotated[
         Union[str, Region],
         """
@@ -52,14 +53,17 @@ class base_params:
         feature such as a gene or transcript.
         """,
     ]
+
     release: TypeAlias = Annotated[
         Union[str, Sequence[str]],
         "Release version identifier.",
     ]
+
     sample_set: TypeAlias = Annotated[
         str,
         "Sample set identifier.",
     ]
+
     sample_sets: TypeAlias = Annotated[
         Union[Sequence[str], str],
         """
@@ -67,6 +71,18 @@ class base_params:
         release.
         """,
     ]
+
+    @staticmethod
+    def validate_sample_sets(value: Optional[sample_sets]):
+        if value is not None:
+            type_message = "The sample_sets parameter must be a string (str) or sequence of strings."
+            if not isinstance(value, (str, Sequence)):
+                raise TypeError(type_message)
+            if isinstance(value, Sequence):
+                for v in value:
+                    if not isinstance(v, str):
+                        raise TypeError(type_message)
+
     sample_query: TypeAlias = Annotated[
         str,
         """
@@ -74,6 +90,13 @@ class base_params:
         select samples to be included in the returned data.
         """,
     ]
+
+    @staticmethod
+    def validate_sample_query(value: Optional[sample_query]):
+        if value is not None:
+            if not isinstance(value, str):
+                raise TypeError("The sample_query parameter must be a string (str).")
+        
     sample_indices: TypeAlias = Annotated[
         List[int],
         """
@@ -83,6 +106,33 @@ class base_params:
         both.
         """,
     ]
+
+    @staticmethod
+    def validate_sample_indices(value: Optional[sample_indices]):
+        if value is not None:
+            type_message = "The sample_indices parameter must be a list of integers."
+            if not isinstance(value, list):
+                raise TypeError(type_message)
+            if len(value) == 0:
+                raise ValueError("The sample_indices parameter is an empty list.")
+            for v in value:
+                if not isinstance(v, int):
+                    raise TypeError(type_message)             
+
+    @classmethod
+    def validate_sample_selection_params(
+        cls,
+        *,
+        sample_query: Optional[sample_query],
+        sample_indices: Optional[sample_indices],            
+    ):
+        if sample_query is not None and sample_indices is not None:
+            raise ValueError(
+                "Please provide either sample_query or sample_indices, not both."
+            )
+        cls.validate_sample_query(sample_query)
+        cls.validate_sample_indices(sample_indices)
+    
     cohort1_query: TypeAlias = Annotated[
         str,
         """
@@ -90,6 +140,7 @@ class base_params:
         to select samples for the first cohort.
         """,
     ]
+
     cohort2_query: TypeAlias = Annotated[
         str,
         """
@@ -97,6 +148,7 @@ class base_params:
         to select samples for the second cohort.
         """,
     ]
+
     site_mask: TypeAlias = Annotated[
         str,
         """
@@ -104,6 +156,7 @@ class base_params:
         available values.
         """,
     ]
+
     site_class: TypeAlias = Annotated[
         str,
         """
@@ -118,6 +171,7 @@ class base_params:
         a gene).
         """,
     ]
+
     cohort_size: TypeAlias = Annotated[
         int,
         """
@@ -126,6 +180,7 @@ class base_params:
         than this value.
         """,
     ]
+
     min_cohort_size: TypeAlias = Annotated[
         int,
         """
@@ -133,6 +188,7 @@ class base_params:
         less than this value.
         """,
     ]
+
     max_cohort_size: TypeAlias = Annotated[
         int,
         """
@@ -140,14 +196,17 @@ class base_params:
         cohort is greater.
         """,
     ]
+
     random_seed: TypeAlias = Annotated[
         int,
         "Random seed used for reproducible down-sampling.",
     ]
+
     transcript: TypeAlias = Annotated[
         str,
         "Gene transcript identifier.",
     ]
+
     cohort: TypeAlias = Annotated[
         Union[str, Tuple[str, str]],
         """
@@ -155,6 +214,7 @@ class base_params:
         pair of strings giving a custom cohort label and a sample query.
         """,
     ]
+
     cohorts: TypeAlias = Annotated[
         Union[str, Mapping[str, str]],
         """
@@ -163,6 +223,7 @@ class base_params:
         queries.
         """,
     ]
+
     n_jack: TypeAlias = Annotated[
         int,
         """
@@ -171,6 +232,7 @@ class base_params:
         better.
         """,
     ]
+
     confidence_level: TypeAlias = Annotated[
         float,
         """
@@ -178,12 +240,16 @@ class base_params:
         means 95% confidence interval.
         """,
     ]
+
     field: TypeAlias = Annotated[str, "Name of array or column to access."]
+
     inline_array: TypeAlias = Annotated[
         bool,
         "Passed through to dask `from_array()`.",
     ]
+
     inline_array_default: inline_array = True
+
     chunks: TypeAlias = Annotated[
         str,
         """
@@ -191,7 +257,9 @@ class base_params:
         chunks. Also, can be a target size, e.g., '200 MiB'.
         """,
     ]
+
     chunks_default: chunks = "native"
+
     gff_attributes: TypeAlias = Annotated[
         Optional[Union[Sequence[str], str]],
         """
@@ -515,7 +583,8 @@ class AnophelesBase:
                 # Single sample set, normalise to always return a list.
                 prepped_sample_sets = [sample_sets]
 
-        elif isinstance(sample_sets, Sequence):
+        else:
+            assert isinstance(sample_sets, Sequence)
             # List or tuple of sample sets or releases.
             prepped_sample_sets = []
             for s in sample_sets:
@@ -524,11 +593,6 @@ class AnophelesBase:
 
                 # Make sure we end up with a flat list of sample sets.
                 prepped_sample_sets.extend(sp)
-
-        else:
-            raise TypeError(
-                f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
-            )
 
         # Ensure all sample sets selected at most once.
         prepped_sample_sets = sorted(set(prepped_sample_sets))

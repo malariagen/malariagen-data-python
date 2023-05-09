@@ -484,16 +484,14 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
+        # Validate parameters.
+        base_params.validate_sample_sets(sample_sets)
+        base_params.validate_sample_selection_params(sample_query=sample_query, sample_indices=sample_indices)
+
         # Set up for caching.
         prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
         cache_key = tuple(prepped_sample_sets)
-
-        # Check parameters.
-        if sample_query is not None and sample_indices is not None:
-            raise ValueError(
-                "Please provide either sample_query or sample_indices, not both."
-            )
 
         try:
             # Attempt to retrieve from the cache.
@@ -516,7 +514,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         for on, data in self._extra_metadata:
             df_samples = df_samples.merge(data, how="left", on=on)
 
-        # For convenience, apply a query.
+        # For convenience, apply a sample selection.
         if sample_query is not None:
             # Assume a pandas query string.
             df_samples = df_samples.query(sample_query)
