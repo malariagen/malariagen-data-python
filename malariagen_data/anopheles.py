@@ -19,6 +19,7 @@ import plotly.graph_objects as go
 import xarray as xr
 import zarr
 from numpydoc_decorator import doc
+from typeguard import typechecked
 from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
@@ -40,8 +41,9 @@ from .util import (
     jackknife_ci,
     jitter,
     locate_region,
+    parse_region,
+    parse_single_region,
     plotly_discrete_legend,
-    resolve_region,
     type_error,
     xarray_concat,
 )
@@ -764,6 +766,7 @@ class AnophelesDataResource(
             counts and frequency calculations.
         """,
     )
+    @typechecked
     def snp_allele_frequencies_advanced(
         self,
         transcript: base_params.transcript,
@@ -1239,15 +1242,6 @@ class AnophelesDataResource(
             ]
         ]
 
-    # Start of undecorated functions
-
-    @doc(
-        summary="Convert a genome region into a standard data structure.",
-        returns="An instance of the `Region` class.",
-    )
-    def resolve_region(self, region: base_params.region) -> Union[Region, List[Region]]:
-        return resolve_region(self, region)
-
     def _snp_df(self, *, transcript: str) -> Tuple[Region, pd.DataFrame]:
         """Set up a dataframe with SNP site and filter columns."""
         debug = self._log.debug
@@ -1312,6 +1306,7 @@ class AnophelesDataResource(
             per variant.
         """,
     )
+    @typechecked
     def snp_effects(
         self,
         transcript: base_params.transcript,
@@ -1345,13 +1340,15 @@ class AnophelesDataResource(
         ),
         returns="IGV browser.",
     )
+    @typechecked
     def igv(
-        self, region: base_params.region, tracks: Optional[List] = None
+        self, region: base_params.single_region, tracks: Optional[List] = None
     ) -> igv_notebook.Browser:
         debug = self._log.debug
 
         debug("resolve region")
-        region = self.resolve_region(region)
+        region_prepped: Region = parse_single_region(self, region)
+        del region
 
         config = {
             "reference": {
@@ -1369,7 +1366,7 @@ class AnophelesDataResource(
                     }
                 ],
             },
-            "locus": str(region),
+            "locus": str(region_prepped),
         }
         if tracks:
             config["tracks"] = tracks
@@ -1394,9 +1391,10 @@ class AnophelesDataResource(
             """,
         ),
     )
+    @typechecked
     def view_alignments(
         self,
-        region: base_params.region,
+        region: base_params.single_region,
         sample: str,
         visibility_window: int = 20_000,
     ):
@@ -1417,7 +1415,7 @@ class AnophelesDataResource(
         debug(vcf_url)
 
         debug("parse region")
-        resolved_region = self.resolve_region(region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
         contig = resolved_region.contig
 
@@ -1549,6 +1547,7 @@ class AnophelesDataResource(
         ),
         returns="A plotly figure.",
     )
+    @typechecked
     def plot_pca_variance(
         self,
         evr: pca_params.evr,
@@ -1732,10 +1731,11 @@ class AnophelesDataResource(
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
+    @typechecked
     def plot_heterozygosity_track(
         self,
         sample: het_params.sample,
-        region: base_params.region,
+        region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
@@ -1749,10 +1749,14 @@ class AnophelesDataResource(
     ) -> gplt_params.figure:
         debug = self._log.debug
 
+        # Normalise parameters.
+        region_prepped: Region = parse_single_region(self, region)
+        del region
+
         debug("compute windowed heterozygosity")
         sample_id, sample_set, windows, counts = self._sample_count_het(
             sample=sample,
-            region=region,
+            region=region_prepped,
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
@@ -1764,7 +1768,7 @@ class AnophelesDataResource(
             sample_set=sample_set,
             windows=windows,
             counts=counts,
-            region=region,
+            region=region_prepped,
             window_size=window_size,
             y_max=y_max,
             sizing_mode=sizing_mode,
@@ -1781,10 +1785,11 @@ class AnophelesDataResource(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         returns="Bokeh figure.",
     )
+    @typechecked
     def plot_heterozygosity(
         self,
         sample: het_params.sample,
-        region: base_params.region,
+        region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
@@ -1868,14 +1873,13 @@ class AnophelesDataResource(
     def _sample_count_het(
         self,
         sample,
-        region,
+        region: Region,
         site_mask,
         window_size,
         sample_set=None,
     ):
         debug = self._log.debug
 
-        region = self.resolve_region(region)
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
@@ -1918,10 +1922,11 @@ class AnophelesDataResource(
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
     )
+    @typechecked
     def roh_hmm(
         self,
         sample: het_params.sample,
-        region: base_params.region,
+        region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
@@ -1931,7 +1936,7 @@ class AnophelesDataResource(
     ) -> het_params.df_roh:
         debug = self._log.debug
 
-        resolved_region = self.resolve_region(region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -1960,10 +1965,11 @@ class AnophelesDataResource(
     @doc(
         summary="Plot a runs of homozygosity track.",
     )
+    @typechecked
     def plot_roh_track(
         self,
         df_roh: het_params.df_roh,
-        region: base_params.region,
+        region: base_params.single_region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 100,
@@ -1974,7 +1980,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region = self.resolve_region(region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
         contig = resolved_region.contig
         start = resolved_region.start
@@ -2046,10 +2052,11 @@ class AnophelesDataResource(
             single sample over a genome region.
         """,
     )
+    @typechecked
     def plot_roh(
         self,
         sample: het_params.sample,
-        region: base_params.region,
+        region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
@@ -2067,7 +2074,7 @@ class AnophelesDataResource(
     ) -> gplt_params.figure:
         debug = self._log.debug
 
-        resolved_region = self.resolve_region(region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -2160,6 +2167,7 @@ class AnophelesDataResource(
             the `results_cache` parameter was set when instantiating the Ag3 class.
         """,
     )
+    @typechecked
     def pca(
         self,
         region: base_params.region,
@@ -2237,6 +2245,7 @@ class AnophelesDataResource(
             output data frame.
         """,
     )
+    @typechecked
     def snp_allele_frequencies(
         self,
         transcript: base_params.transcript,
@@ -2370,6 +2379,7 @@ class AnophelesDataResource(
             output data frame.
         """,
     )
+    @typechecked
     def aa_allele_frequencies(
         self,
         transcript: base_params.transcript,
@@ -2462,6 +2472,7 @@ class AnophelesDataResource(
             counts and frequency calculations.
         """,
     )
+    @typechecked
     def aa_allele_frequencies_advanced(
         self,
         transcript: base_params.transcript,
@@ -2718,6 +2729,7 @@ class AnophelesDataResource(
             intervals.
         """,
     )
+    @typechecked
     def cohort_diversity_stats(
         self,
         cohort: base_params.cohort,
@@ -2816,6 +2828,7 @@ class AnophelesDataResource(
             confidence intervals for a single cohort.
         """,
     )
+    @typechecked
     def diversity_stats(
         self,
         cohorts: base_params.cohorts,
@@ -2910,6 +2923,7 @@ class AnophelesDataResource(
             fst="An array with Fst statistic values for each window.",
         ),
     )
+    @typechecked
     def fst_gwss(
         self,
         contig: base_params.contig,
@@ -3048,6 +3062,7 @@ class AnophelesDataResource(
             i.e., fewer rows than `max_len`.
         """,
     )
+    @typechecked
     def plot_frequencies_heatmap(
         self,
         df: pd.DataFrame,
@@ -3169,6 +3184,7 @@ class AnophelesDataResource(
             variants.
         """,
     )
+    @typechecked
     def plot_frequencies_time_series(
         self,
         ds: xr.Dataset,
@@ -3282,6 +3298,7 @@ class AnophelesDataResource(
             """,
         ),
     )
+    @typechecked
     def plot_frequencies_map_markers(
         self,
         m,
@@ -3376,6 +3393,7 @@ class AnophelesDataResource(
             and time period to display.
         """,
     )
+    @typechecked
     def plot_frequencies_interactive_map(
         self,
         ds: frq_params.ds_frequencies_advanced,
@@ -3437,6 +3455,7 @@ class AnophelesDataResource(
             kwargs="Passed through to `px.scatter()`",
         ),
     )
+    @typechecked
     def plot_pca_coords(
         self,
         data: pca_params.df_pca,
@@ -3524,6 +3543,7 @@ class AnophelesDataResource(
             kwargs="Passed through to `px.scatter_3d()`",
         ),
     )
+    @typechecked
     def plot_pca_coords_3d(
         self,
         data: pca_params.df_pca,
@@ -3613,6 +3633,7 @@ class AnophelesDataResource(
             plot_kwargs="Extra plotting parameters.",
         ),
     )
+    @typechecked
     def plot_diversity_stats(
         self,
         df_stats: pd.DataFrame,
@@ -3724,6 +3745,7 @@ class AnophelesDataResource(
             differentiation between two cohorts.
         """,
     )
+    @typechecked
     def plot_fst_gwss_track(
         self,
         contig: base_params.contig,
@@ -3812,6 +3834,7 @@ class AnophelesDataResource(
             differentiation between two cohorts.
         """,
     )
+    @typechecked
     def plot_fst_gwss(
         self,
         contig: base_params.contig,
@@ -3880,6 +3903,7 @@ class AnophelesDataResource(
         summary="Open haplotypes zarr.",
         returns="Zarr hierarchy.",
     )
+    @typechecked
     def open_haplotypes(
         self,
         sample_set: base_params.sample_set,
@@ -3905,6 +3929,7 @@ class AnophelesDataResource(
         summary="Open haplotype sites zarr.",
         returns="Zarr hierarchy.",
     )
+    @typechecked
     def open_haplotype_sites(
         self, analysis: hap_params.analysis = DEFAULT
     ) -> zarr.hierarchy.Group:
@@ -3995,6 +4020,7 @@ class AnophelesDataResource(
         summary="Access haplotype data.",
         returns="A dataset of haplotypes and associated data.",
     )
+    @typechecked
     def haplotypes(
         self,
         region: base_params.region,
@@ -4012,16 +4038,13 @@ class AnophelesDataResource(
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        resolved_region = self.resolve_region(region)
+        regions: List[Region] = parse_region(self, region)
         del region
-
-        if isinstance(resolved_region, Region):
-            resolved_region = [resolved_region]
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
         debug("build dataset")
         lx = []
-        for r in resolved_region:
+        for r in regions:
             ly = []
 
             for s in sample_sets:
@@ -4105,6 +4128,7 @@ class AnophelesDataResource(
             values and percentiles.
         """,
     )
+    @typechecked
     def h12_calibration(
         self,
         contig: base_params.contig,
@@ -4191,6 +4215,7 @@ class AnophelesDataResource(
             show="If True, show the plot.",
         ),
     )
+    @typechecked
     def plot_h12_calibration(
         self,
         contig: base_params.contig,
@@ -4274,6 +4299,7 @@ class AnophelesDataResource(
             h12="An array with h12 statistic values for each window.",
         ),
     )
+    @typechecked
     def h12_gwss(
         self,
         contig: base_params.contig,
@@ -4360,6 +4386,7 @@ class AnophelesDataResource(
     @doc(
         summary="Plot h12 GWSS data.",
     )
+    @typechecked
     def plot_h12_gwss_track(
         self,
         contig: base_params.contig,
@@ -4443,6 +4470,7 @@ class AnophelesDataResource(
     @doc(
         summary="Plot h12 GWSS data.",
     )
+    @typechecked
     def plot_h12_gwss(
         self,
         contig: base_params.contig,
@@ -4515,6 +4543,7 @@ class AnophelesDataResource(
             h1x="An array with H1X statistic values for each window.",
         ),
     )
+    @typechecked
     def h1x_gwss(
         self,
         contig: base_params.contig,
@@ -4624,6 +4653,7 @@ class AnophelesDataResource(
             with shared selective sweeps between two cohorts.
         """
     )
+    @typechecked
     def plot_h1x_gwss_track(
         self,
         contig: base_params.contig,
@@ -4712,6 +4742,7 @@ class AnophelesDataResource(
             with shared selective sweeps between two cohorts.
         """
     )
+    @typechecked
     def plot_h1x_gwss(
         self,
         contig: base_params.contig,
@@ -4783,6 +4814,7 @@ class AnophelesDataResource(
             ihs="An array with iHS statistic values for each window.",
         ),
     )
+    @typechecked
     def ihs_gwss(
         self,
         contig: base_params.contig,
@@ -4944,6 +4976,7 @@ class AnophelesDataResource(
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
+    @typechecked
     def plot_ihs_gwss_track(
         self,
         contig: base_params.contig,
@@ -5064,6 +5097,7 @@ class AnophelesDataResource(
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
+    @typechecked
     def plot_ihs_gwss(
         self,
         contig: base_params.contig,
@@ -5184,6 +5218,7 @@ class AnophelesDataResource(
             g123="An array with G123 statistic values for each window.",
         ),
     )
+    @typechecked
     def g123_gwss(
         self,
         contig: base_params.contig,
@@ -5273,6 +5308,7 @@ class AnophelesDataResource(
     @doc(
         summary="Plot G123 GWSS data.",
     )
+    @typechecked
     def plot_g123_gwss_track(
         self,
         contig: base_params.contig,
@@ -5356,6 +5392,7 @@ class AnophelesDataResource(
     @doc(
         summary="Plot G123 GWSS data.",
     )
+    @typechecked
     def plot_g123_gwss(
         self,
         contig: base_params.contig,
@@ -5478,6 +5515,7 @@ class AnophelesDataResource(
             values and percentiles.
         """,
     )
+    @typechecked
     def g123_calibration(
         self,
         contig: base_params.contig,
@@ -5558,6 +5596,7 @@ class AnophelesDataResource(
     @doc(
         summary="Plot g123 GWSS calibration data for different window sizes.",
     )
+    @typechecked
     def plot_g123_calibration(
         self,
         contig: base_params.contig,
@@ -5639,6 +5678,7 @@ class AnophelesDataResource(
             kwargs="Passed through to `px.scatter()`.",
         ),
     )
+    @typechecked
     def plot_haplotype_clustering(
         self,
         region: base_params.region,

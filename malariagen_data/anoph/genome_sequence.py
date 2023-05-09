@@ -5,7 +5,7 @@ import zarr
 from numpydoc_decorator import doc
 from typeguard import typechecked
 
-from ..util import Region, da_from_zarr, init_zarr_store, parse_region
+from ..util import Region, da_from_zarr, init_zarr_store, parse_single_region
 from .base import AnophelesBase, base_params
 
 
@@ -77,7 +77,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Parse the region parameter into a Region object.
-        resolved_region: Region = parse_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         # Obtain complete sequence for the requested contig.

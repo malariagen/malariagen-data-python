@@ -24,8 +24,8 @@ from ..util import (
     init_zarr_store,
     locate_region,
     parse_region,
+    parse_single_region,
     resolve_region,
-    resolve_regions,
     xarray_concat,
 )
 from .base import DEFAULT, base_params
@@ -208,7 +208,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = resolve_regions(self, region)
+        regions: List[Region] = parse_region(self, region)
         del region
 
         # Load arrays and concatenate if needed.
@@ -287,7 +287,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = resolve_regions(self, region)
+        regions: List[Region] = parse_region(self, region)
         del region
 
         # Access SNP sites and concatenate over regions.
@@ -357,7 +357,7 @@ class AnophelesSnpData(
 
         # Normalise parameters.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions: List[Region] = resolve_regions(self, region)
+        regions: List[Region] = parse_region(self, region)
         del region
 
         # Concatenate multiple sample sets and/or contigs.
@@ -469,7 +469,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ):
         # Normalise parameters.
-        regions: List[Region] = resolve_regions(self, region)
+        regions: List[Region] = parse_region(self, region)
         del region
 
         # Access SNP data and concatenate multiple regions.
@@ -516,7 +516,7 @@ class AnophelesSnpData(
         # N.B., we default to chunks="auto" here for performance reasons
 
         # Resolve region.
-        resolved_region: Region = parse_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
         contig = resolved_region.contig
 
@@ -778,7 +778,7 @@ class AnophelesSnpData(
             sample_sets=sample_sets
         )
         del sample_sets
-        regions: List[Region] = resolve_regions(self, region)
+        regions: List[Region] = parse_region(self, region)
         del region
 
         # Access SNP calls and concatenate multiple sample sets and/or regions.
@@ -1084,7 +1084,7 @@ class AnophelesSnpData(
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         # Resolve and check region.
-        resolved_region: Region = parse_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         if (
@@ -1247,7 +1247,7 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> np.ndarray:
-        resolved_region: Region = parse_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         # Determine contig sequence length.

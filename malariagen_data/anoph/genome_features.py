@@ -12,8 +12,8 @@ from typing_extensions import Annotated, TypeAlias
 from ..util import (
     Region,
     parse_region,
+    parse_single_region,
     read_gff3,
-    resolve_regions,
     unpack_gff3_attributes,
 )
 from .base import DEFAULT, base_params
@@ -163,7 +163,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if region is not None:
             debug("Handle region.")
-            regions = resolve_regions(self, region)
+            regions = parse_region(self, region)
             del region
 
             debug("Apply region query.")
@@ -355,7 +355,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region: Region = parse_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         debug("handle region bounds")
