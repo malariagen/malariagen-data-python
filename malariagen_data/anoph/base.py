@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 from typing import (
     IO,
+    Any,
     Dict,
     Final,
     Iterable,
@@ -592,7 +593,9 @@ class AnophelesBase:
         # Expect sub-classes will override to add any analysis parameters.
         pass
 
-    def results_cache_get(self, *, name, params):
+    def results_cache_get(
+        self, *, name: str, params: Dict[str, Any]
+    ) -> Mapping[str, np.ndarray]:
         name = type(self).__name__.lower() + "_" + name
         if self._results_cache is None:
             raise CacheMiss
@@ -604,9 +607,12 @@ class AnophelesBase:
         if not results_path.exists():
             raise CacheMiss
         results = np.load(results_path)
+        # TODO Do we need to read the arrays and then close the npz file?
         return results
 
-    def results_cache_set(self, *, name, params, results):
+    def results_cache_set(
+        self, *, name: str, params: Dict[str, Any], results: Mapping[str, np.ndarray]
+    ):
         name = type(self).__name__.lower() + "_" + name
         if self._results_cache is None:
             return
