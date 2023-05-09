@@ -949,7 +949,7 @@ def test_cnv_hmm(sample_sets, region):
         )
     else:
         # test part of a contig region
-        region = ag3.resolve_region(region)
+        region = resolve_region(ag3, region)
         variant_contig = ds["variant_contig"].values
         contig_index = ds.attrs["contigs"].index(region.contig)
         assert np.all(variant_contig == contig_index)
@@ -1162,7 +1162,7 @@ def test_cnv_coverage_calls(sample_set, analysis, region):
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
 
     # check region
-    region = ag3.resolve_region(region)
+    region = resolve_region(ag3, region)
     if (
         isinstance(region, Region)
         and region.start is not None

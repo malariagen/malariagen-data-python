@@ -504,6 +504,28 @@ def locate_region(region, pos):
     return loc_region
 
 
+def region_str(region: List[Region]) -> str:
+    """Convert a region to a string representation.
+
+    Parameters
+    ----------
+    region : Region or list of Region
+        The region to display.
+
+    Returns
+    -------
+    out : str
+
+    """
+    if isinstance(region, list):
+        if len(region) > 1:
+            return "; ".join([str(r) for r in region])
+        else:
+            return str(region[0])
+    else:
+        return str(region)
+
+
 def xarray_concat(
     datasets,
     dim,

@@ -2,6 +2,7 @@ import sys
 import warnings
 from bisect import bisect_left, bisect_right
 from textwrap import dedent
+from typing import List
 
 import dask
 import dask.array as da
@@ -13,6 +14,7 @@ import zarr
 
 import malariagen_data  # used for .__version__
 
+from .anoph.base import base_params
 from .anopheles import AnophelesDataResource, gplt_params
 from .util import (
     DIM_SAMPLE,
@@ -20,6 +22,9 @@ from .util import (
     Region,
     da_from_zarr,
     init_zarr_store,
+    parse_region,
+    parse_single_region,
+    region_str,
     xarray_concat,
 )
 
@@ -674,7 +679,7 @@ class Ag3(AnophelesDataResource):
 
     def cnv_hmm(
         self,
-        region,
+        region: base_params.region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -716,13 +721,12 @@ class Ag3(AnophelesDataResource):
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_region(self, region)
+        del region
 
         debug("access CNV HMM data and concatenate as needed")
         lx = []
-        for r in region:
+        for r in regions:
             ly = []
             for s in sample_sets:
                 y = self._cnv_hmm_dataset(
@@ -897,7 +901,7 @@ class Ag3(AnophelesDataResource):
 
     def cnv_coverage_calls(
         self,
-        region,
+        region: base_params.region,
         sample_set,
         analysis,
         inline_array=True,
@@ -936,13 +940,12 @@ class Ag3(AnophelesDataResource):
         # calling is done independently in different sample sets.
 
         debug("normalise parameters")
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_region(self, region)
+        del region
 
         debug("access data and concatenate as needed")
         lx = []
-        for r in region:
+        for r in regions:
             debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
@@ -1130,7 +1133,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv(
         self,
-        region,
+        region: base_params.region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -1162,9 +1165,8 @@ class Ag3(AnophelesDataResource):
 
         """
 
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_region(self, region)
+        del region
 
         ds = xarray_concat(
             [
@@ -1174,7 +1176,7 @@ class Ag3(AnophelesDataResource):
                     sample_query=sample_query,
                     max_coverage_variance=max_coverage_variance,
                 )
-                for r in region
+                for r in regions
             ],
             dim="genes",
         )
@@ -1266,7 +1268,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv_frequencies(
         self,
-        region,
+        region: base_params.region,
         cohorts,
         sample_query=None,
         min_cohort_size=10,
@@ -1317,9 +1319,8 @@ class Ag3(AnophelesDataResource):
 
         debug("check and normalise parameters")
         self._check_param_min_cohort_size(min_cohort_size)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_region(self, region)
+        del region
 
         debug("access and concatenate data from regions")
         df = pd.concat(
@@ -1333,13 +1334,13 @@ class Ag3(AnophelesDataResource):
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
                 )
-                for r in region
+                for r in regions
             ],
             axis=0,
         )
 
         debug("add metadata")
-        title = f"Gene CNV frequencies ({self._region_str(region)})"
+        title = f"Gene CNV frequencies ({region_str(regions)})"
         df.attrs["title"] = title
 
         return df
@@ -1489,7 +1490,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv_frequencies_advanced(
         self,
-        region,
+        region: base_params.region,
         area_by,
         period_by,
         sample_sets=None,
@@ -1552,9 +1553,8 @@ class Ag3(AnophelesDataResource):
 
         self._check_param_min_cohort_size(min_cohort_size)
 
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_region(self, region)
+        del region
 
         ds = xarray_concat(
             [
@@ -1570,12 +1570,12 @@ class Ag3(AnophelesDataResource):
                     max_coverage_variance=max_coverage_variance,
                     ci_method=ci_method,
                 )
-                for r in region
+                for r in regions
             ],
             dim="variants",
         )
 
-        title = f"Gene CNV frequencies ({self._region_str(region)})"
+        title = f"Gene CNV frequencies ({region_str(regions)})"
         ds.attrs["title"] = title
 
         return ds
@@ -1739,7 +1739,7 @@ class Ag3(AnophelesDataResource):
     def plot_cnv_hmm_coverage_track(
         self,
         sample,
-        region,
+        region: base_params.single_region,
         sample_set=None,
         y_max="auto",
         sizing_mode=gplt_params.sizing_mode_default,
@@ -1791,7 +1791,8 @@ class Ag3(AnophelesDataResource):
         import bokeh.plotting as bkplt
 
         debug("resolve region")
-        region = self.resolve_region(region)
+        region_prepped: Region = parse_single_region(self, region)
+        del region
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
@@ -1800,7 +1801,7 @@ class Ag3(AnophelesDataResource):
 
         debug("access HMM data")
         hmm = self.cnv_hmm(
-            region=region, sample_sets=sample_set, max_coverage_variance=None
+            region=region_prepped, sample_sets=sample_set, max_coverage_variance=None
         )
 
         debug("select data for the given sample")
@@ -1862,7 +1863,7 @@ class Ag3(AnophelesDataResource):
         debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
         fig.yaxis.ticker = list(range(y_max + 1))
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.add_layout(fig.legend[0], "right")
 
         if show:
@@ -1966,7 +1967,7 @@ class Ag3(AnophelesDataResource):
 
     def plot_cnv_hmm_heatmap_track(
         self,
-        region,
+        region: base_params.single_region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -2016,11 +2017,12 @@ class Ag3(AnophelesDataResource):
         import bokeh.palettes as bkpal
         import bokeh.plotting as bkplt
 
-        region = self.resolve_region(region)
+        region_prepped: Region = parse_single_region(self, region)
+        del region
 
         debug("access HMM data")
         ds_cnv = self.cnv_hmm(
-            region=region,
+            region=region_prepped,
             sample_sets=sample_sets,
             sample_query=sample_query,
             max_coverage_variance=max_coverage_variance,
@@ -2104,7 +2106,7 @@ class Ag3(AnophelesDataResource):
 
         debug("tidy")
         fig.yaxis.axis_label = "Samples"
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.yaxis.ticker = bkmod.FixedTicker(
             ticks=np.arange(len(sample_id)),
         )

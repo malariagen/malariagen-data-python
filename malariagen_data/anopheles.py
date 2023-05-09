@@ -1616,30 +1616,6 @@ class AnophelesDataResource(
 
         return df_samples
 
-    def _region_str(self, region):
-        """Convert a region to a string representation.
-
-        Parameters
-        ----------
-        region : Region or list of Region
-            The region to display.
-
-        Returns
-        -------
-        out : str
-
-        """
-        if isinstance(region, list):
-            if len(region) > 1:
-                return "; ".join([self._region_str(r) for r in region])
-            else:
-                region = region[0]
-
-        # sanity check
-        assert isinstance(region, Region)
-
-        return str(region)
-
     def _lookup_sample(self, sample, sample_set=None):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
         sample_rec = None
