@@ -3908,7 +3908,7 @@ class AnophelesDataResource(
         self,
         sample_set: base_params.sample_set,
         analysis: hap_params.analysis = DEFAULT,
-    ) -> zarr.hierarchy.Group:
+    ) -> Optional[zarr.hierarchy.Group]:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
             return self._cache_haplotypes[(sample_set, analysis)]
@@ -3917,7 +3917,7 @@ class AnophelesDataResource(
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
             store = init_zarr_store(fs=self._fs, path=path)
-            # some sample sets have no data for a given analysis, handle this
+            # Some sample sets have no data for a given analysis, handle this.
             try:
                 root = zarr.open_consolidated(store=store)
             except FileNotFoundError:
