@@ -70,7 +70,17 @@ class base_params:
     sample_query: TypeAlias = Annotated[
         str,
         """
-        A pandas query string to be evaluated against the sample metadata.
+        A pandas query string to be evaluated against the sample metadata, to
+        select samples to be included in the returned data.
+        """,
+    ]
+    sample_indices: TypeAlias = Annotated[
+        List[int],
+        """
+        Advanced usage parameter. A list of indices of samples to select,
+        corresponding to the order in which the samples are found within the
+        sample metadata. Either provide this parameter or sample_query, not
+        both.
         """,
     ]
     cohort1_query: TypeAlias = Annotated[

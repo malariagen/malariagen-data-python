@@ -482,11 +482,18 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
         # Set up for caching.
         prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
         cache_key = tuple(prepped_sample_sets)
+
+        # Check parameters.
+        if sample_query is not None and sample_indices is not None:
+            raise ValueError(
+                "Please provide either sample_query or sample_indices, not both."
+            )
 
         try:
             # Attempt to retrieve from the cache.
@@ -511,12 +518,12 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # For convenience, apply a query.
         if sample_query is not None:
-            if isinstance(sample_query, str):
-                # Assume a pandas query string.
-                df_samples = df_samples.query(sample_query)
-            else:
-                # Assume it is an indexer.
-                df_samples = df_samples.iloc[sample_query]
+            # Assume a pandas query string.
+            df_samples = df_samples.query(sample_query)
+            df_samples = df_samples.reset_index(drop=True)
+        elif sample_indices is not None:
+            # Assume it is an indexer.
+            df_samples = df_samples.iloc[sample_indices]
             df_samples = df_samples.reset_index(drop=True)
 
         return df_samples.copy()
