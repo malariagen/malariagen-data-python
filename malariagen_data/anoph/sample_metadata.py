@@ -486,7 +486,9 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         # Validate parameters.
         base_params.validate_sample_sets(sample_sets)
-        base_params.validate_sample_selection_params(sample_query=sample_query, sample_indices=sample_indices)
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
 
         # Set up for caching.
         prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)

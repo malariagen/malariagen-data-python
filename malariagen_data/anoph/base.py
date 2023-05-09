@@ -96,7 +96,7 @@ class base_params:
         if value is not None:
             if not isinstance(value, str):
                 raise TypeError("The sample_query parameter must be a string (str).")
-        
+
     sample_indices: TypeAlias = Annotated[
         List[int],
         """
@@ -117,14 +117,14 @@ class base_params:
                 raise ValueError("The sample_indices parameter is an empty list.")
             for v in value:
                 if not isinstance(v, int):
-                    raise TypeError(type_message)             
+                    raise TypeError(type_message)
 
     @classmethod
     def validate_sample_selection_params(
         cls,
         *,
         sample_query: Optional[sample_query],
-        sample_indices: Optional[sample_indices],            
+        sample_indices: Optional[sample_indices],
     ):
         if sample_query is not None and sample_indices is not None:
             raise ValueError(
@@ -132,7 +132,7 @@ class base_params:
             )
         cls.validate_sample_query(sample_query)
         cls.validate_sample_indices(sample_indices)
-    
+
     cohort1_query: TypeAlias = Annotated[
         str,
         """
