@@ -68,7 +68,7 @@ class gplt_params:
     ]
     toolbar_location_default: toolbar_location = "above"
     x_range: TypeAlias = Annotated[
-        bokeh.models.Range1d,
+        bokeh.models.Range,
         "X axis range (for linking to other tracks).",
     ]
     title: TypeAlias = Annotated[

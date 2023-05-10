@@ -1776,7 +1776,7 @@ class Ag3(AnophelesDataResource):
             Passed through to bokeh line() function.
         show : bool, optional
             If true, show the plot.
-        x_range : bokeh.models.Range1d, optional
+        x_range : bokeh.models.Range, optional
             X axis range (for linking to other tracks).
 
         Returns
