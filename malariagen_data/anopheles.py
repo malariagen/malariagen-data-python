@@ -7325,7 +7325,10 @@ class AnophelesDataResource(
             dimensions="width", maintain_focus=False
         )
         if title is None:
-            title = "'" + sample_query1 + "' and '" + sample_query2 + "'"
+            if sample_query1 is None or sample_query2 is None:
+                title = "XP-EHH"
+            else:
+                title = "'" + sample_query1 + "' and '" + sample_query2 + "'"
         fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
