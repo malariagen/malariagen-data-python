@@ -1634,7 +1634,7 @@ class AnophelesDataResource(
         sample_set,
         windows,
         counts,
-        region,
+        region: Region,
         window_size,
         y_max,
         sizing_mode,
@@ -1645,8 +1645,6 @@ class AnophelesDataResource(
         x_range,
     ):
         debug = self._log.debug
-
-        region = self.resolve_region(region)
 
         # pos axis
         window_pos = windows.mean(axis=1)

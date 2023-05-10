@@ -457,6 +457,16 @@ def parse_single_region(resource, region: single_region_param_type) -> Region:
     )
 
 
+def parse_multi_region(
+    resource,
+    region: region_param_type,
+) -> List[Region]:
+    if isinstance(region, (list, tuple)):
+        return [parse_single_region(resource, r) for r in region]
+    else:
+        return [parse_single_region(resource, region)]
+
+
 def resolve_region(
     resource,
     region: region_param_type,
@@ -472,16 +482,6 @@ def resolve_region(
         return [parse_single_region(resource, r) for r in region]
     else:
         return parse_single_region(resource, region)
-
-
-def parse_multi_region(
-    resource,
-    region: region_param_type,
-) -> List[Region]:
-    if isinstance(region, (list, tuple)):
-        return [parse_single_region(resource, r) for r in region]
-    else:
-        return [parse_single_region(resource, region)]
 
 
 def locate_region(region: Region, pos: np.ndarray) -> slice:

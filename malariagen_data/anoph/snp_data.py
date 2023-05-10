@@ -25,7 +25,6 @@ from ..util import (
     locate_region,
     parse_multi_region,
     parse_single_region,
-    resolve_region,
     xarray_concat,
 )
 from .base import DEFAULT, base_params
@@ -881,11 +880,11 @@ class AnophelesSnpData(
         # N.B., we need to convert to a dict, because cache saves params as
         # JSON.
 
-        region_prepped = resolve_region(self, region)
-        if isinstance(region_prepped, list):
+        region_prepped: List[Region] = parse_multi_region(self, region)
+        if len(region_prepped) > 1:
             ret = [r.to_dict() for r in region_prepped]
         else:
-            ret = region_prepped.to_dict()
+            ret = region_prepped[0].to_dict()
         return ret
 
     def _results_cache_add_analysis_params(self, params: dict):
