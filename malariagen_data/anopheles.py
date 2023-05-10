@@ -189,9 +189,13 @@ class frq_params:
 class het_params:
     """Parameters for functions related to heterozygosity and runs of homozygosity."""
 
-    sample: TypeAlias = Annotated[
+    single_sample: TypeAlias = Annotated[
         Union[str, int],
         "Sample identifier or index within sample set.",
+    ]
+    sample: TypeAlias = Annotated[
+        Union[single_sample, List[single_sample], Tuple[single_sample, ...]],
+        "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
     ]
     window_size: TypeAlias = Annotated[
         int,
@@ -1708,7 +1712,7 @@ class AnophelesDataResource(
     @typechecked
     def plot_heterozygosity_track(
         self,
-        sample: het_params.sample,
+        sample: het_params.single_sample,
         region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
@@ -1899,7 +1903,7 @@ class AnophelesDataResource(
     @typechecked
     def roh_hmm(
         self,
-        sample: het_params.sample,
+        sample: het_params.single_sample,
         region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
@@ -2029,7 +2033,7 @@ class AnophelesDataResource(
     @typechecked
     def plot_roh(
         self,
-        sample: het_params.sample,
+        sample: het_params.single_sample,
         region: base_params.single_region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
