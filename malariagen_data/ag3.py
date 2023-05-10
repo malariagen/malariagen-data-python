@@ -43,6 +43,7 @@ G123_CALIBRATION_CACHE_NAME = "ag3_g123_calibration_v1"
 G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 DEFAULT_SITE_MASK = "gamb_colu_arab"
 
 
@@ -113,6 +114,7 @@ class Ag3(AnophelesDataResource):
     _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _xpehh_gwss_cache_name = IHS_GWSS_CACHE_NAME
     site_mask_ids = ("gamb_colu_arab", "gamb_colu", "arab")
     _default_site_mask = DEFAULT_SITE_MASK
     phasing_analysis_ids = ("gamb_colu_arab", "gamb_colu", "arab")
