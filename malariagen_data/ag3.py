@@ -22,7 +22,7 @@ from .util import (
     Region,
     da_from_zarr,
     init_zarr_store,
-    parse_region,
+    parse_multi_region,
     parse_single_region,
     region_str,
     xarray_concat,
@@ -721,7 +721,7 @@ class Ag3(AnophelesDataResource):
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         debug("access CNV HMM data and concatenate as needed")
@@ -940,7 +940,7 @@ class Ag3(AnophelesDataResource):
         # calling is done independently in different sample sets.
 
         debug("normalise parameters")
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         debug("access data and concatenate as needed")
@@ -1165,7 +1165,7 @@ class Ag3(AnophelesDataResource):
 
         """
 
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         ds = xarray_concat(
@@ -1319,7 +1319,7 @@ class Ag3(AnophelesDataResource):
 
         debug("check and normalise parameters")
         self._check_param_min_cohort_size(min_cohort_size)
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         debug("access and concatenate data from regions")
@@ -1553,7 +1553,7 @@ class Ag3(AnophelesDataResource):
 
         self._check_param_min_cohort_size(min_cohort_size)
 
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         ds = xarray_concat(

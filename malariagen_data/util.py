@@ -474,7 +474,7 @@ def resolve_region(
         return parse_single_region(resource, region)
 
 
-def parse_region(
+def parse_multi_region(
     resource,
     region: region_param_type,
 ) -> List[Region]:
@@ -484,7 +484,7 @@ def parse_region(
         return [parse_single_region(resource, region)]
 
 
-def locate_region(region, pos):
+def locate_region(region: Region, pos: np.ndarray) -> slice:
     """Get array slice and a parsed genomic region.
 
     Parameters
@@ -499,8 +499,8 @@ def locate_region(region, pos):
     loc_region : slice
 
     """
-    pos = allel.SortedIndex(pos)
-    loc_region = pos.locate_range(region.start, region.end)
+    pos_idx = allel.SortedIndex(pos)
+    loc_region = pos_idx.locate_range(region.start, region.end)
     return loc_region
 
 

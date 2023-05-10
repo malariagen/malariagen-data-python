@@ -41,7 +41,7 @@ from .util import (
     jackknife_ci,
     jitter,
     locate_region,
-    parse_region,
+    parse_multi_region,
     parse_single_region,
     plotly_discrete_legend,
     type_error,
@@ -4014,7 +4014,7 @@ class AnophelesDataResource(
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 

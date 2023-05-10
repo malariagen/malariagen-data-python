@@ -23,7 +23,7 @@ from ..util import (
     dask_compress_dataset,
     init_zarr_store,
     locate_region,
-    parse_region,
+    parse_multi_region,
     parse_single_region,
     resolve_region,
     xarray_concat,
@@ -208,7 +208,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         # Load arrays and concatenate if needed.
@@ -287,7 +287,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         # Access SNP sites and concatenate over regions.
@@ -357,7 +357,7 @@ class AnophelesSnpData(
 
         # Normalise parameters.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         # Concatenate multiple sample sets and/or contigs.
@@ -469,7 +469,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.chunks_default,
     ):
         # Normalise parameters.
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         # Access SNP data and concatenate multiple regions.
@@ -778,7 +778,7 @@ class AnophelesSnpData(
             sample_sets=sample_sets
         )
         del sample_sets
-        regions: List[Region] = parse_region(self, region)
+        regions: List[Region] = parse_multi_region(self, region)
         del region
 
         # Access SNP calls and concatenate multiple sample sets and/or regions.

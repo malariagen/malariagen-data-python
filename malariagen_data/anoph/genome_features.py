@@ -11,7 +11,7 @@ from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
     Region,
-    parse_region,
+    parse_multi_region,
     parse_single_region,
     read_gff3,
     unpack_gff3_attributes,
@@ -163,7 +163,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if region is not None:
             debug("Handle region.")
-            regions = parse_region(self, region)
+            regions = parse_multi_region(self, region)
             del region
 
             debug("Apply region query.")
