@@ -218,7 +218,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         height: gplt_params.height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        toolbar_location: Optional[
+            gplt_params.toolbar_location
+        ] = gplt_params.toolbar_location_default,
         title: gplt_params.title = True,
     ) -> gplt_params.figure:
         debug = self._log.debug
@@ -348,7 +350,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        toolbar_location: Optional[
+            gplt_params.toolbar_location
+        ] = gplt_params.toolbar_location_default,
         x_range: Optional[gplt_params.x_range] = None,
         title: gplt_params.title = "Genes",
     ) -> gplt_params.figure:
