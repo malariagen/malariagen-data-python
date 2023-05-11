@@ -76,7 +76,10 @@ class gplt_params:
         "Plot title. If True, a title may be automatically generated.",
     ]
     figure: TypeAlias = Annotated[
-        bokeh.plotting.Figure,
+        # Use quite a broad type here to accommodate both single-panel figures
+        # created via bokeh.plotting and multi-panel figures created via
+        # bokeh.layouts.
+        bokeh.model.Model,
         "A bokeh figure.",
     ]
 
