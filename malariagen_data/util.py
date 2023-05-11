@@ -471,7 +471,7 @@ def locate_region(region, pos):
     return loc_region
 
 
-def fast_xarray_concat_arrays(datasets, names, dim):
+def _fast_xarray_concat_arrays(datasets, names, dim):
     ds0 = datasets[0]
     out = dict()
     for k in names:
@@ -489,16 +489,18 @@ def fast_xarray_concat_arrays(datasets, names, dim):
     return out
 
 
-def fast_xarray_concat(datasets, dim, attrs=None):
+def fast_xarray_concat(datasets, dim, attrs="override"):
     ds0 = datasets[0]
+    if attrs == "override":
+        attrs = ds0.attrs
     if len(datasets) == 1:
         return ds0
-    coords = fast_xarray_concat_arrays(
+    coords = _fast_xarray_concat_arrays(
         datasets=datasets,
         names=list(ds0.coords),
         dim=dim,
     )
-    data_vars = fast_xarray_concat_arrays(
+    data_vars = _fast_xarray_concat_arrays(
         datasets=datasets,
         names=list(ds0.data_vars),
         dim=dim,
