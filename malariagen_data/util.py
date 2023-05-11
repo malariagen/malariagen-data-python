@@ -471,27 +471,64 @@ def locate_region(region, pos):
     return loc_region
 
 
-def xarray_concat(
-    datasets,
-    dim,
-    data_vars="minimal",
-    coords="minimal",
-    compat="override",
-    join="override",
-    **kwargs,
-):
+def fast_xarray_concat_arrays(datasets, names, dim):
+    ds0 = datasets[0]
+    out = dict()
+    for k in names:
+        v = ds0[k]
+        if dim in v.dims:
+            dim_index = v.dims.index(dim)
+            data_arrays = [ds[k] for ds in datasets]
+            assert all([a.dims[dim_index] == dim for a in data_arrays])
+            dask_arrays = [a.data for a in data_arrays]
+            assert all([isinstance(a, da.Array) for a in dask_arrays])
+            d = da.concatenate(dask_arrays, axis=dim_index)
+            out[k] = v.dims, d
+        else:
+            out[k] = v
+    return out
+
+
+def fast_xarray_concat(datasets, dim, attrs=None):
+    ds0 = datasets[0]
     if len(datasets) == 1:
-        return datasets[0]
-    else:
-        return xr.concat(
-            datasets,
-            dim=dim,
-            data_vars=data_vars,
-            coords=coords,
-            compat=compat,
-            join=join,
-            **kwargs,
-        )
+        return ds0
+    coords = fast_xarray_concat_arrays(
+        datasets=datasets,
+        names=list(ds0.coords),
+        dim=dim,
+    )
+    data_vars = fast_xarray_concat_arrays(
+        datasets=datasets,
+        names=list(ds0.data_vars),
+        dim=dim,
+    )
+    return xr.Dataset(coords=coords, data_vars=data_vars, attrs=attrs)
+
+
+# xarray concat() function is very slow, don't use for now
+#
+# def xarray_concat(
+#     datasets,
+#     dim,
+#     data_vars="minimal",
+#     coords="minimal",
+#     compat="override",
+#     join="override",
+#     **kwargs,
+# ):
+#     if len(datasets) == 1:
+#         return datasets[0]
+#     else:
+#         return xr.concat(
+#             datasets,
+#             dim=dim,
+#             data_vars=data_vars,
+#             coords=coords,
+#             compat=compat,
+#             join=join,
+#             **kwargs,
+#         )
 
 
 def type_error(

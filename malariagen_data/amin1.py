@@ -11,13 +11,13 @@ from .util import (
     Region,
     da_from_zarr,
     dask_compress_dataset,
+    fast_xarray_concat,
     init_filesystem,
     init_zarr_store,
     locate_region,
     read_gff3,
     resolve_region,
     unpack_gff3_attributes,
-    xarray_concat,
 )
 
 GENOME_FEATURES_GFF3_PATH = (
@@ -265,13 +265,9 @@ class Amin1:
             )
             for r in region
         ]
-        ds = xarray_concat(
+        ds = fast_xarray_concat(
             datasets,
             dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
         )
 
         # apply site filters
