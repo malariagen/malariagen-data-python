@@ -44,8 +44,8 @@ from .util import (
     parse_multi_region,
     parse_single_region,
     plotly_discrete_legend,
+    simple_xarray_concat,
     type_error,
-    xarray_concat,
 )
 
 AA_CHANGE_QUERY = (
@@ -4041,7 +4041,7 @@ class AnophelesDataResource(
                 return None
 
             debug("concatenate data from multiple sample sets")
-            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("handle region")
             if r.start or r.end:
@@ -4052,7 +4052,7 @@ class AnophelesDataResource(
             lx.append(x)
 
         debug("concatenate data from multiple regions")
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
         if sample_query is not None:

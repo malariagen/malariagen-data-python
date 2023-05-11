@@ -16,8 +16,8 @@ from .util import (
     locate_region,
     read_gff3,
     resolve_region,
+    simple_xarray_concat,
     unpack_gff3_attributes,
-    xarray_concat,
 )
 
 GENOME_FEATURES_GFF3_PATH = (
@@ -265,13 +265,9 @@ class Amin1:
             )
             for r in region
         ]
-        ds = xarray_concat(
+        ds = simple_xarray_concat(
             datasets,
             dim=DIM_VARIANT,
-            data_vars="minimal",
-            coords="minimal",
-            compat="override",
-            join="override",
         )
 
         # apply site filters

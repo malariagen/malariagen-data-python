@@ -25,7 +25,7 @@ from .util import (
     parse_multi_region,
     parse_single_region,
     region_str,
-    xarray_concat,
+    simple_xarray_concat,
 )
 
 # silence dask performance warnings
@@ -467,7 +467,7 @@ class Ag3(AnophelesDataResource):
                 chunks=chunks,
             )
 
-            ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+            ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
 
             return ds
 
@@ -497,7 +497,7 @@ class Ag3(AnophelesDataResource):
             max_r = super().genome_sequence(region=contig_r).shape[0]
             ds_l["variant_position"] = ds_l["variant_position"] + max_r
 
-            ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+            ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
 
             return ds
 
@@ -570,7 +570,7 @@ class Ag3(AnophelesDataResource):
             if ds_l is not None:
                 max_r = super().genome_sequence(region=contig_r).shape[0]
                 ds_l["variant_position"] = ds_l["variant_position"] + max_r
-                ds = xr.concat([ds_r, ds_l], dim=DIM_VARIANT)
+                ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
                 return ds
 
             return None
@@ -738,7 +738,7 @@ class Ag3(AnophelesDataResource):
                 ly.append(y)
 
             debug("concatenate data from multiple sample sets")
-            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("handle region, do this only once - optimisation")
             if r.start is not None or r.end is not None:
@@ -753,7 +753,7 @@ class Ag3(AnophelesDataResource):
             lx.append(x)
 
         debug("concatenate data from multiple regions")
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
         if sample_query is not None:
@@ -966,7 +966,7 @@ class Ag3(AnophelesDataResource):
                 x = x.isel(variants=loc_region)
 
             lx.append(x)
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -1124,10 +1124,10 @@ class Ag3(AnophelesDataResource):
                 )
                 ly.append(y)
 
-            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
 
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         return ds
 
@@ -1168,7 +1168,7 @@ class Ag3(AnophelesDataResource):
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
-        ds = xarray_concat(
+        ds = simple_xarray_concat(
             [
                 self._gene_cnv(
                     region=r,
@@ -1556,7 +1556,7 @@ class Ag3(AnophelesDataResource):
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
-        ds = xarray_concat(
+        ds = simple_xarray_concat(
             [
                 self._gene_cnv_frequencies_advanced(
                     region=r,
@@ -2328,7 +2328,7 @@ class Ag3(AnophelesDataResource):
             ly.append(y)
 
         debug("concatenate data from multiple sample sets")
-        ds = xarray_concat(ly, dim=DIM_SAMPLE)
+        ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
         debug("handle sample query")
         if sample_query is not None:

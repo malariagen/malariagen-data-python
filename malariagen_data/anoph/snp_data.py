@@ -25,7 +25,7 @@ from ..util import (
     locate_region,
     parse_multi_region,
     parse_single_region,
-    xarray_concat,
+    simple_xarray_concat,
 )
 from .base import DEFAULT, base_params
 from .genome_features import AnophelesGenomeFeaturesData, gplt_params
@@ -490,7 +490,7 @@ class AnophelesSnpData(
             lx.append(x)
 
         # Concatenate data from multiple regions.
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Apply site filters.
         if site_mask is not None:
@@ -794,7 +794,7 @@ class AnophelesSnpData(
                 ly.append(y)
 
             # Concatenate data from multiple sample sets.
-            x = xarray_concat(ly, dim=DIM_SAMPLE)
+            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
             # Add variants variables.
             v = self._snp_variants_for_contig(
@@ -820,7 +820,7 @@ class AnophelesSnpData(
             lx.append(x)
 
         # Concatenate data from multiple regions.
-        ds = xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         if site_mask is not None:
             # Apply site filters.

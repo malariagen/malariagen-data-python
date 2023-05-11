@@ -4,10 +4,9 @@ import logging
 import re
 import sys
 import warnings
-from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, List, Optional, Tuple, Union
+from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -526,27 +525,107 @@ def region_str(region: List[Region]) -> str:
         return str(region)
 
 
-def xarray_concat(
-    datasets,
-    dim,
-    data_vars="minimal",
-    coords="minimal",
-    compat="override",
-    join="override",
-    **kwargs,
-):
+def _simple_xarray_concat_arrays(
+    datasets: List[xr.Dataset], names: List[Hashable], dim: str
+) -> Mapping[Hashable, xr.DataArray]:
+    # Access the first dataset, this will be used as the template for
+    # any arrays that don't need to be concatenated.
+    ds0 = datasets[0]
+
+    # Set up return value, collection of concatenated arrays.
+    out: Dict[Hashable, xr.DataArray] = dict()
+
+    # Iterate over variable names.
+    for k in names:
+        # Access the variable from the virst dataset.
+        v = ds0[k]
+
+        if dim in v.dims:
+            # Dimension to be concatenated is present, need to concatenate.
+
+            # Figure out which axis corresponds to the given dimension.
+            axis = v.dims.index(dim)
+
+            # Access the xarray DataArrays to be concatenated.
+            xr_arrays = [ds[k] for ds in datasets]
+
+            # Check that all arrays have the same dimension as the same axis.
+            assert all([a.dims[axis] == dim for a in xr_arrays])
+
+            # Access the inner arrays - these are either numpy or dask arrays.
+            inner_arrays = [a.data for a in xr_arrays]
+
+            # Concatenate inner arrays, depending on their type.
+            if isinstance(inner_arrays[0], da.Array):
+                concatenated_array = da.concatenate(inner_arrays, axis=axis)
+            else:
+                concatenated_array = np.concatenate(inner_arrays, axis=axis)
+
+            # Store the result.
+            out[k] = xr.DataArray(data=concatenated_array, dims=v.dims)
+
+        else:
+            # No concatenation is needed, keep the variable from the first dataset.
+            out[k] = v
+
+    return out
+
+
+def simple_xarray_concat(
+    datasets: List[xr.Dataset], dim: str, attrs: Optional[Mapping] = None
+) -> xr.Dataset:
+    # Access the first dataset, this will be used as the template for
+    # any arrays that don't need to be concatenated.
+    ds0 = datasets[0]
+
+    if attrs is None:
+        # Copy attributes from the first dataset.
+        attrs = ds0.attrs
+
     if len(datasets) == 1:
-        return datasets[0]
-    else:
-        return xr.concat(
-            datasets,
-            dim=dim,
-            data_vars=data_vars,
-            coords=coords,
-            compat=compat,
-            join=join,
-            **kwargs,
-        )
+        # Fast path, nothing to concatenate.
+        return ds0
+
+    # Concatenate coordinate variables.
+    coords = _simple_xarray_concat_arrays(
+        datasets=datasets,
+        names=list(ds0.coords),
+        dim=dim,
+    )
+
+    # Concatenate data variables.
+    data_vars = _simple_xarray_concat_arrays(
+        datasets=datasets,
+        names=list(ds0.data_vars),
+        dim=dim,
+    )
+
+    return xr.Dataset(coords=coords, data_vars=data_vars, attrs=attrs)
+
+
+# xarray concat() function is very slow, don't use for now
+#
+# def xarray_concat(
+#     datasets,
+#     dim,
+#     data_vars="minimal",
+#     coords="minimal",
+#     compat="override",
+#     join="override",
+#     **kwargs,
+# ):
+#     if len(datasets) == 1:
+#         return datasets[0]
+#     else:
+#         return xr.concat(
+#             datasets,
+#             dim=dim,
+#             data_vars=data_vars,
+#             coords=coords,
+#             compat=compat,
+#             join=join,
+#             **kwargs,
+#         )
 
 
 def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
