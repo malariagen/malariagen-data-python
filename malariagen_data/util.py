@@ -4,10 +4,9 @@ import logging
 import re
 import sys
 import warnings
-from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, Dict, Hashable, List, Optional, Tuple, Union
+from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
