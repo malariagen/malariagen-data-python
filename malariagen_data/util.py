@@ -7,7 +7,7 @@ import warnings
 from collections.abc import Mapping
 from enum import Enum
 from textwrap import dedent, fill
-from typing import IO, Optional, Tuple, Union
+from typing import IO, Dict, Hashable, List, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -471,13 +471,15 @@ def locate_region(region, pos):
     return loc_region
 
 
-def _simple_xarray_concat_arrays(datasets, names, dim):
+def _simple_xarray_concat_arrays(
+    datasets: List[xr.Dataset], names: List[Hashable], dim: str
+) -> Mapping[Hashable, xr.DataArray]:
     # Access the first dataset, this will be used as the template for
     # any arrays that don't need to be concatenated.
     ds0 = datasets[0]
 
     # Set up return value, collection of concatenated arrays.
-    out = dict()
+    out: Dict[Hashable, xr.DataArray] = dict()
 
     # Iterate over variable names.
     for k in names:
@@ -506,7 +508,7 @@ def _simple_xarray_concat_arrays(datasets, names, dim):
                 concatenated_array = np.concatenate(inner_arrays, axis=axis)
 
             # Store the result.
-            out[k] = v.dims, concatenated_array
+            out[k] = xr.DataArray(data=concatenated_array, dims=v.dims)
 
         else:
             # No concatenation is needed, keep the variable from the first dataset.
@@ -515,12 +517,14 @@ def _simple_xarray_concat_arrays(datasets, names, dim):
     return out
 
 
-def simple_xarray_concat(datasets, dim, attrs="override"):
+def simple_xarray_concat(
+    datasets: List[xr.Dataset], dim: str, attrs: Optional[Mapping] = None
+) -> xr.Dataset:
     # Access the first dataset, this will be used as the template for
     # any arrays that don't need to be concatenated.
     ds0 = datasets[0]
 
-    if attrs == "override":
+    if attrs is None:
         # Copy attributes from the first dataset.
         attrs = ds0.attrs
 
