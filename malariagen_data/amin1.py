@@ -11,12 +11,12 @@ from .util import (
     Region,
     da_from_zarr,
     dask_compress_dataset,
-    fast_xarray_concat,
     init_filesystem,
     init_zarr_store,
     locate_region,
     read_gff3,
     resolve_region,
+    simple_xarray_concat,
     unpack_gff3_attributes,
 )
 
@@ -265,7 +265,7 @@ class Amin1:
             )
             for r in region
         ]
-        ds = fast_xarray_concat(
+        ds = simple_xarray_concat(
             datasets,
             dim=DIM_VARIANT,
         )

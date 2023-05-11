@@ -471,40 +471,77 @@ def locate_region(region, pos):
     return loc_region
 
 
-def _fast_xarray_concat_arrays(datasets, names, dim):
+def _simple_xarray_concat_arrays(datasets, names, dim):
+    # Access the first dataset, this will be used as the template for
+    # any arrays that don't need to be concatenated.
     ds0 = datasets[0]
+
+    # Set up return value, collection of concatenated arrays.
     out = dict()
+
+    # Iterate over variable names.
     for k in names:
+        # Access the variable from the virst dataset.
         v = ds0[k]
+
         if dim in v.dims:
-            dim_index = v.dims.index(dim)
-            data_arrays = [ds[k] for ds in datasets]
-            assert all([a.dims[dim_index] == dim for a in data_arrays])
-            dask_arrays = [a.data for a in data_arrays]
-            assert all([isinstance(a, da.Array) for a in dask_arrays])
-            d = da.concatenate(dask_arrays, axis=dim_index)
-            out[k] = v.dims, d
+            # Dimension to be concatenated is present, need to concatenate.
+
+            # Figure out which axis corresponds to the given dimension.
+            axis = v.dims.index(dim)
+
+            # Access the xarray DataArrays to be concatenated.
+            xr_arrays = [ds[k] for ds in datasets]
+
+            # Check that all arrays have the same dimension as the same axis.
+            assert all([a.dims[axis] == dim for a in xr_arrays])
+
+            # Access the inner arrays - these are either numpy or dask arrays.
+            inner_arrays = [a.data for a in xr_arrays]
+
+            # Concatenate inner arrays, depending on their type.
+            if isinstance(inner_arrays[0], da.Array):
+                concatenated_array = da.concatenate(inner_arrays, axis=axis)
+            else:
+                concatenated_array = np.concatenate(inner_arrays, axis=axis)
+
+            # Store the result.
+            out[k] = v.dims, concatenated_array
+
         else:
+            # No concatenation is needed, keep the variable from the first dataset.
             out[k] = v
+
     return out
 
 
-def fast_xarray_concat(datasets, dim, attrs="override"):
+def simple_xarray_concat(datasets, dim, attrs="override"):
+    # Access the first dataset, this will be used as the template for
+    # any arrays that don't need to be concatenated.
     ds0 = datasets[0]
+
     if attrs == "override":
+        # Copy attributes from the first dataset.
         attrs = ds0.attrs
+
     if len(datasets) == 1:
+        # Fast path, nothing to concatenate.
         return ds0
-    coords = _fast_xarray_concat_arrays(
+
+    # Concatenate coordinate variables.
+    coords = _simple_xarray_concat_arrays(
         datasets=datasets,
         names=list(ds0.coords),
         dim=dim,
     )
-    data_vars = _fast_xarray_concat_arrays(
+
+    # Concatenate data variables.
+    data_vars = _simple_xarray_concat_arrays(
         datasets=datasets,
         names=list(ds0.data_vars),
         dim=dim,
     )
+
     return xr.Dataset(coords=coords, data_vars=data_vars, attrs=attrs)
 
 

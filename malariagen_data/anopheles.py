@@ -40,7 +40,6 @@ from .util import (
     da_compress,
     da_from_zarr,
     dask_compress_dataset,
-    fast_xarray_concat,
     hash_params,
     init_zarr_store,
     jackknife_ci,
@@ -48,6 +47,7 @@ from .util import (
     locate_region,
     plotly_discrete_legend,
     resolve_region,
+    simple_xarray_concat,
     type_error,
 )
 
@@ -1956,7 +1956,7 @@ class AnophelesDataResource(
                 ly.append(y)
 
             debug("concatenate data from multiple sample sets")
-            x = fast_xarray_concat(ly, dim=DIM_SAMPLE)
+            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("add variants variables")
             v = self._snp_variants_for_contig(
@@ -1982,7 +1982,7 @@ class AnophelesDataResource(
             lx.append(x)
 
         debug("concatenate data from multiple regions")
-        ds = fast_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         if site_mask is not None:
             debug("apply site filters")
@@ -2114,7 +2114,7 @@ class AnophelesDataResource(
             lx.append(x)
 
         debug("concatenate data from multiple regions")
-        ds = fast_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("apply site filters")
         if site_mask is not None:
@@ -5285,7 +5285,7 @@ class AnophelesDataResource(
                 return None
 
             debug("concatenate data from multiple sample sets")
-            x = fast_xarray_concat(ly, dim=DIM_SAMPLE)
+            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
             debug("handle region")
             if r.start or r.end:
@@ -5296,7 +5296,7 @@ class AnophelesDataResource(
             lx.append(x)
 
         debug("concatenate data from multiple regions")
-        ds = fast_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
         if sample_query is not None:
