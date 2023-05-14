@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 import xyzservices
 from numpydoc_decorator import doc
-from typeguard import typechecked
+
+# from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
 from .base import AnophelesBase, base_params
@@ -154,7 +155,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="A pandas DataFrame, one row per sample.",
     )
-    @typechecked
+    # @typechecked
     def general_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
@@ -300,7 +301,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="A pandas DataFrame, one row per sample.",
     )
-    @typechecked
+    # @typechecked
     def cohorts_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
@@ -395,7 +396,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="A pandas DataFrame, one row per sample.",
     )
-    @typechecked
+    # @typechecked
     def aim_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
@@ -448,7 +449,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             unique.
         """,
     )
-    @typechecked
+    # @typechecked
     def add_extra_metadata(self, data: pd.DataFrame, on: str = "sample_id"):
         # Check parameters.
         if not isinstance(data, pd.DataFrame):
@@ -483,7 +484,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
     )
-    @typechecked
+    # @typechecked
     def sample_metadata(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -544,7 +545,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         ),
         returns="Pivot table of sample counts.",
     )
-    @typechecked
+    # @typechecked
     def count_samples(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -589,7 +590,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         ),
         returns="Ipyleaflet map widget.",
     )
-    @typechecked
+    # @typechecked
     def plot_samples_interactive_map(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -711,7 +712,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         """,
         returns="One row per sample, columns provide URLs.",
     )
-    @typechecked
+    # @typechecked
     def wgs_data_catalog(self, sample_set: base_params.sample_set):
         # Look up release for sample set.
         release = self.lookup_release(sample_set=sample_set)

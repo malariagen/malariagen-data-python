@@ -21,7 +21,8 @@ import pandas as pd
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
-from typeguard import typechecked
+
+# from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
@@ -325,12 +326,12 @@ class AnophelesBase:
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
 
-    @typechecked
+    # @typechecked
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
-    @typechecked
+    # @typechecked
     def read_files(
         self,
         paths: Iterable[str],
@@ -490,7 +491,7 @@ class AnophelesBase:
         summary="Access a dataframe of sample sets",
         returns="A dataframe of sample sets, one row per sample set.",
     )
-    @typechecked
+    # @typechecked
     def sample_sets(
         self,
         release: Optional[base_params.release] = None,
@@ -533,7 +534,7 @@ class AnophelesBase:
     @doc(
         summary="Find which release a sample set was included in.",
     )
-    @typechecked
+    # @typechecked
     def lookup_release(self, sample_set: base_params.sample_set):
         if self._cache_sample_set_to_release is None:
             df_sample_sets = self.sample_sets().set_index("sample_set")

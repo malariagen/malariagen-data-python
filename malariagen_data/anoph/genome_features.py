@@ -6,7 +6,8 @@ import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc
 from pandas.io.common import infer_compression
-from typeguard import typechecked
+
+# from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
@@ -153,7 +154,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         summary="Access genome feature annotations.",
         returns="A dataframe of genome annotations, one row per feature.",
     )
-    @typechecked
+    # @typechecked
     def genome_features(
         self,
         region: Optional[base_params.region] = None,
@@ -189,7 +190,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             .copy()
         )
 
-    @typechecked
+    # @typechecked
     def genome_feature_children(
         self, parent: str, attributes: base_params.gff_attributes = DEFAULT
     ) -> pd.DataFrame:
@@ -212,7 +213,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return df_children.copy()
 
     @doc(summary="Plot a transcript, using bokeh.")
-    @typechecked
+    # @typechecked
     def plot_transcript(
         self,
         transcript: base_params.transcript,
@@ -345,7 +346,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     @doc(
         summary="Plot a genes track, using bokeh.",
     )
-    @typechecked
+    # @typechecked
     def plot_genes(
         self,
         region: base_params.single_region,
