@@ -163,7 +163,7 @@ class SiteClass(Enum):
 
 
 def da_from_zarr(
-    z: zarr.core.Array, inline_array: bool, chunks: str = "auto"
+    z: zarr.core.Array, inline_array: bool, chunks: Union[str, Tuple[int, ...]] = "auto"
 ) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 

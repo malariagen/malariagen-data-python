@@ -786,7 +786,7 @@ def test_haplotypes__cohort_size(subclass, sample_sets, region, analysis, cohort
 def test_h12_calibration(subclass, sample_query, contig, analysis, sample_sets):
     anoph = setup_subclass_cached(subclass)
 
-    window_sizes = [10_000, 20_000]
+    window_sizes = (10_000, 20_000)
     calibration_runs = anoph.h12_calibration(
         contig=contig,
         analysis=analysis,
@@ -817,7 +817,7 @@ def test_h12_calibration(subclass, sample_query, contig, analysis, sample_sets):
 def test_g123_calibration(subclass, sample_query, contig, site_mask, sample_sets):
     anoph = setup_subclass_cached(subclass)
 
-    window_sizes = [10_000, 20_000]
+    window_sizes = (10_000, 20_000)
     calibration_runs = anoph.g123_calibration(
         contig=contig,
         sites=site_mask,
