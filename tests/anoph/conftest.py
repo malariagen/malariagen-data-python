@@ -33,20 +33,19 @@ def fixture_dir():
     return cwd / "fixture"
 
 
-def simulate_contig(*, low, high):
+def simulate_contig(*, low, high, base_composition):
     size = np.random.randint(low=low, high=high)
-    seq = np.random.choice(
-        [b"A", b"C", b"G", b"T", b"N", b"a", b"c", b"g", b"t", b"n"],
-        size=size,
-    )
+    bases = np.array([b"a", b"c", b"g", b"t", b"n", b"A", b"C", b"G", b"T", b"N"])
+    p = np.array([base_composition[b] for b in bases])
+    seq = np.random.choice(bases, size=size, replace=True, p=p)
     return seq
 
 
-def simulate_genome(*, path, contigs, low, high):
+def simulate_genome(*, path, contigs, low, high, base_composition):
     path.mkdir(parents=True, exist_ok=True)
     root = zarr.open(path, mode="w")
     for contig in contigs:
-        seq = simulate_contig(low=low, high=high)
+        seq = simulate_contig(low=low, high=high, base_composition=base_composition)
         root.create_dataset(name=contig, data=seq)
     zarr.consolidate_metadata(path)
     return root
@@ -401,10 +400,27 @@ class Ag3Simulator:
         # Here we simulate a reference genome in a simple way
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
-        # TODO Use accurate base composition.
+
+        # Use real base composition.
+        base_composition = {
+            b"a": 0.042154199245128525,
+            b"c": 0.027760739796444212,
+            b"g": 0.027853725511269512,
+            b"t": 0.041827104954587246,
+            b"n": 0.028714045930701336,
+            b"A": 0.23177421009505061,
+            b"C": 0.1843981552034527,
+            b"G": 0.1840007377851694,
+            b"T": 0.23151655721224917,
+            b"N": 5.242659472466922e-07,
+        }
         path = self.path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
-            path=path, contigs=self.contigs, low=100_000, high=200_000
+            path=path,
+            contigs=self.contigs,
+            low=100_000,
+            high=200_000,
+            base_composition=base_composition,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
@@ -607,9 +623,27 @@ class Af1Simulator:
         # Here we simulate a reference genome in a simple way
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
+
+        # Use real base composition.
+        base_composition = {
+            b"a": 0.0,
+            b"c": 0.0,
+            b"g": 0.0,
+            b"t": 0.0,
+            b"n": 0.0,
+            b"A": 0.29432128333333335,
+            b"C": 0.20542065,
+            b"G": 0.20575796666666665,
+            b"T": 0.2944834333333333,
+            b"N": 1.6666666666666667e-05,
+        }
         path = self.path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
-            path=path, contigs=self.contigs, low=100_000, high=300_000
+            path=path,
+            contigs=self.contigs,
+            low=100_000,
+            high=300_000,
+            base_composition=base_composition,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
