@@ -3012,6 +3012,37 @@ def test_ihs_gwss():
     assert_allclose(ihs[:, 2][100], 2.3467595962486327)
 
 
+def test_xpehh_gwss():
+    ag3 = setup_ag3()
+    sample_query1 = "country == 'Ghana'"
+    sample_query2 = "country == 'Angola'"
+    contig = "3L"
+    analysis = "gamb_colu"
+    sample_sets = "3.0"
+    window_size = 1000
+
+    x, xpehh = ag3.xpehh_gwss(
+        contig=contig,
+        analysis=analysis,
+        sample_query1=sample_query1,
+        sample_query2=sample_query2,
+        sample_sets=sample_sets,
+        window_size=window_size,
+        max_cohort_size=20,
+    )
+
+    assert isinstance(x, np.ndarray)
+    assert isinstance(xpehh, np.ndarray)
+
+    # check dimensions
+    assert len(x) == 395
+    assert len(x) == len(xpehh)
+
+    # check some values
+    assert_allclose(x[0], 510232.847)
+    assert_allclose(xpehh[:, 2][100], 1.7302443850220177)
+
+
 def test_g123_gwss():
     ag3 = setup_ag3()
     sample_query = "country == 'Ghana'"
