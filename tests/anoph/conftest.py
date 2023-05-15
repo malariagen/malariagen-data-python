@@ -314,6 +314,34 @@ class Gff3Simulator:
             yield feature
 
 
+def simulate_snp_sites(path, contigs, genome):
+    root = zarr.open(path, mode="w")
+
+    for contig in contigs:
+        # Obtain variants group.
+        variants = root.require_group(contig).require_group("variants")
+
+        # Simulate POS.
+        seq = genome[contig][:]
+        loc_n = (seq == b"N") | (seq == b"n")
+        pos = np.nonzero(~loc_n)[0] + 1  # 1-based coordinates
+        variants.create_dataset(name="POS", data=pos)
+
+        # Simulate REF.
+        ref = seq[~loc_n]
+        variants.create_dataset(name="REF", data=ref)
+
+        # Simulate ALT.
+        alt = np.empty(shape=(ref.shape[0], 3), dtype="S1")
+        alt[ref == b"A"] = np.array([b"C", b"T", b"G"])
+        alt[ref == b"C"] = np.array([b"A", b"T", b"G"])
+        alt[ref == b"T"] = np.array([b"A", b"C", b"G"])
+        alt[ref == b"G"] = np.array([b"A", b"C", b"T"])
+        variants.create_dataset(name="ALT", data=alt)
+
+    zarr.consolidate_metadata(path)
+
+
 class Ag3Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
@@ -336,6 +364,8 @@ class Ag3Simulator:
         self.init_genome_sequence()
         self.init_genome_features()
         self.init_metadata()
+        self.init_snp_sites()
+        self.init_site_filters()
 
     def init_config(self):
         self.config = {
@@ -552,31 +582,12 @@ class Ag3Simulator:
             cohorts=False,
         )
 
-    def init_snp_variants(self):
+    def init_snp_sites(self):
         path = self.path / "v3/snp_genotypes/all/sites/"
-        root = zarr.open(path, mode="w")
-        print(root)
-        for contig in self.contigs:
-            # Simulate POS.
-            seq = self.genome[contig][:]
-            loc_n = (seq == b"N") | (seq == b"n")
-            pos = np.nonzero(~loc_n)[0] + 1  # 1-based coordinates
-            print(pos)
+        simulate_snp_sites(path=path, contigs=self.contigs, genome=self.genome)
 
-            # Simulate REF.
-            ref = seq[~loc_n]
-
-            # Simulate ALT.
-            alt = np.empty(shape=(ref.shape[0], 3), dtype="S1")
-            alt[ref == b"A"] = np.array([b"C", b"T", b"G"])
-            alt[ref == b"C"] = np.array([b"A", b"T", b"G"])
-            alt[ref == b"T"] = np.array([b"A", b"C", b"G"])
-            alt[ref == b"G"] = np.array([b"A", b"C", b"T"])
-
-            # seq = simulate_contig(low=low, high=high, base_composition=base_composition)
-            # root.create_dataset(name=contig, data=seq)
-            pass  # TODO
-        zarr.consolidate_metadata(path)
+    def init_site_filters(self):
+        pass
 
 
 class Af1Simulator:
@@ -600,6 +611,8 @@ class Af1Simulator:
         self.init_genome_sequence()
         self.init_genome_features()
         self.init_metadata()
+        self.init_snp_sites()
+        self.init_site_filters()
 
     def init_config(self):
         self.config = {
@@ -783,6 +796,13 @@ class Af1Simulator:
             release_path="v1.0",
             sample_set="1231-VO-MULTI-WONDJI-VMF00043",
         )
+
+    def init_snp_sites(self):
+        path = self.path / "v1.0/snp_genotypes/all/sites/"
+        simulate_snp_sites(path=path, contigs=self.contigs, genome=self.genome)
+
+    def init_site_filters(self):
+        pass
 
 
 # For the following data fixtures we will use the "session" scope
