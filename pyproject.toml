@@ -51,7 +51,6 @@ dash-cytoscape = "*"
 jupyter-dash = "*"
 numpydoc_decorator = ">=2.0.0"
 typing_extensions = "*"
-typeguard = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
@@ -64,6 +63,7 @@ pre-commit = "*"
 black = "*"
 snakeviz = "*"
 mypy = "*"
+typeguard = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]

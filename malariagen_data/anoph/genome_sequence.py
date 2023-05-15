@@ -7,8 +7,6 @@ from numpydoc_decorator import doc
 from ..util import Region, da_from_zarr, init_zarr_store, parse_single_region
 from .base import AnophelesBase, base_params
 
-# from typeguard import typechecked
-
 
 class AnophelesGenomeSequenceData(AnophelesBase):
     def __init__(self, **kwargs):
@@ -70,7 +68,6 @@ class AnophelesGenomeSequenceData(AnophelesBase):
             given contig.
         """,
     )
-    # @typechecked
     def genome_sequence(
         self,
         region: base_params.single_region,

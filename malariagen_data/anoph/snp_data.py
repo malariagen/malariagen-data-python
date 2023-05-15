@@ -31,8 +31,6 @@ from .genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
 
-# from typeguard import typechecked
-
 
 class AnophelesSnpData(
     AnophelesSampleMetadata, AnophelesGenomeFeaturesData, AnophelesGenomeSequenceData
@@ -121,7 +119,6 @@ class AnophelesSnpData(
         summary="Open SNP genotypes zarr for a given sample set.",
         returns="Zarr hierarchy.",
     )
-    # @typechecked
     def open_snp_genotypes(
         self, sample_set: base_params.sample_set
     ) -> zarr.hierarchy.Group:
@@ -148,7 +145,6 @@ class AnophelesSnpData(
         summary="Open site filters zarr.",
         returns="Zarr hierarchy.",
     )
-    # @typechecked
     def open_site_filters(self, mask: base_params.site_mask) -> zarr.hierarchy.Group:
         self._require_site_filters_analysis()
         # Here we cache the opened zarr hierarchy, to avoid small delays
@@ -198,7 +194,6 @@ class AnophelesSnpData(
             An array of boolean values identifying sites that pass the filters.
         """,
     )
-    # @typechecked
     def site_filters(
         self,
         region: base_params.region,
@@ -277,7 +272,6 @@ class AnophelesSnpData(
             alternate alleles ("ALT").
         """,
     )
-    # @typechecked
     def snp_sites(
         self,
         region: base_params.region,
@@ -338,7 +332,6 @@ class AnophelesSnpData(
             depths (AD) or mapping quality (MQ) values.
         """,
     )
-    # @typechecked
     def snp_genotypes(
         self,
         region: base_params.region,
@@ -460,7 +453,6 @@ class AnophelesSnpData(
         summary="Access SNP sites and site filters.",
         returns="A dataset containing SNP sites and site filters.",
     )
-    # @typechecked
     def snp_variants(
         self,
         region: base_params.region,
@@ -505,7 +497,6 @@ class AnophelesSnpData(
         summary="Load site annotations.",
         returns="A dataset of site annotations.",
     )
-    # @typechecked
     def site_annotations(
         self,
         region: base_params.single_region,
@@ -752,7 +743,6 @@ class AnophelesSnpData(
         summary="Access SNP sites, site filters and genotype calls.",
         returns="A dataset containing SNP sites, site filters and genotype calls.",
     )
-    # @typechecked
     def snp_calls(
         self,
         region: base_params.region,
@@ -945,7 +935,6 @@ class AnophelesSnpData(
             instantiating the class.
         """,
     )
-    # @typechecked
     def snp_allele_counts(
         self,
         region: base_params.region,
@@ -1002,7 +991,6 @@ class AnophelesSnpData(
             max_snps="Maximum number of SNPs to show.",
         ),
     )
-    # @typechecked
     def plot_snps(
         self,
         region: base_params.region,
@@ -1066,7 +1054,6 @@ class AnophelesSnpData(
             max_snps="Maximum number of SNPs to show.",
         ),
     )
-    # @typechecked
     def plot_snps_track(
         self,
         region: base_params.single_region,
@@ -1239,7 +1226,6 @@ class AnophelesSnpData(
         summary="Compute genome accessibility array.",
         returns="An array of boolean values identifying accessible genome sites.",
     )
-    # @typechecked
     def is_accessible(
         self,
         region: base_params.single_region,

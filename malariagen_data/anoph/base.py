@@ -21,8 +21,6 @@ import pandas as pd
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
-
-# from typeguard import typechecked
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
@@ -258,7 +256,7 @@ class AnophelesBase:
         url: str,
         config_path: str,
         pre: bool,
-        gcs_url: str,
+        gcs_url: Optional[str],  # only used for colab location check
         major_version_number: int,
         major_version_path: str,
         bokeh_output_notebook: bool = False,
@@ -299,7 +297,7 @@ class AnophelesBase:
             bokeh.io.output_notebook(hide_banner=True)
 
         # Check colab location is in the US.
-        if check_location:
+        if check_location and self._gcs_url is not None:
             self._client_details = check_colab_location(
                 gcs_url=self._gcs_url, url=self._url
             )
@@ -326,12 +324,10 @@ class AnophelesBase:
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
 
-    # @typechecked
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
-    # @typechecked
     def read_files(
         self,
         paths: Iterable[str],
@@ -491,7 +487,6 @@ class AnophelesBase:
         summary="Access a dataframe of sample sets",
         returns="A dataframe of sample sets, one row per sample set.",
     )
-    # @typechecked
     def sample_sets(
         self,
         release: Optional[base_params.release] = None,
@@ -534,7 +529,6 @@ class AnophelesBase:
     @doc(
         summary="Find which release a sample set was included in.",
     )
-    # @typechecked
     def lookup_release(self, sample_set: base_params.sample_set):
         if self._cache_sample_set_to_release is None:
             df_sample_sets = self.sample_sets().set_index("sample_set")
