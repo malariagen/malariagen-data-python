@@ -552,6 +552,32 @@ class Ag3Simulator:
             cohorts=False,
         )
 
+    def init_snp_variants(self):
+        path = self.path / "v3/snp_genotypes/all/sites/"
+        root = zarr.open(path, mode="w")
+        print(root)
+        for contig in self.contigs:
+            # Simulate POS.
+            seq = self.genome[contig][:]
+            loc_n = (seq == b"N") | (seq == b"n")
+            pos = np.nonzero(~loc_n)[0] + 1  # 1-based coordinates
+            print(pos)
+
+            # Simulate REF.
+            ref = seq[~loc_n]
+
+            # Simulate ALT.
+            alt = np.empty(shape=(ref.shape[0], 3), dtype="S1")
+            alt[ref == b"A"] = np.array([b"C", b"T", b"G"])
+            alt[ref == b"C"] = np.array([b"A", b"T", b"G"])
+            alt[ref == b"T"] = np.array([b"A", b"C", b"G"])
+            alt[ref == b"G"] = np.array([b"A", b"C", b"T"])
+
+            # seq = simulate_contig(low=low, high=high, base_composition=base_composition)
+            # root.create_dataset(name=contig, data=seq)
+            pass  # TODO
+        zarr.consolidate_metadata(path)
+
 
 class Af1Simulator:
     def __init__(self, fixture_dir):
