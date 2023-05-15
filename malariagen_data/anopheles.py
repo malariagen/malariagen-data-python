@@ -2,7 +2,7 @@ import warnings
 from abc import abstractmethod
 from collections import Counter
 from itertools import cycle
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import allel
 import bokeh.layouts
@@ -68,7 +68,7 @@ class h12_params:
     """Parameter definitions for H12 analysis functions."""
 
     window_sizes: TypeAlias = Annotated[
-        Tuple[int, ...],
+        Sequence[int],
         """
         The sizes of windows (number of SNPs) used to calculate statistics within.
         """,
@@ -100,7 +100,7 @@ class g123_params:
         """,
     ]
     window_sizes: TypeAlias = Annotated[
-        Tuple[int, ...],
+        Sequence[int],
         """
         The sizes of windows (number of sites) used to calculate statistics within.
         """,

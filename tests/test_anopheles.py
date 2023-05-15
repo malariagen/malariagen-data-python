@@ -12,6 +12,7 @@ from pandas.testing import assert_frame_equal
 from malariagen_data import Af1, Ag3, Region
 from malariagen_data.af1 import GCS_URL as AF1_GCS_URL
 from malariagen_data.ag3 import GCS_URL as AG3_GCS_URL
+from malariagen_data.util import resolve_region
 
 expected_cohort_cols = (
     "country_iso",
@@ -360,7 +361,7 @@ def test_genome_features_region(subclass, region):
     assert len(df) > 0
 
     # check region
-    region = anoph.resolve_region(region)
+    region = resolve_region(anoph, region)
     if isinstance(region, Region):
         assert np.all(df["contig"].values == region.contig)
         if region.start and region.end:
