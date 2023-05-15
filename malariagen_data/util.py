@@ -28,6 +28,7 @@ import xarray as xr
 import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
+from numpydoc_decorator.impl import format_type
 from typing_extensions import TypeAlias, get_type_hints
 
 DIM_VARIANT = "variants"
@@ -907,9 +908,19 @@ def check_types(f):
                 try:
                     typeguard.check_type(v, t)
                 except typeguard.TypeCheckError as e:
-                    raise TypeError(
-                        f"Parameter {k!r} value {v!r} has incorrect type.\n\n{e}"
-                    ) from None
+                    expected_type = format_type(t)
+                    actual_type = format_type(type(v))
+                    message = fill(
+                        dedent(
+                            f"""
+                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                        found {actual_type}, expected {expected_type}. See below for further information.
+                    """
+                        )
+                    )
+                    message += f"\n\n{e}"
+                    error = TypeError(message)
+                    raise error from None
         return f(*args, **kwargs)
 
     return wrapper
