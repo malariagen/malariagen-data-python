@@ -8,6 +8,7 @@ import xyzservices
 from numpydoc_decorator import doc
 from typing_extensions import Annotated, TypeAlias
 
+from ..util import check_types
 from .base import AnophelesBase, base_params
 
 
@@ -146,6 +147,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
+    @check_types
     @doc(
         summary="""
             Read general sample metadata for one or more sample sets into a pandas
@@ -292,6 +294,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "Cohorts data not available for this data resource."
             )
 
+    @check_types
     @doc(
         summary="""
             Access cohort membership metadata for one or more sample sets.
@@ -385,6 +388,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         if not self._aim_analysis:
             raise NotImplementedError("AIM data not available for this data resource.")
 
+    @check_types
     @doc(
         summary="""
             Access ancestry-informative marker (AIM) metadata for one or more
@@ -425,6 +429,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_ret
 
+    @check_types
     @doc(
         summary="""
             Add extra sample metadata, e.g., including additional columns
@@ -474,6 +479,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def clear_extra_metadata(self):
         self._extra_metadata = []
 
+    @check_types
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
@@ -527,6 +533,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_samples.copy()
 
+    @check_types
     @doc(
         summary="""
             Create a pivot table showing numbers of samples available by space,
@@ -567,6 +574,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_pivot
 
+    @check_types
     @doc(
         summary="""
             Plot an interactive map showing sampling locations using ipyleaflet.
@@ -696,6 +704,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return samples_map
 
+    @check_types
     @doc(
         summary="""
             Load a data catalog providing URLs for downloading BAM, VCF and Zarr

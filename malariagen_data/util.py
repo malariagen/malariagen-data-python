@@ -5,6 +5,8 @@ import re
 import sys
 import warnings
 from enum import Enum
+from functools import wraps
+from inspect import getcallargs
 from textwrap import dedent, fill
 from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
@@ -21,11 +23,12 @@ import numpy as np
 import pandas
 import pandas as pd
 import plotly.express as px
+import typeguard
 import xarray as xr
 import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
-from typing_extensions import TypeAlias
+from typing_extensions import TypeAlias, get_type_hints
 
 DIM_VARIANT = "variants"
 DIM_ALLELE = "alleles"
@@ -635,18 +638,6 @@ def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
         return da.concatenate(arrays, **kwargs)
 
 
-def type_error(
-    name,
-    value,
-    expectation,
-):
-    message = (
-        f"Bad type for parameter {name}; expected {expectation}, "
-        f"found {type(value)}"
-    )
-    raise TypeError(message)
-
-
 def value_error(
     name,
     value,
@@ -656,15 +647,6 @@ def value_error(
         f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
     )
     raise ValueError(message)
-
-
-def check_type(
-    name,
-    value,
-    expectation,
-):
-    if not isinstance(value, expectation):
-        type_error(name, value, expectation)
 
 
 def hash_params(params):
@@ -901,3 +883,33 @@ def check_colab_location(*, gcs_url: str, url: str) -> Optional[ipinfo.details.D
             pass
 
     return details
+
+
+def check_types(f):
+    """Simple decorator to provide runtime checking of parameter types.
+
+    N.B., the typeguard package does have a decorator function called
+    @typechecked which performs a similar purpose. However, the typeguard
+    decorator causes a memory leak and doesn't seem usable. Also, the
+    typeguard decorator performs runtime checking of all variables within
+    the function as well as the arguments and return values. We only want
+    checking of the arguments to help users provide correct inputs.
+
+    """
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        type_hints = get_type_hints(f)
+        call_args = getcallargs(f, *args, **kwargs)
+        for k, t in type_hints.items():
+            if k in call_args:
+                v = call_args[k]
+                try:
+                    typeguard.check_type(v, t)
+                except typeguard.TypeCheckError as e:
+                    raise TypeError(
+                        f"Parameter {k!r} value {v!r} has incorrect type.\n\n{e}"
+                    ) from None
+        return f(*args, **kwargs)
+
+    return wrapper

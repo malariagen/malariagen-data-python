@@ -10,6 +10,7 @@ from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
     Region,
+    check_types,
     parse_multi_region,
     parse_single_region,
     read_gff3,
@@ -148,6 +149,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             attributes_normed = tuple(attributes)
         return attributes_normed
 
+    @check_types
     @doc(
         summary="Access genome feature annotations.",
         returns="A dataframe of genome annotations, one row per feature.",
@@ -208,6 +210,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return df_children.copy()
 
+    @check_types
     @doc(summary="Plot a transcript, using bokeh.")
     def plot_transcript(
         self,
@@ -338,6 +341,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot a genes track, using bokeh.",
     )

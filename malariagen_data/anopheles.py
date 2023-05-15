@@ -35,6 +35,7 @@ from .util import (
     DIM_VARIANT,
     CacheMiss,
     Region,
+    check_types,
     da_from_zarr,
     init_zarr_store,
     jackknife_ci,
@@ -44,7 +45,6 @@ from .util import (
     parse_single_region,
     plotly_discrete_legend,
     simple_xarray_concat,
-    type_error,
 )
 
 AA_CHANGE_QUERY = (
@@ -753,6 +753,7 @@ class AnophelesDataResource(
             )
         return analysis
 
+    @check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -1301,6 +1302,7 @@ class AnophelesDataResource(
             )
         return self._cache_annotator
 
+    @check_types
     @doc(
         summary="Compute variant effects for a gene transcript.",
         returns="""
@@ -1334,8 +1336,9 @@ class AnophelesDataResource(
 
         return df_snps
 
+    @check_types
     @doc(
-        summary="",
+        summary="Create an IGV browser and inject into the current notebook.",
         parameters=dict(
             tracks="Configuration for any additional tracks.",
         ),
@@ -1378,6 +1381,7 @@ class AnophelesDataResource(
 
         return browser
 
+    @check_types
     @doc(
         summary="""
             Launch IGV and view sequence read alignments and SNP genotypes from
@@ -1536,6 +1540,7 @@ class AnophelesDataResource(
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
 
+    @check_types
     @doc(
         summary="""
             Plot explained variance ratios from a principal components analysis
@@ -1614,15 +1619,18 @@ class AnophelesDataResource(
 
         return df_samples
 
-    def _lookup_sample(self, sample, sample_set=None):
+    def _lookup_sample(
+        self,
+        sample: het_params.single_sample,
+        sample_set: Optional[base_params.sample_set] = None,
+    ):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
         sample_rec = None
         if isinstance(sample, str):
             sample_rec = df_samples.loc[sample]
-        elif isinstance(sample, int):
-            sample_rec = df_samples.iloc[sample]
         else:
-            type_error(name="sample", value=sample, expectation=(str, int))
+            assert isinstance(sample, int)
+            sample_rec = df_samples.iloc[sample]
         return sample_rec
 
     def _plot_heterozygosity_track(
@@ -1700,6 +1708,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -1752,6 +1761,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
         returns="Bokeh figure.",
@@ -1842,11 +1852,11 @@ class AnophelesDataResource(
 
     def _sample_count_het(
         self,
-        sample,
+        sample: het_params.single_sample,
         region: Region,
-        site_mask,
-        window_size,
-        sample_set=None,
+        site_mask: base_params.site_mask,
+        window_size: het_params.window_size,
+        sample_set: Optional[base_params.sample_set] = None,
     ):
         debug = self._log.debug
 
@@ -1889,6 +1899,7 @@ class AnophelesDataResource(
 
         return sample_id, sample_set, windows, counts
 
+    @check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
     )
@@ -1931,6 +1942,7 @@ class AnophelesDataResource(
 
         return df_roh
 
+    @check_types
     @doc(
         summary="Plot a runs of homozygosity track.",
     )
@@ -2014,6 +2026,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="""
             Plot windowed heterozygosity and inferred runs of homozygosity for a
@@ -2122,6 +2135,7 @@ class AnophelesDataResource(
 
         return fig_all
 
+    @check_types
     @doc(
         summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
@@ -2199,6 +2213,7 @@ class AnophelesDataResource(
 
         return df_pca, evr
 
+    @check_types
     @doc(
         summary="""
             Compute SNP allele frequencies for a gene transcript.
@@ -2331,6 +2346,7 @@ class AnophelesDataResource(
 
         return df_snps
 
+    @check_types
     @doc(
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
@@ -2420,6 +2436,7 @@ class AnophelesDataResource(
 
         return df_aaf
 
+    @check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -2682,6 +2699,7 @@ class AnophelesDataResource(
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
+    @check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for a cohort of
@@ -2781,6 +2799,7 @@ class AnophelesDataResource(
 
         return pd.Series(stats)
 
+    @check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for multiple cohorts.
@@ -2874,6 +2893,7 @@ class AnophelesDataResource(
 
         return df_stats
 
+    @check_types
     @doc(
         summary="""
             Run a Fst genome-wide scan to investigate genetic differentiation
@@ -2987,6 +3007,7 @@ class AnophelesDataResource(
 
         return results
 
+    @check_types
     @doc(
         summary="""
             Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
@@ -3125,6 +3146,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Create a time series plot of variant frequencies using plotly.",
         parameters=dict(
@@ -3240,6 +3262,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="""
             Plot markers on a map showing variant frequencies for cohorts grouped
@@ -3333,6 +3356,7 @@ class AnophelesDataResource(
             )
             m.add_layer(marker)
 
+    @check_types
     @doc(
         summary="""
             Create an interactive map with markers showing variant frequencies or
@@ -3402,6 +3426,7 @@ class AnophelesDataResource(
 
         return out
 
+    @check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -3489,6 +3514,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -3576,6 +3602,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot diversity summary statistics for multiple cohorts.",
         parameters=dict(
@@ -3692,6 +3719,7 @@ class AnophelesDataResource(
         )
         fig.show()
 
+    @check_types
     @doc(
         summary="""
             Run and plot a Fst genome-wide scan to investigate genetic
@@ -3780,6 +3808,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="""
             Run and plot a Fst genome-wide scan to investigate genetic
@@ -3850,6 +3879,7 @@ class AnophelesDataResource(
 
         bokeh.plotting.show(fig)
 
+    @check_types
     @doc(
         summary="Open haplotypes zarr.",
         returns="Zarr hierarchy.",
@@ -3875,6 +3905,7 @@ class AnophelesDataResource(
             self._cache_haplotypes[(sample_set, analysis)] = root
         return root
 
+    @check_types
     @doc(
         summary="Open haplotype sites zarr.",
         returns="Zarr hierarchy.",
@@ -3965,6 +3996,7 @@ class AnophelesDataResource(
 
         return ds
 
+    @check_types
     @doc(
         summary="Access haplotype data.",
         returns="A dataset of haplotypes and associated data.",
@@ -4069,6 +4101,7 @@ class AnophelesDataResource(
 
         return ds
 
+    @check_types
     @doc(
         summary="Generate h12 GWSS calibration data for different window sizes.",
         returns="""
@@ -4155,6 +4188,7 @@ class AnophelesDataResource(
 
         return calibration_runs
 
+    @check_types
     @doc(
         summary="Plot h12 GWSS calibration data for different window sizes.",
         parameters=dict(
@@ -4238,6 +4272,7 @@ class AnophelesDataResource(
             bokeh.plotting.show(fig)
         return fig
 
+    @check_types
     @doc(
         summary="Run h12 genome-wide selection scan.",
         returns=dict(
@@ -4328,6 +4363,7 @@ class AnophelesDataResource(
 
         return results
 
+    @check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -4411,6 +4447,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -4476,6 +4513,7 @@ class AnophelesDataResource(
 
         bokeh.plotting.show(fig)
 
+    @check_types
     @doc(
         summary="""
             Run a H1X genome-wide scan to detect genome regions with
@@ -4589,6 +4627,7 @@ class AnophelesDataResource(
 
         return results
 
+    @check_types
     @doc(
         summary="""
             Run and plot a H1X genome-wide scan to detect genome regions
@@ -4677,6 +4716,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="""
             Run and plot a H1X genome-wide scan to detect genome regions
@@ -4747,6 +4787,7 @@ class AnophelesDataResource(
 
         bokeh.plotting.show(fig)
 
+    @check_types
     @doc(
         summary="Run iHS GWSS.",
         returns=dict(
@@ -4912,6 +4953,7 @@ class AnophelesDataResource(
 
         return results
 
+    @check_types
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
@@ -5032,6 +5074,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
@@ -5148,6 +5191,7 @@ class AnophelesDataResource(
 
         return g123
 
+    @check_types
     @doc(
         summary="Run a G123 genome-wide selection scan.",
         returns=dict(
@@ -5241,6 +5285,7 @@ class AnophelesDataResource(
 
         return results
 
+    @check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -5324,6 +5369,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -5442,6 +5488,7 @@ class AnophelesDataResource(
 
         return gt, pos
 
+    @check_types
     @doc(
         summary="Generate g123 GWSS calibration data for different window sizes.",
         returns="""
@@ -5526,6 +5573,7 @@ class AnophelesDataResource(
 
         return calibration_runs
 
+    @check_types
     @doc(
         summary="Plot g123 GWSS calibration data for different window sizes.",
     )
@@ -5602,6 +5650,7 @@ class AnophelesDataResource(
         fig.title = title
         bokeh.plotting.show(fig)
 
+    @check_types
     @doc(
         summary="""
             Hierarchically cluster haplotypes in region and produce an interactive plot.
@@ -5764,6 +5813,7 @@ class AnophelesDataResource(
 
         return fig
 
+    @check_types
     @doc(
         summary="""
             Construct a median-joining haplotype network and display it using

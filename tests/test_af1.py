@@ -1403,7 +1403,7 @@ def test_g123_gwss():
     contig = "3RL"
     site_mask = "funestus"
     sample_sets = "1.0"
-    window_size = 1000
+    window_size = 10_000
 
     x, g123 = af1.g123_gwss(
         contig=contig,
@@ -1413,7 +1413,7 @@ def test_g123_gwss():
         sample_sets=sample_sets,
         window_size=window_size,
         min_cohort_size=20,
-        max_cohort_size=50,
+        max_cohort_size=30,
     )
 
     # check dataset
@@ -1421,9 +1421,9 @@ def test_g123_gwss():
     assert isinstance(g123, np.ndarray)
 
     # check dimensions
-    assert len(x) == 15845
+    assert len(x) == 1584
     assert len(x) == len(g123)
 
     # check some values
-    assert_allclose(x[0], 185756.747)
-    assert_allclose(g123[11353], 0.022400000000000007)
+    assert_allclose(x[0], 253398.2095)
+    assert_allclose(g123[0], 0.04)

@@ -4,7 +4,13 @@ import dask.array as da
 import zarr
 from numpydoc_decorator import doc
 
-from ..util import Region, da_from_zarr, init_zarr_store, parse_single_region
+from ..util import (
+    Region,
+    check_types,
+    da_from_zarr,
+    init_zarr_store,
+    parse_single_region,
+)
 from .base import AnophelesBase, base_params
 
 
@@ -42,6 +48,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def _genome_ref_name(self) -> str:
         return self.config["GENOME_REF_NAME"]
 
+    @check_types
     @doc(
         summary="Open the reference genome zarr.",
         returns="Zarr hierarchy containing the reference genome sequence.",
@@ -61,6 +68,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
+    @check_types
     @doc(
         summary="Access the reference genome sequence.",
         returns="""

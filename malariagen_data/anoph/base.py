@@ -27,6 +27,7 @@ from ..util import (
     CacheMiss,
     LoggingHelper,
     check_colab_location,
+    check_types,
     hash_params,
     init_filesystem,
     region_param_type,
@@ -325,10 +326,12 @@ class AnophelesBase:
         disable = not self._show_progress
         return TqdmCallback(disable=disable, **kwargs)
 
+    @check_types
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
+    @check_types
     def read_files(
         self,
         paths: Iterable[str],
@@ -484,6 +487,7 @@ class AnophelesBase:
         df["release"] = single_release
         return df
 
+    @check_types
     @doc(
         summary="Access a dataframe of sample sets",
         returns="A dataframe of sample sets, one row per sample set.",
@@ -527,6 +531,7 @@ class AnophelesBase:
         # Return copy to ensure cached dataframes aren't modified by user.
         return df.copy()
 
+    @check_types
     @doc(
         summary="Find which release a sample set was included in.",
     )
@@ -589,6 +594,7 @@ class AnophelesBase:
         # Expect sub-classes will override to add any analysis parameters.
         pass
 
+    @check_types
     def results_cache_get(
         self, *, name: str, params: Dict[str, Any]
     ) -> Mapping[str, np.ndarray]:
@@ -606,6 +612,7 @@ class AnophelesBase:
         # TODO Do we need to read the arrays and then close the npz file?
         return results
 
+    @check_types
     def results_cache_set(
         self, *, name: str, params: Dict[str, Any], results: Mapping[str, np.ndarray]
     ):
