@@ -5610,7 +5610,7 @@ class AnophelesDataResource(
             kwargs="Passed through to `px.scatter()`.",
         ),
     )
-    def _haplotype_clustering(
+    def plot_haplotype_clustering(
         self,
         region: base_params.region,
         analysis: hap_params.analysis = DEFAULT,
