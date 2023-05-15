@@ -231,10 +231,11 @@ class base_params:
     inline_array_default: inline_array = True
 
     chunks: TypeAlias = Annotated[
-        str,
+        Union[str, Tuple[int, ...]],
         """
         If 'auto' let dask decide chunk size. If 'native' use native zarr
-        chunks. Also, can be a target size, e.g., '200 MiB'.
+        chunks. Also, can be a target size, e.g., '200 MiB', or a tuple of
+        integers.
         """,
     ]
 
