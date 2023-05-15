@@ -2141,7 +2141,7 @@ class AnophelesDataResource(
         thin_offset: pca_params.thin_offset = pca_params.thin_offset_default,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = DEFAULT,
         min_minor_ac: pca_params.min_minor_ac = pca_params.min_minor_ac_default,
         max_missing_an: pca_params.max_missing_an = pca_params.max_missing_an_default,
         n_components: pca_params.n_components = pca_params.n_components_default,
