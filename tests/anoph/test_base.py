@@ -2,7 +2,6 @@ import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
-from typeguard import TypeCheckError
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -103,7 +102,7 @@ def test_sample_sets_release(fixture, api):
         assert_frame_equal(df_ss[["sample_set", "sample_count"]], expected)
         assert (df_ss["release"] == release).all()
 
-    with pytest.raises(TypeCheckError):
+    with pytest.raises(TypeError):
         api.sample_sets(release=3.1)  # type: ignore
 
 

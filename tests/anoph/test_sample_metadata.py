@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
-from typeguard import TypeCheckError
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -435,7 +434,7 @@ def test_sample_metadata__ag3_query(ag3_sim_api):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_extra_metadata_errors(fixture, api):
     # Bad type.
-    with pytest.raises(TypeCheckError):
+    with pytest.raises(TypeError):
         api.add_extra_metadata(data="foo")
 
     bad_data = pd.DataFrame({"foo": [1, 2, 3], "bar": ["a", "b", "c"]})
