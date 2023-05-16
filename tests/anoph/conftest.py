@@ -392,7 +392,10 @@ def simulate_snp_genotypes(
         gt.reshape(-1, 2)[loc_missing] = -1
 
         # Store genotype calls.
-        calldata.create_dataset(name="GT", data=gt)
+        # N.B., we need to chunk across the final dimension here,
+        # otherwise allele count computation breaks inside scikit-allel.
+        gt_chunks = (contig_n_sites // 5, n_samples // 3, None)
+        calldata.create_dataset(name="GT", data=gt, chunks=gt_chunks)
 
         # Create other arrays - these are never actually used currently
         # so we'll create some empty arrays to avoid delaying the tests.
@@ -416,14 +419,18 @@ class Ag3Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
         self.bucket = "vo_agam_release"
-        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
-        self.url = self.path.as_uri()
+        self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
+        self.results_cache_path = (
+            self.fixture_dir / "simulated" / "ag3_results_cache"
+        ).resolve()
+        self.url = self.bucket_path.as_uri()
 
-        # Clear out the fixture directory.
-        shutil.rmtree(self.path, ignore_errors=True)
+        # Clear out the fixture directories.
+        shutil.rmtree(self.bucket_path, ignore_errors=True)
+        shutil.rmtree(self.results_cache_path, ignore_errors=True)
 
         # Ensure the fixture directory exists.
-        self.path.mkdir(parents=True, exist_ok=True)
+        self.bucket_path.mkdir(parents=True, exist_ok=True)
 
         # Create fixture data.
         self.releases = ("3.0", "3.1")
@@ -455,7 +462,7 @@ class Ag3Simulator:
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "PHASING_ANALYSIS_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
         }
-        config_path = self.path / "v3-config.json"
+        config_path = self.bucket_path / "v3-config.json"
         with config_path.open(mode="w") as f:
             json.dump(self.config, f, indent=4)
 
@@ -467,7 +474,7 @@ class Ag3Simulator:
         # Here we create a release manifest for an Ag3-style
         # public release. Note this is not the exact same data
         # as the real release.
-        release_path = self.path / "v3"
+        release_path = self.bucket_path / "v3"
         release_path.mkdir(parents=True, exist_ok=True)
         manifest_path = release_path / "manifest.tsv"
         manifest = pd.DataFrame(
@@ -483,7 +490,7 @@ class Ag3Simulator:
         # Here we create a release manifest for an Ag3-style
         # pre-release. Note this is not the exact same data
         # as the real release.
-        release_path = self.path / "v3.1"
+        release_path = self.bucket_path / "v3.1"
         release_path.mkdir(parents=True, exist_ok=True)
         manifest_path = release_path / "manifest.tsv"
         manifest = pd.DataFrame(
@@ -515,7 +522,7 @@ class Ag3Simulator:
             b"T": 0.23151655721224917,
             b"N": 5.242659472466922e-07,
         }
-        path = self.path / self.config["GENOME_ZARR_PATH"]
+        path = self.bucket_path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
             path=path,
             contigs=self.contigs,
@@ -528,7 +535,7 @@ class Ag3Simulator:
         }
 
     def init_genome_features(self):
-        path = self.path / self.config["GENESET_GFF3_PATH"]
+        path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
@@ -557,7 +564,7 @@ class Ag3Simulator:
             / "samples.meta.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -581,7 +588,7 @@ class Ag3Simulator:
                 / "samples.species_aim.csv"
             )
             dst_path = (
-                self.path
+                self.bucket_path
                 / release_path
                 / "metadata"
                 / "species_calls_aim_20220528"
@@ -605,7 +612,7 @@ class Ag3Simulator:
                 / "samples.cohorts.csv"
             )
             dst_path = (
-                self.path
+                self.bucket_path
                 / release_path
                 / "metadata"
                 / "cohorts_20230223"
@@ -628,7 +635,7 @@ class Ag3Simulator:
             / "wgs_snp_data.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -654,7 +661,7 @@ class Ag3Simulator:
         )
 
     def init_snp_sites(self):
-        path = self.path / "v3/snp_genotypes/all/sites/"
+        path = self.bucket_path / "v3/snp_genotypes/all/sites/"
         self.n_sites = simulate_snp_sites(
             path=path, contigs=self.contigs, genome=self.genome
         )
@@ -665,7 +672,7 @@ class Ag3Simulator:
         # Simulate the gamb_colu mask.
         mask = "gamb_colu"
         p_pass = 0.71
-        path = self.path / "v3/site_filters" / analysis / mask
+        path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
             path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
         )
@@ -673,7 +680,7 @@ class Ag3Simulator:
         # Simulate the arab mask.
         mask = "arab"
         p_pass = 0.70
-        path = self.path / "v3/site_filters" / analysis / mask
+        path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
             path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
         )
@@ -681,7 +688,7 @@ class Ag3Simulator:
         # Simulate the gamb_colu_arab mask.
         mask = "gamb_colu_arab"
         p_pass = 0.62
-        path = self.path / "v3/site_filters" / analysis / mask
+        path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
             path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
         )
@@ -699,7 +706,7 @@ class Ag3Simulator:
             for rec in manifest.itertuples():
                 sample_set = rec.sample_set
                 metadata_path = (
-                    self.path
+                    self.bucket_path
                     / release_path
                     / "metadata"
                     / "general"
@@ -709,7 +716,11 @@ class Ag3Simulator:
 
                 # Create zarr hierarchy.
                 zarr_path = (
-                    self.path / release_path / "snp_genotypes" / "all" / sample_set
+                    self.bucket_path
+                    / release_path
+                    / "snp_genotypes"
+                    / "all"
+                    / sample_set
                 )
 
                 # Simulate SNP genotype data.
@@ -729,14 +740,18 @@ class Af1Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
         self.bucket = "vo_afun_release"
-        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
-        self.url = self.path.as_uri()
+        self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
+        self.url = self.bucket_path.as_uri()
+        self.results_cache_path = (
+            self.fixture_dir / "simulated" / "af1_results_cache"
+        ).resolve()
 
-        # Clear out the fixture directory.
-        shutil.rmtree(self.path, ignore_errors=True)
+        # Clear out the fixture directories.
+        shutil.rmtree(self.bucket_path, ignore_errors=True)
+        shutil.rmtree(self.results_cache_path, ignore_errors=True)
 
         # Ensure the fixture directory exists.
-        self.path.mkdir(parents=True, exist_ok=True)
+        self.bucket_path.mkdir(parents=True, exist_ok=True)
 
         # Create fixture data.
         self.releases = ("1.0",)
@@ -766,7 +781,7 @@ class Af1Simulator:
             "SITE_MASK_IDS": ["funestus"],
             "PHASING_ANALYSIS_IDS": ["funestus"],
         }
-        config_path = self.path / "v1.0-config.json"
+        config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
             json.dump(self.config, f, indent=4)
 
@@ -778,7 +793,7 @@ class Af1Simulator:
         # Here we create a release manifest for an Af1-style
         # public release. Note this is not the exact same data
         # as the real release.
-        release_path = self.path / "v1.0"
+        release_path = self.bucket_path / "v1.0"
         release_path.mkdir(parents=True, exist_ok=True)
         manifest_path = release_path / "manifest.tsv"
         manifest = pd.DataFrame(
@@ -812,7 +827,7 @@ class Af1Simulator:
             b"T": 0.2944834333333333,
             b"N": 1.6666666666666667e-05,
         }
-        path = self.path / self.config["GENOME_ZARR_PATH"]
+        path = self.bucket_path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
             path=path,
             contigs=self.contigs,
@@ -825,7 +840,7 @@ class Af1Simulator:
         }
 
     def init_genome_features(self):
-        path = self.path / self.config["GENESET_GFF3_PATH"]
+        path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
@@ -860,7 +875,7 @@ class Af1Simulator:
             / "samples.meta.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -883,7 +898,7 @@ class Af1Simulator:
             / "samples.cohorts.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "cohorts_20221129"
@@ -906,7 +921,7 @@ class Af1Simulator:
             / "wgs_snp_data.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -934,7 +949,7 @@ class Af1Simulator:
         )
 
     def init_snp_sites(self):
-        path = self.path / "v1.0/snp_genotypes/all/sites/"
+        path = self.bucket_path / "v1.0/snp_genotypes/all/sites/"
         self.n_sites = simulate_snp_sites(
             path=path, contigs=self.contigs, genome=self.genome
         )
@@ -945,7 +960,7 @@ class Af1Simulator:
         # Simulate the funestus mask.
         mask = "funestus"
         p_pass = 0.59
-        path = self.path / "v1.0/site_filters" / analysis / mask
+        path = self.bucket_path / "v1.0/site_filters" / analysis / mask
         simulate_site_filters(
             path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
         )
@@ -960,7 +975,7 @@ class Af1Simulator:
             for rec in manifest.itertuples():
                 sample_set = rec.sample_set
                 metadata_path = (
-                    self.path
+                    self.bucket_path
                     / release_path
                     / "metadata"
                     / "general"
@@ -970,7 +985,11 @@ class Af1Simulator:
 
                 # Create zarr hierarchy.
                 zarr_path = (
-                    self.path / release_path / "snp_genotypes" / "all" / sample_set
+                    self.bucket_path
+                    / release_path
+                    / "snp_genotypes"
+                    / "all"
+                    / sample_set
                 )
 
                 # Simulate SNP genotype data.

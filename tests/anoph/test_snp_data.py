@@ -4,7 +4,9 @@ from itertools import product
 import dask.array as da
 import numpy as np
 import pytest
+import xarray as xr
 import zarr
+from numpy.testing import assert_array_equal
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
@@ -32,6 +34,7 @@ def ag3_sim_api(ag3_sim_fixture):
         gff_gene_type="gene",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
         default_site_mask="gamb_colu_arab",
+        results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
     )
 
 
@@ -47,6 +50,7 @@ def af1_sim_api(af1_sim_fixture):
         gff_gene_type="protein_coding_gene",
         gff_default_attributes=("ID", "Parent", "Note", "description"),
         default_site_mask="funestus",
+        results_cache=af1_sim_fixture.results_cache_path.as_posix(),
     )
 
 
@@ -303,8 +307,8 @@ def _check_snp_genotypes(api, sample_sets, region):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_snp_genotypes(fixture, api: AnophelesSnpData):
-    # Here we manually parametrize, because different parameters
-    # need to be chosen at runtime.
+    # Here we manually parametrize sample_sets and region, because
+    # parameters need to be determined at runtime.
 
     # Parametrize sample_sets.
     all_releases = api.releases
@@ -328,3 +332,214 @@ def test_snp_genotypes(fixture, api: AnophelesSnpData):
     # Run tests.
     for sample_sets, region in product(parametrize_sample_sets, parametrize_region):
         _check_snp_genotypes(api=api, sample_sets=sample_sets, region=region)
+
+
+def _check_snp_calls(api, sample_sets, region, site_mask):
+    ds = api.snp_calls(region=region, sample_sets=sample_sets, site_mask=site_mask)
+    assert isinstance(ds, xr.Dataset)
+
+    # Check fields.
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+        "call_genotype_mask",
+        "call_GQ",
+        "call_AD",
+        "call_MQ",
+    }
+    for m in api.site_mask_ids:
+        expected_data_vars.add(f"variant_filter_pass_{m}")
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # Check dimensions.
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # Check dim lengths.
+    pos = api.snp_sites(region=region, field="POS", site_mask=site_mask)
+    n_variants = len(pos)
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    n_samples = len(df_samples)
+    assert ds.dims["variants"] == n_variants
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 4
+
+    # Check shapes.
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim == 2
+            assert x.shape == (n_variants, 4)
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.shape == (n_variants,)
+            assert x.dims == ("variants",)
+        elif f in {"call_genotype", "call_genotype_mask"}:
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape == (n_variants, n_samples, 2)
+        elif f == "call_AD":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "alleles")
+            assert x.shape == (n_variants, n_samples, 4)
+        elif f.startswith("call_"):
+            assert x.ndim == 2
+            assert x.dims == ("variants", "samples")
+            assert x.shape == (n_variants, n_samples)
+        elif f.startswith("sample_"):
+            assert x.ndim == 1
+            assert x.dims == ("samples",)
+            assert x.shape == (n_samples,)
+
+    # Check samples.
+    expected_samples = df_samples["sample_id"].tolist()
+    assert ds["sample_id"].values.tolist() == expected_samples
+
+    # Check attributes.
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == api.contigs
+
+    # Check can set up computations.
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+    d2 = ds["call_AD"].sum(axis=(1, 2))
+    assert isinstance(d2, xr.DataArray)
+
+    # Check compress bug.
+    pos = ds["variant_position"].data
+    assert pos.shape == pos.compute().shape
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_calls(fixture, api: AnophelesSnpData):
+    # Here we manually parametrize sample_sets, region and site_mask,
+    # because parameters need to be determined at runtime.
+
+    # Parametrize sample_sets.
+    all_releases = api.releases
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        random.choice(all_releases),
+    ]
+
+    # Parametrize region.
+    contig = random.choice(api.contigs)
+    df_gff = api.genome_features(attributes=["ID"])
+    parametrize_region = [
+        contig,
+        f"{contig}:20,000-50,000",
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Parametrize site_mask.
+    parametrize_site_mask = (None,) + api.site_mask_ids
+
+    # Run tests.
+    for sample_sets, region, site_mask in product(
+        parametrize_sample_sets, parametrize_region, parametrize_site_mask
+    ):
+        _check_snp_calls(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    ["sex_call == 'F'", "taxon == 'coluzzii'", "taxon == 'robot'"],
+)
+def test_snp_calls_with_sample_query(ag3_sim_api: AnophelesSnpData, sample_query):
+    df_samples = ag3_sim_api.sample_metadata().query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3_sim_api.snp_calls(region="3L", sample_query=sample_query)
+
+    else:
+        ds = ag3_sim_api.snp_calls(region="3L", sample_query=sample_query)
+        assert ds.dims["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+def _check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
+    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    n_samples = len(df_samples)
+
+    # Run once to compute results.
+    ac = api.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert isinstance(ac, np.ndarray)
+    pos = api.snp_sites(region=region, field="POS", site_mask=site_mask)
+    assert ac.shape == (pos.shape[0], 4)
+    assert np.all(ac >= 0)
+    an = ac.sum(axis=1)
+    assert an.max() <= 2 * n_samples
+
+    # Run again to ensure loading from results cache produces the same result.
+    ac2 = api.snp_allele_counts(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+    )
+    assert_array_equal(ac, ac2)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_allele_counts(fixture, api):
+    # Parametrize sample_sets.
+    all_releases = api.releases
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        random.choice(all_releases),
+    ]
+
+    # Parametrize region.
+    contig = random.choice(api.contigs)
+    df_gff = api.genome_features(attributes=["ID"])
+    parametrize_region = [
+        contig,
+        f"{contig}:20,000-50,000",
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Parametrize site_mask.
+    parametrize_site_mask = (None, random.choice(api.site_mask_ids))
+
+    # Parametrize sample_query.
+    parametrize_sample_query = [None, "sex_call == 'F'"]
+
+    # Run tests.
+    for sample_sets, region, site_mask, sample_query in product(
+        parametrize_sample_sets,
+        parametrize_region,
+        parametrize_site_mask,
+        parametrize_sample_query,
+    ):
+        _check_snp_allele_counts(
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            site_mask=site_mask,
+            sample_query=sample_query,
+        )
