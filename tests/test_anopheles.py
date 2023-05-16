@@ -184,18 +184,6 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
     assert_frame_equal(df_default, df_all)
 
 
-@pytest.mark.parametrize(
-    "subclass,sample_set", [(Ag3, "AG1000G-AO"), (Af1, "1229-VO-GH-DADZIE-VMF00095")]
-)
-def test_open_snp_genotypes(subclass, sample_set):
-    # check can open the zarr directly
-    anoph = setup_subclass_cached(subclass)
-    root = anoph.open_snp_genotypes(sample_set=sample_set)
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in root
-
-
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_sample_metadata_dtypes(subclass):
     anoph = setup_subclass_cached(subclass)

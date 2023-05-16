@@ -326,7 +326,7 @@ def simulate_snp_sites(path, contigs, genome):
         seq = genome[contig][:]
         loc_n = (seq == b"N") | (seq == b"n")
         pos = np.nonzero(~loc_n)[0] + 1  # 1-based coordinates
-        variants.create_dataset(name="POS", data=pos)
+        variants.create_dataset(name="POS", data=pos.astype("i4"))
 
         # Simulate REF.
         ref = seq[~loc_n]
@@ -359,6 +359,59 @@ def simulate_site_filters(path, contigs, p_pass, n_sites):
     zarr.consolidate_metadata(path)
 
 
+def simulate_snp_genotypes(
+    zarr_path, metadata_path, contigs, n_sites, p_allele, p_missing
+):
+    root = zarr.open(zarr_path, mode="w")
+
+    # Create samples array.
+    df_samples = pd.read_csv(metadata_path)
+    n_samples = len(df_samples)
+    samples = df_samples["sample_id"].values.astype("S")
+    root.create_dataset(name="samples", data=samples)
+
+    for contig in contigs:
+        # Set up groups.
+        contig_grp = root.require_group(contig)
+        calldata = contig_grp.require_group("calldata")
+        contig_n_sites = n_sites[contig]
+
+        # Simulate genotype calls.
+        gt = np.random.choice(
+            np.arange(4, dtype="i1"),
+            size=(contig_n_sites, n_samples, 2),
+            replace=True,
+            p=p_allele,
+        )
+
+        # Simulate missing calls.
+        n_calls = contig_n_sites * n_samples
+        loc_missing = np.random.choice(
+            [False, True], size=n_calls, replace=True, p=p_missing
+        )
+        gt.reshape(-1, 2)[loc_missing] = -1
+
+        # Store genotype calls.
+        calldata.create_dataset(name="GT", data=gt)
+
+        # Create other arrays - these are never actually used currently
+        # so we'll create some empty arrays to avoid delaying the tests.
+        calldata.create_dataset(
+            name="GQ", shape=(contig_n_sites, n_samples), dtype="i1", fill_value=-1
+        )
+        calldata.create_dataset(
+            name="MQ", shape=(contig_n_sites, n_samples), dtype="f4", fill_value=-1
+        )
+        calldata.create_dataset(
+            name="AD",
+            shape=(contig_n_sites, n_samples, 4),
+            dtype="i2",
+            fill_value=-1,
+        )
+
+    zarr.consolidate_metadata(zarr_path)
+
+
 class Ag3Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
@@ -383,6 +436,7 @@ class Ag3Simulator:
         self.init_metadata()
         self.init_snp_sites()
         self.init_site_filters()
+        self.init_snp_genotypes()
 
     def init_config(self):
         self.config = {
@@ -632,6 +686,44 @@ class Ag3Simulator:
             path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
         )
 
+    def init_snp_genotypes(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.path / release_path / "snp_genotypes" / "all" / sample_set
+                )
+
+                # Simulate SNP genotype data.
+                p_allele = np.array([0.979, 0.007, 0.008, 0.006])
+                p_missing = np.array([0.96, 0.04])
+                simulate_snp_genotypes(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    n_sites=self.n_sites,
+                    p_allele=p_allele,
+                    p_missing=p_missing,
+                )
+
 
 class Af1Simulator:
     def __init__(self, fixture_dir):
@@ -656,6 +748,7 @@ class Af1Simulator:
         self.init_metadata()
         self.init_snp_sites()
         self.init_site_filters()
+        self.init_snp_genotypes()
 
     def init_config(self):
         self.config = {
@@ -856,6 +949,41 @@ class Af1Simulator:
         simulate_site_filters(
             path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
         )
+
+    def init_snp_genotypes(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.path / release_path / "snp_genotypes" / "all" / sample_set
+                )
+
+                # Simulate SNP genotype data.
+                p_allele = np.array([0.981, 0.006, 0.008, 0.005])
+                p_missing = np.array([0.95, 0.05])
+                simulate_snp_genotypes(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    n_sites=self.n_sites,
+                    p_allele=p_allele,
+                    p_missing=p_missing,
+                )
 
 
 # For the following data fixtures we will use the "session" scope

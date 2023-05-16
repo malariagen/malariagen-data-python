@@ -84,12 +84,14 @@ class AnophelesSnpData(
     def _site_annotations_zarr_path(self) -> str:
         return self.config["SITE_ANNOTATIONS_ZARR_PATH"]
 
-    def _prep_site_mask_param(self, *, site_mask: Optional[base_params.site_mask]):
-        if site_mask is None:
-            # This is allowed, it means don't apply any site mask to the data.
-            return None
-        elif site_mask == DEFAULT:
+    def _prep_site_mask_param(
+        self,
+        *,
+        site_mask: base_params.site_mask,
+    ) -> base_params.site_mask:
+        if site_mask == DEFAULT:
             # Use whatever is the default site mask for this data resource.
+            assert self._default_site_mask is not None
             return self._default_site_mask
         elif site_mask in self.site_mask_ids:
             return site_mask
@@ -97,6 +99,17 @@ class AnophelesSnpData(
             raise ValueError(
                 f"Invalid site mask, must be one of f{self.site_mask_ids}."
             )
+
+    def _prep_optional_site_mask_param(
+        self,
+        *,
+        site_mask: Optional[base_params.site_mask],
+    ) -> Optional[base_params.site_mask]:
+        if site_mask is None:
+            # This is allowed, it means don't apply any site mask to the data.
+            return None
+        else:
+            return self._prep_site_mask_param(site_mask=site_mask)
 
     @doc(
         summary="Open SNP sites zarr",
@@ -146,8 +159,13 @@ class AnophelesSnpData(
         summary="Open site filters zarr.",
         returns="Zarr hierarchy.",
     )
-    def open_site_filters(self, mask: base_params.site_mask) -> zarr.hierarchy.Group:
+    def open_site_filters(
+        self,
+        mask: base_params.site_mask,
+    ) -> zarr.hierarchy.Group:
         self._require_site_filters_analysis()
+        mask = self._prep_site_mask_param(site_mask=mask)
+
         # Here we cache the opened zarr hierarchy, to avoid small delays
         # reading zarr metadata.
         try:
@@ -231,7 +249,7 @@ class AnophelesSnpData(
         field: base_params.field,
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
-    ):
+    ) -> da.Array:
         """Access SNP sites data for a single contig."""
         root = self.open_snp_sites()
         z = root[f"{contig}/variants/{field}"]
@@ -262,7 +280,7 @@ class AnophelesSnpData(
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-            loc_region = locate_region(region, pos)
+            loc_region = locate_region(region, np.asarray(pos))
             ret = ret[loc_region]
 
         return ret
@@ -381,7 +399,7 @@ class AnophelesSnpData(
                 pos = self._snp_sites_for_contig(
                     contig=contig, field="POS", inline_array=inline_array, chunks=chunks
                 )
-                loc_region = locate_region(r, pos)
+                loc_region = locate_region(r, np.asarray(pos))
                 x = x[loc_region]
 
             lx.append(x)
@@ -968,7 +986,7 @@ class AnophelesSnpData(
             sample_indices=sample_indices,
         )
         region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         params = dict(
             region=region_prepped,
             sample_sets=sample_sets_prepped,

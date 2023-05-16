@@ -2174,7 +2174,7 @@ class AnophelesDataResource(
             sample_indices=None,
         )
         region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         params = dict(
             region=region_prepped,
             n_snps=n_snps,
@@ -2934,7 +2934,7 @@ class AnophelesDataResource(
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
-            site_mask=self._prep_site_mask_param(site_mask=site_mask),
+            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -5517,7 +5517,7 @@ class AnophelesDataResource(
         params = dict(
             contig=contig,
             sites=sites,
-            site_mask=self._prep_site_mask_param(site_mask=site_mask),
+            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             window_sizes=window_sizes,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             # N.B., do not be tempted to convert this sample query into integer
