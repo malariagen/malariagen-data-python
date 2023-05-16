@@ -1,6 +1,5 @@
 import os
 
-import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
@@ -186,28 +185,6 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
 
 
 @pytest.mark.parametrize(
-    "subclass,mask",
-    [(Ag3, "gamb_colu_arab"), (Ag3, "gamb_colu"), (Ag3, "arab"), (Af1, "funestus")],
-)
-def test_open_site_filters(subclass, mask):
-    # check can open the zarr directly
-    anoph = setup_subclass_cached(subclass)
-    root = anoph.open_site_filters(mask=mask)
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in root
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_open_snp_sites(subclass):
-    anoph = setup_subclass_cached(subclass)
-    root = anoph.open_snp_sites()
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in root
-
-
-@pytest.mark.parametrize(
     "subclass,sample_set", [(Ag3, "AG1000G-AO"), (Af1, "1229-VO-GH-DADZIE-VMF00095")]
 )
 def test_open_snp_genotypes(subclass, sample_set):
@@ -217,24 +194,6 @@ def test_open_snp_genotypes(subclass, sample_set):
     assert isinstance(root, zarr.hierarchy.Group)
     for contig in anoph.contigs:
         assert contig in root
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_genome(subclass):
-    anoph = setup_subclass_cached(subclass)
-
-    # test the open_genome() method to access as zarr
-    genome = anoph.open_genome()
-    assert isinstance(genome, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in genome
-        assert genome[contig].dtype == "S1"
-
-    # test the genome_sequence() method to access sequences
-    for contig in anoph.contigs:
-        seq = anoph.genome_sequence(contig)
-        assert isinstance(seq, da.Array)
-        assert seq.dtype == "S1"
 
 
 @pytest.mark.parametrize("subclass", [Ag3, Af1])

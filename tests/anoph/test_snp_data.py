@@ -18,6 +18,8 @@ def ag3_sim_api(ag3_sim_fixture):
         pre=True,
         gff_gene_type="gene",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
+        site_mask_ids=("gamb_colu_arab", "gamb_colu", "arab"),
+        default_site_mask="gamb_colu_arab",
     )
 
 
@@ -32,6 +34,8 @@ def af1_sim_api(af1_sim_fixture):
         pre=False,
         gff_gene_type="protein_coding_gene",
         gff_default_attributes=("ID", "Parent", "Note", "description"),
+        site_mask_ids=("funestus",),
+        default_site_mask=("funestus",),
     )
 
 
@@ -56,7 +60,7 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_open_snp_sites(fixture, api):
+def test_open_snp_sites(fixture, api: AnophelesSnpData):
     root = api.open_snp_sites()
     assert isinstance(root, zarr.hierarchy.Group)
     for contig in api.contigs:
@@ -67,3 +71,26 @@ def test_open_snp_sites(fixture, api):
         assert "POS" in variants_grp
         assert "REF" in variants_grp
         assert "ALT" in variants_grp
+
+
+def test_site_mask_ids_ag3(ag3_sim_api: AnophelesSnpData):
+    assert ag3_sim_api.site_mask_ids == ("gamb_colu_arab", "gamb_colu", "arab")
+
+
+def test_site_mask_ids_af1(af1_sim_api: AnophelesSnpData):
+    assert af1_sim_api.site_mask_ids == ("funestus",)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_open_site_filters(fixture, api: AnophelesSnpData):
+    for mask in api.site_mask_ids:
+        root = api.open_site_filters(mask=mask)
+        assert isinstance(root, zarr.hierarchy.Group)
+        for contig in api.contigs:
+            assert contig in root
+            contig_grp = root[contig]
+            assert "variants" in contig_grp
+            variants_grp = contig_grp["variants"]
+            assert f"filter_pass_{mask}" in variants_grp
+            filter_pass = variants_grp[f"filter_pass_{mask}"]
+            assert filter_pass.dtype == bool
