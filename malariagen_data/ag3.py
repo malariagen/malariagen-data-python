@@ -149,7 +149,6 @@ class Ag3(AnophelesDataResource):
                 "aim_species": object,
             },
             site_filters_analysis=site_filters_analysis,
-            site_mask_ids=("gamb_colu_arab", "gamb_colu", "arab"),
             default_site_mask="gamb_colu_arab",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,

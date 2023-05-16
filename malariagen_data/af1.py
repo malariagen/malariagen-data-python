@@ -106,7 +106,6 @@ class Af1(AnophelesDataResource):
             aim_analysis=None,
             aim_metadata_dtype=None,
             site_filters_analysis=site_filters_analysis,
-            site_mask_ids=("funestus",),
             default_site_mask="funestus",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,

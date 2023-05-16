@@ -316,6 +316,7 @@ class Gff3Simulator:
 
 def simulate_snp_sites(path, contigs, genome):
     root = zarr.open(path, mode="w")
+    n_sites = dict()
 
     for contig in contigs:
         # Obtain variants group.
@@ -329,6 +330,7 @@ def simulate_snp_sites(path, contigs, genome):
 
         # Simulate REF.
         ref = seq[~loc_n]
+        assert pos.shape == ref.shape
         variants.create_dataset(name="REF", data=ref)
 
         # Simulate ALT.
@@ -339,6 +341,21 @@ def simulate_snp_sites(path, contigs, genome):
         alt[ref == b"G"] = np.array([b"A", b"C", b"T"])
         variants.create_dataset(name="ALT", data=alt)
 
+        # Store number of sites for later.
+        n_sites[contig] = pos.shape[0]
+
+    zarr.consolidate_metadata(path)
+    return n_sites
+
+
+def simulate_site_filters(path, contigs, p_pass, n_sites):
+    root = zarr.open(path, mode="w")
+    p = np.array([1 - p_pass, p_pass])
+    for contig in contigs:
+        variants = root.require_group(contig).require_group("variants")
+        size = n_sites[contig]
+        filter_pass = np.random.choice([False, True], size=size, p=p)
+        variants.create_dataset(name="filter_pass", data=filter_pass)
     zarr.consolidate_metadata(path)
 
 
@@ -584,10 +601,36 @@ class Ag3Simulator:
 
     def init_snp_sites(self):
         path = self.path / "v3/snp_genotypes/all/sites/"
-        simulate_snp_sites(path=path, contigs=self.contigs, genome=self.genome)
+        self.n_sites = simulate_snp_sites(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
 
     def init_site_filters(self):
-        pass
+        analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+
+        # Simulate the gamb_colu mask.
+        mask = "gamb_colu"
+        p_pass = 0.71
+        path = self.path / "v3/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
+
+        # Simulate the arab mask.
+        mask = "arab"
+        p_pass = 0.70
+        path = self.path / "v3/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
+
+        # Simulate the gamb_colu_arab mask.
+        mask = "gamb_colu_arab"
+        p_pass = 0.62
+        path = self.path / "v3/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
 
 
 class Af1Simulator:
@@ -799,10 +842,20 @@ class Af1Simulator:
 
     def init_snp_sites(self):
         path = self.path / "v1.0/snp_genotypes/all/sites/"
-        simulate_snp_sites(path=path, contigs=self.contigs, genome=self.genome)
+        self.n_sites = simulate_snp_sites(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
 
     def init_site_filters(self):
-        pass
+        analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+
+        # Simulate the funestus mask.
+        mask = "funestus"
+        p_pass = 0.59
+        path = self.path / "v1.0/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
 
 
 # For the following data fixtures we will use the "session" scope

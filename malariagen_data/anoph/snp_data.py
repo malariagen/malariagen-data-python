@@ -39,7 +39,6 @@ class AnophelesSnpData(
     def __init__(
         self,
         site_filters_analysis: Optional[str] = None,
-        site_mask_ids: Optional[Tuple[str, ...]] = None,
         default_site_mask: Optional[str] = None,
         **kwargs,
     ):
@@ -53,7 +52,6 @@ class AnophelesSnpData(
         self._site_filters_analysis_override = site_filters_analysis
 
         # These will vary between data resources.
-        self._site_mask_ids: Tuple[str, ...] = site_mask_ids or ()  # ensure tuple
         self._default_site_mask = default_site_mask
 
         # Set up caches.
@@ -80,7 +78,7 @@ class AnophelesSnpData(
         method making using of SNP data.
 
         """
-        return self._site_mask_ids
+        return tuple(self.config.get("SITE_MASK_IDS", ()))  # ensure tuple
 
     @property
     def _site_annotations_zarr_path(self) -> str:

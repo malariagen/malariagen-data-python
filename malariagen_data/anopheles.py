@@ -616,7 +616,6 @@ class AnophelesDataResource(
         aim_analysis: Optional[str],
         aim_metadata_dtype: Optional[Mapping[str, Any]],
         site_filters_analysis: Optional[str],
-        site_mask_ids: Optional[Tuple[str, ...]],
         default_site_mask: Optional[str],
         bokeh_output_notebook: bool,
         results_cache: Optional[str],
@@ -651,7 +650,6 @@ class AnophelesDataResource(
             aim_analysis=aim_analysis,
             aim_metadata_dtype=aim_metadata_dtype,
             site_filters_analysis=site_filters_analysis,
-            site_mask_ids=site_mask_ids,
             default_site_mask=default_site_mask,
             results_cache=results_cache,
         )

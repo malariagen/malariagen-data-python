@@ -18,7 +18,6 @@ def ag3_sim_api(ag3_sim_fixture):
         pre=True,
         gff_gene_type="gene",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
-        site_mask_ids=("gamb_colu_arab", "gamb_colu", "arab"),
         default_site_mask="gamb_colu_arab",
     )
 
@@ -34,7 +33,6 @@ def af1_sim_api(af1_sim_fixture):
         pre=False,
         gff_gene_type="protein_coding_gene",
         gff_default_attributes=("ID", "Parent", "Note", "description"),
-        site_mask_ids=("funestus",),
         default_site_mask=("funestus",),
     )
 
@@ -91,6 +89,6 @@ def test_open_site_filters(fixture, api: AnophelesSnpData):
             contig_grp = root[contig]
             assert "variants" in contig_grp
             variants_grp = contig_grp["variants"]
-            assert f"filter_pass_{mask}" in variants_grp
-            filter_pass = variants_grp[f"filter_pass_{mask}"]
+            assert "filter_pass" in variants_grp
+            filter_pass = variants_grp["filter_pass"]
             assert filter_pass.dtype == bool
