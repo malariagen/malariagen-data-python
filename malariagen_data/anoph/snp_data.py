@@ -576,9 +576,9 @@ class AnophelesSnpData(
     def _locate_site_class(
         self,
         *,
-        region: Region,
-        site_mask: Optional[str],
-        site_class: str,
+        region: base_params.single_region,
+        site_mask: Optional[base_params.site_mask],
+        site_class: base_params.site_class,
     ):
         # Cache these data in memory to avoid repeated computation.
         cache_key = (region, site_mask, site_class)

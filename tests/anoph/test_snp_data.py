@@ -1,6 +1,7 @@
 import random
 from itertools import product
 
+import bokeh.model
 import dask.array as da
 import numpy as np
 import pytest
@@ -232,6 +233,76 @@ def test_snp_sites(fixture, api: AnophelesSnpData):
     _check_snp_sites(api=api, region=region)
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_open_site_annotations(fixture, api):
+    root = api.open_site_annotations()
+    assert isinstance(root, zarr.hierarchy.Group)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        assert f in root
+        for contig in api.contigs:
+            assert contig in root[f]
+            z = root[f][contig]
+            # Zarr data should be aligned with genome sequence.
+            assert z.shape == (len(api.genome_sequence(region=contig)),)
+
+
+def _check_site_annotations(api: AnophelesSnpData, region, site_mask):
+    ds_snp = api.snp_variants(region=region, site_mask=site_mask)
+    n_variants = ds_snp.dims["variants"]
+    ds_ann = api.site_annotations(region=region, site_mask=site_mask)
+    # Site annotations dataset should be aligned with SNP sites.
+    assert ds_ann.dims["variants"] == n_variants
+    assert isinstance(ds_ann, xr.Dataset)
+    for f in (
+        "codon_degeneracy",
+        "codon_nonsyn",
+        "codon_position",
+        "seq_cls",
+        "seq_flen",
+        "seq_relpos_start",
+        "seq_relpos_stop",
+    ):
+        d = ds_ann[f]
+        assert d.ndim == 1
+        assert d.dims == ("variants",)
+        assert d.shape == (n_variants,)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_site_annotations(fixture, api):
+    # Parametrize region.
+    contig = random.choice(api.contigs)
+    df_gff = api.genome_features(attributes=["ID"])
+    # Don't need to support multiple regions at this time.
+    parametrize_region = [
+        contig,
+        f"{contig}:20,000-50,000",
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Parametrize site_mask.
+    parametrize_site_mask = (None, random.choice(api.site_mask_ids))
+
+    # Run tests.
+    for region, site_mask in product(
+        parametrize_region,
+        parametrize_site_mask,
+    ):
+        _check_site_annotations(
+            api=api,
+            region=region,
+            site_mask=site_mask,
+        )
+
+
 def _check_snp_genotypes(api, sample_sets, region):
     df_samples = api.sample_metadata(sample_sets=sample_sets)
 
@@ -326,6 +397,7 @@ def test_snp_genotypes(fixture, api: AnophelesSnpData):
     parametrize_region = [
         contig,
         f"{contig}:20,000-50,000",
+        [f"{contig}:20,000-40,000", f"{contig}:60,000-80,000"],
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -442,6 +514,7 @@ def test_snp_calls(fixture, api: AnophelesSnpData):
     parametrize_region = [
         contig,
         f"{contig}:20,000-50,000",
+        [f"{contig}:20,000-40,000", f"{contig}:60,000-80,000"],
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -472,6 +545,97 @@ def test_snp_calls_with_sample_query(ag3_sim_api: AnophelesSnpData, sample_query
         ds = ag3_sim_api.snp_calls(region="3L", sample_query=sample_query)
         assert ds.dims["samples"] == len(df_samples)
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_calls_with_min_cohort_size(fixture, api: AnophelesSnpData):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    contig = random.choice(api.contigs)
+    region = f"{contig}:20,000-50,000"
+
+    # Test with minimum cohort size.
+    ds = api.snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        min_cohort_size=10,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.dims["samples"] >= 10
+    with pytest.raises(ValueError):
+        api.snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            min_cohort_size=1_000,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_calls_with_max_cohort_size(fixture, api: AnophelesSnpData):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    contig = random.choice(api.contigs)
+    region = f"{contig}:20,000-50,000"
+
+    # Test with maximum cohort size.
+    ds = api.snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        max_cohort_size=15,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.dims["samples"] <= 15
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_calls_with_cohort_size(fixture, api: AnophelesSnpData):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    n_samples = len(api.sample_metadata(sample_sets=sample_sets))
+    contig = random.choice(api.contigs)
+    region = f"{contig}:20,000-50,000"
+
+    # Test with specific cohort size.
+    cohort_size = 20
+    if n_samples < 20:
+        with pytest.raises(ValueError):
+            api.snp_calls(
+                sample_sets=sample_sets,
+                region=region,
+                cohort_size=cohort_size,
+            )
+    else:
+        ds = api.snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            cohort_size=cohort_size,
+        )
+        assert isinstance(ds, xr.Dataset)
+        assert ds.dims["samples"] == 20
+
+
+@pytest.mark.parametrize(
+    "site_class",
+    [
+        "CDS_DEG_4",
+        "CDS_DEG_2_SIMPLE",
+        "CDS_DEG_0",
+        "INTRON_SHORT",
+        "INTRON_LONG",
+        "INTRON_SPLICE_5PRIME",
+        "INTRON_SPLICE_3PRIME",
+        "UTR_5PRIME",
+        "UTR_3PRIME",
+        "INTERGENIC",
+    ],
+)
+def test_snp_calls_with_site_class(ag3_sim_api: AnophelesSnpData, site_class):
+    ds1 = ag3_sim_api.snp_calls(region="3L")
+    ds2 = ag3_sim_api.snp_calls(region="3L", site_class=site_class)
+    assert ds2.dims["variants"] < ds1.dims["variants"]
 
 
 def _check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
@@ -520,6 +684,7 @@ def test_snp_allele_counts(fixture, api):
     parametrize_region = [
         contig,
         f"{contig}:20,000-50,000",
+        [f"{contig}:20,000-40,000", f"{contig}:60,000-80,000"],
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -543,3 +708,56 @@ def test_snp_allele_counts(fixture, api):
             site_mask=site_mask,
             sample_query=sample_query,
         )
+
+
+def _check_is_accessible(api: AnophelesSnpData, region, mask):
+    is_accessible = api.is_accessible(region=region, site_mask=mask)
+    assert isinstance(is_accessible, np.ndarray)
+    assert is_accessible.ndim == 1
+    assert is_accessible.shape[0] == api.genome_sequence(region=region).shape[0]
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_is_accessible(fixture, api: AnophelesSnpData):
+    # Parametrize region.
+    contig = random.choice(api.contigs)
+    df_gff = api.genome_features(attributes=["ID"])
+    # Don't need to support multiple regions at this time.
+    parametrize_region = [
+        contig,
+        f"{contig}:20,000-50,000",
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Parametrize site_mask.
+    parametrize_site_mask = api.site_mask_ids
+
+    # Run tests.
+    for region, site_mask in product(
+        parametrize_region,
+        parametrize_site_mask,
+    ):
+        _check_is_accessible(
+            api=api,
+            region=region,
+            mask=site_mask,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_snps(fixture, api: AnophelesSnpData):
+    # Randomly choose parameter values.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    contig = random.choice(api.contigs)
+    region = f"{contig}:20,000-50,000"
+    site_mask = random.choice(api.site_mask_ids)
+
+    # Exercise the function.
+    fig = api.plot_snps(
+        region=region,
+        sample_sets=sample_sets,
+        site_mask=site_mask,
+        show=False,
+    )
+    assert isinstance(fig, bokeh.model.Model)

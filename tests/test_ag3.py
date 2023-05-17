@@ -269,20 +269,6 @@ def test_snp_genotypes_for_joined_arms_region(region):
     assert sites.shape[0] == gt.shape[0]
 
 
-@pytest.mark.parametrize(
-    "region",
-    ["AGAP007280", "2R:48714463-48715355", "3L"],
-)
-@pytest.mark.parametrize("mask", ["gamb_colu_arab", "gamb_colu", "arab"])
-def test_is_accessible(region, mask):
-    ag3 = setup_ag3()
-    # run a couple of tests
-    is_accessible = ag3.is_accessible(region=region, site_mask=mask)
-    assert isinstance(is_accessible, np.ndarray)
-    assert is_accessible.ndim == 1
-    assert is_accessible.shape[0] == ag3.genome_sequence(region).shape[0]
-
-
 def test_cross_metadata():
     ag3 = setup_ag3()
     df_crosses = ag3.cross_metadata()
@@ -299,32 +285,6 @@ def test_cross_metadata():
     assert df_crosses["role"].unique().tolist() == expected_role_values
     expected_sex_values = ["F", "M"]
     assert df_crosses["sex"].unique().tolist() == expected_sex_values
-
-
-@pytest.mark.parametrize("region", ["3L", "AGAP007280", "2R:48714463-48715355"])
-@pytest.mark.parametrize("site_mask", [None, "gamb_colu_arab"])
-def test_site_annotations(region, site_mask):
-    ag3 = setup_ag3()
-
-    ds_snp = ag3.snp_variants(region=region, site_mask=site_mask)
-    n_variants = ds_snp.dims["variants"]
-    ds_ann = ag3.site_annotations(region=region, site_mask=site_mask)
-    # site annotations dataset is aligned with SNP sites
-    assert ds_ann.dims["variants"] == n_variants
-    assert isinstance(ds_ann, xr.Dataset)
-    for f in (
-        "codon_degeneracy",
-        "codon_nonsyn",
-        "codon_position",
-        "seq_cls",
-        "seq_flen",
-        "seq_relpos_start",
-        "seq_relpos_stop",
-    ):
-        d = ds_ann[f]
-        assert d.ndim == 1
-        assert d.dims == ("variants",)
-        assert d.shape == (n_variants,)
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])

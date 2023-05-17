@@ -329,7 +329,7 @@ def simulate_snp_sites(path, contigs, genome):
         variants.create_dataset(name="POS", data=pos.astype("i4"))
 
         # Simulate REF.
-        ref = seq[~loc_n]
+        ref = np.char.upper(seq[~loc_n])  # ensure upper case
         assert pos.shape == ref.shape
         variants.create_dataset(name="REF", data=ref)
 
@@ -415,6 +415,86 @@ def simulate_snp_genotypes(
     zarr.consolidate_metadata(zarr_path)
 
 
+def simulate_site_annotations(path, genome):
+    root = zarr.open(path, mode="w")
+    contigs = list(genome)
+
+    # Take a very simple approach here to simulate random data.
+    # It won't be biologically realistic, but should hopefully
+    # suffice for testing purposes.
+
+    # codon_degeneracy
+    grp = root.require_group("codon_degeneracy")
+    vals = np.arange(-1, 5)
+    p = [0.897754, 0.0, 0.060577, 0.014287, 0.011096, 0.016286]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # codon_nonsyn
+    grp = root.require_group("codon_nonsyn")
+    vals = np.arange(4)
+    p = [0.91404, 0.001646, 0.018698, 0.065616]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # codon_position
+    grp = root.require_group("codon_position")
+    vals = np.arange(4)
+    p = [0.897754, 0.034082, 0.034082, 0.034082]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_cls
+    grp = root.require_group("seq_cls")
+    vals = np.arange(11)
+    p = [
+        0.034824,
+        0.230856,
+        0.318803,
+        0.009675,
+        0.015201,
+        0.015446,
+        0.059981,
+        0.018995,
+        0.085244,
+        0.180545,
+        0.03043,
+    ]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_flen
+    grp = root.require_group("seq_flen")
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.randint(low=0, high=40_000, size=size)
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_relpos_start
+    grp = root.require_group("seq_relpos_start")
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.beta(a=0.4, b=4, size=size) * 40_000
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_relpos_stop
+    grp = root.require_group("seq_relpos_stop")
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.beta(a=0.4, b=4, size=size) * 40_000
+        grp.create_dataset(name=contig, data=x)
+
+    zarr.consolidate_metadata(path)
+
+
 class Ag3Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
@@ -444,6 +524,7 @@ class Ag3Simulator:
         self.init_snp_sites()
         self.init_site_filters()
         self.init_snp_genotypes()
+        self.init_site_annotations()
 
     def init_config(self):
         self.config = {
@@ -480,7 +561,7 @@ class Ag3Simulator:
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [randint(10, 81), randint(10, 100)],
+                "sample_count": [randint(10, 60), randint(10, 50)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -498,7 +579,7 @@ class Ag3Simulator:
                 "sample_set": [
                     "1177-VO-ML-LEHMANN-VMF00004",
                 ],
-                "sample_count": [randint(10, 100)],
+                "sample_count": [randint(10, 70)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -527,7 +608,7 @@ class Ag3Simulator:
             path=path,
             contigs=self.contigs,
             low=100_000,
-            high=200_000,
+            high=150_000,
             base_composition=base_composition,
         )
         self.contig_sizes = {
@@ -735,6 +816,10 @@ class Ag3Simulator:
                     p_missing=p_missing,
                 )
 
+    def init_site_annotations(self):
+        path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
+        simulate_site_annotations(path=path, genome=self.genome)
+
 
 class Af1Simulator:
     def __init__(self, fixture_dir):
@@ -764,6 +849,7 @@ class Af1Simulator:
         self.init_snp_sites()
         self.init_site_filters()
         self.init_snp_genotypes()
+        self.init_site_annotations()
 
     def init_config(self):
         self.config = {
@@ -832,7 +918,7 @@ class Af1Simulator:
             path=path,
             contigs=self.contigs,
             low=100_000,
-            high=300_000,
+            high=200_000,
             base_composition=base_composition,
         )
         self.contig_sizes = {
@@ -1003,6 +1089,10 @@ class Af1Simulator:
                     p_allele=p_allele,
                     p_missing=p_missing,
                 )
+
+    def init_site_annotations(self):
+        path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
+        simulate_site_annotations(path=path, genome=self.genome)
 
 
 # For the following data fixtures we will use the "session" scope

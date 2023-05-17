@@ -4,7 +4,6 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import zarr
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 
@@ -313,30 +312,6 @@ def test_genome_features_region(subclass, region):
         assert np.all(df["contig"].values == region.contig)
         if region.start and region.end:
             assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_open_site_annotations(subclass):
-    anoph = setup_subclass_cached(subclass)
-
-    # test access as zarr
-    root = anoph.open_site_annotations()
-    assert isinstance(root, zarr.hierarchy.Group)
-    for f in (
-        "codon_degeneracy",
-        "codon_nonsyn",
-        "codon_position",
-        "seq_cls",
-        "seq_flen",
-        "seq_relpos_start",
-        "seq_relpos_stop",
-    ):
-        assert f in root
-        for contig in anoph.contigs:
-            assert contig in root[f]
-            z = root[f][contig]
-            # raw zarr data is aligned with genome sequence
-            assert z.shape == (len(anoph.genome_sequence(region=contig)),)
 
 
 @pytest.mark.parametrize(

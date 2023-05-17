@@ -33,45 +33,6 @@ def test_repr():
     assert isinstance(r, str)
 
 
-@pytest.mark.parametrize(
-    "region",
-    ["X", "LOC125762289", "2RL:48714463-48715355"],
-)
-def test_is_accessible(region):
-    af1 = setup_af1()
-    # run a couple of tests
-    is_accessible = af1.is_accessible(region=region, site_mask="funestus")
-    assert isinstance(is_accessible, np.ndarray)
-    assert is_accessible.ndim == 1
-    assert is_accessible.shape[0] == af1.genome_sequence(region).shape[0]
-
-
-@pytest.mark.parametrize("region", ["X", "LOC125762289", "2RL:48714463-48715355"])
-@pytest.mark.parametrize("site_mask", [None, "funestus"])
-def test_site_annotations(region, site_mask):
-    af1 = setup_af1()
-
-    ds_snp = af1.snp_variants(region=region, site_mask=site_mask)
-    n_variants = ds_snp.dims["variants"]
-    ds_ann = af1.site_annotations(region=region, site_mask=site_mask)
-    # site annotations dataset is aligned with SNP sites
-    assert ds_ann.dims["variants"] == n_variants
-    assert isinstance(ds_ann, xr.Dataset)
-    for f in (
-        "codon_degeneracy",
-        "codon_nonsyn",
-        "codon_position",
-        "seq_cls",
-        "seq_flen",
-        "seq_relpos_start",
-        "seq_relpos_stop",
-    ):
-        d = ds_ann[f]
-        assert d.ndim == 1
-        assert d.dims == ("variants",)
-        assert d.shape == (n_variants,)
-
-
 # TODO: test_snp_effects() for Af1.0
 # # reverse strand gene
 # gste2 = "LOC125761549"
