@@ -26,6 +26,7 @@ from ..util import (
     parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
+    true_runs,
 )
 from .base import DEFAULT, base_params
 from .genome_features import AnophelesGenomeFeaturesData, gplt_params
@@ -1155,13 +1156,18 @@ class AnophelesSnpData(
 
         data = pd.DataFrame(cols)
 
+        # Find gaps in the reference genome.
+        seq = self.genome_sequence(region=resolved_region.contig).compute()
+        is_n = (seq == b"N") | (seq == b"n")
+        n_starts, n_stops = true_runs(is_n)
+
         # Create figure.
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
         pos = data["pos"].values
-        x_min = pos[0]
-        x_max = pos[-1]
+        x_min = resolved_region.start or 1
+        x_max = resolved_region.end or len(seq)
         if x_range is None:
             x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
 
@@ -1195,14 +1201,8 @@ class AnophelesSnpData(
         hover_tool.names = ["snps"]
 
         # Plot gaps in the reference genome.
-        seq = self.genome_sequence(region=resolved_region.contig).compute()
-        is_n = (seq == b"N") | (seq == b"n")
-        loc_n_start = ~is_n[:-1] & is_n[1:]
-        loc_n_stop = is_n[:-1] & ~is_n[1:]
-        n_starts = np.nonzero(loc_n_start)[0]
-        n_stops = np.nonzero(loc_n_stop)[0]
         df_n_runs = pd.DataFrame(
-            {"left": n_starts + 1.6, "right": n_stops + 1.4, "top": 2.5, "bottom": 0.5}
+            {"left": n_starts + 0.6, "right": n_stops + 0.4, "top": 2.5, "bottom": 0.5}
         )
         fig.quad(
             top="top",

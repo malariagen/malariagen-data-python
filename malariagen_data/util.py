@@ -19,6 +19,7 @@ except ImportError:
 import allel
 import dask.array as da
 import ipinfo
+import numba
 import numpy as np
 import pandas
 import pandas as pd
@@ -503,7 +504,11 @@ def locate_region(region: Region, pos: np.ndarray) -> slice:
 
     """
     pos_idx = allel.SortedIndex(pos)
-    loc_region = pos_idx.locate_range(region.start, region.end)
+    try:
+        loc_region = pos_idx.locate_range(region.start, region.end)
+    except KeyError:
+        # There are no data within the requested region, return a zero-length slice.
+        loc_region = slice(0, 0)
     return loc_region
 
 
@@ -924,3 +929,21 @@ def check_types(f):
         return f(*args, **kwargs)
 
     return wrapper
+
+
+@numba.njit
+def true_runs(a):
+    in_run = False
+    starts = []
+    stops = []
+    for i in range(a.shape[0]):
+        v = a[i]
+        if not in_run and v:
+            in_run = True
+            starts.append(i)
+        if in_run and not v:
+            in_run = False
+            stops.append(i)
+    if in_run:
+        stops.append(a.shape[0])
+    return np.array(starts, dtype=np.int64), np.array(stops, dtype=np.int64)
