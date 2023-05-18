@@ -502,6 +502,8 @@ class AnophelesSimulator:
         fixture_dir: Path,
         bucket: str,
         releases: Tuple[str, ...],
+        has_aims: bool,
+        has_cohorts_by_quarter: bool,
     ):
         self.fixture_dir = fixture_dir
         self.bucket = bucket
@@ -511,6 +513,8 @@ class AnophelesSimulator:
         ).resolve()
         self.url = self.bucket_path.as_uri()
         self.releases = releases
+        self.has_aims = has_aims
+        self.has_cohorts_by_quarter = has_cohorts_by_quarter
 
         # Clear out the fixture directories.
         shutil.rmtree(self.bucket_path, ignore_errors=True)
@@ -585,7 +589,11 @@ class AnophelesSimulator:
 class Ag3Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):
         super().__init__(
-            fixture_dir=fixture_dir, bucket="vo_agam_release", releases=("3.0", "3.1")
+            fixture_dir=fixture_dir,
+            bucket="vo_agam_release",
+            releases=("3.0", "3.1"),
+            has_aims=True,
+            has_cohorts_by_quarter=True,
         )
 
     def init_config(self):
@@ -882,7 +890,11 @@ class Ag3Simulator(AnophelesSimulator):
 class Af1Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):
         super().__init__(
-            fixture_dir=fixture_dir, bucket="vo_afun_release", releases=("1.0",)
+            fixture_dir=fixture_dir,
+            bucket="vo_afun_release",
+            releases=("1.0",),
+            has_aims=False,
+            has_cohorts_by_quarter=False,
         )
 
     def init_config(self):
