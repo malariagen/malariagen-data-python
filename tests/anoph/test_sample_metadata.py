@@ -4,6 +4,7 @@ import ipyleaflet
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
 from typeguard import suppress_type_checks
 
@@ -312,6 +313,14 @@ def sample_metadata_expected_columns(has_aims, has_cohorts_by_quarter):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_default(fixture, api: AnophelesSampleMetadata):
+    # Default is all releases.
+    df_default = api.sample_metadata()
+    df_all = api.sample_metadata(sample_sets=api.releases)
+    assert_frame_equal(df_default, df_all)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_sample_metadata_with_single_sample_set(fixture, api: AnophelesSampleMetadata):
     # Set up test.
     df_sample_sets = api.sample_sets().set_index("sample_set")
@@ -379,12 +388,56 @@ def test_sample_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     assert len(df) == expected_len
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_with_duplicate_sample_sets(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up test.
+    release = random.choice(api.releases)
+    df_sample_sets = api.sample_sets(release=release).set_index("sample_set")
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Call function to be tested.
+    assert_frame_equal(
+        api.sample_metadata(sample_sets=[sample_set, sample_set]),
+        api.sample_metadata(sample_sets=sample_set),
+    )
+    assert_frame_equal(
+        api.sample_metadata(sample_sets=[release, release]),
+        api.sample_metadata(sample_sets=release),
+    )
+    assert_frame_equal(
+        api.sample_metadata(sample_sets=[release, sample_set]),
+        api.sample_metadata(sample_sets=release),
+    )
+
+
 def test_sample_metadata_with_query(ag3_sim_api):
     df = ag3_sim_api.sample_metadata(sample_query="country == 'Burkina Faso'")
     validate_metadata(
         df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
     )
     assert (df["country"] == "Burkina Faso").all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
+    df = api.sample_metadata()
+
+    # Check that quarter only contains the expected values
+    expected_quarter_values = {-1, 1, 2, 3, 4}
+    assert df["quarter"].isin(expected_quarter_values).all()
+
+    # Check that quarter is -1 when month is -1
+    assert np.all(df.query("month == -1")["quarter"] == -1)
+
+    # Check that quarter is derived from month, in cases where it is not -1
+    assert (df.query("month == -1")["quarter"] == -1).all()
+    assert (df.query("month in [1, 2, 3]")["quarter"] == 1).all()
+    assert (df.query("month in [4, 5, 6]")["quarter"] == 2).all()
+    assert (df.query("month in [7, 8, 9]")["quarter"] == 3).all()
+    assert (df.query("month in [10, 11, 12]")["quarter"] == 4).all()
 
 
 @parametrize_with_cases("fixture,api", cases=".")
