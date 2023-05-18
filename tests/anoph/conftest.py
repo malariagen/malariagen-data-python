@@ -527,6 +527,8 @@ class AnophelesSimulator:
         self.config: Dict[str, Any] = dict()
         self.contig_sizes: Dict[str, int] = dict()
         self.release_manifests: Dict[str, pd.DataFrame] = dict()
+        self.genome = None
+        self.genome_features = None
 
         # Create fixture data.
         self.init_config()
