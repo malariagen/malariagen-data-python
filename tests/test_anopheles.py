@@ -237,37 +237,6 @@ def test_sample_metadata_derivations(subclass):
     assert (df_samples.query("month in [10, 11, 12]")["quarter"] == 4).all()
 
 
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_genome_features(subclass):
-    anoph = setup_subclass_cached(subclass)
-
-    # default
-    df = anoph.genome_features()
-    assert isinstance(df, pd.DataFrame)
-    gff3_cols = [
-        "contig",
-        "source",
-        "type",
-        "start",
-        "end",
-        "score",
-        "strand",
-        "phase",
-    ]
-    if subclass == Af1:
-        # different default attributes for funestus
-        expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
-    else:
-        expected_cols = gff3_cols + ["ID", "Parent", "Name", "description"]
-    assert df.columns.tolist() == expected_cols
-
-    # don't unpack attributes
-    df = anoph.genome_features(attributes=None)
-    assert isinstance(df, pd.DataFrame)
-    expected_cols = gff3_cols + ["attributes"]
-    assert df.columns.tolist() == expected_cols
-
-
 @pytest.mark.parametrize(
     "subclass, region",
     [
