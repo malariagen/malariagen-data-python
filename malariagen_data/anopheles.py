@@ -1182,19 +1182,15 @@ class AnophelesDataResource(
         sample_id,
         contig,
     ):
-        # conditional import, pomegranate takes a long time to install on
-        # linux due to lack of prebuilt wheels on PyPI
+        # This implementation is based on scikit-allel, but modified to use
+        # moving window computation of het counts.
         from allel.stats.misc import tabulate_state_blocks
-
-        # this implementation is based on scikit-allel, but modified to use
-        # moving window computation of het counts
         from allel.stats.roh import _hmm_derive_transition_matrix
 
-        # noinspection PyUnresolvedReferences
-        from pomegranate import (  # pyright: ignore
-            HiddenMarkovModel,
-            PoissonDistribution,
-        )
+        # Protopunica is pomegranate frozen at version 0.14.8, wich is compatible
+        # with the code here. Also protopunica has binary wheels available from
+        # PyPI and so installs much faster.
+        from protopunica import HiddenMarkovModel, PoissonDistribution
 
         # het probabilities
         het_px = np.concatenate([(phet_roh,), phet_nonroh])
