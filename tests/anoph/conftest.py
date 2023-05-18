@@ -3,6 +3,7 @@ import shutil
 import string
 from pathlib import Path
 from random import choice, choices, randint
+from typing import Any, Dict, Tuple
 
 import numpy as np
 import pandas as pd
@@ -495,15 +496,21 @@ def simulate_site_annotations(path, genome):
     zarr.consolidate_metadata(path)
 
 
-class Ag3Simulator:
-    def __init__(self, fixture_dir):
+class AnophelesSimulator:
+    def __init__(
+        self,
+        fixture_dir: Path,
+        bucket: str,
+        releases: Tuple[str, ...],
+    ):
         self.fixture_dir = fixture_dir
-        self.bucket = "vo_agam_release"
+        self.bucket = bucket
         self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
         self.results_cache_path = (
-            self.fixture_dir / "simulated" / "ag3_results_cache"
+            self.fixture_dir / "simulated" / "results_cache"
         ).resolve()
         self.url = self.bucket_path.as_uri()
+        self.releases = releases
 
         # Clear out the fixture directories.
         shutil.rmtree(self.bucket_path, ignore_errors=True)
@@ -512,9 +519,12 @@ class Ag3Simulator:
         # Ensure the fixture directory exists.
         self.bucket_path.mkdir(parents=True, exist_ok=True)
 
+        # These members to be overridden/populated in subclasses.
+        self.config: Dict[str, Any] = dict()
+        self.contig_sizes: Dict[str, int] = dict()
+        self.release_manifests: Dict[str, pd.DataFrame] = dict()
+
         # Create fixture data.
-        self.releases = ("3.0", "3.1")
-        self.release_manifests = dict()
         self.init_config()
         self.init_public_release_manifest()
         self.init_pre_release_manifest()
@@ -525,6 +535,58 @@ class Ag3Simulator:
         self.init_site_filters()
         self.init_snp_genotypes()
         self.init_site_annotations()
+
+    @property
+    def contigs(self) -> Tuple[str, ...]:
+        return tuple(self.config["CONTIGS"])
+
+    def random_contig(self):
+        return choice(self.contigs)
+
+    def random_region_str(self):
+        contig = self.random_contig()
+        contig_size = self.contig_sizes[contig]
+        region_start = randint(1, contig_size)
+        region_end = randint(region_start, contig_size)
+        region = f"{contig}:{region_start:,}-{region_end:,}"
+        return region
+
+    def init_config(self):
+        pass
+
+    def init_public_release_manifest(self):
+        pass
+
+    def init_pre_release_manifest(self):
+        pass
+
+    def init_genome_sequence(self):
+        pass
+
+    def init_genome_features(self):
+        pass
+
+    def init_metadata(self):
+        pass
+
+    def init_snp_sites(self):
+        pass
+
+    def init_site_filters(self):
+        pass
+
+    def init_snp_genotypes(self):
+        pass
+
+    def init_site_annotations(self):
+        pass
+
+
+class Ag3Simulator(AnophelesSimulator):
+    def __init__(self, fixture_dir):
+        super().__init__(
+            fixture_dir=fixture_dir, bucket="vo_agam_release", releases=("3.0", "3.1")
+        )
 
     def init_config(self):
         self.config = {
@@ -546,10 +608,6 @@ class Ag3Simulator:
         config_path = self.bucket_path / "v3-config.json"
         with config_path.open(mode="w") as f:
             json.dump(self.config, f, indent=4)
-
-    @property
-    def contigs(self):
-        return tuple(self.config["CONTIGS"])
 
     def init_public_release_manifest(self):
         # Here we create a release manifest for an Ag3-style
@@ -820,36 +878,20 @@ class Ag3Simulator:
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
         simulate_site_annotations(path=path, genome=self.genome)
 
+    def random_region_str(self):
+        contig = choice(self.contigs)
+        contig_size = self.contig_sizes[contig]
+        region_start = randint(1, contig_size)
+        region_end = randint(region_start, contig_size)
+        region = f"{contig}:{region_start:,}-{region_end:,}"
+        return region
 
-class Af1Simulator:
+
+class Af1Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):
-        self.fixture_dir = fixture_dir
-        self.bucket = "vo_afun_release"
-        self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
-        self.url = self.bucket_path.as_uri()
-        self.results_cache_path = (
-            self.fixture_dir / "simulated" / "af1_results_cache"
-        ).resolve()
-
-        # Clear out the fixture directories.
-        shutil.rmtree(self.bucket_path, ignore_errors=True)
-        shutil.rmtree(self.results_cache_path, ignore_errors=True)
-
-        # Ensure the fixture directory exists.
-        self.bucket_path.mkdir(parents=True, exist_ok=True)
-
-        # Create fixture data.
-        self.releases = ("1.0",)
-        self.release_manifests = dict()
-        self.init_config()
-        self.init_public_release_manifest()
-        self.init_genome_sequence()
-        self.init_genome_features()
-        self.init_metadata()
-        self.init_snp_sites()
-        self.init_site_filters()
-        self.init_snp_genotypes()
-        self.init_site_annotations()
+        super().__init__(
+            fixture_dir=fixture_dir, bucket="vo_afun_release", releases=("1.0",)
+        )
 
     def init_config(self):
         self.config = {
@@ -870,10 +912,6 @@ class Af1Simulator:
         config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
             json.dump(self.config, f, indent=4)
-
-    @property
-    def contigs(self):
-        return tuple(self.config["CONTIGS"])
 
     def init_public_release_manifest(self):
         # Here we create a release manifest for an Af1-style
