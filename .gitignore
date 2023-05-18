@@ -14,4 +14,5 @@ tests/anoph/fixture/simulated
 *~
 
 # nbconvert outputs
-*.nbconvert.ipynb
+notebooks/*.nbconvert.ipynb
+notebooks/*.html

@@ -33,20 +33,19 @@ def fixture_dir():
     return cwd / "fixture"
 
 
-def simulate_contig(*, low, high):
+def simulate_contig(*, low, high, base_composition):
     size = np.random.randint(low=low, high=high)
-    seq = np.random.choice(
-        [b"A", b"C", b"G", b"T", b"N", b"a", b"c", b"g", b"t", b"n"],
-        size=size,
-    )
+    bases = np.array([b"a", b"c", b"g", b"t", b"n", b"A", b"C", b"G", b"T", b"N"])
+    p = np.array([base_composition[b] for b in bases])
+    seq = np.random.choice(bases, size=size, replace=True, p=p)
     return seq
 
 
-def simulate_genome(*, path, contigs, low, high):
+def simulate_genome(*, path, contigs, low, high, base_composition):
     path.mkdir(parents=True, exist_ok=True)
     root = zarr.open(path, mode="w")
     for contig in contigs:
-        seq = simulate_contig(low=low, high=high)
+        seq = simulate_contig(low=low, high=high, base_composition=base_composition)
         root.create_dataset(name=contig, data=seq)
     zarr.consolidate_metadata(path)
     return root
@@ -315,18 +314,203 @@ class Gff3Simulator:
             yield feature
 
 
+def simulate_snp_sites(path, contigs, genome):
+    root = zarr.open(path, mode="w")
+    n_sites = dict()
+
+    for contig in contigs:
+        # Obtain variants group.
+        variants = root.require_group(contig).require_group("variants")
+
+        # Simulate POS.
+        seq = genome[contig][:]
+        loc_n = (seq == b"N") | (seq == b"n")
+        pos = np.nonzero(~loc_n)[0] + 1  # 1-based coordinates
+        variants.create_dataset(name="POS", data=pos.astype("i4"))
+
+        # Simulate REF.
+        ref = np.char.upper(seq[~loc_n])  # ensure upper case
+        assert pos.shape == ref.shape
+        variants.create_dataset(name="REF", data=ref)
+
+        # Simulate ALT.
+        alt = np.empty(shape=(ref.shape[0], 3), dtype="S1")
+        alt[ref == b"A"] = np.array([b"C", b"T", b"G"])
+        alt[ref == b"C"] = np.array([b"A", b"T", b"G"])
+        alt[ref == b"T"] = np.array([b"A", b"C", b"G"])
+        alt[ref == b"G"] = np.array([b"A", b"C", b"T"])
+        variants.create_dataset(name="ALT", data=alt)
+
+        # Store number of sites for later.
+        n_sites[contig] = pos.shape[0]
+
+    zarr.consolidate_metadata(path)
+    return n_sites
+
+
+def simulate_site_filters(path, contigs, p_pass, n_sites):
+    root = zarr.open(path, mode="w")
+    p = np.array([1 - p_pass, p_pass])
+    for contig in contigs:
+        variants = root.require_group(contig).require_group("variants")
+        size = n_sites[contig]
+        filter_pass = np.random.choice([False, True], size=size, p=p)
+        variants.create_dataset(name="filter_pass", data=filter_pass)
+    zarr.consolidate_metadata(path)
+
+
+def simulate_snp_genotypes(
+    zarr_path, metadata_path, contigs, n_sites, p_allele, p_missing
+):
+    root = zarr.open(zarr_path, mode="w")
+
+    # Create samples array.
+    df_samples = pd.read_csv(metadata_path)
+    n_samples = len(df_samples)
+    samples = df_samples["sample_id"].values.astype("S")
+    root.create_dataset(name="samples", data=samples)
+
+    for contig in contigs:
+        # Set up groups.
+        contig_grp = root.require_group(contig)
+        calldata = contig_grp.require_group("calldata")
+        contig_n_sites = n_sites[contig]
+
+        # Simulate genotype calls.
+        gt = np.random.choice(
+            np.arange(4, dtype="i1"),
+            size=(contig_n_sites, n_samples, 2),
+            replace=True,
+            p=p_allele,
+        )
+
+        # Simulate missing calls.
+        n_calls = contig_n_sites * n_samples
+        loc_missing = np.random.choice(
+            [False, True], size=n_calls, replace=True, p=p_missing
+        )
+        gt.reshape(-1, 2)[loc_missing] = -1
+
+        # Store genotype calls.
+        # N.B., we need to chunk across the final dimension here,
+        # otherwise allele count computation breaks inside scikit-allel.
+        gt_chunks = (contig_n_sites // 5, n_samples // 3, None)
+        calldata.create_dataset(name="GT", data=gt, chunks=gt_chunks)
+
+        # Create other arrays - these are never actually used currently
+        # so we'll create some empty arrays to avoid delaying the tests.
+        calldata.create_dataset(
+            name="GQ", shape=(contig_n_sites, n_samples), dtype="i1", fill_value=-1
+        )
+        calldata.create_dataset(
+            name="MQ", shape=(contig_n_sites, n_samples), dtype="f4", fill_value=-1
+        )
+        calldata.create_dataset(
+            name="AD",
+            shape=(contig_n_sites, n_samples, 4),
+            dtype="i2",
+            fill_value=-1,
+        )
+
+    zarr.consolidate_metadata(zarr_path)
+
+
+def simulate_site_annotations(path, genome):
+    root = zarr.open(path, mode="w")
+    contigs = list(genome)
+
+    # Take a very simple approach here to simulate random data.
+    # It won't be biologically realistic, but should hopefully
+    # suffice for testing purposes.
+
+    # codon_degeneracy
+    grp = root.require_group("codon_degeneracy")
+    vals = np.arange(-1, 5)
+    p = [0.897754, 0.0, 0.060577, 0.014287, 0.011096, 0.016286]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # codon_nonsyn
+    grp = root.require_group("codon_nonsyn")
+    vals = np.arange(4)
+    p = [0.91404, 0.001646, 0.018698, 0.065616]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # codon_position
+    grp = root.require_group("codon_position")
+    vals = np.arange(4)
+    p = [0.897754, 0.034082, 0.034082, 0.034082]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_cls
+    grp = root.require_group("seq_cls")
+    vals = np.arange(11)
+    p = [
+        0.034824,
+        0.230856,
+        0.318803,
+        0.009675,
+        0.015201,
+        0.015446,
+        0.059981,
+        0.018995,
+        0.085244,
+        0.180545,
+        0.03043,
+    ]
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.choice(vals, size=size, replace=True, p=p)
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_flen
+    grp = root.require_group("seq_flen")
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.randint(low=0, high=40_000, size=size)
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_relpos_start
+    grp = root.require_group("seq_relpos_start")
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.beta(a=0.4, b=4, size=size) * 40_000
+        grp.create_dataset(name=contig, data=x)
+
+    # seq_relpos_stop
+    grp = root.require_group("seq_relpos_stop")
+    for contig in contigs:
+        size = genome[contig].shape[0]
+        x = np.random.beta(a=0.4, b=4, size=size) * 40_000
+        grp.create_dataset(name=contig, data=x)
+
+    zarr.consolidate_metadata(path)
+
+
 class Ag3Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
         self.bucket = "vo_agam_release"
-        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
-        self.url = self.path.as_uri()
+        self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
+        self.results_cache_path = (
+            self.fixture_dir / "simulated" / "ag3_results_cache"
+        ).resolve()
+        self.url = self.bucket_path.as_uri()
 
-        # Clear out the fixture directory.
-        shutil.rmtree(self.path, ignore_errors=True)
+        # Clear out the fixture directories.
+        shutil.rmtree(self.bucket_path, ignore_errors=True)
+        shutil.rmtree(self.results_cache_path, ignore_errors=True)
 
         # Ensure the fixture directory exists.
-        self.path.mkdir(parents=True, exist_ok=True)
+        self.bucket_path.mkdir(parents=True, exist_ok=True)
 
         # Create fixture data.
         self.releases = ("3.0", "3.1")
@@ -337,6 +521,10 @@ class Ag3Simulator:
         self.init_genome_sequence()
         self.init_genome_features()
         self.init_metadata()
+        self.init_snp_sites()
+        self.init_site_filters()
+        self.init_snp_genotypes()
+        self.init_site_annotations()
 
     def init_config(self):
         self.config = {
@@ -355,7 +543,7 @@ class Ag3Simulator:
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "PHASING_ANALYSIS_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
         }
-        config_path = self.path / "v3-config.json"
+        config_path = self.bucket_path / "v3-config.json"
         with config_path.open(mode="w") as f:
             json.dump(self.config, f, indent=4)
 
@@ -367,13 +555,13 @@ class Ag3Simulator:
         # Here we create a release manifest for an Ag3-style
         # public release. Note this is not the exact same data
         # as the real release.
-        release_path = self.path / "v3"
+        release_path = self.bucket_path / "v3"
         release_path.mkdir(parents=True, exist_ok=True)
         manifest_path = release_path / "manifest.tsv"
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [randint(10, 81), randint(10, 100)],
+                "sample_count": [randint(10, 60), randint(10, 50)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -383,7 +571,7 @@ class Ag3Simulator:
         # Here we create a release manifest for an Ag3-style
         # pre-release. Note this is not the exact same data
         # as the real release.
-        release_path = self.path / "v3.1"
+        release_path = self.bucket_path / "v3.1"
         release_path.mkdir(parents=True, exist_ok=True)
         manifest_path = release_path / "manifest.tsv"
         manifest = pd.DataFrame(
@@ -391,7 +579,7 @@ class Ag3Simulator:
                 "sample_set": [
                     "1177-VO-ML-LEHMANN-VMF00004",
                 ],
-                "sample_count": [randint(10, 100)],
+                "sample_count": [randint(10, 70)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -401,17 +589,34 @@ class Ag3Simulator:
         # Here we simulate a reference genome in a simple way
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
-        # TODO Use accurate base composition.
-        path = self.path / self.config["GENOME_ZARR_PATH"]
+
+        # Use real base composition.
+        base_composition = {
+            b"a": 0.042154199245128525,
+            b"c": 0.027760739796444212,
+            b"g": 0.027853725511269512,
+            b"t": 0.041827104954587246,
+            b"n": 0.028714045930701336,
+            b"A": 0.23177421009505061,
+            b"C": 0.1843981552034527,
+            b"G": 0.1840007377851694,
+            b"T": 0.23151655721224917,
+            b"N": 5.242659472466922e-07,
+        }
+        path = self.bucket_path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
-            path=path, contigs=self.contigs, low=100_000, high=200_000
+            path=path,
+            contigs=self.contigs,
+            low=100_000,
+            high=150_000,
+            base_composition=base_composition,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
         }
 
     def init_genome_features(self):
-        path = self.path / self.config["GENESET_GFF3_PATH"]
+        path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
@@ -440,7 +645,7 @@ class Ag3Simulator:
             / "samples.meta.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -464,7 +669,7 @@ class Ag3Simulator:
                 / "samples.species_aim.csv"
             )
             dst_path = (
-                self.path
+                self.bucket_path
                 / release_path
                 / "metadata"
                 / "species_calls_aim_20220528"
@@ -488,7 +693,7 @@ class Ag3Simulator:
                 / "samples.cohorts.csv"
             )
             dst_path = (
-                self.path
+                self.bucket_path
                 / release_path
                 / "metadata"
                 / "cohorts_20230223"
@@ -511,7 +716,7 @@ class Ag3Simulator:
             / "wgs_snp_data.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -536,19 +741,102 @@ class Ag3Simulator:
             cohorts=False,
         )
 
+    def init_snp_sites(self):
+        path = self.bucket_path / "v3/snp_genotypes/all/sites/"
+        self.n_sites = simulate_snp_sites(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
+
+    def init_site_filters(self):
+        analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+
+        # Simulate the gamb_colu mask.
+        mask = "gamb_colu"
+        p_pass = 0.71
+        path = self.bucket_path / "v3/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
+
+        # Simulate the arab mask.
+        mask = "arab"
+        p_pass = 0.70
+        path = self.bucket_path / "v3/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
+
+        # Simulate the gamb_colu_arab mask.
+        mask = "gamb_colu_arab"
+        p_pass = 0.62
+        path = self.bucket_path / "v3/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
+
+    def init_snp_genotypes(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "snp_genotypes"
+                    / "all"
+                    / sample_set
+                )
+
+                # Simulate SNP genotype data.
+                p_allele = np.array([0.979, 0.007, 0.008, 0.006])
+                p_missing = np.array([0.96, 0.04])
+                simulate_snp_genotypes(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    n_sites=self.n_sites,
+                    p_allele=p_allele,
+                    p_missing=p_missing,
+                )
+
+    def init_site_annotations(self):
+        path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
+        simulate_site_annotations(path=path, genome=self.genome)
+
 
 class Af1Simulator:
     def __init__(self, fixture_dir):
         self.fixture_dir = fixture_dir
         self.bucket = "vo_afun_release"
-        self.path = (self.fixture_dir / "simulated" / self.bucket).resolve()
-        self.url = self.path.as_uri()
+        self.bucket_path = (self.fixture_dir / "simulated" / self.bucket).resolve()
+        self.url = self.bucket_path.as_uri()
+        self.results_cache_path = (
+            self.fixture_dir / "simulated" / "af1_results_cache"
+        ).resolve()
 
-        # Clear out the fixture directory.
-        shutil.rmtree(self.path, ignore_errors=True)
+        # Clear out the fixture directories.
+        shutil.rmtree(self.bucket_path, ignore_errors=True)
+        shutil.rmtree(self.results_cache_path, ignore_errors=True)
 
         # Ensure the fixture directory exists.
-        self.path.mkdir(parents=True, exist_ok=True)
+        self.bucket_path.mkdir(parents=True, exist_ok=True)
 
         # Create fixture data.
         self.releases = ("1.0",)
@@ -558,6 +846,10 @@ class Af1Simulator:
         self.init_genome_sequence()
         self.init_genome_features()
         self.init_metadata()
+        self.init_snp_sites()
+        self.init_site_filters()
+        self.init_snp_genotypes()
+        self.init_site_annotations()
 
     def init_config(self):
         self.config = {
@@ -575,7 +867,7 @@ class Af1Simulator:
             "SITE_MASK_IDS": ["funestus"],
             "PHASING_ANALYSIS_IDS": ["funestus"],
         }
-        config_path = self.path / "v1.0-config.json"
+        config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
             json.dump(self.config, f, indent=4)
 
@@ -587,7 +879,7 @@ class Af1Simulator:
         # Here we create a release manifest for an Af1-style
         # public release. Note this is not the exact same data
         # as the real release.
-        release_path = self.path / "v1.0"
+        release_path = self.bucket_path / "v1.0"
         release_path.mkdir(parents=True, exist_ok=True)
         manifest_path = release_path / "manifest.tsv"
         manifest = pd.DataFrame(
@@ -607,16 +899,34 @@ class Af1Simulator:
         # Here we simulate a reference genome in a simple way
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
-        path = self.path / self.config["GENOME_ZARR_PATH"]
+
+        # Use real base composition.
+        base_composition = {
+            b"a": 0.0,
+            b"c": 0.0,
+            b"g": 0.0,
+            b"t": 0.0,
+            b"n": 0.0,
+            b"A": 0.29432128333333335,
+            b"C": 0.20542065,
+            b"G": 0.20575796666666665,
+            b"T": 0.2944834333333333,
+            b"N": 1.6666666666666667e-05,
+        }
+        path = self.bucket_path / self.config["GENOME_ZARR_PATH"]
         self.genome = simulate_genome(
-            path=path, contigs=self.contigs, low=100_000, high=300_000
+            path=path,
+            contigs=self.contigs,
+            low=100_000,
+            high=200_000,
+            base_composition=base_composition,
         )
         self.contig_sizes = {
             contig: self.genome[contig].shape[0] for contig in self.contigs
         }
 
     def init_genome_features(self):
-        path = self.path / self.config["GENESET_GFF3_PATH"]
+        path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
@@ -651,7 +961,7 @@ class Af1Simulator:
             / "samples.meta.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -674,7 +984,7 @@ class Af1Simulator:
             / "samples.cohorts.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "cohorts_20221129"
@@ -697,7 +1007,7 @@ class Af1Simulator:
             / "wgs_snp_data.csv"
         )
         dst_path = (
-            self.path
+            self.bucket_path
             / release_path
             / "metadata"
             / "general"
@@ -723,6 +1033,66 @@ class Af1Simulator:
             release_path="v1.0",
             sample_set="1231-VO-MULTI-WONDJI-VMF00043",
         )
+
+    def init_snp_sites(self):
+        path = self.bucket_path / "v1.0/snp_genotypes/all/sites/"
+        self.n_sites = simulate_snp_sites(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
+
+    def init_site_filters(self):
+        analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+
+        # Simulate the funestus mask.
+        mask = "funestus"
+        p_pass = 0.59
+        path = self.bucket_path / "v1.0/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+        )
+
+    def init_snp_genotypes(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "snp_genotypes"
+                    / "all"
+                    / sample_set
+                )
+
+                # Simulate SNP genotype data.
+                p_allele = np.array([0.981, 0.006, 0.008, 0.005])
+                p_missing = np.array([0.95, 0.05])
+                simulate_snp_genotypes(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    n_sites=self.n_sites,
+                    p_allele=p_allele,
+                    p_missing=p_missing,
+                )
+
+    def init_site_annotations(self):
+        path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
+        simulate_site_annotations(path=path, genome=self.genome)
 
 
 # For the following data fixtures we will use the "session" scope

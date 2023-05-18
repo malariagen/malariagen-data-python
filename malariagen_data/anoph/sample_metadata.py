@@ -8,6 +8,7 @@ import xyzservices
 from numpydoc_decorator import doc
 from typing_extensions import Annotated, TypeAlias
 
+from ..util import check_types
 from .base import AnophelesBase, base_params
 
 
@@ -146,6 +147,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
+    @check_types
     @doc(
         summary="""
             Read general sample metadata for one or more sample sets into a pandas
@@ -167,7 +169,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
-        files: Mapping[str, bytes] = self.read_files(
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
             paths=file_paths.values(), on_error="return"
         )
 
@@ -286,6 +288,13 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
+    def _require_cohorts_analysis(self):
+        if not self._cohorts_analysis:
+            raise NotImplementedError(
+                "Cohorts data not available for this data resource."
+            )
+
+    @check_types
     @doc(
         summary="""
             Access cohort membership metadata for one or more sample sets.
@@ -295,11 +304,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def cohorts_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        # Not all data resources have cohorts metadata.
-        if not self._cohorts_analysis:
-            raise NotImplementedError(
-                "Cohorts metadata not available for this data resource."
-            )
+        self._require_cohorts_analysis()
 
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -312,7 +317,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
-        files: Mapping[str, bytes] = self.read_files(
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
             paths=file_paths.values(), on_error="return"
         )
 
@@ -379,6 +384,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
+    def _require_aim_analysis(self):
+        if not self._aim_analysis:
+            raise NotImplementedError("AIM data not available for this data resource.")
+
+    @check_types
     @doc(
         summary="""
             Access ancestry-informative marker (AIM) metadata for one or more
@@ -389,11 +399,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def aim_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        # Not all data resources have AIM data.
-        if not self._aim_analysis:
-            raise NotImplementedError(
-                "AIM metadata not available for this data resource."
-            )
+        self._require_aim_analysis()
 
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -406,7 +412,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
-        files: Mapping[str, bytes] = self.read_files(
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
             paths=file_paths.values(), on_error="return"
         )
 
@@ -423,6 +429,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_ret
 
+    @check_types
     @doc(
         summary="""
             Add extra sample metadata, e.g., including additional columns
@@ -472,6 +479,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def clear_extra_metadata(self):
         self._extra_metadata = []
 
+    @check_types
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
@@ -480,8 +488,14 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
-        # Set up for caching.
+        # Extra parameter checks.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
+        # Normalise parameters.
         prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
         cache_key = tuple(prepped_sample_sets)
@@ -507,18 +521,19 @@ class AnophelesSampleMetadata(AnophelesBase):
         for on, data in self._extra_metadata:
             df_samples = df_samples.merge(data, how="left", on=on)
 
-        # For convenience, apply a query.
+        # For convenience, apply a sample selection.
         if sample_query is not None:
-            if isinstance(sample_query, str):
-                # Assume a pandas query string.
-                df_samples = df_samples.query(sample_query)
-            else:
-                # Assume it is an indexer.
-                df_samples = df_samples.iloc[sample_query]
+            # Assume a pandas query string.
+            df_samples = df_samples.query(sample_query)
+            df_samples = df_samples.reset_index(drop=True)
+        elif sample_indices is not None:
+            # Assume it is an indexer.
+            df_samples = df_samples.iloc[sample_indices]
             df_samples = df_samples.reset_index(drop=True)
 
         return df_samples.copy()
 
+    @check_types
     @doc(
         summary="""
             Create a pivot table showing numbers of samples available by space,
@@ -559,6 +574,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_pivot
 
+    @check_types
     @doc(
         summary="""
             Plot an interactive map showing sampling locations using ipyleaflet.
@@ -578,7 +594,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        basemap: map_params.basemap = map_params.basemap_default,
+        basemap: Optional[map_params.basemap] = map_params.basemap_default,
         center: map_params.center = map_params.center_default,
         zoom: map_params.zoom = map_params.zoom_default,
         height: map_params.height = map_params.height_default,
@@ -639,10 +655,10 @@ class AnophelesSampleMetadata(AnophelesBase):
                 raise ValueError("Basemap abbreviation not recognised:", basemap_str)
             basemap_provider = basemap_providers_dict[basemap_str]
         elif basemap is None:
-            # Default
+            # Default.
             basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery
         else:
-            # Expect dict or TileProvider or TileLayer
+            # Expect dict or TileProvider or TileLayer.
             basemap_provider = basemap
 
         # Create a map.
@@ -652,7 +668,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             basemap=basemap_provider,
         )
         scale_control = ipyleaflet.ScaleControl(position="bottomleft")
-        samples_map.add_control(scale_control)
+        samples_map.add(scale_control)
         samples_map.layout.height = height
         samples_map.layout.width = width
 
@@ -684,10 +700,11 @@ class AnophelesSampleMetadata(AnophelesBase):
                     draggable=False,
                     title=title,
                 )
-                samples_map.add_layer(marker)
+                samples_map.add(marker)
 
         return samples_map
 
+    @check_types
     @doc(
         summary="""
             Load a data catalog providing URLs for downloading BAM, VCF and Zarr
@@ -716,3 +733,29 @@ class AnophelesSampleMetadata(AnophelesBase):
         ]
 
         return df
+
+    def _prep_sample_selection_cache_params(
+        self,
+        *,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        sample_indices: Optional[base_params.sample_indices],
+    ) -> Tuple[List[str], Optional[List[int]]]:
+        # Normalise sample sets.
+        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+
+        if sample_query is not None:
+            # Resolve query to a list of integers for more cache hits - we
+            # do this because there are different ways to write the same pandas
+            # query, and so it's better to evaluate the query and use a list of
+            # integer indices instead.
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            loc_samples = df_samples.eval(sample_query).values
+            sample_indices = np.nonzero(loc_samples)[0].tolist()
+
+        return sample_sets, sample_indices
+
+    def _results_cache_add_analysis_params(self, params: dict):
+        super()._results_cache_add_analysis_params(params)
+        params["cohorts_analysis"] = self._cohorts_analysis
+        params["aim_analysis"] = self._aim_analysis

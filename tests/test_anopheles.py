@@ -1,17 +1,16 @@
 import os
 
-import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import zarr
 from numpy.testing import assert_allclose
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Af1, Ag3, Region
 from malariagen_data.af1 import GCS_URL as AF1_GCS_URL
 from malariagen_data.ag3 import GCS_URL as AG3_GCS_URL
+from malariagen_data.util import resolve_region
 
 expected_cohort_cols = (
     "country_iso",
@@ -184,58 +183,6 @@ def test_sample_metadata(subclass, major_release, sample_set, sample_sets):
     assert_frame_equal(df_default, df_all)
 
 
-@pytest.mark.parametrize(
-    "subclass,mask",
-    [(Ag3, "gamb_colu_arab"), (Ag3, "gamb_colu"), (Ag3, "arab"), (Af1, "funestus")],
-)
-def test_open_site_filters(subclass, mask):
-    # check can open the zarr directly
-    anoph = setup_subclass_cached(subclass)
-    root = anoph.open_site_filters(mask=mask)
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in root
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_open_snp_sites(subclass):
-    anoph = setup_subclass_cached(subclass)
-    root = anoph.open_snp_sites()
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in root
-
-
-@pytest.mark.parametrize(
-    "subclass,sample_set", [(Ag3, "AG1000G-AO"), (Af1, "1229-VO-GH-DADZIE-VMF00095")]
-)
-def test_open_snp_genotypes(subclass, sample_set):
-    # check can open the zarr directly
-    anoph = setup_subclass_cached(subclass)
-    root = anoph.open_snp_genotypes(sample_set=sample_set)
-    assert isinstance(root, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in root
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_genome(subclass):
-    anoph = setup_subclass_cached(subclass)
-
-    # test the open_genome() method to access as zarr
-    genome = anoph.open_genome()
-    assert isinstance(genome, zarr.hierarchy.Group)
-    for contig in anoph.contigs:
-        assert contig in genome
-        assert genome[contig].dtype == "S1"
-
-    # test the genome_sequence() method to access sequences
-    for contig in anoph.contigs:
-        seq = anoph.genome_sequence(contig)
-        assert isinstance(seq, da.Array)
-        assert seq.dtype == "S1"
-
-
 @pytest.mark.parametrize("subclass", [Ag3, Af1])
 def test_sample_metadata_dtypes(subclass):
     anoph = setup_subclass_cached(subclass)
@@ -360,35 +307,11 @@ def test_genome_features_region(subclass, region):
     assert len(df) > 0
 
     # check region
-    region = anoph.resolve_region(region)
+    region = resolve_region(anoph, region)
     if isinstance(region, Region):
         assert np.all(df["contig"].values == region.contig)
         if region.start and region.end:
             assert np.all(df.eval(f"start <= {region.end} and end >= {region.start}"))
-
-
-@pytest.mark.parametrize("subclass", [Ag3, Af1])
-def test_open_site_annotations(subclass):
-    anoph = setup_subclass_cached(subclass)
-
-    # test access as zarr
-    root = anoph.open_site_annotations()
-    assert isinstance(root, zarr.hierarchy.Group)
-    for f in (
-        "codon_degeneracy",
-        "codon_nonsyn",
-        "codon_position",
-        "seq_cls",
-        "seq_flen",
-        "seq_relpos_start",
-        "seq_relpos_stop",
-    ):
-        assert f in root
-        for contig in anoph.contigs:
-            assert contig in root[f]
-            z = root[f][contig]
-            # raw zarr data is aligned with genome sequence
-            assert z.shape == (len(anoph.genome_sequence(region=contig)),)
 
 
 @pytest.mark.parametrize(
@@ -785,7 +708,7 @@ def test_haplotypes__cohort_size(subclass, sample_sets, region, analysis, cohort
 def test_h12_calibration(subclass, sample_query, contig, analysis, sample_sets):
     anoph = setup_subclass_cached(subclass)
 
-    window_sizes = [10_000, 20_000]
+    window_sizes = (10_000, 20_000)
     calibration_runs = anoph.h12_calibration(
         contig=contig,
         analysis=analysis,
@@ -816,7 +739,7 @@ def test_h12_calibration(subclass, sample_query, contig, analysis, sample_sets):
 def test_g123_calibration(subclass, sample_query, contig, site_mask, sample_sets):
     anoph = setup_subclass_cached(subclass)
 
-    window_sizes = [10_000, 20_000]
+    window_sizes = (10_000, 20_000)
     calibration_runs = anoph.g123_calibration(
         contig=contig,
         sites=site_mask,

@@ -8,7 +8,14 @@ from numpydoc_decorator import doc
 from pandas.io.common import infer_compression
 from typing_extensions import Annotated, TypeAlias
 
-from ..util import Region, read_gff3, resolve_region, unpack_gff3_attributes
+from ..util import (
+    Region,
+    check_types,
+    parse_multi_region,
+    parse_single_region,
+    read_gff3,
+    unpack_gff3_attributes,
+)
 from .base import DEFAULT, base_params
 from .genome_sequence import AnophelesGenomeSequenceData
 
@@ -61,7 +68,7 @@ class gplt_params:
     ]
     toolbar_location_default: toolbar_location = "above"
     x_range: TypeAlias = Annotated[
-        bokeh.models.Range1d,
+        bokeh.models.Range,
         "X axis range (for linking to other tracks).",
     ]
     title: TypeAlias = Annotated[
@@ -69,7 +76,10 @@ class gplt_params:
         "Plot title. If True, a title may be automatically generated.",
     ]
     figure: TypeAlias = Annotated[
-        bokeh.plotting.Figure,
+        # Use quite a broad type here to accommodate both single-panel figures
+        # created via bokeh.plotting and multi-panel figures created via
+        # bokeh.layouts.
+        bokeh.model.Model,
         "A bokeh figure.",
     ]
 
@@ -79,7 +89,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self,
         *,
         gff_gene_type: str,
-        gff_default_attributes: Tuple[str],
+        gff_default_attributes: Tuple[str, ...],
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -139,6 +149,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             attributes_normed = tuple(attributes)
         return attributes_normed
 
+    @check_types
     @doc(
         summary="Access genome feature annotations.",
         returns="A dataframe of genome annotations, one row per feature.",
@@ -155,16 +166,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if region is not None:
             debug("Handle region.")
-            resolved_region = resolve_region(self, region)
+            regions = parse_multi_region(self, region)
             del region
-
-            debug("Normalise to list to simplify concatenation logic.")
-            if isinstance(resolved_region, Region):
-                resolved_region = [resolved_region]
 
             debug("Apply region query.")
             parts = []
-            for r in resolved_region:
+            for r in regions:
                 df_part = self._genome_features_for_contig(
                     contig=r.contig, attributes=attributes_normed
                 )
@@ -203,6 +210,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return df_children.copy()
 
+    @check_types
     @doc(summary="Plot a transcript, using bokeh.")
     def plot_transcript(
         self,
@@ -212,7 +220,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         height: gplt_params.height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        toolbar_location: Optional[
+            gplt_params.toolbar_location
+        ] = gplt_params.toolbar_location_default,
         title: gplt_params.title = True,
     ) -> gplt_params.figure:
         debug = self._log.debug
@@ -331,24 +341,27 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return fig
 
+    @check_types
     @doc(
         summary="Plot a genes track, using bokeh.",
     )
     def plot_genes(
         self,
-        region: base_params.region,
+        region: base_params.single_region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        toolbar_location: Optional[
+            gplt_params.toolbar_location
+        ] = gplt_params.toolbar_location_default,
         x_range: Optional[gplt_params.x_range] = None,
         title: gplt_params.title = "Genes",
     ) -> gplt_params.figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region = resolve_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         debug("handle region bounds")
