@@ -878,14 +878,6 @@ class Ag3Simulator(AnophelesSimulator):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
         simulate_site_annotations(path=path, genome=self.genome)
 
-    def random_region_str(self):
-        contig = choice(self.contigs)
-        contig_size = self.contig_sizes[contig]
-        region_start = randint(1, contig_size)
-        region_end = randint(region_start, contig_size)
-        region = f"{contig}:{region_start:,}-{region_end:,}"
-        return region
-
 
 class Af1Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):

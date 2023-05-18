@@ -8,6 +8,7 @@ from pytest_cases import parametrize_with_cases
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.genome_features import AnophelesGenomeFeaturesData
+from malariagen_data.util import Region, resolve_region
 
 
 @pytest.fixture
@@ -99,19 +100,29 @@ def test_genome_features_region_contig(fixture, api: AnophelesGenomeFeaturesData
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_genome_features_region_string(fixture, api: AnophelesGenomeFeaturesData):
-    for contig in fixture.contigs:
-        contig_size = fixture.contig_sizes[contig]
-        region_start = random.randint(1, contig_size)
-        region_end = random.randint(region_start, contig_size)
-        region = f"{contig}:{region_start:,}-{region_end:,}"
+    parametrize_region = [
+        # Single contig.
+        fixture.random_contig(),
+        # List of contigs.
+        [fixture.random_contig(), fixture.random_contig()],
+        # Single region.
+        fixture.random_region_str(),
+        # List of regions.
+        [fixture.random_region_str(), fixture.random_region_str()],
+    ]
+
+    for region in parametrize_region:
         df_gf = api.genome_features(region=region, attributes=None)
         expected_cols = gff3_cols + ["attributes"]
         assert df_gf.columns.to_list() == expected_cols
         # N.B., it's possible that the region overlaps no features.
-        if len(df_gf) > 0:
-            assert (df_gf["contig"] == contig).all()
-            assert (df_gf["end"] >= region_start).all()
-            assert (df_gf["start"] <= region_end).all()
+        r = resolve_region(api, region)
+        if len(df_gf) > 0 and isinstance(r, Region):
+            assert (df_gf["contig"] == r.contig).all()
+            if r.start is not None:
+                assert (df_gf["end"] >= r.start).all()
+            if r.end is not None:
+                assert (df_gf["start"] <= r.end).all()
 
 
 @parametrize_with_cases("fixture,api", cases=".")
