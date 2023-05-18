@@ -3213,25 +3213,25 @@ files = [
 
 [[package]]
 name = "protopunica"
-version = "0.14.8rc3"
+version = "0.14.8"
 description = "Protopunica is pomegranate frozen at version 0.14.8."
 category = "main"
 optional = false
 python-versions = "*"
 files = [
-    {file = "protopunica-0.14.8rc3-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:21adee9b424b2bc8a9d657f750b3c6d590207895dcf532cbba9bb5a37c6b9d15"},
-    {file = "protopunica-0.14.8rc3-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:c77fec639a3c2eef25432aba42a1208bfab06cbc572801602fe5d2e339bc3266"},
-    {file = "protopunica-0.14.8rc3-cp310-cp310-win_amd64.whl", hash = "sha256:4043a45f2ef4d09706a52a36e3a8dc8e5ada02fed3a40e2a2a87b319cd247077"},
-    {file = "protopunica-0.14.8rc3-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:8e4f211063d354ba730422e001bb9190566deea0f414929edd2d2516e295c6fc"},
-    {file = "protopunica-0.14.8rc3-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:41f4b491b4d9cf190dd8f8351959050ee284a924c9a8151ebeff3c88d4776bdc"},
-    {file = "protopunica-0.14.8rc3-cp311-cp311-win_amd64.whl", hash = "sha256:71b943b36eabe7a169395148106f57eea1937bb499853185d12558dbf1e446cb"},
-    {file = "protopunica-0.14.8rc3-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:facfaffdb9cc463cf3c00ea171bf89259f5cecd5374018a28242b8def9f8793f"},
-    {file = "protopunica-0.14.8rc3-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:32943400305865b6803f28073a1747eaf2b8a0ad019774f07b4078dd4e01b3ad"},
-    {file = "protopunica-0.14.8rc3-cp38-cp38-win_amd64.whl", hash = "sha256:b720b5336c4c1cdd4cb77a863a3679403e2181b28f33ddd636191d8d554cf1d4"},
-    {file = "protopunica-0.14.8rc3-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:ec7756869ebd4bed0fc9415865afa46f50c9dfdc90a65a988d537ed868078869"},
-    {file = "protopunica-0.14.8rc3-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:cb0aedb11288c1ddb71360825e078d18994e866075043966c8ec7a1705fb3cf5"},
-    {file = "protopunica-0.14.8rc3-cp39-cp39-win_amd64.whl", hash = "sha256:c314a35389d7a48d3f17e43287b423ce4a33f05a4e624985895052b124ab8a6f"},
-    {file = "protopunica-0.14.8rc3.tar.gz", hash = "sha256:f1841d7ef9bad1a9414521b0e2dfe6e1a78bf8f64ea36d1cd21310970583e3d7"},
+    {file = "protopunica-0.14.8-cp310-cp310-macosx_10_9_x86_64.whl", hash = "sha256:305825b98d1fa76721fb9beac2c698453b33599e4ec24b96449ab7cc89835112"},
+    {file = "protopunica-0.14.8-cp310-cp310-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:2cc83a51350190578a889195ea0f1719153c2344a6c037fc9a01c4644c73b3e9"},
+    {file = "protopunica-0.14.8-cp310-cp310-win_amd64.whl", hash = "sha256:287c840ea57b05aed9abda8ab42c126cbad8a67a1bc2f1415c999dc185d3725c"},
+    {file = "protopunica-0.14.8-cp311-cp311-macosx_10_9_x86_64.whl", hash = "sha256:e48104d94010ec8a8115712beb9f6a7a4a1fc187f03647256c134822780fda9c"},
+    {file = "protopunica-0.14.8-cp311-cp311-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:90ef56cf56c5608b245a3184dc6abe3f4f70822e3e80af0ab979e06126ee492d"},
+    {file = "protopunica-0.14.8-cp311-cp311-win_amd64.whl", hash = "sha256:7d5d9cfcd4783b7eb15cc78cca3987092154976b3bb12490fe90758e18306dfe"},
+    {file = "protopunica-0.14.8-cp38-cp38-macosx_10_9_x86_64.whl", hash = "sha256:ca312c1efe5b5f5f4c0b64b53787494d62da73af159f9dfcba58850b01569a73"},
+    {file = "protopunica-0.14.8-cp38-cp38-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:e23002cca8ee59d37ca1cd105eec03e830cb2f457fe2f51e5fb92d5f928150f0"},
+    {file = "protopunica-0.14.8-cp38-cp38-win_amd64.whl", hash = "sha256:56a34adcadb8691212dfcaf5a62db138cb144861dfb8fb92b3207013e08a2676"},
+    {file = "protopunica-0.14.8-cp39-cp39-macosx_10_9_x86_64.whl", hash = "sha256:121ce14d520b82e262f37c1cdbb79714595b8dd1125257f5fbeaef3106cec69f"},
+    {file = "protopunica-0.14.8-cp39-cp39-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:36e15e620892f61dba19b3df5ae4bd0c083a193fe238b43a184f8f653b2b8353"},
+    {file = "protopunica-0.14.8-cp39-cp39-win_amd64.whl", hash = "sha256:c01dc8bcf03195e8e6bd56f0eb75d8a4ef34a65626cc57ea8b58c85372411469"},
+    {file = "protopunica-0.14.8.tar.gz", hash = "sha256:764d22b90acae1e322d7e52d9db5c499b5a0ddc85f5083be26aba2d858c46c9c"},
 ]
 
 [package.dependencies]
