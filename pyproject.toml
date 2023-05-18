@@ -14,10 +14,10 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-# numba cannot yet support python 3.11
-python = ">=3.8,<3.11"
-# numba cannot yet support numpy 1.24
-numpy = "<1.24"
+# numba cannot yet support python 3.12
+python = ">=3.8,<3.12"
+# numba cannot yet support numpy 1.25
+numpy = "<1.25"
 numba = "*"
 # force llvmlite above broken version
 llvmlite = ">0.34"
