@@ -1031,8 +1031,7 @@ class AnophelesSnpData(
         track_height: gplt_params.height = 80,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         max_snps: int = 200_000,
-        show: gplt_params.show = True,
-    ) -> gplt_params.figure:
+    ) -> None:
         # Plot SNPs track.
         fig1 = self.plot_snps_track(
             region=region,
@@ -1067,10 +1066,7 @@ class AnophelesSnpData(
             sizing_mode=sizing_mode,
         )
 
-        if show:
-            bokeh.plotting.show(fig)
-
-        return fig
+        bokeh.plotting.show(fig)
 
     @check_types
     @doc(
@@ -1198,7 +1194,7 @@ class AnophelesSnpData(
             tooltips=tooltips,
         )
         hover_tool = fig.select(type=bokeh.models.HoverTool)
-        hover_tool.names = ["snps"]
+        hover_tool.name = "snps"
 
         # Plot gaps in the reference genome.
         df_n_runs = pd.DataFrame(

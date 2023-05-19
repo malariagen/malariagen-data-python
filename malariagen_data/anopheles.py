@@ -1758,7 +1758,6 @@ class AnophelesDataResource(
     @check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
-        returns="Bokeh figure.",
     )
     def plot_heterozygosity(
         self,
@@ -1773,8 +1772,7 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-        show: gplt_params.show = True,
-    ):
+    ) -> None:
         debug = self._log.debug
 
         # normalise to support multiple samples
@@ -1839,10 +1837,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
-            bokeh.plotting.show(fig_all)
-
-        return fig_all
+        bokeh.plotting.show(fig_all)
 
     def _sample_count_het(
         self,
@@ -1996,6 +1991,7 @@ class AnophelesDataResource(
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             x_range=x_range,
+            y_range=bokeh.models.Range1d(0, 1),
         )
 
         debug("now plot the ROH as rectangles")
@@ -2010,7 +2006,6 @@ class AnophelesDataResource(
         )
 
         debug("tidy up the plot")
-        fig.y_range = bokeh.models.Range1d(0, 1)
         fig.ygrid.visible = False
         fig.yaxis.ticker = []
         self._bokeh_style_genome_xaxis(fig, resolved_region.contig)
@@ -2044,8 +2039,7 @@ class AnophelesDataResource(
         roh_height: gplt_params.height = 50,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
-        show: gplt_params.show = True,
-    ) -> gplt_params.figure:
+    ) -> None:
         debug = self._log.debug
 
         resolved_region: Region = parse_single_region(self, region)
@@ -2124,10 +2118,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
-            bokeh.plotting.show(fig_all)
-
-        return fig_all
+        bokeh.plotting.show(fig_all)
 
     @check_types
     @doc(
@@ -4237,7 +4228,15 @@ class AnophelesDataResource(
         ]
 
         # make plot
-        fig = bokeh.plotting.figure(width=700, height=400, x_axis_type="log")
+        if title is None:
+            title = sample_query
+        fig = bokeh.plotting.figure(
+            title=title,
+            width=700,
+            height=400,
+            x_axis_type="log",
+            x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
+        )
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -4258,10 +4257,6 @@ class AnophelesDataResource(
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bokeh.models.Range1d(window_sizes[0], window_sizes[-1])
-        if title is None:
-            title = sample_query
-        fig.title = title
         if show:
             bokeh.plotting.show(fig)
         return fig
@@ -5617,7 +5612,15 @@ class AnophelesDataResource(
         ]
 
         # make plot
-        fig = bokeh.plotting.figure(width=700, height=400, x_axis_type="log")
+        if title is None:
+            title = sample_query
+        fig = bokeh.plotting.figure(
+            title=title,
+            width=700,
+            height=400,
+            x_axis_type="log",
+            x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
+        )
         fig.patch(
             window_sizes + window_sizes[::-1],
             q75 + q25[::-1],
@@ -5638,10 +5641,6 @@ class AnophelesDataResource(
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        fig.x_range = bokeh.models.Range1d(window_sizes[0], window_sizes[-1])
-        if title is None:
-            title = sample_query
-        fig.title = title
         bokeh.plotting.show(fig)
 
     @check_types
