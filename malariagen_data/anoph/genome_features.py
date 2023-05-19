@@ -60,7 +60,7 @@ class gplt_params:
     genes_height_default: genes_height = 120
     show: TypeAlias = Annotated[
         bool,
-        "If true, show the plot.",
+        "If true, show the plot. If False, do not show the plot, but return the figure.",
     ]
     toolbar_location: TypeAlias = Annotated[
         Literal["above", "below", "left", "right"],
@@ -79,8 +79,8 @@ class gplt_params:
         # Use quite a broad type here to accommodate both single-panel figures
         # created via bokeh.plotting and multi-panel figures created via
         # bokeh.layouts.
-        bokeh.model.Model,
-        "A bokeh figure.",
+        Optional[bokeh.model.Model],
+        "A bokeh figure (only returned if show=False).",
     ]
 
 
@@ -234,6 +234,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         if title is True:
             title = f"{transcript} ({parent.strand})"
 
+        if x_range is None:
+            x_range = bokeh.models.Range1d(
+                parent.start - 2_000, parent.end + 2_000, bounds="auto"
+            )
+
         debug("Define tooltips for hover.")
         tooltips = [
             ("Type", "@type"),
@@ -255,6 +260,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
+            y_range=bokeh.models.Range1d(-0.6, 0.6),
         )
 
         debug("Find child components of the transcript.")
@@ -333,13 +339,13 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         debug("Tidy up the figure.")
         fig.yaxis.ticker = []
-        fig.y_range = bokeh.models.Range1d(-0.6, 0.6)
         self._bokeh_style_genome_xaxis(fig, parent.contig)
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -412,6 +418,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
+            y_range=bokeh.models.Range1d(-0.4, 2.2),
         )
 
         debug("add functionality to click through to vectorbase")
@@ -431,7 +438,6 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         )
 
         debug("tidy up the plot")
-        fig.y_range = bokeh.models.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
         yticklabels = ["-", "+"]
@@ -441,8 +447,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def _plot_genes_setup_data(self, *, region):
         attributes = [a for a in self._gff_default_attributes if a != "Parent"]

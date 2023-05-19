@@ -1069,8 +1069,9 @@ class AnophelesSnpData(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -1198,7 +1199,7 @@ class AnophelesSnpData(
             tooltips=tooltips,
         )
         hover_tool = fig.select(type=bokeh.models.HoverTool)
-        hover_tool.names = ["snps"]
+        hover_tool.name = "snps"
 
         # Plot gaps in the reference genome.
         df_n_runs = pd.DataFrame(
@@ -1247,8 +1248,9 @@ class AnophelesSnpData(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(

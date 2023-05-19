@@ -1867,8 +1867,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_coverage(
         self,
@@ -1914,11 +1915,6 @@ class Ag3(AnophelesDataResource):
         show : bool, optional
             If true, show the plot.
 
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
         """
         debug = self._log.debug
 
@@ -1961,8 +1957,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_heatmap_track(
         self,
@@ -2113,7 +2110,9 @@ class Ag3(AnophelesDataResource):
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         debug("add color bar")
-        color_bar = bkmod.ColorBar(
+        # For some reason, mypy reports: Module has no attribute "ColorBar"
+        # ...but this works fine, so ignore for now.
+        color_bar = bkmod.ColorBar(  # type: ignore
             title="Copy number",
             color_mapper=color_mapper,
             major_label_overrides={
@@ -2126,8 +2125,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_heatmap(
         self,
@@ -2171,13 +2171,6 @@ class Ag3(AnophelesDataResource):
             row_height.
         genes_height : int, optional
             Height of genes track in pixels (px).
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
 
         """
         debug = self._log.debug
@@ -2220,8 +2213,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks
@@ -2349,6 +2343,8 @@ class Ag3(AnophelesDataResource):
         colors="T10",
         xgap=0,
         ygap=0.5,
+        show=True,
+        renderer=None,
     ):
         """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
 
@@ -2547,7 +2543,11 @@ class Ag3(AnophelesDataResource):
             height=max(300, row_height * len(samples) + 100),
         )
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")

@@ -33,7 +33,7 @@ xarray = "*"
 plotly = "*"
 # https://github.com/bokeh/bokeh/issues/12614
 # bokeh 3.0 has a problem with stretch sizing modes
-bokeh = "<3.0"
+bokeh = ">=3.1.0"
 statsmodels = "*"
 # 0.17.0 appears to be broken on colab
 ipyleaflet = ">0.17.0"
@@ -53,6 +53,8 @@ numpydoc_decorator = ">=2.0.0"
 typing_extensions = "*"
 typeguard = ">=4.0.0"
 protopunica = "*"
+# accelerate plotly - https://plotly.com/python/renderers/#performance
+orjson = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
