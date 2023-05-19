@@ -399,7 +399,14 @@ class plotly_params:
         ],
         "The figure template name (must be a key in plotly.io.templates).",
     ]
-    figure: TypeAlias = Annotated[go.Figure, "A plotly figure."]
+    show: TypeAlias = Annotated[
+        bool,
+        "If true, show the plot. If False, do not show the plot, but return the figure.",
+    ]
+    renderer: TypeAlias = Annotated[Optional[str], "The name of the renderer to use."]
+    figure: TypeAlias = Annotated[
+        Optional[go.Figure], "A plotly figure (only returned if show=False)."
+    ]
 
 
 class ihs_params:
@@ -1543,15 +1550,16 @@ class AnophelesDataResource(
         parameters=dict(
             kwargs="Passed through to px.bar().",
         ),
-        returns="A plotly figure.",
     )
     def plot_pca_variance(
         self,
         evr: pca_params.evr,
         width: plotly_params.width = 900,
         height: plotly_params.height = 400,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
-    ) -> go.Figure:
+    ) -> plotly_params.figure:
         debug = self._log.debug
 
         debug("prepare plotting variables")
@@ -1574,7 +1582,11 @@ class AnophelesDataResource(
         debug("make a bar plot")
         fig = px.bar(x=x, y=y, **plot_kwargs)
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     def _cohort_alt_allele_counts_melt(self, gt, indices, max_allele):
         ac_alt_melt, an = self._cohort_alt_allele_counts_melt_kernel(
@@ -1753,7 +1765,11 @@ class AnophelesDataResource(
             x_range=x_range,
         )
 
-        return fig
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -1772,7 +1788,8 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         # normalise to support multiple samples
@@ -1837,7 +1854,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig_all)
+        if show:
+            bokeh.plotting.show(fig_all)
+            return None
+        else:
+            return fig_all
 
     def _sample_count_het(
         self,
@@ -2012,8 +2033,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -2039,7 +2061,8 @@ class AnophelesDataResource(
         roh_height: gplt_params.height = 50,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         resolved_region: Region = parse_single_region(self, region)
@@ -2118,7 +2141,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig_all)
+        if show:
+            bokeh.plotting.show(fig_all)
+            return None
+        else:
+            return fig_all
 
     @check_types
     @doc(
@@ -3044,6 +3071,8 @@ class AnophelesDataResource(
         aspect: plotly_params.aspect = "auto",
         color_continuous_scale: plotly_params.color_continuous_scale = "Reds",
         title: plotly_params.title = True,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
         debug = self._log.debug
@@ -3129,7 +3158,11 @@ class AnophelesDataResource(
         if not colorbar:
             fig.update(layout_coloraxis_showscale=False)
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -3156,6 +3189,8 @@ class AnophelesDataResource(
         height: plotly_params.height = None,
         width: plotly_params.width = None,
         title: plotly_params.title = True,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
         debug = self._log.debug
@@ -3245,7 +3280,11 @@ class AnophelesDataResource(
         debug("tidy plot")
         fig.update_layout(yaxis_range=[-0.05, 1.05])
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -3433,6 +3472,8 @@ class AnophelesDataResource(
         width: plotly_params.width = 900,
         height: plotly_params.height = 600,
         marker_size: plotly_params.marker_size = 10,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
         debug = self._log.debug
@@ -3497,7 +3538,11 @@ class AnophelesDataResource(
         )
         fig.update_traces(marker={"size": marker_size})
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -3522,6 +3567,8 @@ class AnophelesDataResource(
         width: plotly_params.width = 900,
         height: plotly_params.height = 600,
         marker_size: plotly_params.marker_size = 5,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
         debug = self._log.debug
@@ -3585,7 +3632,11 @@ class AnophelesDataResource(
         )
         fig.update_traces(marker={"size": marker_size})
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -3609,7 +3660,9 @@ class AnophelesDataResource(
         scatter_plot_width: int = 500,
         template: plotly_params.template = "plotly_white",
         plot_kwargs: Optional[Mapping] = None,
-    ):
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+    ) -> Optional[Tuple[go.Figure, ...]]:
         debug = self._log.debug
 
         debug("set up common plotting parameters")
@@ -3644,7 +3697,7 @@ class AnophelesDataResource(
         bar_plot_width = 300 + bar_width * len(df_stats)
 
         debug("nucleotide diversity bar plot")
-        fig = px.bar(
+        fig1 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="theta_pi_estimate",
@@ -3656,10 +3709,9 @@ class AnophelesDataResource(
             template=template,
             **plot_kwargs,
         )
-        fig.show()
 
         debug("Watterson's estimator bar plot")
-        fig = px.bar(
+        fig2 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="theta_w_estimate",
@@ -3671,10 +3723,9 @@ class AnophelesDataResource(
             template=template,
             **plot_kwargs,
         )
-        fig.show()
 
         debug("Tajima's D bar plot")
-        fig = px.bar(
+        fig3 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="tajima_d_estimate",
@@ -3686,10 +3737,9 @@ class AnophelesDataResource(
             template=template,
             **plot_kwargs,
         )
-        fig.show()
 
         debug("scatter plot comparing diversity estimators")
-        fig = px.scatter(
+        fig4 = px.scatter(
             data_frame=df_stats,
             x="theta_pi_estimate",
             y="theta_w_estimate",
@@ -3702,7 +3752,15 @@ class AnophelesDataResource(
             template=template,
             **plot_kwargs,
         )
-        fig.show()
+
+        if show:
+            fig1.show(renderer=renderer)
+            fig2.show(renderer=renderer)
+            fig3.show(renderer=renderer)
+            fig4.show(renderer=renderer)
+            return None
+        else:
+            return (fig1, fig2, fig3, fig4)
 
     @check_types
     @doc(
@@ -3790,8 +3848,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -3821,7 +3880,8 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 190,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
             contig=contig,
@@ -3862,7 +3922,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -4259,7 +4323,9 @@ class AnophelesDataResource(
         fig.xaxis.ticker = window_sizes
         if show:
             bokeh.plotting.show(fig)
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -4433,8 +4499,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -4460,7 +4527,8 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_h12_gwss_track(
             contig=contig,
@@ -4500,7 +4568,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -4702,8 +4774,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -4733,7 +4806,8 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 190,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_h1x_gwss_track(
             contig=contig,
@@ -4774,7 +4848,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -5060,8 +5138,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -5099,7 +5178,8 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
             contig=contig,
@@ -5151,7 +5231,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     def _garud_g123(self, gt):
         """Compute Garud's G123."""
@@ -5355,8 +5439,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -5382,7 +5467,8 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ):
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
             contig=contig,
@@ -5422,7 +5508,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     def _load_data_for_g123(
         self,
@@ -5582,7 +5672,8 @@ class AnophelesDataResource(
         window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
-    ):
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # get g123 values
         calibration_runs = self.g123_calibration(
             contig=contig,
@@ -5641,7 +5732,12 @@ class AnophelesDataResource(
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        bokeh.plotting.show(fig)
+
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -5667,6 +5763,8 @@ class AnophelesDataResource(
         random_seed: base_params.random_seed = 42,
         width: plotly_params.width = 1000,
         height: plotly_params.height = 500,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
@@ -5804,7 +5902,11 @@ class AnophelesDataResource(
             )
         )
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(

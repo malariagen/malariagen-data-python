@@ -1031,7 +1031,8 @@ class AnophelesSnpData(
         track_height: gplt_params.height = 80,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         max_snps: int = 200_000,
-    ) -> None:
+        show: gplt_params.show = True,
+    ) -> gplt_params.figure:
         # Plot SNPs track.
         fig1 = self.plot_snps_track(
             region=region,
@@ -1066,7 +1067,11 @@ class AnophelesSnpData(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -1243,8 +1248,9 @@ class AnophelesSnpData(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(

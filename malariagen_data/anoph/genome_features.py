@@ -60,7 +60,7 @@ class gplt_params:
     genes_height_default: genes_height = 120
     show: TypeAlias = Annotated[
         bool,
-        "If true, show the plot.",
+        "If true, show the plot. If False, do not show the plot, but return the figure.",
     ]
     toolbar_location: TypeAlias = Annotated[
         Literal["above", "below", "left", "right"],
@@ -79,8 +79,8 @@ class gplt_params:
         # Use quite a broad type here to accommodate both single-panel figures
         # created via bokeh.plotting and multi-panel figures created via
         # bokeh.layouts.
-        bokeh.model.Model,
-        "A bokeh figure.",
+        Optional[bokeh.model.Model],
+        "A bokeh figure (only returned if show=False).",
     ]
 
 
@@ -343,8 +343,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
@@ -446,8 +447,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def _plot_genes_setup_data(self, *, region):
         attributes = [a for a in self._gff_default_attributes if a != "Parent"]

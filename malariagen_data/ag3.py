@@ -1867,8 +1867,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_coverage(
         self,
@@ -1882,6 +1883,7 @@ class Ag3(AnophelesDataResource):
         genes_height=gplt_params.genes_height_default,
         circle_kwargs=None,
         line_kwargs=None,
+        show=True,
     ):
         """Plot CNV HMM data for a single sample, together with a genes track,
         using bokeh.
@@ -1953,7 +1955,11 @@ class Ag3(AnophelesDataResource):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        if show:
+            bkplt.show(fig)
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_heatmap_track(
         self,
@@ -2119,8 +2125,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_heatmap(
         self,
@@ -2133,6 +2140,7 @@ class Ag3(AnophelesDataResource):
         row_height=7,
         track_height=None,
         genes_height=gplt_params.genes_height_default,
+        show=True,
     ):
         """Plot CNV HMM data for multiple samples as a heatmap, with a genes
         track, using bokeh.
@@ -2203,7 +2211,11 @@ class Ag3(AnophelesDataResource):
             sizing_mode=sizing_mode,
         )
 
-        bkplt.show(fig)
+        if show:
+            bkplt.show(fig)
+            return None
+        else:
+            return fig
 
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks
@@ -2331,6 +2343,8 @@ class Ag3(AnophelesDataResource):
         colors="T10",
         xgap=0,
         ygap=0.5,
+        show=True,
+        renderer=None,
     ):
         """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
 
@@ -2529,7 +2543,11 @@ class Ag3(AnophelesDataResource):
             height=max(300, row_height * len(samples) + 100),
         )
 
-        return fig
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
