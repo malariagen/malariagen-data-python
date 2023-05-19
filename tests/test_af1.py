@@ -333,50 +333,6 @@ def test_haplotypes__sample_query(sample_query):
 
 
 @pytest.mark.parametrize(
-    "sample_sets",
-    [
-        "1.0",
-        "1229-VO-GH-DADZIE-VMF00095",
-        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
-    ],
-)
-def test_cohorts_metadata(sample_sets):
-    af1 = setup_af1(cohorts_analysis="20221129")
-
-    expected_cols = (
-        "sample_id",
-        "country_iso",
-        "admin1_name",
-        "admin1_iso",
-        "admin2_name",
-        "taxon",
-        "cohort_admin1_year",
-        "cohort_admin1_month",
-        "cohort_admin2_year",
-        "cohort_admin2_month",
-    )
-
-    df_coh = af1.cohorts_metadata(sample_sets=sample_sets)
-    df_meta = af1.sample_metadata(sample_sets=sample_sets)
-
-    assert tuple(df_coh.columns) == expected_cols
-    assert len(df_coh) == len(df_meta)
-    assert df_coh.sample_id.tolist() == df_meta.sample_id.tolist()
-    if sample_sets == "1229-VO-GH-DADZIE-VMF00095":
-        assert df_coh.sample_id[0] == "VBS24195"
-        assert df_coh.cohort_admin1_year[23] == "GH-NP_fune_2017"
-        assert df_coh.cohort_admin1_month[24] == "GH-NP_fune_2017_10"
-        assert df_coh.cohort_admin2_year[25] == "GH-NP_Tolon-Kumbungu_fune_2017"
-        assert df_coh.cohort_admin2_month[26] == "GH-NP_Tolon-Kumbungu_fune_2017_07"
-    if sample_sets == [
-        "1240-VO-CD-KOEKEMOER-VMF00099",
-        "1240-VO-MZ-KOEKEMOER-VMF00101",
-    ]:
-        assert df_coh.sample_id[0] == "VBS24386"
-        assert df_coh.sample_id[27] == "VBS24419"
-
-
-@pytest.mark.parametrize(
     "region_raw",
     [
         "LOC125762289",

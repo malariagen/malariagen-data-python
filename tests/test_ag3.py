@@ -1,4 +1,3 @@
-import os
 import random
 import shutil
 
@@ -54,89 +53,6 @@ def test_repr():
     assert isinstance(ag3, Ag3)
     r = repr(ag3)
     assert isinstance(r, str)
-
-
-def test_sample_metadata_with_aim_metadata():
-    ag3 = setup_ag3(aim_analysis="20220528")
-
-    expected_cols = (
-        "sample_id",
-        "partner_sample_id",
-        "contributor",
-        "country",
-        "location",
-        "year",
-        "month",
-        "latitude",
-        "longitude",
-        "sex_call",
-        "sample_set",
-        "release",
-        "quarter",
-        "aim_species_fraction_arab",
-        "aim_species_fraction_colu",
-        "aim_species_fraction_colu_no2l",
-        "aim_species_gambcolu_arabiensis",
-        "aim_species_gambiae_coluzzii",
-        "aim_species",
-    )
-
-    # AIM species calls, included by default
-    df_samples_aim = ag3.sample_metadata(sample_sets="3.0")
-    assert tuple(df_samples_aim.columns[: len(expected_cols)]) == expected_cols
-    assert set(df_samples_aim["aim_species"].dropna()) == expected_aim_species
-
-
-def test_sample_metadata_without_aim_metadata():
-    analysis = "20220528"
-    expected_cols = expected_aim_species_cols
-
-    working_dir = os.path.dirname(os.path.abspath(__file__))
-    test_data_path = os.path.join(
-        working_dir, "anopheles_test_data", "test_missing_species_calls"
-    )
-    ag3 = Ag3(test_data_path, aim_analysis=analysis)
-    df_samples = ag3.sample_metadata(sample_sets="3.0")
-
-    for c in expected_cols:
-        assert c in df_samples
-        assert df_samples[c].isnull().all()
-
-
-@pytest.mark.parametrize(
-    "sample_sets",
-    [
-        "AG1000G-AO",
-        "AG1000G-X",
-        ["AG1000G-BF-A", "AG1000G-BF-B"],
-        "3.0",
-        None,
-    ],
-)
-def test_aim_metadata(sample_sets):
-    analysis = "20220528"
-    ag3 = setup_ag3(aim_analysis=analysis)
-    df_samples = ag3.sample_metadata(sample_sets=sample_sets)
-    df_aim = ag3.aim_metadata(sample_sets=sample_sets)
-    assert len(df_aim) == len(df_samples)
-    assert_array_equal(df_samples["sample_id"], df_aim["sample_id"])
-    assert set(df_aim["aim_species"].dropna()).difference(expected_aim_species) == set()
-
-
-def test_aim_metadata_missing():
-    analysis = "20220528"
-    expected_cols = expected_aim_species_cols
-
-    working_dir = os.path.dirname(os.path.abspath(__file__))
-    test_data_path = os.path.join(
-        working_dir, "anopheles_test_data", "test_missing_species_calls"
-    )
-    ag3 = Ag3(test_data_path, aim_analysis=analysis)
-    df_aim = ag3.aim_metadata(sample_sets="3.0")
-
-    for c in expected_cols:
-        assert c in df_aim
-        assert df_aim[c].isnull().all()
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
@@ -1534,44 +1450,6 @@ def test_haplotypes__sample_query(sample_query):
     # check attributes
     assert "contigs" in ds.attrs
     assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
-
-
-# test v3 sample sets
-@pytest.mark.parametrize(
-    "sample_sets",
-    ["3.0", "AG1000G-UG", ["AG1000G-AO", "AG1000G-FR"]],
-)
-def test_cohorts_metadata(sample_sets):
-    ag3 = setup_ag3(cohorts_analysis="20211101")
-
-    expected_cols = (
-        "sample_id",
-        "country_iso",
-        "admin1_name",
-        "admin1_iso",
-        "admin2_name",
-        "taxon",
-        "cohort_admin1_year",
-        "cohort_admin1_month",
-        "cohort_admin2_year",
-        "cohort_admin2_month",
-    )
-
-    df_coh = ag3.cohorts_metadata(sample_sets=sample_sets)
-    df_meta = ag3.sample_metadata(sample_sets=sample_sets)
-
-    assert tuple(df_coh.columns) == expected_cols
-    assert len(df_coh) == len(df_meta)
-    assert df_coh.sample_id.tolist() == df_meta.sample_id.tolist()
-    if sample_sets == "AG1000G-UG":
-        assert df_coh.sample_id[0] == "AC0007-C"
-        assert df_coh.cohort_admin1_year[23] == "UG-E_arab_2012"
-        assert df_coh.cohort_admin1_month[37] == "UG-E_arab_2012_10"
-        assert df_coh.cohort_admin2_year[42] == "UG-E_Tororo_arab_2012"
-        assert df_coh.cohort_admin2_month[49] == "UG-E_Tororo_arab_2012_10"
-    if sample_sets == ["AG1000G-AO", "AG1000G-FR"]:
-        assert df_coh.sample_id[0] == "AR0047-C"
-        assert df_coh.sample_id[103] == "AP0017-Cx"
 
 
 @pytest.mark.parametrize(

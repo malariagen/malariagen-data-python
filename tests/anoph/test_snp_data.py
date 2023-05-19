@@ -164,11 +164,11 @@ def _check_site_filters(api: AnophelesSnpData, mask, region):
 def test_site_filters(fixture, api: AnophelesSnpData):
     for mask in api.site_mask_ids:
         # Test with contig.
-        contig = random.choice(api.contigs)
+        contig = fixture.random_contig()
         _check_site_filters(api, mask=mask, region=contig)
 
         # Test with region string.
-        region = f"{contig}:20,000-50,000"
+        region = fixture.random_region_str()
         _check_site_filters(api, mask=mask, region=region)
 
         # Test with genome feature ID.
@@ -220,11 +220,11 @@ def _check_snp_sites(api: AnophelesSnpData, region):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_snp_sites(fixture, api: AnophelesSnpData):
     # Test with contig.
-    contig = random.choice(api.contigs)
+    contig = fixture.random_contig()
     _check_snp_sites(api=api, region=contig)
 
     # Test with region string.
-    region = f"{contig}:20,000-50,000"
+    region = fixture.random_region_str()
     _check_snp_sites(api=api, region=region)
 
     # Test with genome feature ID.
@@ -279,12 +279,12 @@ def _check_site_annotations(api: AnophelesSnpData, region, site_mask):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_site_annotations(fixture, api):
     # Parametrize region.
-    contig = random.choice(api.contigs)
+    contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
     # Don't need to support multiple regions at this time.
     parametrize_region = [
         contig,
-        f"{contig}:20,000-50,000",
+        fixture.random_region_str(),
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -387,17 +387,17 @@ def test_snp_genotypes(fixture, api: AnophelesSnpData):
     parametrize_sample_sets = [
         None,
         random.choice(all_sample_sets),
-        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        random.sample(all_sample_sets, 2),
         random.choice(all_releases),
     ]
 
     # Parametrize region.
-    contig = random.choice(api.contigs)
+    contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
     parametrize_region = [
         contig,
-        f"{contig}:20,000-50,000",
-        [f"{contig}:20,000-40,000", f"{contig}:60,000-80,000"],
+        fixture.random_region_str(),
+        [fixture.random_region_str(), fixture.random_region_str()],
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -504,17 +504,17 @@ def test_snp_calls(fixture, api: AnophelesSnpData):
     parametrize_sample_sets = [
         None,
         random.choice(all_sample_sets),
-        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        random.sample(all_sample_sets, 2),
         random.choice(all_releases),
     ]
 
     # Parametrize region.
-    contig = random.choice(api.contigs)
+    contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
     parametrize_region = [
         contig,
-        f"{contig}:20,000-50,000",
-        [f"{contig}:20,000-40,000", f"{contig}:60,000-80,000"],
+        fixture.random_region_str(),
+        [fixture.random_region_str(), fixture.random_region_str()],
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -552,8 +552,7 @@ def test_snp_calls_with_min_cohort_size(fixture, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    contig = random.choice(api.contigs)
-    region = f"{contig}:20,000-50,000"
+    region = fixture.random_region_str()
 
     # Test with minimum cohort size.
     ds = api.snp_calls(
@@ -576,8 +575,7 @@ def test_snp_calls_with_max_cohort_size(fixture, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    contig = random.choice(api.contigs)
-    region = f"{contig}:20,000-50,000"
+    region = fixture.random_region_str()
 
     # Test with maximum cohort size.
     ds = api.snp_calls(
@@ -595,8 +593,7 @@ def test_snp_calls_with_cohort_size(fixture, api: AnophelesSnpData):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     n_samples = len(api.sample_metadata(sample_sets=sample_sets))
-    contig = random.choice(api.contigs)
-    region = f"{contig}:20,000-50,000"
+    region = fixture.random_region_str()
 
     # Test with specific cohort size.
     cohort_size = 20
@@ -674,17 +671,17 @@ def test_snp_allele_counts(fixture, api):
     parametrize_sample_sets = [
         None,
         random.choice(all_sample_sets),
-        np.random.choice(all_sample_sets, size=2, replace=False).tolist(),
+        random.sample(all_sample_sets, 2),
         random.choice(all_releases),
     ]
 
     # Parametrize region.
-    contig = random.choice(api.contigs)
+    contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
     parametrize_region = [
         contig,
-        f"{contig}:20,000-50,000",
-        [f"{contig}:20,000-40,000", f"{contig}:60,000-80,000"],
+        fixture.random_region_str(),
+        [fixture.random_region_str(), fixture.random_region_str()],
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -720,12 +717,12 @@ def _check_is_accessible(api: AnophelesSnpData, region, mask):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_is_accessible(fixture, api: AnophelesSnpData):
     # Parametrize region.
-    contig = random.choice(api.contigs)
+    contig = fixture.random_contig()
     df_gff = api.genome_features(attributes=["ID"])
     # Don't need to support multiple regions at this time.
     parametrize_region = [
         contig,
-        f"{contig}:20,000-50,000",
+        fixture.random_region_str(),
         random.choice(df_gff["ID"].dropna().to_list()),
     ]
 
@@ -749,8 +746,7 @@ def test_plot_snps(fixture, api: AnophelesSnpData):
     # Randomly choose parameter values.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    contig = random.choice(api.contigs)
-    region = f"{contig}:20,000-50,000"
+    region = fixture.random_region_str()
     site_mask = random.choice(api.site_mask_ids)
 
     # Exercise the function.

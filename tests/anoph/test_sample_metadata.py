@@ -1,7 +1,10 @@
+import random
+
 import ipyleaflet
 import numpy as np
 import pandas as pd
 import pytest
+from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
 from typeguard import suppress_type_checks
 
@@ -78,76 +81,53 @@ def validate_metadata(df, expected_columns):
         assert df[c].dtype.kind == expected_columns[c]
 
 
-@pytest.mark.parametrize(
-    "sample_set", ["AG1000G-AO", "AG1000G-BF-A", "1177-VO-ML-LEHMANN-VMF00004"]
-)
-def test_general_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
-    df = ag3_sim_api.general_metadata(sample_sets=sample_set)
-    validate_metadata(df, general_metadata_expected_columns())
+@parametrize_with_cases("fixture,api", cases=".")
+def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMetadata):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
 
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    # Call function to be tested.
+    df = api.general_metadata(sample_sets=sample_set)
+
+    # Check output.
+    validate_metadata(df, general_metadata_expected_columns())
     expected_len = sample_count.loc[sample_set]
     assert len(df) == expected_len
 
 
-@pytest.mark.parametrize(
-    "sample_set",
-    [
-        "1229-VO-GH-DADZIE-VMF00095",
-        "1230-VO-GA-CF-AYALA-VMF00045",
-        "1231-VO-MULTI-WONDJI-VMF00043",
-    ],
-)
-def test_general_metadata__af1_single_sample_set(af1_sim_api, sample_set):
-    df = af1_sim_api.general_metadata(sample_sets=sample_set)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_general_metadata_with_multiple_sample_sets(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up the test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+
+    # Call function to be tested.
+    df = api.general_metadata(sample_sets=sample_sets)
+
+    # Check output.
     validate_metadata(df, general_metadata_expected_columns())
-
-    # Check number of rows.
-    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-    expected_len = sample_count.loc[sample_set]
-    assert len(df) == expected_len
-
-
-def test_general_metadata__ag3_multiple_sample_sets(ag3_sim_api):
-    sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
-    df = ag3_sim_api.general_metadata(sample_sets=sample_sets)
-    validate_metadata(df, general_metadata_expected_columns())
-
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
     expected_len = sum([sample_count.loc[s] for s in sample_sets])
     assert len(df) == expected_len
 
 
-def test_general_metadata__af1_multiple_sample_sets(af1_sim_api):
-    sample_sets = ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]
-    df = af1_sim_api.general_metadata(sample_sets=sample_sets)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_general_metadata_with_release(fixture, api: AnophelesSampleMetadata):
+    # Set up the test.
+    release = random.choice(api.releases)
+
+    # Call function to be tested.
+    df = api.general_metadata(sample_sets=release)
+
+    # Check output.
     validate_metadata(df, general_metadata_expected_columns())
-
-    # Check number of rows.
-    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-    expected_len = sum([sample_count.loc[s] for s in sample_sets])
-    assert len(df) == expected_len
-
-
-def test_general_metadata__ag3_release(ag3_sim_api):
-    release = "3.0"
-    df = ag3_sim_api.general_metadata(sample_sets=release)
-    validate_metadata(df, general_metadata_expected_columns())
-
-    # Check number of rows.
-    expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
-    assert len(df) == expected_len
-
-
-def test_general_metadata__af1_release(af1_sim_api):
-    release = "1.0"
-    df = af1_sim_api.general_metadata(sample_sets=release)
-    validate_metadata(df, general_metadata_expected_columns())
-
-    # Check number of rows.
-    expected_len = af1_sim_api.sample_sets(release=release)["sample_count"].sum()
+    expected_len = api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
 
 
@@ -181,42 +161,59 @@ def validate_aim_metadata(df):
             assert np.isnan(v)
 
 
-@pytest.mark.parametrize(
-    "sample_set", ["AG1000G-AO", "AG1000G-BF-A", "1177-VO-ML-LEHMANN-VMF00004"]
-)
-def test_aim_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
-    df = ag3_sim_api.aim_metadata(sample_sets=sample_set)
-    validate_aim_metadata(df)
+def test_aim_metadata_with_single_sample_set(ag3_sim_api):
+    # N.B., only Ag3 has AIM data.
 
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    # Set up the test.
+    df_sample_sets = ag3_sim_api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Call function to be tested.
+    df = ag3_sim_api.aim_metadata(sample_sets=sample_set)
+
+    # Check output.
+    validate_aim_metadata(df)
     expected_len = sample_count.loc[sample_set]
     assert len(df) == expected_len
 
 
-def test_aim_metadata__ag3_multiple_sample_sets(ag3_sim_api):
-    sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
-    df = ag3_sim_api.aim_metadata(sample_sets=sample_sets)
-    validate_aim_metadata(df)
+def test_aim_metadata_with_multiple_sample_sets(ag3_sim_api):
+    # N.B., only Ag3 has AIM data.
 
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    # Set up the test.
+    df_sample_sets = ag3_sim_api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+
+    # Call function to be tested.
+    df = ag3_sim_api.aim_metadata(sample_sets=sample_sets)
+
+    # Check output.
+    validate_aim_metadata(df)
     expected_len = sum([sample_count.loc[s] for s in sample_sets])
     assert len(df) == expected_len
 
 
-def test_aim_metadata__ag3_release(ag3_sim_api):
-    release = "3.0"
-    df = ag3_sim_api.aim_metadata(sample_sets=release)
-    validate_aim_metadata(df)
+def test_aim_metadata_with_release(ag3_sim_api):
+    # N.B., only Ag3 has AIM data.
 
-    # Check number of rows.
+    # Set up the test.
+    release = random.choice(ag3_sim_api.releases)
+
+    # Call function to be tested.
+    df = ag3_sim_api.aim_metadata(sample_sets=release)
+
+    # Check output.
+    validate_aim_metadata(df)
     expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
 
 
-def cohorts_metadata_expected_columns(has_quarter):
-    if has_quarter:
+def cohorts_metadata_expected_columns(has_cohorts_by_quarter):
+    if has_cohorts_by_quarter:
         return {
             "sample_id": "O",
             "country_iso": "O",
@@ -246,83 +243,62 @@ def cohorts_metadata_expected_columns(has_quarter):
         }
 
 
-def validate_cohorts_metadata(df, has_quarter):
+def validate_cohorts_metadata(df, has_cohorts_by_quarter):
     # N.B., older cohorts metadata only has cohorts by year and month.
     # Newer cohorts metadata also has cohorts by quarter.
-    expected_columns = cohorts_metadata_expected_columns(has_quarter=has_quarter)
+    expected_columns = cohorts_metadata_expected_columns(
+        has_cohorts_by_quarter=has_cohorts_by_quarter
+    )
     validate_metadata(df, expected_columns)
 
 
-@pytest.mark.parametrize(
-    "sample_set", ["AG1000G-AO", "AG1000G-BF-A", "1177-VO-ML-LEHMANN-VMF00004"]
-)
-def test_cohorts_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
-    df = ag3_sim_api.cohorts_metadata(sample_sets=sample_set)
-    validate_cohorts_metadata(df, has_quarter=True)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohorts_metadata_with_single_sample_set(fixture, api: AnophelesSampleMetadata):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
 
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    # Call function to be tested.
+    df = api.cohorts_metadata(sample_sets=sample_set)
+
+    # Check output.
+    validate_cohorts_metadata(df, has_cohorts_by_quarter=fixture.has_cohorts_by_quarter)
     expected_len = sample_count.loc[sample_set]
     assert len(df) == expected_len
 
 
-@pytest.mark.parametrize(
-    "sample_set",
-    [
-        "1229-VO-GH-DADZIE-VMF00095",
-        "1230-VO-GA-CF-AYALA-VMF00045",
-        "1231-VO-MULTI-WONDJI-VMF00043",
-    ],
-)
-def test_cohorts_metadata__af1_single_sample_set(af1_sim_api, sample_set):
-    df = af1_sim_api.cohorts_metadata(sample_sets=sample_set)
-    validate_cohorts_metadata(df, has_quarter=False)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohorts_metadata_with_multiple_sample_sets(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
 
-    # Check number of rows.
-    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-    expected_len = sample_count.loc[sample_set]
-    assert len(df) == expected_len
+    # Call function to be tested.
+    df = api.cohorts_metadata(sample_sets=sample_sets)
 
-
-def test_cohorts_metadata__ag3_multiple_sample_sets(ag3_sim_api):
-    sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
-    df = ag3_sim_api.cohorts_metadata(sample_sets=sample_sets)
-    validate_cohorts_metadata(df, has_quarter=True)
-
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+    # Check output.
+    validate_cohorts_metadata(df, has_cohorts_by_quarter=fixture.has_cohorts_by_quarter)
     expected_len = sum([sample_count.loc[s] for s in sample_sets])
     assert len(df) == expected_len
 
 
-def test_cohorts_metadata__af1_multiple_sample_sets(af1_sim_api):
-    sample_sets = ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]
-    df = af1_sim_api.cohorts_metadata(sample_sets=sample_sets)
-    validate_cohorts_metadata(df, has_quarter=False)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cohorts_metadata_with_release(fixture, api: AnophelesSampleMetadata):
+    # Set up test.
+    release = random.choice(api.releases)
 
-    # Check number of rows.
-    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-    expected_len = sum([sample_count.loc[s] for s in sample_sets])
-    assert len(df) == expected_len
+    # Call function to be tested.
+    df = api.cohorts_metadata(sample_sets=release)
 
-
-def test_cohorts_metadata__ag3_release(ag3_sim_api):
-    release = "3.0"
-    df = ag3_sim_api.cohorts_metadata(sample_sets=release)
-    validate_cohorts_metadata(df, has_quarter=True)
-
-    # Check number of rows.
-    expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
-    assert len(df) == expected_len
-
-
-def test_cohorts_metadata__af1_release(af1_sim_api):
-    release = "1.0"
-    df = af1_sim_api.cohorts_metadata(sample_sets=release)
-    validate_cohorts_metadata(df, has_quarter=False)
-
-    # Check number of rows.
-    expected_len = af1_sim_api.sample_sets(release=release)["sample_count"].sum()
+    # Check output.
+    validate_cohorts_metadata(df, has_cohorts_by_quarter=fixture.has_cohorts_by_quarter)
+    expected_len = api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
 
 
@@ -331,105 +307,137 @@ def sample_metadata_expected_columns(has_aims, has_cohorts_by_quarter):
     if has_aims:
         expected_columns.update(aim_metadata_expected_columns())
     expected_columns.update(
-        cohorts_metadata_expected_columns(has_quarter=has_cohorts_by_quarter)
+        cohorts_metadata_expected_columns(has_cohorts_by_quarter=has_cohorts_by_quarter)
     )
     return expected_columns
 
 
-@pytest.mark.parametrize(
-    "sample_set", ["AG1000G-AO", "AG1000G-BF-A", "1177-VO-ML-LEHMANN-VMF00004"]
-)
-def test_sample_metadata__ag3_single_sample_set(ag3_sim_api, sample_set):
-    df = ag3_sim_api.sample_metadata(sample_sets=sample_set)
-    validate_metadata(
-        df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
-    )
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_default(fixture, api: AnophelesSampleMetadata):
+    # Default is all releases.
+    df_default = api.sample_metadata()
+    df_all = api.sample_metadata(sample_sets=api.releases)
+    assert_frame_equal(df_default, df_all)
 
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_with_single_sample_set(fixture, api: AnophelesSampleMetadata):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Call function to be tested.
+    df = api.sample_metadata(sample_sets=sample_set)
+
+    # Check output.
+    validate_metadata(
+        df,
+        sample_metadata_expected_columns(
+            has_aims=fixture.has_aims,
+            has_cohorts_by_quarter=fixture.has_cohorts_by_quarter,
+        ),
+    )
     expected_len = sample_count.loc[sample_set]
     assert len(df) == expected_len
 
 
-@pytest.mark.parametrize(
-    "sample_set",
-    [
-        "1229-VO-GH-DADZIE-VMF00095",
-        "1230-VO-GA-CF-AYALA-VMF00045",
-        "1231-VO-MULTI-WONDJI-VMF00043",
-    ],
-)
-def test_sample_metadata__af1_single_sample_set(af1_sim_api, sample_set):
-    df = af1_sim_api.sample_metadata(sample_sets=sample_set)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_with_multiple_sample_sets(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+
+    # Call function to be tested.
+    df = api.sample_metadata(sample_sets=sample_sets)
+
+    # Check output.
     validate_metadata(
         df,
-        sample_metadata_expected_columns(has_aims=False, has_cohorts_by_quarter=False),
+        sample_metadata_expected_columns(
+            has_aims=fixture.has_aims,
+            has_cohorts_by_quarter=fixture.has_cohorts_by_quarter,
+        ),
     )
-
-    # Check number of rows.
-    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-    expected_len = sample_count.loc[sample_set]
-    assert len(df) == expected_len
-
-
-def test_sample_metadata__ag3_multiple_sample_sets(ag3_sim_api):
-    sample_sets = ["AG1000G-AO", "1177-VO-ML-LEHMANN-VMF00004"]
-    df = ag3_sim_api.sample_metadata(sample_sets=sample_sets)
-    validate_metadata(
-        df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
-    )
-
-    # Check number of rows.
-    sample_count = ag3_sim_api.sample_sets().set_index("sample_set")["sample_count"]
     expected_len = sum([sample_count.loc[s] for s in sample_sets])
     assert len(df) == expected_len
 
 
-def test_sample_metadata__af1_multiple_sample_sets(af1_sim_api):
-    sample_sets = ["1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"]
-    df = af1_sim_api.sample_metadata(sample_sets=sample_sets)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_with_release(fixture, api: AnophelesSampleMetadata):
+    # Set up test.
+    release = random.choice(api.releases)
+
+    # Call function to be tested.
+    df = api.sample_metadata(sample_sets=release)
+
+    # Check output.
     validate_metadata(
         df,
-        sample_metadata_expected_columns(has_aims=False, has_cohorts_by_quarter=False),
+        sample_metadata_expected_columns(
+            has_aims=fixture.has_aims,
+            has_cohorts_by_quarter=fixture.has_cohorts_by_quarter,
+        ),
     )
-
-    # Check number of rows.
-    sample_count = af1_sim_api.sample_sets().set_index("sample_set")["sample_count"]
-    expected_len = sum([sample_count.loc[s] for s in sample_sets])
+    expected_len = api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
 
 
-def test_sample_metadata__ag3_release(ag3_sim_api):
-    release = "3.0"
-    df = ag3_sim_api.sample_metadata(sample_sets=release)
-    validate_metadata(
-        df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_with_duplicate_sample_sets(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up test.
+    release = random.choice(api.releases)
+    df_sample_sets = api.sample_sets(release=release).set_index("sample_set")
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Call function to be tested.
+    assert_frame_equal(
+        api.sample_metadata(sample_sets=[sample_set, sample_set]),
+        api.sample_metadata(sample_sets=sample_set),
+    )
+    assert_frame_equal(
+        api.sample_metadata(sample_sets=[release, release]),
+        api.sample_metadata(sample_sets=release),
+    )
+    assert_frame_equal(
+        api.sample_metadata(sample_sets=[release, sample_set]),
+        api.sample_metadata(sample_sets=release),
     )
 
-    # Check number of rows.
-    expected_len = ag3_sim_api.sample_sets(release=release)["sample_count"].sum()
-    assert len(df) == expected_len
 
-
-def test_sample_metadata__af1_release(af1_sim_api):
-    release = "1.0"
-    df = af1_sim_api.sample_metadata(sample_sets=release)
-    validate_metadata(
-        df,
-        sample_metadata_expected_columns(has_aims=False, has_cohorts_by_quarter=False),
-    )
-
-    # Check number of rows.
-    expected_len = af1_sim_api.sample_sets(release=release)["sample_count"].sum()
-    assert len(df) == expected_len
-
-
-def test_sample_metadata__ag3_query(ag3_sim_api):
+def test_sample_metadata_with_query(ag3_sim_api):
     df = ag3_sim_api.sample_metadata(sample_query="country == 'Burkina Faso'")
     validate_metadata(
         df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
     )
     assert (df["country"] == "Burkina Faso").all()
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
+    df = api.sample_metadata()
+
+    # Check that quarter only contains the expected values
+    expected_quarter_values = {-1, 1, 2, 3, 4}
+    assert df["quarter"].isin(expected_quarter_values).all()
+
+    # Check that quarter is -1 when month is -1
+    assert np.all(df.query("month == -1")["quarter"] == -1)
+
+    # Check that quarter is derived from month, in cases where it is not -1
+    assert (df.query("month == -1")["quarter"] == -1).all()
+    assert (df.query("month in [1, 2, 3]")["quarter"] == 1).all()
+    assert (df.query("month in [4, 5, 6]")["quarter"] == 2).all()
+    assert (df.query("month in [7, 8, 9]")["quarter"] == 3).all()
+    assert (df.query("month in [10, 11, 12]")["quarter"] == 4).all()
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -568,14 +576,22 @@ def test_plot_samples_interactive_map(fixture, api, basemap):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_wgs_data_catalog(fixture, api):
-    for rec in api.sample_sets()[["sample_set", "sample_count"]].itertuples():
-        df = api.wgs_data_catalog(sample_set=rec.sample_set)
-        assert isinstance(df, pd.DataFrame)
-        expected_cols = [
-            "sample_id",
-            "alignments_bam",
-            "snp_genotypes_vcf",
-            "snp_genotypes_zarr",
-        ]
-        assert df.columns.to_list() == expected_cols
-        assert len(df) == rec.sample_count
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Call function to be tested.
+    df = api.wgs_data_catalog(sample_set=sample_set)
+
+    # Check output.
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "sample_id",
+        "alignments_bam",
+        "snp_genotypes_vcf",
+        "snp_genotypes_zarr",
+    ]
+    assert df.columns.to_list() == expected_cols
+    assert len(df) == sample_count.loc[sample_set]
