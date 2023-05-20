@@ -28,7 +28,8 @@ from ..util import (
     simple_xarray_concat,
     true_runs,
 )
-from .base import DEFAULT, base_params
+from . import base_params
+from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata

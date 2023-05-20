@@ -5,7 +5,6 @@ import numpy as np
 import xarray as xr
 import zarr
 from numpydoc_decorator import doc
-from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
     DIM_ALLELE,
@@ -20,22 +19,11 @@ from ..util import (
     parse_multi_region,
     simple_xarray_concat,
 )
-from .base import DEFAULT, base_params
+from . import base_params, hap_params
+from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
-
-
-class hap_params:
-    """Parameter definitions for haplotype functions."""
-
-    analysis: TypeAlias = Annotated[
-        str,
-        """
-        Which haplotype phasing analysis to use. See the
-        `phasing_analysis_ids` property for available values.
-        """,
-    ]
 
 
 class AnophelesHapData(

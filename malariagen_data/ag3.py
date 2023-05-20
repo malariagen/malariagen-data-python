@@ -14,7 +14,7 @@ import zarr
 
 import malariagen_data  # used for .__version__
 
-from .anoph.base import base_params
+from .anoph import base_params
 from .anopheles import AnophelesDataResource, gplt_params
 from .util import (
     DIM_SAMPLE,

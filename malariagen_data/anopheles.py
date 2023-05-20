@@ -21,7 +21,9 @@ from numpydoc_decorator import doc
 from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
-from .anoph.base import DEFAULT, AnophelesBase, base_params
+from .anoph import base_params
+from .anoph.base import AnophelesBase
+from .anoph.base_params import DEFAULT
 from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params

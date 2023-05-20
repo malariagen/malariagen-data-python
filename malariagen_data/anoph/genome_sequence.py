@@ -11,7 +11,8 @@ from ..util import (
     init_zarr_store,
     parse_single_region,
 )
-from .base import AnophelesBase, base_params
+from . import base_params
+from .base import AnophelesBase
 
 
 class AnophelesGenomeSequenceData(AnophelesBase):
