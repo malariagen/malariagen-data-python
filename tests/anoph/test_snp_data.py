@@ -132,7 +132,7 @@ def test_open_snp_genotypes(fixture, api: AnophelesSnpData):
             contig_grp = root[contig]
 
             # Check calldata arrays.
-            n_sites = fixture.n_sites[contig]
+            n_sites = fixture.n_snp_sites[contig]
             assert "calldata" in contig_grp
             calldata = contig_grp["calldata"]
             assert "GT" in calldata

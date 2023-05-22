@@ -496,7 +496,7 @@ def simulate_site_annotations(path, genome):
     zarr.consolidate_metadata(path)
 
 
-def simulate_hap_sites(path, contigs, snp_sites, p_site, p_1):
+def simulate_hap_sites(path, contigs, snp_sites, p_site):
     root = zarr.open(path, mode="w")
 
     for contig in contigs:
@@ -504,7 +504,7 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site, p_1):
         variants = root.require_group(contig).require_group("variants")
 
         # Simulate POS.
-        snp_pos = snp_sites[contig]["POS"][:]
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
         loc_hap_sites = np.random.choice(
             [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
         )
@@ -513,12 +513,12 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site, p_1):
         variants.create_dataset(name="POS", data=pos)
 
         # Simulate REF.
-        snp_ref = snp_sites[contig]["REF"][:]
+        snp_ref = snp_sites[f"{contig}/variants/REF"][:]
         ref = snp_ref[loc_hap_sites]
         variants.create_dataset(name="REF", data=ref)
 
         # Simulate ALT.
-        snp_alt = snp_sites[contig]["ALT"][:]
+        snp_alt = snp_sites[f"{contig}/variants/ALT"][:]
         sim_alt_choice = np.random.choice(3, size=n_hap_sites)
         alt = np.take_along_axis(
             snp_alt[loc_hap_sites], indices=sim_alt_choice[:, None], axis=1
@@ -574,6 +574,7 @@ class AnophelesSimulator:
         self.init_site_filters()
         self.init_snp_genotypes()
         self.init_site_annotations()
+        self.init_hap_sites()
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -618,6 +619,9 @@ class AnophelesSimulator:
         pass
 
     def init_site_annotations(self):
+        pass
+
+    def init_hap_sites(self):
         pass
 
 
@@ -845,7 +849,7 @@ class Ag3Simulator(AnophelesSimulator):
 
     def init_snp_sites(self):
         path = self.bucket_path / "v3/snp_genotypes/all/sites/"
-        self.snp_sites, self.n_sites = simulate_snp_sites(
+        self.snp_sites, self.n_snp_sites = simulate_snp_sites(
             path=path, contigs=self.contigs, genome=self.genome
         )
 
@@ -857,7 +861,7 @@ class Ag3Simulator(AnophelesSimulator):
         p_pass = 0.71
         path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
         )
 
         # Simulate the arab mask.
@@ -865,7 +869,7 @@ class Ag3Simulator(AnophelesSimulator):
         p_pass = 0.70
         path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
         )
 
         # Simulate the gamb_colu_arab mask.
@@ -873,7 +877,7 @@ class Ag3Simulator(AnophelesSimulator):
         p_pass = 0.62
         path = self.bucket_path / "v3/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
         )
 
     def init_snp_genotypes(self):
@@ -913,7 +917,7 @@ class Ag3Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    n_sites=self.n_sites,
+                    n_sites=self.n_snp_sites,
                     p_allele=p_allele,
                     p_missing=p_missing,
                 )
@@ -924,33 +928,33 @@ class Ag3Simulator(AnophelesSimulator):
 
     def init_hap_sites(self):
         analysis = "arab"
-        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        path = self.bucket_path / "v3/snp_haplotypes/sites/" / analysis / "zarr"
         simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.09,
-            p_1=0.06,
+            # p_1=0.06,
         )
 
         analysis = "gamb_colu"
-        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        path = self.bucket_path / "v3/snp_haplotypes/sites/" / analysis / "zarr"
         simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.28,
-            p_1=0.01,
+            # p_1=0.01,
         )
 
         analysis = "gamb_colu_arab"
-        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        path = self.bucket_path / "v3/snp_haplotypes/sites/" / analysis / "zarr"
         simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.25,
-            p_1=0.008,
+            # p_1=0.008,
         )
 
 
@@ -1202,6 +1206,17 @@ class Af1Simulator(AnophelesSimulator):
     def init_site_annotations(self):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
         simulate_site_annotations(path=path, genome=self.genome)
+
+    def init_hap_sites(self):
+        analysis = "funestus"
+        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        simulate_hap_sites(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            p_site=np.random.random(),
+            # p_1=0.06,
+        )
 
 
 # For the following data fixtures we will use the "session" scope
