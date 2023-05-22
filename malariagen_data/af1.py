@@ -103,7 +103,7 @@ class Af1(AnophelesDataResource):
             aim_metadata_dtype=None,
             site_filters_analysis=site_filters_analysis,
             default_site_mask="funestus",
-            default_phasing_analysi="funestus",
+            default_phasing_analysis="funestus",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,
