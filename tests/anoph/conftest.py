@@ -346,7 +346,7 @@ def simulate_snp_sites(path, contigs, genome):
         n_sites[contig] = pos.shape[0]
 
     zarr.consolidate_metadata(path)
-    return n_sites
+    return root, n_sites
 
 
 def simulate_site_filters(path, contigs, p_pass, n_sites):
@@ -494,6 +494,39 @@ def simulate_site_annotations(path, genome):
         grp.create_dataset(name=contig, data=x)
 
     zarr.consolidate_metadata(path)
+
+
+def simulate_hap_sites(path, contigs, snp_sites, p_site, p_1):
+    root = zarr.open(path, mode="w")
+
+    for contig in contigs:
+        # Obtain variants group.
+        variants = root.require_group(contig).require_group("variants")
+
+        # Simulate POS.
+        snp_pos = snp_sites[contig]["POS"][:]
+        loc_hap_sites = np.random.choice(
+            [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
+        )
+        n_hap_sites = np.sum(loc_hap_sites)
+        pos = snp_pos[loc_hap_sites]
+        variants.create_dataset(name="POS", data=pos)
+
+        # Simulate REF.
+        snp_ref = snp_sites[contig]["REF"][:]
+        ref = snp_ref[loc_hap_sites]
+        variants.create_dataset(name="REF", data=ref)
+
+        # Simulate ALT.
+        snp_alt = snp_sites[contig]["ALT"][:]
+        sim_alt_choice = np.random.choice(3, size=n_hap_sites)
+        alt = np.take_along_axis(
+            snp_alt[loc_hap_sites], indices=sim_alt_choice[:, None], axis=1
+        )[:, 0]
+        variants.create_dataset(name="ALT", data=alt)
+
+    zarr.consolidate_metadata(path)
+    return root
 
 
 class AnophelesSimulator:
@@ -647,7 +680,8 @@ class Ag3Simulator(AnophelesSimulator):
                 "sample_set": [
                     "1177-VO-ML-LEHMANN-VMF00004",
                 ],
-                "sample_count": [randint(10, 70)],
+                # Make sure we have some gambiae, coluzzii and arabiensis.
+                "sample_count": [randint(20, 70)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -811,7 +845,7 @@ class Ag3Simulator(AnophelesSimulator):
 
     def init_snp_sites(self):
         path = self.bucket_path / "v3/snp_genotypes/all/sites/"
-        self.n_sites = simulate_snp_sites(
+        self.snp_sites, self.n_sites = simulate_snp_sites(
             path=path, contigs=self.contigs, genome=self.genome
         )
 
@@ -887,6 +921,37 @@ class Ag3Simulator(AnophelesSimulator):
     def init_site_annotations(self):
         path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
         simulate_site_annotations(path=path, genome=self.genome)
+
+    def init_hap_sites(self):
+        analysis = "arab"
+        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        simulate_hap_sites(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            p_site=0.09,
+            p_1=0.06,
+        )
+
+        analysis = "gamb_colu"
+        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        simulate_hap_sites(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            p_site=0.28,
+            p_1=0.01,
+        )
+
+        analysis = "gamb_colu_arab"
+        path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
+        simulate_hap_sites(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            p_site=0.25,
+            p_1=0.008,
+        )
 
 
 class Af1Simulator(AnophelesSimulator):
@@ -1080,7 +1145,7 @@ class Af1Simulator(AnophelesSimulator):
 
     def init_snp_sites(self):
         path = self.bucket_path / "v1.0/snp_genotypes/all/sites/"
-        self.n_sites = simulate_snp_sites(
+        self.snp_sites, self.n_snp_sites = simulate_snp_sites(
             path=path, contigs=self.contigs, genome=self.genome
         )
 
@@ -1092,7 +1157,7 @@ class Af1Simulator(AnophelesSimulator):
         p_pass = 0.59
         path = self.bucket_path / "v1.0/site_filters" / analysis / mask
         simulate_site_filters(
-            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_sites
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
         )
 
     def init_snp_genotypes(self):
@@ -1129,7 +1194,7 @@ class Af1Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    n_sites=self.n_sites,
+                    n_sites=self.n_snp_sites,
                     p_allele=p_allele,
                     p_missing=p_missing,
                 )
