@@ -17,16 +17,6 @@ zoom: TypeAlias = Annotated[int, "Initial zoom level."]
 
 zoom_default: zoom = 3
 
-basemap: TypeAlias = Annotated[
-    Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
-    """
-    Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
-    basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
-    """,
-]
-
-basemap_default: basemap = "mapnik"
-
 basemap_abbrevs = {
     "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
     "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
@@ -39,6 +29,16 @@ basemap_abbrevs = {
     "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
     "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
 }
+
+basemap: TypeAlias = Annotated[
+    Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
+    f"""
+    Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
+    basemaps, available values are {list(basemap_abbrevs.keys())}.
+    """,
+]
+
+basemap_default: basemap = "mapnik"
 
 height: TypeAlias = Annotated[
     Union[int, str], "Height of the map in pixels (px) or other units."
