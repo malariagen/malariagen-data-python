@@ -127,11 +127,11 @@ def test_open_snp_genotypes(fixture, api: AnophelesSnpData):
         assert samples.shape[0] == n_samples
         assert samples.dtype.kind == "S"
 
+        # Check calldata arrays.
         for contig in api.contigs:
             assert contig in root
             contig_grp = root[contig]
 
-            # Check calldata arrays.
             n_sites = fixture.n_snp_sites[contig]
             assert "calldata" in contig_grp
             calldata = contig_grp["calldata"]

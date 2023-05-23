@@ -69,32 +69,6 @@ class AnophelesHapData(
 
     @check_types
     @doc(
-        summary="Open haplotypes zarr.",
-        returns="Zarr hierarchy.",
-    )
-    def open_haplotypes(
-        self,
-        sample_set: base_params.sample_set,
-        analysis: hap_params.analysis = DEFAULT,
-    ) -> Optional[zarr.hierarchy.Group]:
-        analysis = self._prep_phasing_analysis_param(analysis=analysis)
-        try:
-            return self._cache_haplotypes[(sample_set, analysis)]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
-            # Some sample sets have no data for a given analysis, handle this.
-            try:
-                root = zarr.open_consolidated(store=store)
-            except FileNotFoundError:
-                root = None
-            self._cache_haplotypes[(sample_set, analysis)] = root
-        return root
-
-    @check_types
-    @doc(
         summary="Open haplotype sites zarr.",
         returns="Zarr hierarchy.",
     )
@@ -118,6 +92,32 @@ class AnophelesHapData(
         arr = sites[f"{contig}/variants/{field}"]
         arr = da_from_zarr(arr, inline_array=inline_array, chunks=chunks)
         return arr
+
+    @check_types
+    @doc(
+        summary="Open haplotypes zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_haplotypes(
+        self,
+        sample_set: base_params.sample_set,
+        analysis: hap_params.analysis = DEFAULT,
+    ) -> Optional[zarr.hierarchy.Group]:
+        analysis = self._prep_phasing_analysis_param(analysis=analysis)
+        try:
+            return self._cache_haplotypes[(sample_set, analysis)]
+        except KeyError:
+            release = self.lookup_release(sample_set=sample_set)
+            release_path = self._release_to_path(release)
+            path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
+            store = init_zarr_store(fs=self._fs, path=path)
+            # Some sample sets have no data for a given analysis, handle this.
+            try:
+                root = zarr.open_consolidated(store=store)
+            except FileNotFoundError:
+                root = None
+            self._cache_haplotypes[(sample_set, analysis)] = root
+        return root
 
     def _haplotypes_for_contig(
         self, *, contig, sample_set, analysis, inline_array, chunks

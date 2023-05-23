@@ -497,6 +497,7 @@ def simulate_site_annotations(path, genome):
 
 
 def simulate_hap_sites(path, contigs, snp_sites, p_site):
+    n_sites = dict()
     root = zarr.open(path, mode="w")
 
     for contig in contigs:
@@ -508,7 +509,6 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
         loc_hap_sites = np.random.choice(
             [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
         )
-        n_hap_sites = np.sum(loc_hap_sites)
         pos = snp_pos[loc_hap_sites]
         variants.create_dataset(name="POS", data=pos)
 
@@ -519,14 +519,16 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
 
         # Simulate ALT.
         snp_alt = snp_sites[f"{contig}/variants/ALT"][:]
-        sim_alt_choice = np.random.choice(3, size=n_hap_sites)
+        sim_alt_choice = np.random.choice(3, size=pos.shape[0])
         alt = np.take_along_axis(
             snp_alt[loc_hap_sites], indices=sim_alt_choice[:, None], axis=1
         )[:, 0]
         variants.create_dataset(name="ALT", data=alt)
 
+        n_sites[contig] = pos.shape[0]
+
     zarr.consolidate_metadata(path)
-    return root
+    return root, n_sites
 
 
 class AnophelesSimulator:
@@ -575,6 +577,7 @@ class AnophelesSimulator:
         self.init_snp_genotypes()
         self.init_site_annotations()
         self.init_hap_sites()
+        self.init_haplotypes()
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -622,6 +625,9 @@ class AnophelesSimulator:
         pass
 
     def init_hap_sites(self):
+        pass
+
+    def init_haplotypes(self):
         pass
 
 
@@ -837,14 +843,10 @@ class Ag3Simulator(AnophelesSimulator):
     def init_metadata(self):
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-BF-A")
-        # Simulate situation where AIM and cohorts metadata are missing,
-        # do we correctly fill?
         self.write_metadata(
             release="3.1",
             release_path="v3.1",
             sample_set="1177-VO-ML-LEHMANN-VMF00004",
-            aim=False,
-            cohorts=False,
         )
 
     def init_snp_sites(self):
@@ -927,35 +929,149 @@ class Ag3Simulator(AnophelesSimulator):
         simulate_site_annotations(path=path, genome=self.genome)
 
     def init_hap_sites(self):
+        self.hap_sites = dict()
+        self.n_hap_sites = dict()
         analysis = "arab"
         path = self.bucket_path / "v3/snp_haplotypes/sites/" / analysis / "zarr"
-        simulate_hap_sites(
+        self.hap_sites[analysis], self.n_hap_sites[analysis] = simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.09,
-            # p_1=0.06,
         )
 
         analysis = "gamb_colu"
         path = self.bucket_path / "v3/snp_haplotypes/sites/" / analysis / "zarr"
-        simulate_hap_sites(
+        self.hap_sites[analysis], self.n_hap_sites[analysis] = simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.28,
-            # p_1=0.01,
         )
 
         analysis = "gamb_colu_arab"
         path = self.bucket_path / "v3/snp_haplotypes/sites/" / analysis / "zarr"
-        simulate_hap_sites(
+        self.hap_sites[analysis], self.n_hap_sites[analysis] = simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=0.25,
-            # p_1=0.008,
         )
+
+    def init_haplotypes(self):
+        self.phasing_samples = dict()
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+
+                # Set up access to AIM metadata, to figure out which samples are in
+                # which analysis.
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "species_calls_aim_20220528"
+                    / sample_set
+                    / "samples.species_aim.csv"
+                )
+                df_aim = pd.read_csv(metadata_path)
+
+                # Simulate haplotypes for the gamb_colu_arab analysis.
+                analysis = "gamb_colu_arab"
+                p_1 = 0.008
+                samples = df_aim["sample_id"].values
+                self.phasing_samples[sample_set, analysis] = samples
+                n_samples = len(samples)
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "snp_haplotypes"
+                    / sample_set
+                    / analysis
+                    / "zarr"
+                )
+                root = zarr.open(zarr_path, mode="w")
+                root.create_dataset(name="samples", data=samples, dtype=str)
+                for contig in self.contigs:
+                    n_sites = self.n_hap_sites[analysis][contig]
+                    gt = np.random.choice(
+                        np.array([0, 1], dtype="i1"),
+                        size=(n_sites, n_samples, 2),
+                        replace=True,
+                        p=[1 - p_1, p_1],
+                    )
+                    calldata = root.require_group(contig).require_group("calldata")
+                    calldata.create_dataset(name="GT", data=gt)
+                zarr.consolidate_metadata(zarr_path)
+
+                # Simulate haplotypes for the arab analysis.
+                analysis = "arab"
+                p_1 = 0.06
+                samples = df_aim.query("aim_species == 'arabiensis'")[
+                    "sample_id"
+                ].values
+                self.phasing_samples[sample_set, analysis] = samples
+                n_samples = len(samples)
+                if n_samples > 0:
+                    zarr_path = (
+                        self.bucket_path
+                        / release_path
+                        / "snp_haplotypes"
+                        / sample_set
+                        / analysis
+                        / "zarr"
+                    )
+                    root = zarr.open(zarr_path, mode="w")
+                    root.create_dataset(name="samples", data=samples, dtype=str)
+                    for contig in self.contigs:
+                        n_sites = self.n_hap_sites[analysis][contig]
+                        gt = np.random.choice(
+                            np.array([0, 1], dtype="i1"),
+                            size=(n_sites, n_samples, 2),
+                            replace=True,
+                            p=[1 - p_1, p_1],
+                        )
+                        calldata = root.require_group(contig).require_group("calldata")
+                        calldata.create_dataset(name="GT", data=gt)
+                    zarr.consolidate_metadata(zarr_path)
+
+                # Simulate haplotypes for the gamb_colu analysis.
+                analysis = "gamb_colu"
+                p_1 = 0.01
+                samples = df_aim.query(
+                    "aim_species not in ['arabiensis', 'intermediate_gambcolu_arabiensis']"
+                )["sample_id"].values
+                self.phasing_samples[sample_set, analysis] = samples
+                n_samples = len(samples)
+                if n_samples > 0:
+                    zarr_path = (
+                        self.bucket_path
+                        / release_path
+                        / "snp_haplotypes"
+                        / sample_set
+                        / analysis
+                        / "zarr"
+                    )
+                    root = zarr.open(zarr_path, mode="w")
+                    root.create_dataset(name="samples", data=samples, dtype=str)
+                    for contig in self.contigs:
+                        n_sites = self.n_hap_sites[analysis][contig]
+                        gt = np.random.choice(
+                            np.array([0, 1], dtype="i1"),
+                            size=(n_sites, n_samples, 2),
+                            replace=True,
+                            p=[1 - p_1, p_1],
+                        )
+                        calldata = root.require_group(contig).require_group("calldata")
+                        calldata.create_dataset(name="GT", data=gt)
+                    zarr.consolidate_metadata(zarr_path)
 
 
 class Af1Simulator(AnophelesSimulator):
@@ -1208,15 +1324,66 @@ class Af1Simulator(AnophelesSimulator):
         simulate_site_annotations(path=path, genome=self.genome)
 
     def init_hap_sites(self):
+        self.hap_sites = dict()
+        self.n_hap_sites = dict()
         analysis = "funestus"
         path = self.bucket_path / "v1.0/snp_haplotypes/sites/" / analysis / "zarr"
-        simulate_hap_sites(
+        self.hap_sites[analysis], self.n_hap_sites[analysis] = simulate_hap_sites(
             path=path,
             contigs=self.contigs,
             snp_sites=self.snp_sites,
             p_site=np.random.random(),
-            # p_1=0.06,
         )
+
+    def init_haplotypes(self):
+        self.phasing_samples = dict()
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+
+                # Access sample metadata to find samples.
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+                df_samples = pd.read_csv(metadata_path)
+                samples = df_samples["sample_id"].values
+
+                # Simulate haplotypes.
+                analysis = "funestus"
+                p_1 = np.random.random()
+                samples = df_samples["sample_id"].values
+                self.phasing_samples[sample_set, analysis] = samples
+                n_samples = len(samples)
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "snp_haplotypes"
+                    / sample_set
+                    / analysis
+                    / "zarr"
+                )
+                root = zarr.open(zarr_path, mode="w")
+                root.create_dataset(name="samples", data=samples, dtype=str)
+                for contig in self.contigs:
+                    n_sites = self.n_hap_sites[analysis][contig]
+                    gt = np.random.choice(
+                        np.array([0, 1], dtype="i1"),
+                        size=(n_sites, n_samples, 2),
+                        replace=True,
+                        p=[1 - p_1, p_1],
+                    )
+                    calldata = root.require_group(contig).require_group("calldata")
+                    calldata.create_dataset(name="GT", data=gt)
+                zarr.consolidate_metadata(zarr_path)
 
 
 # For the following data fixtures we will use the "session" scope

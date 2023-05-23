@@ -89,3 +89,44 @@ def test_open_haplotype_sites(fixture, api: AnophelesHapData):
     for analysis in api.phasing_analysis_ids:
         root = api.open_haplotype_sites(analysis=analysis)
         _check_haplotype_sites(root, api)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_open_haplotypes(fixture, api: AnophelesHapData):
+    for rec in api.sample_sets().itertuples():
+        sample_set = rec.sample_set
+        for analysis in api.phasing_analysis_ids:
+            # How many samples do we expect?
+            expected_samples = fixture.phasing_samples[sample_set, analysis]
+
+            # How many sites do we expect?
+            expected_n_sites = fixture.n_hap_sites[analysis]
+
+            # Access haplotype data.
+            root = api.open_haplotypes(sample_set=sample_set, analysis=analysis)
+            if len(expected_samples) == 0:
+                assert root is None
+            else:
+                assert isinstance(root, zarr.hierarchy.Group)
+
+                # Check samples array.
+                assert "samples" in root
+                samples = root["samples"][:]
+                assert samples.ndim == 1
+                assert samples.dtype.kind == "O"
+                assert samples.shape[0] == len(expected_samples)
+
+                # Check calldata arrays.
+                for contig in api.contigs:
+                    assert contig in root
+                    contig_grp = root[contig]
+
+                    assert "calldata" in contig_grp
+                    calldata = contig_grp["calldata"]
+                    assert "GT" in calldata
+                    gt = calldata["GT"]
+                    assert gt.ndim == 3
+                    assert gt.dtype == "i1"
+                    assert gt.shape[0] == expected_n_sites[contig]
+                    assert gt.shape[1] == len(expected_samples)
+                    assert gt.shape[2] == 2
