@@ -8,7 +8,6 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_URL = "gs://vo_afun_release/"
-SITE_ANNOTATIONS_ZARR_PATH = "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr"
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
@@ -71,7 +70,6 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
