@@ -380,11 +380,11 @@ def _handle_region_coords(resource, region):
         if contig not in _valid_contigs(resource):
             raise ValueError(f"Contig {contig} does not exist in the dataset.")
         elif (
-            start < 0
-            or end <= start
+            start < 1
+            or end < start
             or end > resource.genome_sequence(region=contig).shape[0]
         ):
-            raise ValueError("Provided genomic coordinates are not valid.")
+            raise ValueError(f"Provided genomic region {region!r} in invalid. ")
 
         return Region(contig, start, end)
 

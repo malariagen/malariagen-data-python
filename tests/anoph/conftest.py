@@ -672,7 +672,7 @@ class Ag3Simulator(AnophelesSimulator):
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [randint(10, 60), randint(10, 50)],
+                "sample_count": [randint(10, 50), randint(10, 40)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -691,7 +691,7 @@ class Ag3Simulator(AnophelesSimulator):
                     "1177-VO-ML-LEHMANN-VMF00004",
                 ],
                 # Make sure we have some gambiae, coluzzii and arabiensis.
-                "sample_count": [randint(20, 70)],
+                "sample_count": [randint(20, 60)],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -702,7 +702,7 @@ class Ag3Simulator(AnophelesSimulator):
         # but with much smaller contigs. The data are stored
         # using zarr as with the real data releases.
 
-        # Use real base composition.
+        # Use real AgamP4 base composition.
         base_composition = {
             b"a": 0.042154199245128525,
             b"c": 0.027760739796444212,
@@ -719,8 +719,8 @@ class Ag3Simulator(AnophelesSimulator):
         self.genome = simulate_genome(
             path=path,
             contigs=self.contigs,
-            low=100_000,
-            high=150_000,
+            low=50_000,
+            high=100_000,
             base_composition=base_composition,
         )
         self.contig_sizes = {
@@ -1118,7 +1118,7 @@ class Af1Simulator(AnophelesSimulator):
                     "1230-VO-GA-CF-AYALA-VMF00045",
                     "1231-VO-MULTI-WONDJI-VMF00043",
                 ],
-                "sample_count": [36, 50, 32],
+                "sample_count": [26, 40, 32],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -1146,8 +1146,8 @@ class Af1Simulator(AnophelesSimulator):
         self.genome = simulate_genome(
             path=path,
             contigs=self.contigs,
-            low=100_000,
-            high=200_000,
+            low=80_000,
+            high=120_000,
             base_composition=base_composition,
         )
         self.contig_sizes = {
