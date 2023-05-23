@@ -1,4 +1,9 @@
+import random
+
+import dask.array as da
+import numpy as np
 import pytest
+import xarray as xr
 import zarr
 from pytest_cases import parametrize_with_cases
 
@@ -130,3 +135,353 @@ def test_open_haplotypes(fixture, api: AnophelesHapData):
                     assert gt.shape[0] == expected_n_sites[contig]
                     assert gt.shape[1] == len(expected_samples)
                     assert gt.shape[2] == 2
+
+
+def check_haplotypes(
+    fixture,
+    api: AnophelesHapData,
+    sample_sets,
+    region,
+    analysis,
+    sample_query=None,
+    cohort_size=None,
+    min_cohort_size=None,
+    max_cohort_size=None,
+):
+    # Set up test, figure out how many samples phased in the analysis.
+    sample_sets_prepped = api._prep_sample_sets_param(sample_sets=sample_sets)
+    samples_phased = np.concatenate(
+        [
+            fixture.phasing_samples[sample_set, analysis]
+            for sample_set in sample_sets_prepped
+        ]
+    )
+    n_samples_phased = len(samples_phased)
+
+    # Check if no samples phased in the analysis.
+    if n_samples_phased == 0:
+        with pytest.raises(ValueError):
+            ds = api.haplotypes(
+                region=region,
+                sample_sets=sample_sets,
+                analysis=analysis,
+                sample_query=sample_query,
+            )
+        return
+
+    # Handle sample query.
+    if sample_query is not None:
+        df_samples = api.sample_metadata(sample_sets=sample_sets)
+        df_samples = df_samples.set_index("sample_id")
+        df_samples_phased = df_samples.loc[samples_phased].reset_index()
+        df_samples_queried = df_samples_phased.query(sample_query)
+        samples_selected = df_samples_queried["sample_id"].values
+    else:
+        samples_selected = samples_phased
+    n_samples_selected = len(samples_selected)
+
+    # Check if no samples matching selection.
+    if n_samples_selected == 0:
+        with pytest.raises(ValueError):
+            ds = api.haplotypes(
+                region=region,
+                sample_sets=sample_sets,
+                analysis=analysis,
+                sample_query=sample_query,
+            )
+        return
+
+    # Check if not enough samples for requested cohort size.
+    if cohort_size and n_samples_selected < cohort_size:
+        with pytest.raises(ValueError):
+            ds = api.haplotypes(
+                region=region,
+                sample_sets=sample_sets,
+                analysis=analysis,
+                sample_query=sample_query,
+                cohort_size=cohort_size,
+            )
+        return
+
+    # Check if not enough samples for requested minimum cohort size.
+    if min_cohort_size and n_samples_selected < min_cohort_size:
+        with pytest.raises(ValueError):
+            ds = api.haplotypes(
+                region=region,
+                sample_sets=sample_sets,
+                analysis=analysis,
+                sample_query=sample_query,
+                min_cohort_size=min_cohort_size,
+            )
+        return
+
+    # Call function to be tested.
+    ds = api.haplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        analysis=analysis,
+        sample_query=sample_query,
+        cohort_size=cohort_size,
+        min_cohort_size=min_cohort_size,
+        max_cohort_size=max_cohort_size,
+    )
+
+    # Check return type.
+    assert isinstance(ds, xr.Dataset)
+
+    # Check variables.
+    expected_data_vars = {
+        "variant_allele",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # Check dimensions.
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # Check samples.
+    samples = ds["sample_id"].values
+    if cohort_size or max_cohort_size:
+        # N.B., there may have been some down-sampling.
+        selected_samples_set = set(samples_selected)
+        assert all([s in selected_samples_set for s in samples])
+    else:
+        assert set(samples) == set(samples_selected)
+
+    # Check dim lengths.
+    if cohort_size:
+        n_samples_expected = cohort_size
+    elif max_cohort_size:
+        n_samples_expected = min(n_samples_selected, max_cohort_size)
+    else:
+        n_samples_expected = n_samples_selected
+    n_samples = ds.dims["samples"]
+    assert n_samples == n_samples_expected
+    if min_cohort_size:
+        assert n_samples >= min_cohort_size
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 2
+
+    # Check shapes.
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, da.Array)
+
+        if f == "variant_allele":
+            assert x.ndim == 2
+            assert x.shape[1] == 2
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape[1] == n_samples_expected
+            assert x.shape[2] == 2
+
+    # Check attributes.
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == api.contigs
+
+    # Check can set up computations.
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+    d2 = ds["call_genotype"].sum(axis=(1, 2))
+    assert isinstance(d2, xr.DataArray)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_haplotypes_with_sample_sets_param(fixture, api: AnophelesHapData):
+    # Fixed parameters.
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+
+    # Parametrize sample_sets.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_releases = api.releases
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        random.sample(all_sample_sets, 2),
+        random.choice(all_releases),
+    ]
+
+    # Run tests.
+    for sample_sets in parametrize_sample_sets:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_haplotypes_with_region_param(fixture, api: AnophelesHapData):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    analysis = api.phasing_analysis_ids[0]
+
+    # Parametrize region.
+    contig = fixture.random_contig()
+    df_gff = api.genome_features(attributes=["ID"])
+    parametrize_region = [
+        contig,
+        fixture.random_region_str(),
+        [fixture.random_region_str(), fixture.random_region_str()],
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Run tests.
+    for region in parametrize_region:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_haplotypes_with_analysis_param(fixture, api: AnophelesHapData):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Parametrize analysis.
+    parametrize_analysis = api.phasing_analysis_ids
+
+    # Run tests.
+    for analysis in parametrize_analysis:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+        )
+
+
+def test_haplotypes_with_sample_query_param(
+    ag3_sim_fixture, ag3_sim_api: AnophelesHapData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+
+    # Parametrize analysis.
+    parametrize_query = ["sex_call == 'F'", "taxon == 'coluzzii'", "taxon == 'robot'"]
+
+    # Run tests.
+    for sample_query in parametrize_query:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+            sample_query=sample_query,
+        )
+
+
+def test_haplotypes_with_cohort_size_param(
+    ag3_sim_fixture, ag3_sim_api: AnophelesHapData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+
+    # Parametrize over cohort_size.
+    parametrize_cohort_size = [random.randint(1, 10), random.randint(10, 50), 1_000]
+    for cohort_size in parametrize_cohort_size:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+            sample_query=None,
+            cohort_size=cohort_size,
+        )
+
+
+def test_haplotypes_with_min_cohort_size_param(
+    ag3_sim_fixture, ag3_sim_api: AnophelesHapData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+
+    # Parametrize over min_cohort_size.
+    parametrize_min_cohort_size = [
+        random.randint(1, 10),
+        random.randint(10, 50),
+        1_000,
+    ]
+    for min_cohort_size in parametrize_min_cohort_size:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+            sample_query=None,
+            min_cohort_size=min_cohort_size,
+        )
+
+
+def test_haplotypes_with_max_cohort_size_param(
+    ag3_sim_fixture, ag3_sim_api: AnophelesHapData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+
+    # Parametrize over max_cohort_size.
+    parametrize_max_cohort_size = [
+        random.randint(1, 10),
+        random.randint(10, 50),
+        1_000,
+    ]
+    for max_cohort_size in parametrize_max_cohort_size:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+            sample_query=None,
+            max_cohort_size=max_cohort_size,
+        )

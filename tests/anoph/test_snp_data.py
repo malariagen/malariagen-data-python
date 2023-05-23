@@ -630,26 +630,23 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
     # Randomly fix some input parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    n_samples = len(api.sample_metadata(sample_sets=sample_sets))
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = 20
-    if n_samples < 20:
-        with pytest.raises(ValueError):
-            api.snp_calls(
-                sample_sets=sample_sets,
-                region=region,
-                cohort_size=cohort_size,
-            )
-    else:
-        ds = api.snp_calls(
+    cohort_size = random.randint(1, 10)
+    ds = api.snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.dims["samples"] == cohort_size
+    with pytest.raises(ValueError):
+        api.snp_calls(
             sample_sets=sample_sets,
             region=region,
-            cohort_size=cohort_size,
+            cohort_size=1_000,
         )
-        assert isinstance(ds, xr.Dataset)
-        assert ds.dims["samples"] == 20
 
 
 @pytest.mark.parametrize(

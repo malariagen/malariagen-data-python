@@ -122,37 +122,34 @@ class AnophelesHapData(
     def _haplotypes_for_contig(
         self, *, contig, sample_set, analysis, inline_array, chunks
     ):
-        debug = self._log.debug
-
-        debug("open zarr")
+        # Open haplotypes zarr.
         root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
-        sites = self.open_haplotype_sites(analysis=analysis)
 
-        debug("variant_position")
-        pos = sites[f"{contig}/variants/POS"]
-
-        # some sample sets have no data for a given analysis, handle this
-        # TODO consider returning a dataset with 0 length samples dimension instead, would
-        # probably simplify a lot of other logic
+        # Some sample sets have no data for a given analysis, handle this.
         if root is None:
             return None
+
+        # Open haplotype sites zarr.
+        sites = self.open_haplotype_sites(analysis=analysis)
 
         coords = dict()
         data_vars = dict()
 
+        # Set up variant_position.
+        pos = sites[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
             da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
 
-        debug("variant_contig")
+        # Set up variant_contig.
         contig_index = self.contigs.index(contig)
         coords["variant_contig"] = (
             [DIM_VARIANT],
             da.full_like(pos, fill_value=contig_index, dtype="u1"),
         )
 
-        debug("variant_allele")
+        # Set up variant_allele.
         ref = da_from_zarr(
             sites[f"{contig}/variants/REF"], inline_array=inline_array, chunks=chunks
         )
@@ -162,7 +159,7 @@ class AnophelesHapData(
         variant_allele = da.hstack([ref[:, None], alt[:, None]])
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
-        debug("call_genotype")
+        # Set up call_genotype.
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             da_from_zarr(
@@ -170,16 +167,16 @@ class AnophelesHapData(
             ),
         )
 
-        debug("sample arrays")
+        # Set up sample array.
         coords["sample_id"] = (
             [DIM_SAMPLE],
             da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
-        debug("set up attributes")
-        attrs = {"contigs": self.contigs}
+        # Set up attributes.
+        attrs = {"contigs": self.contigs, "analysis": analysis}
 
-        debug("create a dataset")
+        # Create a dataset.
         ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
         return ds
@@ -201,21 +198,20 @@ class AnophelesHapData(
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-    ) -> Optional[xr.Dataset]:
-        debug = self._log.debug
-
-        debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+    ) -> xr.Dataset:
+        # Normalise parameters.
+        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
         regions: List[Region] = parse_multi_region(self, region)
         del region
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
-        debug("build dataset")
+        # Build dataset.
         lx = []
         for r in regions:
             ly = []
 
-            for s in sample_sets:
+            for s in sample_sets_prepped:
                 y = self._haplotypes_for_contig(
                     contig=r.contig,
                     sample_set=s,
@@ -227,13 +223,13 @@ class AnophelesHapData(
                     ly.append(y)
 
             if len(ly) == 0:
-                debug("early out, no data for given sample sets and analysis")
-                return None
+                # Bail out, no data for given sample sets and analysis.
+                raise ValueError(f"No samples found for phasing analysis {analysis!r}")
 
-            debug("concatenate data from multiple sample sets")
+            # Concatenate data from multiple sample sets.
             x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
-            debug("handle region")
+            # Handle region.
             if r.start or r.end:
                 pos = x["variant_position"].values
                 loc_region = locate_region(r, pos)
@@ -241,43 +237,44 @@ class AnophelesHapData(
 
             lx.append(x)
 
-        debug("concatenate data from multiple regions")
+        # Concatenate data from multiple regions.
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
-        debug("handle sample query")
+        # Handle sample query.
         if sample_query is not None:
-            debug("load sample metadata")
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            # Load sample metadata.
+            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
 
-            debug("align sample metadata with haplotypes")
+            # Align sample metadata with haplotypes.
             phased_samples = ds["sample_id"].values.tolist()
             df_samples_phased = (
                 df_samples.set_index("sample_id").loc[phased_samples].reset_index()
             )
 
-            debug("apply the query")
+            # Apply the query.
             loc_samples = df_samples_phased.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+                # Bail out, no samples matching the query.
+                raise ValueError(
+                    f"No samples found for phasing analysis {analysis!r} and query {sample_query!r}"
+                )
             ds = ds.isel(samples=loc_samples)
 
-        debug("handle cohort size")
         if cohort_size is not None:
-            debug("handle cohort size")
-            # overrides min and max
+            # Handle cohort size - overrides min and max.
             min_cohort_size = cohort_size
             max_cohort_size = cohort_size
 
         if min_cohort_size is not None:
-            debug("handle min cohort size")
+            # Handle min cohort size.
             n_samples = ds.dims["samples"]
             if n_samples < min_cohort_size:
                 raise ValueError(
-                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
+                    f"Not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
                 )
 
         if max_cohort_size is not None:
-            debug("handle max cohort size")
+            # Handle max cohort size.
             n_samples = ds.dims["samples"]
             if n_samples > max_cohort_size:
                 rng = np.random.default_rng(seed=random_seed)
