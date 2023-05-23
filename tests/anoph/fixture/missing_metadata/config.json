@@ -1,0 +1,7 @@
+{
+    "PUBLIC_RELEASES": [
+        "3.0"
+    ],
+    "DEFAULT_AIM_ANALYSIS": "20220528",
+    "DEFAULT_COHORTS_ANALYSIS": "20230223"
+}
