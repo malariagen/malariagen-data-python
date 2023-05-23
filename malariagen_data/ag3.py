@@ -14,7 +14,7 @@ import zarr
 
 import malariagen_data  # used for .__version__
 
-from .anoph.base import base_params
+from .anoph import base_params
 from .anopheles import AnophelesDataResource, gplt_params
 from .util import (
     DIM_SAMPLE,
@@ -35,12 +35,8 @@ MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 GCS_URL = "gs://vo_agam_release/"
-SITE_ANNOTATIONS_ZARR_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
-)
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
-SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
@@ -107,9 +103,7 @@ class Ag3(AnophelesDataResource):
     """
 
     virtual_contigs = "2RL", "3RL"
-    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
-    _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -117,8 +111,6 @@ class Ag3(AnophelesDataResource):
     _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
-    phasing_analysis_ids = ("gamb_colu_arab", "gamb_colu", "arab")
-    _default_phasing_analysis = "gamb_colu_arab"
 
     def __init__(
         self,
@@ -150,6 +142,7 @@ class Ag3(AnophelesDataResource):
             },
             site_filters_analysis=site_filters_analysis,
             default_site_mask="gamb_colu_arab",
+            default_phasing_analysis="gamb_colu_arab",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,

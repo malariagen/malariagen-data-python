@@ -4,64 +4,11 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 import ipyleaflet
 import numpy as np
 import pandas as pd
-import xyzservices
 from numpydoc_decorator import doc
-from typing_extensions import Annotated, TypeAlias
 
 from ..util import check_types
-from .base import AnophelesBase, base_params
-
-
-class map_params:
-    center: TypeAlias = Annotated[
-        Tuple[int, int],
-        "Location to center the map.",
-    ]
-    center_default: center = (-2, 20)
-    zoom: TypeAlias = Annotated[int, "Initial zoom level."]
-    zoom_default: zoom = 3
-    basemap: TypeAlias = Annotated[
-        Union[str, Dict, ipyleaflet.TileLayer, xyzservices.lib.TileProvider],
-        """
-        Basemap from ipyleaflet or other TileLayer provider. Strings are abbreviations mapped to corresponding
-        basemaps, e.g. "mapnik" (case-insensitive) maps to TileProvider ipyleaflet.basemaps.OpenStreetMap.Mapnik.
-        """,
-    ]
-    basemap_default: basemap = "mapnik"
-    height: TypeAlias = Annotated[
-        Union[int, str], "Height of the map in pixels (px) or other units."
-    ]
-    height_default: height = 500
-    width: TypeAlias = Annotated[
-        Union[int, str], "Width of the map in pixels (px) or other units."
-    ]
-    width_default: width = "100%"
-
-
-def _get_basemap_abbrevs():
-    """Get the dict of basemap abbreviations.
-
-    Returns
-    -------
-    basemap_abbrevs : dict
-        A dictionary where each key is a basemap abbreviation string, e.g. "mapnik",
-        and each value is a corresponding TileProvider, e.g. `ipyleaflet.basemaps.OpenStreetMap.Mapnik`.
-    """
-    import ipyleaflet
-
-    basemap_abbrevs = {
-        "mapnik": ipyleaflet.basemaps.OpenStreetMap.Mapnik,
-        "natgeoworldmap": ipyleaflet.basemaps.Esri.NatGeoWorldMap,
-        "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
-        "positron": ipyleaflet.basemaps.CartoDB.Positron,
-        "satellite": ipyleaflet.basemaps.Gaode.Satellite,
-        "terrain": ipyleaflet.basemaps.Stamen.Terrain,
-        "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
-        "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
-        "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
-        "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,
-    }
-    return basemap_abbrevs
+from . import base_params, map_params
+from .base import AnophelesBase
 
 
 class AnophelesSampleMetadata(AnophelesBase):
@@ -509,10 +456,14 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
             if self._aim_analysis:
                 df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
-                df_samples = df_samples.merge(df_aim, on="sample_id", sort=False)
+                df_samples = df_samples.merge(
+                    df_aim, on="sample_id", sort=False, how="left"
+                )
             if self._cohorts_analysis:
                 df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
-                df_samples = df_samples.merge(df_cohorts, on="sample_id", sort=False)
+                df_samples = df_samples.merge(
+                    df_cohorts, on="sample_id", sort=False, how="left"
+                )
 
             # Store sample metadata in the cache.
             self._cache_sample_metadata[cache_key] = df_samples
@@ -644,16 +595,18 @@ class AnophelesSampleMetadata(AnophelesBase):
         )
 
         # Handle basemap.
-        basemap_providers_dict = _get_basemap_abbrevs()
+        basemap_abbrevs = map_params.basemap_abbrevs
 
         # Determine basemap_provider via basemap
         if isinstance(basemap, str):
             # Interpret string
             # Support case-insensitive basemap abbreviations
             basemap_str = basemap.lower()
-            if basemap_str not in basemap_providers_dict:
-                raise ValueError("Basemap abbreviation not recognised:", basemap_str)
-            basemap_provider = basemap_providers_dict[basemap_str]
+            if basemap_str not in basemap_abbrevs:
+                raise ValueError(
+                    f"Basemap abbreviation not recognised: {basemap_str!r}; try one of {list(basemap_abbrevs.keys())}"
+                )
+            basemap_provider = basemap_abbrevs[basemap_str]
         elif basemap is None:
             # Default.
             basemap_provider = ipyleaflet.basemaps.Esri.WorldImagery

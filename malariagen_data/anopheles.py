@@ -17,573 +17,47 @@ import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
 import xarray as xr
-import zarr
 from numpydoc_decorator import doc
-from typing_extensions import Annotated, Literal, TypeAlias
 
 from . import veff
-from .anoph.base import DEFAULT, AnophelesBase, base_params
-from .anoph.genome_features import AnophelesGenomeFeaturesData, gplt_params
+from .anoph import (
+    base_params,
+    dash_params,
+    frq_params,
+    fst_params,
+    g123_params,
+    gplt_params,
+    h12_params,
+    hapclust_params,
+    hapnet_params,
+    het_params,
+    ihs_params,
+    map_params,
+    pca_params,
+    plotly_params,
+)
+from .anoph.base import AnophelesBase
+from .anoph.base_params import DEFAULT
+from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
-from .anoph.sample_metadata import AnophelesSampleMetadata, map_params
+from .anoph.hap_data import AnophelesHapData, hap_params
+from .anoph.sample_metadata import AnophelesSampleMetadata
 from .anoph.snp_data import AnophelesSnpData
 from .mjn import median_joining_network, mjn_graph
 from .util import (
-    DIM_ALLELE,
-    DIM_PLOIDY,
-    DIM_SAMPLE,
-    DIM_VARIANT,
     CacheMiss,
     Region,
     check_types,
-    da_from_zarr,
-    init_zarr_store,
     jackknife_ci,
     jitter,
     locate_region,
-    parse_multi_region,
     parse_single_region,
     plotly_discrete_legend,
-    simple_xarray_concat,
 )
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
-
-
-class hap_params:
-    """Parameter definitions for haplotype functions."""
-
-    analysis: TypeAlias = Annotated[
-        str,
-        """
-        Which haplotype phasing analysis to use. See the
-        `phasing_analysis_ids` property for available values.
-        """,
-    ]
-
-
-class h12_params:
-    """Parameter definitions for H12 analysis functions."""
-
-    window_sizes: TypeAlias = Annotated[
-        Tuple[int, ...],
-        """
-        The sizes of windows (number of SNPs) used to calculate statistics within.
-        """,
-    ]
-    window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
-    window_size: TypeAlias = Annotated[
-        int,
-        """
-        The size of windows (number of SNPs) used to calculate statistics within.
-        """,
-    ]
-    cohort_size_default: Optional[base_params.cohort_size] = None
-    min_cohort_size_default: base_params.min_cohort_size = 15
-    max_cohort_size_default: base_params.max_cohort_size = 50
-
-
-class g123_params:
-    """Parameter definitions for G123 analysis functions."""
-
-    sites: TypeAlias = Annotated[
-        str,
-        """
-        Which sites to use: 'all' includes all sites that pass
-        site filters; 'segregating' includes only segregating sites for
-        the given cohort; or a phasing analysis identifier can be
-        provided to use sites from the haplotype data, which is an
-        approximation to finding segregating sites in the entire Ag3.0
-        (gambiae complex) or Af1.0 (funestus) cohort.
-        """,
-    ]
-    window_sizes: TypeAlias = Annotated[
-        Tuple[int, ...],
-        """
-        The sizes of windows (number of sites) used to calculate statistics within.
-        """,
-    ]
-    window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
-    window_size: TypeAlias = Annotated[
-        int,
-        """
-        The size of windows (number of sites) used to calculate statistics within.
-        """,
-    ]
-    min_cohort_size_default: base_params.min_cohort_size = 20
-    max_cohort_size_default: base_params.max_cohort_size = 50
-
-
-class fst_params:
-    """Parameter definitions for Fst functions."""
-
-    # N.B., window size can mean different things for different functions
-    window_size: TypeAlias = Annotated[
-        int,
-        "The size of windows (number of sites) used to calculate statistics within.",
-    ]
-    cohort_size_default: Optional[base_params.cohort_size] = None
-    min_cohort_size_default: base_params.min_cohort_size = 15
-    max_cohort_size_default: base_params.max_cohort_size = 50
-
-
-class frq_params:
-    """Parameter definitions for functions computing and plotting allele frequencies."""
-
-    drop_invariant: TypeAlias = Annotated[
-        bool,
-        """
-        If True, drop variants not observed in the selected samples.
-        """,
-    ]
-    effects: TypeAlias = Annotated[bool, "If True, add SNP effect annotations."]
-    area_by: TypeAlias = Annotated[
-        str,
-        """
-        Column name in the sample metadata to use to group samples spatially. E.g.,
-        use "admin1_iso" or "admin1_name" to group by level 1 administrative
-        divisions, or use "admin2_name" to group by level 2 administrative
-        divisions.
-        """,
-    ]
-    period_by: TypeAlias = Annotated[
-        Literal["year", "quarter", "month"],
-        "Length of time to group samples temporally.",
-    ]
-    variant_query: TypeAlias = Annotated[
-        str,
-        "A pandas query to be evaluated against variants.",
-    ]
-    nobs_mode: TypeAlias = Annotated[
-        Literal["called", "fixed"],
-        """
-        Method for calculating the denominator when computing frequencies. If
-        "called" then use the number of called alleles, i.e., number of samples
-        with non-missing genotype calls multiplied by 2. If "fixed" then use the
-        number of samples multiplied by 2.
-        """,
-    ]
-    nobs_mode_default: nobs_mode = "called"
-    ci_method: TypeAlias = Annotated[
-        Literal["normal", "agresti_coull", "beta", "wilson", "binom_test"],
-        """
-        Method to use for computing confidence intervals, passed through to
-        `statsmodels.stats.proportion.proportion_confint`.
-        """,
-    ]
-    ci_method_default: ci_method = "wilson"
-    ds_frequencies_advanced: TypeAlias = Annotated[
-        xr.Dataset,
-        """
-        A dataset of variant frequencies, such as returned by
-        `snp_allele_frequencies_advanced()`,
-        `aa_allele_frequencies_advanced()` or
-        `gene_cnv_frequencies_advanced()`.
-        """,
-    ]
-
-
-class het_params:
-    """Parameters for functions related to heterozygosity and runs of homozygosity."""
-
-    single_sample: TypeAlias = Annotated[
-        Union[str, int],
-        "Sample identifier or index within sample set.",
-    ]
-    sample: TypeAlias = Annotated[
-        Union[single_sample, List[single_sample], Tuple[single_sample, ...]],
-        "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
-    ]
-    window_size: TypeAlias = Annotated[
-        int,
-        "Number of sites per window.",
-    ]
-    window_size_default: window_size = 20_000
-    phet_roh: TypeAlias = Annotated[
-        float,
-        "Probability of observing a heterozygote in a ROH.",
-    ]
-    phet_roh_default: phet_roh = 0.001
-    phet_nonroh: TypeAlias = Annotated[
-        Tuple[float, ...],
-        "One or more probabilities of observing a heterozygote outside a ROH.",
-    ]
-    phet_nonroh_default: phet_nonroh = (0.003, 0.01)
-    transition: TypeAlias = Annotated[
-        float,
-        """
-        Probability of moving between states. A larger window size may call
-        for a larger transitional probability.
-        """,
-    ]
-    transition_default: transition = 0.001
-    y_max: TypeAlias = Annotated[
-        float,
-        "Y axis limit.",
-    ]
-    y_max_default: y_max = 0.03
-    circle_kwargs: TypeAlias = Annotated[
-        Mapping,
-        "Passed through to bokeh circle() function.",
-    ]
-    df_roh: TypeAlias = Annotated[
-        pd.DataFrame,
-        """
-        A DataFrame where each row provides data about a single run of
-        homozygosity.
-        """,
-    ]
-    heterozygosity_height: TypeAlias = Annotated[
-        int,
-        "Height in pixels (px) of heterozygosity track.",
-    ]
-    roh_height: TypeAlias = Annotated[
-        int,
-        "Height in pixels (px) of runs of homozygosity track.",
-    ]
-
-
-class pca_params:
-    """Parameters for PCA functions."""
-
-    n_snps: TypeAlias = Annotated[
-        int,
-        """
-        The desired number of SNPs to use when running the analysis.
-        SNPs will be evenly thinned to approximately this number.
-        """,
-    ]
-    thin_offset: TypeAlias = Annotated[
-        int,
-        """
-        Starting index for SNP thinning. Change this to repeat the analysis
-        using a different set of SNPs.
-        """,
-    ]
-    thin_offset_default: thin_offset = 0
-    min_minor_ac: TypeAlias = Annotated[
-        int,
-        """
-        The minimum minor allele count. SNPs with a minor allele count
-        below this value will be excluded prior to thinning.
-        """,
-    ]
-    min_minor_ac_default: min_minor_ac = 2
-    max_missing_an: TypeAlias = Annotated[
-        int,
-        """
-        The maximum number of missing allele calls to accept. SNPs with
-        more than this value will be excluded prior to thinning. Set to 0
-        (default) to require no missing calls.
-        """,
-    ]
-    max_missing_an_default = 0
-    n_components: TypeAlias = Annotated[
-        int,
-        "Number of components to return.",
-    ]
-    n_components_default: n_components = 20
-    df_pca: TypeAlias = Annotated[
-        pd.DataFrame,
-        """
-        A dataframe of sample metadata, with columns "PC1", "PC2", "PC3",
-        etc., added.
-        """,
-    ]
-    evr: TypeAlias = Annotated[
-        np.ndarray,
-        "An array of explained variance ratios, one per component.",
-    ]
-
-
-class plotly_params:
-    """Parameters for any plotting functions using plotly."""
-
-    # N.B., most of these parameters are always able to take None
-    # and so we set as Optional here, rather than having to repeat
-    # that for each function doc.
-
-    x_label: TypeAlias = Annotated[
-        Optional[str],
-        "X axis label.",
-    ]
-    y_label: TypeAlias = Annotated[
-        Optional[str],
-        "Y axis label.",
-    ]
-    width: TypeAlias = Annotated[
-        Optional[int],
-        "Plot width in pixels (px).",
-    ]
-    height: TypeAlias = Annotated[
-        Optional[int],
-        "Plot height in pixels (px).",
-    ]
-    aspect: TypeAlias = Annotated[
-        Optional[Literal["equal", "auto"]],
-        "Aspect ratio, see also https://plotly.com/python-api-reference/generated/plotly.express.imshow",
-    ]
-    title: TypeAlias = Annotated[
-        Optional[Union[str, bool]],
-        """
-        If True, attempt to use metadata from input dataset as a plot title.
-        Otherwise, use supplied value as a title.
-        """,
-    ]
-    text_auto: TypeAlias = Annotated[
-        Union[bool, str],
-        """
-        If True or a string, single-channel img values will be displayed as text. A
-        string like '.2f' will be interpreted as a texttemplate numeric formatting
-        directive.
-        """,
-    ]
-    color_continuous_scale: TypeAlias = Annotated[
-        Optional[Union[str, List[str]]],
-        """
-        Colormap used to map scalar data to colors (for a 2D image). This
-        parameter is not used for RGB or RGBA images. If a string is provided,
-        it should be the name of a known color scale, and if a list is provided,
-        it should be a list of CSS-compatible colors.
-        """,
-    ]
-    colorbar: TypeAlias = Annotated[
-        bool,
-        "If False, do not display a color bar.",
-    ]
-    x: TypeAlias = Annotated[
-        str,
-        "Name of variable to plot on the X axis.",
-    ]
-    y: TypeAlias = Annotated[
-        str,
-        "Name of variable to plot on the Y axis.",
-    ]
-    z: TypeAlias = Annotated[
-        str,
-        "Name of variable to plot on the Z axis.",
-    ]
-    color: TypeAlias = Annotated[
-        Optional[str],
-        "Name of variable to use to color the markers.",
-    ]
-    symbol: TypeAlias = Annotated[
-        Optional[str],
-        "Name of the variable to use to choose marker symbols.",
-    ]
-    jitter_frac: TypeAlias = Annotated[
-        Optional[float],
-        "Randomly jitter points by this fraction of their range.",
-    ]
-    marker_size: TypeAlias = Annotated[
-        int,
-        "Marker size.",
-    ]
-    template: TypeAlias = Annotated[
-        Optional[
-            Literal[
-                "ggplot2",
-                "seaborn",
-                "simple_white",
-                "plotly",
-                "plotly_white",
-                "plotly_dark",
-                "presentation",
-                "xgridoff",
-                "ygridoff",
-                "gridon",
-                "none",
-            ]
-        ],
-        "The figure template name (must be a key in plotly.io.templates).",
-    ]
-    show: TypeAlias = Annotated[
-        bool,
-        "If true, show the plot. If False, do not show the plot, but return the figure.",
-    ]
-    renderer: TypeAlias = Annotated[Optional[str], "The name of the renderer to use."]
-    figure: TypeAlias = Annotated[
-        Optional[go.Figure], "A plotly figure (only returned if show=False)."
-    ]
-
-
-class ihs_params:
-    window_size: TypeAlias = Annotated[
-        int,
-        """
-        The size of window in number of SNPs used to summarise iHS over.
-        If None, per-variant iHS values are returned.
-        """,
-    ]
-    window_size_default: window_size = 200
-    min_cohort_size_default: base_params.min_cohort_size = 15
-    max_cohort_size_default: base_params.max_cohort_size = 50
-    percentiles: TypeAlias = Annotated[
-        Union[int, Tuple[int, ...]],
-        """
-        If window size is specified, this returns the iHS percentiles
-        for each window.
-        """,
-    ]
-    percentiles_default: percentiles = (50, 75, 100)
-    standardize: TypeAlias = Annotated[
-        bool, "If True, standardize iHS values by alternate allele counts."
-    ]
-    standardization_bins: TypeAlias = Annotated[
-        Tuple[float, ...],
-        "If provided, use these allele count bins to standardize iHS values.",
-    ]
-    standardization_n_bins: TypeAlias = Annotated[
-        int,
-        """
-        Number of allele count bins to use for standardization.
-        Overrides standardization_bins.
-        """,
-    ]
-    standardization_n_bins_default: standardization_n_bins = 20
-    standardization_diagnostics: TypeAlias = Annotated[
-        bool, "If True, plot some diagnostics about the standardization."
-    ]
-    filter_min_maf: TypeAlias = Annotated[
-        float,
-        """
-        Minimum minor allele frequency to use for filtering prior to passing
-        haplotypes to allel.ihs function
-        """,
-    ]
-    filter_min_maf_default: filter_min_maf = 0.05
-    compute_min_maf: TypeAlias = Annotated[
-        float,
-        """
-        Do not compute integrated haplotype homozygosity for variants with
-        minor allele frequency below this threshold.
-        """,
-    ]
-    compute_min_maf_default: compute_min_maf = 0.05
-    min_ehh: TypeAlias = Annotated[
-        float,
-        """
-        Minimum EHH beyond which to truncate integrated haplotype homozygosity
-        calculation.
-        """,
-    ]
-    min_ehh_default: min_ehh = 0.05
-    max_gap: TypeAlias = Annotated[
-        int,
-        """
-        Do not report scores if EHH spans a gap larger than this number of
-        base pairs.
-        """,
-    ]
-    max_gap_default: max_gap = 200_000
-    gap_scale: TypeAlias = Annotated[
-        int, "Rescale distance between variants if gap is larger than this value."
-    ]
-    gap_scale_default: gap_scale = 20_000
-    include_edges: TypeAlias = Annotated[
-        bool,
-        """
-        If True, report scores even if EHH does not decay below min_ehh at the
-        end of the chromosome.
-        """,
-    ]
-    use_threads: TypeAlias = Annotated[
-        bool, "If True, use multiple threads to compute iHS."
-    ]
-    palette: TypeAlias = Annotated[
-        str, "Name of bokeh palette to use for plotting multiple percentiles."
-    ]
-    palette_default: palette = "Blues"
-
-
-class hapclust_params:
-    linkage_method: TypeAlias = Annotated[
-        Literal[
-            "single", "complete", "average", "weighted", "centroid", "median", "ward"
-        ],
-        """
-        The linkage algorithm to use. See the Linkage Methods section of the
-        scipy.cluster.hierarchy.linkage docs for full descriptions.
-        """,
-    ]
-    linkage_method_default: linkage_method = "single"
-    count_sort: TypeAlias = Annotated[
-        bool,
-        """
-        For each node n, the order (visually, from left-to-right) n's two descendant
-        links are plotted is determined by this parameter. If True, the child with
-        the minimum number of original objects in its cluster is plotted first. Note
-        distance_sort and count_sort cannot both be True.
-        """,
-    ]
-    distance_sort: TypeAlias = Annotated[
-        bool,
-        """
-        For each node n, the order (visually, from left-to-right) n's two descendant
-        links are plotted is determined by this parameter. If True, The child with the
-        minimum distance between its direct descendants is plotted first.
-        """,
-    ]
-
-
-class hapnet_params:
-    max_dist: TypeAlias = Annotated[
-        int,
-        "Join network components up to a maximum distance of 2 SNP differences.",
-    ]
-    max_dist_default: max_dist = 2
-    color: TypeAlias = Annotated[
-        str,
-        """
-        Identifies a column in the sample metadata which determines the colour
-        of pie chart segments within nodes.
-        """,
-    ]
-    color_discrete_sequence: TypeAlias = Annotated[
-        List, "Provide a list of colours to use."
-    ]
-    color_discrete_map: TypeAlias = Annotated[
-        Mapping, "Provide an explicit mapping from values to colours."
-    ]
-    category_order: TypeAlias = Annotated[
-        List,
-        "Control the order in which values appear in the legend.",
-    ]
-    node_size_factor: TypeAlias = Annotated[
-        int,
-        "Control the sizing of nodes.",
-    ]
-    node_size_factor_default: node_size_factor = 50
-    layout: TypeAlias = Annotated[
-        str,
-        "Name of the network layout to use to position nodes.",
-    ]
-    layout_default: layout = "cose"
-    layout_params: TypeAlias = Annotated[
-        Mapping,
-        "Additional parameters to the layout algorithm.",
-    ]
-
-
-class dash_params:
-    height: TypeAlias = Annotated[int, "Height of the Dash app in pixels (px)."]
-    width: TypeAlias = Annotated[Union[int, str], "Width of the Dash app."]
-    server_mode: TypeAlias = Annotated[
-        Literal["inline", "external", "jupyterlab"],
-        """
-        Controls how the Jupyter Dash app will be launched. See
-        https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
-        more information.
-        """,
-    ]
-    server_mode_default: server_mode = "inline"
-    server_port: TypeAlias = Annotated[
-        int,
-        "Manually override the port on which the Dash app will run.",
-    ]
-
 
 # N.B., we are in the process of breaking up the AnophelesDataResource
 # class into multiple parent classes like AnophelesGenomeSequenceData
@@ -607,6 +81,7 @@ class dash_params:
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesHapData,
     AnophelesSnpData,
     AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
@@ -624,6 +99,7 @@ class AnophelesDataResource(
         aim_metadata_dtype: Optional[Mapping[str, Any]],
         site_filters_analysis: Optional[str],
         default_site_mask: Optional[str],
+        default_phasing_analysis: Optional[str],
         bokeh_output_notebook: bool,
         results_cache: Optional[str],
         log,
@@ -658,26 +134,18 @@ class AnophelesDataResource(
             aim_metadata_dtype=aim_metadata_dtype,
             site_filters_analysis=site_filters_analysis,
             default_site_mask=default_site_mask,
+            default_phasing_analysis=default_phasing_analysis,
             results_cache=results_cache,
         )
 
         # set up caches
         # TODO review type annotations here, maybe can tighten
         self._cache_annotator = None
-        self._cache_site_annotations = None
-        self._cache_locate_site_class: Dict = dict()
-        self._cache_haplotypes: Dict = dict()
-        self._cache_haplotype_sites: Dict = dict()
 
     @property
     @abstractmethod
     def _pca_results_cache_name(self):
         raise NotImplementedError("Must override _pca_results_cache_name")
-
-    @property
-    @abstractmethod
-    def _snp_allele_counts_results_cache_name(self):
-        raise NotImplementedError("Must override _snp_allele_counts_results_cache_name")
 
     @property
     @abstractmethod
@@ -714,11 +182,6 @@ class AnophelesDataResource(
     def _ihs_gwss_cache_name(self):
         raise NotImplementedError("Must override _ihs_gwss_cache_name")
 
-    @property
-    @abstractmethod
-    def _site_annotations_zarr_path(self):
-        raise NotImplementedError("Must override _site_annotations_zarr_path")
-
     @abstractmethod
     def _transcript_to_gene_name(self, transcript):
         # children may have different manual overrides.
@@ -732,31 +195,6 @@ class AnophelesDataResource(
         raise NotImplementedError(
             "Must override _view_alignments_add_site_filters_tracks"
         )
-
-    @property
-    @abstractmethod
-    def phasing_analysis_ids(self):
-        """Identifiers for the different phasing analyses that are available.
-        These are values than can be used for the `analysis` parameter in any
-        method making using of haplotype data.
-
-        """
-        # Not all children have the same phasing analysis IDs.
-        raise NotImplementedError("Must override _phasing_analysis_ids")
-
-    @property
-    @abstractmethod
-    def _default_phasing_analysis(self):
-        raise NotImplementedError("Must override _default_phasing_analysis")
-
-    def _prep_phasing_analysis_param(self, *, analysis):
-        if analysis == DEFAULT:
-            analysis = self._default_phasing_analysis
-        if analysis not in self.phasing_analysis_ids:
-            raise ValueError(
-                f"Invalid phasing analysis, must be one of f{self.phasing_analysis_ids}."
-            )
-        return analysis
 
     @check_types
     @doc(
@@ -3930,228 +3368,6 @@ class AnophelesDataResource(
 
     @check_types
     @doc(
-        summary="Open haplotypes zarr.",
-        returns="Zarr hierarchy.",
-    )
-    def open_haplotypes(
-        self,
-        sample_set: base_params.sample_set,
-        analysis: hap_params.analysis = DEFAULT,
-    ) -> Optional[zarr.hierarchy.Group]:
-        analysis = self._prep_phasing_analysis_param(analysis=analysis)
-        try:
-            return self._cache_haplotypes[(sample_set, analysis)]
-        except KeyError:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release)
-            path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
-            # Some sample sets have no data for a given analysis, handle this.
-            try:
-                root = zarr.open_consolidated(store=store)
-            except FileNotFoundError:
-                root = None
-            self._cache_haplotypes[(sample_set, analysis)] = root
-        return root
-
-    @check_types
-    @doc(
-        summary="Open haplotype sites zarr.",
-        returns="Zarr hierarchy.",
-    )
-    def open_haplotype_sites(
-        self, analysis: hap_params.analysis = DEFAULT
-    ) -> zarr.hierarchy.Group:
-        analysis = self._prep_phasing_analysis_param(analysis=analysis)
-        try:
-            return self._cache_haplotype_sites[analysis]
-        except KeyError:
-            path = f"{self._base_path}/{self._major_version_path}/snp_haplotypes/sites/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
-            root = zarr.open_consolidated(store=store)
-            self._cache_haplotype_sites[analysis] = root
-        return root
-
-    def _haplotype_sites_for_contig(
-        self, *, contig, analysis, field, inline_array, chunks
-    ):
-        sites = self.open_haplotype_sites(analysis=analysis)
-        arr = sites[f"{contig}/variants/{field}"]
-        arr = da_from_zarr(arr, inline_array=inline_array, chunks=chunks)
-        return arr
-
-    def _haplotypes_for_contig(
-        self, *, contig, sample_set, analysis, inline_array, chunks
-    ):
-        debug = self._log.debug
-
-        debug("open zarr")
-        root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
-        sites = self.open_haplotype_sites(analysis=analysis)
-
-        debug("variant_position")
-        pos = sites[f"{contig}/variants/POS"]
-
-        # some sample sets have no data for a given analysis, handle this
-        # TODO consider returning a dataset with 0 length samples dimension instead, would
-        # probably simplify a lot of other logic
-        if root is None:
-            return None
-
-        coords = dict()
-        data_vars = dict()
-
-        coords["variant_position"] = (
-            [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
-        )
-
-        debug("variant_contig")
-        contig_index = self.contigs.index(contig)
-        coords["variant_contig"] = (
-            [DIM_VARIANT],
-            da.full_like(pos, fill_value=contig_index, dtype="u1"),
-        )
-
-        debug("variant_allele")
-        ref = da_from_zarr(
-            sites[f"{contig}/variants/REF"], inline_array=inline_array, chunks=chunks
-        )
-        alt = da_from_zarr(
-            sites[f"{contig}/variants/ALT"], inline_array=inline_array, chunks=chunks
-        )
-        variant_allele = da.hstack([ref[:, None], alt[:, None]])
-        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
-
-        debug("call_genotype")
-        data_vars["call_genotype"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            da_from_zarr(
-                root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
-            ),
-        )
-
-        debug("sample arrays")
-        coords["sample_id"] = (
-            [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
-        )
-
-        debug("set up attributes")
-        attrs = {"contigs": self.contigs}
-
-        debug("create a dataset")
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-
-        return ds
-
-    @check_types
-    @doc(
-        summary="Access haplotype data.",
-        returns="A dataset of haplotypes and associated data.",
-    )
-    def haplotypes(
-        self,
-        region: base_params.region,
-        analysis: hap_params.analysis = DEFAULT,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-    ) -> Optional[xr.Dataset]:
-        debug = self._log.debug
-
-        debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        regions: List[Region] = parse_multi_region(self, region)
-        del region
-        analysis = self._prep_phasing_analysis_param(analysis=analysis)
-
-        debug("build dataset")
-        lx = []
-        for r in regions:
-            ly = []
-
-            for s in sample_sets:
-                y = self._haplotypes_for_contig(
-                    contig=r.contig,
-                    sample_set=s,
-                    analysis=analysis,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                if y is not None:
-                    ly.append(y)
-
-            if len(ly) == 0:
-                debug("early out, no data for given sample sets and analysis")
-                return None
-
-            debug("concatenate data from multiple sample sets")
-            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
-
-            debug("handle region")
-            if r.start or r.end:
-                pos = x["variant_position"].values
-                loc_region = locate_region(r, pos)
-                x = x.isel(variants=loc_region)
-
-            lx.append(x)
-
-        debug("concatenate data from multiple regions")
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
-
-        debug("handle sample query")
-        if sample_query is not None:
-            debug("load sample metadata")
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-
-            debug("align sample metadata with haplotypes")
-            phased_samples = ds["sample_id"].values.tolist()
-            df_samples_phased = (
-                df_samples.set_index("sample_id").loc[phased_samples].reset_index()
-            )
-
-            debug("apply the query")
-            loc_samples = df_samples_phased.eval(sample_query).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-            ds = ds.isel(samples=loc_samples)
-
-        debug("handle cohort size")
-        if cohort_size is not None:
-            debug("handle cohort size")
-            # overrides min and max
-            min_cohort_size = cohort_size
-            max_cohort_size = cohort_size
-
-        if min_cohort_size is not None:
-            debug("handle min cohort size")
-            n_samples = ds.dims["samples"]
-            if n_samples < min_cohort_size:
-                raise ValueError(
-                    f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
-                )
-
-        if max_cohort_size is not None:
-            debug("handle max cohort size")
-            n_samples = ds.dims["samples"]
-            if n_samples > max_cohort_size:
-                rng = np.random.default_rng(seed=random_seed)
-                loc_downsample = rng.choice(
-                    n_samples, size=max_cohort_size, replace=False
-                )
-                loc_downsample.sort()
-                ds = ds.isel(samples=loc_downsample)
-
-        return ds
-
-    @check_types
-    @doc(
         summary="Generate h12 GWSS calibration data for different window sizes.",
         returns="""
             A list of H12 calibration run arrays for each window size, containing
@@ -5293,6 +4509,7 @@ class AnophelesDataResource(
         name = self._g123_gwss_cache_name
 
         if sites == DEFAULT:
+            assert self._default_phasing_analysis is not None
             sites = self._default_phasing_analysis
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:

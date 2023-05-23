@@ -1,4 +1,7 @@
 sample_id,aim_species_fraction_arab,aim_species_fraction_colu,aim_species_fraction_colu_no2L,aim_species_gambcolu_arabiensis,aim_species_gambiae_coluzzii,aim_species
+VBS00388-4651STDY7017222,0.976,0.474,0.472,arabiensis,NA,arabiensis
+VBS01026-4651STDY7017295,0.977,0.465,0.469,arabiensis,NA,arabiensis
+VBS01053-4651STDY7017308,0.983,0.456,0.453,arabiensis,NA,arabiensis
 VBS00256-4651STDY7017184,0.002,0.858,0.973,gambcolu,coluzzii,coluzzii
 VBS00257-4651STDY7017185,0.002,0.977,0.982,gambcolu,coluzzii,coluzzii
 VBS00259-4651STDY7017186,0.001,0.917,0.974,gambcolu,coluzzii,coluzzii
@@ -31,7 +34,6 @@ VBS00370-4651STDY7017216,0.001,0.858,0.974,gambcolu,coluzzii,coluzzii
 VBS00371-4651STDY7017217,0.002,0.880,0.977,gambcolu,coluzzii,coluzzii
 VBS00373-4651STDY7017218,0.001,0.869,0.982,gambcolu,coluzzii,coluzzii
 VBS00375-4651STDY7017220,0.002,0.861,0.978,gambcolu,coluzzii,coluzzii
-VBS00388-4651STDY7017222,0.976,0.474,0.472,arabiensis,NA,arabiensis
 VBS00449-4651STDY7017223,0.005,0.923,0.983,gambcolu,coluzzii,coluzzii
 VBS00912-4651STDY7017225,0.001,0.858,0.976,gambcolu,coluzzii,coluzzii
 VBS00913-4651STDY7017226,0.001,0.871,0.989,gambcolu,coluzzii,coluzzii
@@ -98,7 +100,6 @@ VBS01014-4651STDY7017290,0.002,0.915,0.980,gambcolu,coluzzii,coluzzii
 VBS01015-4651STDY7017291,0.003,0.864,0.983,gambcolu,coluzzii,coluzzii
 VBS01016-4651STDY7017292,0.003,0.981,0.988,gambcolu,coluzzii,coluzzii
 VBS01018-4651STDY7017293,0.003,0.861,0.978,gambcolu,coluzzii,coluzzii
-VBS01026-4651STDY7017295,0.977,0.465,0.469,arabiensis,NA,arabiensis
 VBS01029-4651STDY7017296,0.001,0.929,0.988,gambcolu,coluzzii,coluzzii
 VBS01030-4651STDY7017297,0.003,0.919,0.976,gambcolu,coluzzii,coluzzii
 VBS01031-4651STDY7017298,0.001,0.859,0.975,gambcolu,coluzzii,coluzzii
@@ -110,7 +111,6 @@ VBS01048-4651STDY7017304,0.002,0.864,0.983,gambcolu,coluzzii,coluzzii
 VBS01049-4651STDY7017305,0.002,0.856,0.974,gambcolu,coluzzii,coluzzii
 VBS01050-4651STDY7017306,0.001,0.919,0.976,gambcolu,coluzzii,coluzzii
 VBS01052-4651STDY7017307,0.004,0.018,0.020,gambcolu,gambiae,gambiae
-VBS01053-4651STDY7017308,0.983,0.456,0.453,arabiensis,NA,arabiensis
 VBS01054-4651STDY7017309,0.003,0.013,0.015,gambcolu,gambiae,gambiae
 VBS01055-4651STDY7017310,0.002,0.927,0.985,gambcolu,coluzzii,coluzzii
 VBS01056-4651STDY7017311,0.002,0.018,0.020,gambcolu,gambiae,gambiae

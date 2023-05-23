@@ -45,6 +45,28 @@ def af1_sim_api(af1_sim_fixture):
     )
 
 
+@pytest.fixture
+def missing_metadata_api(fixture_dir):
+    # In this fixture, one of the sample sets (AG1000G-BF-A) has missing files
+    # for both AIM and cohorts metadata.
+    return AnophelesSampleMetadata(
+        url=(fixture_dir / "missing_metadata").as_uri(),
+        config_path="config.json",
+        gcs_url=None,
+        major_version_number=3,
+        major_version_path="v3",
+        pre=False,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+    )
+
+
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
@@ -212,6 +234,28 @@ def test_aim_metadata_with_release(ag3_sim_api):
     assert len(df) == expected_len
 
 
+def test_aim_metadata_with_missing_file(
+    missing_metadata_api: AnophelesSampleMetadata,
+):
+    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # We expect this to be filled with empty values.
+    api = missing_metadata_api
+
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.aim_metadata(sample_sets=sample_set)
+
+        # Check output.
+        validate_aim_metadata(df)
+        expected_len = sample_count.loc[sample_set]
+        assert len(df) == expected_len
+
+
 def cohorts_metadata_expected_columns(has_cohorts_by_quarter):
     if has_cohorts_by_quarter:
         return {
@@ -300,6 +344,28 @@ def test_cohorts_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     validate_cohorts_metadata(df, has_cohorts_by_quarter=fixture.has_cohorts_by_quarter)
     expected_len = api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
+
+
+def test_cohorts_metadata_with_missing_file(
+    missing_metadata_api: AnophelesSampleMetadata,
+):
+    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # We expect this to be filled with empty values.
+    api = missing_metadata_api
+
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.cohorts_metadata(sample_sets=sample_set)
+
+        # Check output.
+        validate_cohorts_metadata(df, has_cohorts_by_quarter=True)
+        expected_len = sample_count.loc[sample_set]
+        assert len(df) == expected_len
 
 
 def sample_metadata_expected_columns(has_aims, has_cohorts_by_quarter):
@@ -421,6 +487,25 @@ def test_sample_metadata_with_query(ag3_sim_api):
     assert (df["country"] == "Burkina Faso").all()
 
 
+def test_sample_metadata_with_indices(ag3_sim_api):
+    df_all = ag3_sim_api.sample_metadata()
+    query = "country == 'Burkina Faso'"
+    indices = np.nonzero(df_all.eval(query))[0].tolist()
+    df1 = ag3_sim_api.sample_metadata(sample_query=query)
+    df2 = ag3_sim_api.sample_metadata(sample_indices=indices)
+    validate_metadata(
+        df1,
+        sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True),
+    )
+    assert (df1["country"] == "Burkina Faso").all()
+    validate_metadata(
+        df2,
+        sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True),
+    )
+    assert (df2["country"] == "Burkina Faso").all()
+    assert_frame_equal(df1, df2)
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
     df = api.sample_metadata()
@@ -438,6 +523,33 @@ def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
     assert (df.query("month in [4, 5, 6]")["quarter"] == 2).all()
     assert (df.query("month in [7, 8, 9]")["quarter"] == 3).all()
     assert (df.query("month in [10, 11, 12]")["quarter"] == 4).all()
+
+
+def test_sample_metadata_with_missing_file(
+    missing_metadata_api: AnophelesSampleMetadata,
+):
+    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # We expect this to be filled with empty values.
+    api = missing_metadata_api
+
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.sample_metadata(sample_sets=sample_set)
+
+        # Check output.
+        validate_metadata(
+            df,
+            sample_metadata_expected_columns(
+                has_aims=True, has_cohorts_by_quarter=True
+            ),
+        )
+        expected_len = sample_count.loc[sample_set]
+        assert len(df) == expected_len
 
 
 @parametrize_with_cases("fixture,api", cases=".")
