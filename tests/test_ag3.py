@@ -1291,6 +1291,7 @@ def test_gene_cnv_frequencies__missing_samples():
 @pytest.mark.parametrize("region", ["3L", ["2R:48,714,463-48,715,355", "AGAP007280"]])
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
 def test_haplotypes(sample_sets, region, analysis):
+    # TODO Migrate this test.
     ag3 = setup_ag3()
 
     # check expected samples
@@ -1383,6 +1384,7 @@ def test_haplotypes(sample_sets, region, analysis):
     ],
 )
 def test_haplotypes__sample_query(sample_query):
+    # TODO Migrate this test.
     sample_sets = "AG1000G-BF-B"
     region = "3L"
     analysis = "gamb_colu_arab"
@@ -1463,6 +1465,7 @@ def test_haplotypes__sample_query(sample_query):
     ],
 )
 def test_locate_region(region_raw):
+    # TODO Migrate this test.
     ag3 = setup_ag3()
     gene_annotation = ag3.genome_features(attributes=["ID"])
     region = resolve_region(ag3, region_raw)

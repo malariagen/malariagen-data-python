@@ -185,6 +185,7 @@ def test_snp_allele_frequencies__query():
     "region", ["3RL", ["2RL:48,714,463-48,715,355", "LOC125761549_t7"]]
 )
 def test_haplotypes(sample_sets, region):
+    # TODO Migrate this test.
     af1 = setup_af1()
 
     # check expected samples
@@ -265,6 +266,7 @@ def test_haplotypes(sample_sets, region):
     ],
 )
 def test_haplotypes__sample_query(sample_query):
+    # TODO Migrate this test.
     sample_sets = "1229-VO-GH-DADZIE-VMF00095"
     region = "3RL"
 
@@ -343,6 +345,7 @@ def test_haplotypes__sample_query(sample_query):
     ],
 )
 def test_locate_region(region_raw):
+    # TODO Migrate this test.
     af1 = setup_af1()
     gene_annotation = af1.geneset(attributes=["ID"])
     region = resolve_region(af1, region_raw)

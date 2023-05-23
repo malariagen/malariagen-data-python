@@ -349,6 +349,7 @@ def test_haplotype_joint_frequencies():
     ],
 )
 def test_haplotypes__cohort_size(subclass, sample_sets, region, analysis, cohort_size):
+    # TODO Migrate this test.
     anoph = setup_subclass_cached(subclass)
 
     ds = anoph.haplotypes(
