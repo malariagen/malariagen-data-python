@@ -78,7 +78,7 @@ class AnophelesHapData(
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
         return ds
 
-    # TODO add type annotations and @doc
+    # TODO add type annotations and @check_types and @doc
     def aim_calls(
         self,
         aims,
