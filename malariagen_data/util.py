@@ -29,7 +29,7 @@ import xarray as xr
 import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
-from numpydoc_decorator.impl import format_type
+from numpydoc_decorator.impl import humanize_type
 from typing_extensions import TypeAlias, get_type_hints
 
 DIM_VARIANT = "variants"
@@ -915,8 +915,8 @@ def check_types(f):
                 try:
                     typeguard.check_type(v, t)
                 except typeguard.TypeCheckError as e:
-                    expected_type = format_type(t)
-                    actual_type = format_type(type(v))
+                    expected_type = humanize_type(t)
+                    actual_type = humanize_type(type(v))
                     message = fill(
                         dedent(
                             f"""
