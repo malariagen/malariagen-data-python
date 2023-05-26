@@ -1,5 +1,5 @@
 from textwrap import dedent
-from typing import Optional
+from typing import Dict, Optional, Tuple
 
 import numpy as np
 import xarray as xr
@@ -17,6 +17,7 @@ class AnophelesHapData(
 ):
     def __init__(
         self,
+        aims_ids: Optional[Tuple[str, ...]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -24,8 +25,29 @@ class AnophelesHapData(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+        # Store possible values for the `aims` parameter.
+        # TODO Consider moving this to data resource configuration.
+        self._aims_ids = aims_ids
+
         # Set up caches.
-        self._cache_aim_variants = dict()
+        self._cache_aim_variants: Dict[str, xr.Dataset] = dict()
+
+    @property
+    def aims_ids(self) -> Tuple[str, ...]:
+        if self._aims_ids:
+            return tuple(self._aims_ids)
+        else:
+            return ()
+
+    def _prep_aims_param(self, *, aims: aim_params.aims) -> str:
+        self._require_aim_analysis()
+        aims = aims.lower()
+        if aims in self.aims_ids:
+            return aims
+        else:
+            raise ValueError(
+                f"Invalid aims parameter, must be one of f{self.aims_ids}."
+            )
 
     @check_types
     @doc(
@@ -33,7 +55,7 @@ class AnophelesHapData(
         returns="A dataset containing AIM positions and discriminating alleles.",
     )
     def aim_variants(self, aims: aim_params.aims) -> xr.Dataset:
-        self._require_aim_analysis()
+        aims = self._prep_aims_param(aims=aims)
         try:
             ds = self._cache_aim_variants[aims]
         except KeyError:
@@ -87,6 +109,7 @@ class AnophelesHapData(
         debug = self._log.debug
 
         debug("normalise parameters")
+        aims = self._prep_aims_param(aims=aims)
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         debug("access SNP calls and concatenate multiple sample sets and/or regions")
