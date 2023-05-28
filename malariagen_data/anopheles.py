@@ -21,6 +21,7 @@ from numpydoc_decorator import doc
 
 from . import veff
 from .anoph import (
+    aim_params,
     base_params,
     dash_params,
     frq_params,
@@ -99,8 +100,8 @@ class AnophelesDataResource(
         cohorts_analysis: Optional[str],
         aim_analysis: Optional[str],
         aim_metadata_dtype: Optional[Mapping[str, Any]],
-        aim_ids: Optional[Tuple[str, ...]],
-        aim_colors: Optional[Mapping[str, Tuple[str, str, str, str]]],
+        aim_ids: Optional[aim_params.aim_ids],
+        aim_palettes: Optional[aim_params.aim_palettes],
         site_filters_analysis: Optional[str],
         default_site_mask: Optional[str],
         default_phasing_analysis: Optional[str],
@@ -137,7 +138,7 @@ class AnophelesDataResource(
             aim_analysis=aim_analysis,
             aim_metadata_dtype=aim_metadata_dtype,
             aim_ids=aim_ids,
-            aim_colors=aim_colors,
+            aim_palettes=aim_palettes,
             site_filters_analysis=site_filters_analysis,
             default_site_mask=default_site_mask,
             default_phasing_analysis=default_phasing_analysis,

@@ -127,16 +127,16 @@ class Ag3(AnophelesDataResource):
         pre=False,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
-        # Set up default AIMs colors.
-        aim_palette = px.colors.qualitative.T10
-        color_gc = aim_palette[6]
-        color_gc_a = aim_palette[5]
-        color_a = aim_palette[4]
-        color_g = aim_palette[0]
-        color_g_c = aim_palette[5]
-        color_c = aim_palette[2]
+        # Set up default AIMs color palettes.
+        colors = px.colors.qualitative.T10
+        color_gc = colors[6]
+        color_gc_a = colors[5]
+        color_a = colors[4]
+        color_g = colors[0]
+        color_g_c = colors[5]
+        color_c = colors[2]
         color_m = "white"
-        aim_colors = {
+        aim_palettes = {
             "gambcolu_vs_arab": (color_m, color_gc, color_gc_a, color_a),
             "gamb_vs_colu": (color_m, color_g, color_g_c, color_c),
         }
@@ -155,7 +155,7 @@ class Ag3(AnophelesDataResource):
                 "aim_species": object,
             },
             aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
-            aim_colors=aim_colors,
+            aim_palettes=aim_palettes,
             site_filters_analysis=site_filters_analysis,
             default_site_mask="gamb_colu_arab",
             default_phasing_analysis="gamb_colu_arab",

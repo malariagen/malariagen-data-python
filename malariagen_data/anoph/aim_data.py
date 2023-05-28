@@ -1,5 +1,5 @@
 from textwrap import dedent
-from typing import Dict, Mapping, Optional, Tuple
+from typing import Dict, Optional
 
 import allel
 import numpy as np
@@ -31,8 +31,8 @@ class AnophelesAimData(
 ):
     def __init__(
         self,
-        aim_ids: Optional[Tuple[str, ...]] = None,
-        aim_colors: Optional[Mapping[str, Tuple[str, str, str, str]]] = None,
+        aim_ids: Optional[aim_params.aim_ids] = None,
+        aim_palettes: Optional[aim_params.aim_palettes] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -43,13 +43,13 @@ class AnophelesAimData(
         # Store possible values for the `aims` parameter.
         # TODO Consider moving this to data resource configuration.
         self._aim_ids = aim_ids
-        self._aim_colors = aim_colors
+        self._aim_palettes = aim_palettes
 
         # Set up caches.
         self._cache_aim_variants: Dict[str, xr.Dataset] = dict()
 
     @property
-    def aim_ids(self) -> Tuple[str, ...]:
+    def aim_ids(self) -> aim_params.aim_ids:
         if self._aim_ids is not None:
             return tuple(self._aim_ids)
         else:
@@ -161,10 +161,6 @@ class AnophelesAimData(
                 alleles for the second species in the comparison.
             """,
             row_height="Height per sample in px.",
-            colors="""
-                4-tuple of colors for genotypes (missing, hom taxon 1, het,
-                hom taxon 2).
-            """,
             xgap="Creates lines between columns (variants).",
             ygap="Creates lines between rows (samples).",
         ),
@@ -176,9 +172,9 @@ class AnophelesAimData(
         sample_query: Optional[base_params.sample_query] = None,
         sort: bool = True,
         row_height: int = 4,
-        colors: Optional[Tuple[str, str, str, str]] = None,
         xgap: float = 0,
         ygap: float = 0.5,
+        palette: Optional[aim_params.palette] = None,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
     ) -> plotly_params.figure:
@@ -213,10 +209,10 @@ class AnophelesAimData(
             samples = np.take(samples, ix_sorted, axis=0)
 
         # Set up colors for genotypes
-        if colors is None:
-            assert self._aim_colors is not None
-            colors = self._aim_colors[aims]
-            assert len(colors) == 4
+        if palette is None:
+            assert self._aim_palettes is not None
+            palette = self._aim_palettes[aims]
+            assert len(palette) == 4
             # Expect 4 colors, in the order:
             # missing, hom taxon 1, het, hom taxon 2
         species = aims.split("_vs_")
@@ -238,14 +234,14 @@ class AnophelesAimData(
         # Define a discrete color scale.
         # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
         colorscale = [
-            [0 / 4, colors[0]],
-            [1 / 4, colors[0]],
-            [1 / 4, colors[1]],
-            [2 / 4, colors[1]],
-            [2 / 4, colors[2]],
-            [3 / 4, colors[2]],
-            [3 / 4, colors[3]],
-            [4 / 4, colors[3]],
+            [0 / 4, palette[0]],
+            [1 / 4, palette[0]],
+            [1 / 4, palette[1]],
+            [2 / 4, palette[1]],
+            [2 / 4, palette[2]],
+            [3 / 4, palette[2]],
+            [3 / 4, palette[3]],
+            [4 / 4, palette[3]],
         ]
 
         # Define a colorbar.
