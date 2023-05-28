@@ -4,6 +4,6 @@ aims: TypeAlias = Annotated[
     str,
     """
     Which set of ancestry informative markers to use. For possible values
-    see the `aims_ids` property.
+    see the `aim_ids` property.
     """,
 ]

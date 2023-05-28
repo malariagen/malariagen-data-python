@@ -26,13 +26,13 @@ from .sample_metadata import AnophelesSampleMetadata
 # https://docs.xarray.dev/en/stable/generated/xarray.open_zarr.html
 
 
-class AnophelesHapData(
+class AnophelesAimData(
     AnophelesSampleMetadata, AnophelesGenomeFeaturesData, AnophelesGenomeSequenceData
 ):
     def __init__(
         self,
-        aims_ids: Optional[Tuple[str, ...]] = None,
-        aims_colors: Optional[Mapping[str, Tuple[str, str, str, str]]] = None,
+        aim_ids: Optional[Tuple[str, ...]] = None,
+        aim_colors: Optional[Mapping[str, Tuple[str, str, str, str]]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -42,27 +42,25 @@ class AnophelesHapData(
 
         # Store possible values for the `aims` parameter.
         # TODO Consider moving this to data resource configuration.
-        self._aims_ids = aims_ids
-        self._aims_colors = aims_colors
+        self._aim_ids = aim_ids
+        self._aim_colors = aim_colors
 
         # Set up caches.
         self._cache_aim_variants: Dict[str, xr.Dataset] = dict()
 
     @property
-    def aims_ids(self) -> Tuple[str, ...]:
-        if self._aims_ids is not None:
-            return tuple(self._aims_ids)
+    def aim_ids(self) -> Tuple[str, ...]:
+        if self._aim_ids is not None:
+            return tuple(self._aim_ids)
         else:
             return ()
 
     def _prep_aims_param(self, *, aims: aim_params.aims) -> str:
         aims = aims.lower()
-        if aims in self.aims_ids:
+        if aims in self.aim_ids:
             return aims
         else:
-            raise ValueError(
-                f"Invalid aims parameter, must be one of f{self.aims_ids}."
-            )
+            raise ValueError(f"Invalid aims parameter, must be one of f{self.aim_ids}.")
 
     @check_types
     @doc(
@@ -216,8 +214,8 @@ class AnophelesHapData(
 
         # Set up colors for genotypes
         if colors is None:
-            assert self._aims_colors is not None
-            colors = self._aims_colors[aims]
+            assert self._aim_colors is not None
+            colors = self._aim_colors[aims]
             assert len(colors) == 4
             # Expect 4 colors, in the order:
             # missing, hom taxon 1, het, hom taxon 2
@@ -239,38 +237,34 @@ class AnophelesHapData(
 
         # Define a discrete color scale.
         # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
-        colorscale = (
-            [
-                [0 / 4, colors[0]],
-                [1 / 4, colors[0]],
-                [1 / 4, colors[1]],
-                [2 / 4, colors[1]],
-                [2 / 4, colors[2]],
-                [3 / 4, colors[2]],
-                [3 / 4, colors[3]],
-                [4 / 4, colors[3]],
-            ],
-        )
+        colorscale = [
+            [0 / 4, colors[0]],
+            [1 / 4, colors[0]],
+            [1 / 4, colors[1]],
+            [2 / 4, colors[1]],
+            [2 / 4, colors[2]],
+            [3 / 4, colors[2]],
+            [3 / 4, colors[3]],
+            [4 / 4, colors[3]],
+        ]
 
         # Define a colorbar.
-        colorbar = (
-            dict(
-                title="AIM genotype",
-                tickmode="array",
-                tickvals=[-1, 0, 1, 2],
-                ticktext=[
-                    "missing",
-                    f"{species[0]}/{species[0]}",
-                    f"{species[0]}/{species[1]}",
-                    f"{species[1]}/{species[1]}",
-                ],
-                len=100,
-                lenmode="pixels",
-                y=1,
-                yanchor="top",
-                outlinewidth=1,
-                outlinecolor="black",
-            ),
+        colorbar = dict(
+            title="AIM genotype",
+            tickmode="array",
+            tickvals=[-1, 0, 1, 2],
+            ticktext=[
+                "missing",
+                f"{species[0]}/{species[0]}",
+                f"{species[0]}/{species[1]}",
+                f"{species[1]}/{species[1]}",
+            ],
+            len=100,
+            lenmode="pixels",
+            y=1,
+            yanchor="top",
+            outlinewidth=1,
+            outlinecolor="black",
         )
 
         # Define hover text template.
@@ -284,7 +278,7 @@ class AnophelesHapData(
         )
 
         # Create the subplots, one for each contig.
-        for j in range(contigs):
+        for j in range(len(contigs)):
             loc_contig = variant_contig == j
             gn_contig = np.compress(loc_contig, gn, axis=0)
             fig.add_trace(

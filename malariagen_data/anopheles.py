@@ -36,6 +36,7 @@ from .anoph import (
     pca_params,
     plotly_params,
 )
+from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
 from .anoph.base_params import DEFAULT
 from .anoph.genome_features import AnophelesGenomeFeaturesData
@@ -81,6 +82,7 @@ AA_CHANGE_QUERY = (
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesAimData,
     AnophelesHapData,
     AnophelesSnpData,
     AnophelesSampleMetadata,
@@ -97,8 +99,8 @@ class AnophelesDataResource(
         cohorts_analysis: Optional[str],
         aim_analysis: Optional[str],
         aim_metadata_dtype: Optional[Mapping[str, Any]],
-        aims_ids: Optional[Tuple[str, ...]],
-        aims_colors: Optional[Mapping[str, Tuple[str, str, str, str]]],
+        aim_ids: Optional[Tuple[str, ...]],
+        aim_colors: Optional[Mapping[str, Tuple[str, str, str, str]]],
         site_filters_analysis: Optional[str],
         default_site_mask: Optional[str],
         default_phasing_analysis: Optional[str],
@@ -134,8 +136,8 @@ class AnophelesDataResource(
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
             aim_metadata_dtype=aim_metadata_dtype,
-            aims_ids=aims_ids,
-            aims_colors=aims_colors,
+            aim_ids=aim_ids,
+            aim_colors=aim_colors,
             site_filters_analysis=site_filters_analysis,
             default_site_mask=default_site_mask,
             default_phasing_analysis=default_phasing_analysis,
