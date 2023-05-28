@@ -3,6 +3,7 @@ from typing_extensions import Annotated, TypeAlias
 aims: TypeAlias = Annotated[
     str,
     """
-    Which set of ancestry informative markers to use.
+    Which set of ancestry informative markers to use. For possible values
+    see the `aims_ids` property.
     """,
 ]

@@ -59,12 +59,29 @@ class AnophelesHapData(
         try:
             ds = self._cache_aim_variants[aims]
         except KeyError:
+            # Load the zarr data into an xarray dataset. Note that the AIM data
+            # is stored using the xarray zarr format, and so it is possible to
+            # load it directly into an xarray dataset using the xr.open_zarr()
+            # function. For more information see also:
+            # https://docs.xarray.dev/en/stable/internals/zarr-encoding-spec.html
+            # https://docs.xarray.dev/en/stable/generated/xarray.open_zarr.html
+
+            # Determine which AIM analysis to load.
             analysis = self._aim_analysis
+
+            # Build the path to the zarr data.
             path = f"{self._base_path}/reference/aim_defs_{analysis}/{aims}.zarr"
+
+            # Initialise and open the zarr data.
             store = init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             ds = ds.set_coords(["variant_contig", "variant_position"])
+
+            # Cache to avoid re-opening which saves a little time for the user.
             self._cache_aim_variants[aims] = ds
+
+        # N.B., return a copy so any modifications to the dataset made by the
+        # user to not affect the cached dataset.
         return ds.copy(deep=False)
 
     def _aim_calls_dataset(self, *, aims, sample_set):
@@ -72,61 +89,55 @@ class AnophelesHapData(
         release = self.lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release)
         analysis = self._aim_analysis
+
+        # Load the zarr data into an xarray dataset. Note that the AIM data
+        # is stored using the xarray zarr format, and so it is possible to
+        # load it directly into an xarray dataset using the xr.open_zarr()
+        # function. For more information see also:
+        # https://docs.xarray.dev/en/stable/internals/zarr-encoding-spec.html
+        # https://docs.xarray.dev/en/stable/generated/xarray.open_zarr.html
         path = f"{self._base_path}/{release_path}/aim_calls_{analysis}/{sample_set}/{aims}.zarr"
         store = init_zarr_store(fs=self._fs, path=path)
         ds = xr.open_zarr(store=store, concat_characters=False)
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
         return ds
 
-    # TODO add type annotations and @check_types and @doc
+    @check_types
+    @doc(
+        summary="""
+            Access ancestry informative marker SNP sites, alleles and genotype
+            calls.
+        """,
+        returns="""
+            A dataset containing AIM SNP sites, alleles and genotype calls.
+        """,
+    )
     def aim_calls(
         self,
-        aims,
+        aims: aim_params.aims,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-    ):
-        """Access ancestry informative marker SNP sites, alleles and genotype
-        calls.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing AIM SNP sites, alleles and genotype calls.
-
-        """
-        debug = self._log.debug
-
-        debug("normalise parameters")
+    ) -> xr.Dataset:
+        # Normalise parameters.
         aims = self._prep_aims_param(aims=aims)
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
 
-        debug("access SNP calls and concatenate multiple sample sets and/or regions")
+        # Access SNP calls and concatenate multiple sample sets and/or regions.
         ly = []
-        for s in sample_sets:
+        for s in sample_sets_prepped:
             y = self._aim_calls_dataset(
                 aims=aims,
                 sample_set=s,
             )
             ly.append(y)
 
-        debug("concatenate data from multiple sample sets")
+        # Concatenate data from multiple sample sets.
         ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
-        debug("handle sample query")
+        # Handle sample query.
         if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
             loc_samples = df_samples.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
