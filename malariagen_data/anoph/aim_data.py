@@ -1,15 +1,29 @@
 from textwrap import dedent
-from typing import Dict, Optional, Tuple
+from typing import Dict, Mapping, Optional, Tuple
 
+import allel
 import numpy as np
+import plotly.graph_objects as go
 import xarray as xr
 from numpydoc_decorator import doc
+from plotly.subplots import make_subplots as go_make_subplots
+
+from malariagen_data.anoph import plotly_params
 
 from ..util import DIM_SAMPLE, check_types, init_zarr_store, simple_xarray_concat
 from . import aim_params, base_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
+
+# Note that the AIM variants and genotype calls data are stored using
+# the xarray zarr format, and so it is possible to load directly
+# into an xarray dataset using the xr.open_zarr() function.
+#
+# For more information see also:
+#
+# https://docs.xarray.dev/en/stable/internals/zarr-encoding-spec.html
+# https://docs.xarray.dev/en/stable/generated/xarray.open_zarr.html
 
 
 class AnophelesHapData(
@@ -18,6 +32,7 @@ class AnophelesHapData(
     def __init__(
         self,
         aims_ids: Optional[Tuple[str, ...]] = None,
+        aims_colors: Optional[Mapping[str, Tuple[str, str, str, str]]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -28,19 +43,19 @@ class AnophelesHapData(
         # Store possible values for the `aims` parameter.
         # TODO Consider moving this to data resource configuration.
         self._aims_ids = aims_ids
+        self._aims_colors = aims_colors
 
         # Set up caches.
         self._cache_aim_variants: Dict[str, xr.Dataset] = dict()
 
     @property
     def aims_ids(self) -> Tuple[str, ...]:
-        if self._aims_ids:
+        if self._aims_ids is not None:
             return tuple(self._aims_ids)
         else:
             return ()
 
     def _prep_aims_param(self, *, aims: aim_params.aims) -> str:
-        self._require_aim_analysis()
         aims = aims.lower()
         if aims in self.aims_ids:
             return aims
@@ -55,17 +70,11 @@ class AnophelesHapData(
         returns="A dataset containing AIM positions and discriminating alleles.",
     )
     def aim_variants(self, aims: aim_params.aims) -> xr.Dataset:
+        self._require_aim_analysis()
         aims = self._prep_aims_param(aims=aims)
         try:
             ds = self._cache_aim_variants[aims]
         except KeyError:
-            # Load the zarr data into an xarray dataset. Note that the AIM data
-            # is stored using the xarray zarr format, and so it is possible to
-            # load it directly into an xarray dataset using the xr.open_zarr()
-            # function. For more information see also:
-            # https://docs.xarray.dev/en/stable/internals/zarr-encoding-spec.html
-            # https://docs.xarray.dev/en/stable/generated/xarray.open_zarr.html
-
             # Determine which AIM analysis to load.
             analysis = self._aim_analysis
 
@@ -86,17 +95,14 @@ class AnophelesHapData(
 
     def _aim_calls_dataset(self, *, aims, sample_set):
         self._require_aim_analysis()
+
+        # Build the path to the zarr data.
         release = self.lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release)
         analysis = self._aim_analysis
-
-        # Load the zarr data into an xarray dataset. Note that the AIM data
-        # is stored using the xarray zarr format, and so it is possible to
-        # load it directly into an xarray dataset using the xr.open_zarr()
-        # function. For more information see also:
-        # https://docs.xarray.dev/en/stable/internals/zarr-encoding-spec.html
-        # https://docs.xarray.dev/en/stable/generated/xarray.open_zarr.html
         path = f"{self._base_path}/{release_path}/aim_calls_{analysis}/{sample_set}/{aims}.zarr"
+
+        # Initialise and open the zarr data.
         store = init_zarr_store(fs=self._fs, path=path)
         ds = xr.open_zarr(store=store, concat_characters=False)
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
@@ -118,6 +124,8 @@ class AnophelesHapData(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> xr.Dataset:
+        self._require_aim_analysis()
+
         # Normalise parameters.
         aims = self._prep_aims_param(aims=aims)
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -145,60 +153,38 @@ class AnophelesHapData(
 
         return ds
 
-    # TODO add type annotations and @doc
-    # TODO generalise colors
+    @doc(
+        summary="""
+            Plot a heatmap of ancestry-informative marker (AIM) genotypes.
+        """,
+        parameters=dict(
+            sort="""
+                If true (default), sort the samples by the total fraction of AIM
+                alleles for the second species in the comparison.
+            """,
+            row_height="Height per sample in px.",
+            colors="""
+                4-tuple of colors for genotypes (missing, hom taxon 1, het,
+                hom taxon 2).
+            """,
+            xgap="Creates lines between columns (variants).",
+            ygap="Creates lines between rows (samples).",
+        ),
+    )
     def plot_aim_heatmap(
         self,
-        aims,
-        sample_sets=None,
-        sample_query=None,
-        sort=True,
-        row_height=4,
-        colors="T10",
-        xgap=0,
-        ygap=0.5,
-        show=True,
-        renderer=None,
-    ):
-        """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sort : bool, optional
-            If true (default), sort the samples by the total fraction of AIM
-            alleles for the second species in the comparison.
-        row_height : int, optional
-            Height per sample in px.
-        colors : str, optional
-            Choose your favourite color palette.
-        xgap : float, optional
-            Creates lines between columns (variants).
-        ygap : float, optional
-            Creates lines between rows (samples).
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
-
-        """
-
-        debug = self._log.debug
-
-        import allel
-        import plotly.express as px
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-
-        debug("load AIM calls")
+        aims: aim_params.aims,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sort: bool = True,
+        row_height: int = 4,
+        colors: Optional[Tuple[str, str, str, str]] = None,
+        xgap: float = 0,
+        ygap: float = 0.5,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+    ) -> plotly_params.figure:
+        # Load AIM calls.
         ds = self.aim_calls(
             aims=aims,
             sample_sets=sample_sets,
@@ -206,21 +192,21 @@ class AnophelesHapData(
         ).compute()
         samples = ds["sample_id"].values
         variant_contig = ds["variant_contig"].values
-
-        debug("count variants per contig")
         contigs = ds.attrs["contigs"]
+
+        # Count variants per contig, needed to figure out how wide to make
+        # the columns in the grid of subplots.
         col_widths = [
             np.count_nonzero(variant_contig == contigs.index(contig))
             for contig in contigs
         ]
-        debug(col_widths)
 
-        debug("access and transform genotypes")
+        # Access and transform genotypes.
         gt = allel.GenotypeArray(ds["call_genotype"].values)
         gn = gt.to_n_alt(fill=-1)
 
         if sort:
-            debug("sort by AIM fraction")
+            # Sort by AIM fraction.
             ac = np.sum(gt == 1, axis=(0, 2))
             an = np.sum(gt >= 0, axis=(0, 2))
             af = ac / an
@@ -228,54 +214,17 @@ class AnophelesHapData(
             gn = np.take(gn, ix_sorted, axis=1)
             samples = np.take(samples, ix_sorted, axis=0)
 
-        debug("set up colors")
-        # https://en.wiktionary.org/wiki/abandon_hope_all_ye_who_enter_here
-        if colors.lower() == "plotly":
-            palette = px.colors.qualitative.Plotly
-            color_gc = palette[3]
-            color_gc_a = palette[9]
-            color_a = palette[2]
-            color_g = palette[0]
-            color_g_c = palette[9]
-            color_c = palette[1]
-            color_m = "white"
-        elif colors.lower() == "set1":
-            palette = px.colors.qualitative.Set1
-            color_gc = palette[3]
-            color_gc_a = palette[4]
-            color_a = palette[2]
-            color_g = palette[1]
-            color_g_c = palette[5]
-            color_c = palette[0]
-            color_m = "white"
-        elif colors.lower() == "g10":
-            palette = px.colors.qualitative.G10
-            color_gc = palette[4]
-            color_gc_a = palette[2]
-            color_a = palette[3]
-            color_g = palette[0]
-            color_g_c = palette[2]
-            color_c = palette[8]
-            color_m = "white"
-        elif colors.lower() == "t10":
-            palette = px.colors.qualitative.T10
-            color_gc = palette[6]
-            color_gc_a = palette[5]
-            color_a = palette[4]
-            color_g = palette[0]
-            color_g_c = palette[5]
-            color_c = palette[2]
-            color_m = "white"
-        else:
-            raise ValueError("unsupported colors")
-        if aims == "gambcolu_vs_arab":
-            colors = [color_m, color_gc, color_gc_a, color_a]
-        else:
-            colors = [color_m, color_g, color_g_c, color_c]
+        # Set up colors for genotypes
+        if colors is None:
+            assert self._aims_colors is not None
+            colors = self._aims_colors[aims]
+            assert len(colors) == 4
+            # Expect 4 colors, in the order:
+            # missing, hom taxon 1, het, hom taxon 2
         species = aims.split("_vs_")
 
-        debug("create subplots")
-        fig = make_subplots(
+        # Create subplots.
+        fig = go_make_subplots(
             rows=1,
             cols=len(contigs),
             shared_yaxes=True,
@@ -288,70 +237,81 @@ class AnophelesHapData(
             vertical_spacing=0.01,
         )
 
-        for j, contig in enumerate(contigs):
-            debug(f"plot {contig}")
+        # Define a discrete color scale.
+        # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
+        colorscale = (
+            [
+                [0 / 4, colors[0]],
+                [1 / 4, colors[0]],
+                [1 / 4, colors[1]],
+                [2 / 4, colors[1]],
+                [2 / 4, colors[2]],
+                [3 / 4, colors[2]],
+                [3 / 4, colors[3]],
+                [4 / 4, colors[3]],
+            ],
+        )
+
+        # Define a colorbar.
+        colorbar = (
+            dict(
+                title="AIM genotype",
+                tickmode="array",
+                tickvals=[-1, 0, 1, 2],
+                ticktext=[
+                    "missing",
+                    f"{species[0]}/{species[0]}",
+                    f"{species[0]}/{species[1]}",
+                    f"{species[1]}/{species[1]}",
+                ],
+                len=100,
+                lenmode="pixels",
+                y=1,
+                yanchor="top",
+                outlinewidth=1,
+                outlinecolor="black",
+            ),
+        )
+
+        # Define hover text template.
+        hovertemplate = dedent(
+            """
+            Variant index: %{x}<br>
+            Sample: %{y}<br>
+            Genotype: %{z}
+            <extra></extra>
+        """
+        )
+
+        # Create the subplots, one for each contig.
+        for j in range(contigs):
             loc_contig = variant_contig == j
             gn_contig = np.compress(loc_contig, gn, axis=0)
             fig.add_trace(
                 go.Heatmap(
                     y=samples,
                     z=gn_contig.T,
-                    # construct a discrete color scale
-                    # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
-                    colorscale=[
-                        [0 / 4, colors[0]],
-                        [1 / 4, colors[0]],
-                        [1 / 4, colors[1]],
-                        [2 / 4, colors[1]],
-                        [2 / 4, colors[2]],
-                        [3 / 4, colors[2]],
-                        [3 / 4, colors[3]],
-                        [4 / 4, colors[3]],
-                    ],
+                    colorscale=colorscale,
                     zmin=-1.5,
                     zmax=2.5,
                     xgap=xgap,
                     ygap=ygap,  # this creates faint lines between rows
-                    colorbar=dict(
-                        title="AIM genotype",
-                        tickmode="array",
-                        tickvals=[-1, 0, 1, 2],
-                        ticktext=[
-                            "missing",
-                            f"{species[0]}/{species[0]}",
-                            f"{species[0]}/{species[1]}",
-                            f"{species[1]}/{species[1]}",
-                        ],
-                        len=100,
-                        lenmode="pixels",
-                        y=1,
-                        yanchor="top",
-                        outlinewidth=1,
-                        outlinecolor="black",
-                    ),
-                    hovertemplate=dedent(
-                        """
-                        Variant index: %{x}<br>
-                        Sample: %{y}<br>
-                        Genotype: %{z}
-                        <extra></extra>
-                    """
-                    ),
+                    colorbar=colorbar,
+                    hovertemplate=hovertemplate,
                 ),
                 row=1,
                 col=j + 1,
             )
 
+        # Tidy up the plot.
         fig.update_xaxes(
             tickmode="array",
             tickvals=[],
         )
-
         fig.update_yaxes(
             tickmode="array",
             tickvals=[],
         )
-
         fig.update_layout(
             title=f"AIMs - {aims}",
             height=max(300, row_height * len(samples) + 100),

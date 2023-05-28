@@ -8,6 +8,7 @@ import dask.array as da
 import numba
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import xarray as xr
 import zarr
 
@@ -126,6 +127,20 @@ class Ag3(AnophelesDataResource):
         pre=False,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
+        # Set up AIMs colors.
+        aims_palette = px.colors.qualitative.T10
+        color_gc = aims_palette[6]
+        color_gc_a = aims_palette[5]
+        color_a = aims_palette[4]
+        color_g = aims_palette[0]
+        color_g_c = aims_palette[5]
+        color_c = aims_palette[2]
+        color_m = "white"
+        aims_colors = {
+            "gambcolu_vs_arab": (color_m, color_gc, color_gc_a, color_a),
+            "gamb_vs_colu": (color_m, color_g, color_g_c, color_c),
+        }
+
         super().__init__(
             url=url,
             config_path=CONFIG_PATH,
@@ -139,6 +154,8 @@ class Ag3(AnophelesDataResource):
                 "aim_species_gambiae_coluzzii": object,
                 "aim_species": object,
             },
+            aims_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
+            aims_colors=aims_colors,
             site_filters_analysis=site_filters_analysis,
             default_site_mask="gamb_colu_arab",
             default_phasing_analysis="gamb_colu_arab",
