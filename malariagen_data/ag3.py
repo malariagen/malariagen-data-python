@@ -129,16 +129,26 @@ class Ag3(AnophelesDataResource):
     ):
         # Set up default AIMs color palettes.
         colors = px.colors.qualitative.T10
-        color_gc = colors[6]
-        color_gc_a = colors[5]
-        color_a = colors[4]
-        color_g = colors[0]
-        color_g_c = colors[5]
-        color_c = colors[2]
-        color_m = "white"
+        color_gambcolu = colors[6]
+        color_gambcolu_arab_het = colors[5]
+        color_arab = colors[4]
+        color_gamb = colors[0]
+        color_gamb_colu_het = colors[5]
+        color_colu = colors[2]
+        color_missing = "white"
         aim_palettes = {
-            "gambcolu_vs_arab": (color_m, color_gc, color_gc_a, color_a),
-            "gamb_vs_colu": (color_m, color_g, color_g_c, color_c),
+            "gambcolu_vs_arab": (
+                color_missing,
+                color_gambcolu,
+                color_gambcolu_arab_het,
+                color_arab,
+            ),
+            "gamb_vs_colu": (
+                color_missing,
+                color_gamb,
+                color_gamb_colu_het,
+                color_colu,
+            ),
         }
 
         super().__init__(
