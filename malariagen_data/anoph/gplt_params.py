@@ -46,7 +46,7 @@ genes_height: TypeAlias = Annotated[
     "Genes track height in pixels (px).",
 ]
 
-genes_height_default: genes_height = 120
+genes_height_default: genes_height = 90
 
 show: TypeAlias = Annotated[
     bool,
@@ -77,3 +77,14 @@ figure: TypeAlias = Annotated[
     Optional[bokeh.model.Model],
     "A bokeh figure (only returned if show=False).",
 ]
+
+output_backend: TypeAlias = Annotated[
+    Literal["canvas", "webgl", "svg"],
+    """
+    Specify an output backend to render a plot area onto. See also
+    https://docs.bokeh.org/en/latest/docs/user_guide/output/webgl.html
+    """,
+]
+
+# webgl is better for plots like selection scans with lots of points
+output_backend_default: output_backend = "webgl"

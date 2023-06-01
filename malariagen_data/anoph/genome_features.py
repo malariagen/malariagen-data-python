@@ -153,7 +153,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         transcript: base_params.transcript,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.height = gplt_params.genes_height_default,
+        height: gplt_params.height = 100,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         toolbar_location: Optional[
@@ -292,13 +292,14 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         region: base_params.single_region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.genes_height = gplt_params.genes_height_default,
+        height: gplt_params.genes_height = 120,
         show: gplt_params.show = True,
         toolbar_location: Optional[
             gplt_params.toolbar_location
         ] = gplt_params.toolbar_location_default,
         x_range: Optional[gplt_params.x_range] = None,
-        title: gplt_params.title = "Genes",
+        title: Optional[gplt_params.title] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -355,6 +356,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             tooltips=tooltips,
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.4, 2.2),
+            output_backend=output_backend,
         )
 
         debug("add functionality to click through to vectorbase")
@@ -369,8 +371,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             left="start",
             right="end",
             source=data,
-            line_width=0.5,
-            fill_alpha=0.5,
+            line_width=0,
         )
 
         debug("tidy up the plot")
@@ -379,6 +380,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
+        fig.yaxis.axis_label = "Genes"
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
