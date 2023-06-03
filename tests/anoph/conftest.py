@@ -8,6 +8,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 import zarr
 
 # N.B., this file (conftest.py) is handled in a special way
@@ -529,6 +530,56 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
 
     zarr.consolidate_metadata(path)
     return root, n_sites
+
+
+def simulate_aim_sites(path, contigs, snp_sites, n_sites_low, n_sites_high):
+    ds = xr.Dataset()
+    variant_position_arrays = []
+    variant_allele_arrays = []
+    variant_contig_arrays = []
+    for contig_index, contig in enumerate(contigs):
+        # Simulate AIM positions variable.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        loc_aim_sites = np.random.choice(
+            snp_pos.shape[0], size=np.random.randint(n_sites_low, n_sites_high)
+        )
+        loc_aim_sites.sort()
+        aim_pos = snp_pos[loc_aim_sites]
+        variant_position_arrays.append(aim_pos)
+
+        # Simulate contig variable.
+        aim_contig = np.full(shape=aim_pos.shape, fill_value=contig_index)
+        variant_contig_arrays.append(aim_contig)
+
+        # Simulate AIM alleles variable.
+        snp_ref = snp_sites[f"{contig}/variants/REF"][:]
+        snp_alt = snp_sites[f"{contig}/variants/ALT"][:]
+        snp_alleles = np.concatenate([snp_ref[:, None], snp_alt], axis=1)
+        aim_site_snp_alleles = snp_alleles[loc_aim_sites]
+        sim_allele_choice = np.array(
+            [
+                np.random.choice(4, size=2, replace=False)
+                for _ in range(len(loc_aim_sites))
+            ]
+        )
+        aim_alleles = np.take_along_axis(
+            aim_site_snp_alleles, indices=sim_allele_choice, axis=1
+        )
+        variant_allele_arrays.append(aim_alleles)
+
+    # Concatenate over contigs.
+    variant_contig = np.concatenate(variant_contig_arrays, axis=0)
+    ds["variant_contig"] = ("variants",), variant_contig
+    variant_position = np.concatenate(variant_position_arrays, axis=0)
+    ds["variant_position"] = ("variants",), variant_position
+    variant_allele = np.concatenate(variant_allele_arrays, axis=0)
+    ds["variant_allele"] = ("variants",), variant_allele
+
+    # Dataset attributes.
+    ds.attrs["contigs"] = contigs
+
+    # Write dataset to zarr.
+    ds.to_zarr(path, mode="w", consolidated=True)
 
 
 class AnophelesSimulator:
@@ -1072,6 +1123,27 @@ class Ag3Simulator(AnophelesSimulator):
                         calldata = root.require_group(contig).require_group("calldata")
                         calldata.create_dataset(name="GT", data=gt)
                     zarr.consolidate_metadata(zarr_path)
+
+    def init_aim_variants(self):
+        aims = "gambcolu_vs_arab"
+        path = self.bucket_path / "reference/aim_defs_20220528" / f"{aims}.zarr"
+        simulate_aim_sites(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            n_sites_low=1000,
+            n_sites_high=4000,
+        )
+
+        aims = "gamb_vs_colu"
+        path = self.bucket_path / "reference/aim_defs_20220528" / f"{aims}.zarr"
+        simulate_aim_sites(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            n_sites_low=40,
+            n_sites_high=400,
+        )
 
 
 class Af1Simulator(AnophelesSimulator):

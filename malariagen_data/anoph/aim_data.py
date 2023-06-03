@@ -60,7 +60,7 @@ class AnophelesAimData(
         if aims in self.aim_ids:
             return aims
         else:
-            raise ValueError(f"Invalid aims parameter, must be one of f{self.aim_ids}.")
+            raise ValueError(f"Invalid aims parameter, must be one of {self.aim_ids}.")
 
     @check_types
     @doc(
