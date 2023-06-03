@@ -1100,6 +1100,7 @@ class AnophelesDataResource(
         circle_kwargs,
         show,
         x_range,
+        output_backend,
     ):
         debug = self._log.debug
 
@@ -1136,6 +1137,7 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, y_max),
+            output_backend=output_backend,
         )
 
         debug("plot heterozygosity")
@@ -1147,7 +1149,8 @@ class AnophelesDataResource(
         )
         if circle_kwargs is None:
             circle_kwargs = dict()
-        circle_kwargs.setdefault("size", 3)
+        circle_kwargs.setdefault("size", 4)
+        circle_kwargs.setdefault("line_width", 0)
         fig.circle(x="position", y="heterozygosity", source=data, **circle_kwargs)
 
         debug("tidy up the plot")
@@ -1177,6 +1180,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -1208,6 +1212,7 @@ class AnophelesDataResource(
             circle_kwargs=circle_kwargs,
             show=show,
             x_range=x_range,
+            output_backend=output_backend,
         )
 
         if show:
@@ -1234,6 +1239,7 @@ class AnophelesDataResource(
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -1256,6 +1262,7 @@ class AnophelesDataResource(
             height=track_height,
             circle_kwargs=circle_kwargs,
             show=False,
+            output_backend=output_backend,
         )
         fig1.xaxis.visible = False
         figs = [fig1]
@@ -1275,6 +1282,7 @@ class AnophelesDataResource(
                 circle_kwargs=circle_kwargs,
                 show=False,
                 x_range=fig1.x_range,
+                output_backend=output_backend,
             )
             fig_het.xaxis.visible = False
             figs.append(fig_het)
@@ -1287,6 +1295,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
         figs.append(fig_genes)
 
@@ -1407,10 +1416,11 @@ class AnophelesDataResource(
         region: base_params.single_region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.height = 100,
+        height: gplt_params.height = 80,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-        title: gplt_params.title = "Runs of homozygosity",
+        title: Optional[gplt_params.title] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -1458,6 +1468,7 @@ class AnophelesDataResource(
             active_drag="xpan",
             x_range=x_range,
             y_range=bokeh.models.Range1d(0, 1),
+            output_backend=output_backend,
         )
 
         debug("now plot the ROH as rectangles")
@@ -1467,13 +1478,14 @@ class AnophelesDataResource(
             left="roh_start",
             right="roh_stop",
             source=data,
-            line_width=0.5,
+            line_width=1,
             fill_alpha=0.5,
         )
 
         debug("tidy up the plot")
         fig.ygrid.visible = False
         fig.yaxis.ticker = []
+        fig.yaxis.axis_label = "RoH"
         self._bokeh_style_genome_xaxis(fig, resolved_region.contig)
 
         if show:
@@ -1503,10 +1515,11 @@ class AnophelesDataResource(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         heterozygosity_height: gplt_params.height = 170,
-        roh_height: gplt_params.height = 50,
+        roh_height: gplt_params.height = 40,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -1537,6 +1550,7 @@ class AnophelesDataResource(
             circle_kwargs=circle_kwargs,
             show=False,
             x_range=None,
+            output_backend=output_backend,
         )
         fig_het.xaxis.visible = False
         figs = [fig_het]
@@ -1562,6 +1576,7 @@ class AnophelesDataResource(
             height=roh_height,
             show=False,
             x_range=fig_het.x_range,
+            output_backend=output_backend,
         )
         fig_roh.xaxis.visible = False
         figs.append(fig_roh)
@@ -1574,6 +1589,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig_het.x_range,
             show=False,
+            output_backend=output_backend,
         )
         figs.append(fig_genes)
 
@@ -3236,6 +3252,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # compute Fst
         x, fst = self.fst_gwss(
@@ -3274,6 +3291,7 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),
+            output_backend=output_backend,
         )
 
         # plot Fst
@@ -3281,7 +3299,7 @@ class AnophelesDataResource(
             x=x,
             y=fst,
             size=3,
-            line_width=0.5,
+            line_width=1,
             line_color="black",
             fill_color=None,
         )
@@ -3326,6 +3344,7 @@ class AnophelesDataResource(
         track_height: gplt_params.track_height = 190,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
@@ -3344,6 +3363,7 @@ class AnophelesDataResource(
             width=width,
             height=track_height,
             show=False,
+            output_backend=output_backend,
         )
 
         fig1.xaxis.visible = False
@@ -3356,6 +3376,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         # combine plots into a single figure
@@ -3666,6 +3687,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # compute H12
         x, h12 = self.h12_gwss(
@@ -3703,6 +3725,7 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),
+            output_backend=output_backend,
         )
 
         # plot H12
@@ -3710,7 +3733,7 @@ class AnophelesDataResource(
             x=x,
             y=h12,
             size=3,
-            line_width=0.5,
+            line_width=1,
             line_color="black",
             fill_color=None,
         )
@@ -3751,6 +3774,7 @@ class AnophelesDataResource(
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_h12_gwss_track(
@@ -3768,6 +3792,7 @@ class AnophelesDataResource(
             width=width,
             height=track_height,
             show=False,
+            output_backend=output_backend,
         )
 
         fig1.xaxis.visible = False
@@ -3780,6 +3805,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         # combine plots into a single figure
@@ -3940,6 +3966,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # compute H1X
         x, h1x = self.h1x_gwss(
@@ -3978,6 +4005,7 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),
+            output_backend=output_backend,
         )
 
         # plot H1X
@@ -3985,7 +4013,7 @@ class AnophelesDataResource(
             x=x,
             y=h1x,
             size=3,
-            line_width=0.5,
+            line_width=1,
             line_color="black",
             fill_color=None,
         )
@@ -4030,6 +4058,7 @@ class AnophelesDataResource(
         track_height: gplt_params.track_height = 190,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_h1x_gwss_track(
@@ -4048,6 +4077,7 @@ class AnophelesDataResource(
             width=width,
             height=track_height,
             show=False,
+            output_backend=output_backend,
         )
 
         fig1.xaxis.visible = False
@@ -4060,6 +4090,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         # combine plots into a single figure
@@ -4280,6 +4311,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # compute ihs
         x, ihs = self.ihs_gwss(
@@ -4327,31 +4359,39 @@ class AnophelesDataResource(
             height=height,
             toolbar_location="above",
             x_range=x_range,
+            output_backend=output_backend,
         )
 
         if window_size:
             if isinstance(percentiles, int):
                 percentiles = (percentiles,)
+            # Ensure percentiles are sorted so that colors make sense.
+            percentiles = tuple(sorted(percentiles))
 
         # add an empty dimension to ihs array if 1D
         ihs = np.reshape(ihs, (ihs.shape[0], -1))
-        bokeh_palette = bokeh.palettes.all_palettes[palette]
+
+        # select the base color palette to work from
+        base_palette = bokeh.palettes.all_palettes[palette][8]
+
+        # keep only enough colours to plot the IHS tracks
+        bokeh_palette = base_palette[: ihs.shape[1]]
+
+        # reverse the colors so darkest is last
+        bokeh_palette = bokeh_palette[::-1]
+
+        # plot IHS tracks
         for i in range(ihs.shape[1]):
             ihs_perc = ihs[:, i]
-            if ihs.shape[1] >= 3:
-                color = bokeh_palette[ihs.shape[1]][i]
-            elif ihs.shape[1] == 2:
-                color = bokeh_palette[3][i]
-            else:
-                color = None
+            color = bokeh_palette[i]
 
             # plot ihs
             fig.circle(
                 x=x,
                 y=ihs_perc,
-                size=3,
-                line_width=0.15,
-                line_color="black",
+                size=4,
+                line_width=0,
+                line_color=color,
                 fill_color=color,
             )
 
@@ -4402,6 +4442,7 @@ class AnophelesDataResource(
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
@@ -4431,6 +4472,7 @@ class AnophelesDataResource(
             width=width,
             height=track_height,
             show=False,
+            output_backend=output_backend,
         )
 
         fig1.xaxis.visible = False
@@ -4443,6 +4485,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         # combine plots into a single figure
@@ -4607,6 +4650,7 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # compute G123
         x, g123 = self.g123_gwss(
@@ -4644,6 +4688,7 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, 1),
+            output_backend=output_backend,
         )
 
         # plot G123
@@ -4651,7 +4696,7 @@ class AnophelesDataResource(
             x=x,
             y=g123,
             size=3,
-            line_width=0.5,
+            line_width=1,
             line_color="black",
             fill_color=None,
         )
@@ -4692,6 +4737,7 @@ class AnophelesDataResource(
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
@@ -4709,6 +4755,7 @@ class AnophelesDataResource(
             width=width,
             height=track_height,
             show=False,
+            output_backend=output_backend,
         )
 
         fig1.xaxis.visible = False
@@ -4721,6 +4768,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         # combine plots into a single figure

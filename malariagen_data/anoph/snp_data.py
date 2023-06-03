@@ -1098,6 +1098,7 @@ class AnophelesSnpData(
         max_snps: int = 200_000,
         x_range: Optional[gplt_params.x_range] = None,
         show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
@@ -1198,6 +1199,7 @@ class AnophelesSnpData(
             x_range=x_range,
             y_range=(0.5, 2.5),
             tooltips=tooltips,
+            output_backend=output_backend,
         )
         hover_tool = fig.select(type=bokeh.models.HoverTool)
         hover_tool.name = "snps"
@@ -1214,6 +1216,7 @@ class AnophelesSnpData(
             color="#cccccc",
             source=df_n_runs,
             name="gaps",
+            line_width=0,
         )
 
         # Plot SNPs.

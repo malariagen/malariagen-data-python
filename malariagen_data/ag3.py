@@ -1766,6 +1766,7 @@ class Ag3(AnophelesDataResource):
         line_kwargs=None,
         show=True,
         x_range=None,
+        output_backend="webgl",
     ):
         """Plot CNV HMM data for a single sample, using bokeh.
 
@@ -1858,13 +1859,14 @@ class Ag3(AnophelesDataResource):
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, y_max),
+            output_backend=output_backend,
         )
 
         debug("plot the normalised coverage data")
         if circle_kwargs is None:
             circle_kwargs = dict()
         circle_kwargs.setdefault("size", 3)
-        circle_kwargs.setdefault("line_width", 0.5)
+        circle_kwargs.setdefault("line_width", 1)
         circle_kwargs.setdefault("line_color", "black")
         circle_kwargs.setdefault("fill_color", None)
         circle_kwargs.setdefault("legend_label", "Coverage")
@@ -1902,6 +1904,7 @@ class Ag3(AnophelesDataResource):
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
+        output_backend="webgl",
     ):
         """Plot CNV HMM data for a single sample, together with a genes track,
         using bokeh.
@@ -1951,6 +1954,7 @@ class Ag3(AnophelesDataResource):
             circle_kwargs=circle_kwargs,
             line_kwargs=line_kwargs,
             show=False,
+            output_backend=output_backend,
         )
         fig1.xaxis.visible = False
 
@@ -1962,6 +1966,7 @@ class Ag3(AnophelesDataResource):
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         debug("combine plots into a single figure")
@@ -1990,6 +1995,7 @@ class Ag3(AnophelesDataResource):
         row_height=7,
         height=None,
         show=True,
+        output_backend="webgl",
     ):
         """Plot CNV HMM data for multiple samples as a heatmap, using bokeh.
 
@@ -2090,6 +2096,7 @@ class Ag3(AnophelesDataResource):
             x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
             y_range=(-0.5, n_samples - 0.5),
             tooltips=tooltips,
+            output_backend=output_backend,
         )
 
         debug("set up palette and color mapping")
