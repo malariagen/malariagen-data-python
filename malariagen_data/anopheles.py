@@ -38,6 +38,7 @@ from .anoph import (
 )
 from .anoph.base import AnophelesBase
 from .anoph.base_params import DEFAULT
+from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
@@ -81,6 +82,7 @@ AA_CHANGE_QUERY = (
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesCnvData,
     AnophelesHapData,
     AnophelesSnpData,
     AnophelesSampleMetadata,
