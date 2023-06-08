@@ -7,7 +7,7 @@ import pandas as pd
 from numpydoc_decorator import doc
 
 from ..util import check_types
-from . import base_params, map_params
+from . import base_params, het_params, map_params
 from .base import AnophelesBase
 
 
@@ -712,3 +712,19 @@ class AnophelesSampleMetadata(AnophelesBase):
         super()._results_cache_add_analysis_params(params)
         params["cohorts_analysis"] = self._cohorts_analysis
         params["aim_analysis"] = self._aim_analysis
+
+    @check_types
+    @doc(
+        summary="Get the metadata for a specific sample and sample set.",
+    )
+    def lookup_sample(
+        self, sample: het_params.single_sample, sample_set: base_params.sample_set
+    ):
+        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
+        sample_rec = None
+        if isinstance(sample, str):
+            sample_rec = df_samples.loc[sample]
+        else:
+            assert isinstance(sample, int)
+            sample_rec = df_samples.iloc[sample]
+        return sample_rec
