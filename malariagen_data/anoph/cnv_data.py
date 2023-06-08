@@ -649,7 +649,7 @@ class AnophelesCnvData(
         del region
 
         debug("access sample metadata, look up sample")
-        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_rec = self.lookup_sample(sample=sample, sample_set=sample_set)
         sample_id = sample_rec.name  # sample_id
         sample_set = sample_rec["sample_set"]
 

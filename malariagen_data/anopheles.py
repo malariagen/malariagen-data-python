@@ -1065,20 +1065,6 @@ class AnophelesDataResource(
 
         return df_samples
 
-    def _lookup_sample(
-        self,
-        sample: het_params.single_sample,
-        sample_set: Optional[base_params.sample_set] = None,
-    ):
-        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
-        sample_rec = None
-        if isinstance(sample, str):
-            sample_rec = df_samples.loc[sample]
-        else:
-            assert isinstance(sample, int)
-            sample_rec = df_samples.iloc[sample]
-        return sample_rec
-
     def _plot_heterozygosity_track(
         self,
         *,
@@ -1322,7 +1308,7 @@ class AnophelesDataResource(
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
-        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_rec = self.lookup_sample(sample=sample, sample_set=sample_set)
         sample_id = sample_rec.name  # sample_id
         sample_set = sample_rec["sample_set"]
 

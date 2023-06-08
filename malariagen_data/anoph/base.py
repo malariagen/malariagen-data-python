@@ -29,7 +29,7 @@ from ..util import (
     hash_params,
     init_filesystem,
 )
-from . import base_params
+from . import base_params, het_params
 
 
 class AnophelesBase:
@@ -325,6 +325,22 @@ class AnophelesBase:
             return self._cache_sample_set_to_release[sample_set]
         except KeyError:
             raise ValueError(f"No release found for sample set {sample_set!r}")
+
+    @check_types
+    @doc(
+        summary="Get the metadata for a specific sample and sample set.",
+    )
+    def lookup_sample(
+        self, sample: het_params.single_sample, sample_set: base_params.sample_set
+    ):
+        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
+        sample_rec = None
+        if isinstance(sample, str):
+            sample_rec = df_samples.loc[sample]
+        else:
+            assert isinstance(sample, int)
+            sample_rec = df_samples.iloc[sample]
+        return sample_rec
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
