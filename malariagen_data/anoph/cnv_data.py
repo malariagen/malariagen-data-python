@@ -514,7 +514,7 @@ class AnophelesCnvData(
     def plot_cnv_hmm_coverage_track(
         self,
         sample: het_params.sample,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_set: Optional[base_params.sample_set] = None,
         y_max: het_params.y_max = "auto",
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -622,7 +622,7 @@ class AnophelesCnvData(
     def plot_cnv_hmm_coverage(
         self,
         sample: het_params.sample,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_set: Optional[base_params.sample_set] = None,
         y_max: het_params.y_max = "auto",
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -688,7 +688,7 @@ class AnophelesCnvData(
     )
     def plot_cnv_hmm_heatmap_track(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
@@ -829,7 +829,7 @@ class AnophelesCnvData(
     )
     def plot_cnv_hmm_heatmap(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,

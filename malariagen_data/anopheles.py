@@ -786,7 +786,7 @@ class AnophelesDataResource(
         returns="IGV browser.",
     )
     def igv(
-        self, region: base_params.single_region, tracks: Optional[List] = None
+        self, region: base_params.region, tracks: Optional[List] = None
     ) -> igv_notebook.Browser:
         debug = self._log.debug
 
@@ -838,7 +838,7 @@ class AnophelesDataResource(
     )
     def view_alignments(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sample: str,
         visibility_window: int = 20_000,
     ):
@@ -1150,7 +1150,7 @@ class AnophelesDataResource(
     def plot_heterozygosity_track(
         self,
         sample: het_params.single_sample,
-        region: base_params.single_region,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
@@ -1209,7 +1209,7 @@ class AnophelesDataResource(
     def plot_heterozygosity(
         self,
         sample: het_params.sample,
-        region: base_params.single_region,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[het_params.circle_kwargs] = None,
@@ -1351,7 +1351,7 @@ class AnophelesDataResource(
     def roh_hmm(
         self,
         sample: het_params.single_sample,
-        region: base_params.single_region,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
@@ -1394,7 +1394,7 @@ class AnophelesDataResource(
     def plot_roh_track(
         self,
         df_roh: het_params.df_roh,
-        region: base_params.single_region,
+        region: base_params.region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 80,
@@ -1485,7 +1485,7 @@ class AnophelesDataResource(
     def plot_roh(
         self,
         sample: het_params.single_sample,
-        region: base_params.single_region,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,

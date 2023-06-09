@@ -27,7 +27,7 @@ contigs: TypeAlias = Annotated[
     """,
 ]
 
-single_region: TypeAlias = Annotated[
+region: TypeAlias = Annotated[
     single_region_param_type,
     """
     Region of the reference genome. Can be a contig name, region string

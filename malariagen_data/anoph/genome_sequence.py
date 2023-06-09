@@ -79,7 +79,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     )
     def genome_sequence(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:

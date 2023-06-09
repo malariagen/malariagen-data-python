@@ -289,7 +289,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def plot_genes(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.genes_height = 120,
