@@ -46,7 +46,7 @@ class AnophelesCnvData(
         summary="Open CNV HMM zarr.",
         returns="Zarr hierarchy.",
     )
-    def open_cnv_hmm(self, sample_set: base_params.sample_set):
+    def open_cnv_hmm(self, sample_set: base_params.sample_set) -> zarr.hierarchy.Group:
         try:
             return self._cache_cnv_hmm[sample_set]
         except KeyError:
@@ -142,7 +142,7 @@ class AnophelesCnvData(
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
-    ):
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         debug("normalise parameters")
@@ -216,7 +216,7 @@ class AnophelesCnvData(
         self,
         sample_set: base_params.sample_set,
         analysis: cnv_params.coverage_calls_analysis,
-    ):
+    ) -> zarr.hierarchy.Group:
         key = (sample_set, analysis)
         try:
             return self._cache_cnv_coverage_calls[key]
@@ -334,7 +334,7 @@ class AnophelesCnvData(
         analysis: cnv_params.coverage_calls_analysis,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
-    ):
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         # N.B., we cannot concatenate multiple sample sets here, because
@@ -377,7 +377,9 @@ class AnophelesCnvData(
         summary="Open CNV discordant read calls zarr.",
         returns="Zarr hierarchy.",
     )
-    def open_cnv_discordant_read_calls(self, sample_set: base_params.sample_set):
+    def open_cnv_discordant_read_calls(
+        self, sample_set: base_params.sample_set
+    ) -> zarr.hierarchy.Group:
         try:
             return self._cache_cnv_discordant_read_calls[sample_set]
         except KeyError:
@@ -477,7 +479,7 @@ class AnophelesCnvData(
         sample_sets: Optional[base_params.sample_sets] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
-    ):
+    ) -> xr.Dataset:
         debug = self._log.debug
 
         # N.B., we cannot support region instead of contig here, because some
@@ -527,7 +529,7 @@ class AnophelesCnvData(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ):
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -635,7 +637,7 @@ class AnophelesCnvData(
         line_kwargs: Optional[het_params.line_kwargs] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ):
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         import bokeh.layouts as bklay
@@ -700,7 +702,7 @@ class AnophelesCnvData(
         height: Optional[gplt_params.height] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ):
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -841,7 +843,7 @@ class AnophelesCnvData(
         track_height: Optional[gplt_params.track_height] = None,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
-    ):
+    ) -> gplt_params.figure:
         debug = self._log.debug
 
         import bokeh.layouts as bklay
