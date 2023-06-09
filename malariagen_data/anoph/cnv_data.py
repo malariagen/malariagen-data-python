@@ -734,8 +734,11 @@ class AnophelesCnvData(
         debug("set up plot title")
         title = "CNV HMM"
         if sample_sets is not None:
-            if isinstance(sample_sets, Sequence[str]):
-                sample_sets_text = ", ".join(sample_sets)
+            if isinstance(sample_sets, Sequence):
+                if all(isinstance(s, str) for s in sample_sets):
+                    sample_sets_text = ", ".join(sample_sets)
+                else:
+                    raise TypeError("All elements in 'sample_sets' must be type 'str'")
             elif isinstance(sample_sets, str):
                 sample_sets_text = sample_sets
             else:
