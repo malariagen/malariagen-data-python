@@ -1,6 +1,6 @@
 """Parameters common to functions accessing CNV data."""
 
-from typing import Optional
+from typing import Optional, Union
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -20,3 +20,10 @@ coverage_calls_analysis: TypeAlias = Annotated[
     `coverage_calls_analysis_ids` property for available values.
     """,
 ]
+
+y_max: TypeAlias = Annotated[
+    Union[float, str],
+    "Y axis limit or 'auto'.",
+]
+
+y_max_default: y_max = "auto"
