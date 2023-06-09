@@ -18,7 +18,7 @@ from ..util import (
     parse_single_region,
     simple_xarray_concat,
 )
-from . import base_params, cnv_params, gplt_params, hap_params, het_params
+from . import base_params, cnv_params, gplt_params, het_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -213,7 +213,9 @@ class AnophelesCnvData(
         returns="Zarr hierarchy.",
     )
     def open_cnv_coverage_calls(
-        self, sample_set: base_params.sample_set, analysis: hap_params.analysis
+        self,
+        sample_set: base_params.sample_set,
+        analysis: cnv_params.coverage_calls_analysis,
     ):
         key = (sample_set, analysis)
         try:
@@ -226,7 +228,7 @@ class AnophelesCnvData(
             marker = path + "/.zmetadata"
             if not self._fs.exists(marker):
                 raise ValueError(
-                    f"analysis f{analysis!r} not implemented for sample set {sample_set!r}"
+                    f"CNV coverage calls analysis f{analysis!r} not implemented for sample set {sample_set!r}"
                 )
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
@@ -329,7 +331,7 @@ class AnophelesCnvData(
         self,
         region: base_params.regions,
         sample_set: base_params.sample_set,
-        analysis: hap_params.analysis,
+        analysis: cnv_params.coverage_calls_analysis,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ):

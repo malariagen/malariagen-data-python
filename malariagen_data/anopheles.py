@@ -1149,7 +1149,7 @@ class AnophelesDataResource(
     )
     def plot_heterozygosity_track(
         self,
-        sample: het_params.single_sample,
+        sample: base_params.single_sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
@@ -1297,7 +1297,7 @@ class AnophelesDataResource(
 
     def _sample_count_het(
         self,
-        sample: het_params.single_sample,
+        sample: base_params.single_sample,
         region: Region,
         site_mask: base_params.site_mask,
         window_size: het_params.window_size,
@@ -1350,7 +1350,7 @@ class AnophelesDataResource(
     )
     def roh_hmm(
         self,
-        sample: het_params.single_sample,
+        sample: base_params.single_sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
@@ -1484,7 +1484,7 @@ class AnophelesDataResource(
     )
     def plot_roh(
         self,
-        sample: het_params.single_sample,
+        sample: base_params.single_sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,

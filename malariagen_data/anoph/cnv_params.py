@@ -12,3 +12,11 @@ max_coverage_variance: TypeAlias = Annotated[
 ]
 
 max_coverage_variance_default: max_coverage_variance = 0.2
+
+coverage_calls_analysis: TypeAlias = Annotated[
+    str,
+    """
+    Which coverage calls analysis to use. See the
+    `coverage_calls_analysis_ids` property for available values.
+    """,
+]

@@ -657,6 +657,7 @@ class Ag3Simulator(AnophelesSimulator):
             "DEFAULT_COHORTS_ANALYSIS": "20230223",
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "PHASING_ANALYSIS_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
+            "COVERAGE_CALLS_ANALYSIS_IDS": ["gamb_colu", "arab"],
         }
         config_path = self.bucket_path / "v3-config.json"
         with config_path.open(mode="w") as f:
@@ -1099,6 +1100,7 @@ class Af1Simulator(AnophelesSimulator):
             "DEFAULT_COHORTS_ANALYSIS": "20221129",
             "SITE_MASK_IDS": ["funestus"],
             "PHASING_ANALYSIS_IDS": ["funestus"],
+            "COVERAGE_CALLS_ANALYSIS_IDS": ["funestus"],
         }
         config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
