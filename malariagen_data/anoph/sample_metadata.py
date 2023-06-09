@@ -7,7 +7,7 @@ import pandas as pd
 from numpydoc_decorator import doc
 
 from ..util import check_types
-from . import base_params, het_params, map_params
+from . import base_params, map_params
 from .base import AnophelesBase
 
 
@@ -719,7 +719,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     )
     def lookup_sample(
         self,
-        sample: het_params.single_sample,
+        sample: base_params.single_sample,
         sample_set: Optional[base_params.sample_set] = None,
     ):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")

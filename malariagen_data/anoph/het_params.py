@@ -5,13 +5,14 @@ from typing import List, Mapping, Tuple, Union
 import pandas as pd
 from typing_extensions import Annotated, TypeAlias
 
-single_sample: TypeAlias = Annotated[
-    Union[str, int],
-    "Sample identifier or index within sample set.",
-]
+from . import base_params
 
 sample: TypeAlias = Annotated[
-    Union[single_sample, List[single_sample], Tuple[single_sample, ...]],
+    Union[
+        base_params.single_sample,
+        List[base_params.single_sample],
+        Tuple[base_params.single_sample, ...],
+    ],
     "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
 ]
 

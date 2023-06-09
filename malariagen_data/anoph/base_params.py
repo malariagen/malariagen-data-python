@@ -82,6 +82,11 @@ sample_indices: TypeAlias = Annotated[
     """,
 ]
 
+single_sample: TypeAlias = Annotated[
+    Union[str, int],
+    "Sample identifier or index within sample set.",
+]
+
 
 def validate_sample_selection_params(
     *,
