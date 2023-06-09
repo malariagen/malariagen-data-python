@@ -92,7 +92,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def genome_features(
         self,
-        region: Optional[base_params.region] = None,
+        region: Optional[base_params.regions] = None,
         attributes: base_params.gff_attributes = DEFAULT,
     ) -> pd.DataFrame:
         debug = self._log.debug

@@ -136,7 +136,7 @@ class AnophelesCnvData(
     )
     def cnv_hmm(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
@@ -327,7 +327,7 @@ class AnophelesCnvData(
     )
     def cnv_coverage_calls(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_set: base_params.sample_set,
         analysis: hap_params.analysis,
         inline_array: base_params.inline_array = base_params.inline_array_default,

@@ -1604,7 +1604,7 @@ class AnophelesDataResource(
     )
     def pca(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         n_snps: pca_params.n_snps,
         thin_offset: pca_params.thin_offset = pca_params.thin_offset_default,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -2168,7 +2168,7 @@ class AnophelesDataResource(
         self,
         cohort: base_params.cohort,
         cohort_size: base_params.cohort_size,
-        region: base_params.region,
+        region: base_params.regions,
         site_mask: Optional[base_params.site_mask] = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -2267,7 +2267,7 @@ class AnophelesDataResource(
         self,
         cohorts: base_params.cohorts,
         cohort_size: base_params.cohort_size,
-        region: base_params.region,
+        region: base_params.regions,
         site_mask: base_params.site_mask = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -5003,7 +5003,7 @@ class AnophelesDataResource(
     )
     def plot_haplotype_clustering(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -5178,7 +5178,7 @@ class AnophelesDataResource(
     )
     def plot_haplotype_network(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,

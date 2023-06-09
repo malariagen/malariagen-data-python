@@ -5,7 +5,7 @@ from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
 from typing_extensions import Annotated, TypeAlias
 
 from ..util import (
-    contigs_param_type,
+    contig_param_type,
     region_param_type,
     single_contig_param_type,
     single_region_param_type,
@@ -20,7 +20,7 @@ contig: TypeAlias = Annotated[
 ]
 
 contigs: TypeAlias = Annotated[
-    contigs_param_type,
+    contig_param_type,
     """
     Reference genome contig name. See the `contigs` property for valid contig
     names. Can also be a sequence (e.g., list) of contigs.
@@ -36,7 +36,7 @@ single_region: TypeAlias = Annotated[
     """,
 ]
 
-region: TypeAlias = Annotated[
+regions: TypeAlias = Annotated[
     region_param_type,
     """
     Region of the reference genome. Can be a contig name, region string

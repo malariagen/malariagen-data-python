@@ -430,7 +430,7 @@ region_param_type: TypeAlias = Union[
 
 single_contig_param_type: TypeAlias = str
 
-contigs_param_type: TypeAlias = Union[
+contig_param_type: TypeAlias = Union[
     single_contig_param_type,
     List[single_contig_param_type],
     Tuple[single_contig_param_type, ...],

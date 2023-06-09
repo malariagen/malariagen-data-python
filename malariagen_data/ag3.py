@@ -571,7 +571,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -706,7 +706,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv_frequencies(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         cohorts,
         sample_query=None,
         min_cohort_size=10,
@@ -928,7 +928,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv_frequencies_advanced(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         area_by,
         period_by,
         sample_sets=None,
