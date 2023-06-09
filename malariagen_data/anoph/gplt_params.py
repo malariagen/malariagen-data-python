@@ -36,6 +36,13 @@ height: TypeAlias = Annotated[
     "Plot height in pixels (px).",
 ]
 
+row_height: TypeAlias = Annotated[
+    int,
+    "Plot height per row (sample) in pixels (px).",
+]
+
+row_height_default: row_height = 7
+
 track_height: TypeAlias = Annotated[
     int,
     "Main track height in pixels (px).",

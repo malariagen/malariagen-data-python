@@ -1,27 +1,27 @@
-from typing import List
+from typing import List, Optional
 
 import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
 import zarr
+from numpydoc_decorator import doc
 
 from ..util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
+    check_types,
     da_from_zarr,
     init_zarr_store,
     parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
 )
-from . import base_params, gplt_params
+from . import base_params, cnv_params, gplt_params, hap_params, het_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
-
-DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 
 
 class AnophelesCnvData(
@@ -41,18 +41,12 @@ class AnophelesCnvData(
         self._cache_cnv_coverage_calls = dict()
         self._cache_cnv_discordant_read_calls = dict()
 
-    def open_cnv_hmm(self, sample_set):
-        """Open CNV HMM zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @check_types
+    @doc(
+        summary="Open CNV HMM zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_cnv_hmm(self, sample_set: base_params.sample_set):
         try:
             return self._cache_cnv_hmm[sample_set]
         except KeyError:
@@ -135,46 +129,20 @@ class AnophelesCnvData(
 
         return ds
 
+    @check_types
+    @doc(
+        summary="Access CNV HMM data from CNV calling.",
+        returns="An xarray dataset of CNV HMM calls and associated data.",
+    )
     def cnv_hmm(
         self,
         region: base_params.region,
-        sample_sets=None,
-        sample_query=None,
-        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
-        inline_array=True,
-        chunks="native",
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ):
-        """Access CNV HMM data from CNV calling.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of CNV HMM calls and associated data.
-
-        """
         debug = self._log.debug
 
         debug("normalise parameters")
@@ -239,19 +207,14 @@ class AnophelesCnvData(
 
         return ds
 
-    def open_cnv_coverage_calls(self, sample_set, analysis):
-        """Open CNV coverage calls zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-        analysis : {'gamb_colu', 'arab', 'crosses'}
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @check_types
+    @doc(
+        summary="Open CNV coverage calls zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_cnv_coverage_calls(
+        self, sample_set: base_params.sample_set, analysis: hap_params.analysis
+    ):
         key = (sample_set, analysis)
         try:
             return self._cache_cnv_coverage_calls[key]
@@ -357,40 +320,19 @@ class AnophelesCnvData(
 
         return ds
 
+    @check_types
+    @doc(
+        summary="Access CNV HMM data from genome-wide CNV discovery and filtering.",
+        returns="An xarray dataset of CNV alleles and genotypes.",
+    )
     def cnv_coverage_calls(
         self,
         region: base_params.region,
-        sample_set,
-        analysis,
-        inline_array=True,
-        chunks="native",
+        sample_set: base_params.sample_set,
+        analysis: hap_params.analysis,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ):
-        """Access CNV HMM data from genome-wide CNV discovery and filtering.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_set : str
-            Sample set identifier.
-        analysis : {'gamb_colu', 'arab', 'crosses'}
-            Name of CNV analysis.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of CNV alleles and genotypes.
-
-        """
         debug = self._log.debug
 
         # N.B., we cannot concatenate multiple sample sets here, because
@@ -428,18 +370,12 @@ class AnophelesCnvData(
 
         return ds
 
-    def open_cnv_discordant_read_calls(self, sample_set):
-        """Open CNV discordant read calls zarr.
-
-        Parameters
-        ----------
-        sample_set : str
-
-        Returns
-        -------
-        root : zarr.hierarchy.Group
-
-        """
+    @check_types
+    @doc(
+        summary="Open CNV discordant read calls zarr.",
+        returns="Zarr hierarchy.",
+    )
+    def open_cnv_discordant_read_calls(self, sample_set: base_params.sample_set):
         try:
             return self._cache_cnv_discordant_read_calls[sample_set]
         except KeyError:
@@ -528,37 +464,18 @@ class AnophelesCnvData(
 
         return ds
 
+    @check_types
+    @doc(
+        summary="Access CNV discordant read calls data.",
+        returns="An xarray dataset of CNV alleles and genotypes.",
+    )
     def cnv_discordant_read_calls(
         self,
-        contig,
-        sample_sets=None,
-        inline_array=True,
-        chunks="native",
+        contig: base_params.contigs,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ):
-        """Access CNV discordant read calls data.
-
-        Parameters
-        ----------
-        contig : str or list of str
-            Chromosome arm, e.g., "3R". Multiple values can be provided
-            as a list, in which case data will be concatenated, e.g., ["2R",
-            "3R"].
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr
-            chunks. Also, can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of CNV alleles and genotypes.
-
-        """
         debug = self._log.debug
 
         # N.B., we cannot support region instead of contig here, because some
@@ -589,56 +506,26 @@ class AnophelesCnvData(
 
         return ds
 
+    @check_types
+    @doc(
+        summary="Plot CNV HMM data for a single sample, using bokeh.",
+        returns="Bokeh figure.",
+    )
     def plot_cnv_hmm_coverage_track(
         self,
-        sample,
+        sample: het_params.sample,
         region: base_params.single_region,
-        sample_set=None,
-        y_max="auto",
-        sizing_mode=gplt_params.sizing_mode_default,
-        width=gplt_params.width_default,
-        height=200,
-        circle_kwargs=None,
-        line_kwargs=None,
-        show=True,
-        x_range=None,
-        output_backend="webgl",
+        sample_set: Optional[base_params.sample_set] = None,
+        y_max: het_params.y_max = "auto",
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        line_kwargs: Optional[het_params.line_kwargs] = None,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ):
-        """Plot CNV HMM data for a single sample, using bokeh.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_set : str, optional
-            Sample set identifier.
-        y_max : str or int, optional
-            Maximum Y axis value.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        height : int, optional
-            Plot height in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        line_kwargs : dict, optional
-            Passed through to bokeh line() function.
-        show : bool, optional
-            If true, show the plot.
-        x_range : bokeh.models.Range, optional
-            X axis range (for linking to other tracks).
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -727,52 +614,26 @@ class AnophelesCnvData(
         else:
             return fig
 
+    @check_types
+    @doc(
+        summary="Plot CNV HMM data for a single sample, together with a genes track, using bokeh.",
+        returns="Bokeh figure.",
+    )
     def plot_cnv_hmm_coverage(
         self,
-        sample,
-        region,
-        sample_set=None,
-        y_max="auto",
-        sizing_mode=gplt_params.sizing_mode_default,
-        width=gplt_params.width_default,
-        track_height=170,
-        genes_height=gplt_params.genes_height_default,
-        circle_kwargs=None,
-        line_kwargs=None,
-        show=True,
-        output_backend="webgl",
+        sample: het_params.sample,
+        region: base_params.single_region,
+        sample_set: Optional[base_params.sample_set] = None,
+        y_max: het_params.y_max = "auto",
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        line_kwargs: Optional[het_params.line_kwargs] = None,
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ):
-        """Plot CNV HMM data for a single sample, together with a genes track,
-        using bokeh.
-
-        Parameters
-        ----------
-        sample : str or int
-            Sample identifier or index within sample set.
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_set : str, optional
-            Sample set identifier.
-        y_max : str or int, optional
-            Maximum Y axis value.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        track_height : int, optional
-            Height of CNV HMM track in pixels (px).
-        genes_height : int, optional
-            Height of genes track in pixels (px).
-        circle_kwargs : dict, optional
-            Passed through to bokeh circle() function.
-        line_kwargs : dict, optional
-            Passed through to bokeh line() function.
-        show : bool, optional
-            If true, show the plot.
-
-        """
         debug = self._log.debug
 
         import bokeh.layouts as bklay
@@ -820,53 +681,24 @@ class AnophelesCnvData(
         else:
             return fig
 
+    @check_types
+    @doc(
+        summary="Plot CNV HMM data for multiple samples as a heatmap, using bokeh.",
+        returns="Bokeh figure.",
+    )
     def plot_cnv_hmm_heatmap_track(
         self,
         region: base_params.single_region,
-        sample_sets=None,
-        sample_query=None,
-        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
-        sizing_mode=gplt_params.sizing_mode_default,
-        width=gplt_params.width_default,
-        row_height=7,
-        height=None,
-        show=True,
-        output_backend="webgl",
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        row_height: gplt_params.row_height = gplt_params.row_height_default,
+        height: Optional[gplt_params.height] = None,
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ):
-        """Plot CNV HMM data for multiple samples as a heatmap, using bokeh.
-
-        Parameters
-        ----------
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        row_height : int, optional
-            Plot height per row (sample) in pixels (px).
-        height : int, optional
-            Absolute plot height in pixels (px), overrides row_height.
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
-        """
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -990,50 +822,24 @@ class AnophelesCnvData(
         else:
             return fig
 
+    @check_types
+    @doc(
+        summary="Plot CNV HMM data for multiple samples as a heatmap, with a genes track, using bokeh.",
+        returns="Bokeh figure.",
+    )
     def plot_cnv_hmm_heatmap(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
-        sizing_mode=gplt_params.sizing_mode_default,
-        width=gplt_params.width_default,
-        row_height=7,
-        track_height=None,
-        genes_height=gplt_params.genes_height_default,
-        show=True,
+        region: base_params.single_region,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        row_height: gplt_params.row_height = gplt_params.row_height_default,
+        track_height: Optional[gplt_params.track_height] = None,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
     ):
-        """Plot CNV HMM data for multiple samples as a heatmap, with a genes
-        track, using bokeh.
-
-        Parameters
-        ----------
-        region : str
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280") or
-            genomic region defined with coordinates (e.g.,
-            "2L:44989425-44998059").
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-        sizing_mode : str, optional
-            Bokeh plot sizing mode, see https://docs.bokeh.org/en/latest/docs/user_guide/layout.html#sizing-modes
-        width : int, optional
-            Plot width in pixels (px).
-        row_height : int, optional
-            Plot height per row (sample) in pixels (px).
-        track_height : int, optional
-            Absolute plot height for HMM track in pixels (px), overrides
-            row_height.
-        genes_height : int, optional
-            Height of genes track in pixels (px).
-
-        """
         debug = self._log.debug
 
         import bokeh.layouts as bklay

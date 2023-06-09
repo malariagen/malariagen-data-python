@@ -428,6 +428,14 @@ region_param_type: TypeAlias = Union[
     Tuple[single_region_param_type, ...],
 ]
 
+single_contig_param_type: TypeAlias = str
+
+contigs_param_type: TypeAlias = Union[
+    single_contig_param_type,
+    List[single_contig_param_type],
+    Tuple[single_contig_param_type, ...],
+]
+
 
 def parse_single_region(resource, region: single_region_param_type) -> Region:
     if isinstance(region, Region):

@@ -58,6 +58,11 @@ circle_kwargs: TypeAlias = Annotated[
     "Passed through to bokeh circle() function.",
 ]
 
+line_kwargs: TypeAlias = Annotated[
+    Mapping,
+    "Passed through to bokeh line() function.",
+]
+
 df_roh: TypeAlias = Annotated[
     pd.DataFrame,
     """
