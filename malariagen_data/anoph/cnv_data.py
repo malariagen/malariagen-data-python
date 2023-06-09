@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List, Optional, Sequence
 
 import dask.array as da
 import numpy as np
@@ -734,10 +734,12 @@ class AnophelesCnvData(
         debug("set up plot title")
         title = "CNV HMM"
         if sample_sets is not None:
-            if isinstance(sample_sets, (list, tuple)):
+            if isinstance(sample_sets, Sequence[str]):
                 sample_sets_text = ", ".join(sample_sets)
-            else:
+            elif isinstance(sample_sets, str):
                 sample_sets_text = sample_sets
+            else:
+                raise TypeError("'sample_sets' is an unhandled type")
             title += f" - {sample_sets_text}"
         if sample_query is not None:
             title += f" ({sample_query})"
