@@ -157,6 +157,18 @@ def test_aim_calls(aims, ag3_sim_api):
         assert ds.dims["ploidy"] == 2
 
 
+def test_aim_calls_errors(ag3_sim_api):
+    api = ag3_sim_api
+
+    # Bad aims.
+    with pytest.raises(ValueError):
+        api.aim_calls(aims="foobar")
+
+    # Sample query with no results.
+    with pytest.raises(ValueError):
+        api.aim_calls(aims="gamb_vs_colu", sample_query="country == 'Antarctica'")
+
+
 @pytest.mark.parametrize("aims", ["gambcolu_vs_arab", "gamb_vs_colu"])
 def test_plot_aim_heatmap(aims, ag3_sim_api):
     api = ag3_sim_api
