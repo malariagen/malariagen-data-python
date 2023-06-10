@@ -55,7 +55,7 @@ class AnophelesHapData(
         """
         return tuple(self.config.get("PHASING_ANALYSIS_IDS", ()))  # ensure tuple
 
-    def _prep_phasing_analysis_param(self, *, analysis: hap_params.analysis):
+    def _prep_phasing_analysis_param(self, *, analysis: hap_params.analysis) -> str:
         if analysis == DEFAULT:
             # Use whatever is the default phasing analysis for this data resource.
             assert self._default_phasing_analysis is not None

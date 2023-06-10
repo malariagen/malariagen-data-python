@@ -99,6 +99,8 @@ class Af1(AnophelesDataResource):
             cohorts_analysis=cohorts_analysis,
             aim_analysis=None,
             aim_metadata_dtype=None,
+            aim_ids=None,
+            aim_palettes=None,
             site_filters_analysis=site_filters_analysis,
             default_site_mask="funestus",
             default_phasing_analysis="funestus",
