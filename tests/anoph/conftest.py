@@ -8,6 +8,7 @@ from typing import Any, Dict, Tuple
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 import zarr
 
 # N.B., this file (conftest.py) is handled in a special way
@@ -531,6 +532,58 @@ def simulate_hap_sites(path, contigs, snp_sites, p_site):
     return root, n_sites
 
 
+def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
+    ds = xr.Dataset()
+    variant_position_arrays = []
+    variant_allele_arrays = []
+    variant_contig_arrays = []
+    for contig_index, contig in enumerate(contigs):
+        # Simulate AIM positions variable.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        loc_aim_sites = np.random.choice(
+            snp_pos.shape[0], size=np.random.randint(n_sites_low, n_sites_high)
+        )
+        loc_aim_sites.sort()
+        aim_pos = snp_pos[loc_aim_sites]
+        variant_position_arrays.append(aim_pos)
+
+        # Simulate contig variable.
+        aim_contig = np.full(shape=aim_pos.shape, fill_value=contig_index, dtype="u1")
+        variant_contig_arrays.append(aim_contig)
+
+        # Simulate AIM alleles variable.
+        snp_ref = snp_sites[f"{contig}/variants/REF"][:]
+        snp_alt = snp_sites[f"{contig}/variants/ALT"][:]
+        snp_alleles = np.concatenate([snp_ref[:, None], snp_alt], axis=1)
+        aim_site_snp_alleles = snp_alleles[loc_aim_sites]
+        sim_allele_choice = np.vstack(
+            [
+                np.random.choice(4, size=2, replace=False)
+                for _ in range(len(loc_aim_sites))
+            ]
+        )
+        aim_alleles = np.take_along_axis(
+            aim_site_snp_alleles, indices=sim_allele_choice, axis=1
+        )
+        variant_allele_arrays.append(aim_alleles)
+
+    # Concatenate over contigs.
+    variant_contig = np.concatenate(variant_contig_arrays, axis=0)
+    ds["variant_contig"] = ("variants",), variant_contig
+    variant_position = np.concatenate(variant_position_arrays, axis=0)
+    ds["variant_position"] = ("variants",), variant_position
+    variant_allele = np.concatenate(variant_allele_arrays, axis=0)
+    ds["variant_allele"] = ("variants", "alleles"), variant_allele
+
+    # Dataset attributes.
+    ds.attrs["contigs"] = contigs
+
+    # Write dataset to zarr.
+    ds.to_zarr(path, mode="w", consolidated=True)
+
+    return ds
+
+
 class AnophelesSimulator:
     def __init__(
         self,
@@ -578,6 +631,8 @@ class AnophelesSimulator:
         self.init_site_annotations()
         self.init_hap_sites()
         self.init_haplotypes()
+        self.init_aim_variants()
+        self.init_aim_calls()
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -628,6 +683,12 @@ class AnophelesSimulator:
         pass
 
     def init_haplotypes(self):
+        pass
+
+    def init_aim_variants(self):
+        pass
+
+    def init_aim_calls(self):
         pass
 
 
@@ -1072,6 +1133,76 @@ class Ag3Simulator(AnophelesSimulator):
                         calldata = root.require_group(contig).require_group("calldata")
                         calldata.create_dataset(name="GT", data=gt)
                     zarr.consolidate_metadata(zarr_path)
+
+    def init_aim_variants(self):
+        self.aim_variants = dict()
+
+        aims = "gambcolu_vs_arab"
+        path = self.bucket_path / "reference/aim_defs_20220528" / f"{aims}.zarr"
+        self.aim_variants[aims] = simulate_aim_variants(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            n_sites_low=1000,
+            n_sites_high=4000,
+        )
+
+        aims = "gamb_vs_colu"
+        path = self.bucket_path / "reference/aim_defs_20220528" / f"{aims}.zarr"
+        self.aim_variants[aims] = simulate_aim_variants(
+            path=path,
+            contigs=self.contigs,
+            snp_sites=self.snp_sites,
+            n_sites_low=40,
+            n_sites_high=400,
+        )
+
+    def init_aim_calls(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+
+                # Iterate over AIM sets.
+                for aims in "gambcolu_vs_arab", "gamb_vs_colu":
+                    ds_av = self.aim_variants[aims]
+
+                    # Create AIM call dataset.
+                    ds = ds_av.copy()
+
+                    # Add sample_id variable.
+                    metadata_path = (
+                        self.bucket_path
+                        / release_path
+                        / "metadata"
+                        / "general"
+                        / sample_set
+                        / "samples.meta.csv"
+                    )
+                    df_samples = pd.read_csv(metadata_path)
+                    ds["sample_id"] = ("samples",), df_samples["sample_id"]
+
+                    # Add call_genotype variable.
+                    gt = np.random.choice(
+                        np.arange(2, dtype="i1"),
+                        size=(ds.dims["variants"], ds.dims["samples"], 2),
+                        replace=True,
+                    )
+                    ds["call_genotype"] = ("variants", "samples", "ploidy"), gt
+
+                    # Write out zarr.
+                    path = (
+                        self.bucket_path
+                        / f"{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
+                    )
+                    ds.to_zarr(path, mode="w", consolidated=True)
 
 
 class Af1Simulator(AnophelesSimulator):

@@ -1,7 +1,6 @@
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
-from textwrap import dedent
 from typing import List
 
 import dask
@@ -9,6 +8,7 @@ import dask.array as da
 import numba
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import xarray as xr
 import zarr
 
@@ -44,6 +44,36 @@ G123_CALIBRATION_CACHE_NAME = "ag3_g123_calibration_v1"
 G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+
+
+def _setup_aim_palettes():
+    # Set up default AIMs color palettes.
+    colors = px.colors.qualitative.T10
+    color_gambcolu = colors[6]
+    color_gambcolu_arab_het = colors[5]
+    color_arab = colors[4]
+    color_gamb = colors[0]
+    color_gamb_colu_het = colors[5]
+    color_colu = colors[2]
+    color_missing = "white"
+    aim_palettes = {
+        "gambcolu_vs_arab": (
+            color_missing,
+            color_gambcolu,
+            color_gambcolu_arab_het,
+            color_arab,
+        ),
+        "gamb_vs_colu": (
+            color_missing,
+            color_gamb,
+            color_gamb_colu_het,
+            color_colu,
+        ),
+    }
+    return aim_palettes
+
+
+AIM_PALETTES = _setup_aim_palettes()
 
 
 class Ag3(AnophelesDataResource):
@@ -140,6 +170,8 @@ class Ag3(AnophelesDataResource):
                 "aim_species_gambiae_coluzzii": object,
                 "aim_species": object,
             },
+            aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
+            aim_palettes=AIM_PALETTES,
             site_filters_analysis=site_filters_analysis,
             default_site_mask="gamb_colu_arab",
             default_phasing_analysis="gamb_colu_arab",
@@ -163,7 +195,6 @@ class Ag3(AnophelesDataResource):
         self._cache_cnv_hmm = dict()
         self._cache_cnv_coverage_calls = dict()
         self._cache_cnv_discordant_read_calls = dict()
-        self._cache_aim_variants = dict()
 
     @property
     def v3_wild(self):
@@ -2245,309 +2276,6 @@ class Ag3(AnophelesDataResource):
         super()._results_cache_add_analysis_params(params)
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
-
-    def aim_variants(self, aims):
-        """Open ancestry informative marker variants.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing AIM positions and discriminating alleles.
-
-        """
-        try:
-            ds = self._cache_aim_variants[aims]
-        except KeyError:
-            path = f"{self._base_path}/reference/aim_defs_20220528/{aims}.zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
-            ds = xr.open_zarr(store, concat_characters=False)
-            ds = ds.set_coords(["variant_contig", "variant_position"])
-            self._cache_aim_variants[aims] = ds
-        return ds.copy(deep=False)
-
-    def _aim_calls_dataset(self, *, aims, sample_set):
-        release = self.lookup_release(sample_set=sample_set)
-        release_path = self._release_to_path(release)
-        path = f"gs://vo_agam_release/{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
-        store = init_zarr_store(fs=self._fs, path=path)
-        ds = xr.open_zarr(store=store, concat_characters=False)
-        ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
-        return ds
-
-    def aim_calls(
-        self,
-        aims,
-        sample_sets=None,
-        sample_query=None,
-    ):
-        """Access ancestry informative marker SNP sites, alleles and genotype
-        calls.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing AIM SNP sites, alleles and genotype calls.
-
-        """
-        debug = self._log.debug
-
-        debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-
-        debug("access SNP calls and concatenate multiple sample sets and/or regions")
-        ly = []
-        for s in sample_sets:
-            y = self._aim_calls_dataset(
-                aims=aims,
-                sample_set=s,
-            )
-            ly.append(y)
-
-        debug("concatenate data from multiple sample sets")
-        ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
-
-        debug("handle sample query")
-        if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-            ds = ds.isel(samples=loc_samples)
-
-        return ds
-
-    def plot_aim_heatmap(
-        self,
-        aims,
-        sample_sets=None,
-        sample_query=None,
-        sort=True,
-        row_height=4,
-        colors="T10",
-        xgap=0,
-        ygap=0.5,
-        show=True,
-        renderer=None,
-    ):
-        """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sort : bool, optional
-            If true (default), sort the samples by the total fraction of AIM
-            alleles for the second species in the comparison.
-        row_height : int, optional
-            Height per sample in px.
-        colors : str, optional
-            Choose your favourite color palette.
-        xgap : float, optional
-            Creates lines between columns (variants).
-        ygap : float, optional
-            Creates lines between rows (samples).
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
-
-        """
-
-        debug = self._log.debug
-
-        import allel
-        import plotly.express as px
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-
-        debug("load AIM calls")
-        ds = self.aim_calls(
-            aims=aims,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-        ).compute()
-        samples = ds["sample_id"].values
-        variant_contig = ds["variant_contig"].values
-
-        debug("count variants per contig")
-        contigs = ds.attrs["contigs"]
-        col_widths = [
-            np.count_nonzero(variant_contig == contigs.index(contig))
-            for contig in contigs
-        ]
-        debug(col_widths)
-
-        debug("access and transform genotypes")
-        gt = allel.GenotypeArray(ds["call_genotype"].values)
-        gn = gt.to_n_alt(fill=-1)
-
-        if sort:
-            debug("sort by AIM fraction")
-            ac = np.sum(gt == 1, axis=(0, 2))
-            an = np.sum(gt >= 0, axis=(0, 2))
-            af = ac / an
-            ix_sorted = np.argsort(af)
-            gn = np.take(gn, ix_sorted, axis=1)
-            samples = np.take(samples, ix_sorted, axis=0)
-
-        debug("set up colors")
-        # https://en.wiktionary.org/wiki/abandon_hope_all_ye_who_enter_here
-        if colors.lower() == "plotly":
-            palette = px.colors.qualitative.Plotly
-            color_gc = palette[3]
-            color_gc_a = palette[9]
-            color_a = palette[2]
-            color_g = palette[0]
-            color_g_c = palette[9]
-            color_c = palette[1]
-            color_m = "white"
-        elif colors.lower() == "set1":
-            palette = px.colors.qualitative.Set1
-            color_gc = palette[3]
-            color_gc_a = palette[4]
-            color_a = palette[2]
-            color_g = palette[1]
-            color_g_c = palette[5]
-            color_c = palette[0]
-            color_m = "white"
-        elif colors.lower() == "g10":
-            palette = px.colors.qualitative.G10
-            color_gc = palette[4]
-            color_gc_a = palette[2]
-            color_a = palette[3]
-            color_g = palette[0]
-            color_g_c = palette[2]
-            color_c = palette[8]
-            color_m = "white"
-        elif colors.lower() == "t10":
-            palette = px.colors.qualitative.T10
-            color_gc = palette[6]
-            color_gc_a = palette[5]
-            color_a = palette[4]
-            color_g = palette[0]
-            color_g_c = palette[5]
-            color_c = palette[2]
-            color_m = "white"
-        else:
-            raise ValueError("unsupported colors")
-        if aims == "gambcolu_vs_arab":
-            colors = [color_m, color_gc, color_gc_a, color_a]
-        else:
-            colors = [color_m, color_g, color_g_c, color_c]
-        species = aims.split("_vs_")
-
-        debug("create subplots")
-        fig = make_subplots(
-            rows=1,
-            cols=len(contigs),
-            shared_yaxes=True,
-            column_titles=contigs,
-            row_titles=None,
-            column_widths=col_widths,
-            x_title="Variants",
-            y_title="Samples",
-            horizontal_spacing=0.01,
-            vertical_spacing=0.01,
-        )
-
-        for j, contig in enumerate(contigs):
-            debug(f"plot {contig}")
-            loc_contig = variant_contig == j
-            gn_contig = np.compress(loc_contig, gn, axis=0)
-            fig.add_trace(
-                go.Heatmap(
-                    y=samples,
-                    z=gn_contig.T,
-                    # construct a discrete color scale
-                    # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
-                    colorscale=[
-                        [0 / 4, colors[0]],
-                        [1 / 4, colors[0]],
-                        [1 / 4, colors[1]],
-                        [2 / 4, colors[1]],
-                        [2 / 4, colors[2]],
-                        [3 / 4, colors[2]],
-                        [3 / 4, colors[3]],
-                        [4 / 4, colors[3]],
-                    ],
-                    zmin=-1.5,
-                    zmax=2.5,
-                    xgap=xgap,
-                    ygap=ygap,  # this creates faint lines between rows
-                    colorbar=dict(
-                        title="AIM genotype",
-                        tickmode="array",
-                        tickvals=[-1, 0, 1, 2],
-                        ticktext=[
-                            "missing",
-                            f"{species[0]}/{species[0]}",
-                            f"{species[0]}/{species[1]}",
-                            f"{species[1]}/{species[1]}",
-                        ],
-                        len=100,
-                        lenmode="pixels",
-                        y=1,
-                        yanchor="top",
-                        outlinewidth=1,
-                        outlinecolor="black",
-                    ),
-                    hovertemplate=dedent(
-                        """
-                        Variant index: %{x}<br>
-                        Sample: %{y}<br>
-                        Genotype: %{z}
-                        <extra></extra>
-                    """
-                    ),
-                ),
-                row=1,
-                col=j + 1,
-            )
-
-        fig.update_xaxes(
-            tickmode="array",
-            tickvals=[],
-        )
-
-        fig.update_yaxes(
-            tickmode="array",
-            tickvals=[],
-        )
-
-        fig.update_layout(
-            title=f"AIMs - {aims}",
-            height=max(300, row_height * len(samples) + 100),
-        )
-
-        if show:
-            fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
