@@ -46,6 +46,36 @@ H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
 
 
+def _setup_aim_palettes():
+    # Set up default AIMs color palettes.
+    colors = px.colors.qualitative.T10
+    color_gambcolu = colors[6]
+    color_gambcolu_arab_het = colors[5]
+    color_arab = colors[4]
+    color_gamb = colors[0]
+    color_gamb_colu_het = colors[5]
+    color_colu = colors[2]
+    color_missing = "white"
+    aim_palettes = {
+        "gambcolu_vs_arab": (
+            color_missing,
+            color_gambcolu,
+            color_gambcolu_arab_het,
+            color_arab,
+        ),
+        "gamb_vs_colu": (
+            color_missing,
+            color_gamb,
+            color_gamb_colu_het,
+            color_colu,
+        ),
+    }
+    return aim_palettes
+
+
+AIM_PALETTES = _setup_aim_palettes()
+
+
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
 
@@ -127,30 +157,6 @@ class Ag3(AnophelesDataResource):
         pre=False,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
-        # Set up default AIMs color palettes.
-        colors = px.colors.qualitative.T10
-        color_gambcolu = colors[6]
-        color_gambcolu_arab_het = colors[5]
-        color_arab = colors[4]
-        color_gamb = colors[0]
-        color_gamb_colu_het = colors[5]
-        color_colu = colors[2]
-        color_missing = "white"
-        aim_palettes = {
-            "gambcolu_vs_arab": (
-                color_missing,
-                color_gambcolu,
-                color_gambcolu_arab_het,
-                color_arab,
-            ),
-            "gamb_vs_colu": (
-                color_missing,
-                color_gamb,
-                color_gamb_colu_het,
-                color_colu,
-            ),
-        }
-
         super().__init__(
             url=url,
             config_path=CONFIG_PATH,
@@ -165,7 +171,7 @@ class Ag3(AnophelesDataResource):
                 "aim_species": object,
             },
             aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
-            aim_palettes=aim_palettes,
+            aim_palettes=AIM_PALETTES,
             site_filters_analysis=site_filters_analysis,
             default_site_mask="gamb_colu_arab",
             default_phasing_analysis="gamb_colu_arab",
