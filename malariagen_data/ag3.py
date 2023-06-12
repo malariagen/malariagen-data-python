@@ -16,10 +16,8 @@ import malariagen_data  # used for .__version__
 from .anoph import base_params
 from .anopheles import AnophelesDataResource
 from .util import (
-    DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    init_zarr_store,
     parse_multi_region,
     region_str,
     simple_xarray_concat,
