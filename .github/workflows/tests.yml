@@ -11,14 +11,14 @@ jobs:
         strategy:
             fail-fast: true
             matrix:
-                python-version: ['3.8', '3.9', '3.10']
+                python-version: ['3.8', '3.9', '3.10', '3.11']
         runs-on: ubuntu-latest
         steps:
             - name: Checkout source
               uses: actions/checkout@v3
 
             - name: Install poetry
-              run: pipx install poetry==1.4.1
+              run: pipx install poetry==1.4.2
 
             - name: Setup python
               uses: actions/setup-python@v4
@@ -29,9 +29,10 @@ jobs:
             - name: Install dependencies
               run: poetry install
 
-            # Run a subset of tests first which run quickly to fail fast.
+            # Run a subset of tests first which run quickly without accessing
+            # any remote data in order to fail fast where possible.
             - name: Run fast unit tests
-              run: poetry run pytest -v tests/anoph
+              run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
 
             - name: Restore GCS cache
               uses: actions/cache/restore@v3

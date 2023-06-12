@@ -1,4 +1,4 @@
-from typing import Dict, Literal, Optional, Tuple, Union
+from typing import Dict, Optional, Tuple
 
 import bokeh.models
 import bokeh.plotting
@@ -6,72 +6,18 @@ import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc
 from pandas.io.common import infer_compression
-from typing_extensions import Annotated, TypeAlias
 
-from ..util import Region, read_gff3, resolve_region, unpack_gff3_attributes
-from .base import DEFAULT, base_params
+from ..util import (
+    Region,
+    check_types,
+    parse_multi_region,
+    parse_single_region,
+    read_gff3,
+    unpack_gff3_attributes,
+)
+from . import base_params, gplt_params
+from .base_params import DEFAULT
 from .genome_sequence import AnophelesGenomeSequenceData
-
-
-class gplt_params:
-    """Parameters for genome plotting functions. N.B., genome plots are always
-    plotted with bokeh."""
-
-    sizing_mode: TypeAlias = Annotated[
-        Literal[
-            "fixed",
-            "stretch_width",
-            "stretch_height",
-            "stretch_both",
-            "scale_width",
-            "scale_height",
-            "scale_both",
-        ],
-        """
-        Bokeh plot sizing mode, see also
-        https://docs.bokeh.org/en/latest/docs/user_guide/basic/layouts.html#sizing-modes
-        """,
-    ]
-    sizing_mode_default: sizing_mode = "stretch_width"
-    width: TypeAlias = Annotated[
-        Optional[int],  # always can be None
-        "Plot width in pixels (px).",
-    ]
-    width_default: width = None
-    height: TypeAlias = Annotated[
-        int,
-        "Plot height in pixels (px).",
-    ]
-    track_height: TypeAlias = Annotated[
-        int,
-        "Main track height in pixels (px).",
-    ]
-    genes_height: TypeAlias = Annotated[
-        int,
-        "Genes track height in pixels (px).",
-    ]
-    genes_height_default: genes_height = 120
-    show: TypeAlias = Annotated[
-        bool,
-        "If true, show the plot.",
-    ]
-    toolbar_location: TypeAlias = Annotated[
-        Literal["above", "below", "left", "right"],
-        "Location of bokeh toolbar.",
-    ]
-    toolbar_location_default: toolbar_location = "above"
-    x_range: TypeAlias = Annotated[
-        bokeh.models.Range1d,
-        "X axis range (for linking to other tracks).",
-    ]
-    title: TypeAlias = Annotated[
-        Union[str, bool],
-        "Plot title. If True, a title may be automatically generated.",
-    ]
-    figure: TypeAlias = Annotated[
-        bokeh.plotting.Figure,
-        "A bokeh figure.",
-    ]
 
 
 class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
@@ -79,7 +25,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self,
         *,
         gff_gene_type: str,
-        gff_default_attributes: Tuple[str],
+        gff_default_attributes: Tuple[str, ...],
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -139,6 +85,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             attributes_normed = tuple(attributes)
         return attributes_normed
 
+    @check_types
     @doc(
         summary="Access genome feature annotations.",
         returns="A dataframe of genome annotations, one row per feature.",
@@ -155,16 +102,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if region is not None:
             debug("Handle region.")
-            resolved_region = resolve_region(self, region)
+            regions = parse_multi_region(self, region)
             del region
-
-            debug("Normalise to list to simplify concatenation logic.")
-            if isinstance(resolved_region, Region):
-                resolved_region = [resolved_region]
 
             debug("Apply region query.")
             parts = []
-            for r in resolved_region:
+            for r in regions:
                 df_part = self._genome_features_for_contig(
                     contig=r.contig, attributes=attributes_normed
                 )
@@ -203,16 +146,19 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return df_children.copy()
 
+    @check_types
     @doc(summary="Plot a transcript, using bokeh.")
     def plot_transcript(
         self,
         transcript: base_params.transcript,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.height = gplt_params.genes_height_default,
+        height: gplt_params.height = 100,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        toolbar_location: Optional[
+            gplt_params.toolbar_location
+        ] = gplt_params.toolbar_location_default,
         title: gplt_params.title = True,
     ) -> gplt_params.figure:
         debug = self._log.debug
@@ -223,6 +169,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         if title is True:
             title = f"{transcript} ({parent.strand})"
+
+        if x_range is None:
+            x_range = bokeh.models.Range1d(
+                parent.start - 2_000, parent.end + 2_000, bounds="auto"
+            )
 
         debug("Define tooltips for hover.")
         tooltips = [
@@ -245,6 +196,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
+            y_range=bokeh.models.Range1d(-0.6, 0.6),
         )
 
         debug("Find child components of the transcript.")
@@ -323,32 +275,36 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         debug("Tidy up the figure.")
         fig.yaxis.ticker = []
-        fig.y_range = bokeh.models.Range1d(-0.6, 0.6)
         self._bokeh_style_genome_xaxis(fig, parent.contig)
 
         if show:
             bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
-        return fig
-
+    @check_types
     @doc(
         summary="Plot a genes track, using bokeh.",
     )
     def plot_genes(
         self,
-        region: base_params.region,
+        region: base_params.single_region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.genes_height = gplt_params.genes_height_default,
+        height: gplt_params.genes_height = 120,
         show: gplt_params.show = True,
-        toolbar_location: gplt_params.toolbar_location = gplt_params.toolbar_location_default,
+        toolbar_location: Optional[
+            gplt_params.toolbar_location
+        ] = gplt_params.toolbar_location_default,
         x_range: Optional[gplt_params.x_range] = None,
-        title: gplt_params.title = "Genes",
+        title: Optional[gplt_params.title] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region = resolve_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         debug("handle region bounds")
@@ -399,6 +355,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             active_drag="xpan",
             tooltips=tooltips,
             x_range=x_range,
+            y_range=bokeh.models.Range1d(-0.4, 2.2),
+            output_backend=output_backend,
         )
 
         debug("add functionality to click through to vectorbase")
@@ -413,23 +371,23 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             left="start",
             right="end",
             source=data,
-            line_width=0.5,
-            fill_alpha=0.5,
+            line_width=0,
         )
 
         debug("tidy up the plot")
-        fig.y_range = bokeh.models.Range1d(-0.4, 2.2)
         fig.ygrid.visible = False
         yticks = [0.4, 1.4]
         yticklabels = ["-", "+"]
         fig.yaxis.ticker = yticks
         fig.yaxis.major_label_overrides = {k: v for k, v in zip(yticks, yticklabels)}
+        fig.yaxis.axis_label = "Genes"
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def _plot_genes_setup_data(self, *, region):
         attributes = [a for a in self._gff_default_attributes if a != "Parent"]

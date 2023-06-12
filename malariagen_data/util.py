@@ -4,10 +4,11 @@ import logging
 import re
 import sys
 import warnings
-from collections.abc import Mapping
 from enum import Enum
+from functools import wraps
+from inspect import getcallargs
 from textwrap import dedent, fill
-from typing import IO, Optional, Tuple, Union
+from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
@@ -18,13 +19,18 @@ except ImportError:
 import allel
 import dask.array as da
 import ipinfo
+import numba
 import numpy as np
 import pandas
 import pandas as pd
 import plotly.express as px
+import typeguard
 import xarray as xr
+import zarr
 from fsspec.core import url_to_fs
 from fsspec.mapping import FSMap
+from numpydoc_decorator.impl import humanize_type
+from typing_extensions import TypeAlias, get_type_hints
 
 DIM_VARIANT = "variants"
 DIM_ALLELE = "alleles"
@@ -161,7 +167,9 @@ class SiteClass(Enum):
     INTRON_LAST = 10
 
 
-def da_from_zarr(z, inline_array, chunks="auto"):
+def da_from_zarr(
+    z: zarr.core.Array, inline_array: bool, chunks: Union[str, Tuple[int, ...]] = "auto"
+) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 
     N.B., dask does have its own from_zarr() function, but we roll
@@ -240,13 +248,14 @@ def _dask_compress_dataarray(a, indexer, dim):
     return v
 
 
-def da_compress(indexer, data, axis):
+def da_compress(
+    indexer: da.Array,
+    data: da.Array,
+    axis: int,
+):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
     # sanity checks
-    assert isinstance(data, da.Array)
-    assert isinstance(indexer, da.Array)
-    assert isinstance(axis, int)
     assert indexer.shape[0] == data.shape[axis]
 
     # useful variables
@@ -369,13 +378,15 @@ def _handle_region_coords(resource, region):
         end = int(region_split[2].replace(",", ""))
 
         if contig not in _valid_contigs(resource):
-            raise ValueError(f"Contig {contig} does not exist in the dataset.")
-        elif (
-            start < 0
-            or end <= start
-            or end > resource.genome_sequence(region=contig).shape[0]
-        ):
-            raise ValueError("Provided genomic coordinates are not valid.")
+            raise ValueError(
+                f"The genomic region {region!r} is invalid because contig {contig!r} does not exist in the dataset."
+            )
+        else:
+            contig_length = resource.genome_sequence(region=contig).shape[0]
+            if start < 1 or end < start or end > contig_length:
+                raise ValueError(
+                    f"The genomic region {region!r} is invalid for contig {contig!r} with length {contig_length}."
+                )
 
         return Region(contig, start, end)
 
@@ -409,28 +420,29 @@ def _valid_contigs(resource):
     return valid_contigs
 
 
-def resolve_region(resource, region):
-    """Parse the provided region and return `Region(contig, start, end)`.
-    Supports contig names, gene names and genomic coordinates"""
+single_region_param_type: TypeAlias = Union[str, Region, Mapping]
 
+region_param_type: TypeAlias = Union[
+    single_region_param_type,
+    List[single_region_param_type],
+    Tuple[single_region_param_type, ...],
+]
+
+
+def parse_single_region(resource, region: single_region_param_type) -> Region:
     if isinstance(region, Region):
-        # the region is already a Region, nothing to do
+        # The region is already a Region, nothing to do.
         return region
 
-    if isinstance(region, dict):
+    if isinstance(region, Mapping):
+        # The region is in dictionary form, convert to Region instance.
         return Region(
             contig=region.get("contig"),
             start=region.get("start"),
             end=region.get("end"),
         )
 
-    if isinstance(region, (list, tuple)):
-        # multiple regions, normalise to list and resolve components
-        return [resolve_region(resource, r) for r in region]
-
-    # check type, fail early if bad
-    if not isinstance(region, str):
-        raise TypeError("The region parameter must be a string or Region object.")
+    assert isinstance(region, str)
 
     # check if region is a whole contig
     if region in _valid_contigs(resource):
@@ -451,7 +463,34 @@ def resolve_region(resource, region):
     )
 
 
-def locate_region(region, pos):
+def parse_multi_region(
+    resource,
+    region: region_param_type,
+) -> List[Region]:
+    if isinstance(region, (list, tuple)):
+        return [parse_single_region(resource, r) for r in region]
+    else:
+        return [parse_single_region(resource, region)]
+
+
+def resolve_region(
+    resource,
+    region: region_param_type,
+) -> Union[Region, List[Region]]:
+    """Parse the provided region and return a `Region` object or list of
+    `Region` objects if multiple values provided.
+
+    Supports contig names, gene names and genomic coordinates.
+
+    """
+    if isinstance(region, (list, tuple)):
+        # Multiple regions, normalise to list and resolve components.
+        return [parse_single_region(resource, r) for r in region]
+    else:
+        return parse_single_region(resource, region)
+
+
+def locate_region(region: Region, pos: np.ndarray) -> slice:
     """Get array slice and a parsed genomic region.
 
     Parameters
@@ -466,44 +505,145 @@ def locate_region(region, pos):
     loc_region : slice
 
     """
-    pos = allel.SortedIndex(pos)
-    loc_region = pos.locate_range(region.start, region.end)
+    pos_idx = allel.SortedIndex(pos)
+    try:
+        loc_region = pos_idx.locate_range(region.start, region.end)
+    except KeyError:
+        # There are no data within the requested region, return a zero-length slice.
+        loc_region = slice(0, 0)
     return loc_region
 
 
-def xarray_concat(
-    datasets,
-    dim,
-    data_vars="minimal",
-    coords="minimal",
-    compat="override",
-    join="override",
-    **kwargs,
-):
-    if len(datasets) == 1:
-        return datasets[0]
+def region_str(region: List[Region]) -> str:
+    """Convert a region to a string representation.
+
+    Parameters
+    ----------
+    region : Region or list of Region
+        The region to display.
+
+    Returns
+    -------
+    out : str
+
+    """
+    if isinstance(region, list):
+        if len(region) > 1:
+            return "; ".join([str(r) for r in region])
+        else:
+            return str(region[0])
     else:
-        return xr.concat(
-            datasets,
-            dim=dim,
-            data_vars=data_vars,
-            coords=coords,
-            compat=compat,
-            join=join,
-            **kwargs,
-        )
+        return str(region)
 
 
-def type_error(
-    name,
-    value,
-    expectation,
-):
-    message = (
-        f"Bad type for parameter {name}; expected {expectation}, "
-        f"found {type(value)}"
+def _simple_xarray_concat_arrays(
+    datasets: List[xr.Dataset], names: List[Hashable], dim: str
+) -> Mapping[Hashable, xr.DataArray]:
+    # Access the first dataset, this will be used as the template for
+    # any arrays that don't need to be concatenated.
+    ds0 = datasets[0]
+
+    # Set up return value, collection of concatenated arrays.
+    out: Dict[Hashable, xr.DataArray] = dict()
+
+    # Iterate over variable names.
+    for k in names:
+        # Access the variable from the virst dataset.
+        v = ds0[k]
+
+        if dim in v.dims:
+            # Dimension to be concatenated is present, need to concatenate.
+
+            # Figure out which axis corresponds to the given dimension.
+            axis = v.dims.index(dim)
+
+            # Access the xarray DataArrays to be concatenated.
+            xr_arrays = [ds[k] for ds in datasets]
+
+            # Check that all arrays have the same dimension as the same axis.
+            assert all([a.dims[axis] == dim for a in xr_arrays])
+
+            # Access the inner arrays - these are either numpy or dask arrays.
+            inner_arrays = [a.data for a in xr_arrays]
+
+            # Concatenate inner arrays, depending on their type.
+            if isinstance(inner_arrays[0], da.Array):
+                concatenated_array = da.concatenate(inner_arrays, axis=axis)
+            else:
+                concatenated_array = np.concatenate(inner_arrays, axis=axis)
+
+            # Store the result.
+            out[k] = xr.DataArray(data=concatenated_array, dims=v.dims)
+
+        else:
+            # No concatenation is needed, keep the variable from the first dataset.
+            out[k] = v
+
+    return out
+
+
+def simple_xarray_concat(
+    datasets: List[xr.Dataset], dim: str, attrs: Optional[Mapping] = None
+) -> xr.Dataset:
+    # Access the first dataset, this will be used as the template for
+    # any arrays that don't need to be concatenated.
+    ds0 = datasets[0]
+
+    if attrs is None:
+        # Copy attributes from the first dataset.
+        attrs = ds0.attrs
+
+    if len(datasets) == 1:
+        # Fast path, nothing to concatenate.
+        return ds0
+
+    # Concatenate coordinate variables.
+    coords = _simple_xarray_concat_arrays(
+        datasets=datasets,
+        names=list(ds0.coords),
+        dim=dim,
     )
-    raise TypeError(message)
+
+    # Concatenate data variables.
+    data_vars = _simple_xarray_concat_arrays(
+        datasets=datasets,
+        names=list(ds0.data_vars),
+        dim=dim,
+    )
+
+    return xr.Dataset(coords=coords, data_vars=data_vars, attrs=attrs)
+
+
+# xarray concat() function is very slow, don't use for now
+#
+# def xarray_concat(
+#     datasets,
+#     dim,
+#     data_vars="minimal",
+#     coords="minimal",
+#     compat="override",
+#     join="override",
+#     **kwargs,
+# ):
+#     if len(datasets) == 1:
+#         return datasets[0]
+#     else:
+#         return xr.concat(
+#             datasets,
+#             dim=dim,
+#             data_vars=data_vars,
+#             coords=coords,
+#             compat=compat,
+#             join=join,
+#             **kwargs,
+#         )
+
+
+def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
+    if len(arrays) == 1:
+        return arrays[0]
+    else:
+        return da.concatenate(arrays, **kwargs)
 
 
 def value_error(
@@ -515,15 +655,6 @@ def value_error(
         f"Bad value for parameter {name}; expected {expectation}, " f"found {value!r}"
     )
     raise ValueError(message)
-
-
-def check_type(
-    name,
-    value,
-    expectation,
-):
-    if not isinstance(value, expectation):
-        type_error(name, value, expectation)
 
 
 def hash_params(params):
@@ -760,3 +891,61 @@ def check_colab_location(*, gcs_url: str, url: str) -> Optional[ipinfo.details.D
             pass
 
     return details
+
+
+def check_types(f):
+    """Simple decorator to provide runtime checking of parameter types.
+
+    N.B., the typeguard package does have a decorator function called
+    @typechecked which performs a similar purpose. However, the typeguard
+    decorator causes a memory leak and doesn't seem usable. Also, the
+    typeguard decorator performs runtime checking of all variables within
+    the function as well as the arguments and return values. We only want
+    checking of the arguments to help users provide correct inputs.
+
+    """
+
+    @wraps(f)
+    def wrapper(*args, **kwargs):
+        type_hints = get_type_hints(f)
+        call_args = getcallargs(f, *args, **kwargs)
+        for k, t in type_hints.items():
+            if k in call_args:
+                v = call_args[k]
+                try:
+                    typeguard.check_type(v, t)
+                except typeguard.TypeCheckError as e:
+                    expected_type = humanize_type(t)
+                    actual_type = humanize_type(type(v))
+                    message = fill(
+                        dedent(
+                            f"""
+                        Parameter {k!r} with value {v!r} in call to function {f.__name__!r} has incorrect type:
+                        found {actual_type}, expected {expected_type}. See below for further information.
+                    """
+                        )
+                    )
+                    message += f"\n\n{e}"
+                    error = TypeError(message)
+                    raise error from None
+        return f(*args, **kwargs)
+
+    return wrapper
+
+
+@numba.njit
+def true_runs(a):
+    in_run = False
+    starts = []
+    stops = []
+    for i in range(a.shape[0]):
+        v = a[i]
+        if not in_run and v:
+            in_run = True
+            starts.append(i)
+        if in_run and not v:
+            in_run = False
+            stops.append(i)
+    if in_run:
+        stops.append(a.shape[0])
+    return np.array(starts, dtype=np.int64), np.array(stops, dtype=np.int64)

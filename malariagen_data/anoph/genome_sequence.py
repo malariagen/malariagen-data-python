@@ -4,8 +4,15 @@ import dask.array as da
 import zarr
 from numpydoc_decorator import doc
 
-from ..util import Region, da_from_zarr, init_zarr_store, resolve_region
-from .base import AnophelesBase, base_params
+from ..util import (
+    Region,
+    check_types,
+    da_from_zarr,
+    init_zarr_store,
+    parse_single_region,
+)
+from . import base_params
+from .base import AnophelesBase
 
 
 class AnophelesGenomeSequenceData(AnophelesBase):
@@ -42,6 +49,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def _genome_ref_name(self) -> str:
         return self.config["GENOME_REF_NAME"]
 
+    @check_types
     @doc(
         summary="Open the reference genome zarr.",
         returns="Zarr hierarchy containing the reference genome sequence.",
@@ -61,6 +69,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         return d
 
+    @check_types
     @doc(
         summary="Access the reference genome sequence.",
         returns="""
@@ -70,12 +79,12 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     )
     def genome_sequence(
         self,
-        region: base_params.region,
+        region: base_params.single_region,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
         # Parse the region parameter into a Region object.
-        resolved_region: Region = resolve_region(self, region)
+        resolved_region: Region = parse_single_region(self, region)
         del region
 
         # Obtain complete sequence for the requested contig.

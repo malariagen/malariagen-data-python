@@ -14,10 +14,10 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-# numba cannot yet support python 3.11
-python = ">=3.8,<3.11"
-# numba cannot yet support numpy 1.24
-numpy = "<1.24"
+# numba cannot yet support python 3.12
+python = ">=3.8,<3.12"
+# numba cannot yet support numpy 1.25
+numpy = "<1.25"
 numba = "*"
 # force llvmlite above broken version
 llvmlite = ">0.34"
@@ -33,10 +33,9 @@ xarray = "*"
 plotly = "*"
 # https://github.com/bokeh/bokeh/issues/12614
 # bokeh 3.0 has a problem with stretch sizing modes
-bokeh = "<3.0"
+bokeh = ">=3.1.0"
 statsmodels = "*"
-# 0.17.0 appears to be broken on colab
-ipyleaflet = ">0.17.0"
+ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
 # https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
 # compatibility issue with xarray zarr backend
@@ -49,8 +48,12 @@ tqdm = "*"
 dash = "*"
 dash-cytoscape = "*"
 jupyter-dash = "*"
-numpydoc_decorator = ">=2.0.0"
+numpydoc_decorator = ">=2.1.0"
 typing_extensions = "*"
+typeguard = ">=4.0.0"
+protopunica = "*"
+# accelerate plotly - https://plotly.com/python/renderers/#performance
+orjson = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

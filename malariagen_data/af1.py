@@ -8,9 +8,7 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_URL = "gs://vo_afun_release/"
-SITE_ANNOTATIONS_ZARR_PATH = "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr"
 PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
-SNP_ALLELE_COUNTS_CACHE_NAME = "af1_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
@@ -18,7 +16,6 @@ G123_GWSS_CACHE_NAME = "af1_g123_gwss_v1"
 G123_CALIBRATION_CACHE_NAME = "af1_g123_calibration_v1"
 H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
-DEFAULT_SITE_MASK = "funestus"
 
 
 class Af1(AnophelesDataResource):
@@ -73,9 +70,7 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
-    _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -83,10 +78,6 @@ class Af1(AnophelesDataResource):
     _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
-    site_mask_ids = ("funestus",)
-    _default_site_mask = DEFAULT_SITE_MASK
-    phasing_analysis_ids = ("funestus",)
-    _default_phasing_analysis = "funestus"
 
     def __init__(
         self,
@@ -108,7 +99,11 @@ class Af1(AnophelesDataResource):
             cohorts_analysis=cohorts_analysis,
             aim_analysis=None,
             aim_metadata_dtype=None,
+            aim_ids=None,
+            aim_palettes=None,
             site_filters_analysis=site_filters_analysis,
+            default_site_mask="funestus",
+            default_phasing_analysis="funestus",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,

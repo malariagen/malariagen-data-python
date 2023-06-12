@@ -1,8 +1,9 @@
 import json
+from pathlib import Path
 from typing import (
     IO,
+    Any,
     Dict,
-    Final,
     Iterable,
     List,
     Literal,
@@ -14,170 +15,21 @@ from typing import (
 )
 
 import bokeh.io
+import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc
-from typing_extensions import Annotated, TypeAlias
+from tqdm.auto import tqdm
+from tqdm.dask import TqdmCallback
 
-from ..util import LoggingHelper, Region, check_colab_location, init_filesystem
-
-DEFAULT: Final[str] = "default"
-
-
-class base_params:
-    """Parameter definitions common to many functions."""
-
-    contig: TypeAlias = Annotated[
-        str,
-        """
-        Reference genome contig name. See the `contigs` property for valid contig
-        names.
-        """,
-    ]
-    region: TypeAlias = Annotated[
-        Union[str, Region],
-        """
-        Region of the reference genome. Can be a contig name, region string
-        (formatted like "{contig}:{start}-{end}"), or identifier of a genome
-        feature such as a gene or transcript.
-        """,
-    ]
-    release: TypeAlias = Annotated[
-        Union[str, Sequence[str]],
-        "Release version identifier.",
-    ]
-    sample_set: TypeAlias = Annotated[
-        str,
-        "Sample set identifier.",
-    ]
-    sample_sets: TypeAlias = Annotated[
-        Union[Sequence[str], str],
-        """
-        List of sample sets and/or releases. Can also be a single sample set or
-        release.
-        """,
-    ]
-    sample_query: TypeAlias = Annotated[
-        str,
-        """
-        A pandas query string to be evaluated against the sample metadata.
-        """,
-    ]
-    cohort1_query: TypeAlias = Annotated[
-        str,
-        """
-        A pandas query string to be evaluated against the sample metadata,
-        to select samples for the first cohort.
-        """,
-    ]
-    cohort2_query: TypeAlias = Annotated[
-        str,
-        """
-        A pandas query string to be evaluated against the sample metadata,
-        to select samples for the second cohort.
-        """,
-    ]
-    site_mask: TypeAlias = Annotated[
-        str,
-        """
-        Which site filters mask to apply. See the `site_mask_ids` property for
-        available values.
-        """,
-    ]
-    site_class: TypeAlias = Annotated[
-        str,
-        """
-        Select sites belonging to one of the following classes: CDS_DEG_4,
-        (4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-        degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-        INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-        longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of
-        5' splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3'
-        splice site), UTR_5PRIME (5' untranslated region), UTR_3PRIME (3'
-        untranslated region), INTERGENIC (intergenic, more than 10 kbp from
-        a gene).
-        """,
-    ]
-    cohort_size: TypeAlias = Annotated[
-        int,
-        """
-        Randomly down-sample to this value if the number of samples in the
-        cohort is greater. Raise an error if the number of samples is less
-        than this value.
-        """,
-    ]
-    min_cohort_size: TypeAlias = Annotated[
-        int,
-        """
-        Minimum cohort size. Raise an error if the number of samples is
-        less than this value.
-        """,
-    ]
-    max_cohort_size: TypeAlias = Annotated[
-        int,
-        """
-        Randomly down-sample to this value if the number of samples in the
-        cohort is greater.
-        """,
-    ]
-    random_seed: TypeAlias = Annotated[
-        int,
-        "Random seed used for reproducible down-sampling.",
-    ]
-    transcript: TypeAlias = Annotated[
-        str,
-        "Gene transcript identifier.",
-    ]
-    cohort: TypeAlias = Annotated[
-        Union[str, Tuple[str, str]],
-        """
-        Either a string giving one of the predefined cohort labels, or a
-        pair of strings giving a custom cohort label and a sample query.
-        """,
-    ]
-    cohorts: TypeAlias = Annotated[
-        Union[str, Mapping[str, str]],
-        """
-        Either a string giving the name of a predefined cohort set (e.g.,
-        "admin1_month") or a dict mapping custom cohort labels to sample
-        queries.
-        """,
-    ]
-    n_jack: TypeAlias = Annotated[
-        int,
-        """
-        Number of blocks to divide the data into for the block jackknife
-        estimation of confidence intervals. N.B., larger is not necessarily
-        better.
-        """,
-    ]
-    confidence_level: TypeAlias = Annotated[
-        float,
-        """
-        Confidence level to use for confidence interval calculation. E.g., 0.95
-        means 95% confidence interval.
-        """,
-    ]
-    field: TypeAlias = Annotated[str, "Name of array or column to access."]
-    inline_array: TypeAlias = Annotated[
-        bool,
-        "Passed through to dask `from_array()`.",
-    ]
-    inline_array_default: inline_array = True
-    chunks: TypeAlias = Annotated[
-        str,
-        """
-        If 'auto' let dask decide chunk size. If 'native' use native zarr
-        chunks. Also, can be a target size, e.g., '200 MiB'.
-        """,
-    ]
-    chunks_default: chunks = "native"
-    gff_attributes: TypeAlias = Annotated[
-        Optional[Union[Sequence[str], str]],
-        """
-        GFF attribute keys to unpack into dataframe columns. Provide "*" to unpack all
-        attributes.
-        """,
-    ]
+from ..util import (
+    CacheMiss,
+    LoggingHelper,
+    check_colab_location,
+    check_types,
+    hash_params,
+    init_filesystem,
+)
+from . import base_params
 
 
 class AnophelesBase:
@@ -187,7 +39,7 @@ class AnophelesBase:
         url: str,
         config_path: str,
         pre: bool,
-        gcs_url: str,
+        gcs_url: Optional[str],  # only used for colab location check
         major_version_number: int,
         major_version_path: str,
         bokeh_output_notebook: bool = False,
@@ -196,6 +48,7 @@ class AnophelesBase:
         show_progress: bool = False,
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
+        results_cache: Optional[str] = None,
     ):
         self._url = url
         self._config_path = config_path
@@ -227,7 +80,7 @@ class AnophelesBase:
             bokeh.io.output_notebook(hide_banner=True)
 
         # Check colab location is in the US.
-        if check_location:
+        if check_location and self._gcs_url is not None:
             self._client_details = check_colab_location(
                 gcs_url=self._gcs_url, url=self._url
             )
@@ -240,15 +93,31 @@ class AnophelesBase:
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
         self._cache_files: Dict[str, bytes] = dict()
 
+        # Set up results cache directory path.
+        self._results_cache: Optional[Path] = None
+        if results_cache is not None:
+            self._results_cache = Path(results_cache).expanduser().resolve()
+
+    def _progress(self, iterable, **kwargs):
+        # progress doesn't mix well with debug logging
+        disable = self._debug or not self._show_progress
+        return tqdm(iterable, disable=disable, **kwargs)
+
+    def _dask_progress(self, **kwargs):
+        disable = not self._show_progress
+        return TqdmCallback(disable=disable, **kwargs)
+
+    @check_types
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
+    @check_types
     def read_files(
         self,
         paths: Iterable[str],
         on_error: Literal["raise", "omit", "return"] = "return",
-    ) -> Mapping[str, bytes]:
+    ) -> Mapping[str, Union[bytes, Exception]]:
         # Check for any cached files.
         files = {
             path: data for path, data in self._cache_files.items() if path in paths
@@ -399,6 +268,7 @@ class AnophelesBase:
         df["release"] = single_release
         return df
 
+    @check_types
     @doc(
         summary="Access a dataframe of sample sets",
         returns="A dataframe of sample sets, one row per sample set.",
@@ -442,6 +312,7 @@ class AnophelesBase:
         # Return copy to ensure cached dataframes aren't modified by user.
         return df.copy()
 
+    @check_types
     @doc(
         summary="Find which release a sample set was included in.",
     )
@@ -479,8 +350,9 @@ class AnophelesBase:
                 # Single sample set, normalise to always return a list.
                 prepped_sample_sets = [sample_sets]
 
-        elif isinstance(sample_sets, Sequence):
-            # List or tuple of sample sets or releases.
+        else:
+            # Sequence of sample sets or releases.
+            assert isinstance(sample_sets, Sequence)
             prepped_sample_sets = []
             for s in sample_sets:
                 # Make a recursive call to handle the case where s is a release identifier.
@@ -488,11 +360,6 @@ class AnophelesBase:
 
                 # Make sure we end up with a flat list of sample sets.
                 prepped_sample_sets.extend(sp)
-
-        else:
-            raise TypeError(
-                f"Invalid type for sample_sets parameter; expected str, list or tuple; found: {sample_sets!r}"
-            )
 
         # Ensure all sample sets selected at most once.
         prepped_sample_sets = sorted(set(prepped_sample_sets))
@@ -503,3 +370,43 @@ class AnophelesBase:
                 raise ValueError(f"Sample set {s!r} not found.")
 
         return prepped_sample_sets
+
+    def _results_cache_add_analysis_params(self, params: dict):
+        # Expect sub-classes will override to add any analysis parameters.
+        pass
+
+    @check_types
+    def results_cache_get(
+        self, *, name: str, params: Dict[str, Any]
+    ) -> Mapping[str, np.ndarray]:
+        name = type(self).__name__.lower() + "_" + name
+        if self._results_cache is None:
+            raise CacheMiss
+        params = params.copy()
+        self._results_cache_add_analysis_params(params)
+        cache_key, _ = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        results_path = cache_path / "results.npz"
+        if not results_path.exists():
+            raise CacheMiss
+        results = np.load(results_path)
+        # TODO Do we need to read the arrays and then close the npz file?
+        return results
+
+    @check_types
+    def results_cache_set(
+        self, *, name: str, params: Dict[str, Any], results: Mapping[str, np.ndarray]
+    ):
+        name = type(self).__name__.lower() + "_" + name
+        if self._results_cache is None:
+            return
+        params = params.copy()
+        self._results_cache_add_analysis_params(params)
+        cache_key, params_json = hash_params(params)
+        cache_path = self._results_cache / name / cache_key
+        cache_path.mkdir(exist_ok=True, parents=True)
+        params_path = cache_path / "params.json"
+        results_path = cache_path / "results.npz"
+        with params_path.open(mode="w") as f:
+            f.write(params_json)
+        np.savez_compressed(results_path, **results)
