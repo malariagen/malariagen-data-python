@@ -735,14 +735,9 @@ class AnophelesCnvData(
         title = "CNV HMM"
         if sample_sets is not None:
             if isinstance(sample_sets, Sequence):
-                if all(isinstance(s, str) for s in sample_sets):
-                    sample_sets_text = ", ".join(sample_sets)
-                else:
-                    raise TypeError("All elements in 'sample_sets' must be type 'str'")
-            elif isinstance(sample_sets, str):
-                sample_sets_text = sample_sets
+                sample_sets_text = ", ".join(sample_sets)
             else:
-                raise TypeError("'sample_sets' is an unhandled type")
+                sample_sets_text = sample_sets
             title += f" - {sample_sets_text}"
         if sample_query is not None:
             title += f" ({sample_query})"
