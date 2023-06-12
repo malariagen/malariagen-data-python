@@ -524,8 +524,8 @@ class AnophelesCnvData(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
-        circle_kwargs: Optional[het_params.circle_kwargs] = None,
-        line_kwargs: Optional[het_params.line_kwargs] = None,
+        circle_kwargs: Optional[cnv_params.circle_kwargs] = None,
+        line_kwargs: Optional[cnv_params.line_kwargs] = None,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -591,17 +591,17 @@ class AnophelesCnvData(
 
         debug("plot the normalised coverage data")
         circle_kwargs = circle_kwargs or {}
-        circle_kwargs["size"] = circle_kwargs.get("size", 3)
-        circle_kwargs["line_width"] = circle_kwargs.get("line_width", 1)
-        circle_kwargs["line_color"] = circle_kwargs.get("line_color", "black")
-        circle_kwargs["fill_color"] = circle_kwargs.get("fill_color", None)
-        circle_kwargs["legend_label"] = circle_kwargs.get("legend_label", "Coverage")
+        circle_kwargs["size"].setdefault("size", 3)
+        circle_kwargs["line_width"].setdefault("line_width", 1)
+        circle_kwargs["line_color"].setdefault("line_color", "black")
+        circle_kwargs["fill_color"].setdefault("fill_color", None)
+        circle_kwargs["legend_label"].setdefault("legend_label", "Coverage")
         fig.circle(x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs)
 
         debug("plot the HMM state")
         line_kwargs = line_kwargs or {}
-        line_kwargs["width"] = line_kwargs.get("width", 2)
-        line_kwargs["legend_label"] = line_kwargs.get("legend_label", "HMM")
+        line_kwargs["width"].setdefault("width", 2)
+        line_kwargs["legend_label"].setdefault("legend_label", "HMM")
         fig.line(x="variant_midpoint", y="call_CN", source=data, **line_kwargs)
 
         debug("tidy up the plot")
