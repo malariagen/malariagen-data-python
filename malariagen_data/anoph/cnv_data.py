@@ -631,8 +631,8 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-        circle_kwargs: Optional[het_params.circle_kwargs] = None,
-        line_kwargs: Optional[het_params.line_kwargs] = None,
+        circle_kwargs: Optional[cnv_params.circle_kwargs] = None,
+        line_kwargs: Optional[cnv_params.line_kwargs] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
