@@ -7195,7 +7195,8 @@ class AnophelesDataResource(
 
         # To be modified to take both into account
         if filter_min_maf > 0:
-            af = ac1.to_frequencies()
+            ac = ac1 + ac2
+            af = ac.to_frequencies()
             maf = np.min(af, axis=1)
             maf_filter = maf > filter_min_maf
 
