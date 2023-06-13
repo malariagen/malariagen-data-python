@@ -82,9 +82,18 @@ sample_indices: TypeAlias = Annotated[
     """,
 ]
 
-single_sample: TypeAlias = Annotated[
+sample: TypeAlias = Annotated[
     Union[str, int],
     "Sample identifier or index within sample set.",
+]
+
+samples: TypeAlias = Annotated[
+    Union[
+        sample,
+        List[sample],
+        Tuple[sample, ...],
+    ],
+    "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
 ]
 
 

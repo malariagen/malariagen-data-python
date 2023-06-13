@@ -1,20 +1,9 @@
 """Parameters for functions related to heterozygosity and runs of homozygosity."""
 
-from typing import List, Mapping, Tuple, Union
+from typing import Mapping, Tuple
 
 import pandas as pd
 from typing_extensions import Annotated, TypeAlias
-
-from . import base_params
-
-sample: TypeAlias = Annotated[
-    Union[
-        base_params.single_sample,
-        List[base_params.single_sample],
-        Tuple[base_params.single_sample, ...],
-    ],
-    "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
-]
 
 window_size: TypeAlias = Annotated[
     int,

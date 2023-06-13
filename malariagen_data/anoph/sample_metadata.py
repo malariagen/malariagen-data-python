@@ -719,7 +719,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     )
     def lookup_sample(
         self,
-        sample: base_params.single_sample,
+        sample: base_params.sample,
         sample_set: Optional[base_params.sample_set] = None,
     ):
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")

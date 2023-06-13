@@ -18,7 +18,7 @@ from ..util import (
     parse_single_region,
     simple_xarray_concat,
 )
-from . import base_params, cnv_params, gplt_params, het_params
+from . import base_params, cnv_params, gplt_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -517,7 +517,7 @@ class AnophelesCnvData(
     )
     def plot_cnv_hmm_coverage_track(
         self,
-        sample: het_params.sample,
+        sample: base_params.samples,
         region: base_params.region,
         sample_set: Optional[base_params.sample_set] = None,
         y_max: cnv_params.y_max = cnv_params.y_max_default,
@@ -623,7 +623,7 @@ class AnophelesCnvData(
     )
     def plot_cnv_hmm_coverage(
         self,
-        sample: het_params.sample,
+        sample: base_params.samples,
         region: base_params.region,
         sample_set: Optional[base_params.sample_set] = None,
         y_max: cnv_params.y_max = cnv_params.y_max_default,
