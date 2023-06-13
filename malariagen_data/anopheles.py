@@ -6149,7 +6149,6 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        print("Begin ihs")
         name = self._ihs_gwss_cache_name
         print("End ihs")
 
