@@ -596,19 +596,27 @@ class AnophelesCnvData(
 
         debug("plot the normalised coverage data")
         circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
-        circle_kwargs_mutable["size"].setdefault("size", 3)
-        circle_kwargs_mutable["line_width"].setdefault("line_width", 1)
-        circle_kwargs_mutable["line_color"].setdefault("line_color", "black")
-        circle_kwargs_mutable["fill_color"].setdefault("fill_color", None)
-        circle_kwargs_mutable["legend_label"].setdefault("legend_label", "Coverage")
+        circle_kwargs_mutable["size"] = circle_kwargs_mutable.get("size", 3)
+        circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get("line_width", 1)
+        circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
+            "line_color", "black"
+        )
+        circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
+            "fill_color", None
+        )
+        circle_kwargs_mutable["legend_label"] = circle_kwargs_mutable.get(
+            "legend_label", "Coverage"
+        )
         fig.circle(
             x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs_mutable
         )
 
         debug("plot the HMM state")
         line_kwargs_mutable = dict(line_kwargs) if line_kwargs else {}
-        line_kwargs_mutable["width"].setdefault("width", 2)
-        line_kwargs_mutable["legend_label"].setdefault("legend_label", "HMM")
+        line_kwargs_mutable["width"] = line_kwargs_mutable.get("width", 2)
+        line_kwargs_mutable["legend_label"] = line_kwargs_mutable.get(
+            "legend_label", "HMM"
+        )
         fig.line(x="variant_midpoint", y="call_CN", source=data, **line_kwargs_mutable)
 
         debug("tidy up the plot")
