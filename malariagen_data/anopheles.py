@@ -7356,7 +7356,7 @@ class AnophelesDataResource(
             else:
                 color = None
 
-            # plot ihs
+            # plot xpehh
             fig.circle(
                 x=x,
                 y=xpehh_perc,
