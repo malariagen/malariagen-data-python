@@ -57,7 +57,7 @@ def test_open_genome(fixture, api):
         z = root[contig]
         assert isinstance(z, zarr.core.Array)
         assert z.ndim == 1
-        assert z.dtype.kind == "S"
+        assert z.dtype == "S1"
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -67,7 +67,7 @@ def test_genome_sequence(fixture, api):
         seq = api.genome_sequence(region=contig)
         assert isinstance(seq, da.Array)
         assert seq.ndim == 1
-        assert seq.dtype.kind == "S"
+        assert seq.dtype == "S1"
         assert seq.shape[0] == root[contig].shape[0]
 
 

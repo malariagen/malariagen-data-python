@@ -1,18 +1,20 @@
 import sys
 import warnings
 from bisect import bisect_left, bisect_right
-from textwrap import dedent
+from typing import List
 
 import dask
 import dask.array as da
 import numba
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import xarray as xr
 import zarr
 
 import malariagen_data  # used for .__version__
 
+from .anoph import base_params
 from .anopheles import AnophelesDataResource, gplt_params
 from .util import (
     DIM_SAMPLE,
@@ -20,6 +22,9 @@ from .util import (
     Region,
     da_from_zarr,
     init_zarr_store,
+    parse_multi_region,
+    parse_single_region,
+    region_str,
     simple_xarray_concat,
 )
 
@@ -30,12 +35,8 @@ MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 GCS_URL = "gs://vo_agam_release/"
-SITE_ANNOTATIONS_ZARR_PATH = (
-    "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr"
-)
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
-SNP_ALLELE_COUNTS_CACHE_NAME = "ag3_snp_allele_counts_v2"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
@@ -45,6 +46,36 @@ H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 DEFAULT_SITE_MASK = "gamb_colu_arab"
+
+
+def _setup_aim_palettes():
+    # Set up default AIMs color palettes.
+    colors = px.colors.qualitative.T10
+    color_gambcolu = colors[6]
+    color_gambcolu_arab_het = colors[5]
+    color_arab = colors[4]
+    color_gamb = colors[0]
+    color_gamb_colu_het = colors[5]
+    color_colu = colors[2]
+    color_missing = "white"
+    aim_palettes = {
+        "gambcolu_vs_arab": (
+            color_missing,
+            color_gambcolu,
+            color_gambcolu_arab_het,
+            color_arab,
+        ),
+        "gamb_vs_colu": (
+            color_missing,
+            color_gamb,
+            color_gamb_colu_het,
+            color_colu,
+        ),
+    }
+    return aim_palettes
+
+
+AIM_PALETTES = _setup_aim_palettes()
 
 
 class Ag3(AnophelesDataResource):
@@ -104,9 +135,7 @@ class Ag3(AnophelesDataResource):
     """
 
     virtual_contigs = "2RL", "3RL"
-    _site_annotations_zarr_path = SITE_ANNOTATIONS_ZARR_PATH
     _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
-    _snp_allele_counts_results_cache_name = SNP_ALLELE_COUNTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -148,7 +177,11 @@ class Ag3(AnophelesDataResource):
                 "aim_species_gambiae_coluzzii": object,
                 "aim_species": object,
             },
+            aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
+            aim_palettes=AIM_PALETTES,
             site_filters_analysis=site_filters_analysis,
+            default_site_mask="gamb_colu_arab",
+            default_phasing_analysis="gamb_colu_arab",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,
@@ -169,7 +202,6 @@ class Ag3(AnophelesDataResource):
         self._cache_cnv_hmm = dict()
         self._cache_cnv_coverage_calls = dict()
         self._cache_cnv_discordant_read_calls = dict()
-        self._cache_aim_variants = dict()
 
     @property
     def v3_wild(self):
@@ -677,7 +709,7 @@ class Ag3(AnophelesDataResource):
 
     def cnv_hmm(
         self,
-        region,
+        region: base_params.region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -719,13 +751,12 @@ class Ag3(AnophelesDataResource):
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_multi_region(self, region)
+        del region
 
         debug("access CNV HMM data and concatenate as needed")
         lx = []
-        for r in region:
+        for r in regions:
             ly = []
             for s in sample_sets:
                 y = self._cnv_hmm_dataset(
@@ -900,7 +931,7 @@ class Ag3(AnophelesDataResource):
 
     def cnv_coverage_calls(
         self,
-        region,
+        region: base_params.region,
         sample_set,
         analysis,
         inline_array=True,
@@ -939,13 +970,12 @@ class Ag3(AnophelesDataResource):
         # calling is done independently in different sample sets.
 
         debug("normalise parameters")
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_multi_region(self, region)
+        del region
 
         debug("access data and concatenate as needed")
         lx = []
-        for r in region:
+        for r in regions:
             debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
@@ -1133,7 +1163,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv(
         self,
-        region,
+        region: base_params.region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -1165,9 +1195,8 @@ class Ag3(AnophelesDataResource):
 
         """
 
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_multi_region(self, region)
+        del region
 
         ds = simple_xarray_concat(
             [
@@ -1177,7 +1206,7 @@ class Ag3(AnophelesDataResource):
                     sample_query=sample_query,
                     max_coverage_variance=max_coverage_variance,
                 )
-                for r in region
+                for r in regions
             ],
             dim="genes",
         )
@@ -1269,7 +1298,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv_frequencies(
         self,
-        region,
+        region: base_params.region,
         cohorts,
         sample_query=None,
         min_cohort_size=10,
@@ -1320,9 +1349,8 @@ class Ag3(AnophelesDataResource):
 
         debug("check and normalise parameters")
         self._check_param_min_cohort_size(min_cohort_size)
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_multi_region(self, region)
+        del region
 
         debug("access and concatenate data from regions")
         df = pd.concat(
@@ -1336,13 +1364,13 @@ class Ag3(AnophelesDataResource):
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
                 )
-                for r in region
+                for r in regions
             ],
             axis=0,
         )
 
         debug("add metadata")
-        title = f"Gene CNV frequencies ({self._region_str(region)})"
+        title = f"Gene CNV frequencies ({region_str(regions)})"
         df.attrs["title"] = title
 
         return df
@@ -1492,7 +1520,7 @@ class Ag3(AnophelesDataResource):
 
     def gene_cnv_frequencies_advanced(
         self,
-        region,
+        region: base_params.region,
         area_by,
         period_by,
         sample_sets=None,
@@ -1555,9 +1583,8 @@ class Ag3(AnophelesDataResource):
 
         self._check_param_min_cohort_size(min_cohort_size)
 
-        region = self.resolve_region(region)
-        if isinstance(region, Region):
-            region = [region]
+        regions: List[Region] = parse_multi_region(self, region)
+        del region
 
         ds = simple_xarray_concat(
             [
@@ -1573,12 +1600,12 @@ class Ag3(AnophelesDataResource):
                     max_coverage_variance=max_coverage_variance,
                     ci_method=ci_method,
                 )
-                for r in region
+                for r in regions
             ],
             dim="variants",
         )
 
-        title = f"Gene CNV frequencies ({self._region_str(region)})"
+        title = f"Gene CNV frequencies ({region_str(regions)})"
         ds.attrs["title"] = title
 
         return ds
@@ -1742,7 +1769,7 @@ class Ag3(AnophelesDataResource):
     def plot_cnv_hmm_coverage_track(
         self,
         sample,
-        region,
+        region: base_params.single_region,
         sample_set=None,
         y_max="auto",
         sizing_mode=gplt_params.sizing_mode_default,
@@ -1752,6 +1779,7 @@ class Ag3(AnophelesDataResource):
         line_kwargs=None,
         show=True,
         x_range=None,
+        output_backend="webgl",
     ):
         """Plot CNV HMM data for a single sample, using bokeh.
 
@@ -1779,7 +1807,7 @@ class Ag3(AnophelesDataResource):
             Passed through to bokeh line() function.
         show : bool, optional
             If true, show the plot.
-        x_range : bokeh.models.Range1d, optional
+        x_range : bokeh.models.Range, optional
             X axis range (for linking to other tracks).
 
         Returns
@@ -1794,7 +1822,8 @@ class Ag3(AnophelesDataResource):
         import bokeh.plotting as bkplt
 
         debug("resolve region")
-        region = self.resolve_region(region)
+        region_prepped: Region = parse_single_region(self, region)
+        del region
 
         debug("access sample metadata, look up sample")
         sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
@@ -1803,7 +1832,7 @@ class Ag3(AnophelesDataResource):
 
         debug("access HMM data")
         hmm = self.cnv_hmm(
-            region=region, sample_sets=sample_set, max_coverage_variance=None
+            region=region_prepped, sample_sets=sample_set, max_coverage_variance=None
         )
 
         debug("select data for the given sample")
@@ -1843,13 +1872,14 @@ class Ag3(AnophelesDataResource):
             toolbar_location="above",
             x_range=x_range,
             y_range=(0, y_max),
+            output_backend=output_backend,
         )
 
         debug("plot the normalised coverage data")
         if circle_kwargs is None:
             circle_kwargs = dict()
         circle_kwargs.setdefault("size", 3)
-        circle_kwargs.setdefault("line_width", 0.5)
+        circle_kwargs.setdefault("line_width", 1)
         circle_kwargs.setdefault("line_color", "black")
         circle_kwargs.setdefault("fill_color", None)
         circle_kwargs.setdefault("legend_label", "Coverage")
@@ -1865,13 +1895,14 @@ class Ag3(AnophelesDataResource):
         debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
         fig.yaxis.ticker = list(range(y_max + 1))
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.add_layout(fig.legend[0], "right")
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_coverage(
         self,
@@ -1886,6 +1917,7 @@ class Ag3(AnophelesDataResource):
         circle_kwargs=None,
         line_kwargs=None,
         show=True,
+        output_backend="webgl",
     ):
         """Plot CNV HMM data for a single sample, together with a genes track,
         using bokeh.
@@ -1917,11 +1949,6 @@ class Ag3(AnophelesDataResource):
         show : bool, optional
             If true, show the plot.
 
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
-
         """
         debug = self._log.debug
 
@@ -1940,6 +1967,7 @@ class Ag3(AnophelesDataResource):
             circle_kwargs=circle_kwargs,
             line_kwargs=line_kwargs,
             show=False,
+            output_backend=output_backend,
         )
         fig1.xaxis.visible = False
 
@@ -1951,6 +1979,7 @@ class Ag3(AnophelesDataResource):
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         debug("combine plots into a single figure")
@@ -1964,12 +1993,13 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_heatmap_track(
         self,
-        region,
+        region: base_params.single_region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
@@ -1978,6 +2008,7 @@ class Ag3(AnophelesDataResource):
         row_height=7,
         height=None,
         show=True,
+        output_backend="webgl",
     ):
         """Plot CNV HMM data for multiple samples as a heatmap, using bokeh.
 
@@ -2019,11 +2050,12 @@ class Ag3(AnophelesDataResource):
         import bokeh.palettes as bkpal
         import bokeh.plotting as bkplt
 
-        region = self.resolve_region(region)
+        region_prepped: Region = parse_single_region(self, region)
+        del region
 
         debug("access HMM data")
         ds_cnv = self.cnv_hmm(
-            region=region,
+            region=region_prepped,
             sample_sets=sample_sets,
             sample_query=sample_query,
             max_coverage_variance=max_coverage_variance,
@@ -2077,6 +2109,7 @@ class Ag3(AnophelesDataResource):
             x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
             y_range=(-0.5, n_samples - 0.5),
             tooltips=tooltips,
+            output_backend=output_backend,
         )
 
         debug("set up palette and color mapping")
@@ -2107,7 +2140,7 @@ class Ag3(AnophelesDataResource):
 
         debug("tidy")
         fig.yaxis.axis_label = "Samples"
-        self._bokeh_style_genome_xaxis(fig, region.contig)
+        self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.yaxis.ticker = bkmod.FixedTicker(
             ticks=np.arange(len(sample_id)),
         )
@@ -2115,7 +2148,9 @@ class Ag3(AnophelesDataResource):
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         debug("add color bar")
-        color_bar = bkmod.ColorBar(
+        # For some reason, mypy reports: Module has no attribute "ColorBar"
+        # ...but this works fine, so ignore for now.
+        color_bar = bkmod.ColorBar(  # type: ignore
             title="Copy number",
             color_mapper=color_mapper,
             major_label_overrides={
@@ -2128,8 +2163,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def plot_cnv_hmm_heatmap(
         self,
@@ -2173,13 +2209,6 @@ class Ag3(AnophelesDataResource):
             row_height.
         genes_height : int, optional
             Height of genes track in pixels (px).
-        show : bool, optional
-            If true, show the plot.
-
-        Returns
-        -------
-        fig : Figure
-            Bokeh figure.
 
         """
         debug = self._log.debug
@@ -2222,8 +2251,9 @@ class Ag3(AnophelesDataResource):
 
         if show:
             bkplt.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     def _view_alignments_add_site_filters_tracks(
         self, *, contig, visibility_window, tracks
@@ -2253,303 +2283,6 @@ class Ag3(AnophelesDataResource):
         super()._results_cache_add_analysis_params(params)
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
-
-    def aim_variants(self, aims):
-        """Open ancestry informative marker variants.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing AIM positions and discriminating alleles.
-
-        """
-        try:
-            ds = self._cache_aim_variants[aims]
-        except KeyError:
-            path = f"{self._base_path}/reference/aim_defs_20220528/{aims}.zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
-            ds = xr.open_zarr(store, concat_characters=False)
-            ds = ds.set_coords(["variant_contig", "variant_position"])
-            self._cache_aim_variants[aims] = ds
-        return ds.copy(deep=False)
-
-    def _aim_calls_dataset(self, *, aims, sample_set):
-        release = self.lookup_release(sample_set=sample_set)
-        release_path = self._release_to_path(release)
-        path = f"gs://vo_agam_release/{release_path}/aim_calls_20220528/{sample_set}/{aims}.zarr"
-        store = init_zarr_store(fs=self._fs, path=path)
-        ds = xr.open_zarr(store=store, concat_characters=False)
-        ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
-        return ds
-
-    def aim_calls(
-        self,
-        aims,
-        sample_sets=None,
-        sample_query=None,
-    ):
-        """Access ancestry informative marker SNP sites, alleles and genotype
-        calls.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset containing AIM SNP sites, alleles and genotype calls.
-
-        """
-        debug = self._log.debug
-
-        debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-
-        debug("access SNP calls and concatenate multiple sample sets and/or regions")
-        ly = []
-        for s in sample_sets:
-            y = self._aim_calls_dataset(
-                aims=aims,
-                sample_set=s,
-            )
-            ly.append(y)
-
-        debug("concatenate data from multiple sample sets")
-        ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
-
-        debug("handle sample query")
-        if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-            ds = ds.isel(samples=loc_samples)
-
-        return ds
-
-    def plot_aim_heatmap(
-        self,
-        aims,
-        sample_sets=None,
-        sample_query=None,
-        sort=True,
-        row_height=4,
-        colors="T10",
-        xgap=0,
-        ygap=0.5,
-    ):
-        """Plot a heatmap of ancestry-informative marker (AIM) genotypes.
-
-        Parameters
-        ----------
-        aims : {'gamb_vs_colu', 'gambcolu_vs_arab'}
-            Which ancestry informative markers to use.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sort : bool, optional
-            If true (default), sort the samples by the total fraction of AIM
-            alleles for the second species in the comparison.
-        row_height : int, optional
-            Height per sample in px.
-        colors : str, optional
-            Choose your favourite color palette.
-        xgap : float, optional
-            Creates lines between columns (variants).
-        ygap : float, optional
-            Creates lines between rows (samples).
-
-        Returns
-        -------
-        fig : plotly.graph_objects.Figure
-
-        """
-
-        debug = self._log.debug
-
-        import allel
-        import plotly.express as px
-        import plotly.graph_objects as go
-        from plotly.subplots import make_subplots
-
-        debug("load AIM calls")
-        ds = self.aim_calls(
-            aims=aims,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-        ).compute()
-        samples = ds["sample_id"].values
-        variant_contig = ds["variant_contig"].values
-
-        debug("count variants per contig")
-        contigs = ds.attrs["contigs"]
-        col_widths = [
-            np.count_nonzero(variant_contig == contigs.index(contig))
-            for contig in contigs
-        ]
-        debug(col_widths)
-
-        debug("access and transform genotypes")
-        gt = allel.GenotypeArray(ds["call_genotype"].values)
-        gn = gt.to_n_alt(fill=-1)
-
-        if sort:
-            debug("sort by AIM fraction")
-            ac = np.sum(gt == 1, axis=(0, 2))
-            an = np.sum(gt >= 0, axis=(0, 2))
-            af = ac / an
-            ix_sorted = np.argsort(af)
-            gn = np.take(gn, ix_sorted, axis=1)
-            samples = np.take(samples, ix_sorted, axis=0)
-
-        debug("set up colors")
-        # https://en.wiktionary.org/wiki/abandon_hope_all_ye_who_enter_here
-        if colors.lower() == "plotly":
-            palette = px.colors.qualitative.Plotly
-            color_gc = palette[3]
-            color_gc_a = palette[9]
-            color_a = palette[2]
-            color_g = palette[0]
-            color_g_c = palette[9]
-            color_c = palette[1]
-            color_m = "white"
-        elif colors.lower() == "set1":
-            palette = px.colors.qualitative.Set1
-            color_gc = palette[3]
-            color_gc_a = palette[4]
-            color_a = palette[2]
-            color_g = palette[1]
-            color_g_c = palette[5]
-            color_c = palette[0]
-            color_m = "white"
-        elif colors.lower() == "g10":
-            palette = px.colors.qualitative.G10
-            color_gc = palette[4]
-            color_gc_a = palette[2]
-            color_a = palette[3]
-            color_g = palette[0]
-            color_g_c = palette[2]
-            color_c = palette[8]
-            color_m = "white"
-        elif colors.lower() == "t10":
-            palette = px.colors.qualitative.T10
-            color_gc = palette[6]
-            color_gc_a = palette[5]
-            color_a = palette[4]
-            color_g = palette[0]
-            color_g_c = palette[5]
-            color_c = palette[2]
-            color_m = "white"
-        else:
-            raise ValueError("unsupported colors")
-        if aims == "gambcolu_vs_arab":
-            colors = [color_m, color_gc, color_gc_a, color_a]
-        else:
-            colors = [color_m, color_g, color_g_c, color_c]
-        species = aims.split("_vs_")
-
-        debug("create subplots")
-        fig = make_subplots(
-            rows=1,
-            cols=len(contigs),
-            shared_yaxes=True,
-            column_titles=contigs,
-            row_titles=None,
-            column_widths=col_widths,
-            x_title="Variants",
-            y_title="Samples",
-            horizontal_spacing=0.01,
-            vertical_spacing=0.01,
-        )
-
-        for j, contig in enumerate(contigs):
-            debug(f"plot {contig}")
-            loc_contig = variant_contig == j
-            gn_contig = np.compress(loc_contig, gn, axis=0)
-            fig.add_trace(
-                go.Heatmap(
-                    y=samples,
-                    z=gn_contig.T,
-                    # construct a discrete color scale
-                    # https://plotly.com/python/colorscales/#constructing-a-discrete-or-discontinuous-color-scale
-                    colorscale=[
-                        [0 / 4, colors[0]],
-                        [1 / 4, colors[0]],
-                        [1 / 4, colors[1]],
-                        [2 / 4, colors[1]],
-                        [2 / 4, colors[2]],
-                        [3 / 4, colors[2]],
-                        [3 / 4, colors[3]],
-                        [4 / 4, colors[3]],
-                    ],
-                    zmin=-1.5,
-                    zmax=2.5,
-                    xgap=xgap,
-                    ygap=ygap,  # this creates faint lines between rows
-                    colorbar=dict(
-                        title="AIM genotype",
-                        tickmode="array",
-                        tickvals=[-1, 0, 1, 2],
-                        ticktext=[
-                            "missing",
-                            f"{species[0]}/{species[0]}",
-                            f"{species[0]}/{species[1]}",
-                            f"{species[1]}/{species[1]}",
-                        ],
-                        len=100,
-                        lenmode="pixels",
-                        y=1,
-                        yanchor="top",
-                        outlinewidth=1,
-                        outlinecolor="black",
-                    ),
-                    hovertemplate=dedent(
-                        """
-                        Variant index: %{x}<br>
-                        Sample: %{y}<br>
-                        Genotype: %{z}
-                        <extra></extra>
-                    """
-                    ),
-                ),
-                row=1,
-                col=j + 1,
-            )
-
-        fig.update_xaxes(
-            tickmode="array",
-            tickvals=[],
-        )
-
-        fig.update_yaxes(
-            tickmode="array",
-            tickvals=[],
-        )
-
-        fig.update_layout(
-            title=f"AIMs - {aims}",
-            height=max(300, row_height * len(samples) + 100),
-        )
-
-        return fig
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
