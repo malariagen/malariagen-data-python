@@ -7360,9 +7360,9 @@ class AnophelesDataResource(
             fig.circle(
                 x=x,
                 y=xpehh_perc,
-                size=3,
-                line_width=0.15,
-                line_color="black",
+                size=4,
+                line_width=0,
+                line_color=color,
                 fill_color=color,
             )
 
