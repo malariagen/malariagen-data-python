@@ -6150,7 +6150,6 @@ class AnophelesDataResource(
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._ihs_gwss_cache_name
-        print("End ihs")
 
         params = dict(
             contig=contig,
