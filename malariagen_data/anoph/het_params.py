@@ -1,6 +1,6 @@
 """Parameters for functions related to heterozygosity and runs of homozygosity."""
 
-from typing import Mapping, Tuple
+from typing import Tuple
 
 import pandas as pd
 from typing_extensions import Annotated, TypeAlias
@@ -42,16 +42,6 @@ y_max: TypeAlias = Annotated[
 ]
 
 y_max_default: y_max = 0.03
-
-circle_kwargs: TypeAlias = Annotated[
-    Mapping,
-    "Passed through to bokeh circle() function.",
-]
-
-line_kwargs: TypeAlias = Annotated[
-    Mapping,
-    "Passed through to bokeh line() function.",
-]
 
 df_roh: TypeAlias = Annotated[
     pd.DataFrame,

@@ -1,7 +1,7 @@
 """Parameters for genome plotting functions. N.B., genome plots are always
 plotted with bokeh."""
 
-from typing import Literal, Optional, Union
+from typing import Literal, Mapping, Optional, Union
 
 import bokeh.models
 from typing_extensions import Annotated, TypeAlias
@@ -95,3 +95,13 @@ output_backend: TypeAlias = Annotated[
 
 # webgl is better for plots like selection scans with lots of points
 output_backend_default: output_backend = "webgl"
+
+circle_kwargs: TypeAlias = Annotated[
+    Mapping,
+    "Passed through to bokeh circle() function.",
+]
+
+line_kwargs: TypeAlias = Annotated[
+    Mapping,
+    "Passed through to bokeh line() function.",
+]

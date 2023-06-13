@@ -1,6 +1,6 @@
 """Parameters common to functions accessing CNV data."""
 
-from typing import Any, Dict, Optional, Union
+from typing import Optional, Union
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -19,16 +19,6 @@ coverage_calls_analysis: TypeAlias = Annotated[
     Which coverage calls analysis to use. See the
     `coverage_calls_analysis_ids` property for available values.
     """,
-]
-
-circle_kwargs: TypeAlias = Annotated[
-    Dict[str, Any],
-    "Passed through to bokeh circle() function.",
-]
-
-line_kwargs: TypeAlias = Annotated[
-    Dict[str, Any],
-    "Passed through to bokeh line() function.",
 ]
 
 y_max: TypeAlias = Annotated[
