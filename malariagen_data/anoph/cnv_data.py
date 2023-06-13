@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence
+from typing import List, Optional, Sequence, Union
 
 import dask.array as da
 import numpy as np
@@ -514,13 +514,16 @@ class AnophelesCnvData(
     @doc(
         summary="Plot CNV HMM data for a single sample, using bokeh.",
         returns="Bokeh figure.",
+        parameters=dict(
+            y_max="Y axis limit or 'auto'.",
+        ),
     )
     def plot_cnv_hmm_coverage_track(
         self,
         sample: base_params.samples,
         region: base_params.region,
         sample_set: Optional[base_params.sample_set] = None,
-        y_max: cnv_params.y_max = cnv_params.y_max_default,
+        y_max: Union[float, str] = "auto",
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
@@ -565,7 +568,9 @@ class AnophelesCnvData(
 
         debug("set up y range")
         if y_max == "auto":
-            y_max = data["call_CN"].max() + 2
+            y_max_float = data["call_CN"].max() + 2
+        else:
+            y_max_float = y_max
 
         debug("set up x range")
         x_min = data["variant_position"].values[0]
@@ -585,7 +590,7 @@ class AnophelesCnvData(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, y_max),
+            y_range=(0, y_max_float),
             output_backend=output_backend,
         )
 
@@ -608,7 +613,7 @@ class AnophelesCnvData(
 
         debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
-        fig.yaxis.ticker = list(range(y_max + 1))
+        fig.yaxis.ticker = list(range(y_max_float + 1))
         self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.add_layout(fig.legend[0], "right")
 
@@ -622,13 +627,16 @@ class AnophelesCnvData(
     @doc(
         summary="Plot CNV HMM data for a single sample, together with a genes track, using bokeh.",
         returns="Bokeh figure.",
+        parameters=dict(
+            y_max="Y axis limit or 'auto'.",
+        ),
     )
     def plot_cnv_hmm_coverage(
         self,
         sample: base_params.samples,
         region: base_params.region,
         sample_set: Optional[base_params.sample_set] = None,
-        y_max: cnv_params.y_max = cnv_params.y_max_default,
+        y_max: Union[float, str] = "auto",
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
