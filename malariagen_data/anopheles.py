@@ -182,6 +182,11 @@ class AnophelesDataResource(
 
     @property
     @abstractmethod
+    def _xpehh_gwss_cache_name(self):
+        raise NotImplementedError("Must override _xpehh_gwss_cache_name")
+
+    @property
+    @abstractmethod
     def _h1x_gwss_cache_name(self):
         raise NotImplementedError("Must override _h1x_gwss_cache_name")
 
@@ -189,45 +194,6 @@ class AnophelesDataResource(
     @abstractmethod
     def _ihs_gwss_cache_name(self):
         raise NotImplementedError("Must override _ihs_gwss_cache_name")
-
-    # @property
-    # @abstractmethod
-    # def _xpehh_gwss_cache_name(self):
-    #     raise NotImplementedError("Must override _xpehh_gwss_cache_name")
-
-    # @property
-    # @abstractmethod
-    # def _site_annotations_zarr_path(self):
-    #     raise NotImplementedError("Must override _site_annotations_zarr_path")
-
-    # # Start of @abstractmethod
-
-    # @property
-    # @abstractmethod
-    # def site_mask_ids(self):
-    #     """Identifiers for the different site masks that are available.
-    #     These are values than can be used for the `site_mask` parameter in any
-    #     method making using of SNP data.
-
-    #     """
-    #     raise NotImplementedError("Must override _site_mask_ids")
-
-    # @property
-    # @abstractmethod
-    # def _default_site_mask(self):
-    #     raise NotImplementedError("Must override _default_site_mask")
-
-    # def _prep_site_mask_param(self, *, site_mask):
-    #     if site_mask is None:
-    #         # allowed
-    #         pass
-    #     elif site_mask == DEFAULT:
-    #         site_mask = self._default_site_mask
-    #     elif site_mask not in self.site_mask_ids:
-    #         raise ValueError(
-    #             f"Invalid site mask, must be one of f{self.site_mask_ids}."
-    #         )
-    #     return site_mask
 
     @abstractmethod
     def _transcript_to_gene_name(self, transcript):
