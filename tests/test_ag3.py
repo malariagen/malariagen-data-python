@@ -2288,12 +2288,12 @@ def test_xpehh_gwss():
     assert isinstance(xpehh, np.ndarray)
 
     # check dimensions
-    assert len(x) == 395
+    assert len(x) == 399
     assert len(x) == len(xpehh)
 
     # check some values
-    assert_allclose(x[0], 510232.847)
-    assert_allclose(xpehh[:, 2][100], 1.7302443850220177)
+    assert_allclose(x[0], 467448.348)
+    assert_allclose(xpehh[:, 2][100], 2.741348351867086)
 
 
 def test_g123_gwss():
