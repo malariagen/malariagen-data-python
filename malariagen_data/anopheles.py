@@ -5194,8 +5194,8 @@ class AnophelesDataResource(
         contig,
         analysis,
         sample_sets,
-        sample_query1,
-        sample_query2,
+        cohort1_query,
+        cohort2_query,
         window_size,
         percentiles,
         standardize,
@@ -5216,7 +5216,7 @@ class AnophelesDataResource(
         ds_haps1 = self.haplotypes(
             region=contig,
             analysis=analysis,
-            sample_query=sample_query1,
+            sample_query=cohort1_query,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -5226,7 +5226,7 @@ class AnophelesDataResource(
         ds_haps2 = self.haplotypes(
             region=contig,
             analysis=analysis,
-            sample_query=sample_query2,
+            sample_query=cohort2_query,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -5308,8 +5308,8 @@ class AnophelesDataResource(
         contig: base_params.contig,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query1: Optional[base_params.sample_query] = None,
-        sample_query2: Optional[base_params.sample_query] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
         standardize: xpehh_params.standardize = True,
@@ -5357,8 +5357,8 @@ class AnophelesDataResource(
             use_threads=use_threads,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
-            sample_query1=sample_query1,
-            sample_query2=sample_query2,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
             sample_sets=sample_sets,
             random_seed=random_seed,
         )
@@ -5374,10 +5374,10 @@ class AnophelesDataResource(
             dimensions="width", maintain_focus=False
         )
         if title is None:
-            if sample_query1 is None or sample_query2 is None:
+            if cohort1_query is None or cohort2_query is None:
                 title = "XP-EHH"
             else:
-                title = "'" + sample_query1 + "' and '" + sample_query2 + "'"
+                title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
         fig = bokeh.plotting.figure(
             title=title,
             tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
