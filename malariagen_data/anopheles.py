@@ -4420,8 +4420,8 @@ class AnophelesDataResource(
         contig: base_params.contig,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query1: Optional[base_params.sample_query] = None,
-        sample_query2: Optional[base_params.sample_query] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
         standardize: xpehh_params.standardize = True,
@@ -4448,14 +4448,16 @@ class AnophelesDataResource(
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-    ) -> None:
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_xpehh_gwss_track(
             contig=contig,
             analysis=analysis,
             sample_sets=sample_sets,
-            sample_query1=sample_query1,
-            sample_query2=sample_query2,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
             window_size=window_size,
             percentiles=percentiles,
             palette=palette,
@@ -4502,7 +4504,11 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        bokeh.plotting.show(fig)
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
 
     @doc(
         summary="Run and plot iHS GWSS data.",
@@ -5337,7 +5343,8 @@ class AnophelesDataResource(
         height: gplt_params.height = 200,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
-    ):
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ) -> gplt_params.figure:
         # compute ihs
         x, xpehh = self.xpehh_gwss(
             contig=contig,
