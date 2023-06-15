@@ -4493,6 +4493,7 @@ class AnophelesDataResource(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            output_backend=output_backend,
         )
 
         # combine plots into a single figure
@@ -5395,6 +5396,7 @@ class AnophelesDataResource(
             height=height,
             toolbar_location="above",
             x_range=x_range,
+            output_backend=output_backend,
         )
 
         if window_size:
@@ -5429,8 +5431,9 @@ class AnophelesDataResource(
 
         if show:
             bokeh.plotting.show(fig)
-
-        return fig
+            return None
+        else:
+            return fig
 
     @doc(
         summary="""
