@@ -5402,18 +5402,24 @@ class AnophelesDataResource(
         if window_size:
             if isinstance(percentiles, int):
                 percentiles = (percentiles,)
+            # Ensure percentiles are sorted so that colors make sense.
+            percentiles = tuple(sorted(percentiles))
 
         # add an empty dimension to xpehh array if 1D
         xpehh = np.reshape(xpehh, (xpehh.shape[0], -1))
-        bokeh_palette = bokeh.palettes.all_palettes[palette]
+
+        # select the base color palette to work from
+        base_palette = bokeh.palettes.all_palettes[palette][8]
+
+        # keep only enough colours to plot the IHS tracks
+        bokeh_palette = base_palette[: xpehh.shape[1]]
+
+        # reverse the colors so darkest is last
+        bokeh_palette = bokeh_palette[::-1]
+
         for i in range(xpehh.shape[1]):
             xpehh_perc = xpehh[:, i]
-            if xpehh.shape[1] >= 3:
-                color = bokeh_palette[xpehh.shape[1]][i]
-            elif xpehh.shape[1] == 2:
-                color = bokeh_palette[3][i]
-            else:
-                color = None
+            color = bokeh_palette[i]
 
             # plot xpehh
             fig.circle(
