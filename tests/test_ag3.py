@@ -2267,8 +2267,8 @@ def test_ihs_gwss():
 
 def test_xpehh_gwss():
     ag3 = setup_ag3()
-    sample_query1 = "country == 'Ghana'"
-    sample_query2 = "country == 'Angola'"
+    cohort1_query = "country == 'Ghana'"
+    cohort2_query = "country == 'Angola'"
     contig = "3L"
     analysis = "gamb_colu"
     sample_sets = "3.0"
@@ -2277,8 +2277,8 @@ def test_xpehh_gwss():
     x, xpehh = ag3.xpehh_gwss(
         contig=contig,
         analysis=analysis,
-        sample_query1=sample_query1,
-        sample_query2=sample_query2,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
         sample_sets=sample_sets,
         window_size=window_size,
         max_cohort_size=20,
