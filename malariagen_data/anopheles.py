@@ -4481,6 +4481,7 @@ class AnophelesDataResource(
             height=track_height,
             show=False,
             x_range=None,
+            output_backend=output_backend,
         )
 
         fig1.xaxis.visible = False
