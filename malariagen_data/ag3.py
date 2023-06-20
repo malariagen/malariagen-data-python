@@ -45,8 +45,6 @@ G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
-XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
-DEFAULT_SITE_MASK = "gamb_colu_arab"
 
 
 def _setup_aim_palettes():

@@ -25,24 +25,6 @@ percentiles: TypeAlias = Annotated[
     """,
 ]
 percentiles_default: percentiles = (50, 75, 100)
-standardize: TypeAlias = Annotated[
-    bool, "If True, standardize XP-EHH values by alternate allele counts."
-]
-standardization_bins: TypeAlias = Annotated[
-    Tuple[float, ...],
-    "If provided, use these allele count bins to standardize XP-EHH values.",
-]
-standardization_n_bins: TypeAlias = Annotated[
-    int,
-    """
-    Number of allele count bins to use for standardization.
-    Overrides standardization_bins.
-    """,
-]
-standardization_n_bins_default: standardization_n_bins = 20
-standardization_diagnostics: TypeAlias = Annotated[
-    bool, "If True, plot some diagnostics about the standardization."
-]
 filter_min_maf: TypeAlias = Annotated[
     float,
     """

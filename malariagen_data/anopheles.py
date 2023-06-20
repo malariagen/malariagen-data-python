@@ -4413,7 +4413,7 @@ class AnophelesDataResource(
 
     @check_types
     @doc(
-        summary="Run and plot iHS GWSS data.",
+        summary="Run and plot XP-EHH GWSS data.",
     )
     def plot_xpehh_gwss(
         self,
@@ -5134,10 +5134,6 @@ class AnophelesDataResource(
         cohort2_query: Optional[base_params.sample_query] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
-        standardize: xpehh_params.standardize = True,
-        standardization_bins: Optional[xpehh_params.standardization_bins] = None,
-        standardization_n_bins: xpehh_params.standardization_n_bins = xpehh_params.standardization_n_bins_default,
-        standardization_diagnostics: xpehh_params.standardization_diagnostics = False,
         filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
         map_pos: Optional[xpehh_params.map_pos] = None,
         min_ehh: xpehh_params.min_ehh = xpehh_params.min_ehh_default,
@@ -5162,10 +5158,6 @@ class AnophelesDataResource(
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             percentiles=percentiles,
-            standardize=standardize,
-            standardization_bins=standardization_bins,
-            standardization_n_bins=standardization_n_bins,
-            standardization_diagnostics=standardization_diagnostics,
             filter_min_maf=filter_min_maf,
             map_pos=map_pos,
             min_ehh=min_ehh,
@@ -5206,10 +5198,6 @@ class AnophelesDataResource(
         cohort2_query,
         window_size,
         percentiles,
-        standardize,
-        standardization_bins,
-        standardization_n_bins,
-        standardization_diagnostics,
         filter_min_maf,
         map_pos,
         min_ehh,
@@ -5270,7 +5258,6 @@ class AnophelesDataResource(
             h2=ht2,
             pos=pos,
             map_pos=map_pos,
-            # min_maf=compute_min_maf,
             min_ehh=min_ehh,
             include_edges=include_edges,
             max_gap=max_gap,
@@ -5284,19 +5271,6 @@ class AnophelesDataResource(
         pos = pos[na_mask]
         ac1 = ac1[na_mask]
         ac2 = ac2[na_mask]
-
-        # take absolute value
-        xp = np.fabs(xp)
-
-        # Update to take into account both sets
-        if standardize:
-            xp, _ = allel.standardize_by_allele_count(
-                score=xp,
-                aac=ac1[:, 1],
-                bins=standardization_bins,
-                n_bins=standardization_n_bins,
-                diagnostics=standardization_diagnostics,
-            )
 
         if window_size:
             xp = allel.moving_statistic(
@@ -5320,10 +5294,6 @@ class AnophelesDataResource(
         cohort2_query: Optional[base_params.sample_query] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
-        standardize: xpehh_params.standardize = True,
-        standardization_bins: Optional[xpehh_params.standardization_bins] = None,
-        standardization_n_bins: xpehh_params.standardization_n_bins = xpehh_params.standardization_n_bins_default,
-        standardization_diagnostics: xpehh_params.standardization_diagnostics = False,
         filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
         map_pos: Optional[xpehh_params.map_pos] = None,
         min_ehh: xpehh_params.min_ehh = xpehh_params.min_ehh_default,
@@ -5347,16 +5317,12 @@ class AnophelesDataResource(
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        # compute ihs
+        # compute xpehh
         x, xpehh = self.xpehh_gwss(
             contig=contig,
             analysis=analysis,
             window_size=window_size,
             percentiles=percentiles,
-            standardize=standardize,
-            standardization_bins=standardization_bins,
-            standardization_n_bins=standardization_n_bins,
-            standardization_diagnostics=standardization_diagnostics,
             filter_min_maf=filter_min_maf,
             map_pos=map_pos,
             min_ehh=min_ehh,
@@ -5412,7 +5378,7 @@ class AnophelesDataResource(
         # select the base color palette to work from
         base_palette = bokeh.palettes.all_palettes[palette][8]
 
-        # keep only enough colours to plot the IHS tracks
+        # keep only enough colours to plot the XPEHH tracks
         bokeh_palette = base_palette[: xpehh.shape[1]]
 
         # reverse the colors so darkest is last
