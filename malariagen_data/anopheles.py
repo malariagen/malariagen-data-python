@@ -4424,10 +4424,6 @@ class AnophelesDataResource(
         cohort2_query: Optional[base_params.sample_query] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
-        standardize: xpehh_params.standardize = True,
-        standardization_bins: Optional[xpehh_params.standardization_bins] = None,
-        standardization_n_bins: xpehh_params.standardization_n_bins = xpehh_params.standardization_n_bins_default,
-        standardization_diagnostics: xpehh_params.standardization_diagnostics = False,
         filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
         map_pos: Optional[xpehh_params.map_pos] = None,
         min_ehh: xpehh_params.min_ehh = xpehh_params.min_ehh_default,
@@ -4461,10 +4457,6 @@ class AnophelesDataResource(
             window_size=window_size,
             percentiles=percentiles,
             palette=palette,
-            standardize=standardize,
-            standardization_bins=standardization_bins,
-            standardization_n_bins=standardization_n_bins,
-            standardization_diagnostics=standardization_diagnostics,
             filter_min_maf=filter_min_maf,
             map_pos=map_pos,
             min_ehh=min_ehh,
@@ -5372,13 +5364,13 @@ class AnophelesDataResource(
             # Ensure percentiles are sorted so that colors make sense.
             percentiles = tuple(sorted(percentiles))
 
-        # add an empty dimension to xpehh array if 1D
+        # add an empty dimension to XP-EHH array if 1D
         xpehh = np.reshape(xpehh, (xpehh.shape[0], -1))
 
         # select the base color palette to work from
         base_palette = bokeh.palettes.all_palettes[palette][8]
 
-        # keep only enough colours to plot the XPEHH tracks
+        # keep only enough colours to plot the XP-EHH tracks
         bokeh_palette = base_palette[: xpehh.shape[1]]
 
         # reverse the colors so darkest is last
@@ -5388,7 +5380,7 @@ class AnophelesDataResource(
             xpehh_perc = xpehh[:, i]
             color = bokeh_palette[i]
 
-            # plot xpehh
+            # plot XP-EHH
             fig.circle(
                 x=x,
                 y=xpehh_perc,
@@ -5399,7 +5391,7 @@ class AnophelesDataResource(
             )
 
         # tidy up the plot
-        fig.yaxis.axis_label = "xpehh"
+        fig.yaxis.axis_label = "XP-EHH"
         self._bokeh_style_genome_xaxis(fig, contig)
 
         if show:
