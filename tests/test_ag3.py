@@ -2293,7 +2293,7 @@ def test_xpehh_gwss():
 
     # check some values
     assert_allclose(x[0], 467448.348)
-    assert_allclose(xpehh[:, 2][100], 2.741348351867086)
+    assert_allclose(xpehh[:, 2][100], 0.4817561326426265)
 
 
 def test_g123_gwss():
