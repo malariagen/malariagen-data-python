@@ -5231,7 +5231,6 @@ class AnophelesDataResource(
         ac2 = ht2.count_alleles(max_allele=1)
         pos = ds_haps1["variant_position"].values
 
-        # To be modified to take both into account
         if filter_min_maf > 0:
             ac = ac1 + ac2
             af = ac.to_frequencies()
