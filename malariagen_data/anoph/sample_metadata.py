@@ -4,10 +4,11 @@ from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
 import ipyleaflet
 import numpy as np
 import pandas as pd
+import plotly.express as px
 from numpydoc_decorator import doc
 
 from ..util import check_types
-from . import base_params, map_params
+from . import base_params, map_params, plotly_params
 from .base import AnophelesBase
 
 
@@ -712,3 +713,85 @@ class AnophelesSampleMetadata(AnophelesBase):
         super()._results_cache_add_analysis_params(params)
         params["cohorts_analysis"] = self._cohorts_analysis
         params["aim_analysis"] = self._aim_analysis
+
+    @doc(
+        summary="""
+            Plot a bar chart showing the number of samples available, grouped by
+            some variable such as country or year.
+        """,
+        parameters=dict(
+            x="Name of sample metadata column to plot on the X axis.",
+            color="Name of the sample metadata column to color bars by.",
+            sort="If True, sort the bars in size order.",
+            kwargs="Passed through to px.bar().",
+        ),
+    )
+    def plot_samples_bar(
+        self,
+        x: str,
+        color: Optional[str] = None,
+        sort: bool = True,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        template: plotly_params.template = "plotly_white",
+        width: plotly_params.width = 800,
+        height: plotly_params.height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        **kwargs,
+    ) -> plotly_params.figure:
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        # Special handling for plotting by year.
+        if x == "year":
+            # Remove samples with missing year.
+            df_samples = df_samples.query("year > 0")
+
+        # Construct a long-form dataframe to plot.
+        if color:
+            grouper: Union[str, List[str]] = [x, color]
+        else:
+            grouper = x
+        df_plot = df_samples.groupby(grouper).agg({"sample_id": "count"}).reset_index()
+
+        # Deal with request to sort by bar size.
+        if sort:
+            df_sort = (
+                df_samples.groupby(x)
+                .agg({"sample_id": "count"})
+                .reset_index()
+                .sort_values("sample_id")
+            )
+            x_order = df_sort[x].values
+            category_orders = kwargs.get("category_orders", dict())
+            category_orders.setdefault(x, x_order)
+            kwargs["category_orders"] = category_orders
+
+        # Make the plot.
+        fig = px.bar(
+            df_plot,
+            x=x,
+            y="sample_id",
+            color=color,
+            template=template,
+            width=width,
+            height=height,
+            **kwargs,
+        )
+
+        # Visual styling.
+        fig.update_layout(
+            xaxis_title=x.capitalize(),
+            yaxis_title="No. samples",
+        )
+        if color:
+            fig.update_layout(legend_title=color.capitalize())
+
+        if show:
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig

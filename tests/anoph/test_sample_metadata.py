@@ -3,6 +3,7 @@ import random
 import ipyleaflet
 import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
 import pytest
 from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
@@ -707,3 +708,45 @@ def test_wgs_data_catalog(fixture, api):
     ]
     assert df.columns.to_list() == expected_cols
     assert len(df) == sample_count.loc[sample_set]
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_samples_bar(fixture, api):
+    # By country.
+    fig = api.plot_samples_bar(
+        x="country",
+        show=False,
+    )
+    assert isinstance(fig, go.Figure)
+
+    # By year.
+    fig = api.plot_samples_bar(
+        x="year",
+        show=False,
+    )
+    assert isinstance(fig, go.Figure)
+
+    # By country and taxon.
+    fig = api.plot_samples_bar(
+        x="country",
+        color="taxon",
+        show=False,
+    )
+    assert isinstance(fig, go.Figure)
+
+    # By year and country.
+    fig = api.plot_samples_bar(
+        x="year",
+        color="country",
+        show=False,
+    )
+    assert isinstance(fig, go.Figure)
+
+    # Not sorted.
+    fig = api.plot_samples_bar(
+        x="country",
+        color="taxon",
+        sort=False,
+        show=False,
+    )
+    assert isinstance(fig, go.Figure)
