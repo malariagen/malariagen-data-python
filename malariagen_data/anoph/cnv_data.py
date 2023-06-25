@@ -1,4 +1,4 @@
-from typing import List, Optional, Sequence, Union
+from typing import Dict, List, Optional, Sequence, Tuple, Union
 
 import dask.array as da
 import numpy as np
@@ -19,6 +19,7 @@ from ..util import (
     simple_xarray_concat,
 )
 from . import base_params, cnv_params, gplt_params
+from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -29,6 +30,7 @@ class AnophelesCnvData(
 ):
     def __init__(
         self,
+        default_coverage_calls_analysis: Optional[str] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -36,10 +38,36 @@ class AnophelesCnvData(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+        # These will vary between data resources.
+        self._default_coverage_calls_analysis = default_coverage_calls_analysis
+
         # set up caches
-        self._cache_cnv_hmm = dict()
-        self._cache_cnv_coverage_calls = dict()
-        self._cache_cnv_discordant_read_calls = dict()
+        self._cache_cnv_hmm: Dict = dict()
+        self._cache_cnv_coverage_calls: Dict = dict()
+        self._cache_cnv_discordant_read_calls: Dict = dict()
+
+    @property
+    def coverage_calls_analysis_ids(self) -> Tuple[str, ...]:
+        """Identifiers for the different coverage calls analyses that are available.
+        These are values than can be used for the `coverage_calls_analysis` parameter in any
+        method making using of CNV data.
+
+        """
+        return tuple(self.config.get("COVERAGE_CALLS_ANALYSIS_IDS", ()))  # ensure tuple
+
+    def _prep_coverage_calls_analysis_param(
+        self, *, coverage_calls_analysis: cnv_params.coverage_calls_analysis
+    ) -> str:
+        if coverage_calls_analysis == DEFAULT:
+            # Use whatever is the default phasing analysis for this data resource.
+            assert self._default_coverage_calls_analysis is not None
+            return self._default_coverage_calls_analysis
+        elif coverage_calls_analysis in self.coverage_calls_analysis_ids:
+            return coverage_calls_analysis
+        else:
+            raise ValueError(
+                f"Invalid coverage calls analysis, must be one of f{self.coverage_calls_analysis_ids}."
+            )
 
     @check_types
     @doc(
