@@ -170,6 +170,7 @@ class Ag3(AnophelesDataResource):
             site_filters_analysis=site_filters_analysis,
             default_site_mask="gamb_colu_arab",
             default_phasing_analysis="gamb_colu_arab",
+            default_coverage_calls_analysis="gamb_colu",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,
