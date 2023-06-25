@@ -584,6 +584,324 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
     return ds
 
 
+def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
+    # {release}/cnv/{sample_set}/hmm/zarr
+    # - {contig}
+    #   - calldata
+    #     - CN [2D array] [int] [-1 to 12 for n_samples]
+    #     - NormCov [2D array] [float] [0 to 356+ for n_samples]
+    #     - RawCov [2D array] [int] [-1 to 18465+ for n_samples]
+    #   - samples [1D array] [str for n_samples]
+    #   - variants
+    #      - END [1D array] [int for n_snp_sites]
+    #      - POS [1D array] [int for n_snp_sites]
+    # - sample_coverage_variance [1D array] [float] [0 to 0.5 for n_samples]
+    # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
+    # - samples [1D array] [str]
+
+    # Get a random probability for a sample being high variance, between 0 and 1.
+    p_variance = np.random.random()
+
+    # Get a random probability for choosing a particular SNP site (position), between 0 and 1.
+    p_site = np.random.random()
+
+    # Open a zarr at the specified path.
+    root = zarr.open(zarr_path, mode="w")
+
+    # Create samples array.
+    df_samples = pd.read_csv(metadata_path)
+    samples = df_samples["sample_id"].values.astype("S")
+    root.create_dataset(name="samples", data=samples)
+
+    # Get the number of samples.
+    n_samples = len(df_samples)
+
+    # Simulate sample_coverage_variance array.
+    sample_coverage_variance = np.random.uniform(low=0, high=0.5, size=n_samples)
+    root.create_dataset(name="sample_coverage_variance", data=sample_coverage_variance)
+
+    # Simulate sample_is_high_variance array.
+    sample_is_high_variance = np.random.choice(
+        [False, True], size=n_samples, p=[1 - p_variance, p_variance]
+    )
+    root.create_dataset(name="sample_is_high_variance", data=sample_is_high_variance)
+
+    for contig in contigs:
+        # Create the contig group.
+        contig_grp = root.require_group(contig)
+
+        # Create the calldata group for this contig.
+        calldata_grp = contig_grp.require_group("calldata")
+
+        # Simulate CN, NormCov, RawCov under calldata.
+        cn = np.random.randint(low=-1, high=12, size=n_samples)
+        normCov = np.random.randint(low=0, high=356, size=n_samples)
+        rawCov = np.random.randint(low=-1, high=18465, size=n_samples)
+        calldata_grp.create_dataset(name="CN", data=cn)
+        calldata_grp.create_dataset(name="NormCov", data=normCov)
+        calldata_grp.create_dataset(name="RawCov", data=rawCov)
+
+        # Create the samples dataset (again) for this contig.
+        contig_grp.create_dataset(name="samples", data=samples)
+
+        # Create variants group for this contig.
+        variants_grp = contig_grp.require_group("variants")
+
+        # Simulate POS under variants.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        loc_cnv_sites = np.random.choice(
+            [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
+        )
+        pos = snp_pos[loc_cnv_sites]
+        variants_grp.create_dataset(name="POS", data=pos)
+
+        # Simulate END under variants.
+        random_multipliers = np.random.randint(2, 12, size=len(pos))
+        end = random_multipliers * pos
+        variants_grp.create_dataset(name="END", data=end)
+
+    zarr.consolidate_metadata(zarr_path)
+
+
+def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
+    # zarr_path is the output path to the zarr store
+    # metadata_path is the input path for the sample metadata
+    # contigs is the list of contigs, e.g. Ag has ['2L', '2R', '3R', '3L', 'X']
+    # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
+    # n_sites will be derived from snp_sites {contig}/variants/POS
+
+    # {release}/cnv/{sample_set}/coverage_calls/{analysis}/zarr
+    #   - samples [1D array] [str for n_samples]
+    #   - {contig}
+    #      - calldata
+    #         - GT [2D array] [int] [0 or 1 for n_sites for n_samples]
+    #      - samples [1D array] [str for n_samples]
+    #      - variants
+    #         - CIEND [1D array] [int] [0 to 13200+ for n_sites]
+    #         - CIPOS [1D array] [int] [0 to 37200+ for n_sites]
+    #         - END [1D array] [int for n_sites]
+    #         - FILTER_PASS [1D array] [bool] [True or False for n_sites]
+    #         - FILTER_qMerge [1D array] [bool] [True or False for n_sites]
+    #         - ID [1D array] [unique str for n_sites]
+    #         - POS [1D array] [int for n_sites]
+
+    # Get a random probability for choosing allele 1, between 0 and 1.
+    p_allele = np.random.random()
+
+    # Get a random probability for choosing a particular SNP site (position), between 0 and 1.
+    p_site = np.random.random()
+
+    # Get a random probability for passing a particular SNP site (position), between 0 and 1.
+    p_filter_pass = np.random.random()
+
+    # Get a random probability for applying qMerge filter to a particular SNP site (position), between 0 and 1.
+    p_filter_qMerge = np.random.random()
+
+    # Open a zarr at the specified path.
+    root = zarr.open(zarr_path, mode="w")
+
+    # Create samples array.
+    df_samples = pd.read_csv(metadata_path)
+    n_samples = len(df_samples)
+    samples = df_samples["sample_id"].values.astype("S")
+    root.create_dataset(name="samples", data=samples)
+
+    for contig in contigs:
+        # Create the contig group.
+        contig_grp = root.require_group(contig)
+
+        # Create the calldata group for this contig.
+        calldata = contig_grp.require_group("calldata")
+
+        # Get the SNP positions for this contig.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+
+        # Get the number of sites (SNP positions) for this contig.
+        n_sites = snp_pos.shape[0]
+
+        # Simulate the genotype calls.
+        gt = np.random.choice(
+            np.array([0, 1], dtype="i1"),
+            size=(n_sites, n_samples, 2),
+            replace=True,
+            p=[1 - p_allele, p_allele],
+        )
+
+        # Create the GT dataset under calldata.
+        calldata.create_dataset(name="GT", data=gt)
+
+        # Create the samples dataset (again) for this contig.
+        contig_grp.create_dataset(name="samples", data=samples)
+
+        # Create the variants group for this contig.
+        variants_grp = contig_grp.require_group("variants")
+
+        # Simulate the CIEND and CIPOS arrays under variants.
+        ciend = np.random.randint(low=0, high=13200, size=n_sites)
+        cipos = np.random.randint(low=0, high=37200, size=n_sites)
+        variants_grp.create_dataset(name="CIEND", data=ciend)
+        variants_grp.create_dataset(name="CIPOS", data=cipos)
+
+        # Simulate the unique ID strings under variants.
+        # Note: this is quicker than generating unique random strings.
+        len_str_n_sites = len(str(n_sites))
+        variant_IDs = [
+            f"CNV_{contig}{str(i).zfill(len_str_n_sites)}"
+            for i in range(1, n_sites + 1)
+        ]
+        variants_grp.create_dataset(name="ID", data=variant_IDs)
+
+        # Simulate the filters under variants.
+        filter_pass = np.random.choice(
+            [False, True], size=n_sites, p=[1 - p_filter_pass, p_filter_pass]
+        )
+        filter_qMerge = np.random.choice(
+            [False, True], size=n_sites, p=[1 - p_filter_qMerge, p_filter_qMerge]
+        )
+        variants_grp.create_dataset(name="FILTER_PASS", data=filter_pass)
+        variants_grp.create_dataset(name="FILTER_qMerge", data=filter_qMerge)
+
+        # Simulate POS under variants.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        loc_cnv_sites = np.random.choice(
+            [False, True], size=n_sites, p=[1 - p_site, p_site]
+        )
+        pos = snp_pos[loc_cnv_sites]
+        variants_grp.create_dataset(name="POS", data=pos)
+
+        # Simulate END under variants.
+        random_multipliers = np.random.randint(2, 12, size=len(pos))
+        end = random_multipliers * pos
+        variants_grp.create_dataset(name="END", data=end)
+
+    zarr.consolidate_metadata(zarr_path)
+
+
+def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_sites):
+    # zarr_path is the output path to the zarr store
+    # metadata_path is the input path for the sample metadata
+    # contigs is the list of contigs, e.g. Ag has ['2R', '3R', 'X']
+    # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
+    # n_sites will be derived from snp_sites {contig}/variants/POS
+
+    # {release}/cnv/{sample_set}/discordant_read_calls/zarr
+    # - {contig}
+    #   - calldata
+    #     - GT [2D array] [int] [0 or 1 for n_sites for n_samples]
+    #   - samples [1D array] [str for n_samples]
+    #   - variants
+    #      - END [1D array] [int for n_sites]
+    #      - EndBreakpointMethod [1D array] [-1 to 2 for n_sites]
+    #      - ID [1D array] [unique str for n_sites]
+    #      - POS [1D array] [int for n_sites]
+    #      - Region [1D array] [unique str for n_sites]
+    #      - StartBreakpointMethod [1D array] [int] [-1 to 1 for n_sites]
+    # - sample_coverage_variance [1D array] [float] [0 to 0.5 for n_samples]
+    # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
+    # - samples [1D array] [str for n_samples]
+
+    # Get a random probability for a sample being high variance, between 0 and 1.
+    p_variance = np.random.random()
+
+    # Get a random probability for choosing allele 1, between 0 and 1.
+    p_allele = np.random.random()
+
+    # Get a random probability for choosing a particular SNP site (position), between 0 and 1.
+    p_site = np.random.random()
+
+    # Open a zarr at the specified path.
+    root = zarr.open(zarr_path, mode="w")
+
+    # Create samples array.
+    df_samples = pd.read_csv(metadata_path)
+    samples = df_samples["sample_id"].values.astype("S")
+    root.create_dataset(name="samples", data=samples)
+
+    # Get the number of samples.
+    n_samples = len(df_samples)
+
+    # Simulate sample_coverage_variance array.
+    sample_coverage_variance = np.random.uniform(low=0, high=0.5, size=n_samples)
+    root.create_dataset(name="sample_coverage_variance", data=sample_coverage_variance)
+
+    # Simulate sample_is_high_variance array.
+    sample_is_high_variance = np.random.choice(
+        [False, True], size=n_samples, p=[1 - p_variance, p_variance]
+    )
+    root.create_dataset(name="sample_is_high_variance", data=sample_is_high_variance)
+
+    for contig in contigs:
+        # Create the contig group.
+        contig_grp = root.require_group(contig)
+
+        # Create the calldata group for this contig.
+        calldata_grp = contig_grp.require_group("calldata")
+
+        # Get the SNP positions for this contig.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+
+        # Get the number of sites (SNP positions) for this contig.
+        n_sites = snp_pos.shape[0]
+
+        # Simulate the genotype calls.
+        gt = np.random.choice(
+            np.array([0, 1], dtype="i1"),
+            size=(n_sites, n_samples, 2),
+            replace=True,
+            p=[1 - p_allele, p_allele],
+        )
+
+        # Create the GT dataset under calldata.
+        calldata_grp.create_dataset(name="GT", data=gt)
+
+        # Create the samples dataset (again) for this contig.
+        contig_grp.create_dataset(name="samples", data=samples)
+
+        # Create the variants group for this contig.
+        variants_grp = contig_grp.require_group("variants")
+
+        # Simulate the StartBreakpointMethod and EndBreakpointMethod arrays.
+        startBreakpointMethod = np.random.randint(low=-1, high=1, size=n_sites)
+        endBreakpointMethod = np.random.randint(low=-1, high=2, size=n_sites)
+        variants_grp.create_dataset(
+            name="StartBreakpointMethod", data=startBreakpointMethod
+        )
+        variants_grp.create_dataset(
+            name="EndBreakpointMethod", data=endBreakpointMethod
+        )
+
+        # Get the number of digits in n_sites.
+        len_str_n_sites = len(str(n_sites))
+
+        # Simulate the Region under variants.
+        # Note: this is quicker than generating unique random strings.
+        regions = [
+            f"Region_{str(i).zfill(len_str_n_sites)}" for i in range(1, n_sites + 1)
+        ]
+        variants_grp.create_dataset(name="Region", data=regions)
+
+        # Simulate the unique ID strings under variants.
+        # Note: this is quicker than generating unique random strings.
+        variant_IDs = [
+            f"ID_{str(i).zfill(len_str_n_sites)}" for i in range(1, n_sites + 1)
+        ]
+        variants_grp.create_dataset(name="ID", data=variant_IDs)
+
+        # Simulate POS under variants.
+        loc_cnv_sites = np.random.choice(
+            [False, True], size=n_sites, p=[1 - p_site, p_site]
+        )
+        pos = snp_pos[loc_cnv_sites]
+        variants_grp.create_dataset(name="POS", data=pos)
+
+        # Simulate END under variants.
+        random_multipliers = np.random.randint(2, 12, size=len(pos))
+        end = random_multipliers * pos
+        variants_grp.create_dataset(name="END", data=end)
+
+    zarr.consolidate_metadata(zarr_path)
+
+
 class AnophelesSimulator:
     def __init__(
         self,
@@ -633,6 +951,9 @@ class AnophelesSimulator:
         self.init_haplotypes()
         self.init_aim_variants()
         self.init_aim_calls()
+        self.init_cnv_hmm()
+        self.init_cnv_coverage_calls()
+        self.init_cnv_discordant_read_calls()
 
     @property
     def contigs(self) -> Tuple[str, ...]:
@@ -648,6 +969,8 @@ class AnophelesSimulator:
         region_end = randint(region_start, contig_size)
         region = f"{contig}:{region_start:,}-{region_end:,}"
         return region
+
+    # The following methods are overridden by subclasses.
 
     def init_config(self):
         pass
@@ -689,6 +1012,15 @@ class AnophelesSimulator:
         pass
 
     def init_aim_calls(self):
+        pass
+
+    def init_cnv_hmm(self):
+        pass
+
+    def init_cnv_coverage_calls(self):
+        pass
+
+    def init_cnv_discordant_read_calls(self):
         pass
 
 
@@ -1205,6 +1537,142 @@ class Ag3Simulator(AnophelesSimulator):
                     )
                     ds.to_zarr(path, mode="w", consolidated=True)
 
+    def init_cnv_hmm(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "hmm"
+                    / "zarr"
+                )
+
+                # Simulate CNV HMM data.
+                simulate_cnv_hmm(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
+    def init_cnv_coverage_calls(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Simulate CNV coverage calls data for the gamb_colu analysis.
+                analysis = "gamb_colu"
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "coverage_calls"
+                    / analysis
+                    / "zarr"
+                )
+                simulate_cnv_coverage_calls(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
+                # Simulate CNV coverage calls data for the arab analysis.
+                analysis = "arab"
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "coverage_calls"
+                    / analysis
+                    / "zarr"
+                )
+                simulate_cnv_coverage_calls(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
+    def init_cnv_discordant_read_calls(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            if release == "3.0":
+                release_path = "v3"
+            else:
+                release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "discordant_read_calls"
+                    / "zarr"
+                )
+
+                # Simulate CNV discordant read calls.
+                simulate_cnv_discordant_read_calls(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    # Note: the real data does not include every contig.
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
 
 class Af1Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):
@@ -1517,6 +1985,133 @@ class Af1Simulator(AnophelesSimulator):
                     calldata = root.require_group(contig).require_group("calldata")
                     calldata.create_dataset(name="GT", data=gt)
                 zarr.consolidate_metadata(zarr_path)
+
+    def init_cnv_hmm(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "hmm"
+                    / "zarr"
+                )
+
+                # Simulate CNV HMM data.
+                simulate_cnv_hmm(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
+    def init_cnv_coverage_calls(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Simulate CNV coverage calls data for the gamb_colu analysis.
+                analysis = "gamb_colu"
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "coverage_calls"
+                    / analysis
+                    / "zarr"
+                )
+                simulate_cnv_coverage_calls(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
+                # Simulate CNV coverage calls data for the arab analysis.
+                analysis = "arab"
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "coverage_calls"
+                    / analysis
+                    / "zarr"
+                )
+                simulate_cnv_coverage_calls(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
+
+    def init_cnv_discordant_read_calls(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "cnv"
+                    / sample_set
+                    / "discordant_read_calls"
+                    / "zarr"
+                )
+
+                # Simulate CNV discordant read calls.
+                simulate_cnv_discordant_read_calls(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    # Note: the real data does not include every contig.
+                    contigs=self.contigs,
+                    snp_sites=self.snp_sites,
+                )
 
 
 # For the following data fixtures we will use the "session" scope
