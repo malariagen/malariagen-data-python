@@ -107,6 +107,7 @@ class AnophelesDataResource(
         site_filters_analysis: Optional[str],
         default_site_mask: Optional[str],
         default_phasing_analysis: Optional[str],
+        default_coverage_calls_analysis: Optional[str],
         bokeh_output_notebook: bool,
         results_cache: Optional[str],
         log,
@@ -144,6 +145,7 @@ class AnophelesDataResource(
             site_filters_analysis=site_filters_analysis,
             default_site_mask=default_site_mask,
             default_phasing_analysis=default_phasing_analysis,
+            default_coverage_calls_analysis=default_coverage_calls_analysis,
             results_cache=results_cache,
         )
 
