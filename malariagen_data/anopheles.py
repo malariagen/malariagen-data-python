@@ -36,6 +36,7 @@ from .anoph import (
     map_params,
     pca_params,
     plotly_params,
+    xpehh_params,
 )
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
@@ -182,6 +183,11 @@ class AnophelesDataResource(
     @abstractmethod
     def _g123_gwss_cache_name(self):
         raise NotImplementedError("Must override _g123_gwss_cache_name")
+
+    @property
+    @abstractmethod
+    def _xpehh_gwss_cache_name(self):
+        raise NotImplementedError("Must override _xpehh_gwss_cache_name")
 
     @property
     @abstractmethod
@@ -4397,6 +4403,98 @@ class AnophelesDataResource(
 
     @check_types
     @doc(
+        summary="Run and plot XP-EHH GWSS data.",
+    )
+    def plot_xpehh_gwss(
+        self,
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
+        window_size: xpehh_params.window_size = xpehh_params.window_size_default,
+        percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
+        filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
+        map_pos: Optional[xpehh_params.map_pos] = None,
+        min_ehh: xpehh_params.min_ehh = xpehh_params.min_ehh_default,
+        max_gap: xpehh_params.max_gap = xpehh_params.max_gap_default,
+        gap_scale: xpehh_params.gap_scale = xpehh_params.gap_scale_default,
+        include_edges: xpehh_params.include_edges = True,
+        use_threads: xpehh_params.use_threads = True,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = xpehh_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = xpehh_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        palette: xpehh_params.palette = xpehh_params.palette_default,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ) -> gplt_params.figure:
+        # gwss track
+        fig1 = self.plot_xpehh_gwss_track(
+            contig=contig,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            window_size=window_size,
+            percentiles=percentiles,
+            palette=palette,
+            filter_min_maf=filter_min_maf,
+            map_pos=map_pos,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            title=title,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=track_height,
+            show=False,
+            x_range=None,
+            output_backend=output_backend,
+        )
+
+        fig1.xaxis.visible = False
+
+        # plot genes
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+            output_backend=output_backend,
+        )
+
+        # combine plots into a single figure
+        fig = bokeh.layouts.gridplot(
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
+
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
+
+    @doc(
         summary="Run and plot iHS GWSS data.",
     )
     def plot_ihs_gwss(
@@ -5002,6 +5100,295 @@ class AnophelesDataResource(
             return fig
 
     @check_types
+    @doc(
+        summary="Run XP-EHH GWSS.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            xpehh="An array with XP-EHH statistic values for each window.",
+        ),
+    )
+    def xpehh_gwss(
+        self,
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
+        window_size: xpehh_params.window_size = xpehh_params.window_size_default,
+        percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
+        filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
+        map_pos: Optional[xpehh_params.map_pos] = None,
+        min_ehh: xpehh_params.min_ehh = xpehh_params.min_ehh_default,
+        max_gap: xpehh_params.max_gap = xpehh_params.max_gap_default,
+        gap_scale: xpehh_params.gap_scale = xpehh_params.gap_scale_default,
+        include_edges: xpehh_params.include_edges = True,
+        use_threads: xpehh_params.use_threads = True,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = xpehh_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = xpehh_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        # change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data
+        name = self._xpehh_gwss_cache_name
+
+        params = dict(
+            contig=contig,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
+            window_size=window_size,
+            percentiles=percentiles,
+            filter_min_maf=filter_min_maf,
+            map_pos=map_pos,
+            min_ehh=min_ehh,
+            include_edges=include_edges,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            use_threads=use_threads,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._xpehh_gwss(**params)  # self.
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        xpehh = results["xpehh"]
+
+        return x, xpehh
+
+    def _xpehh_gwss(
+        self,
+        *,
+        contig,
+        analysis,
+        sample_sets,
+        cohort1_query,
+        cohort2_query,
+        window_size,
+        percentiles,
+        filter_min_maf,
+        map_pos,
+        min_ehh,
+        max_gap,
+        gap_scale,
+        include_edges,
+        use_threads,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+    ):
+        ds_haps1 = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=cohort1_query,
+            sample_sets=sample_sets,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        ds_haps2 = self.haplotypes(
+            region=contig,
+            analysis=analysis,
+            sample_query=cohort2_query,
+            sample_sets=sample_sets,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        gt1 = allel.GenotypeDaskArray(ds_haps1["call_genotype"].data)
+        gt2 = allel.GenotypeDaskArray(ds_haps2["call_genotype"].data)
+        with self._dask_progress(desc="Load haplotypes"):
+            ht1 = gt1.to_haplotypes().compute()
+            ht2 = gt2.to_haplotypes().compute()
+
+        ac1 = ht1.count_alleles(max_allele=1)
+        ac2 = ht2.count_alleles(max_allele=1)
+        pos = ds_haps1["variant_position"].values
+
+        if filter_min_maf > 0:
+            ac = ac1 + ac2
+            af = ac.to_frequencies()
+            maf = np.min(af, axis=1)
+            maf_filter = maf > filter_min_maf
+
+            ht1 = ht1.compress(maf_filter, axis=0)
+            ht2 = ht2.compress(maf_filter, axis=0)
+            pos = pos[maf_filter]
+            ac1 = ac1[maf_filter]
+            ac2 = ac2[maf_filter]
+
+        # compute XP-EHH
+        xp = allel.xpehh(
+            h1=ht1,
+            h2=ht2,
+            pos=pos,
+            map_pos=map_pos,
+            min_ehh=min_ehh,
+            include_edges=include_edges,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            use_threads=use_threads,
+        )
+
+        # remove any NaNs
+        na_mask = ~np.isnan(xp)
+        xp = xp[na_mask]
+        pos = pos[na_mask]
+        ac1 = ac1[na_mask]
+        ac2 = ac2[na_mask]
+
+        if window_size:
+            xp = allel.moving_statistic(
+                xp, statistic=np.percentile, size=window_size, q=percentiles
+            )
+            pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+        results = dict(x=pos, xpehh=xp)
+
+        return results
+
+    @doc(
+        summary="Run and plot XP-EHH GWSS data.",
+    )
+    def plot_xpehh_gwss_track(
+        self,
+        contig: base_params.contig,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
+        window_size: xpehh_params.window_size = xpehh_params.window_size_default,
+        percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
+        filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
+        map_pos: Optional[xpehh_params.map_pos] = None,
+        min_ehh: xpehh_params.min_ehh = xpehh_params.min_ehh_default,
+        max_gap: xpehh_params.max_gap = xpehh_params.max_gap_default,
+        gap_scale: xpehh_params.gap_scale = xpehh_params.gap_scale_default,
+        include_edges: xpehh_params.include_edges = True,
+        use_threads: xpehh_params.use_threads = True,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = xpehh_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = xpehh_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        palette: xpehh_params.palette = xpehh_params.palette_default,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ) -> gplt_params.figure:
+        # compute xpehh
+        x, xpehh = self.xpehh_gwss(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            percentiles=percentiles,
+            filter_min_maf=filter_min_maf,
+            map_pos=map_pos,
+            min_ehh=min_ehh,
+            max_gap=max_gap,
+            gap_scale=gap_scale,
+            include_edges=include_edges,
+            use_threads=use_threads,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            cohort1_query=cohort1_query,
+            cohort2_query=cohort2_query,
+            sample_sets=sample_sets,
+            random_seed=random_seed,
+        )
+
+        # determine X axis range
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+
+        # create a figure
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        if title is None:
+            if cohort1_query is None or cohort2_query is None:
+                title = "XP-EHH"
+            else:
+                title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig = bokeh.plotting.figure(
+            title=title,
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            sizing_mode=sizing_mode,
+            width=width,
+            height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            output_backend=output_backend,
+        )
+
+        if window_size:
+            if isinstance(percentiles, int):
+                percentiles = (percentiles,)
+            # Ensure percentiles are sorted so that colors make sense.
+            percentiles = tuple(sorted(percentiles))
+
+        # add an empty dimension to XP-EHH array if 1D
+        xpehh = np.reshape(xpehh, (xpehh.shape[0], -1))
+
+        # select the base color palette to work from
+        base_palette = bokeh.palettes.all_palettes[palette][8]
+
+        # keep only enough colours to plot the XP-EHH tracks
+        bokeh_palette = base_palette[: xpehh.shape[1]]
+
+        # reverse the colors so darkest is last
+        bokeh_palette = bokeh_palette[::-1]
+
+        for i in range(xpehh.shape[1]):
+            xpehh_perc = xpehh[:, i]
+            color = bokeh_palette[i]
+
+            # plot XP-EHH
+            fig.circle(
+                x=x,
+                y=xpehh_perc,
+                size=4,
+                line_width=0,
+                line_color=color,
+                fill_color=color,
+            )
+
+        # tidy up the plot
+        fig.yaxis.axis_label = "XP-EHH"
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
+
     @doc(
         summary="""
             Hierarchically cluster haplotypes in region and produce an interactive plot.
