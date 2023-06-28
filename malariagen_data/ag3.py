@@ -1893,7 +1893,7 @@ class Ag3(AnophelesDataResource):
         self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.add_layout(fig.legend[0], "right")
 
-        if show:
+        if show:  # pragma: no cover
             bkplt.show(fig)
             return None
         else:
@@ -1986,7 +1986,7 @@ class Ag3(AnophelesDataResource):
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bkplt.show(fig)
             return None
         else:
@@ -2156,7 +2156,7 @@ class Ag3(AnophelesDataResource):
         )
         fig.add_layout(color_bar, "right")
 
-        if show:
+        if show:  # pragma: no cover
             bkplt.show(fig)
             return None
         else:
@@ -2244,7 +2244,7 @@ class Ag3(AnophelesDataResource):
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bkplt.show(fig)
             return None
         else:
