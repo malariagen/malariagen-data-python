@@ -790,7 +790,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         if color:
             fig.update_layout(legend_title=color.capitalize())
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
