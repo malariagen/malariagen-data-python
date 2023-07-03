@@ -585,12 +585,18 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
 
 
 def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
+    # zarr_path is the output path to the zarr store
+    # metadata_path is the input path for the sample metadata
+    # contigs is the list of contigs, e.g. Ag has ['2L', '2R', '3R', '3L', 'X']
+    # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
+    # n_sites will be derived from snp_sites {contig}/variants/POS
+
     # {release}/cnv/{sample_set}/hmm/zarr
     # - {contig}
     #   - calldata
-    #     - CN [2D array] [int] [-1 to 12 for n_samples]
-    #     - NormCov [2D array] [float] [0 to 356+ for n_samples]
-    #     - RawCov [2D array] [int] [-1 to 18465+ for n_samples]
+    #     - CN [2D array] [int] [-1 to 12 for n_sites for n_samples]
+    #     - NormCov [2D array] [float] [0 to 356+ for n_sites for for n_samples]
+    #     - RawCov [2D array] [int] [-1 to 18465+ for n_sites for for n_samples]
     #   - samples [1D array] [str for n_samples]
     #   - variants
     #      - END [1D array] [int for n_snp_sites]
@@ -633,10 +639,16 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
         # Create the calldata group for this contig.
         calldata_grp = contig_grp.require_group("calldata")
 
+        # Get the SNP positions for this contig.
+        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+
+        # Get the number of sites (SNP positions) for this contig.
+        n_sites = snp_pos.shape[0]
+
         # Simulate CN, NormCov, RawCov under calldata.
-        cn = np.random.randint(low=-1, high=12, size=n_samples)
-        normCov = np.random.randint(low=0, high=356, size=n_samples)
-        rawCov = np.random.randint(low=-1, high=18465, size=n_samples)
+        cn = np.random.randint(low=-1, high=12, size=(n_sites, n_samples))
+        normCov = np.random.randint(low=0, high=356, size=(n_sites, n_samples))
+        rawCov = np.random.randint(low=-1, high=18465, size=(n_sites, n_samples))
         calldata_grp.create_dataset(name="CN", data=cn)
         calldata_grp.create_dataset(name="NormCov", data=normCov)
         calldata_grp.create_dataset(name="RawCov", data=rawCov)
@@ -648,7 +660,6 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate POS under variants.
-        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
         loc_cnv_sites = np.random.choice(
             [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
         )
@@ -720,9 +731,10 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
         n_sites = snp_pos.shape[0]
 
         # Simulate the genotype calls.
+        # Note: this is only 2D, unlike SNP, HAP, AIM GT which are 3D
         gt = np.random.choice(
             np.array([0, 1], dtype="i1"),
-            size=(n_sites, n_samples, 2),
+            size=(n_sites, n_samples),
             replace=True,
             p=[1 - p_allele, p_allele],
         )
@@ -844,9 +856,10 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
         n_sites = snp_pos.shape[0]
 
         # Simulate the genotype calls.
+        # Note: this is only 2D, unlike SNP, HAP, AIM GT which are 3D
         gt = np.random.choice(
             np.array([0, 1], dtype="i1"),
-            size=(n_sites, n_samples, 2),
+            size=(n_sites, n_samples),
             replace=True,
             p=[1 - p_allele, p_allele],
         )
@@ -2040,26 +2053,8 @@ class Af1Simulator(AnophelesSimulator):
                     / "samples.meta.csv"
                 )
 
-                # Simulate CNV coverage calls data for the gamb_colu analysis.
-                analysis = "gamb_colu"
-                zarr_path = (
-                    self.bucket_path
-                    / release_path
-                    / "cnv"
-                    / sample_set
-                    / "coverage_calls"
-                    / analysis
-                    / "zarr"
-                )
-                simulate_cnv_coverage_calls(
-                    zarr_path=zarr_path,
-                    metadata_path=metadata_path,
-                    contigs=self.contigs,
-                    snp_sites=self.snp_sites,
-                )
-
-                # Simulate CNV coverage calls data for the arab analysis.
-                analysis = "arab"
+                # Simulate CNV coverage calls data for the funestus analysis.
+                analysis = "funestus"
                 zarr_path = (
                     self.bucket_path
                     / release_path
