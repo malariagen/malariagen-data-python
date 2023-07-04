@@ -587,7 +587,7 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
 def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
-    # contigs is the list of contigs, e.g. Ag has ['2L', '2R', '3R', '3L', 'X']
+    # contigs is the list of contigs, e.g. Ag has ('2L', '2R', '3R', '3L', 'X')
     # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
     # n_sites will be derived from snp_sites {contig}/variants/POS
 
@@ -608,16 +608,13 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
     # Get a random probability for a sample being high variance, between 0 and 1.
     p_variance = np.random.random()
 
-    # Get a random probability for choosing a particular SNP site (position), between 0 and 1.
-    p_site = np.random.random()
-
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
 
     # Create samples array.
     df_samples = pd.read_csv(metadata_path)
-    samples = df_samples["sample_id"].values.astype("S")
-    root.create_dataset(name="samples", data=samples)
+    samples = df_samples["sample_id"].values
+    root.create_dataset(name="samples", data=samples, dtype=str)
 
     # Get the number of samples.
     n_samples = len(df_samples)
@@ -654,21 +651,18 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
         calldata_grp.create_dataset(name="RawCov", data=rawCov)
 
         # Create the samples dataset (again) for this contig.
-        contig_grp.create_dataset(name="samples", data=samples)
+        contig_grp.create_dataset(name="samples", data=samples, dtype=str)
 
         # Create variants group for this contig.
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate POS under variants.
-        loc_cnv_sites = np.random.choice(
-            [False, True], size=snp_pos.shape[0], p=[1 - p_site, p_site]
-        )
-        pos = snp_pos[loc_cnv_sites]
-        variants_grp.create_dataset(name="POS", data=pos)
+        # Note: choosing a random subset would cause dimension size conflicts.
+        variants_grp.create_dataset(name="POS", data=snp_pos)
 
         # Simulate END under variants.
-        random_multipliers = np.random.randint(2, 12, size=len(pos))
-        end = random_multipliers * pos
+        random_multipliers = np.random.randint(2, 12, size=len(snp_pos))
+        end = random_multipliers * snp_pos
         variants_grp.create_dataset(name="END", data=end)
 
     zarr.consolidate_metadata(zarr_path)
@@ -677,7 +671,7 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
 def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
-    # contigs is the list of contigs, e.g. Ag has ['2L', '2R', '3R', '3L', 'X']
+    # contigs is the list of contigs, e.g. Ag has ('2L', '2R', '3R', '3L', 'X')
     # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
     # n_sites will be derived from snp_sites {contig}/variants/POS
 
@@ -699,9 +693,6 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
     # Get a random probability for choosing allele 1, between 0 and 1.
     p_allele = np.random.random()
 
-    # Get a random probability for choosing a particular SNP site (position), between 0 and 1.
-    p_site = np.random.random()
-
     # Get a random probability for passing a particular SNP site (position), between 0 and 1.
     p_filter_pass = np.random.random()
 
@@ -714,8 +705,8 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
     # Create samples array.
     df_samples = pd.read_csv(metadata_path)
     n_samples = len(df_samples)
-    samples = df_samples["sample_id"].values.astype("S")
-    root.create_dataset(name="samples", data=samples)
+    samples = df_samples["sample_id"].values
+    root.create_dataset(name="samples", data=samples, dtype=str)
 
     for contig in contigs:
         # Create the contig group.
@@ -743,7 +734,7 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
         calldata.create_dataset(name="GT", data=gt)
 
         # Create the samples dataset (again) for this contig.
-        contig_grp.create_dataset(name="samples", data=samples)
+        contig_grp.create_dataset(name="samples", data=samples, dtype=str)
 
         # Create the variants group for this contig.
         variants_grp = contig_grp.require_group("variants")
@@ -774,16 +765,12 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
         variants_grp.create_dataset(name="FILTER_qMerge", data=filter_qMerge)
 
         # Simulate POS under variants.
-        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
-        loc_cnv_sites = np.random.choice(
-            [False, True], size=n_sites, p=[1 - p_site, p_site]
-        )
-        pos = snp_pos[loc_cnv_sites]
-        variants_grp.create_dataset(name="POS", data=pos)
+        # Note: choosing a random subset would cause dimension size conflicts.
+        variants_grp.create_dataset(name="POS", data=snp_pos)
 
         # Simulate END under variants.
-        random_multipliers = np.random.randint(2, 12, size=len(pos))
-        end = random_multipliers * pos
+        random_multipliers = np.random.randint(2, 12, size=len(snp_pos))
+        end = random_multipliers * snp_pos
         variants_grp.create_dataset(name="END", data=end)
 
     zarr.consolidate_metadata(zarr_path)
@@ -792,7 +779,7 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
 def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_sites):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
-    # contigs is the list of contigs, e.g. Ag has ['2R', '3R', 'X']
+    # contigs is the list of contigs, e.g. Ag has ('2R', '3R', 'X')
     # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
     # n_sites will be derived from snp_sites {contig}/variants/POS
 
@@ -818,16 +805,13 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
     # Get a random probability for choosing allele 1, between 0 and 1.
     p_allele = np.random.random()
 
-    # Get a random probability for choosing a particular SNP site (position), between 0 and 1.
-    p_site = np.random.random()
-
     # Open a zarr at the specified path.
     root = zarr.open(zarr_path, mode="w")
 
     # Create samples array.
     df_samples = pd.read_csv(metadata_path)
-    samples = df_samples["sample_id"].values.astype("S")
-    root.create_dataset(name="samples", data=samples)
+    samples = df_samples["sample_id"].values
+    root.create_dataset(name="samples", data=samples, dtype=str)
 
     # Get the number of samples.
     n_samples = len(df_samples)
@@ -868,7 +852,7 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
         calldata_grp.create_dataset(name="GT", data=gt)
 
         # Create the samples dataset (again) for this contig.
-        contig_grp.create_dataset(name="samples", data=samples)
+        contig_grp.create_dataset(name="samples", data=samples, dtype=str)
 
         # Create the variants group for this contig.
         variants_grp = contig_grp.require_group("variants")
@@ -901,15 +885,12 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
         variants_grp.create_dataset(name="ID", data=variant_IDs)
 
         # Simulate POS under variants.
-        loc_cnv_sites = np.random.choice(
-            [False, True], size=n_sites, p=[1 - p_site, p_site]
-        )
-        pos = snp_pos[loc_cnv_sites]
-        variants_grp.create_dataset(name="POS", data=pos)
+        # Note: choosing a random subset would cause dimension size conflicts.
+        variants_grp.create_dataset(name="POS", data=snp_pos)
 
         # Simulate END under variants.
-        random_multipliers = np.random.randint(2, 12, size=len(pos))
-        end = random_multipliers * pos
+        random_multipliers = np.random.randint(2, 12, size=len(snp_pos))
+        end = random_multipliers * snp_pos
         variants_grp.create_dataset(name="END", data=end)
 
     zarr.consolidate_metadata(zarr_path)
