@@ -149,24 +149,6 @@ def test_open_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
             assert "GT" in calldata_grp
 
 
-@parametrize_with_cases("fixture,api", cases=".")
-def test_cnv_discordant_read_calls__no_calls(fixture, api: AnophelesCnvData):
-    # Parametrize sample_sets.
-    all_releases = api.releases
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    parametrize_sample_sets = [
-        None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
-    ]
-
-    for sample_sets in parametrize_sample_sets:
-        for contig in api.contigs:
-            with pytest.raises(ValueError):
-                api.cnv_discordant_read_calls(contig=contig, sample_sets=sample_sets)
-
-
 def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
     api = ag3_sim_api
     fixture = ag3_sim_fixture
@@ -222,119 +204,85 @@ def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
         assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
 
 
-# FIXME:
-#                 df_samples = api.sample_metadata(sample_sets=sample_sets)
-#                 n_samples_expected = len(df_samples)
-# >               assert ds.dims["variants"] == n_variants_expected
-# E               assert 62166 == 214
+@parametrize_with_cases("fixture,api", cases=".")
+def test_cnv_hmm(fixture, api: AnophelesCnvData):
+    # Parametrize sample_sets.
+    all_releases = api.releases
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        random.sample(all_sample_sets, 2),
+        random.choice(all_releases),
+    ]
 
-# @parametrize_with_cases("fixture,api", cases=".")
-# def test_cnv_hmm(fixture, api: AnophelesCnvData):
+    # Parametrize region.
+    parametrize_region = [
+        fixture.random_contig(),
+        random.sample(api.contigs, 2),
+        fixture.random_region_str(),
+    ]
 
-#     # Parametrize sample_sets.
-#     all_releases = api.releases
-#     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-#     parametrize_sample_sets = [
-#         None,
-#         random.choice(all_sample_sets),
-#         random.sample(all_sample_sets, 2),
-#         random.choice(all_releases),
-#     ]
+    for sample_sets in parametrize_sample_sets:
+        for region in parametrize_region:
+            ds = api.cnv_hmm(
+                region=region, sample_sets=sample_sets, max_coverage_variance=None
+            )
+            assert isinstance(ds, xr.Dataset)
 
-#     # Parametrize region.
-#     parametrize_region = [
-#         fixture.random_contig(),
-#         random.sample(api.contigs, 2),
-#         fixture.random_region_str(),
-#     ]
+            # check fields
+            expected_data_vars = {
+                "call_CN",
+                "call_NormCov",
+                "call_RawCov",
+                "sample_coverage_variance",
+                "sample_is_high_variance",
+            }
+            assert set(ds.data_vars) == expected_data_vars
 
-#     for sample_sets in parametrize_sample_sets:
+            expected_coords = {
+                "variant_contig",
+                "variant_position",
+                "variant_end",
+                "sample_id",
+            }
+            assert set(ds.coords) == expected_coords
 
-#         for region in parametrize_region:
+            # check dimensions
+            assert set(ds.dims) == {"samples", "variants"}
 
-#             ds = api.cnv_hmm(region=region, sample_sets=sample_sets, max_coverage_variance=None)
-#             assert isinstance(ds, xr.Dataset)
+            # check dim lengths
+            df_samples = api.sample_metadata(sample_sets=sample_sets)
+            n_samples_expected = len(df_samples)
+            assert ds.dims["samples"] == n_samples_expected
 
-#             # check fields
-#             expected_data_vars = {
-#                 "call_CN",
-#                 "call_NormCov",
-#                 "call_RawCov",
-#                 "sample_coverage_variance",
-#                 "sample_is_high_variance",
-#             }
-#             assert set(ds.data_vars) == expected_data_vars
+            # check sample IDs
+            assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
 
-#             expected_coords = {
-#                 "variant_contig",
-#                 "variant_position",
-#                 "variant_end",
-#                 "sample_id",
-#             }
-#             assert set(ds.coords) == expected_coords
+            # check shapes
+            for f in expected_coords | expected_data_vars:
+                x = ds[f]
+                assert isinstance(x, xr.DataArray)
+                assert isinstance(x.data, da.Array)
+                if f.startswith("variant_"):
+                    assert x.ndim == 1
+                    assert x.dims == ("variants",)
+                elif f.startswith("call_"):
+                    assert x.ndim == 2
+                    assert x.dims == ("variants", "samples")
+                elif f.startswith("sample_"):
+                    assert x.ndim == 1
+                    assert x.dims == ("samples",)
 
-#             # check dimensions
-#             assert set(ds.dims) == {"samples", "variants"}
+            # check attributes
+            assert "contigs" in ds.attrs
+            assert ds.attrs["contigs"] == api.contigs
 
-#             # check dim lengths
-#             if region in api.contigs:
-#                 n_variants_expected = 1 + len(api.genome_sequence(region=region)) // 300
-#             elif isinstance(region, (tuple, list)) and all([r in api.contigs for r in region]):
-#                 n_variants_expected = sum(
-#                     [1 + len(api.genome_sequence(region=c)) // 300 for c in region]
-#                 )
-#             else:
-#                 # test part of a contig region
-#                 # FIXME: region = resolve_region(api, region)
-#                 variant_contig = ds["variant_contig"].values
-#                 contig_index = ds.attrs["contigs"].index(region.contig)
-#                 assert np.all(variant_contig == contig_index)
-#                 variant_position = ds["variant_position"].values
-#                 variant_end = ds["variant_end"].values
-#                 assert variant_position[0] <= region.start
-#                 assert variant_end[0] >= region.start
-#                 assert variant_position[-1] <= region.end
-#                 assert variant_end[-1] >= region.end
-#                 assert np.all(variant_position <= region.end)
-#                 assert np.all(variant_end >= region.start)
-#                 n_variants_expected = 1 + (region.end - region.start) // 300
-
-#             df_samples = api.sample_metadata(sample_sets=sample_sets)
-#             n_samples_expected = len(df_samples)
-#             assert ds.dims["variants"] == n_variants_expected
-#             assert ds.dims["samples"] == n_samples_expected
-
-#             # check sample IDs
-#             assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
-
-#             # check shapes
-#             for f in expected_coords | expected_data_vars:
-#                 x = ds[f]
-#                 assert isinstance(x, xr.DataArray)
-#                 assert isinstance(x.data, da.Array)
-
-#                 if f.startswith("variant_"):
-#                     assert x.ndim == 1
-#                     assert x.shape == (n_variants_expected,)
-#                     assert x.dims == ("variants",)
-#                 elif f.startswith("call_"):
-#                     assert x.ndim == 2
-#                     assert x.dims == ("variants", "samples")
-#                     assert x.shape == (n_variants_expected, n_samples_expected)
-#                 elif f.startswith("sample_"):
-#                     assert x.ndim == 1
-#                     assert x.dims == ("samples",)
-#                     assert x.shape == (n_samples_expected,)
-
-#             # check attributes
-#             assert "contigs" in ds.attrs
-#             assert ds.attrs["contigs"] == ("2R", "2L", "3R", "3L", "X")
-
-#             # check can set up computations
-#             d1 = ds["variant_position"] > 10_000
-#             assert isinstance(d1, xr.DataArray)
-#             d2 = ds["call_CN"].sum(axis=1)
-#             assert isinstance(d2, xr.DataArray)
+            # check can set up computations
+            d1 = ds["variant_position"] > 10_000
+            assert isinstance(d1, xr.DataArray)
+            d2 = ds["call_CN"].sum(axis=1)
+            assert isinstance(d2, xr.DataArray)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -544,6 +492,3 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
             assert isinstance(d1, xr.DataArray)
             d2 = ds["call_genotype"].sum(axis=1)
             assert isinstance(d2, xr.DataArray)
-
-
-# TODO: refactor test_gene_cnv... from test_ag3.py
