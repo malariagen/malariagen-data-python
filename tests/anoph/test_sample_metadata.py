@@ -750,3 +750,52 @@ def test_plot_samples_bar(fixture, api):
         show=False,
     )
     assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_lookup_sample(fixture, api):
+    # Set up test.
+    df_samples = api.sample_metadata()
+    all_sample_ids = df_samples["sample_id"].values
+    sample_id = random.choice(all_sample_ids)
+
+    # Check we get the same sample_id back.
+    sample_rec_by_sample_id = api.lookup_sample(sample_id)
+    assert sample_rec_by_sample_id.name == sample_id
+
+    # Check we get the expected fields.
+    expected_fields = list(df_samples.columns)
+    expected_fields.remove("sample_id")
+    sorted_expected_fields = sorted(expected_fields)
+    assert sorted(list(sample_rec_by_sample_id.index)) == sorted_expected_fields
+
+    # Check we get a sample_set string.
+    sample_set = sample_rec_by_sample_id["sample_set"]
+    assert isinstance(sample_set, str)
+
+    # Check the sample id is in the returned sample_set.
+    df_sample_set_samples = api.sample_metadata(sample_sets=sample_set).set_index(
+        "sample_id"
+    )
+    sample_rec_by_loc = df_sample_set_samples.loc[sample_id]
+    assert sample_rec_by_loc.name == sample_id
+    assert sorted(list(sample_rec_by_loc.index)) == sorted_expected_fields
+
+    # Check the optional sample_set param.
+    sample_rec_by_sample_id_set = api.lookup_sample(sample_id, sample_set)
+    assert sample_rec_by_sample_id_set.name == sample_id
+    assert sample_rec_by_sample_id_set["sample_set"] == sample_set
+    assert sorted(list(sample_rec_by_sample_id_set.index)) == sorted_expected_fields
+
+    # Check sample as an integer index.
+    sample_index_loc = df_samples.set_index("sample_id").index.get_loc(sample_id)
+    sample_rec_by_sample_loc = api.lookup_sample(sample_index_loc)
+    assert sample_rec_by_sample_loc.name == sample_id
+    assert sample_rec_by_sample_loc["sample_set"] == sample_set
+    assert sorted(list(sample_rec_by_sample_loc.index)) == sorted_expected_fields
+
+    # Check the optional sample_set param for sample loc.
+    sample_rec_by_sample_loc_set = api.lookup_sample(sample_id, sample_set)
+    assert sample_rec_by_sample_loc_set.name == sample_id
+    assert sample_rec_by_sample_loc_set["sample_set"] == sample_set
+    assert sorted(list(sample_rec_by_sample_loc_set.index)) == sorted_expected_fields

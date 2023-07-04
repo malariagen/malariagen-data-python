@@ -722,7 +722,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample: base_params.sample,
         sample_set: Optional[base_params.sample_set] = None,
-    ):
+    ) -> pd.core.series.Series:
         df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
         sample_rec = None
         if isinstance(sample, str):
