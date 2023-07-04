@@ -1037,7 +1037,7 @@ class AnophelesDataResource(
         debug("make a bar plot")
         fig = px.bar(x=x, y=y, **plot_kwargs)
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
@@ -1153,7 +1153,7 @@ class AnophelesDataResource(
         fig.yaxis.axis_label = "Heterozygosity (bp⁻¹)"
         self._bokeh_style_genome_xaxis(fig, region.contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
 
         return fig
@@ -1211,7 +1211,7 @@ class AnophelesDataResource(
             output_backend=output_backend,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -1304,7 +1304,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
             return None
         else:
@@ -1484,7 +1484,7 @@ class AnophelesDataResource(
         fig.yaxis.axis_label = "RoH"
         self._bokeh_style_genome_xaxis(fig, resolved_region.contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -1598,7 +1598,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig_all)
             return None
         else:
@@ -2615,7 +2615,7 @@ class AnophelesDataResource(
         if not colorbar:
             fig.update(layout_coloraxis_showscale=False)
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
@@ -2737,7 +2737,7 @@ class AnophelesDataResource(
         debug("tidy plot")
         fig.update_layout(yaxis_range=[-0.05, 1.05])
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
@@ -2995,7 +2995,7 @@ class AnophelesDataResource(
         )
         fig.update_traces(marker={"size": marker_size})
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
@@ -3089,7 +3089,7 @@ class AnophelesDataResource(
         )
         fig.update_traces(marker={"size": marker_size})
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
@@ -3210,7 +3210,7 @@ class AnophelesDataResource(
             **plot_kwargs,
         )
 
-        if show:
+        if show:  # pragma: no cover
             fig1.show(renderer=renderer)
             fig2.show(renderer=renderer)
             fig3.show(renderer=renderer)
@@ -3305,7 +3305,7 @@ class AnophelesDataResource(
         fig.yaxis.ticker = [0, 1]
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -3384,7 +3384,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -3561,7 +3561,7 @@ class AnophelesDataResource(
         fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
 
         fig.xaxis.ticker = window_sizes
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -3739,7 +3739,7 @@ class AnophelesDataResource(
         fig.yaxis.ticker = [0, 1]
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -3813,7 +3813,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4019,7 +4019,7 @@ class AnophelesDataResource(
         fig.yaxis.ticker = [0, 1]
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4098,7 +4098,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4395,7 +4395,7 @@ class AnophelesDataResource(
         fig.yaxis.axis_label = "ihs"
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4488,7 +4488,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4585,7 +4585,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4794,7 +4794,7 @@ class AnophelesDataResource(
         fig.yaxis.ticker = [0, 1]
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -4868,7 +4868,7 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -5093,7 +5093,7 @@ class AnophelesDataResource(
 
         fig.xaxis.ticker = window_sizes
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -5383,7 +5383,7 @@ class AnophelesDataResource(
         fig.yaxis.axis_label = "XP-EHH"
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -5551,7 +5551,7 @@ class AnophelesDataResource(
             )
         )
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:

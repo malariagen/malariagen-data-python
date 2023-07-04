@@ -1068,7 +1068,7 @@ class AnophelesSnpData(
             sizing_mode=sizing_mode,
         )
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -1250,7 +1250,7 @@ class AnophelesSnpData(
         fig.xaxis.minor_tick_line_color = None
         fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:

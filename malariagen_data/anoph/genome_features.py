@@ -277,7 +277,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         fig.yaxis.ticker = []
         self._bokeh_style_genome_xaxis(fig, parent.contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:
@@ -383,7 +383,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         fig.yaxis.axis_label = "Genes"
         self._bokeh_style_genome_xaxis(fig, contig)
 
-        if show:
+        if show:  # pragma: no cover
             bokeh.plotting.show(fig)
             return None
         else:

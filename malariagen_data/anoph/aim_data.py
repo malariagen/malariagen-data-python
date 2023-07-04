@@ -307,7 +307,7 @@ class AnophelesAimData(
             height=max(300, row_height * len(samples) + 100),
         )
 
-        if show:
+        if show:  # pragma: no cover
             fig.show(renderer=renderer)
             return None
         else:
