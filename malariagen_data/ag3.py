@@ -1210,7 +1210,7 @@ class Ag3(AnophelesDataResource):
     def plot_cnv_hmm_coverage_track(
         self,
         sample,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_set=None,
         y_max="auto",
         sizing_mode=gplt_params.sizing_mode_default,
@@ -1267,7 +1267,7 @@ class Ag3(AnophelesDataResource):
         del region
 
         debug("access sample metadata, look up sample")
-        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_rec = self.lookup_sample(sample=sample, sample_set=sample_set)
         sample_id = sample_rec.name  # sample_id
         sample_set = sample_rec["sample_set"]
 
@@ -1440,7 +1440,7 @@ class Ag3(AnophelesDataResource):
 
     def plot_cnv_hmm_heatmap_track(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_sets=None,
         sample_query=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
