@@ -19,7 +19,6 @@ from ..util import (
     simple_xarray_concat,
 )
 from . import base_params, cnv_params, gplt_params
-from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -54,20 +53,6 @@ class AnophelesCnvData(
 
         """
         return tuple(self.config.get("COVERAGE_CALLS_ANALYSIS_IDS", ()))  # ensure tuple
-
-    def _prep_coverage_calls_analysis_param(
-        self, *, coverage_calls_analysis: cnv_params.coverage_calls_analysis
-    ) -> str:
-        if coverage_calls_analysis == DEFAULT:
-            # Use whatever is the default phasing analysis for this data resource.
-            assert self._default_coverage_calls_analysis is not None
-            return self._default_coverage_calls_analysis
-        elif coverage_calls_analysis in self.coverage_calls_analysis_ids:
-            return coverage_calls_analysis
-        else:
-            raise ValueError(
-                f"Invalid coverage calls analysis, must be one of f{self.coverage_calls_analysis_ids}."
-            )
 
     @check_types
     @doc(
