@@ -634,7 +634,7 @@ class AnophelesCnvData(
 
         debug("tidy up the plot")
         fig.yaxis.axis_label = "Copy number"
-        fig.yaxis.ticker = list(range(y_max_float + 1))
+        fig.yaxis.ticker = list(range(int(y_max_float) + 1))
         self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.add_layout(fig.legend[0], "right")
 
