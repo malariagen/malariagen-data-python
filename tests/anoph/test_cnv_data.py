@@ -570,6 +570,14 @@ def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
     # Check return type.
     assert isinstance(fig, bokeh.model.Model)
 
+    # Check non-default y_max
+    fig2 = api.plot_cnv_hmm_coverage_track(
+        sample=sample_id, region=region, show=False, y_max=12.3
+    )
+
+    # Check return type.
+    assert isinstance(fig2, bokeh.model.Model)
+
     # Check with a sample that should not exist.
     # Note: this currently raises KeyError rather than ValueError
     with pytest.raises(KeyError):
@@ -649,14 +657,43 @@ def test_plot_cnv_hmm_heatmap_track(fixture, api: AnophelesCnvData):
         fixture.random_region_str(),
     ]
 
-    for region in parametrize_region:
-        fig = api.plot_cnv_hmm_heatmap_track(
-            region=region,
-            show=False,
-        )
+    # Parametrize sample_sets.
+    all_releases = api.releases
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        random.sample(all_sample_sets, 2),
+        random.choice(all_releases),
+    ]
 
-        # Check return type.
-        assert isinstance(fig, bokeh.model.Model)
+    for region in parametrize_region:
+        for sample_sets in parametrize_sample_sets:
+            fig = api.plot_cnv_hmm_heatmap_track(
+                region=region,
+                sample_sets=sample_sets,
+                show=False,
+            )
+
+            # Check return type.
+            assert isinstance(fig, bokeh.model.Model)
+
+    # Check with a non-default sample_query.
+    fig2 = api.plot_cnv_hmm_heatmap_track(
+        region=fixture.random_contig(),
+        # Note: assuming this query will always return samples.
+        sample_query="sex_call == 'F'",
+        show=False,
+    )
+    assert isinstance(fig2, bokeh.model.Model)
+
+    # Check with a non-default height.
+    fig3 = api.plot_cnv_hmm_heatmap_track(
+        region=fixture.random_contig(),
+        height=1,
+        show=False,
+    )
+    assert isinstance(fig3, bokeh.model.Model)
 
     # Check with a region that should not exist.
     with pytest.raises(ValueError):
