@@ -1,5 +1,6 @@
 import random
 
+import bokeh.models
 import dask.array as da
 import numpy as np
 import pandas as pd
@@ -329,7 +330,7 @@ def test_cnv_hmm(fixture, api: AnophelesCnvData):
 def test_cnv_hmm__max_coverage_variance(fixture, api: AnophelesCnvData):
     # Set up test.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
+    sample_set = random.choice(all_sample_sets)
     region = fixture.random_contig()
 
     # Parametrize max_coverage_variance.
@@ -338,7 +339,7 @@ def test_cnv_hmm__max_coverage_variance(fixture, api: AnophelesCnvData):
     for max_coverage_variance in parametrize_max_coverage_variance:
         ds = api.cnv_hmm(
             region=region,
-            sample_sets=sample_sets,
+            sample_sets=sample_set,
             max_coverage_variance=max_coverage_variance,
         )
         assert isinstance(ds, xr.Dataset)
@@ -548,3 +549,142 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
     # Check with a contig and sample set that should not exist
     with pytest.raises(ValueError):
         api.cnv_discordant_read_calls(contig="foobar", sample_sets="bazqux")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
+    # Set up test.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    region = fixture.random_contig()
+    df_samples = api.sample_metadata(sample_sets=sample_set)
+    all_sample_ids = df_samples["sample_id"].values
+    sample_id = random.choice(all_sample_ids)
+
+    fig = api.plot_cnv_hmm_coverage_track(
+        sample=sample_id,
+        region=region,
+        show=False,
+    )
+
+    # Check return type.
+    assert isinstance(fig, bokeh.model.Model)
+
+    # Check with a sample that should not exist.
+    # Note: this currently raises KeyError rather than ValueError
+    with pytest.raises(KeyError):
+        api.plot_cnv_hmm_coverage_track(
+            sample="foo",
+            region=region,
+            show=False,
+        )
+
+    # Check with a region that should not exist.
+    with pytest.raises(ValueError):
+        api.plot_cnv_hmm_coverage_track(
+            sample=sample_id,
+            region="foo",
+            show=False,
+        )
+
+    # Check with a sample and region that should not exist.
+    with pytest.raises(ValueError):
+        api.plot_cnv_hmm_coverage_track(
+            sample="foo",
+            region="bar",
+            show=False,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_cnv_hmm_coverage(fixture, api: AnophelesCnvData):
+    # Set up test.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    region = fixture.random_contig()
+    df_samples = api.sample_metadata(sample_sets=sample_set)
+    all_sample_ids = df_samples["sample_id"].values
+    sample_id = random.choice(all_sample_ids)
+
+    fig = api.plot_cnv_hmm_coverage(
+        sample=sample_id,
+        region=region,
+        show=False,
+    )
+
+    # Check return type.
+    assert isinstance(fig, bokeh.model.Model)
+
+    # Check with a sample that should not exist.
+    # Note: this currently raises KeyError rather than ValueError
+    with pytest.raises(KeyError):
+        api.plot_cnv_hmm_coverage(
+            sample="foo",
+            region=region,
+            show=False,
+        )
+
+    # Check with a region that should not exist.
+    with pytest.raises(ValueError):
+        api.plot_cnv_hmm_coverage(
+            sample=sample_id,
+            region="foo",
+            show=False,
+        )
+
+    # Check with a sample and region that should not exist.
+    with pytest.raises(ValueError):
+        api.plot_cnv_hmm_coverage(
+            sample="foo",
+            region="bar",
+            show=False,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_cnv_hmm_heatmap_track(fixture, api: AnophelesCnvData):
+    # Parametrize region (not regions).
+    parametrize_region = [
+        fixture.random_contig(),
+        fixture.random_region_str(),
+    ]
+
+    for region in parametrize_region:
+        fig = api.plot_cnv_hmm_heatmap_track(
+            region=region,
+            show=False,
+        )
+
+        # Check return type.
+        assert isinstance(fig, bokeh.model.Model)
+
+    # Check with a region that should not exist.
+    with pytest.raises(ValueError):
+        api.plot_cnv_hmm_heatmap_track(
+            region="foo",
+            show=False,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_cnv_hmm_heatmap(fixture, api: AnophelesCnvData):
+    # Parametrize region (not regions).
+    parametrize_region = [
+        fixture.random_contig(),
+        fixture.random_region_str(),
+    ]
+
+    for region in parametrize_region:
+        fig = api.plot_cnv_hmm_heatmap(
+            region=region,
+            show=False,
+        )
+
+        # Check return type.
+        assert isinstance(fig, bokeh.model.Model)
+
+    # Check with a region that should not exist
+    with pytest.raises(ValueError):
+        api.plot_cnv_hmm_heatmap(
+            region="foo",
+        )
