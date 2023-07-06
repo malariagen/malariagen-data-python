@@ -184,47 +184,62 @@ def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
     parametrize_query = [
         "taxon == 'coluzzii' and location == 'Bana Village'",
         "taxon == 'gambiae' and location == 'Pala'",
+        "taxon == 'robot'",
     ]
 
     # Run tests.
     for sample_query in parametrize_query:
-        ds = api.cnv_hmm(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            max_coverage_variance=None,
-        )
-        assert isinstance(ds, xr.Dataset)
+        # Get the number of samples for this query
+        df_samples = ag3_sim_api.sample_metadata().query(sample_query)
 
-        # check fields
-        expected_data_vars = {
-            "call_CN",
-            "call_NormCov",
-            "call_RawCov",
-            "sample_coverage_variance",
-            "sample_is_high_variance",
-        }
-        assert set(ds.data_vars) == expected_data_vars
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                ds = api.cnv_hmm(
+                    region=region,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    max_coverage_variance=None,
+                )
+        else:
+            ds = api.cnv_hmm(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                max_coverage_variance=None,
+            )
+            assert isinstance(ds, xr.Dataset)
 
-        expected_coords = {
-            "variant_contig",
-            "variant_position",
-            "variant_end",
-            "sample_id",
-        }
-        assert set(ds.coords) == expected_coords
+            # check fields
+            expected_data_vars = {
+                "call_CN",
+                "call_NormCov",
+                "call_RawCov",
+                "sample_coverage_variance",
+                "sample_is_high_variance",
+            }
+            assert set(ds.data_vars) == expected_data_vars
 
-        # check dimensions
-        assert set(ds.dims) == {"samples", "variants"}
+            expected_coords = {
+                "variant_contig",
+                "variant_position",
+                "variant_end",
+                "sample_id",
+            }
+            assert set(ds.coords) == expected_coords
 
-        # check expected samples
-        df_samples = api.sample_metadata(sample_sets=sample_sets).query(sample_query)
-        expected_samples = df_samples["sample_id"].tolist()
-        n_samples_expected = len(expected_samples)
-        assert ds.dims["samples"] == n_samples_expected
+            # check dimensions
+            assert set(ds.dims) == {"samples", "variants"}
 
-        # check sample IDs
-        assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+            # check expected samples
+            df_samples = api.sample_metadata(sample_sets=sample_sets).query(
+                sample_query
+            )
+            expected_samples = df_samples["sample_id"].tolist()
+            n_samples_expected = len(expected_samples)
+            assert ds.dims["samples"] == n_samples_expected
+
+            # check sample IDs
+            assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
 
 
 @parametrize_with_cases("fixture,api", cases=".")
