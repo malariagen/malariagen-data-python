@@ -96,6 +96,10 @@ def test_open_cnv_hmm(fixture, api: AnophelesCnvData):
             assert "NormCov" in calldata_grp
             assert "RawCov" in calldata_grp
 
+    # Check with a sample set that should not exist
+    with pytest.raises(ValueError):
+        root = api.open_cnv_hmm(sample_set="foobar")
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_open_cnv_coverage_calls(fixture, api: AnophelesCnvData):
@@ -122,6 +126,21 @@ def test_open_cnv_coverage_calls(fixture, api: AnophelesCnvData):
                 calldata_grp = contig_grp["calldata"]
                 assert "GT" in calldata_grp
 
+    # Check with a sample set that should not exist
+    with pytest.raises(ValueError):
+        root = api.open_cnv_coverage_calls(
+            sample_set="foobar", analysis=api.coverage_calls_analysis_ids[0]
+        )
+
+    # Check with an analysis that should not exist
+    sample_set = next(api.sample_sets().itertuples()).sample_set
+    with pytest.raises(ValueError):
+        root = api.open_cnv_coverage_calls(sample_set=sample_set, analysis="foobar")
+
+    # Check with a sample set and analysis that should not exist
+    with pytest.raises(ValueError):
+        root = api.open_cnv_coverage_calls(sample_set="foobar", analysis="bazqux")
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_open_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
@@ -147,6 +166,10 @@ def test_open_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
             assert "StartBreakpointMethod" in variants_grp
             calldata_grp = contig_grp["calldata"]
             assert "GT" in calldata_grp
+
+    # Check with a sample set that should not exist
+    with pytest.raises(ValueError):
+        root = api.open_cnv_discordant_read_calls(sample_set="foobar")
 
 
 def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
