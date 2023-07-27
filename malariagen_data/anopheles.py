@@ -2380,6 +2380,68 @@ class AnophelesDataResource(
     @check_types
     @doc(
         summary="""
+            txt.
+        """,
+        returns="""
+            txt
+        """,
+    )
+    def average_fst(
+        self,
+        region: base_params.region,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        cohort_size: base_params.cohort_size,
+        n_jack: base_params.n_jack = 200,
+        site_mask: base_params.site_mask = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = fst_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = fst_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+    ):
+        # calculate allele counts for each cohort
+        cohort1_counts = self.snp_allele_counts(
+            region=region,
+            sample_sets=None,
+            sample_query=cohort1_query,
+            cohort_size=cohort_size,
+            site_mask=site_mask,
+            site_class=site_class,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        cohort2_counts = self.snp_allele_counts(
+            region=region,
+            sample_sets=None,
+            sample_query=cohort2_query,
+            cohort_size=cohort_size,
+            site_mask=site_mask,
+            site_class=site_class,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        # calculate block length for blen
+        n_sites = cohort1_counts.shape[0]  # number of sites
+        block_length = n_sites // n_jack  # number of sites in each block
+
+        # calculate pairwise fst
+        fst_hudson, se_hudson, vb_hudson, _ = allel.blockwise_hudson_fst(
+            cohort1_counts, cohort2_counts, blen=block_length
+        )
+
+        return fst_hudson, se_hudson
+
+    @check_types
+    @doc(
+        summary="""
             Run a Fst genome-wide scan to investigate genetic differentiation
             between two cohorts.
         """,
