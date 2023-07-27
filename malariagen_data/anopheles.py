@@ -2195,6 +2195,8 @@ class AnophelesDataResource(
         cohort: base_params.cohort,
         cohort_size: base_params.cohort_size,
         region: base_params.region,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         site_mask: Optional[base_params.site_mask] = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -2232,6 +2234,8 @@ class AnophelesDataResource(
             sample_query=cohort_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 

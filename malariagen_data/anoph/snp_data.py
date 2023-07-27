@@ -918,6 +918,8 @@ class AnophelesSnpData(
         site_mask,
         site_class,
         cohort_size,
+        min_cohort_size,
+        max_cohort_size,
         random_seed,
     ):
         # Access SNP calls.
@@ -928,6 +930,8 @@ class AnophelesSnpData(
             site_mask=site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
         gt = ds_snps["call_genotype"]
@@ -972,6 +976,8 @@ class AnophelesSnpData(
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> np.ndarray:
         # Change this name if you ever change the behaviour of this function,
@@ -996,6 +1002,8 @@ class AnophelesSnpData(
             site_mask=site_mask_prepped,
             site_class=site_class,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -1092,6 +1100,8 @@ class AnophelesSnpData(
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: base_params.site_mask = DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 120,
@@ -1121,6 +1131,8 @@ class AnophelesSnpData(
                 sample_query=sample_query,
                 site_mask=None,
                 cohort_size=cohort_size,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
             )
         )
         an = ac.sum(axis=1)
