@@ -2380,10 +2380,10 @@ class AnophelesDataResource(
     @check_types
     @doc(
         summary="""
-            txt.
+            Compute average Hudson's Fst between two specified cohorts.
         """,
         returns="""
-            txt
+            A NumPy float of the Fst value.
         """,
     )
     def average_fst(
