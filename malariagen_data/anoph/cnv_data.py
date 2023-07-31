@@ -595,7 +595,7 @@ class AnophelesCnvData(
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -790,7 +790,7 @@ class AnophelesCnvData(
             sizing_mode=sizing_mode,
             width=width,
             height=plot_height,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             toolbar_location="above",
