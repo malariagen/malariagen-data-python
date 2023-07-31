@@ -1124,7 +1124,7 @@ class AnophelesDataResource(
         )
         fig = bokeh.plotting.figure(
             title=f"{sample_id} ({sample_set})",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -1459,6 +1459,7 @@ class AnophelesDataResource(
                 "reset",
                 "tap",
                 "hover",
+                "save",
             ],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
@@ -3278,7 +3279,16 @@ class AnophelesDataResource(
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
         fig = bokeh.plotting.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -3712,7 +3722,16 @@ class AnophelesDataResource(
             title = sample_query
         fig = bokeh.plotting.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -3992,7 +4011,16 @@ class AnophelesDataResource(
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
         fig = bokeh.plotting.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -4347,7 +4375,16 @@ class AnophelesDataResource(
             title = sample_query
         fig = bokeh.plotting.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -4767,7 +4804,16 @@ class AnophelesDataResource(
             title = sample_query
         fig = bokeh.plotting.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -5336,7 +5382,16 @@ class AnophelesDataResource(
                 title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
         fig = bokeh.plotting.figure(
             title=title,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
