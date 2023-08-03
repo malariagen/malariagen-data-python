@@ -584,23 +584,22 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
     return ds
 
 
-def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
+def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
     # contigs is the list of contigs, e.g. Ag has ('2L', '2R', '3R', '3L', 'X')
-    # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
-    # n_sites will be derived from snp_sites {contig}/variants/POS
+    # contig_sizes is a dictionary of the sizes of the contigs in base pairs
 
     # {release}/cnv/{sample_set}/hmm/zarr
     # - {contig}
     #   - calldata
-    #     - CN [2D array] [int] [-1 to 12 for n_sites for n_samples]
-    #     - NormCov [2D array] [float] [0 to 356+ for n_sites for for n_samples]
-    #     - RawCov [2D array] [int] [-1 to 18465+ for n_sites for for n_samples]
+    #     - CN [2D array] [int] [-1 to 12 for n_variants for n_samples]
+    #     - NormCov [2D array] [float] [0 to 356+ for n_variants for for n_samples]
+    #     - RawCov [2D array] [int] [-1 to 18465+ for n_variants for for n_samples]
     #   - samples [1D array] [str for n_samples]
     #   - variants
-    #      - END [1D array] [int for n_snp_sites]
-    #      - POS [1D array] [int for n_snp_sites]
+    #      - END [1D array] [int for n_variants]
+    #      - POS [1D array] [int for n_variants]
     # - sample_coverage_variance [1D array] [float] [0 to 0.5 for n_samples]
     # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
     # - samples [1D array] [str]
@@ -636,16 +635,28 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
         # Create the calldata group for this contig.
         calldata_grp = contig_grp.require_group("calldata")
 
-        # Get the SNP positions for this contig.
-        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        # Get the length of this contig.
+        contig_length_bp = contig_sizes[contig]
 
-        # Get the number of sites (SNP positions) for this contig.
-        n_sites = snp_pos.shape[0]
+        # Set the window size.
+        window_size_bp = 300
+
+        # Get the number of non-overlapping windows ("variants") using contig_length.
+        # Note: this uses the floor division operator `//`, which returns an integer.
+        n_windows = contig_length_bp // window_size_bp
+
+        # Produce the set of window start positions as a tuple (immutable list).
+        window_start_pos = tuple(1 + i * window_size_bp for i in range(n_windows))
+
+        # Produce the set of window end positions as a tuple (immutable list).
+        window_end_pos = tuple(i * window_size_bp for i in range(1, n_windows)) + (
+            contig_length_bp,
+        )
 
         # Simulate CN, NormCov, RawCov under calldata.
-        cn = np.random.randint(low=-1, high=12, size=(n_sites, n_samples))
-        normCov = np.random.randint(low=0, high=356, size=(n_sites, n_samples))
-        rawCov = np.random.randint(low=-1, high=18465, size=(n_sites, n_samples))
+        cn = np.random.randint(low=-1, high=12, size=(n_windows, n_samples))
+        normCov = np.random.randint(low=0, high=356, size=(n_windows, n_samples))
+        rawCov = np.random.randint(low=-1, high=18465, size=(n_windows, n_samples))
         calldata_grp.create_dataset(name="CN", data=cn)
         calldata_grp.create_dataset(name="NormCov", data=normCov)
         calldata_grp.create_dataset(name="RawCov", data=rawCov)
@@ -657,38 +668,34 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, snp_sites):
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate POS under variants.
-        # Note: choosing a random subset would cause dimension size conflicts.
-        variants_grp.create_dataset(name="POS", data=snp_pos)
+        variants_grp.create_dataset(name="POS", data=window_start_pos)
 
         # Simulate END under variants.
-        random_multipliers = np.random.randint(2, 12, size=len(snp_pos))
-        end = random_multipliers * snp_pos
-        variants_grp.create_dataset(name="END", data=end)
+        variants_grp.create_dataset(name="END", data=window_end_pos)
 
     zarr.consolidate_metadata(zarr_path)
 
 
-def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
+def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
     # contigs is the list of contigs, e.g. Ag has ('2L', '2R', '3R', '3L', 'X')
-    # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
-    # n_sites will be derived from snp_sites {contig}/variants/POS
+    # contig_sizes is a dictionary of the sizes of the contigs in base pairs
 
     # {release}/cnv/{sample_set}/coverage_calls/{analysis}/zarr
     #   - samples [1D array] [str for n_samples]
     #   - {contig}
     #      - calldata
-    #         - GT [2D array] [int] [0 or 1 for n_sites for n_samples]
+    #         - GT [2D array] [int] [0 or 1 for n_variants for n_samples]
     #      - samples [1D array] [str for n_samples]
     #      - variants
-    #         - CIEND [1D array] [int] [0 to 13200+ for n_sites]
-    #         - CIPOS [1D array] [int] [0 to 37200+ for n_sites]
-    #         - END [1D array] [int for n_sites]
-    #         - FILTER_PASS [1D array] [bool] [True or False for n_sites]
-    #         - FILTER_qMerge [1D array] [bool] [True or False for n_sites]
-    #         - ID [1D array] [unique str for n_sites]
-    #         - POS [1D array] [int for n_sites]
+    #         - CIEND [1D array] [int] [0 to 13200+ for n_variants]
+    #         - CIPOS [1D array] [int] [0 to 37200+ for n_variants]
+    #         - END [1D array] [int for n_variants]
+    #         - FILTER_PASS [1D array] [bool] [True or False for n_variants]
+    #         - FILTER_qMerge [1D array] [bool] [True or False for n_variants]
+    #         - ID [1D array] [unique str for n_variants]
+    #         - POS [1D array] [int for n_variants]
 
     # Get a random probability for choosing allele 1, between 0 and 1.
     p_allele = np.random.random()
@@ -715,17 +722,35 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
         # Create the calldata group for this contig.
         calldata = contig_grp.require_group("calldata")
 
-        # Get the SNP positions for this contig.
-        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        # Get the length of this contig
+        contig_length_bp = contig_sizes[contig]
 
-        # Get the number of sites (SNP positions) for this contig.
-        n_sites = snp_pos.shape[0]
+        # Get a random number of CNV alleles ("variants") to simulate.
+        n_cnv_alleles = np.random.randint(1, 5_000)
+
+        # Produce a set of random start positions for each allele as a sorted list.
+        allele_start_pos = sorted(
+            np.random.randint(1, contig_length_bp, size=n_cnv_alleles)
+        )
+
+        # Produce a set of random allele lengths for each allele, according to a range.
+        allele_length_bp_min = 100
+        allele_length_bp_max = 100_000
+        allele_lengths_bp = np.random.randint(
+            allele_length_bp_min, allele_length_bp_max, size=n_cnv_alleles
+        )
+
+        # Produce the set of end postions for each allele, according to start position and length.
+        allele_end_pos = [
+            start_pos + length
+            for start_pos, length in zip(allele_start_pos, allele_lengths_bp)
+        ]
 
         # Simulate the genotype calls.
         # Note: this is only 2D, unlike SNP, HAP, AIM GT which are 3D
         gt = np.random.choice(
             np.array([0, 1], dtype="i1"),
-            size=(n_sites, n_samples),
+            size=(n_cnv_alleles, n_samples),
             replace=True,
             p=[1 - p_allele, p_allele],
         )
@@ -740,61 +765,57 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, snp_sites):
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate the CIEND and CIPOS arrays under variants.
-        ciend = np.random.randint(low=0, high=13200, size=n_sites)
-        cipos = np.random.randint(low=0, high=37200, size=n_sites)
+        ciend = np.random.randint(low=0, high=13200, size=n_cnv_alleles)
+        cipos = np.random.randint(low=0, high=37200, size=n_cnv_alleles)
         variants_grp.create_dataset(name="CIEND", data=ciend)
         variants_grp.create_dataset(name="CIPOS", data=cipos)
 
         # Simulate the unique ID strings under variants.
         # Note: this is quicker than generating unique random strings.
-        len_str_n_sites = len(str(n_sites))
+        len_str_n_sites = len(str(n_cnv_alleles))
         variant_IDs = [
             f"CNV_{contig}{str(i).zfill(len_str_n_sites)}"
-            for i in range(1, n_sites + 1)
+            for i in range(1, n_cnv_alleles + 1)
         ]
         variants_grp.create_dataset(name="ID", data=variant_IDs)
 
         # Simulate the filters under variants.
         filter_pass = np.random.choice(
-            [False, True], size=n_sites, p=[1 - p_filter_pass, p_filter_pass]
+            [False, True], size=n_cnv_alleles, p=[1 - p_filter_pass, p_filter_pass]
         )
         filter_qMerge = np.random.choice(
-            [False, True], size=n_sites, p=[1 - p_filter_qMerge, p_filter_qMerge]
+            [False, True], size=n_cnv_alleles, p=[1 - p_filter_qMerge, p_filter_qMerge]
         )
         variants_grp.create_dataset(name="FILTER_PASS", data=filter_pass)
         variants_grp.create_dataset(name="FILTER_qMerge", data=filter_qMerge)
 
         # Simulate POS under variants.
-        # Note: choosing a random subset would cause dimension size conflicts.
-        variants_grp.create_dataset(name="POS", data=snp_pos)
+        variants_grp.create_dataset(name="POS", data=allele_start_pos)
 
         # Simulate END under variants.
-        random_multipliers = np.random.randint(2, 12, size=len(snp_pos))
-        end = random_multipliers * snp_pos
-        variants_grp.create_dataset(name="END", data=end)
+        variants_grp.create_dataset(name="END", data=allele_end_pos)
 
     zarr.consolidate_metadata(zarr_path)
 
 
-def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_sites):
+def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig_sizes):
     # zarr_path is the output path to the zarr store
     # metadata_path is the input path for the sample metadata
     # contigs is the list of contigs, e.g. Ag has ('2R', '3R', 'X')
-    # snp_sites are the data from snp_genotypes/all/sites, inc. {contig}/variants/POS
-    # n_sites will be derived from snp_sites {contig}/variants/POS
+    # contig_sizes is a dictionary of the sizes of the contigs in base pairs
 
     # {release}/cnv/{sample_set}/discordant_read_calls/zarr
     # - {contig}
     #   - calldata
-    #     - GT [2D array] [int] [0 or 1 for n_sites for n_samples]
+    #     - GT [2D array] [int] [0 or 1 for n_variants for n_samples]
     #   - samples [1D array] [str for n_samples]
     #   - variants
-    #      - END [1D array] [int for n_sites]
-    #      - EndBreakpointMethod [1D array] [-1 to 2 for n_sites]
-    #      - ID [1D array] [unique str for n_sites]
-    #      - POS [1D array] [int for n_sites]
-    #      - Region [1D array] [unique str for n_sites]
-    #      - StartBreakpointMethod [1D array] [int] [-1 to 1 for n_sites]
+    #      - END [1D array] [int for n_variants]
+    #      - EndBreakpointMethod [1D array] [-1 to 2 for n_variants]
+    #      - ID [1D array] [unique str for n_variants]
+    #      - POS [1D array] [int for n_variants]
+    #      - Region [1D array] [unique str for n_variants]
+    #      - StartBreakpointMethod [1D array] [int] [-1 to 1 for n_variants]
     # - sample_coverage_variance [1D array] [float] [0 to 0.5 for n_samples]
     # - sample_is_high_variance [1D array] [bool] [True or False for n_samples]
     # - samples [1D array] [str for n_samples]
@@ -826,24 +847,53 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
     )
     root.create_dataset(name="sample_is_high_variance", data=sample_is_high_variance)
 
-    for contig in contigs:
+    # Note: The cnv_discordant_read_calls() method of AnophelesCnvData concatenates each xarray.Dataset
+    # returned by _cnv_discordant_read_calls_dataset() for each sample set for each contig, so it expects
+    # the same number of variants for all sample sets with respect to each contig. So we need to maintain a
+    # consistent number of variants for each contig for all sample set, otherwise the shapes will not align,
+    # which will raise an error and cause test failures.
+    fixed_seed = 42
+
+    for i, contig in enumerate(contigs):
+        # Use the same random seed per contig, otherwise n_cnv_variants (and shapes) will not align.
+        unique_seed = fixed_seed + i
+        np.random.seed(unique_seed)
+
         # Create the contig group.
         contig_grp = root.require_group(contig)
 
         # Create the calldata group for this contig.
         calldata_grp = contig_grp.require_group("calldata")
 
-        # Get the SNP positions for this contig.
-        snp_pos = snp_sites[f"{contig}/variants/POS"][:]
+        # Get the length of this contig
+        contig_length_bp = contig_sizes[contig]
 
-        # Get the number of sites (SNP positions) for this contig.
-        n_sites = snp_pos.shape[0]
+        # Get a random number of CNV variants to simulate.
+        n_cnv_variants = np.random.randint(1, 100)
+
+        # Produce a set of random start positions for each variant as a sorted list.
+        variant_start_pos = sorted(
+            np.random.randint(1, contig_length_bp, size=n_cnv_variants)
+        )
+
+        # Produce a set of random lengths for each variant, according to a range.
+        variant_length_bp_min = 100
+        variant_length_bp_max = 100_000
+        variant_lengths_bp = np.random.randint(
+            variant_length_bp_min, variant_length_bp_max, size=n_cnv_variants
+        )
+
+        # Produce the set of end postions for each variant, according to start position and length.
+        variant_end_pos = [
+            start_pos + length
+            for start_pos, length in zip(variant_start_pos, variant_lengths_bp)
+        ]
 
         # Simulate the genotype calls.
         # Note: this is only 2D, unlike SNP, HAP, AIM GT which are 3D
         gt = np.random.choice(
             np.array([0, 1], dtype="i1"),
-            size=(n_sites, n_samples),
+            size=(n_cnv_variants, n_samples),
             replace=True,
             p=[1 - p_allele, p_allele],
         )
@@ -858,8 +908,8 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
         variants_grp = contig_grp.require_group("variants")
 
         # Simulate the StartBreakpointMethod and EndBreakpointMethod arrays.
-        startBreakpointMethod = np.random.randint(low=-1, high=1, size=n_sites)
-        endBreakpointMethod = np.random.randint(low=-1, high=2, size=n_sites)
+        startBreakpointMethod = np.random.randint(low=-1, high=1, size=n_cnv_variants)
+        endBreakpointMethod = np.random.randint(low=-1, high=2, size=n_cnv_variants)
         variants_grp.create_dataset(
             name="StartBreakpointMethod", data=startBreakpointMethod
         )
@@ -867,31 +917,30 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, snp_si
             name="EndBreakpointMethod", data=endBreakpointMethod
         )
 
-        # Get the number of digits in n_sites.
-        len_str_n_sites = len(str(n_sites))
+        # Get the number of digits in n_cnv_variants.
+        len_str_n_cnv_variants = len(str(n_cnv_variants))
 
         # Simulate the Region under variants.
         # Note: this is quicker than generating unique random strings.
         regions = [
-            f"Region_{str(i).zfill(len_str_n_sites)}" for i in range(1, n_sites + 1)
+            f"Region_{str(i).zfill(len_str_n_cnv_variants)}"
+            for i in range(1, n_cnv_variants + 1)
         ]
         variants_grp.create_dataset(name="Region", data=regions)
 
         # Simulate the unique ID strings under variants.
         # Note: this is quicker than generating unique random strings.
         variant_IDs = [
-            f"ID_{str(i).zfill(len_str_n_sites)}" for i in range(1, n_sites + 1)
+            f"ID_{str(i).zfill(len_str_n_cnv_variants)}"
+            for i in range(1, n_cnv_variants + 1)
         ]
         variants_grp.create_dataset(name="ID", data=variant_IDs)
 
         # Simulate POS under variants.
-        # Note: choosing a random subset would cause dimension size conflicts.
-        variants_grp.create_dataset(name="POS", data=snp_pos)
+        variants_grp.create_dataset(name="POS", data=variant_start_pos)
 
         # Simulate END under variants.
-        random_multipliers = np.random.randint(2, 12, size=len(snp_pos))
-        end = random_multipliers * snp_pos
-        variants_grp.create_dataset(name="END", data=end)
+        variants_grp.create_dataset(name="END", data=variant_end_pos)
 
     zarr.consolidate_metadata(zarr_path)
 
@@ -1567,7 +1616,7 @@ class Ag3Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
     def init_cnv_coverage_calls(self):
@@ -1606,7 +1655,7 @@ class Ag3Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
                 # Simulate CNV coverage calls data for the arab analysis.
@@ -1624,7 +1673,7 @@ class Ag3Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
     def init_cnv_discordant_read_calls(self):
@@ -1664,7 +1713,7 @@ class Ag3Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     # Note: the real data does not include every contig.
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
 
@@ -2013,7 +2062,7 @@ class Af1Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
     def init_cnv_coverage_calls(self):
@@ -2049,7 +2098,7 @@ class Af1Simulator(AnophelesSimulator):
                     zarr_path=zarr_path,
                     metadata_path=metadata_path,
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
     def init_cnv_discordant_read_calls(self):
@@ -2086,7 +2135,7 @@ class Af1Simulator(AnophelesSimulator):
                     metadata_path=metadata_path,
                     # Note: the real data does not include every contig.
                     contigs=self.contigs,
-                    snp_sites=self.snp_sites,
+                    contig_sizes=self.contig_sizes,
                 )
 
 
