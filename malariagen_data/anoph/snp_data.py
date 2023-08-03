@@ -218,7 +218,7 @@ class AnophelesSnpData(
     )
     def site_filters(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         mask: base_params.site_mask,
         field: base_params.field = "filter_pass",
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -297,7 +297,7 @@ class AnophelesSnpData(
     )
     def snp_sites(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         field: base_params.field,
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -358,7 +358,7 @@ class AnophelesSnpData(
     )
     def snp_genotypes(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
@@ -480,7 +480,7 @@ class AnophelesSnpData(
     )
     def snp_variants(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
@@ -525,7 +525,7 @@ class AnophelesSnpData(
     )
     def site_annotations(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
@@ -578,7 +578,7 @@ class AnophelesSnpData(
     def _locate_site_class(
         self,
         *,
-        region: base_params.single_region,
+        region: base_params.region,
         site_mask: Optional[base_params.site_mask],
         site_class: base_params.site_class,
     ):
@@ -772,7 +772,7 @@ class AnophelesSnpData(
     )
     def snp_calls(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
@@ -890,7 +890,7 @@ class AnophelesSnpData(
         return self.snp_calls(*args, **kwargs)
 
     def _prep_region_cache_param(
-        self, *, region: base_params.region
+        self, *, region: base_params.regions
     ) -> Union[dict, List[dict]]:
         """Obtain a normalised representation of a region parameter which can
         be used with the results cache."""
@@ -965,7 +965,7 @@ class AnophelesSnpData(
     )
     def snp_allele_counts(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
@@ -1022,7 +1022,7 @@ class AnophelesSnpData(
     )
     def plot_snps(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: base_params.site_mask = DEFAULT,
@@ -1087,7 +1087,7 @@ class AnophelesSnpData(
     )
     def plot_snps_track(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: base_params.site_mask = DEFAULT,
@@ -1263,7 +1263,7 @@ class AnophelesSnpData(
     )
     def is_accessible(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         site_mask: base_params.site_mask = DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,

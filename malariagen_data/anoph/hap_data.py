@@ -188,7 +188,7 @@ class AnophelesHapData(
     )
     def haplotypes(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,

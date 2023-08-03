@@ -4,17 +4,30 @@ from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
 
 from typing_extensions import Annotated, TypeAlias
 
-from ..util import region_param_type, single_region_param_type
+from ..util import (
+    contig_param_type,
+    region_param_type,
+    single_contig_param_type,
+    single_region_param_type,
+)
 
 contig: TypeAlias = Annotated[
-    str,
+    single_contig_param_type,
     """
     Reference genome contig name. See the `contigs` property for valid contig
     names.
     """,
 ]
 
-single_region: TypeAlias = Annotated[
+contigs: TypeAlias = Annotated[
+    contig_param_type,
+    """
+    Reference genome contig name. See the `contigs` property for valid contig
+    names. Can also be a sequence (e.g., list) of contigs.
+    """,
+]
+
+region: TypeAlias = Annotated[
     single_region_param_type,
     """
     Region of the reference genome. Can be a contig name, region string
@@ -23,7 +36,7 @@ single_region: TypeAlias = Annotated[
     """,
 ]
 
-region: TypeAlias = Annotated[
+regions: TypeAlias = Annotated[
     region_param_type,
     """
     Region of the reference genome. Can be a contig name, region string
@@ -67,6 +80,20 @@ sample_indices: TypeAlias = Annotated[
     sample metadata. Either provide this parameter or sample_query, not
     both.
     """,
+]
+
+sample: TypeAlias = Annotated[
+    Union[str, int],
+    "Sample identifier or index within sample set.",
+]
+
+samples: TypeAlias = Annotated[
+    Union[
+        sample,
+        List[sample],
+        Tuple[sample, ...],
+    ],
+    "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
 ]
 
 
