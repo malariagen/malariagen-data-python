@@ -1,44 +1,44 @@
 name: notebooks
 on:
-    push:
-        branches:
-            - master
-    pull_request:
-        branches:
-            - master
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
-    notebooks:
-        strategy:
-            fail-fast: true
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout source
-              uses: actions/checkout@v3
+  notebooks:
+    strategy:
+      fail-fast: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
 
-            - name: Install poetry
-              run: pipx install poetry==1.4.2
+      - name: Install poetry
+        run: pipx install poetry==1.4.2
 
-            - name: Setup python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: '3.11'
-                  cache: 'poetry'
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.11"
+          cache: "poetry"
 
-            - name: Install dependencies
-              run: poetry install
+      - name: Install dependencies
+        run: poetry install
 
-            - name: Restore GCS cache
-              uses: actions/cache/restore@v3
-              with:
-                  path: gcs_cache
-                  key: gcs_cache_notebooks_20230425
+      - name: Restore GCS cache
+        uses: actions/cache/restore@v3
+        with:
+          path: gcs_cache
+          key: gcs_cache_tests_20230811
 
-            - name: Run notebooks
-              run: poetry run jupyter nbconvert --execute notebooks/* --inplace
+      - name: Run notebooks
+        run: poetry run jupyter nbconvert --execute notebooks/* --inplace
 
-            - name: Save GCS cache
-              uses: actions/cache/save@v3
-              if: always()
-              with:
-                  path: gcs_cache
-                  key: gcs_cache_notebooks_20230425
+      - name: Save GCS cache
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: gcs_cache
+          key: gcs_cache_tests_20230811
