@@ -2381,7 +2381,7 @@ class AnophelesDataResource(
         region: base_params.region,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
-        cohort_size: base_params.cohort_size,
+        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         n_jack: base_params.n_jack = 200,
         site_mask: base_params.site_mask = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
