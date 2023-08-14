@@ -714,6 +714,25 @@ class AnophelesSampleMetadata(AnophelesBase):
         params["cohorts_analysis"] = self._cohorts_analysis
         params["aim_analysis"] = self._aim_analysis
 
+    @check_types
+    @doc(
+        summary="Get the metadata for a specific sample and sample set.",
+    )
+    def lookup_sample(
+        self,
+        sample: base_params.sample,
+        sample_set: Optional[base_params.sample_set] = None,
+    ) -> pd.core.series.Series:
+        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
+        sample_rec = None
+        if isinstance(sample, str):
+            sample_rec = df_samples.loc[sample]
+        else:
+            assert isinstance(sample, int)
+            sample_rec = df_samples.iloc[sample]
+        return sample_rec
+
+    @check_types
     @doc(
         summary="""
             Plot a bar chart showing the number of samples available, grouped by

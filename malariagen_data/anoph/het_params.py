@@ -1,19 +1,9 @@
 """Parameters for functions related to heterozygosity and runs of homozygosity."""
 
-from typing import List, Mapping, Tuple, Union
+from typing import Tuple
 
 import pandas as pd
 from typing_extensions import Annotated, TypeAlias
-
-single_sample: TypeAlias = Annotated[
-    Union[str, int],
-    "Sample identifier or index within sample set.",
-]
-
-sample: TypeAlias = Annotated[
-    Union[single_sample, List[single_sample], Tuple[single_sample, ...]],
-    "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
-]
 
 window_size: TypeAlias = Annotated[
     int,
@@ -52,11 +42,6 @@ y_max: TypeAlias = Annotated[
 ]
 
 y_max_default: y_max = 0.03
-
-circle_kwargs: TypeAlias = Annotated[
-    Mapping,
-    "Passed through to bokeh circle() function.",
-]
 
 df_roh: TypeAlias = Annotated[
     pd.DataFrame,

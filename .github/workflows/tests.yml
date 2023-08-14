@@ -1,51 +1,51 @@
 name: tests
 on:
-    push:
-        branches:
-            - master
-    pull_request:
-        branches:
-            - master
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
-    tests:
-        strategy:
-            fail-fast: true
-            matrix:
-                python-version: ['3.8', '3.9', '3.10', '3.11']
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout source
-              uses: actions/checkout@v3
+  tests:
+    strategy:
+      fail-fast: true
+      matrix:
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v3
 
-            - name: Install poetry
-              run: pipx install poetry==1.4.2
+      - name: Install poetry
+        run: pipx install poetry==1.4.2
 
-            - name: Setup python
-              uses: actions/setup-python@v4
-              with:
-                  python-version: ${{ matrix.python-version }}
-                  cache: 'poetry'
+      - name: Setup python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: "poetry"
 
-            - name: Install dependencies
-              run: poetry install
+      - name: Install dependencies
+        run: poetry install
 
-            # Run a subset of tests first which run quickly without accessing
-            # any remote data in order to fail fast where possible.
-            - name: Run fast unit tests
-              run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
+      # Run a subset of tests first which run quickly without accessing
+      # any remote data in order to fail fast where possible.
+      - name: Run fast unit tests
+        run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
 
-            - name: Restore GCS cache
-              uses: actions/cache/restore@v3
-              with:
-                  path: gcs_cache
-                  key: gcs_cache_tests_20230420
+      - name: Restore GCS cache
+        uses: actions/cache/restore@v3
+        with:
+          path: gcs_cache
+          key: gcs_cache_tests_20230811
 
-            - name: Run full test suite
-              run: poetry run pytest -v tests
+      - name: Run full test suite
+        run: poetry run pytest -v tests
 
-            - name: Save GCS cache
-              uses: actions/cache/save@v3
-              if: always()
-              with:
-                  path: gcs_cache
-                  key: gcs_cache_tests_20230420
+      - name: Save GCS cache
+        uses: actions/cache/save@v3
+        if: always()
+        with:
+          path: gcs_cache
+          key: gcs_cache_tests_20230811

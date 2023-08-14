@@ -41,6 +41,7 @@ from .anoph import (
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
 from .anoph.base_params import DEFAULT
+from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
@@ -84,6 +85,7 @@ AA_CHANGE_QUERY = (
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesCnvData,
     AnophelesAimData,
     AnophelesHapData,
     AnophelesSnpData,
@@ -106,6 +108,7 @@ class AnophelesDataResource(
         site_filters_analysis: Optional[str],
         default_site_mask: Optional[str],
         default_phasing_analysis: Optional[str],
+        default_coverage_calls_analysis: Optional[str],
         bokeh_output_notebook: bool,
         results_cache: Optional[str],
         log,
@@ -143,6 +146,7 @@ class AnophelesDataResource(
             site_filters_analysis=site_filters_analysis,
             default_site_mask=default_site_mask,
             default_phasing_analysis=default_phasing_analysis,
+            default_coverage_calls_analysis=default_coverage_calls_analysis,
             results_cache=results_cache,
         )
 
@@ -797,7 +801,7 @@ class AnophelesDataResource(
         returns="IGV browser.",
     )
     def igv(
-        self, region: base_params.single_region, tracks: Optional[List] = None
+        self, region: base_params.region, tracks: Optional[List] = None
     ) -> igv_notebook.Browser:
         debug = self._log.debug
 
@@ -849,7 +853,7 @@ class AnophelesDataResource(
     )
     def view_alignments(
         self,
-        region: base_params.single_region,
+        region: base_params.region,
         sample: str,
         visibility_window: int = 20_000,
     ):
@@ -1076,20 +1080,6 @@ class AnophelesDataResource(
 
         return df_samples
 
-    def _lookup_sample(
-        self,
-        sample: het_params.single_sample,
-        sample_set: Optional[base_params.sample_set] = None,
-    ):
-        df_samples = self.sample_metadata(sample_sets=sample_set).set_index("sample_id")
-        sample_rec = None
-        if isinstance(sample, str):
-            sample_rec = df_samples.loc[sample]
-        else:
-            assert isinstance(sample, int)
-            sample_rec = df_samples.iloc[sample]
-        return sample_rec
-
     def _plot_heterozygosity_track(
         self,
         *,
@@ -1174,11 +1164,11 @@ class AnophelesDataResource(
     )
     def plot_heterozygosity_track(
         self,
-        sample: het_params.single_sample,
-        region: base_params.single_region,
+        sample: base_params.sample,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
-        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -1233,11 +1223,11 @@ class AnophelesDataResource(
     )
     def plot_heterozygosity(
         self,
-        sample: het_params.sample,
-        region: base_params.single_region,
+        sample: base_params.samples,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
-        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -1322,7 +1312,7 @@ class AnophelesDataResource(
 
     def _sample_count_het(
         self,
-        sample: het_params.single_sample,
+        sample: base_params.sample,
         region: Region,
         site_mask: base_params.site_mask,
         window_size: het_params.window_size,
@@ -1333,7 +1323,7 @@ class AnophelesDataResource(
         site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
-        sample_rec = self._lookup_sample(sample=sample, sample_set=sample_set)
+        sample_rec = self.lookup_sample(sample=sample, sample_set=sample_set)
         sample_id = sample_rec.name  # sample_id
         sample_set = sample_rec["sample_set"]
 
@@ -1375,8 +1365,8 @@ class AnophelesDataResource(
     )
     def roh_hmm(
         self,
-        sample: het_params.single_sample,
-        region: base_params.single_region,
+        sample: base_params.sample,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
@@ -1419,7 +1409,7 @@ class AnophelesDataResource(
     def plot_roh_track(
         self,
         df_roh: het_params.df_roh,
-        region: base_params.single_region,
+        region: base_params.region,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 80,
@@ -1510,8 +1500,8 @@ class AnophelesDataResource(
     )
     def plot_roh(
         self,
-        sample: het_params.single_sample,
-        region: base_params.single_region,
+        sample: base_params.sample,
+        region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
         site_mask: base_params.site_mask = DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
@@ -1524,7 +1514,7 @@ class AnophelesDataResource(
         heterozygosity_height: gplt_params.height = 170,
         roh_height: gplt_params.height = 40,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-        circle_kwargs: Optional[het_params.circle_kwargs] = None,
+        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
@@ -1630,7 +1620,7 @@ class AnophelesDataResource(
     )
     def pca(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         n_snps: pca_params.n_snps,
         thin_offset: pca_params.thin_offset = pca_params.thin_offset_default,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -2194,7 +2184,7 @@ class AnophelesDataResource(
         self,
         cohort: base_params.cohort,
         cohort_size: base_params.cohort_size,
-        region: base_params.region,
+        region: base_params.regions,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         site_mask: Optional[base_params.site_mask] = DEFAULT,
@@ -2297,7 +2287,7 @@ class AnophelesDataResource(
         self,
         cohorts: base_params.cohorts,
         cohort_size: base_params.cohort_size,
-        region: base_params.region,
+        region: base_params.regions,
         site_mask: base_params.site_mask = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -5530,7 +5520,7 @@ class AnophelesDataResource(
     )
     def plot_haplotype_clustering(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -5705,7 +5695,7 @@ class AnophelesDataResource(
     )
     def plot_haplotype_network(
         self,
-        region: base_params.region,
+        region: base_params.regions,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
