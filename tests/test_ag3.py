@@ -387,7 +387,7 @@ def test_snp_effects():
 
 
 def test_snp_allele_frequencies__dict_cohorts():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     cohorts = {
         "ke": "country == 'Kenya'",
         "bf_2012_col": "country == 'Burkina Faso' and year == 2012 and aim_species == 'coluzzii'",
@@ -437,7 +437,7 @@ def test_snp_allele_frequencies__dict_cohorts():
 
 
 def test_snp_allele_frequencies__str_cohorts__effects():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
@@ -473,7 +473,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
     expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
 
     assert isinstance(df, pd.DataFrame)
-    assert len(df) == 16526
+    assert len(df) == 16641
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == [
         "contig",
@@ -485,7 +485,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
 
 
 def test_snp_allele_frequencies__query():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     cohorts = "admin1_year"
     min_cohort_size = 10
     expected_columns = [
@@ -668,7 +668,7 @@ def _check_frequency(x):
     ],
 )
 def test_gene_cnv_frequencies(region, cohorts):
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     universal_fields = [
         "contig",
@@ -719,7 +719,7 @@ def test_gene_cnv_frequencies(region, cohorts):
 
 
 def test_gene_cnv_frequencies__query():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     region = "3L"
 
@@ -751,7 +751,7 @@ def test_gene_cnv_frequencies__query():
 
 
 def test_gene_cnv_frequencies__max_coverage_variance():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     region = "3L"
     df_genes = ag3.genome_features(region=region).query("type == 'gene'")
 
@@ -776,7 +776,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
         drop_invariant=False,
     )
     expected_frq_columns = [
-        "frq_GM-L_gcx2_2012",
+        "frq_GM-L_gcx2_2006",
         "frq_GM-M_gcx2_2012",
         "frq_GM-N_gcx1_2011",
     ]
@@ -807,7 +807,7 @@ def test_gene_cnv_frequencies__max_coverage_variance():
 
 
 def test_gene_cnv_frequencies__drop_invariant():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     region = "3L"
 
     expected_columns = [
@@ -839,7 +839,7 @@ def test_gene_cnv_frequencies__drop_invariant():
 
 
 def test_gene_cnv_frequencies__dup_samples():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     df_dup = ag3.gene_cnv_frequencies(
         region="3L",
         cohorts="admin1_year",
@@ -856,7 +856,7 @@ def test_gene_cnv_frequencies__dup_samples():
 def test_gene_cnv_frequencies__multi_contig_x():
     # https://github.com/malariagen/malariagen-data-python/issues/166
 
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     df1 = ag3.gene_cnv_frequencies(
         region="X",
@@ -882,7 +882,7 @@ def test_gene_cnv_frequencies__multi_contig_x():
 def test_gene_cnv_frequencies__missing_samples():
     # https://github.com/malariagen/malariagen-data-python/issues/183
 
-    ag3 = setup_ag3(cohorts_analysis="20211101", pre=True)
+    ag3 = setup_ag3(cohorts_analysis="20230516", pre=True)
 
     df = ag3.gene_cnv_frequencies(
         region="3L",
@@ -944,7 +944,7 @@ def test_locate_region(region_raw):
 
 
 def test_aa_allele_frequencies():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     expected_fields = [
         "transcript",
@@ -991,7 +991,7 @@ def _check_snp_allele_frequencies_advanced(
     nobs_mode="called",
     variant_query="max_af > 0.02",
 ):
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     ds = ag3.snp_allele_frequencies_advanced(
         transcript=transcript,
@@ -1147,7 +1147,7 @@ def _check_aa_allele_frequencies_advanced(
     nobs_mode="called",
     variant_query="max_af > 0.02",
 ):
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     ds = ag3.aa_allele_frequencies_advanced(
         transcript=transcript,
@@ -1399,7 +1399,7 @@ def _check_gene_cnv_frequencies_advanced(
     drop_invariant=True,
     max_coverage_variance=0.2,
 ):
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     ds = ag3.gene_cnv_frequencies_advanced(
         region=region,
@@ -1631,7 +1631,7 @@ def test_gene_cnv_frequencies_advanced__max_coverage_variance(max_coverage_varia
 def test_gene_cnv_frequencies_advanced__multi_contig_x():
     # https://github.com/malariagen/malariagen-data-python/issues/166
 
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
 
     ds1 = ag3.gene_cnv_frequencies_advanced(
         region="X",
@@ -1668,7 +1668,7 @@ def test_gene_cnv_frequencies_advanced__multi_contig_x():
 def test_gene_cnv_frequencies_advanced__missing_samples():
     # https://github.com/malariagen/malariagen-data-python/issues/183
 
-    ag3 = setup_ag3(cohorts_analysis="20211101", pre=True)
+    ag3 = setup_ag3(cohorts_analysis="20230516", pre=True)
 
     ds = ag3.gene_cnv_frequencies_advanced(
         region="3L",
@@ -1680,7 +1680,7 @@ def test_gene_cnv_frequencies_advanced__missing_samples():
 
 
 def test_gene_cnv_frequencies_advanced__dup_samples():
-    ag3 = setup_ag3(cohorts_analysis="20211101")
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     ds_dup = ag3.gene_cnv_frequencies_advanced(
         region="3L",
         area_by="admin1_iso",
