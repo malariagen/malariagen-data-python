@@ -1829,6 +1829,37 @@ def test_h1x_gwss():
     assert np.all(h1x >= 0)
 
 
+def test_average_fst():
+    ag3 = setup_ag3()
+    region = "3L"  # should be called contig
+    cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
+    cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    n_jack = 200
+    site_mask = "gamb_colu"
+    # random_seed = 42
+
+    fst_hudson, se_hudson = ag3.average_fst(
+        region=region,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        n_jack=n_jack,
+        site_mask=site_mask,
+    )
+
+    # check data
+    assert isinstance(fst_hudson, np.float64)
+    assert isinstance(se_hudson, np.float64)
+
+    # check dimensions
+    assert fst_hudson.ndim == se_hudson.ndim == 0
+
+    # check some values
+    assert_allclose(fst_hudson, 0.039983, rtol=1e5), fst_hudson
+    assert_allclose(se_hudson, 0.003327, rtol=1e5), se_hudson
+    assert np.all(fst_hudson <= 1)
+    assert np.all(fst_hudson >= -0.05)
+
+
 def test_fst_gwss():
     ag3 = setup_ag3()
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"

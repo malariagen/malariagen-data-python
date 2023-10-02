@@ -2373,7 +2373,7 @@ class AnophelesDataResource(
             Compute average Hudson's Fst between two specified cohorts.
         """,
         returns="""
-            A NumPy float of the Fst value.
+            A NumPy float of the Fst value and the standard error (SE).
         """,
     )
     def average_fst(
@@ -2382,15 +2382,15 @@ class AnophelesDataResource(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
-        n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
-        site_class: Optional[base_params.site_class] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = fst_params.min_cohort_size_default,
         max_cohort_size: Optional[
             base_params.max_cohort_size
         ] = fst_params.max_cohort_size_default,
+        n_jack: base_params.n_jack = 200,
+        site_mask: base_params.site_mask = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
     ):
         # calculate allele counts for each cohort
