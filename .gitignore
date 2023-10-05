@@ -16,3 +16,10 @@ tests/anoph/fixture/simulated
 # nbconvert outputs
 notebooks/*.nbconvert.ipynb
 notebooks/*.html
+
+# macOS
+.DS_Store
+
+# docs
+docs/build
+docs/source/generated
