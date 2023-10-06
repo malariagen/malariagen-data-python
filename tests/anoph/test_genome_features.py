@@ -1,6 +1,5 @@
-import random
-
 import bokeh.plotting
+import numpy as np
 import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -136,7 +135,7 @@ def test_plot_genes(fixture, api: AnophelesGenomeFeaturesData):
 def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
     for contig in fixture.contigs:
         df_transcripts = api.genome_features(region=contig).query("type == 'mRNA'")
-        transcript = random.choice(df_transcripts["ID"].values)
+        transcript = np.random.choice(df_transcripts["ID"].values)
         fig = api.plot_transcript(transcript=transcript, show=False)
         assert isinstance(fig, bokeh.plotting.figure)
 
