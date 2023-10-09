@@ -1,0 +1,53 @@
+name: tagged_docs
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+jobs:
+  tagged_docs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      # Remove the prefix "refs/*/" from $GITHUB_REF to get the tag
+      # Add var assignment to the $GITHUB_ENV file, so VERSION_TAG is available in later steps
+      - name: Set VERSION_TAG env var ⚙️
+        run: echo "VERSION_TAG=${GITHUB_REF#refs/*/}" >> $GITHUB_ENV
+
+      - name: Eyeball VERSION_TAG env var 👀
+        run: |
+          echo "$VERSION_TAG"
+          echo ${{ env.VERSION_TAG }}
+
+      - name: Check out VERSION_TAG 🛒
+        uses: actions/checkout@v3
+        with:
+          ref: ${{ env.VERSION_TAG }}
+
+      - name: Set up Python 🐍
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.11'
+
+      - name: Install Poetry 📜
+        run: pip install poetry
+
+      - name: Eyeball native environment 👀
+        run: python --version ; pip --version ; poetry --version ; pwd ; ls -la
+
+      - name: Install package dependencies 📜
+        run: poetry install
+
+      - name: Install docs dependencies 📜
+        run: poetry run pip install -r docs/requirements.txt
+
+      - name: Build HTML 🏗️
+        run: poetry run sphinx-build -b html docs/source docs/build/html
+
+      - name: Deploy HTML to GitHub Pages 🚀
+        uses: peaceiris/actions-gh-pages@v3.9.3
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./docs/build/html
+          destination_dir: ${{ env.VERSION_TAG }}
