@@ -1768,7 +1768,7 @@ def _compare_series_like(actual, expect):
 
 
 def test_h12_gwss():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     sample_query = "country == 'Ghana'"
     contig = "3L"
     analysis = "gamb_colu"
@@ -1798,7 +1798,7 @@ def test_h12_gwss():
 
 
 def test_h1x_gwss():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
     contig = "2L"
@@ -1830,7 +1830,7 @@ def test_h1x_gwss():
 
 
 def test_fst_gwss():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
     contig = "2L"
@@ -1862,7 +1862,7 @@ def test_fst_gwss():
 
 
 def test_ihs_gwss():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     sample_query = "country == 'Ghana'"
     contig = "3L"
     analysis = "gamb_colu"
@@ -1891,7 +1891,7 @@ def test_ihs_gwss():
 
 
 def test_xpehh_gwss():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "country == 'Ghana'"
     cohort2_query = "country == 'Angola'"
     contig = "3L"
@@ -1922,7 +1922,7 @@ def test_xpehh_gwss():
 
 
 def test_g123_gwss():
-    ag3 = setup_ag3()
+    ag3 = setup_ag3(cohorts_analysis="20230516")
     sample_query = "country == 'Ghana'"
     contig = "3L"
     site_mask = "gamb_colu"
