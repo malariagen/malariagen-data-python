@@ -774,8 +774,8 @@ def test_h12_gwss():
 
 def test_h1x_gwss():
     af1 = setup_af1()
-    cohort1_query = "cohort_admin2_year == 'GH-NP_Tolon-Kumbungu_fune_2017'"
-    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu-Tatale_fune_2017'"
+    cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"
+    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu_fune_2017'"
     contig = "2RL"
     window_size = 2000
 
@@ -799,15 +799,15 @@ def test_h1x_gwss():
 
     # check some values
     assert_allclose(x[0], 87606.705, rtol=1e-5), x[0]
-    assert_allclose(h1x[0], 0.007143, atol=1e-5), h1x[0]
+    assert_allclose(h1x[0], 0.008621, atol=1e-5), h1x[0]
     assert np.all(h1x <= 1)
     assert np.all(h1x >= 0)
 
 
 def test_fst_gwss():
     af1 = setup_af1()
-    cohort1_query = "cohort_admin2_year == 'GH-NP_Tolon-Kumbungu_fune_2017'"
-    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu-Tatale_fune_2017'"
+    cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"
+    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu_fune_2017'"
     contig = "2RL"
     window_size = 10_000
 
@@ -831,9 +831,9 @@ def test_fst_gwss():
 
     # check some values
     assert_allclose(x[0], 87935.3098, rtol=1e-5), x[0]
-    assert_allclose(fst[0], -0.102647, rtol=1e-5), fst[0]
-    assert np.all(fst <= 1)
-    assert np.all(np.logical_and(fst >= -0.4, fst <= 1))
+    assert_allclose(fst[0], -0.105572, rtol=1e-5), fst[0]
+    assert np.all(fst <= 1), np.max(fst)
+    assert np.all(np.logical_and(fst >= -0.5, fst <= 1)), (np.min(fst), np.max(fst))
 
 
 def test_g123_gwss():
