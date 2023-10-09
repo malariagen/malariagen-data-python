@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.client\_location
+=========================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. autoproperty:: Af1.client_location

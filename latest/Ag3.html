@@ -1,0 +1,779 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>Ag3 API &#8212; malariagen_data API  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="_static/styles/theme.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+<link href="_static/styles/bootstrap.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+<link href="_static/styles/pydata-sphinx-theme.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+
+  
+  <link href="_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=ac02cc09edc035673794" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=362ab14a" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=ac02cc09edc035673794" />
+<link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=ac02cc09edc035673794" />
+  <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=ac02cc09edc035673794"></script>
+
+    <script src="_static/documentation_options.js?v=8a448e45"></script>
+    <script src="_static/doctools.js?v=888ff710"></script>
+    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'Ag3';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.14.1';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://malariagen.github.io/malariagen-data-python/latest/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'dev';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="icon" href="_static/favicon.ico"/>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="malariagen_data.ag3.Ag3.client_location" href="generated/malariagen_data.ag3.Ag3.client_location.html" />
+    <link rel="prev" title="malariagen_data API" href="index.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+  
+
+<a class="navbar-brand logo" href="index.html">
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="_static/logo.svg" class="logo__image only-light" alt="Logo image"/>
+    <script>document.write(`<img src="_static/logo.svg" class="logo__image only-dark" alt="Logo image"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="versionswitcherbutton" type="button" role="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="listbox" aria-controls="versionswitcherlist" aria-label="Version switcher list">
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="versionswitcherlist" class="version-switcher__menu dropdown-menu list-group-flush py-0" role="listbox" aria-labelledby="versionswitcherbutton">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Ag3 API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="Af1.html">
+                        Af1 API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="Amin1.html">
+                        Amin1 API
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="versionswitcherbutton" type="button" role="button" class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle" data-bs-toggle="dropdown" aria-haspopup="listbox" aria-controls="versionswitcherlist" aria-label="Version switcher list">
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="versionswitcherlist" class="version-switcher__menu dropdown-menu list-group-flush py-0" role="listbox" aria-labelledby="versionswitcherbutton">
+    <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item"><nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="#">
+                        Ag3 API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="Af1.html">
+                        Af1 API
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="Amin1.html">
+                        Amin1 API
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item"><nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.client_location.html">malariagen_data.ag3.Ag3.client_location</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.config.html">malariagen_data.ag3.Ag3.config</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.lookup_release.html">malariagen_data.ag3.Ag3.lookup_release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_file.html">malariagen_data.ag3.Ag3.open_file</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.read_files.html">malariagen_data.ag3.Ag3.read_files</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.releases.html">malariagen_data.ag3.Ag3.releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.results_cache_get.html">malariagen_data.ag3.Ag3.results_cache_get</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.results_cache_set.html">malariagen_data.ag3.Ag3.results_cache_set</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.sample_sets.html">malariagen_data.ag3.Ag3.sample_sets</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.add_extra_metadata.html">malariagen_data.ag3.Ag3.add_extra_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.aim_metadata.html">malariagen_data.ag3.Ag3.aim_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.clear_extra_metadata.html">malariagen_data.ag3.Ag3.clear_extra_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cohorts_metadata.html">malariagen_data.ag3.Ag3.cohorts_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.count_samples.html">malariagen_data.ag3.Ag3.count_samples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.general_metadata.html">malariagen_data.ag3.Ag3.general_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.lookup_sample.html">malariagen_data.ag3.Ag3.lookup_sample</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_bar.html">malariagen_data.ag3.Ag3.plot_samples_bar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_interactive_map.html">malariagen_data.ag3.Ag3.plot_samples_interactive_map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.sample_metadata.html">malariagen_data.ag3.Ag3.sample_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.wgs_data_catalog.html">malariagen_data.ag3.Ag3.wgs_data_catalog</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.is_accessible.html">malariagen_data.ag3.Ag3.is_accessible</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_site_annotations.html">malariagen_data.ag3.Ag3.open_site_annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_site_filters.html">malariagen_data.ag3.Ag3.open_site_filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_snp_genotypes.html">malariagen_data.ag3.Ag3.open_snp_genotypes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_snp_sites.html">malariagen_data.ag3.Ag3.open_snp_sites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_snps.html">malariagen_data.ag3.Ag3.plot_snps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_snps_track.html">malariagen_data.ag3.Ag3.plot_snps_track</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.site_annotations.html">malariagen_data.ag3.Ag3.site_annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.site_filters.html">malariagen_data.ag3.Ag3.site_filters</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.site_mask_ids.html">malariagen_data.ag3.Ag3.site_mask_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_allele_counts.html">malariagen_data.ag3.Ag3.snp_allele_counts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_calls.html">malariagen_data.ag3.Ag3.snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_dataset.html">malariagen_data.ag3.Ag3.snp_dataset</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_genotypes.html">malariagen_data.ag3.Ag3.snp_genotypes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_sites.html">malariagen_data.ag3.Ag3.snp_sites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_variants.html">malariagen_data.ag3.Ag3.snp_variants</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.haplotypes.html">malariagen_data.ag3.Ag3.haplotypes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_haplotypes.html">malariagen_data.ag3.Ag3.open_haplotypes</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_haplotype_sites.html">malariagen_data.ag3.Ag3.open_haplotype_sites</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.phasing_analysis_ids.html">malariagen_data.ag3.Ag3.phasing_analysis_ids</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.coverage_calls_analysis_ids.html">malariagen_data.ag3.Ag3.coverage_calls_analysis_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cnv_coverage_calls.html">malariagen_data.ag3.Ag3.cnv_coverage_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cnv_discordant_read_calls.html">malariagen_data.ag3.Ag3.cnv_discordant_read_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cnv_hmm.html">malariagen_data.ag3.Ag3.cnv_hmm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_cnv_coverage_calls.html">malariagen_data.ag3.Ag3.open_cnv_coverage_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_cnv_discordant_read_calls.html">malariagen_data.ag3.Ag3.open_cnv_discordant_read_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_cnv_hmm.html">malariagen_data.ag3.Ag3.open_cnv_hmm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage.html">malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage_track.html">malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage_track</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap.html">malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap_track.html">malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap_track</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page">Ag3 API</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="ag3-api">
+<h1>Ag3 API<a class="headerlink" href="#ag3-api" title="Link to this heading">#</a></h1>
+<p>This page provides a curated list of functions and properties available in the malariagen_data API relating to <em>Anopheles gambiae</em> data.</p>
+<section id="basic-data-access">
+<h2>Basic data access<a class="headerlink" href="#basic-data-access" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.client_location.html#malariagen_data.ag3.Ag3.client_location" title="malariagen_data.ag3.Ag3.client_location"><code class="xref py py-obj docutils literal notranslate"><span class="pre">client_location</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.config.html#malariagen_data.ag3.Ag3.config" title="malariagen_data.ag3.Ag3.config"><code class="xref py py-obj docutils literal notranslate"><span class="pre">config</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.lookup_release.html#malariagen_data.ag3.Ag3.lookup_release" title="malariagen_data.ag3.Ag3.lookup_release"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup_release</span></code></a>(sample_set)</p></td>
+<td><p>Find which release a sample set was included in.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_file.html#malariagen_data.ag3.Ag3.open_file" title="malariagen_data.ag3.Ag3.open_file"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_file</span></code></a>(path)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.read_files.html#malariagen_data.ag3.Ag3.read_files" title="malariagen_data.ag3.Ag3.read_files"><code class="xref py py-obj docutils literal notranslate"><span class="pre">read_files</span></code></a>(paths[, on_error])</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.releases.html#malariagen_data.ag3.Ag3.releases" title="malariagen_data.ag3.Ag3.releases"><code class="xref py py-obj docutils literal notranslate"><span class="pre">releases</span></code></a></p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.results_cache_get.html#malariagen_data.ag3.Ag3.results_cache_get" title="malariagen_data.ag3.Ag3.results_cache_get"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results_cache_get</span></code></a>(*, name, params)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.results_cache_set.html#malariagen_data.ag3.Ag3.results_cache_set" title="malariagen_data.ag3.Ag3.results_cache_set"><code class="xref py py-obj docutils literal notranslate"><span class="pre">results_cache_set</span></code></a>(*, name, params, results)</p></td>
+<td><p></p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.sample_sets.html#malariagen_data.ag3.Ag3.sample_sets" title="malariagen_data.ag3.Ag3.sample_sets"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_sets</span></code></a>([release])</p></td>
+<td><p>Access a dataframe of sample sets.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="sample-metadata-access">
+<h2>Sample metadata access<a class="headerlink" href="#sample-metadata-access" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.add_extra_metadata.html#malariagen_data.ag3.Ag3.add_extra_metadata" title="malariagen_data.ag3.Ag3.add_extra_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">add_extra_metadata</span></code></a>(data[, on])</p></td>
+<td><p>Add extra sample metadata, e.g., including additional columns which you would like to use to query and group samples.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.aim_metadata.html#malariagen_data.ag3.Ag3.aim_metadata" title="malariagen_data.ag3.Ag3.aim_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">aim_metadata</span></code></a>([sample_sets])</p></td>
+<td><p>Access ancestry-informative marker (AIM) metadata for one or more sample sets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.clear_extra_metadata.html#malariagen_data.ag3.Ag3.clear_extra_metadata" title="malariagen_data.ag3.Ag3.clear_extra_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_extra_metadata</span></code></a>()</p></td>
+<td><p>Clear any extra metadata previously added.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cohorts_metadata.html#malariagen_data.ag3.Ag3.cohorts_metadata" title="malariagen_data.ag3.Ag3.cohorts_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cohorts_metadata</span></code></a>([sample_sets])</p></td>
+<td><p>Access cohort membership metadata for one or more sample sets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.count_samples.html#malariagen_data.ag3.Ag3.count_samples" title="malariagen_data.ag3.Ag3.count_samples"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count_samples</span></code></a>([sample_sets, sample_query, ...])</p></td>
+<td><p>Create a pivot table showing numbers of samples available by space, time and taxon.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.general_metadata.html#malariagen_data.ag3.Ag3.general_metadata" title="malariagen_data.ag3.Ag3.general_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">general_metadata</span></code></a>([sample_sets])</p></td>
+<td><p>Read general sample metadata for one or more sample sets into a pandas DataFrame.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.lookup_sample.html#malariagen_data.ag3.Ag3.lookup_sample" title="malariagen_data.ag3.Ag3.lookup_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup_sample</span></code></a>(sample[, sample_set])</p></td>
+<td><p>Get the metadata for a specific sample and sample set.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_bar.html#malariagen_data.ag3.Ag3.plot_samples_bar" title="malariagen_data.ag3.Ag3.plot_samples_bar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_samples_bar</span></code></a>(x[, color, sort, ...])</p></td>
+<td><p>Plot a bar chart showing the number of samples available, grouped by some variable such as country or year.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_interactive_map.html#malariagen_data.ag3.Ag3.plot_samples_interactive_map" title="malariagen_data.ag3.Ag3.plot_samples_interactive_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_samples_interactive_map</span></code></a>([sample_sets, ...])</p></td>
+<td><p>Plot an interactive map showing sampling locations using ipyleaflet.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.sample_metadata.html#malariagen_data.ag3.Ag3.sample_metadata" title="malariagen_data.ag3.Ag3.sample_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_metadata</span></code></a>([sample_sets, sample_query, ...])</p></td>
+<td><p>Access sample metadata for one or more sample sets.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.wgs_data_catalog.html#malariagen_data.ag3.Ag3.wgs_data_catalog" title="malariagen_data.ag3.Ag3.wgs_data_catalog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wgs_data_catalog</span></code></a>(sample_set)</p></td>
+<td><p>Load a data catalog providing URLs for downloading BAM, VCF and Zarr files for samples in a given sample set.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="snp-data-access">
+<h2>SNP data access<a class="headerlink" href="#snp-data-access" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.is_accessible.html#malariagen_data.ag3.Ag3.is_accessible" title="malariagen_data.ag3.Ag3.is_accessible"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_accessible</span></code></a>(region[, site_mask, ...])</p></td>
+<td><p>Compute genome accessibility array.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_site_annotations.html#malariagen_data.ag3.Ag3.open_site_annotations" title="malariagen_data.ag3.Ag3.open_site_annotations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_site_annotations</span></code></a>()</p></td>
+<td><p>Open site annotations zarr.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_site_filters.html#malariagen_data.ag3.Ag3.open_site_filters" title="malariagen_data.ag3.Ag3.open_site_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_site_filters</span></code></a>(mask)</p></td>
+<td><p>Open site filters zarr.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_snp_genotypes.html#malariagen_data.ag3.Ag3.open_snp_genotypes" title="malariagen_data.ag3.Ag3.open_snp_genotypes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_snp_genotypes</span></code></a>(sample_set)</p></td>
+<td><p>Open SNP genotypes zarr for a given sample set.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_snp_sites.html#malariagen_data.ag3.Ag3.open_snp_sites" title="malariagen_data.ag3.Ag3.open_snp_sites"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_snp_sites</span></code></a>()</p></td>
+<td><p>Open SNP sites zarr.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_snps.html#malariagen_data.ag3.Ag3.plot_snps" title="malariagen_data.ag3.Ag3.plot_snps"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_snps</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Plot SNPs in a given genome region.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_snps_track.html#malariagen_data.ag3.Ag3.plot_snps_track" title="malariagen_data.ag3.Ag3.plot_snps_track"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_snps_track</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Plot SNPs in a given genome region.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.site_annotations.html#malariagen_data.ag3.Ag3.site_annotations" title="malariagen_data.ag3.Ag3.site_annotations"><code class="xref py py-obj docutils literal notranslate"><span class="pre">site_annotations</span></code></a>(region[, site_mask, ...])</p></td>
+<td><p>Load site annotations.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.site_filters.html#malariagen_data.ag3.Ag3.site_filters" title="malariagen_data.ag3.Ag3.site_filters"><code class="xref py py-obj docutils literal notranslate"><span class="pre">site_filters</span></code></a>(region, mask[, field, ...])</p></td>
+<td><p>Access SNP site filters.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.site_mask_ids.html#malariagen_data.ag3.Ag3.site_mask_ids" title="malariagen_data.ag3.Ag3.site_mask_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">site_mask_ids</span></code></a></p></td>
+<td><p>Identifiers for the different site masks that are available.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_allele_counts.html#malariagen_data.ag3.Ag3.snp_allele_counts" title="malariagen_data.ag3.Ag3.snp_allele_counts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_allele_counts</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Compute SNP allele counts.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_calls.html#malariagen_data.ag3.Ag3.snp_calls" title="malariagen_data.ag3.Ag3.snp_calls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_calls</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Access SNP sites, site filters and genotype calls.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_dataset.html#malariagen_data.ag3.Ag3.snp_dataset" title="malariagen_data.ag3.Ag3.snp_dataset"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_dataset</span></code></a>(*args, **kwargs)</p></td>
+<td><p>Deprecated, this method has been renamed to snp_calls().</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_genotypes.html#malariagen_data.ag3.Ag3.snp_genotypes" title="malariagen_data.ag3.Ag3.snp_genotypes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_genotypes</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Access SNP genotypes and associated data.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_sites.html#malariagen_data.ag3.Ag3.snp_sites" title="malariagen_data.ag3.Ag3.snp_sites"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_sites</span></code></a>(region, field[, site_mask, ...])</p></td>
+<td><p>Access SNP site data (positions or alleles).</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.snp_variants.html#malariagen_data.ag3.Ag3.snp_variants" title="malariagen_data.ag3.Ag3.snp_variants"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_variants</span></code></a>(region[, site_mask, ...])</p></td>
+<td><p>Access SNP sites and site filters.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="haplotype-data-access">
+<h2>Haplotype data access<a class="headerlink" href="#haplotype-data-access" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.haplotypes.html#malariagen_data.ag3.Ag3.haplotypes" title="malariagen_data.ag3.Ag3.haplotypes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">haplotypes</span></code></a>(region[, analysis, sample_sets, ...])</p></td>
+<td><p>Access haplotype data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_haplotypes.html#malariagen_data.ag3.Ag3.open_haplotypes" title="malariagen_data.ag3.Ag3.open_haplotypes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_haplotypes</span></code></a>(sample_set[, analysis])</p></td>
+<td><p>Open haplotypes zarr.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_haplotype_sites.html#malariagen_data.ag3.Ag3.open_haplotype_sites" title="malariagen_data.ag3.Ag3.open_haplotype_sites"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_haplotype_sites</span></code></a>([analysis])</p></td>
+<td><p>Open haplotype sites zarr.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.phasing_analysis_ids.html#malariagen_data.ag3.Ag3.phasing_analysis_ids" title="malariagen_data.ag3.Ag3.phasing_analysis_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phasing_analysis_ids</span></code></a></p></td>
+<td><p>Identifiers for the different phasing analyses that are available.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="cnv-data-access">
+<h2>CNV data access<a class="headerlink" href="#cnv-data-access" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.coverage_calls_analysis_ids.html#malariagen_data.ag3.Ag3.coverage_calls_analysis_ids" title="malariagen_data.ag3.Ag3.coverage_calls_analysis_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coverage_calls_analysis_ids</span></code></a></p></td>
+<td><p>Identifiers for the different coverage calls analyses that are available.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cnv_coverage_calls.html#malariagen_data.ag3.Ag3.cnv_coverage_calls" title="malariagen_data.ag3.Ag3.cnv_coverage_calls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cnv_coverage_calls</span></code></a>(region, sample_set, analysis)</p></td>
+<td><p>Access CNV HMM data from genome-wide CNV discovery and filtering.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cnv_discordant_read_calls.html#malariagen_data.ag3.Ag3.cnv_discordant_read_calls" title="malariagen_data.ag3.Ag3.cnv_discordant_read_calls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cnv_discordant_read_calls</span></code></a>(contig[, ...])</p></td>
+<td><p>Access CNV discordant read calls data.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cnv_hmm.html#malariagen_data.ag3.Ag3.cnv_hmm" title="malariagen_data.ag3.Ag3.cnv_hmm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cnv_hmm</span></code></a>(region[, sample_sets, sample_query, ...])</p></td>
+<td><p>Access CNV HMM data from CNV calling.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_cnv_coverage_calls.html#malariagen_data.ag3.Ag3.open_cnv_coverage_calls" title="malariagen_data.ag3.Ag3.open_cnv_coverage_calls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_cnv_coverage_calls</span></code></a>(sample_set, analysis)</p></td>
+<td><p>Open CNV coverage calls zarr.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_cnv_discordant_read_calls.html#malariagen_data.ag3.Ag3.open_cnv_discordant_read_calls" title="malariagen_data.ag3.Ag3.open_cnv_discordant_read_calls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_cnv_discordant_read_calls</span></code></a>(sample_set)</p></td>
+<td><p>Open CNV discordant read calls zarr.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.open_cnv_hmm.html#malariagen_data.ag3.Ag3.open_cnv_hmm" title="malariagen_data.ag3.Ag3.open_cnv_hmm"><code class="xref py py-obj docutils literal notranslate"><span class="pre">open_cnv_hmm</span></code></a>(sample_set)</p></td>
+<td><p>Open CNV HMM zarr.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage.html#malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage" title="malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cnv_hmm_coverage</span></code></a>(sample, region[, ...])</p></td>
+<td><p>Plot CNV HMM data for a single sample, together with a genes track, using bokeh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage_track.html#malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage_track" title="malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage_track"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cnv_hmm_coverage_track</span></code></a>(sample, region)</p></td>
+<td><p>Plot CNV HMM data for a single sample, using bokeh.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap.html#malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap" title="malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cnv_hmm_heatmap</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Plot CNV HMM data for multiple samples as a heatmap, with a genes track, using bokeh.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap_track.html#malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap_track" title="malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap_track"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_cnv_hmm_heatmap_track</span></code></a>(region[, ...])</p></td>
+<td><p>Plot CNV HMM data for multiple samples as a heatmap, using bokeh.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  <!-- Previous / next buttons -->
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="index.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">malariagen_data API</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="generated/malariagen_data.ag3.Ag3.client_location.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">malariagen_data.ag3.Ag3.client_location</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#basic-data-access">Basic data access</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#sample-metadata-access">Sample metadata access</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#snp-data-access">SNP data access</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#haplotype-data-access">Haplotype data access</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#cnv-data-access">CNV data access</a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+  <div class="tocsection sourcelink">
+    <a href="_sources/Ag3.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="_static/scripts/bootstrap.js?digest=ac02cc09edc035673794"></script>
+<script src="_static/scripts/pydata-sphinx-theme.js?digest=ac02cc09edc035673794"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+  <p class="copyright">
+    
+      © Copyright 2023, MalariaGEN.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item"><p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.1.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

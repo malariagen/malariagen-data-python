@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.client\_location
+=========================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. autoproperty:: Ag3.client_location

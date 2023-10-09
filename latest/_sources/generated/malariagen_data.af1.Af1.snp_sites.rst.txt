@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.snp\_sites
+===================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.snp_sites

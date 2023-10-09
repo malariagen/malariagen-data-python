@@ -1,0 +1,12 @@
+[
+    {
+        "name": "7.13.0",
+        "version": "v7.13.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v7.13.0/",
+        "preferred": true
+    },
+    {
+        "version": "dev",
+        "url": "https:///malariagen.github.io/malariagen-data-python/latest/"
+    }
+]

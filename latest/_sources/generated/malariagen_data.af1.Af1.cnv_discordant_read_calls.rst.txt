@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.cnv\_discordant\_read\_calls
+=====================================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.cnv_discordant_read_calls
