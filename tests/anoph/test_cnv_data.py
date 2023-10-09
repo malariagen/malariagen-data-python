@@ -559,7 +559,7 @@ def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
     region = fixture.random_contig()
     df_samples = api.sample_metadata(sample_sets=sample_set)
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = random.choice(all_sample_ids)
+    sample_id = np.random.choice(all_sample_ids)
 
     fig = api.plot_cnv_hmm_coverage_track(
         sample=sample_id,
@@ -612,7 +612,7 @@ def test_plot_cnv_hmm_coverage(fixture, api: AnophelesCnvData):
     region = fixture.random_contig()
     df_samples = api.sample_metadata(sample_sets=sample_set)
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = random.choice(all_sample_ids)
+    sample_id = np.random.choice(all_sample_ids)
 
     fig = api.plot_cnv_hmm_coverage(
         sample=sample_id,
