@@ -757,7 +757,7 @@ def test_lookup_sample(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = random.choice(all_sample_ids)
+    sample_id = np.random.choice(all_sample_ids)
 
     # Check we get the same sample_id back.
     sample_rec_by_sample_id = api.lookup_sample(sample_id)
