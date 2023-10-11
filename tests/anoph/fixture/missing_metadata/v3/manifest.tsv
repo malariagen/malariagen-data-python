@@ -1,3 +1,3 @@
-sample_set	sample_count
-AG1000G-AO	81
-AG1000G-BF-A	181
+sample_set	sample_count	study_id	study_url
+AG1000G-AO	81	AG1000G-AO	https://www.malariagen.net/network/where-we-work/AG1000G-AO
+AG1000G-BF-A	181	AG1000G-BF-1	https://www.malariagen.net/network/where-we-work/AG1000G-BF-1
