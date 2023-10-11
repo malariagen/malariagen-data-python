@@ -91,6 +91,8 @@ class AnophelesBase:
         self._cache_releases: Optional[Tuple[str, ...]] = None
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
+        self._cache_sample_set_to_study: Optional[Dict[str, str]] = None
+        self._cache_sample_set_to_study_url: Optional[Dict[str, str]] = None
         self._cache_files: Dict[str, bytes] = dict()
 
         # Set up results cache directory path.
@@ -263,7 +265,6 @@ class AnophelesBase:
         # Read the manifest into a pandas dataframe.
         with self.open_file(manifest_path) as f:
             df = pd.read_csv(f, sep="\t", na_values="")
-
         # Add a "release" column for convenience.
         df["release"] = single_release
         return df
@@ -325,6 +326,21 @@ class AnophelesBase:
             return self._cache_sample_set_to_release[sample_set]
         except KeyError:
             raise ValueError(f"No release found for sample set {sample_set!r}")
+
+    @check_types
+    @doc(
+        summary="Find information about the study to which a sample set belongs to.",
+    )
+    def lookup_study(self, sample_set: base_params.sample_set):
+        if self._cache_sample_set_to_study is None:
+            df_sample_sets = self.sample_sets().set_index("sample_set")
+            self._cache_sample_set_to_study = df_sample_sets["study_id"].to_dict()
+        try:
+            return self._cache_sample_set_to_study[sample_set]
+        except KeyError:
+            raise ValueError(
+                f"No study information found for sample set {sample_set!r}"
+            )
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
