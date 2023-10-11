@@ -116,6 +116,7 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
 
     # Call function to be tested.
     df = api.general_metadata(sample_sets=sample_set)
+
     # Check output.
     validate_metadata(df, general_metadata_expected_columns())
     expected_len = sample_count.loc[sample_set]
