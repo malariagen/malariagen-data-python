@@ -114,7 +114,6 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
 
     # Call function to be tested.
     df = api.general_metadata(sample_sets=sample_set)
-
     # Check output.
     validate_metadata(df, general_metadata_expected_columns())
     expected_len = sample_count.loc[sample_set]
@@ -799,3 +798,19 @@ def test_lookup_sample(fixture, api):
     assert sample_rec_by_sample_loc_set.name == sample_id
     assert sample_rec_by_sample_loc_set["sample_set"] == sample_set
     assert sorted(list(sample_rec_by_sample_loc_set.index)) == sorted_expected_fields
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_lookup_study(fixture, api):
+    # Set up test.
+    df_sample_sets = api.sample_sets()
+    all_sample_sets = df_sample_sets["sample_set"].values
+    sample_set = np.random.choice(all_sample_sets)
+
+    study_rec_by_sample_set = api.lookup_study(sample_set)
+    df_sample_set = df_sample_sets.set_index("sample_set").loc[sample_set]
+    # Check we get the same study_id back.
+    assert df_sample_set["study_id"] == study_rec_by_sample_set
+
+    # Check we get a study_id string.
+    assert isinstance(study_rec_by_sample_set, str)
