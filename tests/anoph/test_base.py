@@ -85,9 +85,17 @@ def test_sample_sets_default(fixture, api):
     )
     expected.reset_index(inplace=True, drop=True)
     assert isinstance(df, pd.DataFrame)
-    assert df.columns.tolist() == ["sample_set", "sample_count", "release"]
+    assert df.columns.tolist() == [
+        "sample_set",
+        "sample_count",
+        "study_id",
+        "study_url",
+        "release",
+    ]
     assert len(df) > 0
-    assert_frame_equal(df[["sample_set", "sample_count"]], expected)
+    assert_frame_equal(
+        df[["sample_set", "sample_count", "study_id", "study_url"]], expected
+    )
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -96,10 +104,18 @@ def test_sample_sets_release(fixture, api):
     for release in releases:
         df_ss = api.sample_sets(release=release)
         assert isinstance(df_ss, pd.DataFrame)
-        assert df_ss.columns.tolist() == ["sample_set", "sample_count", "release"]
+        assert df_ss.columns.tolist() == [
+            "sample_set",
+            "sample_count",
+            "study_id",
+            "study_url",
+            "release",
+        ]
         assert len(df_ss) > 0
         expected = fixture.release_manifests[release]
-        assert_frame_equal(df_ss[["sample_set", "sample_count"]], expected)
+        assert_frame_equal(
+            df_ss[["sample_set", "sample_count", "study_id", "study_url"]], expected
+        )
         assert (df_ss["release"] == release).all()
 
     with pytest.raises(TypeError):
