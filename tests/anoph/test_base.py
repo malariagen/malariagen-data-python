@@ -179,8 +179,12 @@ def test_lookup_study(fixture, api):
 
     study_rec_by_sample_set = api.lookup_study(sample_set)
     df_sample_set = df_sample_sets.set_index("sample_set").loc[sample_set]
+
     # Check we get the same study_id back.
     assert df_sample_set["study_id"] == study_rec_by_sample_set
 
     # Check we get a study_id string.
     assert isinstance(study_rec_by_sample_set, str)
+
+    with pytest.raises(ValueError):
+        api.lookup_study("foobar")
