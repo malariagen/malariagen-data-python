@@ -1831,14 +1831,13 @@ def test_h1x_gwss():
 
 def test_average_fst():
     ag3 = setup_ag3()
-    region = "3L"  # should be called contig
+    region = "3L"
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
     n_jack = 200
     site_mask = "gamb_colu"
-    # random_seed = 42
 
-    fst_hudson, se_hudson = ag3.average_fst(
+    fst_hudson, se_hudson = ag3.pairwise_fst(
         region=region,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
@@ -1858,6 +1857,72 @@ def test_average_fst():
     assert_allclose(se_hudson, 0.003327, rtol=1e5), se_hudson
     assert np.all(fst_hudson <= 1)
     assert np.all(fst_hudson >= -0.05)
+
+
+def test_pairwise_average_fst():
+    ag3 = setup_ag3()
+    region = "3L"
+    cohorts = "cohorts_admin1_year"
+    sample_query = "country == 'Mali' and taxon == 'gambiae'"
+    n_jack = 200
+    site_mask = "gamb_colu"
+
+    test_df = pd.DataFrame(
+        {
+            "cohort1_query": [
+                "ML-2_gamb_2004",
+                "ML-2_gamb_2014",
+                "ML-2_gamb_2014",
+                "ML-3_gamb_2012",
+                "ML-3_gamb_2012",
+                "ML-3_gamb_2012",
+            ],
+            "cohort2_query": [
+                "ML-2_gamb_2004",
+                "ML-2_gamb_2004",
+                "ML-2_gamb_2014",
+                "ML-2_gamb_2004",
+                "ML-2_gamb_2014",
+                "ML-3_gamb_2012",
+            ],
+            "Fst": [
+                -0.05305554559810363,
+                0.01033833066046641,
+                -0.0530156630138291,
+                0.010615727653386375,
+                -0.00018451990702906661,
+                -0.05300903322895467,
+            ],
+            "SE": [
+                1.2398969283554441e-05,
+                0.000964603651694087,
+                1.1740037365959329e-05,
+                0.0010044504116367143,
+                0.00031950050471179716,
+                1.2908421762356301e-05,
+            ],
+        }
+    )
+
+    fst_df = ag3.average_pairwise_fst(
+        region=region,
+        cohorts=cohorts,
+        sample_query=sample_query,
+        n_jack=n_jack,
+        site_mask=site_mask,
+    )
+
+    # check data
+    assert isinstance(fst_df, pd.core.frame.DataFrame)
+
+    # check dimensions
+    assert fst_df.ndim == 2
+    assert fst_df["Fst"].shape == fst_df["SE"].shape
+
+    # check some values
+    pd.testing.assert_frame_equal(fst_df, test_df, rtol=1e5)
+    assert np.all(fst_df["Fst"] <= 1)
+    assert np.all(fst_df["Fst"] >= -0.05)
 
 
 def test_fst_gwss():
