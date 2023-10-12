@@ -105,4 +105,8 @@ cached locally in the "gcs_cache" folder.
 ## Release process
 
 Create a new GitHub release. That's it. This will automatically
-trigger publishing of a new release to PyPI via GitHub actions.
+trigger publishing of a new release to PyPI and a new version of
+the documentation via GitHub Actions.
+
+The version switcher for the documentation can then be updated by
+modifying the `docs/source/_static/switcher.json` file accordingly.

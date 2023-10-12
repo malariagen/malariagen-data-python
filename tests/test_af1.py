@@ -743,7 +743,7 @@ def _compare_series_like(actual, expect):
 
 
 def test_h12_gwss():
-    af1 = setup_af1()
+    af1 = setup_af1(cohorts_analysis="20230823")
     sample_query = "country == 'Ghana'"
     contig = "3RL"
     analysis = "funestus"
@@ -773,7 +773,7 @@ def test_h12_gwss():
 
 
 def test_h1x_gwss():
-    af1 = setup_af1()
+    af1 = setup_af1(cohorts_analysis="20230823")
     cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"
     cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu_fune_2017'"
     contig = "2RL"
@@ -805,7 +805,7 @@ def test_h1x_gwss():
 
 
 def test_fst_gwss():
-    af1 = setup_af1()
+    af1 = setup_af1(cohorts_analysis="20230823")
     cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"
     cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu_fune_2017'"
     contig = "2RL"
@@ -837,7 +837,7 @@ def test_fst_gwss():
 
 
 def test_g123_gwss():
-    af1 = setup_af1()
+    af1 = setup_af1(cohorts_analysis="20230823")
     sample_query = "country == 'Ghana'"
     contig = "3RL"
     site_mask = "funestus"
