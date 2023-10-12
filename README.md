@@ -9,7 +9,7 @@ The `malariagen_data` Python package is available from the Python
 package index (PyPI) and can be installed via `pip`, e.g.:
 
 ```bash
-$ pip install malariagen-data
+pip install malariagen-data
 ```
 
 ## Documentation
