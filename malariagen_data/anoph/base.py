@@ -338,9 +338,7 @@ class AnophelesBase:
         try:
             return self._cache_sample_set_to_study[sample_set]
         except KeyError:
-            raise ValueError(
-                f"No study information found for sample set {sample_set!r}"
-            )
+            raise ValueError(f"No study ID found for sample set {sample_set!r}")
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]

@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
@@ -167,3 +168,19 @@ def test_prep_sample_sets_param(ag3_sim_api: AnophelesBase):
     ]
     with pytest.raises(ValueError):
         ag3_sim_api._prep_sample_sets_param(sample_sets=["AG1000G-AO", "foobar"])
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_lookup_study(fixture, api):
+    # Set up test.
+    df_sample_sets = api.sample_sets()
+    all_sample_sets = df_sample_sets["sample_set"].values
+    sample_set = np.random.choice(all_sample_sets)
+
+    study_rec_by_sample_set = api.lookup_study(sample_set)
+    df_sample_set = df_sample_sets.set_index("sample_set").loc[sample_set]
+    # Check we get the same study_id back.
+    assert df_sample_set["study_id"] == study_rec_by_sample_set
+
+    # Check we get a study_id string.
+    assert isinstance(study_rec_by_sample_set, str)
