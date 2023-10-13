@@ -2566,6 +2566,70 @@ class AnophelesDataResource(
 
         return fst_df
 
+    def plot_pairwise_average_fst(
+        self,
+        fst_df,
+        annotate_se=True,
+        zmin=0,
+        zmax=1,
+        width=None,
+        height=None,
+        text_auto=True,
+        color_continuous_scale="gray",
+        title=None,
+        **kwargs,
+    ):
+        fst_pivot = fst_df.pivot(
+            index="cohort1_query",
+            columns="cohort2_query",
+            values="Fst",
+        )
+        se_pivot = fst_df.pivot(
+            index="cohort1_query",
+            columns="cohort2_query",
+            values="SE",
+        )
+
+        # remove index labels
+        fst_pivot = fst_pivot.rename_axis(None, axis=1).rename_axis(None, axis=0)
+        se_pivot = se_pivot.rename_axis(None, axis=1).rename_axis(None, axis=0)
+
+        # place SE on upper triangle
+        if annotate_se is True:
+            se_df = pd.DataFrame(
+                np.flip(se_pivot.values), index=se_pivot.index, columns=se_pivot.columns
+            )
+            fst_pivot = fst_pivot.fillna(se_df)
+
+        # convert to str and 3 decimal places
+        for col in fst_pivot:
+            new_col = fst_pivot[col].map("{:.3f}".format).astype(str)
+            fst_pivot[col] = new_col
+
+        # place empty values on diagonal
+        for i in range(min(fst_pivot.shape)):
+            fst_pivot.iloc[i, i] = ""
+
+        # create plot
+        fig = px.imshow(
+            img=fst_pivot,
+            zmin=zmin,
+            zmax=zmax,
+            width=width,
+            height=height,
+            text_auto=text_auto,
+            color_continuous_scale=color_continuous_scale,
+            title=title,
+            aspect="auto",
+            **kwargs,
+        )
+        fig.update_traces(text=fst_pivot.values, texttemplate="%{text}")
+        fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+        fig.update_yaxes(showgrid=False, linecolor="black")
+        fig.update_xaxes(showgrid=False, linecolor="black")
+
+        return fig
+
     @check_types
     @doc(
         summary="""
