@@ -2280,7 +2280,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         cohort_size: Optional[base_params.cohort_size] = 15,
-        min_cohort_size: Optional[base_params.min_cohort_size] = 15,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
     ):
         if isinstance(cohorts, dict):
             # user has supplied a custom dictionary mapping cohort identifiers
@@ -2322,7 +2322,9 @@ class AnophelesDataResource(
                 sample_sets=sample_sets, sample_query=cohort_query
             )
             n_samples = len(df_cohort_samples)
-            if n_samples < cohort_size or n_samples < min_cohort_size:
+            if min_cohort_size is not None:
+                cohort_size = min_cohort_size
+            if n_samples < cohort_size:
                 print(
                     f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"
                 )
@@ -2489,14 +2491,11 @@ class AnophelesDataResource(
     @check_types
     @doc(
         summary="""
-               Compute pairwise average Hudson's Fst between a set of specified cohorts.
-           """,
+            Compute pairwise average Hudson's Fst between a set of specified cohorts.
+        """,
         returns="""
-               A DataFrame where each row provides the Hudson's Fst values returned by the pairwise comparisons of cohorts and
-               a DataFrame where each row provides the standard error of the cohort comparisons. If annotate_se=True, the two
-               Dataframes are combined to give a single Dataframe with the Fst values on the lower diagonal and standard error
-               on the upper triangle.
-           """,
+            A Dataframe of the pairwise Fst value and standard error (SE) values.
+        """,
     )
     def pairwise_average_fst(
         self,
@@ -2532,7 +2531,10 @@ class AnophelesDataResource(
 
         for i in range(len(cohort_queries_checked)):
             for j in range(i + 1):
-                fst_hudson, se_hudson = self.average_fst(
+                (
+                    fst_hudson,
+                    se_hudson,
+                ) = self.average_fst(
                     region=region,
                     cohort1_query=list(cohort_queries_checked.values())[i],
                     cohort2_query=list(cohort_queries_checked.values())[j],
@@ -2544,14 +2546,14 @@ class AnophelesDataResource(
                     site_class=site_class,
                     random_seed=random_seed,
                 )
-            # convert minus numbers to 0
-            if fst_hudson < 0:
-                fst_hudson = 0
-            # add values to lists
-            cohort1_query_list.append(list(cohort_queries_checked.keys())[i])
-            cohort2_query_list.append(list(cohort_queries_checked.keys())[j])
-            fst_stats.append(fst_hudson)
-            se_stats.append(se_hudson)
+                # convert minus numbers to 0
+                if fst_hudson < 0:
+                    fst_hudson = 0
+                # add values to lists
+                cohort1_query_list.append(list(cohort_queries_checked.keys())[i])
+                cohort2_query_list.append(list(cohort_queries_checked.keys())[j])
+                fst_stats.append(fst_hudson)
+                se_stats.append(se_hudson)
 
         fst_df = pd.DataFrame(
             {

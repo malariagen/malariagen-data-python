@@ -1837,7 +1837,7 @@ def test_average_fst():
     n_jack = 200
     site_mask = "gamb_colu"
 
-    fst_hudson, se_hudson = ag3.pairwise_fst(
+    fst_hudson, se_hudson = ag3.average_fst(
         region=region,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
@@ -1862,7 +1862,7 @@ def test_average_fst():
 def test_pairwise_average_fst():
     ag3 = setup_ag3()
     region = "3L"
-    cohorts = "cohorts_admin1_year"
+    cohorts = "cohort_admin1_year"
     sample_query = "country == 'Mali' and taxon == 'gambiae'"
     n_jack = 200
     site_mask = "gamb_colu"
@@ -1904,7 +1904,7 @@ def test_pairwise_average_fst():
         }
     )
 
-    fst_df = ag3.average_pairwise_fst(
+    fst_df = ag3.pairwise_average_fst(
         region=region,
         cohorts=cohorts,
         sample_query=sample_query,
