@@ -496,3 +496,24 @@ def test_haplotypes_with_max_cohort_size_param(
             sample_query=None,
             max_cohort_size=max_cohort_size,
         )
+
+
+# check behaviour when no haplotype data is present within a sample set
+def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapData):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fix a sample set that will be empty for the fixed (arab) analysis calls
+    sample_set = "tennessen-2021"
+    region = fixture.random_region_str()
+    analysis = "arab"
+
+    with pytest.raises(ValueError):
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_set,
+            region=region,
+            analysis=analysis,
+            sample_query=None,
+        )
