@@ -503,12 +503,11 @@ def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapD
     api = ag3_sim_api
     fixture = ag3_sim_fixture
 
-    # Fix a sample set that would be empty for the fixed analysis calls
+    # Fix a sample set that will be empty for the fixed (arab) analysis calls
     sample_set = "tennessen-2021"
     region = fixture.random_region_str()
     analysis = "arab"
 
-    # Parametrize over cohort_size.
     with pytest.raises(ValueError):
         check_haplotypes(
             fixture=fixture,
