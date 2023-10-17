@@ -90,6 +90,12 @@ class AnophelesSampleMetadata(AnophelesBase):
                 axis="columns",
             )
 
+            # Add study metadata columns.
+            study = self.lookup_study(sample_set=sample_set)
+            df["study_id"] = study
+            df[
+                "study_url"
+            ] = f"https://www.malariagen.net/network/where-we-work/{study}"
             return df
 
         else:

@@ -91,6 +91,8 @@ def general_metadata_expected_columns():
         "sample_set": "O",
         "release": "O",
         "quarter": "i",
+        "study_id": "O",
+        "study_url": "O",
     }
 
 
