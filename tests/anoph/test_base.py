@@ -1,3 +1,4 @@
+import numpy as np
 import pandas as pd
 import pytest
 from pandas.testing import assert_frame_equal
@@ -85,9 +86,17 @@ def test_sample_sets_default(fixture, api):
     )
     expected.reset_index(inplace=True, drop=True)
     assert isinstance(df, pd.DataFrame)
-    assert df.columns.tolist() == ["sample_set", "sample_count", "release"]
+    assert df.columns.tolist() == [
+        "sample_set",
+        "sample_count",
+        "study_id",
+        "study_url",
+        "release",
+    ]
     assert len(df) > 0
-    assert_frame_equal(df[["sample_set", "sample_count"]], expected)
+    assert_frame_equal(
+        df[["sample_set", "sample_count", "study_id", "study_url"]], expected
+    )
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -96,10 +105,18 @@ def test_sample_sets_release(fixture, api):
     for release in releases:
         df_ss = api.sample_sets(release=release)
         assert isinstance(df_ss, pd.DataFrame)
-        assert df_ss.columns.tolist() == ["sample_set", "sample_count", "release"]
+        assert df_ss.columns.tolist() == [
+            "sample_set",
+            "sample_count",
+            "study_id",
+            "study_url",
+            "release",
+        ]
         assert len(df_ss) > 0
         expected = fixture.release_manifests[release]
-        assert_frame_equal(df_ss[["sample_set", "sample_count"]], expected)
+        assert_frame_equal(
+            df_ss[["sample_set", "sample_count", "study_id", "study_url"]], expected
+        )
         assert (df_ss["release"] == release).all()
 
     with pytest.raises(TypeError):
@@ -151,3 +168,23 @@ def test_prep_sample_sets_param(ag3_sim_api: AnophelesBase):
     ]
     with pytest.raises(ValueError):
         ag3_sim_api._prep_sample_sets_param(sample_sets=["AG1000G-AO", "foobar"])
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_lookup_study(fixture, api):
+    # Set up test.
+    df_sample_sets = api.sample_sets()
+    all_sample_sets = df_sample_sets["sample_set"].values
+    sample_set = np.random.choice(all_sample_sets)
+
+    study_rec_by_sample_set = api.lookup_study(sample_set)
+    df_sample_set = df_sample_sets.set_index("sample_set").loc[sample_set]
+
+    # Check we get the same study_id back.
+    assert df_sample_set["study_id"] == study_rec_by_sample_set
+
+    # Check we get a study_id string.
+    assert isinstance(study_rec_by_sample_set, str)
+
+    with pytest.raises(ValueError):
+        api.lookup_study("foobar")
