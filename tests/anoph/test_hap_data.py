@@ -168,6 +168,7 @@ def check_haplotypes(
         ]
     )
     n_samples_phased = len(samples_phased)
+
     # Check if no samples phased in the analysis.
     if n_samples_phased == 0:
         with pytest.raises(ValueError):
