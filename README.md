@@ -9,7 +9,7 @@ The `malariagen_data` Python package is available from the Python
 package index (PyPI) and can be installed via `pip`, e.g.:
 
 ```bash
-$ pip install malariagen-data
+pip install malariagen-data
 ```
 
 ## Documentation
@@ -89,13 +89,13 @@ pre-commit install
 Run pre-commit checks (isort, black, blackdoc, flake8, ...) manually:
 
 ```bash
-$ pre-commit run --all-files
+pre-commit run --all-files
 ```
 
 Run tests:
 
 ```bash
-$ poetry run pytest -v
+poetry run pytest -v
 ```
 
 Tests will run slowly the first time, as data required for testing
