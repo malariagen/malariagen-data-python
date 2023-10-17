@@ -168,7 +168,6 @@ def check_haplotypes(
         ]
     )
     n_samples_phased = len(samples_phased)
-
     # Check if no samples phased in the analysis.
     if n_samples_phased == 0:
         with pytest.raises(ValueError):
@@ -504,16 +503,15 @@ def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapD
     fixture = ag3_sim_fixture
 
     # Fix a sample set that will be empty for the fixed (arab) analysis calls
-    sample_set = "tennessen-2021"
+    sample_set = "AG1000G-AO"
     region = fixture.random_region_str()
     analysis = "arab"
 
-    with pytest.raises(ValueError):
-        check_haplotypes(
-            fixture=fixture,
-            api=api,
-            sample_sets=sample_set,
-            region=region,
-            analysis=analysis,
-            sample_query=None,
-        )
+    check_haplotypes(
+        fixture=fixture,
+        api=api,
+        sample_sets=sample_set,
+        region=region,
+        analysis=analysis,
+        sample_query=None,
+    )
