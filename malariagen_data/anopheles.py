@@ -2531,7 +2531,7 @@ class AnophelesDataResource(
         fst_stats = []
         se_stats = []
 
-        for i in range(len(cohort_queries_checked)):
+        for i in range(len(cohorts_checked)):
             for j in range(i + 1):
                 (
                     fst_hudson,
