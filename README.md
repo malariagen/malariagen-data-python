@@ -9,7 +9,7 @@ The `malariagen_data` Python package is available from the Python
 package index (PyPI) and can be installed via `pip`, e.g.:
 
 ```bash
-$ pip install malariagen-data
+pip install malariagen-data
 ```
 
 ## Documentation
@@ -89,13 +89,13 @@ pre-commit install
 Run pre-commit checks (isort, black, blackdoc, flake8, ...) manually:
 
 ```bash
-$ pre-commit run --all-files
+pre-commit run --all-files
 ```
 
 Run tests:
 
 ```bash
-$ poetry run pytest -v
+poetry run pytest -v
 ```
 
 Tests will run slowly the first time, as data required for testing
@@ -105,4 +105,8 @@ cached locally in the "gcs_cache" folder.
 ## Release process
 
 Create a new GitHub release. That's it. This will automatically
-trigger publishing of a new release to PyPI via GitHub actions.
+trigger publishing of a new release to PyPI and a new version of
+the documentation via GitHub Actions.
+
+The version switcher for the documentation can then be updated by
+modifying the `docs/source/_static/switcher.json` file accordingly.

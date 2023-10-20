@@ -1110,6 +1110,11 @@ class Ag3Simulator(AnophelesSimulator):
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
                 "sample_count": [randint(10, 50), randint(10, 40)],
+                "study_id": ["AG1000G-AO", "AG1000G-BF-1"],
+                "study_url": [
+                    "https://www.malariagen.net/network/where-we-work/AG1000G-AO",
+                    "https://www.malariagen.net/network/where-we-work/AG1000G-BF-1",
+                ],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -1129,6 +1134,10 @@ class Ag3Simulator(AnophelesSimulator):
                 ],
                 # Make sure we have some gambiae, coluzzii and arabiensis.
                 "sample_count": [randint(20, 60)],
+                "study_id": ["1177-VO-ML-LEHMANN"],
+                "study_url": [
+                    "https://www.malariagen.net/network/where-we-work/1177-VO-ML-LEHMANN"
+                ],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -1763,6 +1772,16 @@ class Af1Simulator(AnophelesSimulator):
                     "1231-VO-MULTI-WONDJI-VMF00043",
                 ],
                 "sample_count": [26, 40, 32],
+                "study_id": [
+                    "1229-VO-GH-DADZIE",
+                    "1230-VO-MULTI-AYALA",
+                    "1231-VO-MULTI-WONDJI",
+                ],
+                "study_url": [
+                    "https://www.malariagen.net/network/where-we-work/1229-VO-GH-DADZIE",
+                    "https://www.malariagen.net/network/where-we-work/1230-VO-MULTI-AYALA",
+                    "https://www.malariagen.net/network/where-we-work/1231-VO-MULTI-WONDJI",
+                ],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")

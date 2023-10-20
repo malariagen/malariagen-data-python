@@ -95,6 +95,17 @@ def test_open_haplotype_sites(fixture, api: AnophelesHapData):
         root = api.open_haplotype_sites(analysis=analysis)
         _check_haplotype_sites(root, api)
 
+        # Test _haplotype_sites_for_contig().
+        for contig in api.contigs:
+            haplotype_pos = api._haplotype_sites_for_contig(
+                contig=contig,
+                analysis=analysis,
+                field="POS",
+                inline_array=True,
+                chunks="native",
+            ).compute()
+            assert len(haplotype_pos) == len(root[contig]["variants"]["POS"])
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_open_haplotypes(fixture, api: AnophelesHapData):
@@ -485,3 +496,23 @@ def test_haplotypes_with_max_cohort_size_param(
             sample_query=None,
             max_cohort_size=max_cohort_size,
         )
+
+
+# check behaviour when no haplotype data is present within a sample set
+def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapData):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fix a sample set that will be empty for the fixed (arab) analysis calls
+    sample_set = "AG1000G-AO"
+    region = fixture.random_region_str()
+    analysis = "arab"
+
+    check_haplotypes(
+        fixture=fixture,
+        api=api,
+        sample_sets=sample_set,
+        region=region,
+        analysis=analysis,
+        sample_query=None,
+    )
