@@ -2524,8 +2524,10 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
         )
 
-        cohort1_query_list = []
-        cohort2_query_list = []
+        cohort_ids = list(cohorts_checked.keys())
+        cohort_queries = list(cohorts_checked.values())
+        cohort1_ids = []
+        cohort2_ids = []
         fst_stats = []
         se_stats = []
 
