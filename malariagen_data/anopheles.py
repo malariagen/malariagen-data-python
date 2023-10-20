@@ -2516,7 +2516,7 @@ class AnophelesDataResource(
         random_seed: base_params.random_seed = 42,
     ):
         # set up cohort queries
-        cohort_queries_checked = self._setup_cohorts(
+        cohorts_checked = self._setup_cohorts(
             cohorts,
             sample_sets=sample_sets,
             sample_query=sample_query,
