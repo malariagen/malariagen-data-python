@@ -2552,8 +2552,8 @@ class AnophelesDataResource(
                 if fst_hudson < 0:
                     fst_hudson = 0
                 # add values to lists
-                cohort1_query_list.append(list(cohort_queries_checked.keys())[i])
-                cohort2_query_list.append(list(cohort_queries_checked.keys())[j])
+                cohort1_ids.append(cohort_ids[i])
+                cohort2_ids.append(cohort_ids[j])
                 fst_stats.append(fst_hudson)
                 se_stats.append(se_hudson)
 
