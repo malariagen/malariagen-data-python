@@ -2559,10 +2559,10 @@ class AnophelesDataResource(
 
         fst_df = pd.DataFrame(
             {
-                "cohort1_query": cohort1_query_list,
-                "cohort2_query": cohort2_query_list,
-                "Fst": fst_stats,
-                "SE": se_stats,
+                "cohort1": cohort1_ids,
+                "cohort2": cohort2_ids,
+                "fst": fst_stats,
+                "se": se_stats,
             }
         )
 
