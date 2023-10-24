@@ -47,7 +47,7 @@ def test_repr():
 
 
 def test_snp_allele_frequencies__dict_cohorts():
-    af1 = setup_af1(cohorts_analysis="20221129")
+    af1 = setup_af1(cohorts_analysis="20230823")
     cohorts = {
         "ke": "country == 'Kenya'",
         "gh_2017": "country == 'Ghana' and year == 2017",
@@ -95,7 +95,7 @@ def test_snp_allele_frequencies__dict_cohorts():
 
 
 def test_snp_allele_frequencies__str_cohorts__effects():
-    af1 = setup_af1(cohorts_analysis="20221129")
+    af1 = setup_af1(cohorts_analysis="20230823")
     cohorts = "admin1_month"
     min_cohort_size = 10
     universal_fields = [
@@ -141,7 +141,7 @@ def test_snp_allele_frequencies__str_cohorts__effects():
 
 
 def test_snp_allele_frequencies__query():
-    af1 = setup_af1(cohorts_analysis="20221129")
+    af1 = setup_af1(cohorts_analysis="20230823")
     cohorts = "admin1_year"
     min_cohort_size = 10
     expected_columns = [
@@ -220,7 +220,7 @@ def test_locate_region(region_raw):
 
 
 def test_aa_allele_frequencies():
-    af1 = setup_af1(cohorts_analysis="20221129")
+    af1 = setup_af1(cohorts_analysis="20230823")
 
     expected_fields = [
         "transcript",
@@ -268,7 +268,7 @@ def _check_snp_allele_frequencies_advanced(
     nobs_mode="called",
     variant_query="max_af > 0.02",
 ):
-    af1 = setup_af1(cohorts_analysis="20221129")
+    af1 = setup_af1(cohorts_analysis="20230823")
 
     ds = af1.snp_allele_frequencies_advanced(
         transcript=transcript,
@@ -426,7 +426,7 @@ def _check_aa_allele_frequencies_advanced(
     nobs_mode="called",
     variant_query="max_af > 0.02",
 ):
-    af1 = setup_af1(cohorts_analysis="20221129")
+    af1 = setup_af1(cohorts_analysis="20230823")
 
     ds = af1.aa_allele_frequencies_advanced(
         transcript=transcript,
