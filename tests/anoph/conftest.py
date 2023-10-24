@@ -1090,7 +1090,7 @@ class Ag3Simulator(AnophelesSimulator):
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/agamp4/Anopheles-gambiae-PEST_SEQANNOTATION_AgamP4.12.zarr",
             "DEFAULT_AIM_ANALYSIS": "20220528",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
-            "DEFAULT_COHORTS_ANALYSIS": "20230223",
+            "DEFAULT_COHORTS_ANALYSIS": "20230516",
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "PHASING_ANALYSIS_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "COVERAGE_CALLS_ANALYSIS_IDS": ["gamb_colu", "arab"],
@@ -1246,7 +1246,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / "vo_agam_release"
                 / release_path
                 / "metadata"
-                / "cohorts_20230223"
+                / "cohorts_20230516"
                 / sample_set
                 / "samples.cohorts.csv"
             )
@@ -1254,13 +1254,32 @@ class Ag3Simulator(AnophelesSimulator):
                 self.bucket_path
                 / release_path
                 / "metadata"
-                / "cohorts_20230223"
+                / "cohorts_20230516"
                 / sample_set
                 / "samples.cohorts.csv"
             )
             dst_path.parent.mkdir(parents=True, exist_ok=True)
             with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
                 for line in src.readlines()[: n_samples_sim + 1]:
+                    print(line, file=dst)
+
+            # Create cohorts group metadata by sampling from some real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_agam_release"
+                / "v3_cohorts"
+                / "cohorts_20230516"
+                / "cohorts_admin1_month.csv"
+            )
+            dst_path = (
+                self.bucket_path
+                / "v3_cohorts"
+                / "cohorts_20230516"
+                / "cohorts_admin1_month.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+                for line in src.readlines()[:5]:
                     print(line, file=dst)
 
         # Create data catalog by sampling from some real metadata files.
@@ -1733,7 +1752,7 @@ class Af1Simulator(AnophelesSimulator):
             bucket="vo_afun_release",
             releases=("1.0",),
             has_aims=False,
-            has_cohorts_by_quarter=False,
+            has_cohorts_by_quarter=True,
         )
 
     def init_config(self):
@@ -1748,7 +1767,7 @@ class Af1Simulator(AnophelesSimulator):
             "CONTIGS": ["2RL", "3RL", "X"],
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
-            "DEFAULT_COHORTS_ANALYSIS": "20221129",
+            "DEFAULT_COHORTS_ANALYSIS": "20230823",
             "SITE_MASK_IDS": ["funestus"],
             "PHASING_ANALYSIS_IDS": ["funestus"],
             "COVERAGE_CALLS_ANALYSIS_IDS": ["funestus"],
@@ -1871,7 +1890,7 @@ class Af1Simulator(AnophelesSimulator):
             / "vo_afun_release"
             / release_path
             / "metadata"
-            / "cohorts_20221129"
+            / "cohorts_20230823"
             / sample_set
             / "samples.cohorts.csv"
         )
@@ -1879,13 +1898,32 @@ class Af1Simulator(AnophelesSimulator):
             self.bucket_path
             / release_path
             / "metadata"
-            / "cohorts_20221129"
+            / "cohorts_20230823"
             / sample_set
             / "samples.cohorts.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
             for line in src.readlines()[: n_samples_sim + 1]:
+                print(line, file=dst)
+
+        # Create cohorts group metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_afun_release"
+            / "v1_cohorts"
+            / "cohorts_20230823"
+            / "cohorts_admin1_month.csv"
+        )
+        dst_path = (
+            self.bucket_path
+            / "v1_cohorts"
+            / "cohorts_20230823"
+            / "cohorts_admin1_month.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
+            for line in src.readlines():
                 print(line, file=dst)
 
         # Create data catalog by sampling from some real metadata files.
