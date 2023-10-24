@@ -57,13 +57,6 @@ def cohort_group_metadata_expected_columns():
     }
 
 
-def cohort_group_geo_metadata_expected_columns():
-    return {
-        "cohort_id": "O",
-        "geometry": "i",
-    }
-
-
 def validate_cohort_group_metadata(df, expected_columns):
     # Check column names.
     expected_column_names = list(expected_columns.keys())
