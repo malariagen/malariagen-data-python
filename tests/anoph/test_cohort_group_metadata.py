@@ -75,9 +75,6 @@ def test_cohort_group_metadata(fixture, api: AnophelesCohortGroupMetadata):
     df_cohorts = api.cohort_group_metadata(cohort_name)
     # Check output.
     validate_cohort_group_metadata(df_cohorts, cohort_group_metadata_expected_columns())
-    # # Check values against cohort metadata
-    # df_default = api.sample_metadata()
-    # assert df_cohorts['cohort_id'] in df_default['cohort_admin1_month']
 
 
 @parametrize_with_cases("fixture,api", cases=".")
