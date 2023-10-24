@@ -96,6 +96,14 @@ samples: TypeAlias = Annotated[
     "Sample identifier or index within sample set. Multiple values can also be provided as a list or tuple.",
 ]
 
+cohort_group_query: TypeAlias = Annotated[
+    str,
+    """
+    A pandas query string to be evaluated against the cohort group metadata, to
+    select cohort groups to be included in the returned data.
+    """,
+]
+
 
 def validate_sample_selection_params(
     *,
