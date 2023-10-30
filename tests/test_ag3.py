@@ -1849,13 +1849,13 @@ def test_average_fst():
     assert isinstance(fst_hudson, np.float64)
     assert isinstance(se_hudson, np.float64)
 
-    # check dimensions
+    # check data
     assert np.isscalar(fst_hudson)
     assert np.isscalar(se_hudson)
 
     # check some values
-    assert_allclose(fst_hudson, 0.039983, rtol=1e5), fst_hudson
-    assert_allclose(se_hudson, 0.003327, rtol=1e5), se_hudson
+    assert np.allclose(fst_hudson, 0.039983, rtol=1e5), fst_hudson
+    assert np.allclose(se_hudson, 0.003327, rtol=1e5), se_hudson
 
 
 def test_pairwise_average_fst():
@@ -1868,37 +1868,25 @@ def test_pairwise_average_fst():
 
     test_df = pd.DataFrame(
         {
-            "cohort1_query": [
+            "cohort1": [
+                "ML-2_gamb_2004",
                 "ML-2_gamb_2004",
                 "ML-2_gamb_2014",
-                "ML-2_gamb_2014",
-                "ML-3_gamb_2012",
-                "ML-3_gamb_2012",
-                "ML-3_gamb_2012",
             ],
-            "cohort2_query": [
-                "ML-2_gamb_2004",
-                "ML-2_gamb_2004",
+            "cohort2": [
                 "ML-2_gamb_2014",
-                "ML-2_gamb_2004",
-                "ML-2_gamb_2014",
+                "ML-3_gamb_2012",
                 "ML-3_gamb_2012",
             ],
             "fst": [
-                -0.05305554559810363,
-                0.01033833066046641,
-                -0.0530156630138291,
-                0.010615727653386375,
-                -0.00018451990702906661,
-                -0.05300903322895467,
+                0.037249514094550934,
+                0.04154191785684654,
+                0.0,
             ],
             "se": [
-                1.2398969283554441e-05,
-                0.000964603651694087,
-                1.1740037365959329e-05,
-                0.0010044504116367143,
-                0.00031950050471179716,
-                1.2908421762356301e-05,
+                0.0020406887352541958,
+                0.002369740033208285,
+                0.0008138514674580574,
             ],
         }
     )
@@ -1913,10 +1901,6 @@ def test_pairwise_average_fst():
 
     # check data
     assert isinstance(fst_df, pd.core.frame.DataFrame)
-
-    # check dimensions
-    assert fst_df.ndim == 2
-    assert fst_df["Fst"].shape == fst_df["SE"].shape
 
     # check some values
     pd.testing.assert_frame_equal(fst_df, test_df, rtol=1e5)

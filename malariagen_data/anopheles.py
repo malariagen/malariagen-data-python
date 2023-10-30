@@ -2289,7 +2289,7 @@ class AnophelesDataResource(
 
         elif isinstance(cohorts, str):
             # user has supplied one of the predefined cohort sets
-            df_samples = self.sample_metadata(  # self
+            df_samples = self.sample_metadata(
                 sample_sets=sample_sets, sample_query=sample_query
             )
 
@@ -2583,14 +2583,14 @@ class AnophelesDataResource(
         **kwargs,
     ):
         fst_pivot = fst_df.pivot(
-            index="cohort1_query",
-            columns="cohort2_query",
-            values="Fst",
+            index="cohort2",
+            columns="cohort1",
+            values="fst",
         )
         se_pivot = fst_df.pivot(
-            index="cohort1_query",
-            columns="cohort2_query",
-            values="SE",
+            index="cohort2",
+            columns="cohort1",
+            values="se",
         )
 
         # remove index labels
