@@ -1860,7 +1860,7 @@ def test_average_fst():
 
 def test_pairwise_average_fst():
     ag3 = setup_ag3()
-    region = "3L"
+    region = "3L:15,000,000-16,000,000"
     cohorts = "cohort_admin1_year"
     sample_query = "country == 'Mali' and taxon == 'gambiae'"
     n_jack = 200
