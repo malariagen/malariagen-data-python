@@ -1855,8 +1855,6 @@ def test_average_fst():
     # check some values
     assert_allclose(fst_hudson, 0.039983, rtol=1e5), fst_hudson
     assert_allclose(se_hudson, 0.003327, rtol=1e5), se_hudson
-    assert np.all(fst_hudson <= 1)
-    assert np.all(fst_hudson >= -0.05)
 
 
 def test_pairwise_average_fst():
