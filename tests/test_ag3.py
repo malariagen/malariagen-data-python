@@ -1920,8 +1920,8 @@ def test_pairwise_average_fst():
 
     # check some values
     pd.testing.assert_frame_equal(fst_df, test_df, rtol=1e5)
-    assert np.all(fst_df["Fst"] <= 1)
-    assert np.all(fst_df["Fst"] >= -0.05)
+    assert np.all(fst_df["fst"] <= 1)
+    assert np.all(fst_df["fst"] >= -0.05)
 
 
 def test_fst_gwss():
