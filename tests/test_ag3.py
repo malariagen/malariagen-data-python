@@ -1850,7 +1850,8 @@ def test_average_fst():
     assert isinstance(se_hudson, np.float64)
 
     # check dimensions
-    assert fst_hudson.ndim == se_hudson.ndim == 0
+    assert np.isscalar(fst_hudson)
+    assert np.isscalar(se_hudson)
 
     # check some values
     assert_allclose(fst_hudson, 0.039983, rtol=1e5), fst_hudson
