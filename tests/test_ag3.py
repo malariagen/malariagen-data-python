@@ -1831,7 +1831,7 @@ def test_h1x_gwss():
 
 def test_average_fst():
     ag3 = setup_ag3()
-    region = "3L"
+    region = "3L:15,000,000-16,000,000"
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
     n_jack = 200
