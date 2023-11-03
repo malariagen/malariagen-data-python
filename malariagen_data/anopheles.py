@@ -5494,6 +5494,31 @@ class AnophelesDataResource(
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
+
+        debug("Dealing with color")
+        if color and isinstance(color, str):
+            if color not in df_samples.columns and not color.startswith("cohort_"):
+                color = "cohort_" + color
+            if color not in df_samples.columns:
+                raise ValueError(f"{color!r} is not a known cohort set")
+        elif color and isinstance(color, dict):
+            df_samples["color"] = [""] * len(df_samples.index)
+            for key, value in color.items():
+                df_samples.loc[df_samples.query(value).index, "color"] = key
+            color = "color"
+
+        debug("Dealing with symbol")
+        if symbol and isinstance(symbol, str):
+            if symbol not in df_samples.columns and not symbol.startswith("cohort_"):
+                symbol = "cohort_" + symbol
+            if symbol not in df_samples.columns:
+                raise ValueError(f"{symbol!r} is not a known cohort set")
+        elif symbol and isinstance(symbol, dict):
+            df_samples["symbol"] = [""] * len(df_samples.index)
+            for key, value in symbol.items():
+                df_samples.loc[df_samples.query(value).index, "symbol"] = key
+            symbol = "symbol"
+
         debug("align sample metadata with haplotypes")
         phased_samples = ds_haps["sample_id"].values.tolist()
         df_samples_phased = (
