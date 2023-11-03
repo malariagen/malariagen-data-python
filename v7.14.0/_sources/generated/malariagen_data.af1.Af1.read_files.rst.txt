@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.read\_files
+====================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.read_files

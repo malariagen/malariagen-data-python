@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.site\_filters
+======================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.site_filters

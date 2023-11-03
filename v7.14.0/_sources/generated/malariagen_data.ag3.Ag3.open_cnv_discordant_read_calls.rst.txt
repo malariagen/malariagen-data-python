@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.open\_cnv\_discordant\_read\_calls
+===========================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.open_cnv_discordant_read_calls

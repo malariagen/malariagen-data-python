@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.results\_cache\_set
+============================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.results_cache_set
