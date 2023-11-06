@@ -2277,10 +2277,10 @@ class AnophelesDataResource(
     def _setup_cohorts(
         self,
         cohorts: base_params.cohorts,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        cohort_size: Optional[base_params.cohort_size] = 15,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        cohort_size: Optional[base_params.cohort_size],
+        min_cohort_size: Optional[base_params.min_cohort_size],
     ):
         if isinstance(cohorts, dict):
             # user has supplied a custom dictionary mapping cohort identifiers
