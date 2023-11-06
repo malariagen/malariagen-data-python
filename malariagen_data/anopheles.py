@@ -2324,7 +2324,7 @@ class AnophelesDataResource(
             n_samples = len(df_cohort_samples)
             if min_cohort_size is not None:
                 cohort_size = min_cohort_size
-            if n_samples < cohort_size:
+            if cohort_size is not None and n_samples < cohort_size:
                 print(
                     f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"
                 )
@@ -2575,8 +2575,8 @@ class AnophelesDataResource(
         annotate_se=True,
         zmin=0,
         zmax=1,
-        width=None,
-        height=None,
+        width=400,
+        height=300,
         text_auto=True,
         color_continuous_scale="gray",
         title=None,
