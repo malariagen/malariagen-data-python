@@ -5,12 +5,14 @@ This page provides a curated list of functions and properties available in the m
 
 .. currentmodule:: malariagen_data.amin1.Amin1
 
-Basic data access
------------------
+Reference genome data access
+----------------------------
 .. autosummary::
     :toctree: generated/
 
     contigs
+    genome_sequence
+    genome_features
 
 Sample metadata access
 ----------------------
@@ -24,8 +26,4 @@ SNP data access
 .. autosummary::
     :toctree: generated/
 
-    genome_features
-    genome_sequence
-    open_genome
-    open_snp_calls
     snp_calls
