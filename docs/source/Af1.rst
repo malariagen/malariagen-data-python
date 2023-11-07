@@ -70,5 +70,87 @@ CNV data access
     cnv_coverage_calls
     plot_cnv_hmm_coverage
     plot_cnv_hmm_heatmap
+    gene_cnv
 
 Note that CNV discordant read calls are not currently supported.
+
+Integrative genomics viewer (IGV)
+---------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    igv
+    view_alignments
+
+SNP and CNV frequency analysis
+------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    snp_allele_frequencies
+    snp_allele_frequencies_advanced
+    aa_allele_frequencies
+    aa_allele_frequencies_advanced
+    gene_cnv_frequencies
+    gene_cnv_frequencies_advanced
+    plot_frequencies_heatmap
+    plot_frequencies_time_series
+    plot_frequencies_interactive_map
+
+Principal components analysis (PCA)
+-----------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    pca
+    plot_pca_variance
+    plot_pca_coords
+    plot_pca_coords_3d
+
+Heterozygosity analysis
+-----------------------
+.. autosummary::
+    :toctree: generated/
+
+    plot_heterozygosity
+    roh_hmm
+    plot_roh
+
+Diversity analysis
+------------------
+.. autosummary::
+    :toctree: generated/
+
+    cohort_diversity_stats
+    diversity_stats
+    plot_diversity_stats
+
+Genome-wide selection scans
+---------------------------
+.. autosummary::
+    :toctree: generated/
+
+    h12_calibration
+    plot_h12_calibration
+    h12_gwss
+    plot_h12_gwss
+    h1x_gwss
+    plot_h1x_gwss
+    g123_calibration
+    plot_g123_calibration
+    g123_gwss
+    plot_g123_gwss
+    ihs_gwss
+    plot_ihs_gwss
+    xpehh_gwss
+    plot_xpehh_gwss
+    fst_gwss
+    plot_fst_gwss
+
+Haplotype clustering and network analysis
+-----------------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    plot_haplotype_clustering
+    plot_haplotype_network
