@@ -1,5 +1,5 @@
-Amin1 API
-=========
+Amin1
+=====
 
 This page provides a curated list of functions and properties available in the malariagen_data API relating to *Anopheles minimus* data.
 
