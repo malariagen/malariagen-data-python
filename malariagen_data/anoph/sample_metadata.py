@@ -164,6 +164,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
     @property
     def _cohorts_metadata_columns(self):
+        # Handle changes to columns used in different analyses.
         cols = None
         if self._cohorts_analysis:
             if self._cohorts_analysis < "20230223":
