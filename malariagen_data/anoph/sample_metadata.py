@@ -166,19 +166,34 @@ class AnophelesSampleMetadata(AnophelesBase):
     def _cohorts_metadata_columns(self):
         cols = None
         if self._cohorts_analysis:
-            cols = (
-                "country_iso",
-                "admin1_name",
-                "admin1_iso",
-                "admin2_name",
-                "taxon",
-                "cohort_admin1_year",
-                "cohort_admin1_month",
-                "cohort_admin1_quarter",
-                "cohort_admin2_year",
-                "cohort_admin2_month",
-                "cohort_admin2_quarter",
-            )
+            if self._cohorts_analysis < "20230223":
+                cols = (
+                    "country_iso",
+                    "admin1_name",
+                    "admin1_iso",
+                    "admin2_name",
+                    "taxon",
+                    "cohort_admin1_year",
+                    "cohort_admin1_month",
+                    "cohort_admin2_year",
+                    "cohort_admin2_month",
+                )
+            # We assume that cohorts analyses from "20230223" onwards always include quarter
+            # columns.
+            else:
+                cols = (
+                    "country_iso",
+                    "admin1_name",
+                    "admin1_iso",
+                    "admin2_name",
+                    "taxon",
+                    "cohort_admin1_year",
+                    "cohort_admin1_month",
+                    "cohort_admin1_quarter",
+                    "cohort_admin2_year",
+                    "cohort_admin2_month",
+                    "cohort_admin2_quarter",
+                )
         return cols
 
     @property

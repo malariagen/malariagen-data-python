@@ -1263,7 +1263,7 @@ class Ag3Simulator(AnophelesSimulator):
                 for line in src.readlines()[: n_samples_sim + 1]:
                     print(line, file=dst)
 
-            # Create cohorts group metadata by sampling from some real metadata files.
+            # Create cohorts data by sampling from some real files.
             src_path = (
                 self.fixture_dir
                 / "vo_agam_release"
@@ -1907,7 +1907,7 @@ class Af1Simulator(AnophelesSimulator):
             for line in src.readlines()[: n_samples_sim + 1]:
                 print(line, file=dst)
 
-        # Create cohorts group metadata by sampling from some real metadata files.
+        # Create cohorts data by sampling from some real files.
         src_path = (
             self.fixture_dir
             / "vo_afun_release"
