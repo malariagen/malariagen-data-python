@@ -3,12 +3,12 @@ from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.cohort_group_metadata import AnophelesCohortGroupMetadata
+from malariagen_data.anoph.cohort_data import AnophelesCohortData
 
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
-    return AnophelesCohortGroupMetadata(
+    return AnophelesCohortData(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         gcs_url=_ag3.GCS_URL,
@@ -20,7 +20,7 @@ def ag3_sim_api(ag3_sim_fixture):
 
 @pytest.fixture
 def af1_sim_api(af1_sim_fixture):
-    return AnophelesCohortGroupMetadata(
+    return AnophelesCohortData(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         gcs_url=_af1.GCS_URL,
@@ -38,7 +38,7 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-def cohort_group_metadata_expected_columns():
+def cohort_data_expected_columns():
     return {
         "cohort_id": "O",
         "cohort_size": "i",
@@ -57,7 +57,7 @@ def cohort_group_metadata_expected_columns():
     }
 
 
-def validate_cohort_group_metadata(df, expected_columns):
+def validate_cohort_data(df, expected_columns):
     # Check column names.
     expected_column_names = list(expected_columns.keys())
     assert df.columns.to_list() == expected_column_names
@@ -68,20 +68,10 @@ def validate_cohort_group_metadata(df, expected_columns):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_cohort_group_metadata(fixture, api: AnophelesCohortGroupMetadata):
+def test_cohort_data(fixture, api: AnophelesCohortData):
     # Set up the test.
     cohort_name = "admin1_month"
     # Call function to be tested.
-    df_cohorts = api.cohort_group_metadata(cohort_name)
+    df_cohorts = api.cohorts(cohort_name)
     # Check output.
-    validate_cohort_group_metadata(df_cohorts, cohort_group_metadata_expected_columns())
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_cohort_group_metadata_with_query(fixture, api: AnophelesCohortGroupMetadata):
-    cohort_name = "admin1_month"
-    df_cohorts = api.cohort_group_metadata(
-        cohort_name, cohort_group_query="country == 'Burkina Faso'"
-    )
-    validate_cohort_group_metadata(df_cohorts, cohort_group_metadata_expected_columns())
-    assert (df_cohorts["country"] == "Burkina Faso").all()
+    validate_cohort_data(df_cohorts, cohort_data_expected_columns())

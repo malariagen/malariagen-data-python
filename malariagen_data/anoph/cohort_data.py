@@ -8,9 +8,10 @@ from . import base_params
 from .base import AnophelesBase
 
 
-class AnophelesCohortGroupMetadata(AnophelesBase):
+class AnophelesCohortData(AnophelesBase):
     def __init__(
         self,
+        cohorts_analysis: Optional[str] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -18,31 +19,43 @@ class AnophelesCohortGroupMetadata(AnophelesBase):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+        # If provided, this analysis version will override the
+        # default value provided in the release configuration.
+        self._cohorts_analysis_override = cohorts_analysis
+
+    @property
+    def _cohorts_analysis(self):
+        if self._cohorts_analysis_override:
+            return self._cohorts_analysis_override
+        else:
+            # N.B., this will return None if the key is not present in the
+            # config.
+            return self.config.get("DEFAULT_COHORTS_ANALYSIS")
+
     @check_types
     @doc(
         summary="""
-            Read metadata for a specific cohort group, including cohort size,
+            Read data for a specific cohort set, including cohort size,
             country code, taxon, administrative units name, ISO code, geoBoundaries
             shape ID and representative latitude and longitude points.
         """,
         parameters=dict(
-            cohort_group="""
-                A cohort group name. Accepted values are:
+            cohort_set="""
+                A cohort set name. Accepted values are:
                 "admin1_month", "admin1_quarter", "admin1_year",
                 "admin2_month", "admin2_quarter", "admin2_year".
             """
         ),
-        returns="A dataframe of cohort metadata, one row per cohort.",
+        returns="A dataframe of cohort data, one row per cohort.",
     )
-    def cohort_group_metadata(
+    def cohorts(
         self,
-        cohort_group: base_params.cohorts,
-        cohort_group_query: Optional[base_params.cohort_group_query] = None,
+        cohort_set: base_params.cohorts,
     ) -> pd.DataFrame:
         major_version_path = self._major_version_path
-        cohorts_analysis = self.config.get("DEFAULT_COHORTS_ANALYSIS")
+        cohorts_analysis = self._cohorts_analysis
 
-        path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_group}.csv"
+        path = f"{major_version_path[:2]}_cohorts/cohorts_{cohorts_analysis}/cohorts_{cohort_set}.csv"
 
         # Read the manifest into a pandas dataframe.
         with self.open_file(path) as f:
@@ -51,10 +64,4 @@ class AnophelesCohortGroupMetadata(AnophelesBase):
         # Ensure all column names are lower case.
         df_cohorts.columns = [c.lower() for c in df_cohorts.columns]
 
-        # Apply a cohort group selection.
-        if cohort_group_query is not None:
-            # Assume a pandas query string.
-            df_cohorts = df_cohorts.query(cohort_group_query)
-            df_cohorts = df_cohorts.reset_index(drop=True)
-
-        return df_cohorts.copy()
+        return df_cohorts
