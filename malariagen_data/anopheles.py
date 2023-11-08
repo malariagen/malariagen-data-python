@@ -2582,40 +2582,32 @@ class AnophelesDataResource(
         title=None,
         **kwargs,
     ):
-        fst_pivot = fst_df.pivot(
-            index="cohort2",
-            columns="cohort1",
-            values="fst",
-        )
-        se_pivot = fst_df.pivot(
-            index="cohort2",
-            columns="cohort1",
-            values="se",
-        )
-
-        # remove index labels
-        fst_pivot = fst_pivot.rename_axis(None, axis=1).rename_axis(None, axis=0)
-        se_pivot = se_pivot.rename_axis(None, axis=1).rename_axis(None, axis=0)
-
-        # place SE on upper triangle
-        if annotate_se is True:
-            se_df = pd.DataFrame(
-                np.flip(se_pivot.values), index=se_pivot.index, columns=se_pivot.columns
-            )
-            fst_pivot = fst_pivot.fillna(se_df)
+        # setup df
+        cohort_list = np.unique(fst_df[["cohort1", "cohort2"]].values)
+        # df to fill
+        fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
+        # fill df from fst_df
+        for index_key in range(len(fst_df["cohort1"])):
+            index = fst_df.iloc[index_key]["cohort1"]
+            col = fst_df.iloc[index_key]["cohort2"]
+            fst = fst_df.iloc[index_key]["fst"]
+            fig_df[index][col] = fst
+            if annotate_se is True:
+                se = fst_df.iloc[index_key]["se"]
+                fig_df[col][index] = se
 
         # convert to str and 3 decimal places
-        for col in fst_pivot:
-            new_col = fst_pivot[col].map("{:.3f}".format).astype(str)
-            fst_pivot[col] = new_col
+        for col in fig_df:
+            new_col = fig_df[col].map("{:.3f}".format).astype(str)
+            fig_df[col] = new_col
 
         # place empty values on diagonal
-        for i in range(min(fst_pivot.shape)):
-            fst_pivot.iloc[i, i] = ""
+        for i in range(min(fig_df.shape)):
+            fig_df.iloc[i, i] = ""
 
         # create plot
         fig = px.imshow(
-            img=fst_pivot,
+            img=fig_df,
             zmin=zmin,
             zmax=zmax,
             width=width,
@@ -2626,7 +2618,7 @@ class AnophelesDataResource(
             aspect="auto",
             **kwargs,
         )
-        fig.update_traces(text=fst_pivot.values, texttemplate="%{text}")
+        fig.update_traces(text=fig_df.values, texttemplate="%{text}")
         fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
         fig.update_yaxes(showgrid=False, linecolor="black")
         fig.update_xaxes(showgrid=False, linecolor="black")
