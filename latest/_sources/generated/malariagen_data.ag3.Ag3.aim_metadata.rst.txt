@@ -1,6 +1,0 @@
-﻿malariagen\_data.ag3.Ag3.aim\_metadata
-======================================
-
-.. currentmodule:: malariagen_data.ag3
-
-.. automethod:: Ag3.aim_metadata

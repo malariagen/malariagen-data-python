@@ -1,6 +1,0 @@
-﻿malariagen\_data.ag3.Ag3.site\_filters
-======================================
-
-.. currentmodule:: malariagen_data.ag3
-
-.. automethod:: Ag3.site_filters

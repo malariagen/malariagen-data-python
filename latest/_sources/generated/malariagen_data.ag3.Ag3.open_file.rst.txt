@@ -1,6 +1,0 @@
-﻿malariagen\_data.ag3.Ag3.open\_file
-===================================
-
-.. currentmodule:: malariagen_data.ag3
-
-.. automethod:: Ag3.open_file

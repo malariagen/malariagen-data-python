@@ -1,6 +1,0 @@
-﻿malariagen\_data.ag3.Ag3.open\_snp\_genotypes
-=============================================
-
-.. currentmodule:: malariagen_data.ag3
-
-.. automethod:: Ag3.open_snp_genotypes

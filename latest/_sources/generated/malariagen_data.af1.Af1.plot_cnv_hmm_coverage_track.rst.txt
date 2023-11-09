@@ -1,6 +1,0 @@
-﻿malariagen\_data.af1.Af1.plot\_cnv\_hmm\_coverage\_track
-========================================================
-
-.. currentmodule:: malariagen_data.af1
-
-.. automethod:: Af1.plot_cnv_hmm_coverage_track

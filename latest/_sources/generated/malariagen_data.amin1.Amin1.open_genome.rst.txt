@@ -1,6 +1,0 @@
-﻿malariagen\_data.amin1.Amin1.open\_genome
-=========================================
-
-.. currentmodule:: malariagen_data.amin1
-
-.. automethod:: Amin1.open_genome
