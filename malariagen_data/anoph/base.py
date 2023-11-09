@@ -237,6 +237,7 @@ class AnophelesBase:
 
     @property
     def releases(self) -> Tuple[str, ...]:
+        """Currently available data releases."""
         if self._cache_releases is None:
             if self._pre:
                 self._cache_releases = self._discover_releases()

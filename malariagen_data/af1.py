@@ -151,13 +151,12 @@ class Af1(AnophelesDataResource):
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net."
+            f"or contact data@malariagen.net. For API documentation see \n"
+            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html"
         )
-        # TODO: API doc https://malariagen.github.io/vector-data/af1/api.html
         return text
 
     def _repr_html_(self):
-        # TODO: See also the <a href="https://malariagen.github.io/vector-data/af1/api.html">Af1 API docs</a>.
         html = f"""
             <table class="malariagen-af1">
                 <thead>
@@ -168,6 +167,7 @@ class Af1(AnophelesDataResource):
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
                         the MalariaGEN website</a> or contact data@malariagen.net.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html">Af1 API docs</a>.
                     </td></tr>
                 </thead>
                 <tbody>
