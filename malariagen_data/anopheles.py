@@ -2572,13 +2572,13 @@ class AnophelesDataResource(
     def plot_pairwise_average_fst(
         self,
         fst_df,
-        annotate_se=True,
+        annotate_se=False,
         zmin=0,
-        zmax=1,
+        zmax=None,
         width=400,
         height=300,
         text_auto=True,
-        color_continuous_scale="gray",
+        color_continuous_scale="gray_r",
         title=None,
         **kwargs,
     ):
@@ -2587,7 +2587,7 @@ class AnophelesDataResource(
         # df to fill
         fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
         # fill df from fst_df
-        for index_key in range(len(fst_df["cohort1"])):
+        for index_key in range(len(fst_df)):
             index = fst_df.iloc[index_key]["cohort1"]
             col = fst_df.iloc[index_key]["cohort2"]
             fst = fst_df.iloc[index_key]["fst"]
@@ -2595,30 +2595,24 @@ class AnophelesDataResource(
             if annotate_se is True:
                 se = fst_df.iloc[index_key]["se"]
                 fig_df[col][index] = se
-
-        # convert to str and 3 decimal places
-        for col in fig_df:
-            new_col = fig_df[col].map("{:.3f}".format).astype(str)
-            fig_df[col] = new_col
-
-        # place empty values on diagonal
-        for i in range(min(fig_df.shape)):
-            fig_df.iloc[i, i] = ""
+            else:
+                fig_df[col][index] = fst
 
         # create plot
-        fig = px.imshow(
-            img=fig_df,
-            zmin=zmin,
-            zmax=zmax,
-            width=width,
-            height=height,
-            text_auto=text_auto,
-            color_continuous_scale=color_continuous_scale,
-            title=title,
-            aspect="auto",
-            **kwargs,
-        )
-        fig.update_traces(text=fig_df.values, texttemplate="%{text}")
+        with np.errstate(invalid="ignore"):
+            fig = px.imshow(
+                img=fig_df,
+                zmin=zmin,
+                zmax=zmax,
+                width=width,
+                height=height,
+                text_auto=text_auto,
+                color_continuous_scale=color_continuous_scale,
+                title=title,
+                aspect="auto",
+                **kwargs,
+            )
+        fig.update_traces(text=fig_df.values, texttemplate="%{text:.3f}")
         fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
         fig.update_yaxes(showgrid=False, linecolor="black")
         fig.update_xaxes(showgrid=False, linecolor="black")
