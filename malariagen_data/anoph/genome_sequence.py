@@ -27,6 +27,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
     @property
     def contigs(self) -> Tuple[str, ...]:
+        """Contigs in the reference genome."""
         return tuple(self.config["CONTIGS"])
 
     @property
