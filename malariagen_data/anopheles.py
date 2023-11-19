@@ -3052,6 +3052,7 @@ class AnophelesDataResource(
         region: base_params.region,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -3067,7 +3068,7 @@ class AnophelesDataResource(
         # calculate allele counts for each cohort
         cohort1_counts = self.snp_allele_counts(
             region=region,
-            sample_sets=None,
+            sample_sets=sample_sets,
             sample_query=cohort1_query,
             cohort_size=cohort_size,
             site_mask=site_mask,
@@ -3079,7 +3080,7 @@ class AnophelesDataResource(
 
         cohort2_counts = self.snp_allele_counts(
             region=region,
-            sample_sets=None,
+            sample_sets=sample_sets,
             sample_query=cohort2_query,
             cohort_size=cohort_size,
             site_mask=site_mask,
@@ -3153,6 +3154,7 @@ class AnophelesDataResource(
                     region=region,
                     cohort1_query=cohort_queries[i],
                     cohort2_query=cohort_queries[j],
+                    sample_sets=sample_sets,
                     cohort_size=cohort_size,
                     min_cohort_size=min_cohort_size,
                     max_cohort_size=max_cohort_size,
