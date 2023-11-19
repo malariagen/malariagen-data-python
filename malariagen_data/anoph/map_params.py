@@ -23,8 +23,6 @@ basemap_abbrevs = {
     "opentopomap": ipyleaflet.basemaps.OpenTopoMap,
     "positron": ipyleaflet.basemaps.CartoDB.Positron,
     "satellite": ipyleaflet.basemaps.Gaode.Satellite,
-    "terrain": ipyleaflet.basemaps.Stamen.Terrain,
-    "watercolor": ipyleaflet.basemaps.Stamen.Watercolor,
     "worldimagery": ipyleaflet.basemaps.Esri.WorldImagery,
     "worldstreetmap": ipyleaflet.basemaps.Esri.WorldStreetMap,
     "worldtopomap": ipyleaflet.basemaps.Esri.WorldTopoMap,

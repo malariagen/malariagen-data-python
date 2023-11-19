@@ -1,5 +1,5 @@
-Ag3 API
-=======
+Ag3
+===
 
 This page provides a curated list of functions and properties available in the malariagen_data API relating to *Anopheles gambiae* data.
 
@@ -10,31 +10,34 @@ Basic data access
 .. autosummary::
     :toctree: generated/
 
-    client_location
-    config
-    lookup_release
-    open_file
-    read_files
     releases
-    results_cache_get
-    results_cache_set
     sample_sets
+    lookup_release
+    lookup_study
+
+Reference genome data access
+----------------------------
+.. autosummary::
+    :toctree: generated/
+
+    contigs
+    genome_sequence
+    genome_features
+    plot_transcript
+    plot_genes
 
 Sample metadata access
 ----------------------
 .. autosummary::
     :toctree: generated/
 
+    sample_metadata
     add_extra_metadata
-    aim_metadata
     clear_extra_metadata
-    cohorts_metadata
     count_samples
-    general_metadata
     lookup_sample
     plot_samples_bar
     plot_samples_interactive_map
-    sample_metadata
     wgs_data_catalog
 
 SNP data access
@@ -42,33 +45,30 @@ SNP data access
 .. autosummary::
     :toctree: generated/
 
-    is_accessible
-    open_site_annotations
-    open_site_filters
-    open_snp_genotypes
-    open_snp_sites
-    plot_snps
-    plot_snps_track
-    site_annotations
-    site_filters
     site_mask_ids
-    snp_allele_counts
     snp_calls
-    snp_dataset
-    snp_genotypes
-    snp_sites
-    snp_variants
+    snp_allele_counts
+    plot_snps
+    site_annotations
+    is_accessible
 
 Haplotype data access
 ---------------------
 .. autosummary::
     :toctree: generated/
 
-    haplotypes
-    open_haplotypes
-    open_haplotype_sites
     phasing_analysis_ids
+    haplotypes
 
+AIM data access
+---------------
+.. autosummary::
+    :toctree: generated/
+
+    aim_ids
+    aim_variants
+    aim_calls
+    plot_aim_heatmap
 
 CNV data access
 ---------------
@@ -76,13 +76,90 @@ CNV data access
     :toctree: generated/
 
     coverage_calls_analysis_ids
+    cnv_hmm
     cnv_coverage_calls
     cnv_discordant_read_calls
-    cnv_hmm
-    open_cnv_coverage_calls
-    open_cnv_discordant_read_calls
-    open_cnv_hmm
     plot_cnv_hmm_coverage
-    plot_cnv_hmm_coverage_track
     plot_cnv_hmm_heatmap
-    plot_cnv_hmm_heatmap_track
+    gene_cnv
+
+Integrative genomics viewer (IGV)
+---------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    igv
+    view_alignments
+
+SNP and CNV frequency analysis
+------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    snp_allele_frequencies
+    snp_allele_frequencies_advanced
+    aa_allele_frequencies
+    aa_allele_frequencies_advanced
+    gene_cnv_frequencies
+    gene_cnv_frequencies_advanced
+    plot_frequencies_heatmap
+    plot_frequencies_time_series
+    plot_frequencies_interactive_map
+
+Principal components analysis (PCA)
+-----------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    pca
+    plot_pca_variance
+    plot_pca_coords
+    plot_pca_coords_3d
+
+Heterozygosity analysis
+-----------------------
+.. autosummary::
+    :toctree: generated/
+
+    plot_heterozygosity
+    roh_hmm
+    plot_roh
+
+Diversity analysis
+------------------
+.. autosummary::
+    :toctree: generated/
+
+    cohort_diversity_stats
+    diversity_stats
+    plot_diversity_stats
+
+Genome-wide selection scans
+---------------------------
+.. autosummary::
+    :toctree: generated/
+
+    h12_calibration
+    plot_h12_calibration
+    h12_gwss
+    plot_h12_gwss
+    h1x_gwss
+    plot_h1x_gwss
+    g123_calibration
+    plot_g123_calibration
+    g123_gwss
+    plot_g123_gwss
+    ihs_gwss
+    plot_ihs_gwss
+    xpehh_gwss
+    plot_xpehh_gwss
+    fst_gwss
+    plot_fst_gwss
+
+Haplotype clustering and network analysis
+-----------------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    plot_haplotype_clustering
+    plot_haplotype_network
