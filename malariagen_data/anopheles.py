@@ -3106,9 +3106,6 @@ class AnophelesDataResource(
         summary="""
             Compute pairwise average Hudson's Fst between a set of specified cohorts.
         """,
-        returns="""
-            A Dataframe of the pairwise Fst value and standard error (SE) values.
-        """,
     )
     def pairwise_average_fst(
         self,
@@ -3127,7 +3124,7 @@ class AnophelesDataResource(
         site_mask: base_params.site_mask = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
-    ):
+    ) -> fst_params.df_pairwise_fst:
         # set up cohort queries
         cohorts_checked = self._setup_cohorts(
             cohorts,
@@ -3183,17 +3180,28 @@ class AnophelesDataResource(
 
         return fst_df
 
+    @check_types
+    @doc(
+        summary="""
+            Plot a heatmap of pairwise average Fst values.
+        """,
+        parameters=dict(
+            annotate_se="If True, show standard error values in the upper triangle of the plot.",
+            kwargs="Passed through to `px.imshow()`",
+        ),
+    )
     def plot_pairwise_average_fst(
         self,
-        fst_df,
-        annotate_se=False,
-        zmin=0,
-        zmax=None,
-        width=400,
-        height=300,
-        text_auto=True,
-        color_continuous_scale="gray_r",
-        title=None,
+        fst_df: fst_params.df_pairwise_fst,
+        annotate_se: bool = False,
+        zmin: Optional[plotly_params.zmin] = 0.0,
+        zmax: Optional[plotly_params.zmax] = None,
+        text_auto: plotly_params.text_auto = ".3f",
+        color_continuous_scale: plotly_params.color_continuous_scale = "gray_r",
+        width: plotly_params.width = 700,
+        height: plotly_params.height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
         **kwargs,
     ):
         # setup df
@@ -3222,16 +3230,18 @@ class AnophelesDataResource(
                 height=height,
                 text_auto=text_auto,
                 color_continuous_scale=color_continuous_scale,
-                title=title,
                 aspect="auto",
                 **kwargs,
             )
-        fig.update_traces(text=fig_df.values, texttemplate="%{text:.3f}")
         fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
         fig.update_yaxes(showgrid=False, linecolor="black")
         fig.update_xaxes(showgrid=False, linecolor="black")
 
-        return fig
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(

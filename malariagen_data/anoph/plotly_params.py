@@ -130,3 +130,13 @@ renderer: TypeAlias = Annotated[Optional[str], "The name of the renderer to use.
 figure: TypeAlias = Annotated[
     Optional[go.Figure], "A plotly figure (only returned if show=False)."
 ]
+
+zmin: TypeAlias = Annotated[
+    Union[int, float],
+    "The lower end of the range of values that the colormap covers.",
+]
+
+zmax: TypeAlias = Annotated[
+    Union[int, float],
+    "The upper end of the range of values that the colormap covers.",
+]
