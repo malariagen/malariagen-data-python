@@ -2482,7 +2482,7 @@ class AnophelesDataResource(
         block_length = n_sites // n_jack  # number of sites in each block
 
         # calculate pairwise fst
-        fst_hudson, se_hudson, vb_hudson, _ = allel.blockwise_hudson_fst(
+        fst_hudson, se_hudson, _, _ = allel.blockwise_hudson_fst(
             cohort1_counts, cohort2_counts, blen=block_length
         )
 
