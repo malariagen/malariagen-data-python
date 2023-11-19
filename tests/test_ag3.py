@@ -529,7 +529,7 @@ def test_cn_mode(rows, cols, vmax):
 # noinspection PyArgumentList
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0"],
 )
 @pytest.mark.parametrize(
     "region", ["2R", "X", ["2R", "3R"], "3R:28,000,000-29,000,000"]
@@ -615,7 +615,7 @@ def test_gene_cnv(region, sample_sets):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0"],
 )
 @pytest.mark.parametrize("region", ["2R", "X", "3R:28,000,000-29,000,000"])
 def test_gene_cnv_xarray_indexing(region, sample_sets):
@@ -1801,6 +1801,7 @@ def test_h1x_gwss():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    sample_sets = "3.0"
     contig = "2L"
     analysis = "gamb_colu"
     window_size = 2000
@@ -1810,6 +1811,7 @@ def test_h1x_gwss():
         analysis=analysis,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
+        sample_sets=sample_sets,
         window_size=window_size,
         cohort_size=None,
     )
@@ -1834,6 +1836,7 @@ def test_average_fst():
     region = "3L:15,000,000-16,000,000"
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    sample_sets = "3.0"
     n_jack = 200
     site_mask = "gamb_colu"
 
@@ -1841,6 +1844,7 @@ def test_average_fst():
         region=region,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
+        sample_sets=sample_sets,
         n_jack=n_jack,
         site_mask=site_mask,
     )
@@ -1862,6 +1866,7 @@ def test_pairwise_average_fst():
     ag3 = setup_ag3()
     region = "3L:15,000,000-16,000,000"
     cohorts = "cohort_admin1_year"
+    sample_sets = "3.0"
     sample_query = "country == 'Mali' and taxon == 'gambiae'"
     n_jack = 200
     site_mask = "gamb_colu"
@@ -1895,6 +1900,7 @@ def test_pairwise_average_fst():
         region=region,
         cohorts=cohorts,
         sample_query=sample_query,
+        sample_sets=sample_sets,
         n_jack=n_jack,
         site_mask=site_mask,
     )
