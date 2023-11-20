@@ -6115,7 +6115,7 @@ class AnophelesDataResource(
             if color not in df_samples.columns:
                 raise ValueError(f"{color!r} is not a known column in the sample metadata.")
         elif color and isinstance(color, dict):
-            df_samples["color"] = [""] * len(df_samples.index)
+            df_samples["color"] = ""
             for key, value in color.items():
                 df_samples.loc[df_samples.query(value).index, "color"] = key
             color = "color"
