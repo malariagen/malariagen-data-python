@@ -6109,7 +6109,8 @@ class AnophelesDataResource(
 
         debug("Dealing with color")
         if color and isinstance(color, str):
-            if color not in df_samples.columns and not color.startswith("cohort_"):
+            if "cohort_" + color in df_samples.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
                 color = "cohort_" + color
             if color not in df_samples.columns:
                 raise ValueError(f"{color!r} is not a known cohort set")
