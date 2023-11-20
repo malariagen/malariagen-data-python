@@ -6122,7 +6122,7 @@ class AnophelesDataResource(
 
         debug("Dealing with symbol")
         if symbol and isinstance(symbol, str):
-            if symbol not in df_samples.columns and not symbol.startswith("cohort_"):
+            if "cohort_" + symbol in df_samples.columns:
                 symbol = "cohort_" + symbol
             if symbol not in df_samples.columns:
                 raise ValueError(f"{symbol!r} is not a known cohort set")
