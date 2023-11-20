@@ -144,8 +144,6 @@ Genome-wide selection scans
     plot_ihs_gwss
     xpehh_gwss
     plot_xpehh_gwss
-    fst_gwss
-    plot_fst_gwss
 
 Haplotype clustering and network analysis
 -----------------------------------------
@@ -154,3 +152,14 @@ Haplotype clustering and network analysis
 
     plot_haplotype_clustering
     plot_haplotype_network
+
+Fst analysis
+------------
+.. autosummary::
+    :toctree: generated/
+
+    average_fst
+    pairwise_average_fst
+    plot_pairwise_average_fst
+    fst_gwss
+    plot_fst_gwss

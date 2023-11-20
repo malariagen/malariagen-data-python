@@ -529,7 +529,7 @@ def test_cn_mode(rows, cols, vmax):
 # noinspection PyArgumentList
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0"],
 )
 @pytest.mark.parametrize(
     "region", ["2R", "X", ["2R", "3R"], "3R:28,000,000-29,000,000"]
@@ -615,7 +615,7 @@ def test_gene_cnv(region, sample_sets):
 
 @pytest.mark.parametrize(
     "sample_sets",
-    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0", None],
+    ["AG1000G-AO", ("AG1000G-TZ", "AG1000G-UG"), "3.0"],
 )
 @pytest.mark.parametrize("region", ["2R", "X", "3R:28,000,000-29,000,000"])
 def test_gene_cnv_xarray_indexing(region, sample_sets):
@@ -1801,6 +1801,7 @@ def test_h1x_gwss():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    sample_sets = "3.0"
     contig = "2L"
     analysis = "gamb_colu"
     window_size = 2000
@@ -1810,6 +1811,7 @@ def test_h1x_gwss():
         analysis=analysis,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
+        sample_sets=sample_sets,
         window_size=window_size,
         cohort_size=None,
     )
@@ -1829,10 +1831,94 @@ def test_h1x_gwss():
     assert np.all(h1x >= 0)
 
 
+def test_average_fst():
+    ag3 = setup_ag3()
+    region = "3L:15,000,000-16,000,000"
+    cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
+    cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    sample_sets = "3.0"
+    n_jack = 200
+    site_mask = "gamb_colu"
+
+    fst_hudson, se_hudson = ag3.average_fst(
+        region=region,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        sample_sets=sample_sets,
+        n_jack=n_jack,
+        site_mask=site_mask,
+    )
+
+    # check data
+    assert isinstance(fst_hudson, np.float64)
+    assert isinstance(se_hudson, np.float64)
+
+    # check data
+    assert np.isscalar(fst_hudson)
+    assert np.isscalar(se_hudson)
+
+    # check some values
+    assert np.allclose(fst_hudson, 0.039983, rtol=1e5), fst_hudson
+    assert np.allclose(se_hudson, 0.003327, rtol=1e5), se_hudson
+
+
+def test_pairwise_average_fst():
+    ag3 = setup_ag3()
+    region = "3L:15,000,000-16,000,000"
+    cohorts = "cohort_admin1_year"
+    sample_sets = "3.0"
+    sample_query = "country == 'Mali' and taxon == 'gambiae'"
+    n_jack = 200
+    site_mask = "gamb_colu"
+
+    test_df = pd.DataFrame(
+        {
+            "cohort1": [
+                "ML-2_gamb_2004",
+                "ML-2_gamb_2004",
+                "ML-2_gamb_2014",
+            ],
+            "cohort2": [
+                "ML-2_gamb_2014",
+                "ML-3_gamb_2012",
+                "ML-3_gamb_2012",
+            ],
+            "fst": [
+                0.037249514094550934,
+                0.04154191785684654,
+                0.0,
+            ],
+            "se": [
+                0.0020406887352541958,
+                0.002369740033208285,
+                0.0008138514674580574,
+            ],
+        }
+    )
+
+    fst_df = ag3.pairwise_average_fst(
+        region=region,
+        cohorts=cohorts,
+        sample_query=sample_query,
+        sample_sets=sample_sets,
+        n_jack=n_jack,
+        site_mask=site_mask,
+    )
+
+    # check data
+    assert isinstance(fst_df, pd.core.frame.DataFrame)
+
+    # check some values
+    pd.testing.assert_frame_equal(fst_df, test_df, rtol=1e5)
+    assert np.all(fst_df["fst"] <= 1)
+    assert np.all(fst_df["fst"] >= 0)
+
+
 def test_fst_gwss():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    sample_sets = "3.0"
     contig = "2L"
     site_mask = "gamb_colu"
     window_size = 10_000
@@ -1841,6 +1927,7 @@ def test_fst_gwss():
         contig=contig,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
+        sample_sets=sample_sets,
         window_size=window_size,
         site_mask=site_mask,
         cohort_size=None,
