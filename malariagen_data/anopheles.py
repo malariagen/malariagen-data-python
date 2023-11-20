@@ -2797,6 +2797,8 @@ class AnophelesDataResource(
         cohort: base_params.cohort,
         cohort_size: base_params.cohort_size,
         region: base_params.regions,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         site_mask: Optional[base_params.site_mask] = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -2834,6 +2836,8 @@ class AnophelesDataResource(
             sample_query=cohort_query,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
 
@@ -2880,6 +2884,65 @@ class AnophelesDataResource(
             stats[field] = val
 
         return pd.Series(stats)
+
+    # @staticmethod?
+    def _setup_cohorts(
+        self,
+        cohorts: base_params.cohorts,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        cohort_size: Optional[base_params.cohort_size],
+        min_cohort_size: Optional[base_params.min_cohort_size],
+    ):
+        if isinstance(cohorts, dict):
+            # user has supplied a custom dictionary mapping cohort identifiers
+            # to pandas queries
+            cohort_queries = cohorts
+
+        elif isinstance(cohorts, str):
+            # user has supplied one of the predefined cohort sets
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=sample_query
+            )
+
+            # determine column in dataframe - allow abbreviation
+            if cohorts.startswith("cohort_"):
+                cohorts_col = cohorts
+            else:
+                cohorts_col = "cohort_" + cohorts
+            if cohorts_col not in df_samples.columns:
+                raise ValueError(f"{cohorts_col!r} is not a known cohort set")
+
+            # find cohort labels and build queries dictionary
+            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
+            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
+
+        else:
+            raise TypeError("cohorts parameter should be dict or str")
+
+        # handle sample_query parameter
+        if sample_query is not None:
+            cohort_queries = {
+                cohort_label: f"({cohort_query}) and ({sample_query})"
+                for cohort_label, cohort_query in cohort_queries.items()
+            }
+
+        # check cohort sizes, drop any cohorts which are too small
+        cohort_queries_checked = dict()
+        for cohort_label, cohort_query in cohort_queries.items():
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=cohort_query
+            )
+            n_samples = len(df_cohort_samples)
+            if min_cohort_size is not None:
+                cohort_size = min_cohort_size
+            if cohort_size is not None and n_samples < cohort_size:
+                print(
+                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"
+                )
+            else:
+                cohort_queries_checked[cohort_label] = cohort_query
+        return cohort_queries_checked
 
     @check_types
     @doc(
@@ -2974,6 +3037,211 @@ class AnophelesDataResource(
         df_stats = pd.DataFrame(all_stats)
 
         return df_stats
+
+    @check_types
+    @doc(
+        summary="""
+            Compute average Hudson's Fst between two specified cohorts.
+        """,
+        returns="""
+            A NumPy float of the Fst value and the standard error (SE).
+        """,
+    )
+    def average_fst(
+        self,
+        region: base_params.region,
+        cohort1_query: base_params.sample_query,
+        cohort2_query: base_params.sample_query,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = fst_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = fst_params.max_cohort_size_default,
+        n_jack: base_params.n_jack = 200,
+        site_mask: base_params.site_mask = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        random_seed: base_params.random_seed = 42,
+    ):
+        # calculate allele counts for each cohort
+        cohort1_counts = self.snp_allele_counts(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=cohort1_query,
+            cohort_size=cohort_size,
+            site_mask=site_mask,
+            site_class=site_class,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        cohort2_counts = self.snp_allele_counts(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=cohort2_query,
+            cohort_size=cohort_size,
+            site_mask=site_mask,
+            site_class=site_class,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        # calculate block length for blen
+        n_sites = cohort1_counts.shape[0]  # number of sites
+        block_length = n_sites // n_jack  # number of sites in each block
+
+        # calculate pairwise fst
+        fst_hudson, se_hudson, _, _ = allel.blockwise_hudson_fst(
+            cohort1_counts, cohort2_counts, blen=block_length
+        )
+
+        return fst_hudson, se_hudson
+
+    @check_types
+    @doc(
+        summary="""
+            Compute pairwise average Hudson's Fst between a set of specified cohorts.
+        """,
+    )
+    def pairwise_average_fst(
+        self,
+        region: base_params.region,
+        cohorts: base_params.cohorts,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = fst_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = fst_params.max_cohort_size_default,
+        n_jack: base_params.n_jack = 200,
+        site_mask: base_params.site_mask = DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        random_seed: base_params.random_seed = 42,
+    ) -> fst_params.df_pairwise_fst:
+        # set up cohort queries
+        cohorts_checked = self._setup_cohorts(
+            cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+        )
+
+        cohort_ids = list(cohorts_checked.keys())
+        cohort_queries = list(cohorts_checked.values())
+        cohort1_ids = []
+        cohort2_ids = []
+        fst_stats = []
+        se_stats = []
+
+        n_cohorts = len(cohorts_checked)
+        for i in range(n_cohorts):
+            for j in range(i + 1, n_cohorts):
+                (
+                    fst_hudson,
+                    se_hudson,
+                ) = self.average_fst(
+                    region=region,
+                    cohort1_query=cohort_queries[i],
+                    cohort2_query=cohort_queries[j],
+                    sample_sets=sample_sets,
+                    cohort_size=cohort_size,
+                    min_cohort_size=min_cohort_size,
+                    max_cohort_size=max_cohort_size,
+                    n_jack=n_jack,
+                    site_mask=site_mask,
+                    site_class=site_class,
+                    random_seed=random_seed,
+                )
+                # convert minus numbers to 0
+                if fst_hudson < 0:
+                    fst_hudson = 0
+                # add values to lists
+                cohort1_ids.append(cohort_ids[i])
+                cohort2_ids.append(cohort_ids[j])
+                fst_stats.append(fst_hudson)
+                se_stats.append(se_hudson)
+
+        fst_df = pd.DataFrame(
+            {
+                "cohort1": cohort1_ids,
+                "cohort2": cohort2_ids,
+                "fst": fst_stats,
+                "se": se_stats,
+            }
+        )
+
+        return fst_df
+
+    @check_types
+    @doc(
+        summary="""
+            Plot a heatmap of pairwise average Fst values.
+        """,
+        parameters=dict(
+            annotate_se="If True, show standard error values in the upper triangle of the plot.",
+            kwargs="Passed through to `px.imshow()`",
+        ),
+    )
+    def plot_pairwise_average_fst(
+        self,
+        fst_df: fst_params.df_pairwise_fst,
+        annotate_se: bool = False,
+        zmin: Optional[plotly_params.zmin] = 0.0,
+        zmax: Optional[plotly_params.zmax] = None,
+        text_auto: plotly_params.text_auto = ".3f",
+        color_continuous_scale: plotly_params.color_continuous_scale = "gray_r",
+        width: plotly_params.width = 700,
+        height: plotly_params.height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        **kwargs,
+    ):
+        # setup df
+        cohort_list = np.unique(fst_df[["cohort1", "cohort2"]].values)
+        # df to fill
+        fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
+        # fill df from fst_df
+        for index_key in range(len(fst_df)):
+            index = fst_df.iloc[index_key]["cohort1"]
+            col = fst_df.iloc[index_key]["cohort2"]
+            fst = fst_df.iloc[index_key]["fst"]
+            fig_df[index][col] = fst
+            if annotate_se is True:
+                se = fst_df.iloc[index_key]["se"]
+                fig_df[col][index] = se
+            else:
+                fig_df[col][index] = fst
+
+        # create plot
+        with np.errstate(invalid="ignore"):
+            fig = px.imshow(
+                img=fig_df,
+                zmin=zmin,
+                zmax=zmax,
+                width=width,
+                height=height,
+                text_auto=text_auto,
+                color_continuous_scale=color_continuous_scale,
+                aspect="auto",
+                **kwargs,
+            )
+        fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+        fig.update_yaxes(showgrid=False, linecolor="black")
+        fig.update_xaxes(showgrid=False, linecolor="black")
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
 
     @check_types
     @doc(
