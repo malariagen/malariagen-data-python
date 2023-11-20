@@ -49,7 +49,7 @@
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
     <link rel="next" title="malariagen_data.af1.Af1.releases" href="generated/malariagen_data.af1.Af1.releases.html" />
-    <link rel="prev" title="malariagen_data.ag3.Ag3.plot_haplotype_network" href="generated/malariagen_data.ag3.Ag3.plot_haplotype_network.html" />
+    <link rel="prev" title="malariagen_data.ag3.Ag3.plot_fst_gwss" href="generated/malariagen_data.ag3.Ag3.plot_fst_gwss.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -465,12 +465,17 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_ihs_gwss.html">malariagen_data.af1.Af1.plot_ihs_gwss</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.xpehh_gwss.html">malariagen_data.af1.Af1.xpehh_gwss</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_xpehh_gwss.html">malariagen_data.af1.Af1.plot_xpehh_gwss</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.fst_gwss.html">malariagen_data.af1.Af1.fst_gwss</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_fst_gwss.html">malariagen_data.af1.Af1.plot_fst_gwss</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_clustering.html">malariagen_data.af1.Af1.plot_haplotype_clustering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_network.html">malariagen_data.af1.Af1.plot_haplotype_network</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.average_fst.html">malariagen_data.af1.Af1.average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.pairwise_average_fst.html">malariagen_data.af1.Af1.pairwise_average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_pairwise_average_fst.html">malariagen_data.af1.Af1.plot_pairwise_average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.fst_gwss.html">malariagen_data.af1.Af1.fst_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_fst_gwss.html">malariagen_data.af1.Af1.plot_fst_gwss</a></li>
 </ul>
 </div>
 </nav></div>
@@ -808,12 +813,6 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_xpehh_gwss.html#malariagen_data.af1.Af1.plot_xpehh_gwss" title="malariagen_data.af1.Af1.plot_xpehh_gwss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_xpehh_gwss</span></code></a>(contig[, analysis, ...])</p></td>
 <td><p>Run and plot XP-EHH GWSS data.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.fst_gwss.html#malariagen_data.af1.Af1.fst_gwss" title="malariagen_data.af1.Af1.fst_gwss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fst_gwss</span></code></a>(contig, window_size, cohort1_query, ...)</p></td>
-<td><p>Run a Fst genome-wide scan to investigate genetic differentiation between two cohorts.</p></td>
-</tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_fst_gwss.html#malariagen_data.af1.Af1.plot_fst_gwss" title="malariagen_data.af1.Af1.plot_fst_gwss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_fst_gwss</span></code></a>(contig, window_size, ...[, ...])</p></td>
-<td><p>Run and plot a Fst genome-wide scan to investigate genetic differentiation between two cohorts.</p></td>
-</tr>
 </tbody>
 </table>
 </section>
@@ -826,6 +825,28 @@ document.write(`
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_network.html#malariagen_data.af1.Af1.plot_haplotype_network" title="malariagen_data.af1.Af1.plot_haplotype_network"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_haplotype_network</span></code></a>(region[, analysis, ...])</p></td>
 <td><p>Construct a median-joining haplotype network and display it using Cytoscape.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
+<section id="fst-analysis">
+<h2>Fst analysis<a class="headerlink" href="#fst-analysis" title="Link to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.average_fst.html#malariagen_data.af1.Af1.average_fst" title="malariagen_data.af1.Af1.average_fst"><code class="xref py py-obj docutils literal notranslate"><span class="pre">average_fst</span></code></a>(region, cohort1_query, cohort2_query)</p></td>
+<td><p>Compute average Hudson's Fst between two specified cohorts.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.pairwise_average_fst.html#malariagen_data.af1.Af1.pairwise_average_fst" title="malariagen_data.af1.Af1.pairwise_average_fst"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pairwise_average_fst</span></code></a>(region, cohorts[, ...])</p></td>
+<td><p>Compute pairwise average Hudson's Fst between a set of specified cohorts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_pairwise_average_fst.html#malariagen_data.af1.Af1.plot_pairwise_average_fst" title="malariagen_data.af1.Af1.plot_pairwise_average_fst"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_pairwise_average_fst</span></code></a>(fst_df[, ...])</p></td>
+<td><p>Plot a heatmap of pairwise average Fst values.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.fst_gwss.html#malariagen_data.af1.Af1.fst_gwss" title="malariagen_data.af1.Af1.fst_gwss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">fst_gwss</span></code></a>(contig, window_size, cohort1_query, ...)</p></td>
+<td><p>Run a Fst genome-wide scan to investigate genetic differentiation between two cohorts.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_fst_gwss.html#malariagen_data.af1.Af1.plot_fst_gwss" title="malariagen_data.af1.Af1.plot_fst_gwss"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_fst_gwss</span></code></a>(contig, window_size, ...[, ...])</p></td>
+<td><p>Run and plot a Fst genome-wide scan to investigate genetic differentiation between two cohorts.</p></td>
 </tr>
 </tbody>
 </table>
@@ -843,12 +864,12 @@ document.write(`
                   <!-- Previous / next buttons -->
 <div class="prev-next-area">
     <a class="left-prev"
-       href="generated/malariagen_data.ag3.Ag3.plot_haplotype_network.html"
+       href="generated/malariagen_data.ag3.Ag3.plot_fst_gwss.html"
        title="previous page">
       <i class="fa-solid fa-angle-left"></i>
       <div class="prev-next-info">
         <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">malariagen_data.ag3.Ag3.plot_haplotype_network</p>
+        <p class="prev-next-title">malariagen_data.ag3.Ag3.plot_fst_gwss</p>
       </div>
     </a>
     <a class="right-next"
@@ -888,6 +909,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#diversity-analysis">Diversity analysis</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#genome-wide-selection-scans">Genome-wide selection scans</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#haplotype-clustering-and-network-analysis">Haplotype clustering and network analysis</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#fst-analysis">Fst analysis</a></li>
 </ul>
   </nav></div>
 
