@@ -6113,7 +6113,9 @@ class AnophelesDataResource(
                 # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
                 color = "cohort_" + color
             if color not in df_samples.columns:
-                raise ValueError(f"{color!r} is not a known column in the sample metadata.")
+                raise ValueError(
+                    f"{color!r} is not a known column in the sample metadata."
+                )
         elif color and isinstance(color, dict):
             df_samples["color"] = ""
             for key, value in color.items():
@@ -6125,7 +6127,9 @@ class AnophelesDataResource(
             if "cohort_" + symbol in df_samples.columns:
                 symbol = "cohort_" + symbol
             if symbol not in df_samples.columns:
-                raise ValueError(f"{symbol!r} is not a known column in the sample metadata.")
+                raise ValueError(
+                    f"{symbol!r} is not a known column in the sample metadata."
+                )
         elif symbol and isinstance(symbol, dict):
             df_samples["symbol"] = ""
             for key, value in symbol.items():
