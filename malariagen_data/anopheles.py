@@ -6127,7 +6127,7 @@ class AnophelesDataResource(
             if symbol not in df_samples.columns:
                 raise ValueError(f"{symbol!r} is not a known column in the sample metadata.")
         elif symbol and isinstance(symbol, dict):
-            df_samples["symbol"] = [""] * len(df_samples.index)
+            df_samples["symbol"] = ""
             for key, value in symbol.items():
                 df_samples.loc[df_samples.query(value).index, "symbol"] = key
             symbol = "symbol"
