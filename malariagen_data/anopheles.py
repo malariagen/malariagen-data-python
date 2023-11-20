@@ -6113,7 +6113,7 @@ class AnophelesDataResource(
                 # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
                 color = "cohort_" + color
             if color not in df_samples.columns:
-                raise ValueError(f"{color!r} is not a known cohort set")
+                raise ValueError(f"{color!r} is not a known column in the sample metadata.")
         elif color and isinstance(color, dict):
             df_samples["color"] = [""] * len(df_samples.index)
             for key, value in color.items():
