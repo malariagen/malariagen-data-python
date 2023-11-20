@@ -1918,6 +1918,7 @@ def test_fst_gwss():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"
     cohort2_query = "cohort_admin2_year == 'ML-2_Kati_gamb_2014'"
+    sample_sets = "3.0"
     contig = "2L"
     site_mask = "gamb_colu"
     window_size = 10_000
@@ -1926,6 +1927,7 @@ def test_fst_gwss():
         contig=contig,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
+        sample_sets=sample_sets,
         window_size=window_size,
         site_mask=site_mask,
         cohort_size=None,
