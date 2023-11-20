@@ -6125,7 +6125,7 @@ class AnophelesDataResource(
             if "cohort_" + symbol in df_samples.columns:
                 symbol = "cohort_" + symbol
             if symbol not in df_samples.columns:
-                raise ValueError(f"{symbol!r} is not a known cohort set")
+                raise ValueError(f"{symbol!r} is not a known column in the sample metadata.")
         elif symbol and isinstance(symbol, dict):
             df_samples["symbol"] = [""] * len(df_samples.index)
             for key, value in symbol.items():
