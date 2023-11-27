@@ -14,10 +14,10 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-# numba cannot yet support python 3.12
+# ensure compatibility with numba
 python = ">=3.8,<3.12"
-# numba cannot yet support numpy 1.25
-numpy = "<1.25"
+# ensure compatibility with numba
+numpy = "<1.27"
 numba = "*"
 # force llvmlite above broken version
 llvmlite = ">0.34"
@@ -39,7 +39,7 @@ ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
 # https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
 # compatibility issue with xarray zarr backend
-importlib_metadata = "<5.0"
+# importlib_metadata = "<5.0"
 # https://github.com/malariagen/malariagen-data-python/issues/299
 # bug in ipinfo 4.4.1
 ipinfo = "!=4.4.1"
@@ -54,6 +54,8 @@ typeguard = ">=4.0.0"
 protopunica = "*"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
+# accelerate pairwise distance calculations
+sklearn = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
