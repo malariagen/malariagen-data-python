@@ -6371,18 +6371,43 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
+        debug("Copy to Fortran memory order.")
+        ht = np.asfortranarray(ht)
+
         debug("Load sample metadata.")
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
 
-        # Align sample metadata with haplotypes.
+        debug("Align sample metadata with haplotypes.")
         phased_samples = ds_haps["sample_id"].values.tolist()
         df_samples_phased = (
             df_samples.set_index("sample_id").loc[phased_samples].reset_index()
         )
 
-        # Set up plotting options.
+        debug("Compute pairwise distances.")
+        dist = pdist(ht.T, metric="hamming")
+
+        debug("Convert to number of SNPs.")
+        dist = dist * ht.shape[0]
+
+        # Set labels as the index which we extract to reorder metadata.
+        leaf_labels = np.arange(ht.shape[1])
+
+        debug("Create the dendrogram.")
+        # noinspection PyTypeChecker
+        fig = create_dendrogram(
+            dist,
+            linkagefun=lambda x: linkage(x, method=linkage_method),
+            labels=leaf_labels,
+            color_threshold=0,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
+        )
+
+        debug("Add scatter plot with hover text.")
+
+        # Set up scatter plotting options.
         hover_data = [
             "sample_id",
             "partner_sample_id",
@@ -6414,27 +6439,35 @@ class AnophelesDataResource(
         # Apply any user overrides.
         plot_kwargs.update(kwargs)
 
-        debug("Compute pairwise distances.")
-        dist = pdist(ht.T, metric="hamming")
+        # Repeat the dataframe so there is one row of metadata for each haplotype.
+        df_samples_phased_haps = pd.DataFrame(
+            np.repeat(df_samples_phased.values, 2, axis=0)
+        )
+        df_samples_phased_haps.columns = df_samples_phased.columns
 
-        debug("Convert to number of SNPs.")
-        dist = dist * ht.shape[0]
+        # Select only columns in hover_data.
+        df_samples_phased_haps = df_samples_phased_haps[hover_data]
 
-        # Set labels as the index which we extract to reorder metadata.
-        leaf_labels = np.arange(ht.shape[1])
+        # Reorder haplotype metadata to align with haplotype clustering.
+        df_samples_phased_haps = df_samples_phased_haps.loc[
+            fig.layout.xaxis["ticktext"]
+        ]
 
-        debug("Create the dendrogram.")
-        # noinspection PyTypeChecker
-        fig = create_dendrogram(
-            dist,
-            linkagefun=lambda x: linkage(x, method=linkage_method),
-            labels=leaf_labels,
-            color_threshold=0,
-            count_sort=count_sort,
-            distance_sort=distance_sort,
+        # Add scatter plot.
+        fig.add_traces(
+            list(
+                px.scatter(
+                    df_samples_phased_haps,
+                    x=fig.layout.xaxis["tickvals"],
+                    y=np.repeat(-1, len(ht.T)),
+                    color=color,
+                    symbol=symbol,
+                    **plot_kwargs,
+                ).select_traces()
+            )
         )
 
-        debug("Style the plot.")
+        debug("Style the figure.")
 
         fig.update_traces(
             hoverinfo="y",
@@ -6461,40 +6494,12 @@ class AnophelesDataResource(
             showlegend=True,
         )
 
-        # Repeat the dataframe so there is one row of metadata for each haplotype.
-        df_samples_phased_haps = pd.DataFrame(
-            np.repeat(df_samples_phased.values, 2, axis=0)
-        )
-        df_samples_phased_haps.columns = df_samples_phased.columns
-
-        # Select only columns in hover_data.
-        df_samples_phased_haps = df_samples_phased_haps[hover_data]
-
-        # Reorder haplotype metadata to align with haplotype clustering.
-        df_samples_phased_haps = df_samples_phased_haps.loc[
-            fig.layout.xaxis["ticktext"]
-        ]
-
         # Style axes.
         fig.update_xaxes(mirror=False, showgrid=True, showticklabels=False, ticks="")
         fig.update_yaxes(
             mirror=False,
             showgrid=True,
             showline=True,
-        )
-
-        debug("Add scatter plot with hover text.")
-        fig.add_traces(
-            list(
-                px.scatter(
-                    df_samples_phased_haps,
-                    x=fig.layout.xaxis["tickvals"],
-                    y=np.repeat(-1, len(ht.T)),
-                    color=color,
-                    symbol=symbol,
-                    **plot_kwargs,
-                ).select_traces()
-            )
         )
 
         if show:  # pragma: no cover
