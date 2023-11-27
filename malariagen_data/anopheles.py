@@ -6329,6 +6329,7 @@ class AnophelesDataResource(
             Hierarchically cluster haplotypes in region and produce an interactive plot.
         """,
         parameters=dict(
+            render_mode="TODO convert to parameter",
             kwargs="Passed through to `px.scatter()`.",
         ),
     )
@@ -6349,6 +6350,7 @@ class AnophelesDataResource(
         height: plotly_params.height = 500,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
+        render_mode: str = "svg",
         **kwargs,
     ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
@@ -6389,7 +6391,7 @@ class AnophelesDataResource(
         dist = pdist(ht.T, metric="hamming")
 
         debug("Convert to number of SNPs.")
-        dist = dist * ht.shape[0]
+        dist = (dist * ht.shape[0]).astype(np.int32)
 
         # Set labels as the index which we extract to reorder metadata.
         leaf_labels = np.arange(ht.shape[1])
@@ -6429,7 +6431,7 @@ class AnophelesDataResource(
             template="simple_white",
             hover_name="sample_id",
             hover_data=hover_data,
-            render_mode="svg",
+            render_mode=render_mode,
         )
 
         # Special handling for taxon color.

@@ -19,6 +19,7 @@ def create_dendrogram(
     color_threshold=None,
     count_sort=True,
     distance_sort=False,
+    render_mode="svg",
 ):
     """
     Function that returns a dendrogram Plotly figure object. This is a thin
@@ -87,6 +88,7 @@ def create_dendrogram(
         color_threshold=color_threshold,
         count_sort=count_sort,
         distance_sort=distance_sort,
+        render_mode=render_mode,
     )
 
     return graph_objs.Figure(data=dendrogram.data, layout=dendrogram.layout)
@@ -110,6 +112,7 @@ class _Dendrogram(object):
         color_threshold=None,
         count_sort=True,
         distance_sort=True,
+        render_mode="svg",
     ):
         self.orientation = orientation
         self.labels = labels
@@ -138,6 +141,7 @@ class _Dendrogram(object):
             color_threshold=color_threshold,
             count_sort=count_sort,
             distance_sort=distance_sort,
+            render_mode=render_mode,
         )
 
         self.labels = ordered_labels
@@ -309,6 +313,7 @@ class _Dendrogram(object):
         color_threshold,
         count_sort,
         distance_sort,
+        render_mode,
     ):
         """
         Calculates all the elements needed for plotting a dendrogram.
@@ -365,7 +370,7 @@ class _Dendrogram(object):
             if hovertext:
                 hovertext_label = hovertext[i]
             trace = dict(
-                type="scatter",
+                type="scattergl" if render_mode == "webgl" else "scatter",
                 x=np.multiply(self.sign[self.xaxis], xs),
                 y=np.multiply(self.sign[self.yaxis], ys),
                 mode="lines",
