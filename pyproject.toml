@@ -55,7 +55,7 @@ protopunica = "*"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
 # accelerate pairwise distance calculations
-sklearn = "*"
+scikit-learn = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
