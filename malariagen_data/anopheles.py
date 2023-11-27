@@ -6354,10 +6354,7 @@ class AnophelesDataResource(
         **kwargs,
     ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
-        from scipy.spatial.distance import squareform
-
-        # from scipy.spatial.distance import pdist
-        from sklearn.metrics import pairwise_distances
+        from scipy.spatial.distance import pdist
 
         from .plotly_dendrogram import create_dendrogram
 
@@ -6376,8 +6373,10 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
-        debug("Copy to Fortran memory order.")
-        ht = np.asfortranarray(ht)
+        debug(
+            "Copy to Fortran memory order and convert to bool dtype for faster hamming distance calculations."
+        )
+        ht = np.asfortranarray(ht, dtype=bool)
 
         debug("Load sample metadata.")
         df_samples = self.sample_metadata(
@@ -6391,9 +6390,7 @@ class AnophelesDataResource(
         )
 
         debug("Compute pairwise distances.")
-        # dist = pdist(ht.T, metric="hamming")
-        dist_sq = pairwise_distances(ht.T, metric="hamming", n_jobs=-1)
-        dist = squareform(dist_sq)
+        dist = pdist(ht.T, metric="hamming")
 
         debug("Convert to number of SNPs.")
         dist = (dist * ht.shape[0]).astype(np.int32)
