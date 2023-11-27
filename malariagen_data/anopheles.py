@@ -6354,7 +6354,10 @@ class AnophelesDataResource(
         **kwargs,
     ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
-        from scipy.spatial.distance import pdist
+        from scipy.spatial.distance import squareform
+
+        # from scipy.spatial.distance import pdist
+        from sklearn.metrics import pairwise_distances
 
         from .plotly_dendrogram import create_dendrogram
 
@@ -6388,7 +6391,9 @@ class AnophelesDataResource(
         )
 
         debug("Compute pairwise distances.")
-        dist = pdist(ht.T, metric="hamming")
+        # dist = pdist(ht.T, metric="hamming")
+        dist_sq = pairwise_distances(ht.T, metric="hamming", n_jobs=-1)
+        dist = squareform(dist_sq)
 
         debug("Convert to number of SNPs.")
         dist = (dist * ht.shape[0]).astype(np.int32)
