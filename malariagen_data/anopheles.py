@@ -6352,11 +6352,13 @@ class AnophelesDataResource(
         **kwargs,
     ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
+        from scipy.spatial.distance import pdist
 
         from .plotly_dendrogram import create_dendrogram
 
         debug = self._log.debug
 
+        debug("Load haplotypes.")
         ds_haps = self.haplotypes(
             region=region,
             analysis=analysis,
@@ -6365,22 +6367,22 @@ class AnophelesDataResource(
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
-
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
-        debug("load sample metadata")
+        debug("Load sample metadata.")
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
-        debug("align sample metadata with haplotypes")
+
+        # Align sample metadata with haplotypes.
         phased_samples = ds_haps["sample_id"].values.tolist()
         df_samples_phased = (
             df_samples.set_index("sample_id").loc[phased_samples].reset_index()
         )
 
-        debug("set up plotting options")
+        # Set up plotting options.
         hover_data = [
             "sample_id",
             "partner_sample_id",
@@ -6394,12 +6396,10 @@ class AnophelesDataResource(
             "year",
             "month",
         ]
-
         if color and color not in hover_data:
             hover_data.append(color)
         if symbol and symbol not in hover_data:
             hover_data.append(symbol)
-
         plot_kwargs = dict(
             template="simple_white",
             hover_name="sample_id",
@@ -6407,30 +6407,35 @@ class AnophelesDataResource(
             render_mode="svg",
         )
 
-        debug("special handling for taxon color")
+        # Special handling for taxon color.
         if color == "taxon":
             self._setup_taxon_colors(plot_kwargs)
 
-        debug("apply any user overrides")
+        # Apply any user overrides.
         plot_kwargs.update(kwargs)
 
-        debug("Create dendrogram with plotly")
-        # set labels as the index which we extract to reorder metadata
+        debug("Compute pairwise distances.")
+        dist = pdist(ht.T, metric="hamming")
+
+        debug("Convert to number of SNPs.")
+        dist = dist * ht.shape[0]
+
+        # Set labels as the index which we extract to reorder metadata.
         leaf_labels = np.arange(ht.shape[1])
-        # get the max distance, required to set xmin, xmax, which we need xmin to be slightly below 0
-        max_dist = _get_max_hamming_distance(
-            ht.T, metric="hamming", linkage_method=linkage_method
-        )
+
+        debug("Create the dendrogram.")
         # noinspection PyTypeChecker
         fig = create_dendrogram(
-            ht.T,
-            distfun=lambda x: _hamming_to_snps(x),
+            dist,
             linkagefun=lambda x: linkage(x, method=linkage_method),
             labels=leaf_labels,
             color_threshold=0,
             count_sort=count_sort,
             distance_sort=distance_sort,
         )
+
+        debug("Style the plot.")
+
         fig.update_traces(
             hoverinfo="y",
             line=dict(width=0.5, color="black"),
@@ -6456,23 +6461,29 @@ class AnophelesDataResource(
             showlegend=True,
         )
 
-        # Repeat the dataframe so there is one row of metadata for each haplotype
+        # Repeat the dataframe so there is one row of metadata for each haplotype.
         df_samples_phased_haps = pd.DataFrame(
             np.repeat(df_samples_phased.values, 2, axis=0)
         )
         df_samples_phased_haps.columns = df_samples_phased.columns
-        # select only columns in hover_data
+
+        # Select only columns in hover_data.
         df_samples_phased_haps = df_samples_phased_haps[hover_data]
-        debug("Reorder haplotype metadata to align with haplotype clustering")
+
+        # Reorder haplotype metadata to align with haplotype clustering.
         df_samples_phased_haps = df_samples_phased_haps.loc[
             fig.layout.xaxis["ticktext"]
         ]
+
+        # Style axes.
         fig.update_xaxes(mirror=False, showgrid=True, showticklabels=False, ticks="")
         fig.update_yaxes(
-            mirror=False, showgrid=True, showline=True, range=[-2, max_dist + 1]
+            mirror=False,
+            showgrid=True,
+            showline=True,
         )
 
-        debug("Add scatter plot with hover text")
+        debug("Add scatter plot with hover text.")
         fig.add_traces(
             list(
                 px.scatter(
@@ -6821,31 +6832,31 @@ class AnophelesDataResource(
         return app.run_server(**run_params)
 
 
-def _hamming_to_snps(h):
-    """
-    Cluster haplotype array and return the number of SNP differences
-    """
-    from scipy.spatial.distance import pdist
+# def _hamming_to_snps(h):
+#     """
+#     Cluster haplotype array and return the number of SNP differences
+#     """
+#     from scipy.spatial.distance import pdist
 
-    dist = pdist(h, metric="hamming")
-    dist *= h.shape[1]
-    return dist
+#     dist = pdist(h, metric="hamming")
+#     dist *= h.shape[1]
+#     return dist
 
 
-def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
-    """
-    Find the maximum hamming distance between haplotypes
-    """
-    from scipy.cluster.hierarchy import linkage
+# def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
+#     """
+#     Find the maximum hamming distance between haplotypes
+#     """
+#     from scipy.cluster.hierarchy import linkage
 
-    z = linkage(h, metric=metric, method=linkage_method)
+#     z = linkage(h, metric=metric, method=linkage_method)
 
-    # Get the distances column
-    dists = z[:, 2]
-    # Convert to the number of SNP differences
-    dists *= h.shape[1]
-    # Return the maximum
-    return dists.max()
+#     # Get the distances column
+#     dists = z[:, 2]
+#     # Convert to the number of SNP differences
+#     dists *= h.shape[1]
+#     # Return the maximum
+#     return dists.max()
 
 
 def _diplotype_frequencies(gt):
