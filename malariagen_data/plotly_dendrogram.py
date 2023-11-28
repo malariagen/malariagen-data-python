@@ -19,7 +19,7 @@ def create_dendrogram(
     color_threshold=None,
     count_sort=True,
     distance_sort=False,
-    render_mode="svg",
+    render_mode="auto",
 ):
     """
     Function that returns a dendrogram Plotly figure object. This is a thin

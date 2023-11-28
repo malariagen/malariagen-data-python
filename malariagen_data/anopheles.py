@@ -6911,33 +6911,6 @@ class AnophelesDataResource(
         return app.run_server(**run_params)
 
 
-# def _hamming_to_snps(h):
-#     """
-#     Cluster haplotype array and return the number of SNP differences
-#     """
-#     from scipy.spatial.distance import pdist
-
-#     dist = pdist(h, metric="hamming")
-#     dist *= h.shape[1]
-#     return dist
-
-
-# def _get_max_hamming_distance(h, metric="hamming", linkage_method="single"):
-#     """
-#     Find the maximum hamming distance between haplotypes
-#     """
-#     from scipy.cluster.hierarchy import linkage
-
-#     z = linkage(h, metric=metric, method=linkage_method)
-
-#     # Get the distances column
-#     dists = z[:, 2]
-#     # Convert to the number of SNP differences
-#     dists *= h.shape[1]
-#     # Return the maximum
-#     return dists.max()
-
-
 def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
