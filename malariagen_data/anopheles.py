@@ -6449,6 +6449,54 @@ class AnophelesDataResource(
 
         from .plotly_dendrogram import create_dendrogram
 
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        # Set up scatter plotting options.
+        plot_kwargs = dict(
+            template="simple_white",
+            hover_name="sample_id",
+            render_mode=render_mode,
+        )
+
+        # Handle the color parameter.
+        if isinstance(color, str):
+            if color == "taxon":
+                # Special handling for taxon color.
+                self._setup_taxon_colors(plot_kwargs)
+            elif "cohort_" + color in df_samples.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                color = "cohort_" + color
+            if color not in df_samples.columns:
+                raise ValueError(
+                    f"{color!r} is not a known column in the sample metadata."
+                )
+
+        elif isinstance(color, dict):
+            # Custom grouping of samples using queries.
+            df_samples["color"] = ""
+            for key, value in color.items():
+                df_samples.loc[df_samples.query(value).index, "color"] = key
+            color = "color"
+
+        # Handle the symbol parameter.
+        if isinstance(symbol, str):
+            if "cohort_" + symbol in df_samples.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                symbol = "cohort_" + symbol
+            if symbol not in df_samples.columns:
+                raise ValueError(
+                    f"{symbol!r} is not a known column in the sample metadata."
+                )
+
+        elif isinstance(symbol, dict):
+            df_samples["symbol"] = ""
+            for key, value in symbol.items():
+                df_samples.loc[df_samples.query(value).index, "symbol"] = key
+            symbol = "symbol"
+
         # Compute pairwise distances.
         dist, phased_samples, n_snps = self.haplotype_pairwise_distances(
             region=region,
@@ -6459,11 +6507,6 @@ class AnophelesDataResource(
             random_seed=random_seed,
         )
         n_haps = len(phased_samples) * 2
-
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
 
         # Align sample metadata with haplotypes.
         df_samples_phased = (
@@ -6483,7 +6526,7 @@ class AnophelesDataResource(
             distance_sort=distance_sort,
         )
 
-        # Set up scatter plotting options.
+        # Configure hover data.
         hover_data = [
             "sample_id",
             "partner_sample_id",
@@ -6501,39 +6544,26 @@ class AnophelesDataResource(
             hover_data.append(color)
         if symbol and symbol not in hover_data:
             hover_data.append(symbol)
-        plot_kwargs = dict(
-            template="simple_white",
-            hover_name="sample_id",
-            hover_data=hover_data,
-            render_mode=render_mode,
-        )
-
-        # Special handling for taxon color.
-        if color == "taxon":
-            self._setup_taxon_colors(plot_kwargs)
+        plot_kwargs["hover_data"] = hover_data
 
         # Apply any user overrides.
         plot_kwargs.update(kwargs)
 
         # Repeat the dataframe so there is one row of metadata for each haplotype.
-        df_samples_phased_haps = pd.DataFrame(
-            np.repeat(df_samples_phased.values, 2, axis=0)
-        )
-        df_samples_phased_haps.columns = df_samples_phased.columns
+        df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
+        df_haps.columns = df_samples_phased.columns
 
         # Select only columns in hover_data.
-        df_samples_phased_haps = df_samples_phased_haps[hover_data]
+        df_haps = df_haps[hover_data]
 
         # Reorder haplotype metadata to align with haplotype clustering.
-        df_samples_phased_haps = df_samples_phased_haps.loc[
-            fig.layout.xaxis["ticktext"]
-        ]
+        df_haps = df_haps.loc[fig.layout.xaxis["ticktext"]]
 
         # Add scatter plot to draw the leaves.
         fig.add_traces(
             list(
                 px.scatter(
-                    df_samples_phased_haps,
+                    df_haps,
                     x=fig.layout.xaxis["tickvals"],
                     y=np.repeat(-1, n_haps),
                     color=color,
