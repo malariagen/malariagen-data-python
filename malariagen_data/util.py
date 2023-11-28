@@ -957,3 +957,21 @@ def true_runs(a):
     if in_run:
         stops.append(a.shape[0])
     return np.array(starts, dtype=np.int64), np.array(stops, dtype=np.int64)
+
+
+@numba.njit(parallel=True)
+def pdist_abs_hamming(X):
+    n_obs = X.shape[0]
+    n_ftr = X.shape[1]
+    out = np.zeros((n_obs, n_obs), dtype=np.int32)
+    for i in range(n_obs):
+        x = X[i]
+        for j in numba.prange(i + 1, n_obs):
+            y = X[j]
+            d = 0
+            for k in range(n_ftr):
+                if x[k] != y[k]:
+                    d += 1
+            out[i, j] = d
+            out[j, i] = d
+    return out

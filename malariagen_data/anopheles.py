@@ -59,6 +59,7 @@ from .util import (
     locate_region,
     parse_multi_region,
     parse_single_region,
+    pdist_abs_hamming,
     plotly_discrete_legend,
     region_str,
     simple_xarray_concat,
@@ -6380,7 +6381,7 @@ class AnophelesDataResource(
         cohort_size,
         random_seed,
     ):
-        from scipy.spatial.distance import pdist
+        from scipy.spatial.distance import squareform
 
         # Load haplotypes.
         ds_haps = self.haplotypes(
@@ -6393,19 +6394,21 @@ class AnophelesDataResource(
         )
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):
-            ht = gt.to_haplotypes().compute()
+            ht = gt.to_haplotypes().compute().values
 
-        # Copy to Fortran memory order and convert to bool dtype for faster hamming distance
-        # calculations.
-        ht = np.asfortranarray(ht, dtype=bool)
+        # Compute allele count, remove non-segregating sites.
+        ac = allel.HaplotypeArray(ht).count_alleles(max_allele=1)
+        ht_seg = ht[ac.is_segregating()]
+
+        # Transpose memory layout for faster hamming distance calculations.
+        ht_t = np.ascontiguousarray(ht_seg.T)
 
         # Compute pairwise distances.
-        dist = pdist(ht.T, metric="hamming")
+        dist_sq = pdist_abs_hamming(ht_t)
+        dist = squareform(dist_sq)
 
-        # Convert Hamming distances to numbers of SNPs.
-        dist = (dist * ht.shape[0]).astype(np.int32)
-
-        # Extract IDs of phased samples.
+        # Extract IDs of phased samples. Convert to "U" dtype here
+        # to allow these to be saved to the results cache.
         phased_samples = ds_haps["sample_id"].values.astype("U")
 
         return dict(
