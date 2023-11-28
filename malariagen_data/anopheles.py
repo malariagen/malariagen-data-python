@@ -6373,13 +6373,13 @@ class AnophelesDataResource(
     def _haplotype_pairwise_distances(
         self,
         *,
-        region: base_params.regions,
-        analysis: hap_params.analysis,
-        sample_sets: Optional[base_params.sample_sets],
-        sample_query: Optional[base_params.sample_query],
-        cohort_size: Optional[base_params.cohort_size],
-        random_seed: base_params.random_seed,
-    ) -> np.ndarray:
+        region,
+        analysis,
+        sample_sets,
+        sample_query,
+        cohort_size,
+        random_seed,
+    ):
         from scipy.spatial.distance import pdist
 
         # Load haplotypes.
