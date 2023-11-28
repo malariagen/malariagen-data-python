@@ -6455,7 +6455,7 @@ class AnophelesDataResource(
         )
 
         # Set up scatter plotting options.
-        plot_kwargs = dict(
+        plot_kwargs: Dict[str, Any] = dict(
             template="simple_white",
             hover_name="sample_id",
             render_mode=render_mode,
