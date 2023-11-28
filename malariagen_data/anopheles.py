@@ -6329,7 +6329,6 @@ class AnophelesDataResource(
             Hierarchically cluster haplotypes in region and produce an interactive plot.
         """,
         parameters=dict(
-            render_mode="TODO convert to parameter",
             kwargs="Passed through to `px.scatter()`.",
         ),
     )
@@ -6350,7 +6349,7 @@ class AnophelesDataResource(
         height: plotly_params.height = 500,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
-        render_mode: str = "svg",
+        render_mode: plotly_params.render_mode = plotly_params.render_mode_default,
         **kwargs,
     ) -> plotly_params.figure:
         from scipy.cluster.hierarchy import linkage
@@ -6358,9 +6357,7 @@ class AnophelesDataResource(
 
         from .plotly_dendrogram import create_dendrogram
 
-        debug = self._log.debug
-
-        debug("Load haplotypes.")
+        # Load haplotypes.
         ds_haps = self.haplotypes(
             region=region,
             analysis=analysis,
@@ -6373,33 +6370,31 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
-        debug(
-            "Copy to Fortran memory order and convert to bool dtype for faster hamming distance calculations."
-        )
+        # Copy to Fortran memory order and convert to bool dtype for faster hamming distance
+        # calculations.
         ht = np.asfortranarray(ht, dtype=bool)
 
-        debug("Load sample metadata.")
+        # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
 
-        debug("Align sample metadata with haplotypes.")
+        # Align sample metadata with haplotypes.
         phased_samples = ds_haps["sample_id"].values.tolist()
         df_samples_phased = (
             df_samples.set_index("sample_id").loc[phased_samples].reset_index()
         )
 
-        debug("Compute pairwise distances.")
+        # Compute pairwise distances.
         dist = pdist(ht.T, metric="hamming")
 
-        debug("Convert to number of SNPs.")
+        # Convert Hamming distances to numbers of SNPs.
         dist = (dist * ht.shape[0]).astype(np.int32)
 
         # Set labels as the index which we extract to reorder metadata.
         leaf_labels = np.arange(ht.shape[1])
 
-        debug("Create the dendrogram.")
-        # noinspection PyTypeChecker
+        # Create the dendrogram.
         fig = create_dendrogram(
             dist,
             linkagefun=lambda x: linkage(x, method=linkage_method),
@@ -6408,8 +6403,6 @@ class AnophelesDataResource(
             count_sort=count_sort,
             distance_sort=distance_sort,
         )
-
-        debug("Add scatter plot with hover text.")
 
         # Set up scatter plotting options.
         hover_data = [
@@ -6457,7 +6450,7 @@ class AnophelesDataResource(
             fig.layout.xaxis["ticktext"]
         ]
 
-        # Add scatter plot.
+        # Add scatter plot to draw the leaves.
         fig.add_traces(
             list(
                 px.scatter(
@@ -6471,13 +6464,13 @@ class AnophelesDataResource(
             )
         )
 
-        debug("Style the figure.")
-
+        # Add hover for lines to show distance.
         fig.update_traces(
             hoverinfo="y",
             line=dict(width=0.5, color="black"),
         )
 
+        # Add plot title.
         title_lines = []
         if sample_sets is not None:
             title_lines.append(f"sample sets: {sample_sets}")
@@ -6486,6 +6479,7 @@ class AnophelesDataResource(
         title_lines.append(f"genomic region: {region} ({ht.shape[0]} SNPs)")
         title = "<br>".join(title_lines)
 
+        # Style the figure.
         fig.update_layout(
             width=width,
             height=height,
