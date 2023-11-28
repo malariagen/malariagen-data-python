@@ -6326,36 +6326,61 @@ class AnophelesDataResource(
 
     @doc(
         summary="""
-            Hierarchically cluster haplotypes in region and produce an interactive plot.
+            Compute pairwise distances between haplotypes.
         """,
-        parameters=dict(
-            kwargs="Passed through to `px.scatter()`.",
-        ),
+        returns=("dist", "phased_samples", "n_snps"),
     )
-    def plot_haplotype_clustering(
+    def haplotype_pairwise_distances(
         self,
         region: base_params.regions,
         analysis: hap_params.analysis = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        color: plotly_params.color = None,
-        symbol: plotly_params.symbol = None,
-        linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
-        count_sort: hapclust_params.count_sort = True,
-        distance_sort: hapclust_params.distance_sort = False,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-        width: plotly_params.width = 1000,
-        height: plotly_params.height = 500,
-        show: plotly_params.show = True,
-        renderer: plotly_params.renderer = None,
-        render_mode: plotly_params.render_mode = plotly_params.render_mode_default,
-        **kwargs,
-    ) -> plotly_params.figure:
-        from scipy.cluster.hierarchy import linkage
-        from scipy.spatial.distance import pdist
+    ) -> Tuple[np.ndarray, np.ndarray, int]:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
+        name = "haplotype_pairwise_distances"
 
-        from .plotly_dendrogram import create_dendrogram
+        # Normalize params for consistent hash value.
+        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        region_prepped = self._prep_region_cache_param(region=region)
+        params = dict(
+            region=region_prepped,
+            analysis=analysis,
+            sample_sets=sample_sets_prepped,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+
+        # Try to retrieve results from the cache.
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._haplotype_pairwise_distances(**params)
+            self.results_cache_set(name=name, params=params, results=results)
+
+        # Unpack results")
+        dist = results["dist"]
+        phased_samples = results["phased_samples"]
+        n_snps = results["n_snps"]
+
+        return dist, phased_samples, n_snps
+
+    def _haplotype_pairwise_distances(
+        self,
+        *,
+        region: base_params.regions,
+        analysis: hap_params.analysis,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        cohort_size: Optional[base_params.cohort_size],
+        random_seed: base_params.random_seed,
+    ) -> np.ndarray:
+        from scipy.spatial.distance import pdist
 
         # Load haplotypes.
         ds_haps = self.haplotypes(
@@ -6374,25 +6399,76 @@ class AnophelesDataResource(
         # calculations.
         ht = np.asfortranarray(ht, dtype=bool)
 
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        # Align sample metadata with haplotypes.
-        phased_samples = ds_haps["sample_id"].values.tolist()
-        df_samples_phased = (
-            df_samples.set_index("sample_id").loc[phased_samples].reset_index()
-        )
-
         # Compute pairwise distances.
         dist = pdist(ht.T, metric="hamming")
 
         # Convert Hamming distances to numbers of SNPs.
         dist = (dist * ht.shape[0]).astype(np.int32)
 
+        # Extract IDs of phased samples.
+        phased_samples = ds_haps["sample_id"].values.astype("U")
+
+        return dict(
+            dist=dist,
+            phased_samples=phased_samples,
+            n_snps=ht.shape[0],
+        )
+
+    @doc(
+        summary="""
+            Hierarchically cluster haplotypes in region and produce an interactive plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to `px.scatter()`.",
+        ),
+    )
+    def plot_haplotype_clustering(
+        self,
+        region: base_params.regions,
+        analysis: hap_params.analysis = DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
+        count_sort: hapclust_params.count_sort = True,
+        distance_sort: hapclust_params.distance_sort = False,
+        width: plotly_params.width = 1000,
+        height: plotly_params.height = 500,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        render_mode: plotly_params.render_mode = plotly_params.render_mode_default,
+        **kwargs,
+    ) -> plotly_params.figure:
+        from scipy.cluster.hierarchy import linkage
+
+        from .plotly_dendrogram import create_dendrogram
+
+        # Compute pairwise distances.
+        dist, phased_samples, n_snps = self.haplotype_pairwise_distances(
+            region=region,
+            analysis=analysis,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            random_seed=random_seed,
+        )
+        n_haps = len(phased_samples) * 2
+
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+
+        # Align sample metadata with haplotypes.
+        df_samples_phased = (
+            df_samples.set_index("sample_id").loc[phased_samples.tolist()].reset_index()
+        )
+
         # Set labels as the index which we extract to reorder metadata.
-        leaf_labels = np.arange(ht.shape[1])
+        leaf_labels = np.arange(n_haps)
 
         # Create the dendrogram.
         fig = create_dendrogram(
@@ -6456,7 +6532,7 @@ class AnophelesDataResource(
                 px.scatter(
                     df_samples_phased_haps,
                     x=fig.layout.xaxis["tickvals"],
-                    y=np.repeat(-1, len(ht.T)),
+                    y=np.repeat(-1, n_haps),
                     color=color,
                     symbol=symbol,
                     **plot_kwargs,
@@ -6476,7 +6552,7 @@ class AnophelesDataResource(
             title_lines.append(f"sample sets: {sample_sets}")
         if sample_query is not None:
             title_lines.append(f"sample query: {sample_query}")
-        title_lines.append(f"genomic region: {region} ({ht.shape[0]} SNPs)")
+        title_lines.append(f"genomic region: {region} ({n_snps:,} SNPs)")
         title = "<br>".join(title_lines)
 
         # Style the figure.
