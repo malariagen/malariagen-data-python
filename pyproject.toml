@@ -54,8 +54,6 @@ typeguard = ">=4.0.0"
 protopunica = "*"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
-# accelerate pairwise distance calculations
-scikit-learn = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
