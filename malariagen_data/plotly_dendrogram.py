@@ -6,22 +6,20 @@ from collections import OrderedDict
 import numpy as np
 import scipy as scp
 import scipy.cluster.hierarchy as sch
-import scipy.spatial as scs
-from plotly import exceptions
 from plotly.graph_objs import graph_objs
 
 
 def create_dendrogram(
-    X,
+    dist,
     orientation="bottom",
     labels=None,
     colorscale=None,
-    distfun=None,
     linkagefun=lambda x: sch.linkage(x, "complete"),
     hovertext=None,
     color_threshold=None,
     count_sort=True,
     distance_sort=False,
+    render_mode="auto",
 ):
     """
     Function that returns a dendrogram Plotly figure object. This is a thin
@@ -29,7 +27,7 @@ def create_dendrogram(
 
     See also https://dash.plot.ly/dash-bio/clustergram.
 
-    :param (ndarray) X: Matrix of observations as array of arrays
+    :param (ndarray) dist: Distance matrix in condensed form.
     :param (str) orientation: 'top', 'right', 'bottom', or 'left'
     :param (list) labels: List of axis category labels(observation labels)
     :param (list) colorscale: Optional colorscale for the dendrogram tree.
@@ -39,8 +37,6 @@ def create_dendrogram(
                               Given a shorter list, the missing values are
                               replaced with defaults and with a longer list the
                               extra values are ignored.
-    :param (function) distfun: Function to compute the pairwise distance from
-                               the observations
     :param (function) linkagefun: Function to compute the linkage matrix from
                                the pairwise distances
     :param (list[list]) hovertext: List of hovertext for constituent traces of dendrogram
@@ -81,30 +77,18 @@ def create_dendrogram(
     >>> fig = create_dendrogram(df, labels=Index)
     >>> fig.show()
     """
-    if not scp or not scs or not sch:
-        raise ImportError(
-            "FigureFactory.create_dendrogram requires scipy, \
-                            scipy.spatial and scipy.hierarchy"
-        )
-
-    s = X.shape
-    if len(s) != 2:
-        exceptions.PlotlyError("X should be 2-dimensional array.")
-
-    if distfun is None:
-        distfun = scs.distance.pdist
 
     dendrogram = _Dendrogram(
-        X,
+        dist,
         orientation,
         labels,
         colorscale,
-        distfun=distfun,
         linkagefun=linkagefun,
         hovertext=hovertext,
         color_threshold=color_threshold,
         count_sort=count_sort,
         distance_sort=distance_sort,
+        render_mode=render_mode,
     )
 
     return graph_objs.Figure(data=dendrogram.data, layout=dendrogram.layout)
@@ -115,7 +99,7 @@ class _Dendrogram(object):
 
     def __init__(
         self,
-        X,
+        dist,
         orientation="bottom",
         labels=None,
         colorscale=None,
@@ -123,12 +107,12 @@ class _Dendrogram(object):
         height=np.inf,
         xaxis="xaxis",
         yaxis="yaxis",
-        distfun=None,
         linkagefun=lambda x: sch.linkage(x, "complete"),
         hovertext=None,
         color_threshold=None,
         count_sort=True,
         distance_sort=True,
+        render_mode="svg",
     ):
         self.orientation = orientation
         self.labels = labels
@@ -149,18 +133,15 @@ class _Dendrogram(object):
         else:
             self.sign[self.yaxis] = -1
 
-        if distfun is None:
-            distfun = scs.distance.pdist
-
         (dd_traces, xvals, yvals, ordered_labels, leaves) = self.get_dendrogram_traces(
-            X,
-            colorscale,
-            distfun,
-            linkagefun,
-            hovertext,
-            color_threshold,
-            count_sort,
-            distance_sort,
+            dist=dist,
+            colorscale=colorscale,
+            linkagefun=linkagefun,
+            hovertext=hovertext,
+            color_threshold=color_threshold,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
+            render_mode=render_mode,
         )
 
         self.labels = ordered_labels
@@ -325,22 +306,20 @@ class _Dendrogram(object):
 
     def get_dendrogram_traces(
         self,
-        X,
+        dist,
         colorscale,
-        distfun,
         linkagefun,
         hovertext,
         color_threshold,
         count_sort,
         distance_sort,
+        render_mode,
     ):
         """
         Calculates all the elements needed for plotting a dendrogram.
 
-        :param (ndarray) X: Matrix of observations as array of arrays
+        :param (ndarray) dist: Distance matrix in condensed form
         :param (list) colorscale: Color scale for dendrogram tree clusters
-        :param (function) distfun: Function to compute the pairwise distance
-                                   from the observations
         :param (function) linkagefun: Function to compute the linkage matrix
                                       from the pairwise distances
         :param (list) hovertext: List of hovertext for constituent traces of dendrogram
@@ -355,8 +334,7 @@ class _Dendrogram(object):
             (e) P['leaves']: left-to-right traversal of the leaves
 
         """
-        d = distfun(X)
-        Z = linkagefun(d)
+        Z = linkagefun(dist)
         P = sch.dendrogram(
             Z,
             orientation=self.orientation,
@@ -392,7 +370,7 @@ class _Dendrogram(object):
             if hovertext:
                 hovertext_label = hovertext[i]
             trace = dict(
-                type="scatter",
+                type="scattergl" if render_mode == "webgl" else "scatter",
                 x=np.multiply(self.sign[self.xaxis], xs),
                 y=np.multiply(self.sign[self.yaxis], ys),
                 mode="lines",

@@ -127,6 +127,13 @@ show: TypeAlias = Annotated[
 
 renderer: TypeAlias = Annotated[Optional[str], "The name of the renderer to use."]
 
+render_mode: TypeAlias = Annotated[
+    Literal["auto", "svg", "webgl"],
+    "The type of rendering backend to use. See also https://plotly.com/python/webgl-vs-svg/",
+]
+
+render_mode_default: render_mode = "auto"
+
 figure: TypeAlias = Annotated[
     Optional[go.Figure], "A plotly figure (only returned if show=False)."
 ]
