@@ -112,7 +112,7 @@ class _Dendrogram(object):
         color_threshold=None,
         count_sort=True,
         distance_sort=True,
-        render_mode="svg",
+        render_mode="auto",
     ):
         self.orientation = orientation
         self.labels = labels
