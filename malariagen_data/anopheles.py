@@ -6524,6 +6524,7 @@ class AnophelesDataResource(
             color_threshold=0,
             count_sort=count_sort,
             distance_sort=distance_sort,
+            render_mode=render_mode,
         )
 
         # Configure hover data.
