@@ -54,6 +54,8 @@ typeguard = ">=4.0.0"
 protopunica = "*"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
+# providers spinners
+yaspin = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
