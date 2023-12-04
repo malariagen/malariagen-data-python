@@ -215,6 +215,10 @@ def dask_compress_dataset(ds, indexer, dim):
     assert indexer.dtype == bool
     assert indexer.shape[0] == ds.dims[dim]
 
+    # compute the indexer once, to avoid multiple reads from the
+    # underlying data
+    indexer = da.from_array(indexer.compute())
+
     coords = dict()
     for k in ds.coords:
         a = ds[k]
