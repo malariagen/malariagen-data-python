@@ -459,18 +459,19 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = self._cache_sample_metadata[cache_key]
 
         except KeyError:
-            # Build a dataframe from all available metadata.
-            df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
-            if self._aim_analysis:
-                df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
-                df_samples = df_samples.merge(
-                    df_aim, on="sample_id", sort=False, how="left"
-                )
-            if self._cohorts_analysis:
-                df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
-                df_samples = df_samples.merge(
-                    df_cohorts, on="sample_id", sort=False, how="left"
-                )
+            with self._spinner(desc="Load sample metadata"):
+                # Build a dataframe from all available metadata.
+                df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
+                if self._aim_analysis:
+                    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
+                    df_samples = df_samples.merge(
+                        df_aim, on="sample_id", sort=False, how="left"
+                    )
+                if self._cohorts_analysis:
+                    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
+                    df_samples = df_samples.merge(
+                        df_cohorts, on="sample_id", sort=False, how="left"
+                    )
 
             # Store sample metadata in the cache.
             self._cache_sample_metadata[cache_key] = df_samples

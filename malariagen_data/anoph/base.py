@@ -20,6 +20,7 @@ import pandas as pd
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
+from yaspin import yaspin
 
 from ..util import (
     CacheMiss,
@@ -99,14 +100,20 @@ class AnophelesBase:
         if results_cache is not None:
             self._results_cache = Path(results_cache).expanduser().resolve()
 
-    def _progress(self, iterable, **kwargs):
+    def _progress(self, iterable, desc=None, leave=False, **kwargs):
         # progress doesn't mix well with debug logging
         disable = self._debug or not self._show_progress
-        return tqdm(iterable, disable=disable, **kwargs)
+        return tqdm(iterable, disable=disable, desc=desc, leave=leave, **kwargs)
 
-    def _dask_progress(self, **kwargs):
+    def _dask_progress(self, desc=None, leave=False, **kwargs):
         disable = not self._show_progress
-        return TqdmCallback(disable=disable, **kwargs)
+        return TqdmCallback(disable=disable, desc=desc, leave=leave, **kwargs)
+
+    def _spinner(self, desc=None, spinner=None, side="right", timer=True, **kwargs):
+        if desc:
+            # For consistent behaviour with tqdm.
+            desc += ":"
+        return yaspin(text=desc, spinner=spinner, side=side, timer=timer, **kwargs)
 
     @check_types
     def open_file(self, path: str) -> IO:
