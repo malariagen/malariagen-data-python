@@ -993,7 +993,8 @@ class AnophelesDataResource(
         debug(f"final shape {gn_var.shape}")
 
         debug("run the PCA")
-        coords, model = allel.pca(gn_var, n_components=n_components)
+        with self._spinner(desc="Compute PCA"):
+            coords, model = allel.pca(gn_var, n_components=n_components)
 
         debug("work around sign indeterminacy")
         for i in range(n_components):
@@ -3274,9 +3275,6 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # TODO could generalise, do this on a region rather than a contig
 
-        # TODO better to support min_cohort_size and max_cohort_size here
-        # rather than just a fixed cohort_size
-
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
         name = self._fst_gwss_results_cache_name
@@ -3349,10 +3347,10 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Compute allele counts for cohort 2"):
             ac2 = gt2.count_alleles(max_allele=3).compute()
 
-        pos = ds_snps1["variant_position"].values
-
-        fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
-        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+        with self._spinner(desc="Compute Fst"):
+            fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
+            pos = ds_snps1["variant_position"].values
+            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, fst=fst)
 
@@ -4539,11 +4537,14 @@ class AnophelesDataResource(
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
-        pos = ds_haps["variant_position"].values
 
-        h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+        with self._spinner(desc="Compute H12"):
+            # Compute H12.
+            h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
 
-        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            # Compute window midpoints.
+            pos = ds_haps["variant_position"].values
+            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, h12=h12)
 
@@ -4821,13 +4822,14 @@ class AnophelesDataResource(
         gt2 = allel.GenotypeDaskArray(ds2["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes for cohort 2"):
             ht2 = gt2.to_haplotypes().compute()
-        pos = ds1["variant_position"].values
 
-        # run H1X scan
-        h1x = _moving_h1x(ht1, ht2, size=window_size)
+        with self._spinner(desc="Compute H1X"):
+            # Run H1X scan.
+            h1x = _moving_h1x(ht1, ht2, size=window_size)
 
-        # compute window midpoints
-        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            # Compute window midpoints.
+            pos = ds1["variant_position"].values
+            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, h1x=h1x)
 
@@ -5128,52 +5130,53 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
-        ac = ht.count_alleles(max_allele=1)
-        pos = ds_haps["variant_position"].values
+        with self._spinner(desc="Compute IHS"):
+            ac = ht.count_alleles(max_allele=1)
+            pos = ds_haps["variant_position"].values
 
-        if filter_min_maf > 0:
-            af = ac.to_frequencies()
-            maf = np.min(af, axis=1)
-            maf_filter = maf > filter_min_maf
-            ht = ht.compress(maf_filter, axis=0)
-            pos = pos[maf_filter]
-            ac = ac[maf_filter]
+            if filter_min_maf > 0:
+                af = ac.to_frequencies()
+                maf = np.min(af, axis=1)
+                maf_filter = maf > filter_min_maf
+                ht = ht.compress(maf_filter, axis=0)
+                pos = pos[maf_filter]
+                ac = ac[maf_filter]
 
-        # compute iHS
-        ihs = allel.ihs(
-            h=ht,
-            pos=pos,
-            min_maf=compute_min_maf,
-            min_ehh=min_ehh,
-            include_edges=include_edges,
-            max_gap=max_gap,
-            gap_scale=gap_scale,
-            use_threads=use_threads,
-        )
-
-        # remove any NaNs
-        na_mask = ~np.isnan(ihs)
-        ihs = ihs[na_mask]
-        pos = pos[na_mask]
-        ac = ac[na_mask]
-
-        # take absolute value
-        ihs = np.fabs(ihs)
-
-        if standardize:
-            ihs, _ = allel.standardize_by_allele_count(
-                score=ihs,
-                aac=ac[:, 1],
-                bins=standardization_bins,
-                n_bins=standardization_n_bins,
-                diagnostics=standardization_diagnostics,
+            # compute iHS
+            ihs = allel.ihs(
+                h=ht,
+                pos=pos,
+                min_maf=compute_min_maf,
+                min_ehh=min_ehh,
+                include_edges=include_edges,
+                max_gap=max_gap,
+                gap_scale=gap_scale,
+                use_threads=use_threads,
             )
 
-        if window_size:
-            ihs = allel.moving_statistic(
-                ihs, statistic=np.percentile, size=window_size, q=percentiles
-            )
-            pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            # remove any NaNs
+            na_mask = ~np.isnan(ihs)
+            ihs = ihs[na_mask]
+            pos = pos[na_mask]
+            ac = ac[na_mask]
+
+            # take absolute value
+            ihs = np.fabs(ihs)
+
+            if standardize:
+                ihs, _ = allel.standardize_by_allele_count(
+                    score=ihs,
+                    aac=ac[:, 1],
+                    bins=standardization_bins,
+                    n_bins=standardization_n_bins,
+                    diagnostics=standardization_diagnostics,
+                )
+
+            if window_size:
+                ihs = allel.moving_statistic(
+                    ihs, statistic=np.percentile, size=window_size, q=percentiles
+                )
+                pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=pos, ihs=ihs)
 
@@ -6140,51 +6143,53 @@ class AnophelesDataResource(
 
         gt1 = allel.GenotypeDaskArray(ds_haps1["call_genotype"].data)
         gt2 = allel.GenotypeDaskArray(ds_haps2["call_genotype"].data)
-        with self._dask_progress(desc="Load haplotypes"):
+        with self._dask_progress(desc="Load haplotypes for cohort 1"):
             ht1 = gt1.to_haplotypes().compute()
+        with self._dask_progress(desc="Load haplotypes for cohort 2"):
             ht2 = gt2.to_haplotypes().compute()
 
-        ac1 = ht1.count_alleles(max_allele=1)
-        ac2 = ht2.count_alleles(max_allele=1)
-        pos = ds_haps1["variant_position"].values
+        with self._spinner("Compute XPEHH"):
+            ac1 = ht1.count_alleles(max_allele=1)
+            ac2 = ht2.count_alleles(max_allele=1)
+            pos = ds_haps1["variant_position"].values
 
-        if filter_min_maf > 0:
-            ac = ac1 + ac2
-            af = ac.to_frequencies()
-            maf = np.min(af, axis=1)
-            maf_filter = maf > filter_min_maf
+            if filter_min_maf > 0:
+                ac = ac1 + ac2
+                af = ac.to_frequencies()
+                maf = np.min(af, axis=1)
+                maf_filter = maf > filter_min_maf
 
-            ht1 = ht1.compress(maf_filter, axis=0)
-            ht2 = ht2.compress(maf_filter, axis=0)
-            pos = pos[maf_filter]
-            ac1 = ac1[maf_filter]
-            ac2 = ac2[maf_filter]
+                ht1 = ht1.compress(maf_filter, axis=0)
+                ht2 = ht2.compress(maf_filter, axis=0)
+                pos = pos[maf_filter]
+                ac1 = ac1[maf_filter]
+                ac2 = ac2[maf_filter]
 
-        # compute XP-EHH
-        xp = allel.xpehh(
-            h1=ht1,
-            h2=ht2,
-            pos=pos,
-            map_pos=map_pos,
-            min_ehh=min_ehh,
-            include_edges=include_edges,
-            max_gap=max_gap,
-            gap_scale=gap_scale,
-            use_threads=use_threads,
-        )
-
-        # remove any NaNs
-        na_mask = ~np.isnan(xp)
-        xp = xp[na_mask]
-        pos = pos[na_mask]
-        ac1 = ac1[na_mask]
-        ac2 = ac2[na_mask]
-
-        if window_size:
-            xp = allel.moving_statistic(
-                xp, statistic=np.percentile, size=window_size, q=percentiles
+            # compute XP-EHH
+            xp = allel.xpehh(
+                h1=ht1,
+                h2=ht2,
+                pos=pos,
+                map_pos=map_pos,
+                min_ehh=min_ehh,
+                include_edges=include_edges,
+                max_gap=max_gap,
+                gap_scale=gap_scale,
+                use_threads=use_threads,
             )
-            pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+
+            # remove any NaNs
+            na_mask = ~np.isnan(xp)
+            xp = xp[na_mask]
+            pos = pos[na_mask]
+            ac1 = ac1[na_mask]
+            ac2 = ac2[na_mask]
+
+            if window_size:
+                xp = allel.moving_statistic(
+                    xp, statistic=np.percentile, size=window_size, q=percentiles
+                )
+                pos = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=pos, xpehh=xp)
 
@@ -6404,7 +6409,8 @@ class AnophelesDataResource(
         ht_t = np.ascontiguousarray(ht_seg.T)
 
         # Compute pairwise distances.
-        dist_sq = pdist_abs_hamming(ht_t)
+        with self._spinner(desc="Compute pairwise distances"):
+            dist_sq = pdist_abs_hamming(ht_t)
         dist = squareform(dist_sq)
 
         # Extract IDs of phased samples. Convert to "U" dtype here
@@ -6691,30 +6697,31 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load haplotypes"):
             ht = gt.to_haplotypes().compute()
 
-        debug("count alleles and select segregating sites")
-        ac = gt.count_alleles(max_allele=1)
-        loc_seg = ac.is_segregating()
-        ht_seg = ht[loc_seg]
+        with self._spinner(desc="Compute haplotype network"):
+            debug("count alleles and select segregating sites")
+            ac = ht.count_alleles(max_allele=1)
+            loc_seg = ac.is_segregating()
+            ht_seg = ht[loc_seg]
 
-        debug("identify distinct haplotypes")
-        ht_distinct_sets = ht_seg.distinct()
-        # find indices of distinct haplotypes - just need one per set
-        ht_distinct_indices = [min(s) for s in ht_distinct_sets]
-        # reorder by index - TODO is this necessary?
-        ix = np.argsort(ht_distinct_indices)
-        ht_distinct_indices = [ht_distinct_indices[i] for i in ix]
-        ht_distinct_sets = [ht_distinct_sets[i] for i in ix]
-        # obtain an array of distinct haplotypes
-        ht_distinct = ht_seg.take(ht_distinct_indices, axis=1)
-        # count how many observations per distinct haplotype
-        ht_counts = [len(s) for s in ht_distinct_sets]
+            debug("identify distinct haplotypes")
+            ht_distinct_sets = ht_seg.distinct()
+            # find indices of distinct haplotypes - just need one per set
+            ht_distinct_indices = [min(s) for s in ht_distinct_sets]
+            # reorder by index - TODO is this necessary?
+            ix = np.argsort(ht_distinct_indices)
+            ht_distinct_indices = [ht_distinct_indices[i] for i in ix]
+            ht_distinct_sets = [ht_distinct_sets[i] for i in ix]
+            # obtain an array of distinct haplotypes
+            ht_distinct = ht_seg.take(ht_distinct_indices, axis=1)
+            # count how many observations per distinct haplotype
+            ht_counts = [len(s) for s in ht_distinct_sets]
 
-        debug("construct median joining network")
-        ht_distinct_mjn, edges, alt_edges = median_joining_network(
-            ht_distinct, max_dist=max_dist
-        )
-        edges = np.triu(edges)
-        alt_edges = np.triu(alt_edges)
+            debug("construct median joining network")
+            ht_distinct_mjn, edges, alt_edges = median_joining_network(
+                ht_distinct, max_dist=max_dist
+            )
+            edges = np.triu(edges)
+            alt_edges = np.triu(alt_edges)
 
         debug("setup colors")
         color_values = None

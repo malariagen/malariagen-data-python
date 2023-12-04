@@ -207,38 +207,41 @@ class AnophelesHapData(
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 
         # Build dataset.
-        lx = []
-        for r in regions:
-            ly = []
+        with self._spinner(desc="Access haplotypes"):
+            lx = []
+            for r in regions:
+                ly = []
 
-            for s in sample_sets_prepped:
-                y = self._haplotypes_for_contig(
-                    contig=r.contig,
-                    sample_set=s,
-                    analysis=analysis,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                if y is not None:
-                    ly.append(y)
+                for s in sample_sets_prepped:
+                    y = self._haplotypes_for_contig(
+                        contig=r.contig,
+                        sample_set=s,
+                        analysis=analysis,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    if y is not None:
+                        ly.append(y)
 
-            if len(ly) == 0:
-                # Bail out, no data for given sample sets and analysis.
-                raise ValueError(f"No samples found for phasing analysis {analysis!r}")
+                if len(ly) == 0:
+                    # Bail out, no data for given sample sets and analysis.
+                    raise ValueError(
+                        f"No samples found for phasing analysis {analysis!r}"
+                    )
 
-            # Concatenate data from multiple sample sets.
-            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                # Concatenate data from multiple sample sets.
+                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
-            # Handle region.
-            if r.start or r.end:
-                pos = x["variant_position"].values
-                loc_region = locate_region(r, pos)
-                x = x.isel(variants=loc_region)
+                # Handle region.
+                if r.start or r.end:
+                    pos = x["variant_position"].values
+                    loc_region = locate_region(r, pos)
+                    x = x.isel(variants=loc_region)
 
-            lx.append(x)
+                lx.append(x)
 
-        # Concatenate data from multiple regions.
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            # Concatenate data from multiple regions.
+            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Handle sample query.
         if sample_query is not None:

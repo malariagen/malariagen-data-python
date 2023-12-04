@@ -799,52 +799,53 @@ class AnophelesSnpData(
         del region
 
         # Access SNP calls and concatenate multiple sample sets and/or regions.
-        lx = []
-        for r in regions:
-            ly = []
-            for s in sample_sets_prepped:
-                y = self._snp_calls_for_contig(
-                    contig=r.contig,
-                    sample_set=s,
-                    inline_array=inline_array,
-                    chunks=chunks,
+        with self._spinner("Access SNP calls"):
+            lx = []
+            for r in regions:
+                ly = []
+                for s in sample_sets_prepped:
+                    y = self._snp_calls_for_contig(
+                        contig=r.contig,
+                        sample_set=s,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    ly.append(y)
+
+                # Concatenate data from multiple sample sets.
+                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+
+                # Add variants variables.
+                v = self._snp_variants_for_contig(
+                    contig=r.contig, inline_array=inline_array, chunks=chunks
                 )
-                ly.append(y)
+                x = xr.merge([v, x], compat="override", join="override")
 
-            # Concatenate data from multiple sample sets.
-            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                # Handle site class.
+                if site_class is not None:
+                    loc_ann = self._locate_site_class(
+                        region=r.contig,
+                        site_class=site_class,
+                        site_mask=None,
+                    )
+                    x = x.isel(variants=loc_ann)
 
-            # Add variants variables.
-            v = self._snp_variants_for_contig(
-                contig=r.contig, inline_array=inline_array, chunks=chunks
-            )
-            x = xr.merge([v, x], compat="override", join="override")
+                # Handle region, do this only once - optimisation.
+                if r.start or r.end:
+                    pos = x["variant_position"].values
+                    loc_region = locate_region(r, pos)
+                    x = x.isel(variants=loc_region)
 
-            # Handle site class.
-            if site_class is not None:
-                loc_ann = self._locate_site_class(
-                    region=r.contig,
-                    site_class=site_class,
-                    site_mask=None,
-                )
-                x = x.isel(variants=loc_ann)
+                lx.append(x)
 
-            # Handle region, do this only once - optimisation.
-            if r.start or r.end:
-                pos = x["variant_position"].values
-                loc_region = locate_region(r, pos)
-                x = x.isel(variants=loc_region)
-
-            lx.append(x)
-
-        # Concatenate data from multiple regions.
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            # Concatenate data from multiple regions.
+            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         if site_mask is not None:
-            # Apply site filters.
-            ds = dask_compress_dataset(
-                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
-            )
+            with self._spinner(desc="Apply site filters"):
+                ds = dask_compress_dataset(
+                    ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+                )
 
         # Add call_genotype_mask.
         ds["call_genotype_mask"] = ds["call_genotype"] < 0
