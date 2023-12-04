@@ -258,7 +258,7 @@ def da_compress(
     indexer: da.Array,
     data: da.Array,
     axis: int,
-    indexer_computed: np.ndarray = None,
+    indexer_computed: Optional[np.ndarray] = None,
 ):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
