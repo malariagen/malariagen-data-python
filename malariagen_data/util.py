@@ -283,14 +283,14 @@ def da_compress(
     # would normally do v.compute_chunk_sizes() but that is slow for
     # multidimensional arrays, so hack something more efficient
 
-    axis_new_chunks = []
+    axis_new_chunks_list = []
     slice_start = 0
     for old_chunk_size in axis_old_chunks:
         slice_stop = slice_start + old_chunk_size
         new_chunk_size = np.sum(indexer_computed[slice_start:slice_stop])
-        axis_new_chunks.append(new_chunk_size)
+        axis_new_chunks_list.append(new_chunk_size)
         slice_start = slice_stop
-    axis_new_chunks = tuple(axis_new_chunks)
+    axis_new_chunks = tuple(axis_new_chunks_list)
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )
