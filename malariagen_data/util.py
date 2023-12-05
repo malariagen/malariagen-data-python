@@ -215,16 +215,20 @@ def dask_compress_dataset(ds, indexer, dim):
     assert indexer.dtype == bool
     assert indexer.shape[0] == ds.dims[dim]
 
+    # temporarily compute the indexer once, to avoid multiple reads from
+    # the underlying data
+    indexer_computed = indexer.compute()
+
     coords = dict()
     for k in ds.coords:
         a = ds[k]
-        v = _dask_compress_dataarray(a, indexer, dim)
+        v = _dask_compress_dataarray(a, indexer, indexer_computed, dim)
         coords[k] = (a.dims, v)
 
     data_vars = dict()
     for k in ds.data_vars:
         a = ds[k]
-        v = _dask_compress_dataarray(a, indexer, dim)
+        v = _dask_compress_dataarray(a, indexer, indexer_computed, dim)
         data_vars[k] = (a.dims, v)
 
     attrs = ds.attrs.copy()
@@ -232,7 +236,7 @@ def dask_compress_dataset(ds, indexer, dim):
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
 
-def _dask_compress_dataarray(a, indexer, dim):
+def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
     try:
         # find the axis for the given dimension
         axis = a.dims.index(dim)
@@ -243,7 +247,9 @@ def _dask_compress_dataarray(a, indexer, dim):
 
     else:
         # apply the indexing operation
-        v = da_compress(indexer, a.data, axis)
+        v = da_compress(
+            indexer=indexer, data=a.data, axis=axis, indexer_computed=indexer_computed
+        )
 
     return v
 
@@ -252,6 +258,7 @@ def da_compress(
     indexer: da.Array,
     data: da.Array,
     axis: int,
+    indexer_computed: Optional[np.ndarray] = None,
 ):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
@@ -261,7 +268,10 @@ def da_compress(
     # useful variables
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
-    axis_n_chunks = len(axis_old_chunks)
+
+    # load the indexer temporarily for chunk size computations
+    if indexer_computed is None:
+        indexer_computed = indexer.compute()
 
     # ensure indexer and data are chunked in the same way
     indexer = indexer.rechunk((axis_old_chunks,))
@@ -273,12 +283,14 @@ def da_compress(
     # would normally do v.compute_chunk_sizes() but that is slow for
     # multidimensional arrays, so hack something more efficient
 
-    axis_new_chunks = tuple(
-        indexer.map_blocks(
-            lambda b: np.sum(b, keepdims=True),
-            chunks=((1,) * axis_n_chunks,),
-        ).compute()
-    )
+    axis_new_chunks_list = []
+    slice_start = 0
+    for old_chunk_size in axis_old_chunks:
+        slice_stop = slice_start + old_chunk_size
+        new_chunk_size = np.sum(indexer_computed[slice_start:slice_stop])
+        axis_new_chunks_list.append(new_chunk_size)
+        slice_start = slice_stop
+    axis_new_chunks = tuple(axis_new_chunks_list)
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )
