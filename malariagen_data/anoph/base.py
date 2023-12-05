@@ -411,7 +411,8 @@ class AnophelesBase:
         results_path = cache_path / "results.npz"
         if not results_path.exists():
             raise CacheMiss
-        results = np.load(results_path)
+        with self._spinner("Load results from cache"):
+            results = np.load(results_path)
         # TODO Do we need to read the arrays and then close the npz file?
         return results
 
@@ -429,6 +430,7 @@ class AnophelesBase:
         cache_path.mkdir(exist_ok=True, parents=True)
         params_path = cache_path / "params.json"
         results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
+        with self._spinner("Save results to cache"):
+            with params_path.open(mode="w") as f:
+                f.write(params_json)
+            np.savez_compressed(results_path, **results)

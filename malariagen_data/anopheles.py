@@ -6428,6 +6428,7 @@ class AnophelesDataResource(
             Hierarchically cluster haplotypes in region and produce an interactive plot.
         """,
         parameters=dict(
+            scatter_y="Y coordinate at which to plot the scatter markers.",
             kwargs="Passed through to `px.scatter()`.",
         ),
     )
@@ -6444,16 +6445,21 @@ class AnophelesDataResource(
         linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
         count_sort: hapclust_params.count_sort = True,
         distance_sort: hapclust_params.distance_sort = False,
-        width: plotly_params.width = 1000,
+        width: plotly_params.width = None,
         height: plotly_params.height = 500,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
-        render_mode: plotly_params.render_mode = plotly_params.render_mode_default,
+        render_mode: plotly_params.render_mode = "svg",
+        scatter_y: int = 0,
         **kwargs,
     ) -> plotly_params.figure:
-        from scipy.cluster.hierarchy import linkage
+        import sys
 
-        from .plotly_dendrogram import create_dendrogram
+        from scipy.cluster.hierarchy import dendrogram, linkage
+
+        # This is needed to avoid RecursionError on some haplotype clustering analyses
+        # with larger numbers of haplotypes.
+        sys.setrecursionlimit(10_000)
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -6464,7 +6470,6 @@ class AnophelesDataResource(
         plot_kwargs: Dict[str, Any] = dict(
             template="simple_white",
             hover_name="sample_id",
-            render_mode=render_mode,
         )
 
         # Handle the color parameter.
@@ -6514,24 +6519,54 @@ class AnophelesDataResource(
         )
         n_haps = len(phased_samples) * 2
 
+        with self._spinner("Perform hierarchical clustering"):
+            # Hierarchical clustering.
+            Z = linkage(dist, method=linkage_method)
+
+            # Compute dendrogram.
+            dend = dendrogram(
+                Z, count_sort=count_sort, distance_sort=distance_sort, no_plot=True
+            )
+
+        # Compile the line coordinates into a single dataframe.
+        icoord = dend["icoord"]
+        dcoord = dend["dcoord"]
+        line_segments_x = []
+        line_segments_y = []
+        for ik, dk in zip(icoord, dcoord):
+            # Adding None here breaks up the lines.
+            line_segments_x += ik + [None]
+            line_segments_y += dk + [None]
+        df_line_segments = pd.DataFrame({"x": line_segments_x, "y": line_segments_y})
+
+        # Convert X coordinates to haplotype indices (scipy multiplies coordinates by 10).
+        df_line_segments["x"] = (df_line_segments["x"] - 5) / 10
+
+        # Plot the lines.
+        fig = px.line(
+            df_line_segments,
+            x="x",
+            y="y",
+            render_mode=render_mode,
+        )
+
+        # Style the lines.
+        fig.update_traces(
+            # hoverinfo="y",
+            line=dict(width=0.5, color="black"),
+        )
+
         # Align sample metadata with haplotypes.
         df_samples_phased = (
             df_samples.set_index("sample_id").loc[phased_samples.tolist()].reset_index()
         )
 
-        # Set labels as the index which we extract to reorder metadata.
-        leaf_labels = np.arange(n_haps)
+        # Repeat the dataframe so there is one row of metadata for each haplotype.
+        df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
+        df_haps.columns = df_samples_phased.columns
 
-        # Create the dendrogram.
-        fig = create_dendrogram(
-            dist,
-            linkagefun=lambda x: linkage(x, method=linkage_method),
-            labels=leaf_labels,
-            color_threshold=0,
-            count_sort=count_sort,
-            distance_sort=distance_sort,
-            render_mode=render_mode,
-        )
+        # Reorder haplotype metadata to align with haplotype clustering.
+        df_haps = df_haps.iloc[dend["leaves"]]
 
         # Configure hover data.
         hover_data = [
@@ -6553,46 +6588,34 @@ class AnophelesDataResource(
             hover_data.append(symbol)
         plot_kwargs["hover_data"] = hover_data
 
-        # Apply any user overrides.
-        plot_kwargs.update(kwargs)
-
-        # Repeat the dataframe so there is one row of metadata for each haplotype.
-        df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
-        df_haps.columns = df_samples_phased.columns
-
         # Select only columns in hover_data.
         df_haps = df_haps[hover_data]
 
-        # Reorder haplotype metadata to align with haplotype clustering.
-        df_haps = df_haps.loc[fig.layout.xaxis["ticktext"]]
+        # Apply any user overrides.
+        plot_kwargs.update(kwargs)
 
         # Add scatter plot to draw the leaves.
         fig.add_traces(
             list(
                 px.scatter(
                     df_haps,
-                    x=fig.layout.xaxis["tickvals"],
-                    y=np.repeat(-1, n_haps),
+                    x=np.arange(n_haps),
+                    y=np.repeat(scatter_y, n_haps),
                     color=color,
                     symbol=symbol,
+                    render_mode=render_mode,
                     **plot_kwargs,
                 ).select_traces()
             )
         )
 
-        # Add hover for lines to show distance.
-        fig.update_traces(
-            hoverinfo="y",
-            line=dict(width=0.5, color="black"),
-        )
-
-        # Add plot title.
+        # Construct plot title.
         title_lines = []
         if sample_sets is not None:
-            title_lines.append(f"sample sets: {sample_sets}")
+            title_lines.append(f"Sample sets: {sample_sets}")
         if sample_query is not None:
-            title_lines.append(f"sample query: {sample_query}")
-        title_lines.append(f"genomic region: {region} ({n_snps:,} SNPs)")
+            title_lines.append(f"Sample query: {sample_query}")
+        title_lines.append(f"Genomic region: {region} ({n_snps:,} SNPs)")
         title = "<br>".join(title_lines)
 
         # Style the figure.
@@ -6604,16 +6627,30 @@ class AnophelesDataResource(
             hovermode="closest",
             plot_bgcolor="white",
             yaxis_title="Distance (no. SNPs)",
-            xaxis_title="Haplotypes",
+            # I cannot get the xaxis title to appear below the plot, and when
+            # it's above the plot it often overlaps the title, so hiding it
+            # for now.
+            # xaxis_title="Haplotypes",
             showlegend=True,
         )
 
         # Style axes.
-        fig.update_xaxes(mirror=False, showgrid=True, showticklabels=False, ticks="")
+        fig.update_xaxes(
+            mirror=False,
+            showgrid=True,
+            showline=True,
+            showticklabels=False,
+            ticks="",
+            range=(-2, n_haps + 2),
+        )
         fig.update_yaxes(
             mirror=False,
             showgrid=True,
             showline=True,
+            showticklabels=True,
+            ticks="outside",
+            rangemode="tozero",
+            range=(scatter_y - 1, np.max(dcoord) + 1),
         )
 
         if show:  # pragma: no cover
