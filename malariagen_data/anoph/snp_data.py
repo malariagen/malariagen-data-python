@@ -16,6 +16,7 @@ from ..util import (
     DIM_VARIANT,
     CacheMiss,
     Region,
+    apply_allele_mapping,
     check_types,
     da_compress,
     da_concat,
@@ -26,6 +27,7 @@ from ..util import (
     parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
+    trim_alleles,
     true_runs,
 )
 from . import base_params
@@ -1310,3 +1312,143 @@ class AnophelesSnpData(
         is_accessible[pos - offset] = filter_pass
 
         return is_accessible
+
+    def biallelic_snp_calls(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask=None,
+        max_missing_an=None,
+        min_minor_ac=None,
+        n_snps=None,
+        thin_offset=0,
+    ):
+        # Perform an allele count.
+        ac = self.snp_allele_counts(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+        )
+
+        # Locate biallelic SNPs.
+        loc_bi = allel.AlleleCountsArray(ac).is_biallelic()
+
+        # Remap alleles to squeeze out unobserved alleles.
+        ac_bi = ac[loc_bi]
+        allele_mapping = trim_alleles(ac_bi)
+
+        # Set up SNP calls.
+        ds = self.snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+        )
+
+        # Subset to biallelic sites.
+        ds_bi = ds.isel(variants=loc_bi)
+
+        # Start building a new dataset.
+        coords = dict()
+        data_vars = dict()
+
+        # Store sample IDs.
+        coords["sample_id"] = ("samples",), ds_bi["sample_id"].data
+
+        # Store contig.
+        coords["variant_contig"] = ("variants",), ds_bi["variant_contig"].data
+
+        # Store position.
+        coords["variant_position"] = ("variants",), ds_bi["variant_position"].data
+
+        # Store alleles, transformed.
+        variant_allele = ds_bi["variant_allele"].data
+        variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
+        variant_allele_out = da.map_blocks(
+            lambda block: apply_allele_mapping(block, allele_mapping, max_allele=1),
+            variant_allele,
+            dtype=variant_allele.dtype,
+            chunks=(variant_allele.chunks[0], [2]),
+        )
+        data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
+
+        # Store allele counts, transformed, so we don't have to recompute.
+        ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=2)
+        data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
+
+        # Store genotype calls, transformed.
+        gt = ds_bi["call_genotype"].data
+        gt_out = allel.GenotypeDaskArray(gt).map_alleles(allele_mapping)
+        data_vars["call_genotype"] = ("variants", "samples", "ploidy"), gt_out.values
+
+        # Build dataset.
+        ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)
+
+        # Apply conditions.
+        loc_out = None
+
+        # Apply missingness condition.
+        if max_missing_an is not None:
+            an = ac_out.sum(axis=1)
+            an_missing = (ds_out.dims["samples"] * ds_out.dims["ploidy"]) - an
+            loc_missing = an_missing <= max_missing_an
+            loc_out = loc_missing
+
+        # Apply minor allele count condition.
+        if min_minor_ac is not None:
+            ac_minor = ac_out.min(axis=1)
+            loc_minor = ac_minor >= min_minor_ac
+            if loc_out is not None:
+                loc_out &= loc_minor
+            else:
+                loc_out = loc_minor
+
+        if loc_out is not None:
+            ds_out = ds_out.isel(variants=loc_out)
+
+        # Try to meet target number of SNPs.
+        if n_snps is not None:
+            if ds_out.dims["variants"] > (n_snps * 2):
+                # Do some thinning.
+                thin_step = ds_out.dims["variants"] // n_snps
+                loc_thin = slice(thin_offset, None, thin_step)
+                ds_out = ds_out.isel(variants=loc_thin)
+
+            elif ds_out.dims["variants"] < n_snps:
+                raise ValueError("Not enough SNPs.")
+
+        return ds_out
+
+    def biallelic_diplotypes(
+        self,
+        region,
+        sample_sets=None,
+        sample_query=None,
+        site_mask=None,
+        max_missing_an=None,
+        min_minor_ac=None,
+        n_snps=None,
+        thin_offset=0,
+    ):
+        # TODO caching.
+
+        # Access biallelic SNPs.
+        ds = self.biallelic_snp_calls(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            site_mask=site_mask,
+            max_missing_an=max_missing_an,
+            min_minor_ac=min_minor_ac,
+            n_snps=n_snps,
+            thin_offset=thin_offset,
+        )
+
+        # Compute diplotypes as the number of alt alleles per genotype call.
+        gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
+        with self._dask_progress(desc="Compute biallelic diplotypes"):
+            gn = gt.to_n_alt().compute()
+
+        return gn
