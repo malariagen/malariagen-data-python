@@ -9,10 +9,10 @@ height: TypeAlias = Annotated[int, "Height of the Dash app in pixels (px)."]
 width: TypeAlias = Annotated[Union[int, str], "Width of the Dash app."]
 
 server_mode: TypeAlias = Annotated[
-    Literal["inline", "external", "jupyterlab"],
+    Literal["inline", "external", "jupyterlab", "tab"],
     """
     Controls how the Jupyter Dash app will be launched. See
-    https://medium.com/plotly/introducing-jupyterdash-811f1f57c02e for
+    https://dash.plotly.com/dash-in-jupyter#display-modes for
     more information.
     """,
 ]
@@ -23,3 +23,9 @@ server_port: TypeAlias = Annotated[
     int,
     "Manually override the port on which the Dash app will run.",
 ]
+
+serve_scripts_locally: TypeAlias = Annotated[
+    bool, "If True, serve scripts locally, otherwise use CDN."
+]
+
+serve_scripts_locally_default: serve_scripts_locally = True
