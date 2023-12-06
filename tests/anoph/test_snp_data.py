@@ -846,3 +846,253 @@ def test_plot_snps(fixture, api: AnophelesSnpData):
         show=False,
     )
     assert isinstance(fig, bokeh.model.Model)
+
+
+def check_biallelic_snp_calls(api, sample_sets, region, site_mask):
+    ds = api.biallelic_snp_calls(
+        region=region, sample_sets=sample_sets, site_mask=site_mask
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # Check fields.
+    expected_data_vars = {
+        "variant_allele",
+        "variant_allele_count",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # Check dimensions.
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # Check dim lengths.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    n_samples = len(df_samples)
+    n_variants = ds.dims["variants"]
+    assert ds.dims["samples"] == n_samples
+    assert ds.dims["ploidy"] == 2
+    assert ds.dims["alleles"] == 2
+
+    # Check shapes.
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        if f == "variant_allele_count":
+            # This will have been computed.
+            assert isinstance(x.data, np.ndarray)
+        else:
+            assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_allele"):
+            assert x.ndim == 2
+            assert x.shape == (n_variants, 2)
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.shape == (n_variants,)
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape == (n_variants, n_samples, 2)
+        elif f.startswith("sample_"):
+            assert x.ndim == 1
+            assert x.dims == ("samples",)
+            assert x.shape == (n_samples,)
+
+    # Check samples.
+    expected_samples = df_samples["sample_id"].tolist()
+    assert ds["sample_id"].values.tolist() == expected_samples
+
+    # Check attributes.
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == api.contigs
+
+    # Check can set up computations.
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+
+    # Check biallelic.
+    gt = ds["call_genotype"].data
+    assert gt.max().compute() <= 1
+
+    # Check compress bug.
+    pos = ds["variant_position"].data
+    assert pos.shape == pos.compute().shape
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_with_sample_sets_param(fixture, api: AnophelesSnpData):
+    # Fixed parameters.
+    region = fixture.random_region_str()
+    site_mask = random.choice((None,) + api.site_mask_ids)
+
+    # Parametrize sample_sets.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_releases = api.releases
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        random.sample(all_sample_sets, 2),
+        random.choice(all_releases),
+    ]
+
+    # Run tests.
+    for sample_sets in parametrize_sample_sets:
+        check_biallelic_snp_calls(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_with_region_param(fixture, api: AnophelesSnpData):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice((None,) + api.site_mask_ids)
+
+    # Parametrize region.
+    contig = fixture.random_contig()
+    df_gff = api.genome_features(attributes=["ID"])
+    parametrize_region = [
+        contig,
+        fixture.random_region_str(),
+        [fixture.random_region_str(), fixture.random_region_str()],
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Run tests.
+    for region in parametrize_region:
+        check_biallelic_snp_calls(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_with_site_mask_param(fixture, api: AnophelesSnpData):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Parametrize site_mask.
+    parametrize_site_mask = (None,) + api.site_mask_ids
+
+    # Run tests.
+    for site_mask in parametrize_site_mask:
+        check_biallelic_snp_calls(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    ["sex_call == 'F'", "taxon == 'coluzzii'", "taxon == 'robot'"],
+)
+def test_biallelic_snp_calls_with_sample_query_param(
+    ag3_sim_api: AnophelesSnpData, sample_query
+):
+    df_samples = ag3_sim_api.sample_metadata().query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3_sim_api.biallelic_snp_calls(region="3L", sample_query=sample_query)
+
+    else:
+        ds = ag3_sim_api.biallelic_snp_calls(region="3L", sample_query=sample_query)
+        assert ds.dims["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_with_min_cohort_size_param(fixture, api: AnophelesSnpData):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Test with minimum cohort size.
+    ds = api.biallelic_snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        min_cohort_size=10,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.dims["samples"] >= 10
+    with pytest.raises(ValueError):
+        api.biallelic_snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            min_cohort_size=1_000,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_with_max_cohort_size_param(fixture, api: AnophelesSnpData):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Test with maximum cohort size.
+    ds = api.biallelic_snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        max_cohort_size=15,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.dims["samples"] <= 15
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Test with specific cohort size.
+    cohort_size = random.randint(1, 10)
+    ds = api.biallelic_snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.dims["samples"] == cohort_size
+    with pytest.raises(ValueError):
+        api.biallelic_snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            cohort_size=1_000,
+        )
+
+
+@pytest.mark.parametrize(
+    "site_class",
+    [
+        "CDS_DEG_4",
+        "CDS_DEG_2_SIMPLE",
+        "CDS_DEG_0",
+        "INTRON_SHORT",
+        "INTRON_LONG",
+        "INTRON_SPLICE_5PRIME",
+        "INTRON_SPLICE_3PRIME",
+        "UTR_5PRIME",
+        "UTR_3PRIME",
+        "INTERGENIC",
+    ],
+)
+def test_biallelic_snp_calls_with_site_class_param(
+    ag3_sim_api: AnophelesSnpData, site_class
+):
+    ds1 = ag3_sim_api.biallelic_snp_calls(region="3L")
+    ds2 = ag3_sim_api.biallelic_snp_calls(region="3L", site_class=site_class)
+    assert ds2.dims["variants"] < ds1.dims["variants"]

@@ -266,7 +266,7 @@ min_minor_ac: TypeAlias = Annotated[
     int,
     """
     The minimum minor allele count. SNPs with a minor allele count
-    below this value will be excluded prior to thinning.
+    below this value will be excluded.
     """,
 ]
 
@@ -274,7 +274,7 @@ max_missing_an: TypeAlias = Annotated[
     int,
     """
     The maximum number of missing allele calls to accept. SNPs with
-    more than this value will be excluded prior to thinning. Set to 0
-    (default) to require no missing calls.
+    more than this value will be excluded. Set to 0 to require no
+    missing calls.
     """,
 ]
