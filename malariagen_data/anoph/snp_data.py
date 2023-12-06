@@ -1313,23 +1313,42 @@ class AnophelesSnpData(
 
         return is_accessible
 
+    @check_types
+    @doc(
+        summary="Access SNP calls at sites which are biallelic within the selected samples.",
+        returns="A dataset containing SNP sites, site filters and genotype calls.",
+    )
     def biallelic_snp_calls(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        max_missing_an=None,
-        min_minor_ac=None,
-        n_snps=None,
-        thin_offset=0,
-    ):
+        region: base_params.regions,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
+        n_snps: Optional[base_params.n_snps] = None,
+        thin_offset: base_params.thin_offset = 0,
+    ) -> xr.Dataset:
         # Perform an allele count.
         ac = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_indices=sample_indices,
             site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
         )
 
         # Locate biallelic SNPs.
@@ -1344,7 +1363,15 @@ class AnophelesSnpData(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_indices=sample_indices,
             site_mask=site_mask,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         # Subset to biallelic sites.
@@ -1375,7 +1402,7 @@ class AnophelesSnpData(
         data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
         # Store allele counts, transformed, so we don't have to recompute.
-        ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=2)
+        ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
         data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
         # Store genotype calls, transformed.
@@ -1421,25 +1448,111 @@ class AnophelesSnpData(
 
         return ds_out
 
+    @check_types
+    @doc(
+        summary="Load biallelic SNP genotypes.",
+        returns="""
+            An array of shape (variants, samples) where each value counts the
+            number of alternate alleles per genotype call.
+        """,
+    )
     def biallelic_diplotypes(
         self,
-        region,
-        sample_sets=None,
-        sample_query=None,
-        site_mask=None,
-        max_missing_an=None,
-        min_minor_ac=None,
-        n_snps=None,
-        thin_offset=0,
-    ):
-        # TODO caching.
+        region: base_params.regions,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
+        n_snps: Optional[base_params.n_snps] = None,
+        thin_offset: base_params.thin_offset = 0,
+    ) -> np.ndarray:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
+        name = "biallelic_diplotypes"
 
+        # Normalize params for consistent hash value.
+        (
+            sample_sets_prepped,
+            sample_indices_prepped,
+        ) = self._prep_sample_selection_cache_params(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_indices=sample_indices,
+        )
+        region_prepped = self._prep_region_cache_param(region=region)
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        params = dict(
+            region=region_prepped,
+            n_snps=n_snps,
+            thin_offset=thin_offset,
+            sample_sets=sample_sets_prepped,
+            sample_indices=sample_indices_prepped,
+            site_mask=site_mask_prepped,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+        )
+
+        # Try to retrieve results from the cache.
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._biallelic_diplotypes(
+                inline_array=inline_array, chunks=chunks, **params
+            )
+            self.results_cache_set(name=name, params=params, results=results)
+
+        # Unpack results.
+        gn = results["gn"]
+
+        return gn
+
+    def _biallelic_diplotypes(
+        self,
+        *,
+        region,
+        sample_sets,
+        sample_indices,
+        site_mask,
+        site_class,
+        inline_array,
+        chunks,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+        max_missing_an,
+        min_minor_ac,
+        n_snps,
+        thin_offset,
+    ):
         # Access biallelic SNPs.
         ds = self.biallelic_snp_calls(
             region=region,
             sample_sets=sample_sets,
-            sample_query=sample_query,
+            sample_indices=sample_indices,
             site_mask=site_mask,
+            site_class=site_class,
+            inline_array=inline_array,
+            chunks=chunks,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
             max_missing_an=max_missing_an,
             min_minor_ac=min_minor_ac,
             n_snps=n_snps,
@@ -1451,4 +1564,4 @@ class AnophelesSnpData(
         with self._dask_progress(desc="Compute biallelic diplotypes"):
             gn = gt.to_n_alt().compute()
 
-        return gn
+        return dict(gn=gn)
