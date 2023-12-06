@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import allel
 import bokeh
@@ -1378,8 +1378,8 @@ class AnophelesSnpData(
         ds_bi = ds.isel(variants=loc_bi)
 
         # Start building a new dataset.
-        coords = dict()
-        data_vars = dict()
+        coords: Dict[str, Any] = dict()
+        data_vars: Dict[str, Any] = dict()
 
         # Store sample IDs.
         coords["sample_id"] = ("samples",), ds_bi["sample_id"].data
