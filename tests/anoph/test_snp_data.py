@@ -1197,8 +1197,8 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     site_mask = random.choice((None,) + api.site_mask_ids)
 
     # Parametrise conditions.
-    min_minor_ac = random.randint(1, 5)
-    max_missing_an = random.randint(0, 5)
+    min_minor_ac = random.randint(1, 3)
+    max_missing_an = random.randint(2, 10)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
@@ -1223,6 +1223,9 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
 
     # Run tests with thinning.
     n_snps_available = ds.dims["variants"]
+    # This should always be true, although depends on min_minor_ac and max_missing_an,
+    # so the range of values for those parameters needs to be chosen with some case.
+    assert n_snps_available > 2
     n_snps_requested = random.randint(1, n_snps_available // 2)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
