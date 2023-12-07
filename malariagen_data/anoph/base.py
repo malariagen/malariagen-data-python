@@ -78,7 +78,7 @@ class AnophelesBase:
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
-        if bokeh_output_notebook:
+        if bokeh_output_notebook:  # pragma: no cover
             bokeh.io.output_notebook(hide_banner=True)
 
         # Check colab location is in the US.
@@ -101,26 +101,28 @@ class AnophelesBase:
         if results_cache is not None:
             self._results_cache = Path(results_cache).expanduser().resolve()
 
-    def _progress(self, iterable, desc=None, leave=False, **kwargs):
+    def _progress(self, iterable, desc=None, leave=False, **kwargs):  # pragma: no cover
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
-        if show_progress:  # pragma: no cover
+        if show_progress:
             return tqdm(iterable, desc=desc, leave=leave, **kwargs)
         else:
             return nullcontext()
 
-    def _dask_progress(self, desc=None, leave=False, **kwargs):
+    def _dask_progress(self, desc=None, leave=False, **kwargs):  # pragma: no cover
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
-        if show_progress:  # pragma: no cover
+        if show_progress:
             return TqdmCallback(desc=desc, leave=leave, **kwargs)
         else:
             return nullcontext()
 
-    def _spinner(self, desc=None, spinner=None, side="right", timer=True, **kwargs):
+    def _spinner(
+        self, desc=None, spinner=None, side="right", timer=True, **kwargs
+    ):  # pragma: no cover
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
-        if show_progress:  # pragma: no cover
+        if show_progress:
             if desc:
                 # For consistent behaviour with tqdm.
                 desc += ":"
