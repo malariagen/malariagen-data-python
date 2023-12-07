@@ -165,20 +165,20 @@ class AnophelesSnpData(
     )
     def open_site_filters(
         self,
-        mask: base_params.site_mask,
+        mask: base_params.site_mask = DEFAULT,
     ) -> zarr.hierarchy.Group:
         self._require_site_filters_analysis()
-        mask = self._prep_site_mask_param(site_mask=mask)
+        mask_prepped = self._prep_site_mask_param(site_mask=mask)
 
         # Here we cache the opened zarr hierarchy, to avoid small delays
         # reading zarr metadata.
         try:
-            return self._cache_site_filters[mask]
+            return self._cache_site_filters[mask_prepped]
         except KeyError:
-            path = f"{self._base_path}/{self._major_version_path}/site_filters/{self._site_filters_analysis}/{mask}/"
+            path = f"{self._base_path}/{self._major_version_path}/site_filters/{self._site_filters_analysis}/{mask_prepped}/"
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
-            self._cache_site_filters[mask] = root
+            self._cache_site_filters[mask_prepped] = root
             return root
 
     @doc(
@@ -221,11 +221,14 @@ class AnophelesSnpData(
     def site_filters(
         self,
         region: base_params.regions,
-        mask: base_params.site_mask,
+        mask: base_params.site_mask = DEFAULT,
         field: base_params.field = "filter_pass",
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
+        mask_prepped = self._prep_site_mask_param(site_mask=mask)
+        del mask
+
         # Resolve the region parameter to a standard type.
         regions: List[Region] = parse_multi_region(self, region)
         del region
@@ -235,7 +238,7 @@ class AnophelesSnpData(
             [
                 self._site_filters_for_region(
                     region=r,
-                    mask=mask,
+                    mask=mask_prepped,
                     field=field,
                     inline_array=inline_array,
                     chunks=chunks,
@@ -308,6 +311,8 @@ class AnophelesSnpData(
         # Resolve the region parameter to a standard type.
         regions: List[Region] = parse_multi_region(self, region)
         del region
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Access SNP sites and concatenate over regions.
         ret = da_concat(
@@ -324,10 +329,10 @@ class AnophelesSnpData(
         )
 
         # Apply site mask if requested.
-        if site_mask is not None:
+        if site_mask_prepped is not None:
             loc_sites = self.site_filters(
                 region=regions,
-                mask=site_mask,
+                mask=site_mask_prepped,
                 chunks=chunks,
                 inline_array=inline_array,
             )
@@ -375,9 +380,12 @@ class AnophelesSnpData(
         )
 
         # Normalise parameters.
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
         regions: List[Region] = parse_multi_region(self, region)
         del region
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Concatenate multiple sample sets and/or contigs.
         lx = []
@@ -385,7 +393,7 @@ class AnophelesSnpData(
             contig = r.contig
             ly = []
 
-            for s in sample_sets:
+            for s in sample_sets_prepped:
                 y = self._snp_genotypes_for_contig(
                     contig=contig,
                     sample_set=s,
@@ -412,17 +420,19 @@ class AnophelesSnpData(
         d = da_concat(lx, axis=0)
 
         # Apply site filters if requested.
-        if site_mask is not None:
+        if site_mask_prepped is not None:
             loc_sites = self.site_filters(
                 region=regions,
-                mask=site_mask,
+                mask=site_mask_prepped,
             )
             d = da_compress(loc_sites, d, axis=0)
 
         # Apply sample selection if requested.
         if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
             loc_samples = df_samples.eval(sample_query).values
+            if np.count_nonzero(loc_samples) == 0:
+                raise ValueError(f"No samples found for query {sample_query!r}")
             d = da.compress(loc_samples, d, axis=1)
         elif sample_indices is not None:
             d = da.take(d, sample_indices, axis=1)
@@ -490,6 +500,8 @@ class AnophelesSnpData(
         # Normalise parameters.
         regions: List[Region] = parse_multi_region(self, region)
         del region
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Access SNP data and concatenate multiple regions.
         lx = []
@@ -513,9 +525,9 @@ class AnophelesSnpData(
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Apply site filters.
-        if site_mask is not None:
+        if site_mask_prepped is not None:
             ds = dask_compress_dataset(
-                ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+                ds, indexer=f"variant_filter_pass_{site_mask_prepped}", dim=DIM_VARIANT
             )
 
         return ds
@@ -538,6 +550,8 @@ class AnophelesSnpData(
         resolved_region: Region = parse_single_region(self, region)
         del region
         contig = resolved_region.contig
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Open site annotations zarr.
         root = self.open_site_annotations()
@@ -564,7 +578,7 @@ class AnophelesSnpData(
         pos = self.snp_sites(
             region=contig,
             field="POS",
-            site_mask=site_mask,
+            site_mask=site_mask_prepped,
             inline_array=inline_array,
             chunks=chunks,
         )
@@ -799,6 +813,8 @@ class AnophelesSnpData(
         del sample_sets
         regions: List[Region] = parse_multi_region(self, region)
         del region
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Access SNP calls and concatenate multiple sample sets and/or regions.
         with self._spinner("Access SNP calls"):
@@ -843,10 +859,12 @@ class AnophelesSnpData(
             # Concatenate data from multiple regions.
             ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
-        if site_mask is not None:
+        if site_mask_prepped is not None:
             with self._spinner(desc="Apply site filters"):
                 ds = dask_compress_dataset(
-                    ds, indexer=f"variant_filter_pass_{site_mask}", dim=DIM_VARIANT
+                    ds,
+                    indexer=f"variant_filter_pass_{site_mask_prepped}",
+                    dim=DIM_VARIANT,
                 )
 
         # Add call_genotype_mask.
@@ -888,7 +906,7 @@ class AnophelesSnpData(
 
         return ds
 
-    def snp_dataset(self, *args, **kwargs):
+    def snp_dataset(self, *args, **kwargs):  # pragma: no cover
         """Deprecated, this method has been renamed to snp_calls()."""
         return self.snp_calls(*args, **kwargs)
 
@@ -996,8 +1014,13 @@ class AnophelesSnpData(
             sample_query=sample_query,
             sample_indices=sample_indices,
         )
+        del sample_sets
+        del sample_query
+        del sample_indices
         region_prepped = self._prep_region_cache_param(region=region)
+        del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
         params = dict(
             region=region_prepped,
             sample_sets=sample_sets_prepped,
@@ -1101,7 +1124,7 @@ class AnophelesSnpData(
         region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -1113,7 +1136,8 @@ class AnophelesSnpData(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        site_mask = self._prep_site_mask_param(site_mask=site_mask)
+        # Normalise params.
+        site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
         # Resolve and check region.
         resolved_region: Region = parse_single_region(self, region)
@@ -1283,8 +1307,11 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> np.ndarray:
+        # Normalise params.
         resolved_region: Region = parse_single_region(self, region)
         del region
+        site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Determine contig sequence length.
         seq_length = self.genome_sequence(resolved_region).shape[0]
@@ -1302,7 +1329,7 @@ class AnophelesSnpData(
         # Access site filters.
         filter_pass = self._site_filters_for_region(
             region=resolved_region,
-            mask=site_mask,
+            mask=site_mask_prepped,
             field="filter_pass",
             inline_array=inline_array,
             chunks=chunks,
@@ -1414,25 +1441,22 @@ class AnophelesSnpData(
         ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)
 
         # Apply conditions.
-        loc_out = None
+        if max_missing_an or min_minor_ac:
+            loc_out = np.ones(ds_out.dims["variants"], dtype=bool)
 
-        # Apply missingness condition.
-        if max_missing_an is not None:
-            an = ac_out.sum(axis=1)
-            an_missing = (ds_out.dims["samples"] * ds_out.dims["ploidy"]) - an
-            loc_missing = an_missing <= max_missing_an
-            loc_out = loc_missing
+            # Apply missingness condition.
+            if max_missing_an is not None:
+                an = ac_out.sum(axis=1)
+                an_missing = (ds_out.dims["samples"] * ds_out.dims["ploidy"]) - an
+                loc_missing = an_missing <= max_missing_an
+                loc_out &= loc_missing
 
-        # Apply minor allele count condition.
-        if min_minor_ac is not None:
-            ac_minor = ac_out.min(axis=1)
-            loc_minor = ac_minor >= min_minor_ac
-            if loc_out is not None:
+            # Apply minor allele count condition.
+            if min_minor_ac is not None:
+                ac_minor = ac_out.min(axis=1)
+                loc_minor = ac_minor >= min_minor_ac
                 loc_out &= loc_minor
-            else:
-                loc_out = loc_minor
 
-        if loc_out is not None:
             ds_out = ds_out.isel(variants=loc_out)
 
         # Try to meet target number of SNPs.
