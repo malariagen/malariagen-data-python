@@ -51,6 +51,8 @@ SNP data access
     plot_snps
     site_annotations
     is_accessible
+    biallelic_snp_calls
+    biallelic_diplotypes
 
 Haplotype data access
 ---------------------

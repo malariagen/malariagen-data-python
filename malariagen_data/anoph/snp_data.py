@@ -1475,10 +1475,13 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Load biallelic SNP genotypes.",
-        returns="""
-            An array of shape (variants, samples) where each value counts the
-            number of alternate alleles per genotype call.
-        """,
+        returns=dict(
+            gn="""
+                An array of shape (variants, samples) where each value counts the
+                number of alternate alleles per genotype call.
+            """,
+            samples="Sample identifiers.",
+        ),
     )
     def biallelic_diplotypes(
         self,
@@ -1498,7 +1501,7 @@ class AnophelesSnpData(
         max_missing_an: Optional[base_params.max_missing_an] = None,
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
-    ) -> np.ndarray:
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "biallelic_diplotypes"
@@ -1514,6 +1517,11 @@ class AnophelesSnpData(
         )
         region_prepped = self._prep_region_cache_param(region=region)
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del sample_sets
+        del sample_query
+        del sample_indices
+        del region
+        del site_mask
         params = dict(
             region=region_prepped,
             n_snps=n_snps,
@@ -1542,8 +1550,9 @@ class AnophelesSnpData(
 
         # Unpack results.
         gn = results["gn"]
+        samples = results["samples"]
 
-        return gn
+        return gn, samples
 
     def _biallelic_diplotypes(
         self,
@@ -1583,9 +1592,12 @@ class AnophelesSnpData(
             thin_offset=thin_offset,
         )
 
+        # Load sample IDs
+        samples = ds["sample_id"].values.astype("U")
+
         # Compute diplotypes as the number of alt alleles per genotype call.
         gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
         with self._dask_progress(desc="Compute biallelic diplotypes"):
             gn = gt.to_n_alt().compute()
 
-        return dict(gn=gn)
+        return dict(samples=samples, gn=gn)

@@ -52,6 +52,10 @@ from .mjn import median_joining_network, mjn_graph
 from .util import (
     CacheMiss,
     Region,
+    biallelic_diplotype_cityblock,
+    biallelic_diplotype_euclidean,
+    biallelic_diplotype_pdist,
+    biallelic_diplotype_sqeuclidean,
     check_types,
     jackknife_ci,
     jitter,
@@ -6292,7 +6296,11 @@ class AnophelesDataResource(
         summary="""
             Compute pairwise distances between haplotypes.
         """,
-        returns=("dist", "phased_samples", "n_snps"),
+        returns=dict(
+            dist="Pairwise distance.",
+            phased_samples="Sample identifiers for haplotypes.",
+            n_snps="Number of SNPs used.",
+        ),
     )
     def haplotype_pairwise_distances(
         self,
@@ -6328,9 +6336,9 @@ class AnophelesDataResource(
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results")
-        dist = results["dist"]
-        phased_samples = results["phased_samples"]
-        n_snps = results["n_snps"]
+        dist: np.ndarray = results["dist"]
+        phased_samples: np.ndarray = results["phased_samples"]
+        n_snps: int = int(results["n_snps"][()])  # ensure scalar
 
         return dist, phased_samples, n_snps
 
@@ -6378,7 +6386,7 @@ class AnophelesDataResource(
         return dict(
             dist=dist,
             phased_samples=phased_samples,
-            n_snps=ht.shape[0],
+            n_snps=np.array(ht.shape[0]),
         )
 
     @doc(
@@ -6870,6 +6878,144 @@ class AnophelesDataResource(
 
         debug("launch the dash app")
         app.run(**run_params)
+
+    # TODO doc
+    def biallelic_diplotype_pairwise_distances(
+        self,
+        region: base_params.regions,
+        n_snps: Optional[base_params.n_snps],
+        metric="cityblock",
+        thin_offset: base_params.thin_offset = 0,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
+    ) -> Tuple[np.ndarray, np.ndarray, int]:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
+        name = "biallelic_diplotype_pairwise_distances"
+
+        # Normalize params for consistent hash value.
+        (
+            sample_sets_prepped,
+            sample_indices_prepped,
+        ) = self._prep_sample_selection_cache_params(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_indices=sample_indices,
+        )
+        region_prepped = self._prep_region_cache_param(region=region)
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del sample_sets
+        del sample_query
+        del sample_indices
+        del region
+        del site_mask
+        params = dict(
+            region=region_prepped,
+            n_snps=n_snps,
+            metric=metric,
+            thin_offset=thin_offset,
+            sample_sets=sample_sets_prepped,
+            sample_indices=sample_indices_prepped,
+            site_mask=site_mask_prepped,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+        )
+
+        # Try to retrieve results from the cache.
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._biallelic_diplotype_pairwise_distances(
+                inline_array=inline_array, chunks=chunks, **params
+            )
+            self.results_cache_set(name=name, params=params, results=results)
+
+        # Unpack results.
+        dist: np.ndarray = results["dist"]
+        samples: np.ndarray = results["samples"]
+        n_snps_used: int = int(results["n_snps"][()])  # ensure scalar
+
+        return dist, samples, n_snps_used
+
+    def _biallelic_diplotype_pairwise_distances(
+        self,
+        region,
+        n_snps,
+        metric,
+        thin_offset,
+        sample_sets,
+        sample_indices,
+        site_mask,
+        site_class,
+        inline_array,
+        chunks,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+        min_minor_ac,
+        max_missing_an,
+    ):
+        # Compute diplotypes.
+        gn, samples = self.biallelic_diplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_indices=sample_indices,
+            site_mask=site_mask,
+            site_class=site_class,
+            inline_array=inline_array,
+            chunks=chunks,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            max_missing_an=max_missing_an,
+            min_minor_ac=min_minor_ac,
+            n_snps=n_snps,
+            thin_offset=thin_offset,
+        )
+
+        # Record number of SNPs used.
+        n_snps = gn.shape[0]
+
+        # Prepare data for pairwise distance calculation.
+        X = np.ascontiguousarray(gn.T)
+
+        # Look up distance function.
+        if metric == "cityblock":
+            distfun = biallelic_diplotype_cityblock
+        elif metric == "sqeuclidean":
+            distfun = biallelic_diplotype_sqeuclidean
+        elif metric == "euclidean":
+            distfun = biallelic_diplotype_euclidean
+        else:
+            raise ValueError("Unsupported metric.")
+
+        with self._spinner("Compute pairwise distances"):
+            dist = biallelic_diplotype_pdist(X, distfun=distfun)
+
+        return dict(
+            dist=dist,
+            samples=samples,
+            n_snps=np.array(n_snps),
+        )
 
 
 def _diplotype_frequencies(gt):
