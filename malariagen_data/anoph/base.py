@@ -107,7 +107,7 @@ class AnophelesBase:
         if show_progress:
             return tqdm(iterable, desc=desc, leave=leave, **kwargs)
         else:
-            return nullcontext()
+            return iterable
 
     def _dask_progress(self, desc=None, leave=False, **kwargs):  # pragma: no cover
         # Progress doesn't mix well with debug logging.
