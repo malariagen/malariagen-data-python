@@ -11,7 +11,6 @@ import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
 import dask
-import dask.array as da
 import igv_notebook
 import numba
 import numpy as np
@@ -937,70 +936,31 @@ class AnophelesDataResource(
         max_missing_an,
         n_components,
     ):
-        debug = self._log.debug
-
-        debug("access SNP calls")
-        ds_snps = self.snp_calls(
+        # Load diplotypes.
+        gn = self.biallelic_diplotypes(
             region=region,
+            n_snps=n_snps,
+            thin_offset=thin_offset,
             sample_sets=sample_sets,
             sample_indices=sample_indices,
             site_mask=site_mask,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
         )
-        debug(
-            f"{ds_snps.dims['variants']:,} variants, {ds_snps.dims['samples']:,} samples"
-        )
 
-        debug("perform allele count")
-        ac = self.snp_allele_counts(
-            region=region,
-            sample_sets=sample_sets,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-        )
-        n_chroms = ds_snps.dims["samples"] * 2
-        an_called = ac.sum(axis=1)
-        an_missing = n_chroms - an_called
-
-        debug("ascertain sites")
-        ac = allel.AlleleCountsArray(ac)
-        min_ref_ac = min_minor_ac
-        max_ref_ac = n_chroms - min_minor_ac
-        # here we choose biallelic sites involving the reference allele
-        loc_sites = (
-            ac.is_biallelic()
-            & (ac[:, 0] >= min_ref_ac)
-            & (ac[:, 0] <= max_ref_ac)
-            & (an_missing <= max_missing_an)
-        )
-        debug(f"ascertained {np.count_nonzero(loc_sites):,} sites")
-
-        debug("thin sites to approximately desired number")
-        loc_sites = np.nonzero(loc_sites)[0]
-        thin_step = max(loc_sites.shape[0] // n_snps, 1)
-        loc_sites_thinned = loc_sites[thin_offset::thin_step]
-        debug(f"thinned to {np.count_nonzero(loc_sites_thinned):,} sites")
-
-        debug("access genotypes")
-        gt = ds_snps["call_genotype"].data
-        gt_asc = da.take(gt, loc_sites_thinned, axis=0)
-        gn_asc = allel.GenotypeDaskArray(gt_asc).to_n_alt()
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gn_asc = gn_asc.compute()
-
-        debug("remove any sites where all genotypes are identical")
-        loc_var = np.any(gn_asc != gn_asc[:, 0, np.newaxis], axis=1)
-        gn_var = np.compress(loc_var, gn_asc, axis=0)
-        debug(f"final shape {gn_var.shape}")
-
-        debug("run the PCA")
         with self._spinner(desc="Compute PCA"):
+            # Remove any sites where all genotypes are identical.
+            loc_var = np.any(gn != gn[:, 0, np.newaxis], axis=1)
+            gn_var = np.compress(loc_var, gn, axis=0)
+
+            # Run the PCA.
             coords, model = allel.pca(gn_var, n_components=n_components)
 
-        debug("work around sign indeterminacy")
-        for i in range(n_components):
-            c = coords[:, i]
-            if np.abs(c.min()) > np.abs(c.max()):
-                coords[:, i] = c * -1
+            # Work around sign indeterminacy.
+            for i in range(n_components):
+                c = coords[:, i]
+                if np.abs(c.min()) > np.abs(c.max()):
+                    coords[:, i] = c * -1
 
         results = dict(coords=coords, evr=model.explained_variance_ratio_)
         return results
@@ -1630,22 +1590,20 @@ class AnophelesDataResource(
     def pca(
         self,
         region: base_params.regions,
-        n_snps: pca_params.n_snps,
-        thin_offset: pca_params.thin_offset = pca_params.thin_offset_default,
+        n_snps: base_params.n_snps,
+        thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: Optional[base_params.site_mask] = DEFAULT,
-        min_minor_ac: pca_params.min_minor_ac = pca_params.min_minor_ac_default,
-        max_missing_an: pca_params.max_missing_an = pca_params.max_missing_an_default,
+        min_minor_ac: base_params.min_minor_ac = 2,
+        max_missing_an: base_params.max_missing_an = 0,
         n_components: pca_params.n_components = pca_params.n_components_default,
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
-        debug = self._log.debug
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
+        name = "pca_v2"
 
-        # change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data
-        name = self._pca_results_cache_name
-
-        debug("normalize params for consistent hash value")
+        # Normalize params for consistent hash value.
         (
             sample_sets_prepped,
             sample_indices_prepped,
@@ -1668,7 +1626,7 @@ class AnophelesDataResource(
             n_components=n_components,
         )
 
-        debug("try to retrieve results from the cache")
+        # Try to retrieve results from the cache.
         try:
             results = self.results_cache_get(name=name, params=params)
 
@@ -1676,11 +1634,11 @@ class AnophelesDataResource(
             results = self._pca(**params)
             self.results_cache_set(name=name, params=params, results=results)
 
-        debug("unpack results")
+        # Unpack results.
         coords = results["coords"]
         evr = results["evr"]
 
-        debug("add coords to sample metadata dataframe")
+        # Add coords to sample metadata dataframe.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_indices=sample_indices_prepped,

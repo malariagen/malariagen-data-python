@@ -245,3 +245,36 @@ gff_attributes: TypeAlias = Annotated[
 ]
 
 DEFAULT: Final[str] = "default"
+
+n_snps: TypeAlias = Annotated[
+    int,
+    """
+    The desired number of SNPs to use when running the analysis.
+    SNPs will be evenly thinned to approximately this number.
+    """,
+]
+
+thin_offset: TypeAlias = Annotated[
+    int,
+    """
+    Starting index for SNP thinning. Change this to repeat the analysis
+    using a different set of SNPs.
+    """,
+]
+
+min_minor_ac: TypeAlias = Annotated[
+    int,
+    """
+    The minimum minor allele count. SNPs with a minor allele count
+    below this value will be excluded.
+    """,
+]
+
+max_missing_an: TypeAlias = Annotated[
+    int,
+    """
+    The maximum number of missing allele calls to accept. SNPs with
+    more than this value will be excluded. Set to 0 to require no
+    missing calls.
+    """,
+]

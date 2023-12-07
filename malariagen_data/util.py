@@ -987,3 +987,89 @@ def pdist_abs_hamming(X):
             out[i, j] = d
             out[j, i] = d
     return out
+
+
+@numba.njit
+def trim_alleles(ac):
+    """Remap allele indices to trim out unobserved alleles.
+
+    The idea here is that our SNP data includes alleles which
+    may not ever be observed, or may not be observed within a
+    particular subset of the data. For convenience, it is useful
+    to retain only alleles which are observed.
+
+    Here we use a given set of allele counts (ac) to identify
+    observed alleles and derive a mapping from old allele
+    indices to a new set of allele indices.
+
+    For example, if alleles 0 and 2 are observed at a given
+    site in ac, then 0 will be mapped to 0 and 2 will be mapped
+    to 1.
+
+    Similarly, if alleles 1 and 3 are observed at a given site
+    in ac, then 1 will be mapped to 0 and 3 will be mapped to 1.
+
+    """
+
+    n_variants = ac.shape[0]
+    n_alleles = ac.shape[1]
+
+    # Create the output array - this is an allele mapping array,
+    # that specifies how to recode allele indices.
+    mapping = np.empty((n_variants, n_alleles), dtype=np.int32)
+
+    # The value of -1 indicates that there is no mapping for
+    # a given allele. We fill with -1 so we can then set
+    # values where we do observe alleles and can define a
+    # mapping.
+    mapping[:] = -1
+
+    # Iterate over variants.
+    for i in range(n_variants):
+        # This will be the new index that we are mapping this allele to, if the
+        # allele is observed.
+        new_allele_index = 0
+
+        # Iterate over columns (alleles) in the input array.
+        for allele_index in range(n_alleles):
+            # Access the count for the jth allele.
+            c = ac[i, allele_index]
+            if c > 0:
+                # We have found a non-zero allele count, remap the allele.
+                mapping[i, allele_index] = new_allele_index
+
+                # Increment to be ready for the next allele.
+                new_allele_index += 1
+
+    return mapping
+
+
+@numba.njit
+def apply_allele_mapping(x, mapping, max_allele):
+    """Transform an array x, where the columns correspond to alleles,
+    according to an allele mapping.
+
+    Values from columns in x will be move to different columns in the
+    output according to the allele index mapping given.
+
+    """
+    n_sites = x.shape[0]
+    n_alleles = x.shape[1]
+    assert mapping.shape[0] == n_sites
+    assert mapping.shape[1] == n_alleles
+
+    # Create output array.
+    out = np.empty(shape=(n_sites, max_allele + 1), dtype=x.dtype)
+
+    # Iterate over sites.
+    for i in range(n_sites):
+        # Iterate over alleles.
+        for allele_index in range(n_alleles):
+            # Find the new index for this allele.
+            new_allele_index = mapping[i, allele_index]
+
+            # Copy data to the new allele index.
+            if new_allele_index >= 0 and new_allele_index <= max_allele:
+                out[i, new_allele_index] = x[i, allele_index]
+
+    return out

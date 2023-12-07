@@ -1,4 +1,5 @@
 import json
+from contextlib import nullcontext
 from pathlib import Path
 from typing import (
     IO,
@@ -78,11 +79,11 @@ class AnophelesBase:
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
-        if bokeh_output_notebook:
+        if bokeh_output_notebook:  # pragma: no cover
             bokeh.io.output_notebook(hide_banner=True)
 
         # Check colab location is in the US.
-        if check_location and self._gcs_url is not None:
+        if check_location and self._gcs_url is not None:  # pragma: no cover
             self._client_details = check_colab_location(
                 gcs_url=self._gcs_url, url=self._url
             )
@@ -101,20 +102,34 @@ class AnophelesBase:
         if results_cache is not None:
             self._results_cache = Path(results_cache).expanduser().resolve()
 
-    def _progress(self, iterable, desc=None, leave=False, **kwargs):
-        # progress doesn't mix well with debug logging
-        disable = self._debug or not self._show_progress
-        return tqdm(iterable, disable=disable, desc=desc, leave=leave, **kwargs)
+    def _progress(self, iterable, desc=None, leave=False, **kwargs):  # pragma: no cover
+        # Progress doesn't mix well with debug logging.
+        show_progress = self._show_progress and not self._debug
+        if show_progress:
+            return tqdm(iterable, desc=desc, leave=leave, **kwargs)
+        else:
+            return iterable
 
-    def _dask_progress(self, desc=None, leave=False, **kwargs):
-        disable = not self._show_progress
-        return TqdmCallback(disable=disable, desc=desc, leave=leave, **kwargs)
+    def _dask_progress(self, desc=None, leave=False, **kwargs):  # pragma: no cover
+        # Progress doesn't mix well with debug logging.
+        show_progress = self._show_progress and not self._debug
+        if show_progress:
+            return TqdmCallback(desc=desc, leave=leave, **kwargs)
+        else:
+            return nullcontext()
 
-    def _spinner(self, desc=None, spinner=None, side="right", timer=True, **kwargs):
-        if desc:
-            # For consistent behaviour with tqdm.
-            desc += ":"
-        return yaspin(text=desc, spinner=spinner, side=side, timer=timer, **kwargs)
+    def _spinner(
+        self, desc=None, spinner=None, side="right", timer=True, **kwargs
+    ):  # pragma: no cover
+        # Progress doesn't mix well with debug logging.
+        show_progress = self._show_progress and not self._debug
+        if show_progress:
+            if desc:
+                # For consistent behaviour with tqdm.
+                desc += ":"
+            return yaspin(text=desc, spinner=spinner, side=side, timer=timer, **kwargs)
+        else:
+            return nullcontext()
 
     @check_types
     def open_file(self, path: str) -> IO:
