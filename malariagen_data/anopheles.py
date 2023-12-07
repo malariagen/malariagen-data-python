@@ -6614,20 +6614,24 @@ class AnophelesDataResource(
         server_mode: Optional[
             dash_params.server_mode
         ] = dash_params.server_mode_default,
-        height: dash_params.height = 650,
+        height: dash_params.height = 600,
         width: Optional[dash_params.width] = "100%",
+        serve_scripts_locally: dash_params.serve_scripts_locally = dash_params.serve_scripts_locally_default,
     ):
         import dash_cytoscape as cyto
-        from dash import dcc, html
+        from dash import Dash, dcc, html
         from dash.dependencies import Input, Output
-        from jupyter_dash import JupyterDash
+
+        debug = self._log.debug
+
+        # https://dash.plotly.com/dash-in-jupyter#troubleshooting
+        # debug("infer jupyter proxy config")
+        # Turn off for now, this seems to crash the kernel!
+        # from dash import jupyter_dash
+        # jupyter_dash.infer_jupyter_proxy_config()
 
         if layout != "cose":
             cyto.load_extra_layouts()
-        # leave this for user code, if needed (doesn't seem necessary on colab)
-        # JupyterDash.infer_jupyter_proxy_config()
-
-        debug = self._log.debug
 
         debug("access haplotypes dataset")
         ds_haps = self.haplotypes(
@@ -6833,14 +6837,14 @@ class AnophelesDataResource(
         )
 
         debug("create dash app")
-        app = JupyterDash(
+        app = Dash(
             "dash-cytoscape-network",
             # this stylesheet is used to provide support for a rows and columns
             # layout of the components
             external_stylesheets=["https://codepen.io/chriddyp/pen/bWLwgP.css"],
         )
-        # this is an optimisation, it's generally faster to serve script files from CDN
-        app.scripts.config.serve_locally = False
+        # it's generally faster to serve script files from CDN
+        app.scripts.config.serve_locally = serve_scripts_locally
         app.layout = html.Div(
             [
                 html.Div(
@@ -6848,8 +6852,8 @@ class AnophelesDataResource(
                     className="nine columns",
                     style={
                         # required to get cytoscape component to show ...
-                        # multiply by factor <1 to prevent scroll overflow
-                        "height": f"{height * .93}px",
+                        # reduce to prevent scroll overflow
+                        "height": f"{height - 50}px",
                         "border": "1px solid black",
                     },
                 ),
@@ -6857,7 +6861,7 @@ class AnophelesDataResource(
                     legend_component,
                     className="three columns",
                     style={
-                        "height": f"{height * .93}px",
+                        "height": f"{height - 50}px",
                     },
                 ),
                 html.Div(id="output"),
@@ -6898,17 +6902,16 @@ class AnophelesDataResource(
         # workaround weird mypy bug here
         run_params: Dict[str, Any] = dict()
         if height is not None:
-            run_params["height"] = height
+            run_params["jupyter_height"] = height
         if width is not None:
-            run_params["width"] = width
+            run_params["jupyter_width"] = width
+        if server_mode is not None:
+            run_params["jupyter_mode"] = server_mode
         if server_port is not None:
             run_params["port"] = server_port
-        if server_mode is not None:
-            run_params["mode"] = server_mode
 
         debug("launch the dash app")
-        # TODO I don't think this actually returns anything
-        return app.run_server(**run_params)
+        app.run(**run_params)
 
 
 def _diplotype_frequencies(gt):
