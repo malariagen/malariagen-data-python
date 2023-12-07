@@ -193,16 +193,20 @@ class Ag3(AnophelesDataResource):
 
         if plot_kwargs is None:
             plot_kwargs = dict()
-        taxon_palette = px.colors.qualitative.Plotly
+        taxon_palette = px.colors.qualitative.Vivid
         taxon_color_map = {
-            "gambiae": taxon_palette[0],
-            "coluzzii": taxon_palette[1],
+            "gambiae": taxon_palette[1],
+            "coluzzii": taxon_palette[0],
             "arabiensis": taxon_palette[2],
-            "gcx1": taxon_palette[3],
-            "gcx2": taxon_palette[4],
-            "gcx3": taxon_palette[5],
-            "intermediate_gambiae_coluzzii": taxon_palette[6],
-            "intermediate_arabiensis_gambiae": taxon_palette[7],
+            "merus": taxon_palette[3],
+            "melas": taxon_palette[4],
+            "quadriannulatus": taxon_palette[5],
+            "fontenillei": taxon_palette[6],
+            "gcx1": taxon_palette[7],
+            "gcx2": taxon_palette[8],
+            "gcx3": taxon_palette[9],
+            "gcx4": taxon_palette[10],
+            "unassigned": "black",
         }
         plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
         plot_kwargs.setdefault(

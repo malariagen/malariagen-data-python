@@ -17,6 +17,7 @@ from typing import (
 import bokeh.io
 import numpy as np
 import pandas as pd
+import zarr
 from numpydoc_decorator import doc
 from tqdm.auto import tqdm
 from tqdm.dask import TqdmCallback
@@ -408,12 +409,18 @@ class AnophelesBase:
         self._results_cache_add_analysis_params(params)
         cache_key, _ = hash_params(params)
         cache_path = self._results_cache / name / cache_key
-        results_path = cache_path / "results.npz"
-        if not results_path.exists():
-            raise CacheMiss
-        results = np.load(results_path)
-        # TODO Do we need to read the arrays and then close the npz file?
-        return results
+
+        # Read zipped zarr format.
+        results_path = cache_path / "results.zarr.zip"
+        if results_path.exists():
+            return zarr.load(results_path)
+
+        # For backwards compatibility, read npz format.
+        legacy_results_path = cache_path / "results.npz"
+        if legacy_results_path.exists():  # pragma: no cover
+            return np.load(legacy_results_path)
+
+        raise CacheMiss
 
     @check_types
     def results_cache_set(
@@ -422,13 +429,23 @@ class AnophelesBase:
         name = type(self).__name__.lower() + "_" + name
         if self._results_cache is None:
             return
+
+        # Set up parameters for the results to be saved.
         params = params.copy()
         self._results_cache_add_analysis_params(params)
         cache_key, params_json = hash_params(params)
+
+        # Determine storage path.
         cache_path = self._results_cache / name / cache_key
         cache_path.mkdir(exist_ok=True, parents=True)
+
+        # Write the parameters as a JSON file.
         params_path = cache_path / "params.json"
-        results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
+
+        # Write the data to be cached as a zipped zarr file.
+        results_path = cache_path / "results.zarr.zip"
+
+        with self._spinner("Save results to cache"):
+            with params_path.open(mode="w") as f:
+                f.write(params_json)
+            zarr.save(results_path, **results)

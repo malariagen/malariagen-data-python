@@ -6428,7 +6428,9 @@ class AnophelesDataResource(
             Hierarchically cluster haplotypes in region and produce an interactive plot.
         """,
         parameters=dict(
-            kwargs="Passed through to `px.scatter()`.",
+            leaf_y="Y coordinate at which to plot the leaf markers.",
+            line_props="Properties to style the dendrogram lines.",
+            leaf_scatter_kwargs="Passed through to `px.scatter()`.",
         ),
     )
     def plot_haplotype_clustering(
@@ -6444,34 +6446,33 @@ class AnophelesDataResource(
         linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
         count_sort: hapclust_params.count_sort = True,
         distance_sort: hapclust_params.distance_sort = False,
-        width: plotly_params.width = 1000,
+        width: plotly_params.width = None,
         height: plotly_params.height = 500,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
-        render_mode: plotly_params.render_mode = plotly_params.render_mode_default,
-        **kwargs,
+        render_mode: plotly_params.render_mode = "svg",
+        leaf_y: int = 0,
+        line_props: Optional[Mapping] = None,
+        **leaf_scatter_kwargs,
     ) -> plotly_params.figure:
-        from scipy.cluster.hierarchy import linkage
+        import sys
 
-        from .plotly_dendrogram import create_dendrogram
+        from .plotly_dendrogram import plot_dendrogram
+
+        # This is needed to avoid RecursionError on some haplotype clustering analyses
+        # with larger numbers of haplotypes.
+        sys.setrecursionlimit(10_000)
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
 
-        # Set up scatter plotting options.
-        plot_kwargs: Dict[str, Any] = dict(
-            template="simple_white",
-            hover_name="sample_id",
-            render_mode=render_mode,
-        )
-
         # Handle the color parameter.
         if isinstance(color, str):
             if color == "taxon":
                 # Special handling for taxon color.
-                self._setup_taxon_colors(plot_kwargs)
+                self._setup_taxon_colors(leaf_scatter_kwargs)
             elif "cohort_" + color in df_samples.columns:
                 # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
                 color = "cohort_" + color
@@ -6512,26 +6513,15 @@ class AnophelesDataResource(
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
-        n_haps = len(phased_samples) * 2
 
         # Align sample metadata with haplotypes.
         df_samples_phased = (
             df_samples.set_index("sample_id").loc[phased_samples.tolist()].reset_index()
         )
 
-        # Set labels as the index which we extract to reorder metadata.
-        leaf_labels = np.arange(n_haps)
-
-        # Create the dendrogram.
-        fig = create_dendrogram(
-            dist,
-            linkagefun=lambda x: linkage(x, method=linkage_method),
-            labels=leaf_labels,
-            color_threshold=0,
-            count_sort=count_sort,
-            distance_sort=distance_sort,
-            render_mode=render_mode,
-        )
+        # Repeat the dataframe so there is one row of metadata for each haplotype.
+        df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
+        df_haps.columns = df_samples_phased.columns
 
         # Configure hover data.
         hover_data = [
@@ -6551,70 +6541,39 @@ class AnophelesDataResource(
             hover_data.append(color)
         if symbol and symbol not in hover_data:
             hover_data.append(symbol)
-        plot_kwargs["hover_data"] = hover_data
-
-        # Apply any user overrides.
-        plot_kwargs.update(kwargs)
-
-        # Repeat the dataframe so there is one row of metadata for each haplotype.
-        df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
-        df_haps.columns = df_samples_phased.columns
 
         # Select only columns in hover_data.
         df_haps = df_haps[hover_data]
 
-        # Reorder haplotype metadata to align with haplotype clustering.
-        df_haps = df_haps.loc[fig.layout.xaxis["ticktext"]]
-
-        # Add scatter plot to draw the leaves.
-        fig.add_traces(
-            list(
-                px.scatter(
-                    df_haps,
-                    x=fig.layout.xaxis["tickvals"],
-                    y=np.repeat(-1, n_haps),
-                    color=color,
-                    symbol=symbol,
-                    **plot_kwargs,
-                ).select_traces()
-            )
-        )
-
-        # Add hover for lines to show distance.
-        fig.update_traces(
-            hoverinfo="y",
-            line=dict(width=0.5, color="black"),
-        )
-
-        # Add plot title.
+        # Construct plot title.
         title_lines = []
         if sample_sets is not None:
-            title_lines.append(f"sample sets: {sample_sets}")
+            title_lines.append(f"Sample sets: {sample_sets}")
         if sample_query is not None:
-            title_lines.append(f"sample query: {sample_query}")
-        title_lines.append(f"genomic region: {region} ({n_snps:,} SNPs)")
+            title_lines.append(f"Sample query: {sample_query}")
+        title_lines.append(f"Genomic region: {region} ({n_snps:,} SNPs)")
         title = "<br>".join(title_lines)
 
-        # Style the figure.
-        fig.update_layout(
-            width=width,
-            height=height,
-            title=title,
-            autosize=True,
-            hovermode="closest",
-            plot_bgcolor="white",
-            yaxis_title="Distance (no. SNPs)",
-            xaxis_title="Haplotypes",
-            showlegend=True,
-        )
-
-        # Style axes.
-        fig.update_xaxes(mirror=False, showgrid=True, showticklabels=False, ticks="")
-        fig.update_yaxes(
-            mirror=False,
-            showgrid=True,
-            showline=True,
-        )
+        # Create the plot.
+        with self._spinner("Plot dendrogram"):
+            fig = plot_dendrogram(
+                dist=dist,
+                linkage_method=linkage_method,
+                count_sort=count_sort,
+                distance_sort=distance_sort,
+                render_mode=render_mode,
+                width=width,
+                height=height,
+                title=title,
+                line_props=line_props,
+                leaf_data=df_haps,
+                leaf_hover_name="sample_id",
+                leaf_hover_data=hover_data,
+                leaf_color=color,
+                leaf_symbol=symbol,
+                leaf_scatter_kwargs=leaf_scatter_kwargs,
+                leaf_y=leaf_y,
+            )
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
