@@ -1,6 +1,6 @@
-# `malariagen_data` - access MalariaGEN data from Python
+# `malariagen_data` - analyse MalariaGEN data from Python
 
-This Python package provides convenience methods for accessing and analysing data from MalariaGEN.
+This Python package provides methods for accessing and analysing data from MalariaGEN.
 
 ## Installation
 
