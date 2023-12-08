@@ -57,6 +57,8 @@ protopunica = "*"
 orjson = "*"
 # providers spinners
 yaspin = "*"
+# provides efficient neighbour-joining tree implementation
+biotite = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"

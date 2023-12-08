@@ -4,7 +4,7 @@
 # and so we set as Optional here, rather than having to repeat
 # that for each function doc.
 
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Mapping, Optional, Union
 
 import plotly.graph_objects as go
 from typing_extensions import Annotated, TypeAlias
@@ -42,6 +42,8 @@ title: TypeAlias = Annotated[
     """,
 ]
 
+title_font_size = Annotated[int, "Font size for the plot title."]
+
 text_auto: TypeAlias = Annotated[
     Union[bool, str],
     """
@@ -49,6 +51,19 @@ text_auto: TypeAlias = Annotated[
     string like '.2f' will be interpreted as a texttemplate numeric formatting
     directive.
     """,
+]
+
+color_discrete_sequence: TypeAlias = Annotated[
+    Optional[List], "Provide a list of colours to use."
+]
+
+color_discrete_map: TypeAlias = Annotated[
+    Optional[Mapping], "Provide an explicit mapping from values to colours."
+]
+
+category_order: TypeAlias = Annotated[
+    Optional[List],
+    "Control the order in which values appear in the legend.",
 ]
 
 color_continuous_scale: TypeAlias = Annotated[
@@ -97,9 +112,13 @@ jitter_frac: TypeAlias = Annotated[
 ]
 
 marker_size: TypeAlias = Annotated[
-    int,
+    Union[int, float],
     "Marker size.",
 ]
+
+line_width: TypeAlias = Annotated[Union[int, float], "Line width."]
+
+line_color: TypeAlias = Annotated[str, "Line color"]
 
 template: TypeAlias = Annotated[
     Optional[

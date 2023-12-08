@@ -1491,8 +1491,6 @@ class AnophelesSnpData(
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -1501,6 +1499,8 @@ class AnophelesSnpData(
         max_missing_an: Optional[base_params.max_missing_an] = None,
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -1562,8 +1562,6 @@ class AnophelesSnpData(
         sample_indices,
         site_mask,
         site_class,
-        inline_array,
-        chunks,
         cohort_size,
         min_cohort_size,
         max_cohort_size,
@@ -1572,6 +1570,8 @@ class AnophelesSnpData(
         min_minor_ac,
         n_snps,
         thin_offset,
+        inline_array,
+        chunks,
     ):
         # Access biallelic SNPs.
         ds = self.biallelic_snp_calls(
@@ -1580,8 +1580,6 @@ class AnophelesSnpData(
             sample_indices=sample_indices,
             site_mask=site_mask,
             site_class=site_class,
-            inline_array=inline_array,
-            chunks=chunks,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -1590,6 +1588,8 @@ class AnophelesSnpData(
             min_minor_ac=min_minor_ac,
             n_snps=n_snps,
             thin_offset=thin_offset,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         # Load sample IDs

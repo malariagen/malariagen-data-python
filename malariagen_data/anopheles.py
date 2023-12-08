@@ -1,3 +1,4 @@
+import math
 import warnings
 from abc import abstractmethod
 from bisect import bisect_left, bisect_right
@@ -936,9 +937,16 @@ class AnophelesDataResource(
         sample_sets,
         sample_indices,
         site_mask,
+        site_class,
         min_minor_ac,
         max_missing_an,
         n_components,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+        chunks,
+        inline_array,
     ):
         # Load diplotypes.
         gn = self.biallelic_diplotypes(
@@ -950,6 +958,13 @@ class AnophelesDataResource(
             site_mask=site_mask,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         with self._spinner(desc="Compute PCA"):
@@ -1595,13 +1610,21 @@ class AnophelesDataResource(
         self,
         region: base_params.regions,
         n_snps: base_params.n_snps,
+        n_components: pca_params.n_components = pca_params.n_components_default,
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
-        min_minor_ac: base_params.min_minor_ac = 2,
-        max_missing_an: base_params.max_missing_an = 0,
-        n_components: pca_params.n_components = pca_params.n_components_default,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -1614,7 +1637,7 @@ class AnophelesDataResource(
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
-            sample_indices=None,
+            sample_indices=sample_indices,
         )
         region_prepped = self._prep_region_cache_param(region=region)
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
@@ -1625,9 +1648,14 @@ class AnophelesDataResource(
             sample_sets=sample_sets_prepped,
             sample_indices=sample_indices_prepped,
             site_mask=site_mask_prepped,
+            site_class=site_class,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             n_components=n_components,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
         )
 
         # Try to retrieve results from the cache.
@@ -1635,7 +1663,7 @@ class AnophelesDataResource(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._pca(**params)
+            results = self._pca(chunks=chunks, inline_array=inline_array, **params)
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results.
@@ -6395,8 +6423,6 @@ class AnophelesDataResource(
         """,
         parameters=dict(
             leaf_y="Y coordinate at which to plot the leaf markers.",
-            line_props="Properties to style the dendrogram lines.",
-            leaf_scatter_kwargs="Passed through to `px.scatter()`.",
         ),
     )
     def plot_haplotype_clustering(
@@ -6412,14 +6438,20 @@ class AnophelesDataResource(
         linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
         count_sort: hapclust_params.count_sort = True,
         distance_sort: hapclust_params.distance_sort = False,
+        title: plotly_params.title = True,
+        title_font_size: plotly_params.title_font_size = 14,
         width: plotly_params.width = None,
         height: plotly_params.height = 500,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
         leaf_y: int = 0,
-        line_props: Optional[Mapping] = None,
-        **leaf_scatter_kwargs,
+        marker_size: plotly_params.marker_size = 5,
+        line_width: plotly_params.line_width = 0.5,
+        line_color: plotly_params.line_color = "black",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
     ) -> plotly_params.figure:
         import sys
 
@@ -6434,44 +6466,8 @@ class AnophelesDataResource(
             sample_sets=sample_sets, sample_query=sample_query
         )
 
-        # Handle the color parameter.
-        if isinstance(color, str):
-            if color == "taxon":
-                # Special handling for taxon color.
-                self._setup_taxon_colors(leaf_scatter_kwargs)
-            elif "cohort_" + color in df_samples.columns:
-                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
-                color = "cohort_" + color
-            if color not in df_samples.columns:
-                raise ValueError(
-                    f"{color!r} is not a known column in the sample metadata."
-                )
-
-        elif isinstance(color, dict):
-            # Custom grouping of samples using queries.
-            df_samples["color"] = ""
-            for key, value in color.items():
-                df_samples.loc[df_samples.query(value).index, "color"] = key
-            color = "color"
-
-        # Handle the symbol parameter.
-        if isinstance(symbol, str):
-            if "cohort_" + symbol in df_samples.columns:
-                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
-                symbol = "cohort_" + symbol
-            if symbol not in df_samples.columns:
-                raise ValueError(
-                    f"{symbol!r} is not a known column in the sample metadata."
-                )
-
-        elif isinstance(symbol, dict):
-            df_samples["symbol"] = ""
-            for key, value in symbol.items():
-                df_samples.loc[df_samples.query(value).index, "symbol"] = key
-            symbol = "symbol"
-
         # Compute pairwise distances.
-        dist, phased_samples, n_snps = self.haplotype_pairwise_distances(
+        dist, phased_samples, n_snps_used = self.haplotype_pairwise_distances(
             region=region,
             analysis=analysis,
             sample_sets=sample_sets,
@@ -6485,40 +6481,43 @@ class AnophelesDataResource(
             df_samples.set_index("sample_id").loc[phased_samples.tolist()].reset_index()
         )
 
+        # Normalise color and symbol parameters.
+        (
+            symbol_prepped,
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        ) = self._setup_plotly_sample_colors(
+            data=df_samples_phased,
+            color=color,
+            color_discrete_map=color_discrete_map,
+            color_discrete_sequence=color_discrete_sequence,
+            category_orders=category_orders,
+            symbol=symbol,
+        )
+        del color
+        del color_discrete_map
+        del color_discrete_sequence
+        del symbol
+
         # Repeat the dataframe so there is one row of metadata for each haplotype.
         df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
         df_haps.columns = df_samples_phased.columns
 
         # Configure hover data.
-        hover_data = [
-            "sample_id",
-            "partner_sample_id",
-            "sample_set",
-            "taxon",
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
-            "location",
-            "year",
-            "month",
-        ]
-        if color and color not in hover_data:
-            hover_data.append(color)
-        if symbol and symbol not in hover_data:
-            hover_data.append(symbol)
-
-        # Select only columns in hover_data.
-        df_haps = df_haps[hover_data]
+        hover_data = self._setup_plotly_sample_hover_data(
+            color=color_prepped, symbol=symbol_prepped
+        )
 
         # Construct plot title.
-        title_lines = []
-        if sample_sets is not None:
-            title_lines.append(f"Sample sets: {sample_sets}")
-        if sample_query is not None:
-            title_lines.append(f"Sample query: {sample_query}")
-        title_lines.append(f"Genomic region: {region} ({n_snps:,} SNPs)")
-        title = "<br>".join(title_lines)
+        if title is True:
+            title_lines = []
+            if sample_sets is not None:
+                title_lines.append(f"Sample sets: {sample_sets}")
+            if sample_query is not None:
+                title_lines.append(f"Sample query: {sample_query}")
+            title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
+            title = "<br>".join(title_lines)
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
@@ -6531,15 +6530,26 @@ class AnophelesDataResource(
                 width=width,
                 height=height,
                 title=title,
-                line_props=line_props,
+                line_width=line_width,
+                line_color=line_color,
+                marker_size=marker_size,
                 leaf_data=df_haps,
                 leaf_hover_name="sample_id",
                 leaf_hover_data=hover_data,
-                leaf_color=color,
-                leaf_symbol=symbol,
-                leaf_scatter_kwargs=leaf_scatter_kwargs,
+                leaf_color=color_prepped,
+                leaf_symbol=symbol_prepped,
                 leaf_y=leaf_y,
+                leaf_color_discrete_map=color_discrete_map_prepped,
+                leaf_category_orders=category_orders_prepped,
+                template="simple_white",
             )
+
+        # Reduce title size.
+        fig.update_layout(
+            title_font=dict(
+                size=title_font_size,
+            ),
+        )
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
@@ -6569,10 +6579,10 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,
-        color: Optional[hapnet_params.color] = None,
-        color_discrete_sequence: Optional[hapnet_params.color_discrete_sequence] = None,
-        color_discrete_map: Optional[hapnet_params.color_discrete_map] = None,
-        category_orders: Optional[hapnet_params.category_order] = None,
+        color: plotly_params.color = None,
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
         node_size_factor: hapnet_params.node_size_factor = hapnet_params.node_size_factor_default,
         layout: hapnet_params.layout = hapnet_params.layout_default,
         layout_params: Optional[hapnet_params.layout_params] = None,
@@ -6672,7 +6682,7 @@ class AnophelesDataResource(
                 for s in ht_distinct_sets
             ]
 
-            if color == "taxon":
+            if color == "taxon" and color_discrete_map is None:
                 # special case, standardise taxon colors and order
                 color_params = self._setup_taxon_colors()
                 color_discrete_map = color_params["color_discrete_map"]
@@ -6879,26 +6889,33 @@ class AnophelesDataResource(
         debug("launch the dash app")
         app.run(**run_params)
 
-    # TODO doc
+    @doc(
+        summary="""
+            TODO.
+        """,
+        parameters=dict(
+            metric="TODO.",
+        ),
+    )
     def biallelic_diplotype_pairwise_distances(
         self,
         region: base_params.regions,
-        n_snps: Optional[base_params.n_snps],
-        metric="cityblock",
+        n_snps: base_params.n_snps,
+        metric: str = "cityblock",
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> Tuple[np.ndarray, np.ndarray, int]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -7014,8 +7031,517 @@ class AnophelesDataResource(
         return dict(
             dist=dist,
             samples=samples,
-            n_snps=np.array(n_snps),
+            n_snps=np.array(
+                n_snps
+            ),  # ensure consistent behaviour to/from results cache
         )
+
+    @doc(
+        summary="""
+            TODO.
+        """,
+        parameters=dict(
+            metric="TODO.",
+            distance_sort="TODO.",
+            count_sort="TODO.",
+            center_x="TODO.",
+            center_y="TODO.",
+            arc_start="TODO.",
+            arc_stop="TODO.",
+        ),
+    )
+    def plot_njt(
+        self,
+        region: base_params.regions,
+        n_snps: base_params.n_snps,
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        metric: str = "cityblock",
+        distance_sort: Optional[bool] = None,
+        count_sort: Optional[bool] = None,
+        center_x=0,
+        center_y=0,
+        arc_start=0,
+        arc_stop=2 * math.pi,
+        width: plotly_params.width = 800,
+        height: plotly_params.height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        render_mode: plotly_params.render_mode = "svg",
+        title: plotly_params.title = True,
+        title_font_size: plotly_params.title_font_size = 14,
+        line_width: plotly_params.line_width = 0.5,
+        marker_size: plotly_params.marker_size = 5,
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
+        thin_offset: base_params.thin_offset = 0,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        site_class: Optional[base_params.site_class] = None,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> plotly_params.figure:
+        from biotite.sequence.phylo import neighbor_joining
+        from scipy.spatial.distance import squareform
+
+        # Normalise params.
+        if count_sort is None and distance_sort is None:
+            count_sort = True
+            distance_sort = False
+
+        # Compute pairwise distances.
+        dist, samples, n_snps_used = self.biallelic_diplotype_pairwise_distances(
+            region=region,
+            n_snps=n_snps,
+            metric=metric,
+            thin_offset=thin_offset,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_indices=sample_indices,
+            site_mask=site_mask,
+            site_class=site_class,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+        # Construct tree.
+        with self._spinner("Construct neighbour-joining tree"):
+            dist_sq = squareform(dist)
+            tree = neighbor_joining(dist_sq)
+
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_indices=sample_indices,
+        )
+        # Ensure alignment with pairwise distances.
+        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+
+        # Normalise color and symbol parameters.
+        (
+            symbol_prepped,
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        ) = self._setup_plotly_sample_colors(
+            data=df_samples,
+            color=color,
+            color_discrete_map=color_discrete_map,
+            color_discrete_sequence=color_discrete_sequence,
+            category_orders=category_orders,
+            symbol=symbol,
+        )
+        del color
+        del color_discrete_map
+        del color_discrete_sequence
+        del symbol
+
+        # Extract data for leaf colors.
+        leaf_colors = df_samples[color_prepped]
+
+        # Lay out the tree.
+        _, df_leaf_nodes, df_edges = unrooted_tree_layout_equal_angle(
+            tree=tree,
+            color=color_prepped,
+            leaf_colors=leaf_colors,
+            center_x=center_x,
+            center_y=center_y,
+            arc_start=arc_start,
+            arc_stop=arc_stop,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
+        )
+
+        # Join leaf data with sample metadata.
+        df_leaf_data = df_leaf_nodes[["x", "y"]].join(df_samples, how="inner")
+        df_leaf_data.sort_index(inplace=True)
+
+        # Force default color for lines.
+        color_discrete_map_prepped[""] = "gray"
+
+        # Construct plot title.
+        if title is True:
+            title_lines = []
+            if sample_sets is not None:
+                title_lines.append(f"Sample sets: {sample_sets}")
+            if sample_query is not None:
+                title_lines.append(f"Sample query: {sample_query}")
+            title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
+            title = "<br>".join(title_lines)
+
+        # Start building the figure.
+        fig = px.line(
+            data_frame=df_edges,
+            x="x",
+            y="y",
+            color=color_prepped,
+            width=width,
+            height=height,
+            hover_name=color_prepped,
+            hover_data=None,
+            color_discrete_map=color_discrete_map_prepped,
+            category_orders=category_orders_prepped,
+            title=title,
+            render_mode=render_mode,
+            template="simple_white",
+        )
+
+        # Configure hover data.
+        hover_data = self._setup_plotly_sample_hover_data(
+            color=color_prepped, symbol=symbol_prepped
+        )
+
+        # Add scatter plot to draw the leaves.
+        fig.add_traces(
+            list(
+                px.scatter(
+                    data_frame=df_leaf_data,
+                    x="x",
+                    y="y",
+                    color=color_prepped,
+                    symbol=symbol_prepped,
+                    color_discrete_map=color_discrete_map_prepped,
+                    category_orders=category_orders_prepped,
+                    render_mode=render_mode,
+                    hover_name="sample_id",
+                    hover_data=hover_data,
+                    template="simple_white",
+                ).select_traces()
+            )
+        )
+
+        # Style lines and markers.
+        line_props = dict(width=line_width)
+        marker_props = dict(size=marker_size)
+        fig.update_traces(line=line_props, marker=marker_props)
+
+        # Reduce title size.
+        fig.update_layout(
+            title_font=dict(
+                size=title_font_size,
+            ),
+        )
+
+        # Style axes.
+        fig.update_xaxes(
+            title=None,
+            mirror=False,
+            showgrid=False,
+            showline=False,
+            showticklabels=False,
+            ticks="",
+        )
+        fig.update_yaxes(
+            title=None,
+            mirror=False,
+            showgrid=False,
+            showline=False,
+            showticklabels=False,
+            ticks="",
+            # N.B., this is important, as it prevents distortion of the tree.
+            # See also https://plotly.com/python/axes/#fixed-ratio-axes
+            scaleanchor="x",
+            scaleratio=1,
+        )
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
+
+    def _setup_plotly_sample_colors(
+        self,
+        *,
+        data,
+        symbol,
+        color,
+        color_discrete_sequence,
+        color_discrete_map,
+        category_orders,
+    ):
+        # Handle the symbol parameter.
+        if isinstance(symbol, str):
+            if "cohort_" + symbol in data.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                symbol_prepped = "cohort_" + symbol
+            else:
+                symbol_prepped = symbol
+            if symbol_prepped not in data.columns:
+                raise ValueError(
+                    f"{symbol_prepped!r} is not a known column in the data."
+                )
+
+        elif isinstance(symbol, dict):
+            data["symbol"] = ""
+            for key, value in symbol.items():
+                data.loc[data.query(value).index, "symbol"] = key
+            symbol_prepped = "symbol"
+
+        else:
+            symbol_prepped = symbol
+
+        # Finish handling of symbol parameter.
+        del symbol
+
+        # Special handling for taxon colors.
+        if (
+            color == "taxon"
+            and color_discrete_map is None
+            and color_discrete_sequence is None
+        ):
+            # Special case, default taxon colors and order.
+            color_params = self._setup_taxon_colors()
+            color_discrete_map_prepped = color_params["color_discrete_map"]
+            category_orders_prepped = color_params["category_orders"]
+            color_prepped = color
+            # All done, can bail out early.
+            return (
+                symbol_prepped,
+                color_prepped,
+                color_discrete_map_prepped,
+                category_orders_prepped,
+            )
+
+        if isinstance(color, str):
+            if "cohort_" + color in data.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                color_prepped = "cohort_" + color
+            else:
+                color_prepped = color
+
+            if color_prepped not in data.columns:
+                raise ValueError(
+                    f"{color_prepped!r} is not a known column in the data."
+                )
+
+        elif isinstance(color, dict):
+            # Custom grouping using queries.
+            data["color"] = ""
+            for key, value in color.items():
+                data.loc[data.query(value).index, "color"] = key
+            color_prepped = "color"
+
+        else:
+            color_prepped = color
+
+        # Finish handling of color parameter.
+        del color
+
+        # Obtain the values that we will be mapping to colors.
+        color_data_values = data[color_prepped]
+        color_data_unique_values = color_data_values.unique()
+
+        # Now set up color choices.
+        if color_discrete_map is None:
+            # Choose a color palette.
+            if color_discrete_sequence is None:
+                if len(color_data_unique_values) <= 10:
+                    color_discrete_sequence = px.colors.qualitative.Plotly
+                else:
+                    color_discrete_sequence = px.colors.qualitative.Alphabet
+
+            # Map values to colors.
+            color_discrete_map_prepped = {
+                v: c
+                for v, c in zip(
+                    color_data_unique_values, cycle(color_discrete_sequence)
+                )
+            }
+
+        else:
+            color_discrete_map_prepped = color_discrete_map
+
+        # Finished handling of color map params.
+        del color_discrete_map
+        del color_discrete_sequence
+
+        # Define category orders.
+        if category_orders is None:
+            # Default ordering.
+            category_orders_prepped = {color_prepped: color_data_unique_values}
+
+        else:
+            category_orders_prepped = category_orders
+
+        # Finised handling of category orders.
+        del category_orders
+
+        return (
+            symbol_prepped,
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        )
+
+    def _setup_plotly_sample_hover_data(
+        self,
+        *,
+        color,
+        symbol,
+    ):
+        hover_data = [
+            "sample_id",
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+        if color and color not in hover_data:
+            hover_data.append(color)
+        if symbol and symbol not in hover_data:
+            hover_data.append(symbol)
+        return hover_data
+
+
+def unrooted_tree_layout_equal_angle(
+    *,
+    tree,
+    color,
+    leaf_colors,
+    center_x,
+    center_y,
+    arc_start,
+    arc_stop,
+    distance_sort,
+    count_sort,
+):
+    # Set up outputs.
+    internal_nodes = []
+    leaf_nodes = []
+    edges = []
+
+    # Begin recursion.
+    _unrooted_tree_layout_equal_angle(
+        tree_node=tree.root,
+        leaf_colors=leaf_colors,
+        x=center_x,
+        y=center_y,
+        arc_start=arc_start,
+        arc_stop=arc_stop,
+        distance_sort=distance_sort,
+        count_sort=count_sort,
+        internal_nodes=internal_nodes,
+        leaf_nodes=leaf_nodes,
+        edges=edges,
+    )
+
+    # Load results into dataframes.
+    df_internal_nodes = pd.DataFrame.from_records(internal_nodes, columns=["x", "y"])
+    df_leaf_nodes = pd.DataFrame.from_records(
+        leaf_nodes, columns=["x", "y", "index", color]
+    ).set_index("index")
+    df_edges = pd.DataFrame.from_records(edges, columns=["x", "y", color])
+
+    return df_internal_nodes, df_leaf_nodes, df_edges
+
+
+def _unrooted_tree_layout_equal_angle(
+    tree_node,
+    leaf_colors,
+    x,
+    y,
+    arc_start,
+    arc_stop,
+    distance_sort,
+    count_sort,
+    internal_nodes,
+    leaf_nodes,
+    edges,
+):
+    if tree_node.children:
+        # Store internal node coordinates.
+        internal_nodes.append([x, y])
+
+        # Count leaves (descendants).
+        leaf_count = tree_node.get_leaf_count()
+
+        # Sort the subtrees.
+        if distance_sort:
+            children = sorted(tree_node.children, key=lambda c: c.distance)
+        elif count_sort:
+            children = sorted(tree_node.children, key=lambda c: c.get_leaf_count())
+        else:
+            children = tree_node.children
+
+        # Iterate over children, dividing up the current arc into
+        # segments of size proportional to the number of leaves in
+        # the subtree.
+        arc_size = arc_stop - arc_start
+        child_arc_start = arc_start
+        for child in children:
+            # Define a segment of the arc for this child.
+            child_arc_size = arc_size * child.get_leaf_count() / leaf_count
+            child_arc_stop = child_arc_start + child_arc_size
+
+            # Define the angle at which this child will be drawn.
+            child_angle = child_arc_start + child_arc_size / 2
+
+            # Access the distance at which to draw this child.
+            distance = child.distance
+
+            # Now use trigonometry to calculate coordinates for this child.
+            child_x = x + distance * math.sin(child_angle)
+            child_y = y + distance * math.cos(child_angle)
+
+            # Figure out edge colors.
+            edge_colors = set(
+                leaf_colors.iloc[[leaf.index for leaf in child.get_leaves()]]
+            )
+            if len(edge_colors) > 1:
+                edge_color = ""
+            else:
+                edge_color = edge_colors.pop()
+
+            # Add edge.
+            # edges.append([x, child_x, y, child_y, edge_color])
+            edges.append([x, y, edge_color])
+            edges.append([child_x, child_y, edge_color])
+            edges.append([None, None, edge_color])
+
+            # Recurse to draw the child.
+            _unrooted_tree_layout_equal_angle(
+                tree_node=child,
+                leaf_colors=leaf_colors,
+                x=child_x,
+                y=child_y,
+                internal_nodes=internal_nodes,
+                leaf_nodes=leaf_nodes,
+                edges=edges,
+                arc_start=child_arc_start,
+                arc_stop=child_arc_stop,
+                count_sort=count_sort,
+                distance_sort=distance_sort,
+            )
+
+            # Update loop variables ready for the next iteration.
+            child_arc_start = child_arc_stop
+
+    else:
+        leaf_color = leaf_colors.iloc[tree_node.index]
+        leaf_nodes.append([x, y, tree_node.index, leaf_color])
 
 
 def _diplotype_frequencies(gt):
