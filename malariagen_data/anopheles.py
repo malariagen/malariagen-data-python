@@ -7072,6 +7072,9 @@ class AnophelesDataResource(
             center_y="Y coordinate where plotting is centered.",
             arc_start="Angle where tree layout begins.",
             arc_stop="Angle where tree layout ends.",
+            edge_legend="TODO",
+            leaf_legend="TODO",
+            legend_sizing="TODO",
         ),
     )
     def plot_njt(
@@ -7099,6 +7102,9 @@ class AnophelesDataResource(
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
+        edge_legend: bool = False,
+        leaf_legend: bool = True,
+        legend_sizing: str = "trace",
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -7214,20 +7220,19 @@ class AnophelesDataResource(
             title = "<br>".join(title_lines)
 
         # Start building the figure.
-        fig = px.line(
+        fig1 = px.line(
             data_frame=df_edges,
             x="x",
             y="y",
             color=color_prepped,
-            width=width,
-            height=height,
             hover_name=color_prepped,
             hover_data=None,
             color_discrete_map=color_discrete_map_prepped,
             category_orders=category_orders_prepped,
-            title=title,
             render_mode=render_mode,
-            template="simple_white",
+        )
+        fig1.update_traces(
+            showlegend=edge_legend,
         )
 
         # Configure hover data.
@@ -7236,23 +7241,25 @@ class AnophelesDataResource(
         )
 
         # Add scatter plot to draw the leaves.
-        fig.add_traces(
-            list(
-                px.scatter(
-                    data_frame=df_leaf_data,
-                    x="x",
-                    y="y",
-                    color=color_prepped,
-                    symbol=symbol_prepped,
-                    color_discrete_map=color_discrete_map_prepped,
-                    category_orders=category_orders_prepped,
-                    render_mode=render_mode,
-                    hover_name="sample_id",
-                    hover_data=hover_data,
-                    template="simple_white",
-                ).select_traces()
-            )
+        fig2 = px.scatter(
+            data_frame=df_leaf_data,
+            x="x",
+            y="y",
+            color=color_prepped,
+            symbol=symbol_prepped,
+            color_discrete_map=color_discrete_map_prepped,
+            category_orders=category_orders_prepped,
+            render_mode=render_mode,
+            hover_name="sample_id",
+            hover_data=hover_data,
         )
+        fig2.update_traces(
+            showlegend=leaf_legend,
+        )
+
+        fig = go.Figure()
+        fig.add_traces(list(fig1.select_traces()))
+        fig.add_traces(list(fig2.select_traces()))
 
         # Style lines and markers.
         line_props = dict(width=line_width)
@@ -7261,9 +7268,14 @@ class AnophelesDataResource(
 
         # Tidy up.
         fig.update_layout(
+            title=title,
+            width=width,
+            height=height,
+            template="simple_white",
             title_font=dict(
                 size=title_font_size,
             ),
+            legend=dict(itemsizing=legend_sizing),
         )
 
         # Style axes.
