@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 import zarr
 from numpydoc_decorator import doc
-from tqdm.auto import tqdm
+from tqdm.auto import tqdm as tqdm_auto
 from tqdm.dask import TqdmCallback
 from yaspin import yaspin
 
@@ -52,6 +52,7 @@ class AnophelesBase:
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
+        tqdm_class=tqdm_auto,
     ):
         self._url = url
         self._config_path = config_path
@@ -61,6 +62,7 @@ class AnophelesBase:
         self._major_version_path = major_version_path
         self._debug = debug
         self._show_progress = show_progress
+        self._tqdm_class = tqdm_class
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
@@ -106,7 +108,7 @@ class AnophelesBase:
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
         if show_progress:
-            return tqdm(iterable, desc=desc, leave=leave, **kwargs)
+            return self._tqdm_class(iterable, desc=desc, leave=leave, **kwargs)
         else:
             return iterable
 
@@ -114,7 +116,9 @@ class AnophelesBase:
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
         if show_progress:
-            return TqdmCallback(desc=desc, leave=leave, **kwargs)
+            return TqdmCallback(
+                desc=desc, leave=leave, tqdm_class=self._tqdm_class, **kwargs
+            )
         else:
             return nullcontext()
 
