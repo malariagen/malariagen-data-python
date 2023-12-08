@@ -93,6 +93,7 @@ class Af1(AnophelesDataResource):
         cohorts_analysis=None,
         site_filters_analysis=None,
         pre=False,
+        tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
         super().__init__(
@@ -120,6 +121,7 @@ class Af1(AnophelesDataResource):
             gff_gene_type="protein_coding_gene",
             gff_default_attributes=("ID", "Parent", "Note", "description"),
             storage_options=storage_options,  # used by fsspec via init_filesystem()
+            tqdm_class=tqdm_class,
         )
 
     @staticmethod

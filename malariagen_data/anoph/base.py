@@ -52,7 +52,7 @@ class AnophelesBase:
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
-        tqdm_class=tqdm_auto,
+        tqdm_class=None,
     ):
         self._url = url
         self._config_path = config_path
@@ -62,6 +62,8 @@ class AnophelesBase:
         self._major_version_path = major_version_path
         self._debug = debug
         self._show_progress = show_progress
+        if tqdm_class is None:
+            tqdm_class = tqdm_auto
         self._tqdm_class = tqdm_class
 
         # Set up logging.

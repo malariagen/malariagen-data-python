@@ -136,6 +136,7 @@ class AnophelesDataResource(
         major_version_path: str,
         gff_gene_type: str,
         gff_default_attributes: Tuple[str, ...],
+        tqdm_class,
         storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
     ):
         super().__init__(
@@ -163,6 +164,7 @@ class AnophelesDataResource(
             default_phasing_analysis=default_phasing_analysis,
             default_coverage_calls_analysis=default_coverage_calls_analysis,
             results_cache=results_cache,
+            tqdm_class=tqdm_class,
         )
 
         # set up caches
