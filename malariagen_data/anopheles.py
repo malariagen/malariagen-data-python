@@ -7177,7 +7177,10 @@ class AnophelesDataResource(
         del symbol
 
         # Extract data for leaf colors.
-        leaf_colors = df_samples[color_prepped]
+        if color_prepped is not None:
+            leaf_colors = df_samples[color_prepped]
+        else:
+            leaf_colors = None
 
         # Lay out the tree.
         _, df_leaf_nodes, df_edges = unrooted_tree_layout_equal_angle(
@@ -7197,7 +7200,8 @@ class AnophelesDataResource(
         df_leaf_data.sort_index(inplace=True)
 
         # Force default color for lines.
-        color_discrete_map_prepped[""] = "gray"
+        if color_discrete_map_prepped is not None:
+            color_discrete_map_prepped[""] = "gray"
 
         # Construct plot title.
         if title is True:
@@ -7324,6 +7328,11 @@ class AnophelesDataResource(
         # Finish handling of symbol parameter.
         del symbol
 
+        # Check for no color.
+        if color is None:
+            # Bail out early.
+            return symbol_prepped, None, None, None
+
         # Special handling for taxon colors.
         if (
             color == "taxon"
@@ -7335,7 +7344,7 @@ class AnophelesDataResource(
             color_discrete_map_prepped = color_params["color_discrete_map"]
             category_orders_prepped = color_params["category_orders"]
             color_prepped = color
-            # All done, can bail out early.
+            # Bail out early.
             return (
                 symbol_prepped,
                 color_prepped,
@@ -7531,13 +7540,13 @@ def _unrooted_tree_layout_equal_angle(
             child_y = y + distance * math.cos(child_angle)
 
             # Figure out edge colors.
-            edge_colors = set(
-                leaf_colors.iloc[[leaf.index for leaf in child.get_leaves()]]
-            )
-            if len(edge_colors) > 1:
-                edge_color = ""
-            else:
-                edge_color = edge_colors.pop()
+            edge_color = ""
+            if leaf_colors is not None:
+                edge_colors = set(
+                    leaf_colors.iloc[[leaf.index for leaf in child.get_leaves()]]
+                )
+                if len(edge_colors) == 1:
+                    edge_color = edge_colors.pop()
 
             # Add edge.
             # edges.append([x, child_x, y, child_y, edge_color])
@@ -7564,7 +7573,9 @@ def _unrooted_tree_layout_equal_angle(
             child_arc_start = child_arc_stop
 
     else:
-        leaf_color = leaf_colors.iloc[tree_node.index]
+        leaf_color = ""
+        if leaf_colors is not None:
+            leaf_color = leaf_colors.iloc[tree_node.index]
         leaf_nodes.append([x, y, tree_node.index, leaf_color])
 
 
