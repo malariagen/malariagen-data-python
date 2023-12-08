@@ -952,7 +952,7 @@ class AnophelesDataResource(
         inline_array,
     ):
         # Load diplotypes.
-        gn = self.biallelic_diplotypes(
+        gn, samples = self.biallelic_diplotypes(
             region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
@@ -984,7 +984,9 @@ class AnophelesDataResource(
                 if np.abs(c.min()) > np.abs(c.max()):
                     coords[:, i] = c * -1
 
-        results = dict(coords=coords, evr=model.explained_variance_ratio_)
+        results = dict(
+            samples=samples, coords=coords, evr=model.explained_variance_ratio_
+        )
         return results
 
     @check_types
@@ -1672,16 +1674,22 @@ class AnophelesDataResource(
         # Unpack results.
         coords = results["coords"]
         evr = results["evr"]
+        samples = results["samples"]
 
-        # Add coords to sample metadata dataframe.
+        # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_indices=sample_indices_prepped,
         )
+
+        # Ensure aligned with genotype data.
+        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+
+        # Combine coords and sample metadata.
         df_coords = pd.DataFrame(
             {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
         )
-        df_pca = pd.concat([df_samples, df_coords], axis="columns")
+        df_pca = df_samples.join(df_coords, how="inner")
 
         return df_pca, evr
 
@@ -3787,6 +3795,7 @@ class AnophelesDataResource(
             as a plotly scatter plot.
         """,
         parameters=dict(
+            opacity="Marker opacity.",
             kwargs="Passed through to `px.scatter()`",
         ),
     )
@@ -3797,72 +3806,75 @@ class AnophelesDataResource(
         y: plotly_params.y = "PC2",
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
+        opacity: float = 0.9,
         jitter_frac: plotly_params.jitter_frac = 0.02,
         random_seed: base_params.random_seed = 42,
         width: plotly_params.width = 900,
         height: plotly_params.height = 600,
         marker_size: plotly_params.marker_size = 10,
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
+        render_mode: plotly_params.render_mode = "svg",
         **kwargs,
     ) -> plotly_params.figure:
-        debug = self._log.debug
-
-        debug(
-            "set up data - copy and shuffle so that we don't get systematic over-plotting"
-        )
-        # TODO does the shuffling actually work?
-        data = (
-            data.copy().sample(frac=1, random_state=random_seed).reset_index(drop=True)
-        )
-
-        debug(
-            "apply jitter if desired - helps spread out points when tightly clustered"
-        )
+        # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
             data[x] = jitter(data[x], jitter_frac)
             data[y] = jitter(data[y], jitter_frac)
 
-        debug("convenience variables")
+        # Convenience variables.
         data["country_location"] = data["country"] + " - " + data["location"]
 
-        debug("set up plotting options")
-        hover_data = [
-            "partner_sample_id",
-            "sample_set",
-            "taxon",
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
-            "location",
-            "year",
-            "month",
-        ]
+        # Normalise color and symbol parameters.
+        (
+            symbol_prepped,
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        ) = self._setup_plotly_sample_colors(
+            data=data,
+            color=color,
+            color_discrete_map=color_discrete_map,
+            color_discrete_sequence=color_discrete_sequence,
+            category_orders=category_orders,
+            symbol=symbol,
+        )
+        del color
+        del color_discrete_map
+        del color_discrete_sequence
+        del symbol
+
+        # Configure hover data.
+        hover_data = self._setup_plotly_sample_hover_data(
+            color=color_prepped, symbol=symbol_prepped
+        )
+
+        # Set up plotting options.
         plot_kwargs = dict(
             width=width,
             height=height,
-            color=color,
-            symbol=symbol,
+            color=color_prepped,
+            symbol=symbol_prepped,
+            color_discrete_map=color_discrete_map_prepped,
+            category_orders=category_orders_prepped,
             template="simple_white",
             hover_name="sample_id",
             hover_data=hover_data,
-            opacity=0.9,
-            render_mode="svg",
+            opacity=opacity,
+            render_mode=render_mode,
         )
 
-        debug("special handling for taxon color")
-        if color == "taxon":
-            self._setup_taxon_colors(plot_kwargs)
-
-        debug("apply any user overrides")
+        # Apply any user overrides.
         plot_kwargs.update(kwargs)
 
-        debug("2D scatter plot")
+        # 2D scatter plot.
         fig = px.scatter(data, x=x, y=y, **plot_kwargs)
 
-        debug("tidy up")
+        # Tidy up.
         fig.update_layout(
             legend=dict(itemsizing="constant"),
         )
@@ -3897,65 +3909,66 @@ class AnophelesDataResource(
         width: plotly_params.width = 900,
         height: plotly_params.height = 600,
         marker_size: plotly_params.marker_size = 5,
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
-        debug = self._log.debug
-
-        debug(
-            "set up data - copy and shuffle so that we don't get systematic over-plotting"
-        )
-        # TODO does this actually work?
-        data = (
-            data.copy().sample(frac=1, random_state=random_seed).reset_index(drop=True)
-        )
-
-        debug(
-            "apply jitter if desired - helps spread out points when tightly clustered"
-        )
+        # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
             data[x] = jitter(data[x], jitter_frac)
             data[y] = jitter(data[y], jitter_frac)
             data[z] = jitter(data[z], jitter_frac)
 
-        debug("convenience variables")
+        # Convenience variables.
         data["country_location"] = data["country"] + " - " + data["location"]
 
-        debug("set up plotting options")
-        hover_data = [
-            "partner_sample_id",
-            "sample_set",
-            "taxon",
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
-            "location",
-            "year",
-            "month",
-        ]
+        # Normalise color and symbol parameters.
+        (
+            symbol_prepped,
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        ) = self._setup_plotly_sample_colors(
+            data=data,
+            color=color,
+            color_discrete_map=color_discrete_map,
+            color_discrete_sequence=color_discrete_sequence,
+            category_orders=category_orders,
+            symbol=symbol,
+        )
+        del color
+        del color_discrete_map
+        del color_discrete_sequence
+        del symbol
+
+        # Configure hover data.
+        hover_data = self._setup_plotly_sample_hover_data(
+            color=color_prepped, symbol=symbol_prepped
+        )
+
+        # Set up plotting options.
         plot_kwargs = dict(
             width=width,
             height=height,
             hover_name="sample_id",
             hover_data=hover_data,
-            color=color,
-            symbol=symbol,
+            color=color_prepped,
+            symbol=symbol_prepped,
+            color_discrete_map=color_discrete_map_prepped,
+            category_orders=category_orders_prepped,
         )
 
-        debug("special handling for taxon color")
-        if color == "taxon":
-            self._setup_taxon_colors(plot_kwargs)
-
-        debug("apply any user overrides")
+        # Apply any user overrides.
         plot_kwargs.update(kwargs)
 
-        debug("3D scatter plot")
+        # 3D scatter plot.
         fig = px.scatter_3d(data, x=x, y=y, z=z, **plot_kwargs)
 
-        debug("tidy up")
+        # Tidy up.
         fig.update_layout(
             scene=dict(aspectmode="cube"),
             legend=dict(itemsizing="constant"),
@@ -6552,7 +6565,7 @@ class AnophelesDataResource(
                 template="simple_white",
             )
 
-        # Reduce title size.
+        # Tidy up.
         fig.update_layout(
             title_font=dict(
                 size=title_font_size,
@@ -7240,7 +7253,7 @@ class AnophelesDataResource(
         marker_props = dict(size=marker_size)
         fig.update_traces(line=line_props, marker=marker_props)
 
-        # Reduce title size.
+        # Tidy up.
         fig.update_layout(
             title_font=dict(
                 size=title_font_size,
