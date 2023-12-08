@@ -21,11 +21,14 @@ import plotly.graph_objects as go
 import xarray as xr
 from numpydoc_decorator import doc
 
+from malariagen_data.anoph import tree_params
+
 from . import veff
 from .anoph import (
     aim_params,
     base_params,
     dash_params,
+    diplotype_distance_params,
     frq_params,
     fst_params,
     g123_params,
@@ -6436,8 +6439,8 @@ class AnophelesDataResource(
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
         linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
-        count_sort: hapclust_params.count_sort = True,
-        distance_sort: hapclust_params.distance_sort = False,
+        count_sort: Optional[tree_params.count_sort] = None,
+        distance_sort: Optional[tree_params.distance_sort] = None,
         title: plotly_params.title = True,
         title_font_size: plotly_params.title_font_size = 14,
         width: plotly_params.width = None,
@@ -6456,6 +6459,11 @@ class AnophelesDataResource(
         import sys
 
         from .plotly_dendrogram import plot_dendrogram
+
+        # Normalise params.
+        if count_sort is None and distance_sort is None:
+            count_sort = True
+            distance_sort = False
 
         # This is needed to avoid RecursionError on some haplotype clustering analyses
         # with larger numbers of haplotypes.
@@ -6891,17 +6899,17 @@ class AnophelesDataResource(
 
     @doc(
         summary="""
-            TODO.
+            Compute pairwise distances between samples using biallelic SNP genotypes.
         """,
         parameters=dict(
-            metric="TODO.",
+            metric="Distance metric, one of 'cityblock', 'euclidean' or 'sqeuclidean'.",
         ),
     )
     def biallelic_diplotype_pairwise_distances(
         self,
         region: base_params.regions,
         n_snps: base_params.n_snps,
-        metric: str = "cityblock",
+        metric: diplotype_distance_params.metric = "cityblock",
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -7038,16 +7046,17 @@ class AnophelesDataResource(
 
     @doc(
         summary="""
-            TODO.
+            Plot an unrooted neighbour-joining tree, computed from pairwise distances
+            between samples using biallelic SNP genotypes.
+        """,
+        extended_summary="""
+            The tree is displayed as an unrooted tree using the equal angles layout.
         """,
         parameters=dict(
-            metric="TODO.",
-            distance_sort="TODO.",
-            count_sort="TODO.",
-            center_x="TODO.",
-            center_y="TODO.",
-            arc_start="TODO.",
-            arc_stop="TODO.",
+            center_x="X coordinate where plotting is centered.",
+            center_y="Y coordinate where plotting is centered.",
+            arc_start="Angle where tree layout begins.",
+            arc_stop="Angle where tree layout ends.",
         ),
     )
     def plot_njt(
@@ -7056,9 +7065,9 @@ class AnophelesDataResource(
         n_snps: base_params.n_snps,
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
-        metric: str = "cityblock",
-        distance_sort: Optional[bool] = None,
-        count_sort: Optional[bool] = None,
+        metric: diplotype_distance_params.metric = "cityblock",
+        distance_sort: Optional[tree_params.distance_sort] = None,
+        count_sort: Optional[tree_params.count_sort] = None,
         center_x=0,
         center_y=0,
         arc_start=0,
