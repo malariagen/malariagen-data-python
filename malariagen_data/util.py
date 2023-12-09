@@ -353,6 +353,9 @@ class Region:
     def end(self):
         return self._end
 
+    def __hash__(self):
+        return hash((self.contig, self.start, self.end))
+
     def __eq__(self, other):
         return (
             isinstance(other, Region)

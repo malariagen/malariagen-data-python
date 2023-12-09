@@ -7088,9 +7088,9 @@ class AnophelesDataResource(
             center_y="Y coordinate where plotting is centered.",
             arc_start="Angle where tree layout begins.",
             arc_stop="Angle where tree layout ends.",
-            edge_legend="TODO",
-            leaf_legend="TODO",
-            legend_sizing="TODO",
+            edge_legend="Show legend entries for the different edge (line) colors.",
+            leaf_legend="Show legend entries for the different leaf node (scatter) colors and symbols.",
+            legend_sizing="Controls sizing of items in legends, either 'trace' or 'constant'.",
         ),
     )
     def plot_njt(

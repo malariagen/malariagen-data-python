@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import allel
@@ -737,6 +738,7 @@ class AnophelesSnpData(
 
         return loc_ann
 
+    @lru_cache(maxsize=None)
     def _snp_calls_for_contig(
         self,
         *,
@@ -807,21 +809,58 @@ class AnophelesSnpData(
         )
 
         # Normalise parameters.
-        sample_sets_prepped: List[str] = self._prep_sample_sets_param(
-            sample_sets=sample_sets
+        sample_sets_prepped: Tuple[str] = tuple(
+            self._prep_sample_sets_param(sample_sets=sample_sets)
         )
         del sample_sets
-        regions: List[Region] = parse_multi_region(self, region)
+        if sample_indices is not None:
+            sample_indices_prepped = tuple(sample_indices)
+        else:
+            sample_indices_prepped = sample_indices
+        del sample_indices
+        regions: Tuple[Region] = tuple(parse_multi_region(self, region))
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
 
+        return self._snp_calls(
+            regions=regions,
+            sample_sets=sample_sets_prepped,
+            sample_query=sample_query,
+            sample_indices=sample_indices_prepped,
+            site_mask=site_mask_prepped,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+    @lru_cache(maxsize=None)
+    def _snp_calls(
+        self,
+        *,
+        regions,
+        sample_sets,
+        sample_query,
+        sample_indices,
+        site_mask,
+        site_class,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+        inline_array,
+        chunks,
+    ):
         # Access SNP calls and concatenate multiple sample sets and/or regions.
         with self._spinner("Access SNP calls"):
             lx = []
             for r in regions:
                 ly = []
-                for s in sample_sets_prepped:
+                for s in sample_sets:
                     y = self._snp_calls_for_contig(
                         contig=r.contig,
                         sample_set=s,
@@ -859,11 +898,11 @@ class AnophelesSnpData(
             # Concatenate data from multiple regions.
             ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
-        if site_mask_prepped is not None:
+        if site_mask is not None:
             with self._spinner(desc="Apply site filters"):
                 ds = dask_compress_dataset(
                     ds,
-                    indexer=f"variant_filter_pass_{site_mask_prepped}",
+                    indexer=f"variant_filter_pass_{site_mask}",
                     dim=DIM_VARIANT,
                 )
 
@@ -872,13 +911,13 @@ class AnophelesSnpData(
 
         # Handle sample selection.
         if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
         elif sample_indices is not None:
-            ds = ds.isel(samples=sample_indices)
+            ds = ds.isel(samples=list(sample_indices))
 
         # Handle cohort size, overrides min and max.
         if cohort_size is not None:
