@@ -809,16 +809,16 @@ class AnophelesSnpData(
         )
 
         # Normalise parameters.
-        sample_sets_prepped: Tuple[str] = tuple(
+        sample_sets_prepped: Tuple[str, ...] = tuple(
             self._prep_sample_sets_param(sample_sets=sample_sets)
         )
         del sample_sets
         if sample_indices is not None:
-            sample_indices_prepped = tuple(sample_indices)
+            sample_indices_prepped: Optional[Tuple[int, ...]] = tuple(sample_indices)
         else:
             sample_indices_prepped = sample_indices
         del sample_indices
-        regions: Tuple[Region] = tuple(parse_multi_region(self, region))
+        regions: Tuple[Region, ...] = tuple(parse_multi_region(self, region))
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
