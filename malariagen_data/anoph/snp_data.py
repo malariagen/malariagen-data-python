@@ -738,7 +738,6 @@ class AnophelesSnpData(
 
         return loc_ann
 
-    @lru_cache(maxsize=None)
     def _snp_calls_for_contig(
         self,
         *,
