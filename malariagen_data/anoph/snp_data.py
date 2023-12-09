@@ -838,7 +838,7 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
-    @lru_cache(maxsize=10)
+    @lru_cache(maxsize=2)
     def _snp_calls(
         self,
         *,
