@@ -1606,11 +1606,26 @@ class AnophelesDataResource(
             Run a principal components analysis (PCA) using biallelic SNPs from
             the selected genome region and samples.
         """,
+        extended_summary="""
+            .. versionchanged:: 8.0.0
+               SNP ascertainment has changed slightly.
+
+            This function uses biallelic SNPs as input to the PCA. The ascertainment
+            of SNPs to include has changed slightly in version 8.0.0 and therefore
+            the results of this function may also be slightly different. Previously,
+            SNPs were required to be biallelic and one of the observed alleles was
+            required to be the reference allele. Now SNPs just have to be biallelic.
+
+            The following additional parameters were also added in version 8.0.0:
+            `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
+            `random_seed`.
+
+        """,
         returns=("df_pca", "evr"),
         notes="""
             This computation may take some time to run, depending on your computing
             environment. Results of this computation will be cached and re-used if
-            the `results_cache` parameter was set when instantiating the Ag3 class.
+            the `results_cache` parameter was set when instantiating the API client.
         """,
     )
     def pca(
@@ -2201,8 +2216,8 @@ class AnophelesDataResource(
             If a string, gives the name of a predefined cohort set, e.g., one of
             {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
             If a dict, should map cohort labels to sample queries, e.g.,
-            `{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}`.
+            ``{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
+            taxon == 'coluzzii'"}``.
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
@@ -2439,6 +2454,7 @@ class AnophelesDataResource(
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
+            A pandas query string which will be evaluated against variants.
         drop_invariant : bool, optional
             If True, drop any rows where there is no evidence of variation.
         max_coverage_variance : float, optional
@@ -6588,7 +6604,7 @@ class AnophelesDataResource(
         """,
         extended_summary="""
             A haplotype network provides a visualisation of the genetic distance
-            between haplotype_ Each node in the network represents a unique
+            between haplotypes. Each node in the network represents a unique
             haplotype. The size (area) of the node is scaled by the number of
             times that unique haplotype was observed within the selected samples.
             A connection between two nodes represents a single SNP difference
