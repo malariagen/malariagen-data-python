@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="./" >
+<html lang="en" data-content_root="" >
 
   <head>
     <meta charset="utf-8" />
@@ -35,9 +35,9 @@
 <link rel="preload" as="script" href="_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
   <script src="_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
-    <script src="_static/documentation_options.js?v=5929fcd5"></script>
+    <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="_static/sphinx_highlight.js?v=4825356b"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'Af1';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
@@ -414,6 +414,8 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_snps.html">malariagen_data.af1.Af1.plot_snps</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.site_annotations.html">malariagen_data.af1.Af1.site_annotations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.is_accessible.html">malariagen_data.af1.Af1.is_accessible</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.biallelic_snp_calls.html">malariagen_data.af1.Af1.biallelic_snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.biallelic_diplotypes.html">malariagen_data.af1.Af1.biallelic_diplotypes</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.phasing_analysis_ids.html">malariagen_data.af1.Af1.phasing_analysis_ids</a></li>
@@ -449,6 +451,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_pca_coords_3d.html">malariagen_data.af1.Af1.plot_pca_coords_3d</a></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_njt.html">malariagen_data.af1.Af1.plot_njt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances.html">malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_heterozygosity.html">malariagen_data.af1.Af1.plot_heterozygosity</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.roh_hmm.html">malariagen_data.af1.Af1.roh_hmm</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_roh.html">malariagen_data.af1.Af1.plot_roh</a></li>
@@ -477,6 +483,7 @@ document.write(`
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_clustering.html">malariagen_data.af1.Af1.plot_haplotype_clustering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_network.html">malariagen_data.af1.Af1.plot_haplotype_network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.haplotype_pairwise_distances.html">malariagen_data.af1.Af1.haplotype_pairwise_distances</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.af1.Af1.average_fst.html">malariagen_data.af1.Af1.average_fst</a></li>
@@ -539,10 +546,10 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="af1">
-<h1>Af1<a class="headerlink" href="#af1" title="Link to this heading">#</a></h1>
+<h1>Af1<a class="headerlink" href="#af1" title="Permalink to this heading">#</a></h1>
 <p>This page provides a curated list of functions and properties available in the malariagen_data API relating to <em>Anopheles funestus</em> data.</p>
 <section id="basic-data-access">
-<h2>Basic data access<a class="headerlink" href="#basic-data-access" title="Link to this heading">#</a></h2>
+<h2>Basic data access<a class="headerlink" href="#basic-data-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.releases.html#malariagen_data.af1.Af1.releases" title="malariagen_data.af1.Af1.releases"><code class="xref py py-obj docutils literal notranslate"><span class="pre">releases</span></code></a></p></td>
@@ -561,7 +568,7 @@ document.write(`
 </table>
 </section>
 <section id="reference-genome-data-access">
-<h2>Reference genome data access<a class="headerlink" href="#reference-genome-data-access" title="Link to this heading">#</a></h2>
+<h2>Reference genome data access<a class="headerlink" href="#reference-genome-data-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.contigs.html#malariagen_data.af1.Af1.contigs" title="malariagen_data.af1.Af1.contigs"><code class="xref py py-obj docutils literal notranslate"><span class="pre">contigs</span></code></a></p></td>
@@ -583,7 +590,7 @@ document.write(`
 </table>
 </section>
 <section id="sample-metadata-access">
-<h2>Sample metadata access<a class="headerlink" href="#sample-metadata-access" title="Link to this heading">#</a></h2>
+<h2>Sample metadata access<a class="headerlink" href="#sample-metadata-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.sample_metadata.html#malariagen_data.af1.Af1.sample_metadata" title="malariagen_data.af1.Af1.sample_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">sample_metadata</span></code></a>([sample_sets, sample_query, ...])</p></td>
@@ -614,7 +621,7 @@ document.write(`
 </table>
 </section>
 <section id="snp-data-access">
-<h2>SNP data access<a class="headerlink" href="#snp-data-access" title="Link to this heading">#</a></h2>
+<h2>SNP data access<a class="headerlink" href="#snp-data-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.site_mask_ids.html#malariagen_data.af1.Af1.site_mask_ids" title="malariagen_data.af1.Af1.site_mask_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">site_mask_ids</span></code></a></p></td>
@@ -635,11 +642,17 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.is_accessible.html#malariagen_data.af1.Af1.is_accessible" title="malariagen_data.af1.Af1.is_accessible"><code class="xref py py-obj docutils literal notranslate"><span class="pre">is_accessible</span></code></a>(region[, site_mask, ...])</p></td>
 <td><p>Compute genome accessibility array.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.biallelic_snp_calls.html#malariagen_data.af1.Af1.biallelic_snp_calls" title="malariagen_data.af1.Af1.biallelic_snp_calls"><code class="xref py py-obj docutils literal notranslate"><span class="pre">biallelic_snp_calls</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Access SNP calls at sites which are biallelic within the selected samples.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.biallelic_diplotypes.html#malariagen_data.af1.Af1.biallelic_diplotypes" title="malariagen_data.af1.Af1.biallelic_diplotypes"><code class="xref py py-obj docutils literal notranslate"><span class="pre">biallelic_diplotypes</span></code></a>(region[, sample_sets, ...])</p></td>
+<td><p>Load biallelic SNP genotypes.</p></td>
+</tr>
 </tbody>
 </table>
 </section>
 <section id="haplotype-data-access">
-<h2>Haplotype data access<a class="headerlink" href="#haplotype-data-access" title="Link to this heading">#</a></h2>
+<h2>Haplotype data access<a class="headerlink" href="#haplotype-data-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.phasing_analysis_ids.html#malariagen_data.af1.Af1.phasing_analysis_ids" title="malariagen_data.af1.Af1.phasing_analysis_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">phasing_analysis_ids</span></code></a></p></td>
@@ -652,7 +665,7 @@ document.write(`
 </table>
 </section>
 <section id="cnv-data-access">
-<h2>CNV data access<a class="headerlink" href="#cnv-data-access" title="Link to this heading">#</a></h2>
+<h2>CNV data access<a class="headerlink" href="#cnv-data-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.coverage_calls_analysis_ids.html#malariagen_data.af1.Af1.coverage_calls_analysis_ids" title="malariagen_data.af1.Af1.coverage_calls_analysis_ids"><code class="xref py py-obj docutils literal notranslate"><span class="pre">coverage_calls_analysis_ids</span></code></a></p></td>
@@ -678,7 +691,7 @@ document.write(`
 <p>Note that CNV discordant read calls are not currently supported.</p>
 </section>
 <section id="integrative-genomics-viewer-igv">
-<h2>Integrative genomics viewer (IGV)<a class="headerlink" href="#integrative-genomics-viewer-igv" title="Link to this heading">#</a></h2>
+<h2>Integrative genomics viewer (IGV)<a class="headerlink" href="#integrative-genomics-viewer-igv" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.igv.html#malariagen_data.af1.Af1.igv" title="malariagen_data.af1.Af1.igv"><code class="xref py py-obj docutils literal notranslate"><span class="pre">igv</span></code></a>(region[, tracks])</p></td>
@@ -691,7 +704,7 @@ document.write(`
 </table>
 </section>
 <section id="snp-and-cnv-frequency-analysis">
-<h2>SNP and CNV frequency analysis<a class="headerlink" href="#snp-and-cnv-frequency-analysis" title="Link to this heading">#</a></h2>
+<h2>SNP and CNV frequency analysis<a class="headerlink" href="#snp-and-cnv-frequency-analysis" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.snp_allele_frequencies.html#malariagen_data.af1.Af1.snp_allele_frequencies" title="malariagen_data.af1.Af1.snp_allele_frequencies"><code class="xref py py-obj docutils literal notranslate"><span class="pre">snp_allele_frequencies</span></code></a>(transcript, cohorts)</p></td>
@@ -725,10 +738,10 @@ document.write(`
 </table>
 </section>
 <section id="principal-components-analysis-pca">
-<h2>Principal components analysis (PCA)<a class="headerlink" href="#principal-components-analysis-pca" title="Link to this heading">#</a></h2>
+<h2>Principal components analysis (PCA)<a class="headerlink" href="#principal-components-analysis-pca" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.pca.html#malariagen_data.af1.Af1.pca" title="malariagen_data.af1.Af1.pca"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pca</span></code></a>(region, n_snps[, thin_offset, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.pca.html#malariagen_data.af1.Af1.pca" title="malariagen_data.af1.Af1.pca"><code class="xref py py-obj docutils literal notranslate"><span class="pre">pca</span></code></a>(region, n_snps[, n_components, ...])</p></td>
 <td><p>Run a principal components analysis (PCA) using biallelic SNPs from the selected genome region and samples.</p></td>
 </tr>
 <tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_pca_variance.html#malariagen_data.af1.Af1.plot_pca_variance" title="malariagen_data.af1.Af1.plot_pca_variance"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_pca_variance</span></code></a>(evr[, width, height, ...])</p></td>
@@ -743,8 +756,21 @@ document.write(`
 </tbody>
 </table>
 </section>
+<section id="genetic-distance-and-neighbour-joining-trees-njt">
+<h2>Genetic distance and neighbour-joining trees (NJT)<a class="headerlink" href="#genetic-distance-and-neighbour-joining-trees-njt" title="Permalink to this heading">#</a></h2>
+<table class="autosummary longtable table autosummary">
+<tbody>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_njt.html#malariagen_data.af1.Af1.plot_njt" title="malariagen_data.af1.Af1.plot_njt"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_njt</span></code></a>(region, n_snps[, color, symbol, ...])</p></td>
+<td><p>Plot an unrooted neighbour-joining tree, computed from pairwise distances between samples using biallelic SNP genotypes.</p></td>
+</tr>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances.html#malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances" title="malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">biallelic_diplotype_pairwise_distances</span></code></a>(...)</p></td>
+<td><p>Compute pairwise distances between samples using biallelic SNP genotypes.</p></td>
+</tr>
+</tbody>
+</table>
+</section>
 <section id="heterozygosity-analysis">
-<h2>Heterozygosity analysis<a class="headerlink" href="#heterozygosity-analysis" title="Link to this heading">#</a></h2>
+<h2>Heterozygosity analysis<a class="headerlink" href="#heterozygosity-analysis" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_heterozygosity.html#malariagen_data.af1.Af1.plot_heterozygosity" title="malariagen_data.af1.Af1.plot_heterozygosity"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_heterozygosity</span></code></a>(sample, region[, ...])</p></td>
@@ -760,7 +786,7 @@ document.write(`
 </table>
 </section>
 <section id="diversity-analysis">
-<h2>Diversity analysis<a class="headerlink" href="#diversity-analysis" title="Link to this heading">#</a></h2>
+<h2>Diversity analysis<a class="headerlink" href="#diversity-analysis" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.cohort_diversity_stats.html#malariagen_data.af1.Af1.cohort_diversity_stats" title="malariagen_data.af1.Af1.cohort_diversity_stats"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cohort_diversity_stats</span></code></a>(cohort, cohort_size, ...)</p></td>
@@ -776,7 +802,7 @@ document.write(`
 </table>
 </section>
 <section id="genome-wide-selection-scans">
-<h2>Genome-wide selection scans<a class="headerlink" href="#genome-wide-selection-scans" title="Link to this heading">#</a></h2>
+<h2>Genome-wide selection scans<a class="headerlink" href="#genome-wide-selection-scans" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.h12_calibration.html#malariagen_data.af1.Af1.h12_calibration" title="malariagen_data.af1.Af1.h12_calibration"><code class="xref py py-obj docutils literal notranslate"><span class="pre">h12_calibration</span></code></a>(contig[, analysis, ...])</p></td>
@@ -825,7 +851,7 @@ document.write(`
 </table>
 </section>
 <section id="haplotype-clustering-and-network-analysis">
-<h2>Haplotype clustering and network analysis<a class="headerlink" href="#haplotype-clustering-and-network-analysis" title="Link to this heading">#</a></h2>
+<h2>Haplotype clustering and network analysis<a class="headerlink" href="#haplotype-clustering-and-network-analysis" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_clustering.html#malariagen_data.af1.Af1.plot_haplotype_clustering" title="malariagen_data.af1.Af1.plot_haplotype_clustering"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_haplotype_clustering</span></code></a>(region[, ...])</p></td>
@@ -834,11 +860,14 @@ document.write(`
 <tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.plot_haplotype_network.html#malariagen_data.af1.Af1.plot_haplotype_network" title="malariagen_data.af1.Af1.plot_haplotype_network"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_haplotype_network</span></code></a>(region[, analysis, ...])</p></td>
 <td><p>Construct a median-joining haplotype network and display it using Cytoscape.</p></td>
 </tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.haplotype_pairwise_distances.html#malariagen_data.af1.Af1.haplotype_pairwise_distances" title="malariagen_data.af1.Af1.haplotype_pairwise_distances"><code class="xref py py-obj docutils literal notranslate"><span class="pre">haplotype_pairwise_distances</span></code></a>(region[, ...])</p></td>
+<td><p>Compute pairwise distances between haplotypes.</p></td>
+</tr>
 </tbody>
 </table>
 </section>
 <section id="fst-analysis">
-<h2>Fst analysis<a class="headerlink" href="#fst-analysis" title="Link to this heading">#</a></h2>
+<h2>Fst analysis<a class="headerlink" href="#fst-analysis" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
 <tbody>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.af1.Af1.average_fst.html#malariagen_data.af1.Af1.average_fst" title="malariagen_data.af1.Af1.average_fst"><code class="xref py py-obj docutils literal notranslate"><span class="pre">average_fst</span></code></a>(region, cohort1_query, cohort2_query)</p></td>
@@ -914,6 +943,7 @@ document.write(`
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#integrative-genomics-viewer-igv">Integrative genomics viewer (IGV)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#snp-and-cnv-frequency-analysis">SNP and CNV frequency analysis</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#principal-components-analysis-pca">Principal components analysis (PCA)</a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#genetic-distance-and-neighbour-joining-trees-njt">Genetic distance and neighbour-joining trees (NJT)</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#heterozygosity-analysis">Heterozygosity analysis</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#diversity-analysis">Diversity analysis</a></li>
 <li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#genome-wide-selection-scans">Genome-wide selection scans</a></li>
@@ -965,7 +995,7 @@ document.write(`
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
     <br/>
   </p>
 </div>

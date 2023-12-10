@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="" >
 
   <head>
     <meta charset="utf-8" />
@@ -35,9 +35,9 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
   <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
-    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.af1.Af1.sample_sets';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
@@ -414,6 +414,8 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_snps.html">malariagen_data.af1.Af1.plot_snps</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.site_annotations.html">malariagen_data.af1.Af1.site_annotations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.is_accessible.html">malariagen_data.af1.Af1.is_accessible</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_snp_calls.html">malariagen_data.af1.Af1.biallelic_snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_diplotypes.html">malariagen_data.af1.Af1.biallelic_diplotypes</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.phasing_analysis_ids.html">malariagen_data.af1.Af1.phasing_analysis_ids</a></li>
@@ -449,6 +451,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_pca_coords_3d.html">malariagen_data.af1.Af1.plot_pca_coords_3d</a></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_njt.html">malariagen_data.af1.Af1.plot_njt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances.html">malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_heterozygosity.html">malariagen_data.af1.Af1.plot_heterozygosity</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.roh_hmm.html">malariagen_data.af1.Af1.roh_hmm</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_roh.html">malariagen_data.af1.Af1.plot_roh</a></li>
@@ -477,6 +483,7 @@ document.write(`
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_haplotype_clustering.html">malariagen_data.af1.Af1.plot_haplotype_clustering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_haplotype_network.html">malariagen_data.af1.Af1.plot_haplotype_network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.haplotype_pairwise_distances.html">malariagen_data.af1.Af1.haplotype_pairwise_distances</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.average_fst.html">malariagen_data.af1.Af1.average_fst</a></li>
@@ -542,20 +549,20 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="malariagen-data-af1-af1-sample-sets">
-<h1>malariagen_data.af1.Af1.sample_sets<a class="headerlink" href="#malariagen-data-af1-af1-sample-sets" title="Link to this heading">#</a></h1>
+<h1>malariagen_data.af1.Af1.sample_sets<a class="headerlink" href="#malariagen-data-af1-af1-sample-sets" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.af1.Af1.sample_sets">
-<span class="sig-prename descclassname"><span class="pre">Af1.</span></span><span class="sig-name descname"><span class="pre">sample_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">release</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.af1.Af1.sample_sets" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Af1.</span></span><span class="sig-name descname"><span class="pre">sample_sets</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">release</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.af1.Af1.sample_sets" title="Permalink to this definition">#</a></dt>
 <dd><p>Access a dataframe of sample sets.</p>
 <section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">#</a></h2>
 <dl class="simple">
 <dt>release<span class="classifier">str or sequence of str or None, optional</span></dt><dd><p>Release version identifier.</p>
 </dd>
 </dl>
 </section>
 <section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">#</a></h2>
 <dl class="simple">
 <dt>DataFrame</dt><dd><p>A dataframe of sample sets, one row per sample set.</p>
 </dd>
@@ -656,7 +663,7 @@ document.write(`
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
     <br/>
   </p>
 </div>

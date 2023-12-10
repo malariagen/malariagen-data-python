@@ -2,7 +2,7 @@
 <!DOCTYPE html>
 
 
-<html lang="en" data-content_root="../" >
+<html lang="en" data-content_root="" >
 
   <head>
     <meta charset="utf-8" />
@@ -35,9 +35,9 @@
 <link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
   <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
 
-    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
     <script src="../_static/doctools.js?v=888ff710"></script>
-    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.af1.Af1.pca';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
@@ -414,6 +414,8 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_snps.html">malariagen_data.af1.Af1.plot_snps</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.site_annotations.html">malariagen_data.af1.Af1.site_annotations</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.is_accessible.html">malariagen_data.af1.Af1.is_accessible</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_snp_calls.html">malariagen_data.af1.Af1.biallelic_snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_diplotypes.html">malariagen_data.af1.Af1.biallelic_diplotypes</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.phasing_analysis_ids.html">malariagen_data.af1.Af1.phasing_analysis_ids</a></li>
@@ -449,6 +451,10 @@ document.write(`
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_pca_coords_3d.html">malariagen_data.af1.Af1.plot_pca_coords_3d</a></li>
 </ul>
 <ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_njt.html">malariagen_data.af1.Af1.plot_njt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances.html">malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_heterozygosity.html">malariagen_data.af1.Af1.plot_heterozygosity</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.roh_hmm.html">malariagen_data.af1.Af1.roh_hmm</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_roh.html">malariagen_data.af1.Af1.plot_roh</a></li>
@@ -477,6 +483,7 @@ document.write(`
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_haplotype_clustering.html">malariagen_data.af1.Af1.plot_haplotype_clustering</a></li>
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_haplotype_network.html">malariagen_data.af1.Af1.plot_haplotype_network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.haplotype_pairwise_distances.html">malariagen_data.af1.Af1.haplotype_pairwise_distances</a></li>
 </ul>
 <ul class="nav bd-sidenav">
 <li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.average_fst.html">malariagen_data.af1.Af1.average_fst</a></li>
@@ -542,14 +549,25 @@ document.write(`
                 <article class="bd-article" role="main">
                   
   <section id="malariagen-data-af1-af1-pca">
-<h1>malariagen_data.af1.Af1.pca<a class="headerlink" href="#malariagen-data-af1-af1-pca" title="Link to this heading">#</a></h1>
+<h1>malariagen_data.af1.Af1.pca<a class="headerlink" href="#malariagen-data-af1-af1-pca" title="Permalink to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.af1.Af1.pca">
-<span class="sig-prename descclassname"><span class="pre">Af1.</span></span><span class="sig-name descname"><span class="pre">pca</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_snps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thin_offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_minor_ac</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_missing_an</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_components</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">DataFrame</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#malariagen_data.af1.Af1.pca" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Af1.</span></span><span class="sig-name descname"><span class="pre">pca</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_snps</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_components</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">20</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">thin_offset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_minor_ac</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_missing_an</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'native'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">DataFrame</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">ndarray</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#malariagen_data.af1.Af1.pca" title="Permalink to this definition">#</a></dt>
 <dd><p>Run a principal components analysis (PCA) using biallelic SNPs from the
 selected genome region and samples.</p>
+<div class="versionchanged">
+<p><span class="versionmodified changed">Changed in version 8.0.0: </span>SNP ascertainment has changed slightly.</p>
+</div>
+<p>This function uses biallelic SNPs as input to the PCA. The ascertainment
+of SNPs to include has changed slightly in version 8.0.0 and therefore
+the results of this function may also be slightly different. Previously,
+SNPs were required to be biallelic and one of the observed alleles was
+required to be the reference allele. Now SNPs just have to be biallelic.
+The following additional parameters were also added in version 8.0.0:
+<cite>site_class</cite>, <cite>cohort_size</cite>, <cite>min_cohort_size</cite>, <cite>max_cohort_size</cite>,
+<cite>random_seed</cite>.</p>
 <section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">#</a></h2>
 <dl class="simple">
 <dt>region<span class="classifier">str or Region or Mapping or list of str or Region or Mapping or tuple of str or Region or Mapping</span></dt><dd><p>Region of the reference genome. Can be a contig name, region string
 (formatted like “{contig}:{start}-{end}”), or identifier of a genome
@@ -558,6 +576,8 @@ list) of regions.</p>
 </dd>
 <dt>n_snps<span class="classifier">int</span></dt><dd><p>The desired number of SNPs to use when running the analysis. SNPs will
 be evenly thinned to approximately this number.</p>
+</dd>
+<dt>n_components<span class="classifier">int, optional, default: 20</span></dt><dd><p>Number of components to return.</p>
 </dd>
 <dt>thin_offset<span class="classifier">int, optional, default: 0</span></dt><dd><p>Starting index for SNP thinning. Change this to repeat the analysis
 using a different set of SNPs.</p>
@@ -568,22 +588,53 @@ or release.</p>
 <dt>sample_query<span class="classifier">str or None, optional</span></dt><dd><p>A pandas query string to be evaluated against the sample metadata, to
 select samples to be included in the returned data.</p>
 </dd>
-<dt>site_mask<span class="classifier">str or None, optional, default: ‘default’</span></dt><dd><p>Which site filters mask to apply. See the <cite>site_mask_ids</cite> property for
+<dt>sample_indices<span class="classifier">list of int or None, optional</span></dt><dd><p>Advanced usage parameter. A list of indices of samples to select,
+corresponding to the order in which the samples are found within the
+sample metadata. Either provide this parameter or sample_query, not
+both.</p>
+</dd>
+<dt>site_mask<span class="classifier">str or None, optional</span></dt><dd><p>Which site filters mask to apply. See the <cite>site_mask_ids</cite> property for
 available values.</p>
 </dd>
-<dt>min_minor_ac<span class="classifier">int, optional, default: 2</span></dt><dd><p>The minimum minor allele count. SNPs with a minor allele count below
+<dt>site_class<span class="classifier">str or None, optional</span></dt><dd><p>Select sites belonging to one of the following classes: CDS_DEG_4,
+(4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of 5’
+splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3’ splice
+site), UTR_5PRIME (5’ untranslated region), UTR_3PRIME (3’
+untranslated region), INTERGENIC (intergenic, more than 10 kbp from a
+gene).</p>
+</dd>
+<dt>min_minor_ac<span class="classifier">int or None, optional</span></dt><dd><p>The minimum minor allele count. SNPs with a minor allele count below
 this value will be excluded.</p>
 </dd>
-<dt>max_missing_an<span class="classifier">int, optional, default: 0</span></dt><dd><p>The maximum number of missing allele calls to accept. SNPs with more
+<dt>max_missing_an<span class="classifier">int or None, optional</span></dt><dd><p>The maximum number of missing allele calls to accept. SNPs with more
 than this value will be excluded. Set to 0 to require no missing
 calls.</p>
 </dd>
-<dt>n_components<span class="classifier">int, optional, default: 20</span></dt><dd><p>Number of components to return.</p>
+<dt>cohort_size<span class="classifier">int or None, optional</span></dt><dd><p>Randomly down-sample to this value if the number of samples in the
+cohort is greater. Raise an error if the number of samples is less
+than this value.</p>
+</dd>
+<dt>min_cohort_size<span class="classifier">int or None, optional</span></dt><dd><p>Minimum cohort size. Raise an error if the number of samples is less
+than this value.</p>
+</dd>
+<dt>max_cohort_size<span class="classifier">int or None, optional</span></dt><dd><p>Randomly down-sample to this value if the number of samples in the
+cohort is greater.</p>
+</dd>
+<dt>random_seed<span class="classifier">int, optional, default: 42</span></dt><dd><p>Random seed used for reproducible down-sampling.</p>
+</dd>
+<dt>inline_array<span class="classifier">bool, optional, default: True</span></dt><dd><p>Passed through to dask <cite>from_array()</cite>.</p>
+</dd>
+<dt>chunks<span class="classifier">str or tuple of int, optional, default: ‘native’</span></dt><dd><p>If ‘auto’ let dask decide chunk size. If ‘native’ use native zarr
+chunks. Also, can be a target size, e.g., ‘200 MiB’, or a tuple of
+integers.</p>
 </dd>
 </dl>
 </section>
 <section id="returns">
-<h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">#</a></h2>
 <dl class="simple">
 <dt>df_pca<span class="classifier">DataFrame</span></dt><dd><p>A dataframe of sample metadata, with columns “PC1”, “PC2”, “PC3”,
 etc., added.</p>
@@ -593,11 +644,11 @@ etc., added.</p>
 </dl>
 </section>
 <section id="notes">
-<h2>Notes<a class="headerlink" href="#notes" title="Link to this heading">#</a></h2>
+<h2>Notes<a class="headerlink" href="#notes" title="Permalink to this heading">#</a></h2>
 <p>This computation may take some time to run, depending on your
 computing environment. Results of this computation will be cached and
 re-used if the <cite>results_cache</cite> parameter was set when instantiating
-the Ag3 class.</p>
+the API client.</p>
 </section>
 </dd></dl>
 
@@ -694,7 +745,7 @@ the Ag3 class.</p>
         <div class="footer-item">
 
   <p class="sphinx-version">
-    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.2.6.
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
     <br/>
   </p>
 </div>
