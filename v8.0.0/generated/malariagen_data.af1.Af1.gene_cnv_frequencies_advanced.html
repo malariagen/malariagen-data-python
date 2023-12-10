@@ -1,0 +1,725 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>malariagen_data.af1.Af1.gene_cnv_frequencies_advanced &#8212; malariagen_data API  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.af1.Af1.gene_cnv_frequencies_advanced';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://malariagen.github.io/malariagen-data-python/latest/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v8.0.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="malariagen_data.af1.Af1.plot_frequencies_heatmap" href="malariagen_data.af1.Af1.plot_frequencies_heatmap.html" />
+    <link rel="prev" title="malariagen_data.af1.Af1.gene_cnv_frequencies" href="malariagen_data.af1.Af1.gene_cnv_frequencies.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="malariagen_data API  documentation - Home"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-dark" alt="malariagen_data API  documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Ag3.html">
+                        Ag3
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../Af1.html">
+                        Af1
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Amin1.html">
+                        Amin1
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Ag3.html">
+                        Ag3
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../Af1.html">
+                        Af1
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Amin1.html">
+                        Amin1
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.releases.html">malariagen_data.af1.Af1.releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.sample_sets.html">malariagen_data.af1.Af1.sample_sets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.lookup_release.html">malariagen_data.af1.Af1.lookup_release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.lookup_study.html">malariagen_data.af1.Af1.lookup_study</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.contigs.html">malariagen_data.af1.Af1.contigs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.genome_sequence.html">malariagen_data.af1.Af1.genome_sequence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.genome_features.html">malariagen_data.af1.Af1.genome_features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_transcript.html">malariagen_data.af1.Af1.plot_transcript</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_genes.html">malariagen_data.af1.Af1.plot_genes</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.sample_metadata.html">malariagen_data.af1.Af1.sample_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.add_extra_metadata.html">malariagen_data.af1.Af1.add_extra_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.clear_extra_metadata.html">malariagen_data.af1.Af1.clear_extra_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.lookup_sample.html">malariagen_data.af1.Af1.lookup_sample</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.count_samples.html">malariagen_data.af1.Af1.count_samples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_samples_bar.html">malariagen_data.af1.Af1.plot_samples_bar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_samples_interactive_map.html">malariagen_data.af1.Af1.plot_samples_interactive_map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.wgs_data_catalog.html">malariagen_data.af1.Af1.wgs_data_catalog</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.site_mask_ids.html">malariagen_data.af1.Af1.site_mask_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.snp_calls.html">malariagen_data.af1.Af1.snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.snp_allele_counts.html">malariagen_data.af1.Af1.snp_allele_counts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_snps.html">malariagen_data.af1.Af1.plot_snps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.site_annotations.html">malariagen_data.af1.Af1.site_annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.is_accessible.html">malariagen_data.af1.Af1.is_accessible</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_snp_calls.html">malariagen_data.af1.Af1.biallelic_snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_diplotypes.html">malariagen_data.af1.Af1.biallelic_diplotypes</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.phasing_analysis_ids.html">malariagen_data.af1.Af1.phasing_analysis_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.haplotypes.html">malariagen_data.af1.Af1.haplotypes</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.coverage_calls_analysis_ids.html">malariagen_data.af1.Af1.coverage_calls_analysis_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.cnv_hmm.html">malariagen_data.af1.Af1.cnv_hmm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.cnv_coverage_calls.html">malariagen_data.af1.Af1.cnv_coverage_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_cnv_hmm_coverage.html">malariagen_data.af1.Af1.plot_cnv_hmm_coverage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_cnv_hmm_heatmap.html">malariagen_data.af1.Af1.plot_cnv_hmm_heatmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.gene_cnv.html">malariagen_data.af1.Af1.gene_cnv</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.igv.html">malariagen_data.af1.Af1.igv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.view_alignments.html">malariagen_data.af1.Af1.view_alignments</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.snp_allele_frequencies.html">malariagen_data.af1.Af1.snp_allele_frequencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.snp_allele_frequencies_advanced.html">malariagen_data.af1.Af1.snp_allele_frequencies_advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.aa_allele_frequencies.html">malariagen_data.af1.Af1.aa_allele_frequencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.aa_allele_frequencies_advanced.html">malariagen_data.af1.Af1.aa_allele_frequencies_advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.gene_cnv_frequencies.html">malariagen_data.af1.Af1.gene_cnv_frequencies</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">malariagen_data.af1.Af1.gene_cnv_frequencies_advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_frequencies_heatmap.html">malariagen_data.af1.Af1.plot_frequencies_heatmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_frequencies_time_series.html">malariagen_data.af1.Af1.plot_frequencies_time_series</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_frequencies_interactive_map.html">malariagen_data.af1.Af1.plot_frequencies_interactive_map</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.pca.html">malariagen_data.af1.Af1.pca</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_pca_variance.html">malariagen_data.af1.Af1.plot_pca_variance</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_pca_coords.html">malariagen_data.af1.Af1.plot_pca_coords</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_pca_coords_3d.html">malariagen_data.af1.Af1.plot_pca_coords_3d</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_njt.html">malariagen_data.af1.Af1.plot_njt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances.html">malariagen_data.af1.Af1.biallelic_diplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_heterozygosity.html">malariagen_data.af1.Af1.plot_heterozygosity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.roh_hmm.html">malariagen_data.af1.Af1.roh_hmm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_roh.html">malariagen_data.af1.Af1.plot_roh</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.cohort_diversity_stats.html">malariagen_data.af1.Af1.cohort_diversity_stats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.diversity_stats.html">malariagen_data.af1.Af1.diversity_stats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_diversity_stats.html">malariagen_data.af1.Af1.plot_diversity_stats</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.h12_calibration.html">malariagen_data.af1.Af1.h12_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_h12_calibration.html">malariagen_data.af1.Af1.plot_h12_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.h12_gwss.html">malariagen_data.af1.Af1.h12_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_h12_gwss.html">malariagen_data.af1.Af1.plot_h12_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.h1x_gwss.html">malariagen_data.af1.Af1.h1x_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_h1x_gwss.html">malariagen_data.af1.Af1.plot_h1x_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.g123_calibration.html">malariagen_data.af1.Af1.g123_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_g123_calibration.html">malariagen_data.af1.Af1.plot_g123_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.g123_gwss.html">malariagen_data.af1.Af1.g123_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_g123_gwss.html">malariagen_data.af1.Af1.plot_g123_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.ihs_gwss.html">malariagen_data.af1.Af1.ihs_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_ihs_gwss.html">malariagen_data.af1.Af1.plot_ihs_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.xpehh_gwss.html">malariagen_data.af1.Af1.xpehh_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_xpehh_gwss.html">malariagen_data.af1.Af1.plot_xpehh_gwss</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_haplotype_clustering.html">malariagen_data.af1.Af1.plot_haplotype_clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_haplotype_network.html">malariagen_data.af1.Af1.plot_haplotype_network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.haplotype_pairwise_distances.html">malariagen_data.af1.Af1.haplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.average_fst.html">malariagen_data.af1.Af1.average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.pairwise_average_fst.html">malariagen_data.af1.Af1.pairwise_average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_pairwise_average_fst.html">malariagen_data.af1.Af1.plot_pairwise_average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.fst_gwss.html">malariagen_data.af1.Af1.fst_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.af1.Af1.plot_fst_gwss.html">malariagen_data.af1.Af1.plot_fst_gwss</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../Af1.html" class="nav-link">Af1</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">malariagen_d...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="malariagen-data-af1-af1-gene-cnv-frequencies-advanced">
+<h1>malariagen_data.af1.Af1.gene_cnv_frequencies_advanced<a class="headerlink" href="#malariagen-data-af1-af1-gene-cnv-frequencies-advanced" title="Permalink to this heading">#</a></h1>
+<dl class="py method">
+<dt class="sig sig-object py" id="malariagen_data.af1.Af1.gene_cnv_frequencies_advanced">
+<span class="sig-prename descclassname"><span class="pre">Af1.</span></span><span class="sig-name descname"><span class="pre">gene_cnv_frequencies_advanced</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">area_by</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">period_by</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_cohort_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">variant_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_invariant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_coverage_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ci_method</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'wilson'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#malariagen_data.af1.Af1.gene_cnv_frequencies_advanced" title="Permalink to this definition">#</a></dt>
+<dd><p>Group samples by taxon, area (space) and period (time), then compute
+gene CNV counts and frequencies.</p>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">#</a></h2>
+<dl class="simple">
+<dt>region: str or list of str or Region or list of Region</dt><dd><p>Chromosome arm (e.g., “2L”), gene name (e.g., “AGAP007280”), genomic
+region defined with coordinates (e.g., “2L:44989425-44998059”) or a
+named tuple with genomic location <cite>Region(contig, start, end)</cite>.
+Multiple values can be provided as a list, in which case data will
+be concatenated, e.g., [“3R”, “3L”].</p>
+</dd>
+<dt>area_by<span class="classifier">str</span></dt><dd><p>Column name in the sample metadata to use to group samples spatially.
+E.g., use “admin1_iso” or “admin1_name” to group by level 1
+administrative divisions, or use “admin2_name” to group by level 2
+administrative divisions.</p>
+</dd>
+<dt>period_by<span class="classifier">{“year”, “quarter”, “month”}</span></dt><dd><p>Length of time to group samples temporally.</p>
+</dd>
+<dt>sample_sets<span class="classifier">str or list of str, optional</span></dt><dd><p>Can be a sample set identifier (e.g., “AG1000G-AO”) or a list of
+sample set identifiers (e.g., [“AG1000G-BF-A”, “AG1000G-BF-B”]) or a
+release identifier (e.g., “3.0”) or a list of release identifiers.</p>
+</dd>
+<dt>sample_query<span class="classifier">str, optional</span></dt><dd><p>A pandas query string which will be evaluated against the sample
+metadata e.g., “taxon == ‘coluzzii’ and country == ‘Burkina Faso’”.</p>
+</dd>
+<dt>min_cohort_size<span class="classifier">int, optional</span></dt><dd><p>Minimum cohort size. Any cohorts below this size are omitted.</p>
+</dd>
+<dt>variant_query<span class="classifier">str, optional</span></dt><dd><p>A pandas query string which will be evaluated against variants.</p>
+</dd>
+<dt>drop_invariant<span class="classifier">bool, optional</span></dt><dd><p>If True, drop any rows where there is no evidence of variation.</p>
+</dd>
+<dt>max_coverage_variance<span class="classifier">float, optional</span></dt><dd><p>Remove samples if coverage variance exceeds this value.</p>
+</dd>
+<dt>ci_method<span class="classifier">{“normal”, “agresti_coull”, “beta”, “wilson”, “binom_test”}, optional</span></dt><dd><p>Method to use for computing confidence intervals, passed through to
+<cite>statsmodels.stats.proportion.proportion_confint</cite>.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">#</a></h2>
+<dl class="simple">
+<dt>ds<span class="classifier">xarray.Dataset</span></dt><dd><p>The resulting dataset contains data has dimensions “cohorts” and
+“variants”. Variables prefixed with “cohort” are 1-dimensional
+arrays with data about the cohorts, such as the area, period, taxon
+and cohort size. Variables prefixed with “variant” are 1-dimensional
+arrays with data about the variants, such as the contig, position,
+reference and alternate alleles. Variables prefixed with “event” are
+2-dimensional arrays with the allele counts and frequency
+calculations.</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="malariagen_data.af1.Af1.gene_cnv_frequencies.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">malariagen_data.af1.Af1.gene_cnv_frequencies</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="malariagen_data.af1.Af1.plot_frequencies_heatmap.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">malariagen_data.af1.Af1.plot_frequencies_heatmap</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#malariagen_data.af1.Af1.gene_cnv_frequencies_advanced"><code class="docutils literal notranslate"><span class="pre">Af1.gene_cnv_frequencies_advanced()</span></code></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/generated/malariagen_data.af1.Af1.gene_cnv_frequencies_advanced.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, MalariaGEN.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>

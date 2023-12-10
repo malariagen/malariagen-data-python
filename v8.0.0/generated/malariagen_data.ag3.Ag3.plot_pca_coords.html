@@ -1,0 +1,733 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>malariagen_data.ag3.Ag3.plot_pca_coords &#8212; malariagen_data API  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "light";
+  </script>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/bootstrap.css?digest=5b4479735964841361fd" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=5b4479735964841361fd" rel="stylesheet" />
+
+  
+  <link href="../_static/vendor/fontawesome/6.1.2/css/all.min.css?digest=5b4479735964841361fd" rel="stylesheet" />
+  <link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-solid-900.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-brands-400.woff2" />
+<link rel="preload" as="font" type="font/woff2" crossorigin href="../_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+  
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd" />
+  <script src="../_static/vendor/fontawesome/6.1.2/js/all.min.js?digest=5b4479735964841361fd"></script>
+
+    <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=b3ba4146"></script>
+    <script src="../_static/doctools.js?v=888ff710"></script>
+    <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.ag3.Ag3.plot_pca_coords';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://malariagen.github.io/malariagen-data-python/latest/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v8.0.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+    <link rel="next" title="malariagen_data.ag3.Ag3.plot_pca_coords_3d" href="malariagen_data.ag3.Ag3.plot_pca_coords_3d.html" />
+    <link rel="prev" title="malariagen_data.ag3.Ag3.plot_pca_variance" href="malariagen_data.ag3.Ag3.plot_pca_variance.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <a class="skip-link" href="#main-content">Skip to main content</a>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>
+    Back to top
+  </button>
+
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__primary"
+          id="__primary"/>
+  <label class="overlay overlay-primary" for="__primary"></label>
+  
+  <input type="checkbox"
+          class="sidebar-toggle"
+          name="__secondary"
+          id="__secondary"/>
+  <label class="overlay overlay-secondary" for="__secondary"></label>
+  
+  <div class="search-button__wrapper">
+    <div class="search-button__overlay"></div>
+    <div class="search-button__search-container">
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         id="search-input"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form></div>
+  </div>
+  
+    <nav class="bd-header navbar navbar-expand-lg bd-navbar">
+<div class="bd-header__inner bd-page-width">
+  <label class="sidebar-toggle primary-toggle" for="__primary">
+    <span class="fa-solid fa-bars"></span>
+  </label>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="malariagen_data API  documentation - Home"/>
+    <script>document.write(`<img src="../_static/logo.svg" class="logo__image only-dark" alt="malariagen_data API  documentation - Home"/>`);</script>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-2"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-2"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-2"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-2">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+      
+        <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../Ag3.html">
+                        Ag3
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Af1.html">
+                        Af1
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Amin1.html">
+                        Amin1
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+ <script>
+ document.write(`
+   <button class="btn navbar-btn search-button-field search-button__button" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <i class="fa-solid fa-magnifying-glass"></i>
+    <span class="search-button__default-text">Search</span>
+    <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+   </button>
+ `);
+ </script>
+    </div>
+  
+
+  
+    <label class="sidebar-toggle secondary-toggle" for="__secondary" tabindex="0">
+      <span class="fa-solid fa-outdent"></span>
+    </label>
+  
+</div>
+
+    </nav>
+  
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      <div class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          <div class="navbar-item">
+<script>
+document.write(`
+  <div class="version-switcher__container dropdown">
+    <button id="pst-version-switcher-button-3"
+      type="button"
+      class="version-switcher__button btn btn-sm navbar-btn dropdown-toggle"
+      data-bs-toggle="dropdown"
+      aria-haspopup="listbox"
+      aria-controls="pst-version-switcher-list-3"
+      aria-label="Version switcher list"
+    >
+      Choose version  <!-- this text may get changed later by javascript -->
+      <span class="caret"></span>
+    </button>
+    <div id="pst-version-switcher-list-3"
+      class="version-switcher__menu dropdown-menu list-group-flush py-0"
+      role="listbox" aria-labelledby="pst-version-switcher-button-3">
+      <!-- dropdown will be populated by javascript on page load -->
+    </div>
+  </div>
+`);
+</script></div>
+        
+          <div class="navbar-item">
+<nav class="navbar-nav">
+  <p class="sidebar-header-items__title"
+     role="heading"
+     aria-level="1"
+     aria-label="Site Navigation">
+    Site Navigation
+  </p>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+                    <li class="nav-item current active">
+                      <a class="nav-link nav-internal" href="../Ag3.html">
+                        Ag3
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Af1.html">
+                        Af1
+                      </a>
+                    </li>
+                
+
+                    <li class="nav-item">
+                      <a class="nav-link nav-internal" href="../Amin1.html">
+                        Amin1
+                      </a>
+                    </li>
+                
+  </ul>
+</nav></div>
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<script>
+document.write(`
+  <button class="btn btn-sm navbar-btn theme-switch-button" title="light/dark" aria-label="light/dark" data-bs-placement="bottom" data-bs-toggle="tooltip">
+    <span class="theme-switch nav-link" data-mode="light"><i class="fa-solid fa-sun fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="dark"><i class="fa-solid fa-moon fa-lg"></i></span>
+    <span class="theme-switch nav-link" data-mode="auto"><i class="fa-solid fa-circle-half-stroke fa-lg"></i></span>
+  </button>
+`);
+</script></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links navbar-nav"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><span><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i></span>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.releases.html">malariagen_data.ag3.Ag3.releases</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.sample_sets.html">malariagen_data.ag3.Ag3.sample_sets</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.lookup_release.html">malariagen_data.ag3.Ag3.lookup_release</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.lookup_study.html">malariagen_data.ag3.Ag3.lookup_study</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.contigs.html">malariagen_data.ag3.Ag3.contigs</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.genome_sequence.html">malariagen_data.ag3.Ag3.genome_sequence</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.genome_features.html">malariagen_data.ag3.Ag3.genome_features</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_transcript.html">malariagen_data.ag3.Ag3.plot_transcript</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_genes.html">malariagen_data.ag3.Ag3.plot_genes</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.sample_metadata.html">malariagen_data.ag3.Ag3.sample_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.add_extra_metadata.html">malariagen_data.ag3.Ag3.add_extra_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.clear_extra_metadata.html">malariagen_data.ag3.Ag3.clear_extra_metadata</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.count_samples.html">malariagen_data.ag3.Ag3.count_samples</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.lookup_sample.html">malariagen_data.ag3.Ag3.lookup_sample</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_samples_bar.html">malariagen_data.ag3.Ag3.plot_samples_bar</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_samples_interactive_map.html">malariagen_data.ag3.Ag3.plot_samples_interactive_map</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.wgs_data_catalog.html">malariagen_data.ag3.Ag3.wgs_data_catalog</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.site_mask_ids.html">malariagen_data.ag3.Ag3.site_mask_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.snp_calls.html">malariagen_data.ag3.Ag3.snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.snp_allele_counts.html">malariagen_data.ag3.Ag3.snp_allele_counts</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_snps.html">malariagen_data.ag3.Ag3.plot_snps</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.site_annotations.html">malariagen_data.ag3.Ag3.site_annotations</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.is_accessible.html">malariagen_data.ag3.Ag3.is_accessible</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.biallelic_snp_calls.html">malariagen_data.ag3.Ag3.biallelic_snp_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.biallelic_diplotypes.html">malariagen_data.ag3.Ag3.biallelic_diplotypes</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.phasing_analysis_ids.html">malariagen_data.ag3.Ag3.phasing_analysis_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.haplotypes.html">malariagen_data.ag3.Ag3.haplotypes</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.aim_ids.html">malariagen_data.ag3.Ag3.aim_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.aim_variants.html">malariagen_data.ag3.Ag3.aim_variants</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.aim_calls.html">malariagen_data.ag3.Ag3.aim_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_aim_heatmap.html">malariagen_data.ag3.Ag3.plot_aim_heatmap</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.coverage_calls_analysis_ids.html">malariagen_data.ag3.Ag3.coverage_calls_analysis_ids</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.cnv_hmm.html">malariagen_data.ag3.Ag3.cnv_hmm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.cnv_coverage_calls.html">malariagen_data.ag3.Ag3.cnv_coverage_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.cnv_discordant_read_calls.html">malariagen_data.ag3.Ag3.cnv_discordant_read_calls</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage.html">malariagen_data.ag3.Ag3.plot_cnv_hmm_coverage</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap.html">malariagen_data.ag3.Ag3.plot_cnv_hmm_heatmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.gene_cnv.html">malariagen_data.ag3.Ag3.gene_cnv</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.igv.html">malariagen_data.ag3.Ag3.igv</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.view_alignments.html">malariagen_data.ag3.Ag3.view_alignments</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.snp_allele_frequencies.html">malariagen_data.ag3.Ag3.snp_allele_frequencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.snp_allele_frequencies_advanced.html">malariagen_data.ag3.Ag3.snp_allele_frequencies_advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.aa_allele_frequencies.html">malariagen_data.ag3.Ag3.aa_allele_frequencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.aa_allele_frequencies_advanced.html">malariagen_data.ag3.Ag3.aa_allele_frequencies_advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.gene_cnv_frequencies.html">malariagen_data.ag3.Ag3.gene_cnv_frequencies</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.gene_cnv_frequencies_advanced.html">malariagen_data.ag3.Ag3.gene_cnv_frequencies_advanced</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_frequencies_heatmap.html">malariagen_data.ag3.Ag3.plot_frequencies_heatmap</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_frequencies_time_series.html">malariagen_data.ag3.Ag3.plot_frequencies_time_series</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_frequencies_interactive_map.html">malariagen_data.ag3.Ag3.plot_frequencies_interactive_map</a></li>
+</ul>
+<ul class="current nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.pca.html">malariagen_data.ag3.Ag3.pca</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_pca_variance.html">malariagen_data.ag3.Ag3.plot_pca_variance</a></li>
+<li class="toctree-l1 current active"><a class="current reference internal" href="#">malariagen_data.ag3.Ag3.plot_pca_coords</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_pca_coords_3d.html">malariagen_data.ag3.Ag3.plot_pca_coords_3d</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_njt.html">malariagen_data.ag3.Ag3.plot_njt</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.biallelic_diplotype_pairwise_distances.html">malariagen_data.ag3.Ag3.biallelic_diplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_heterozygosity.html">malariagen_data.ag3.Ag3.plot_heterozygosity</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.roh_hmm.html">malariagen_data.ag3.Ag3.roh_hmm</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_roh.html">malariagen_data.ag3.Ag3.plot_roh</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.cohort_diversity_stats.html">malariagen_data.ag3.Ag3.cohort_diversity_stats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.diversity_stats.html">malariagen_data.ag3.Ag3.diversity_stats</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_diversity_stats.html">malariagen_data.ag3.Ag3.plot_diversity_stats</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.h12_calibration.html">malariagen_data.ag3.Ag3.h12_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_h12_calibration.html">malariagen_data.ag3.Ag3.plot_h12_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.h12_gwss.html">malariagen_data.ag3.Ag3.h12_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_h12_gwss.html">malariagen_data.ag3.Ag3.plot_h12_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.h1x_gwss.html">malariagen_data.ag3.Ag3.h1x_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_h1x_gwss.html">malariagen_data.ag3.Ag3.plot_h1x_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.g123_calibration.html">malariagen_data.ag3.Ag3.g123_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_g123_calibration.html">malariagen_data.ag3.Ag3.plot_g123_calibration</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.g123_gwss.html">malariagen_data.ag3.Ag3.g123_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_g123_gwss.html">malariagen_data.ag3.Ag3.plot_g123_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.ihs_gwss.html">malariagen_data.ag3.Ag3.ihs_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_ihs_gwss.html">malariagen_data.ag3.Ag3.plot_ihs_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.xpehh_gwss.html">malariagen_data.ag3.Ag3.xpehh_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_xpehh_gwss.html">malariagen_data.ag3.Ag3.plot_xpehh_gwss</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_haplotype_clustering.html">malariagen_data.ag3.Ag3.plot_haplotype_clustering</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_haplotype_network.html">malariagen_data.ag3.Ag3.plot_haplotype_network</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.haplotype_pairwise_distances.html">malariagen_data.ag3.Ag3.haplotype_pairwise_distances</a></li>
+</ul>
+<ul class="nav bd-sidenav">
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.average_fst.html">malariagen_data.ag3.Ag3.average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.pairwise_average_fst.html">malariagen_data.ag3.Ag3.pairwise_average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_pairwise_average_fst.html">malariagen_data.ag3.Ag3.plot_pairwise_average_fst</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.fst_gwss.html">malariagen_data.ag3.Ag3.fst_gwss</a></li>
+<li class="toctree-l1"><a class="reference internal" href="malariagen_data.ag3.Ag3.plot_fst_gwss.html">malariagen_data.ag3.Ag3.plot_fst_gwss</a></li>
+</ul>
+</div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+
+
+<nav aria-label="Breadcrumb">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    
+    <li class="breadcrumb-item"><a href="../Ag3.html" class="nav-link">Ag3</a></li>
+    
+    <li class="breadcrumb-item active" aria-current="page">malariagen_d...</li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article" role="main">
+                  
+  <section id="malariagen-data-ag3-ag3-plot-pca-coords">
+<h1>malariagen_data.ag3.Ag3.plot_pca_coords<a class="headerlink" href="#malariagen-data-ag3-ag3-plot-pca-coords" title="Permalink to this heading">#</a></h1>
+<dl class="py method">
+<dt class="sig sig-object py" id="malariagen_data.ag3.Ag3.plot_pca_coords">
+<span class="sig-prename descclassname"><span class="pre">Ag3.</span></span><span class="sig-name descname"><span class="pre">plot_pca_coords</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataFrame</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'PC1'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">y</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'PC2'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">symbol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">opacity</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.9</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">jitter_frac</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.02</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">width</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">900</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">height</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">600</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">marker_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_discrete_sequence</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">color_discrete_map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">category_orders</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">show</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">renderer</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">render_mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Literal</span><span class="p"><span class="pre">[</span></span><span class="s"><span class="pre">'auto'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'svg'</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'webgl'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'svg'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Figure</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span></span><a class="headerlink" href="#malariagen_data.ag3.Ag3.plot_pca_coords" title="Permalink to this definition">#</a></dt>
+<dd><p>Plot sample coordinates from a principal components analysis (PCA) as a
+plotly scatter plot.</p>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Permalink to this heading">#</a></h2>
+<dl class="simple">
+<dt>data<span class="classifier">DataFrame</span></dt><dd><p>A dataframe of sample metadata, with columns “PC1”, “PC2”, “PC3”,
+etc., added.</p>
+</dd>
+<dt>x<span class="classifier">str, optional, default: ‘PC1’</span></dt><dd><p>Name of variable to plot on the X axis.</p>
+</dd>
+<dt>y<span class="classifier">str, optional, default: ‘PC2’</span></dt><dd><p>Name of variable to plot on the Y axis.</p>
+</dd>
+<dt>color<span class="classifier">str or None, optional</span></dt><dd><p>Name of variable to use to color the markers.</p>
+</dd>
+<dt>symbol<span class="classifier">str or None, optional</span></dt><dd><p>Name of the variable to use to choose marker symbols.</p>
+</dd>
+<dt>opacity<span class="classifier">float, optional, default: 0.9</span></dt><dd><p>Marker opacity.</p>
+</dd>
+<dt>jitter_frac<span class="classifier">float or None, optional, default: 0.02</span></dt><dd><p>Randomly jitter points by this fraction of their range.</p>
+</dd>
+<dt>random_seed<span class="classifier">int, optional, default: 42</span></dt><dd><p>Random seed used for reproducible down-sampling.</p>
+</dd>
+<dt>width<span class="classifier">int or None, optional, default: 900</span></dt><dd><p>Plot width in pixels (px).</p>
+</dd>
+<dt>height<span class="classifier">int or None, optional, default: 600</span></dt><dd><p>Plot height in pixels (px).</p>
+</dd>
+<dt>marker_size<span class="classifier">int or float, optional, default: 10</span></dt><dd><p>Marker size.</p>
+</dd>
+<dt>color_discrete_sequence<span class="classifier">List or None, optional</span></dt><dd><p>Provide a list of colours to use.</p>
+</dd>
+<dt>color_discrete_map<span class="classifier">Mapping or None, optional</span></dt><dd><p>Provide an explicit mapping from values to colours.</p>
+</dd>
+<dt>category_orders<span class="classifier">List or None, optional</span></dt><dd><p>Control the order in which values appear in the legend.</p>
+</dd>
+<dt>show<span class="classifier">bool, optional, default: True</span></dt><dd><p>If true, show the plot. If False, do not show the plot, but return the
+figure.</p>
+</dd>
+<dt>renderer<span class="classifier">str or None, optional</span></dt><dd><p>The name of the renderer to use.</p>
+</dd>
+<dt>render_mode<span class="classifier">{‘auto’, ‘svg’, ‘webgl’}, optional, default: ‘svg’</span></dt><dd><p>The type of rendering backend to use. See also
+<a class="reference external" href="https://plotly.com/python/webgl-vs-svg/">https://plotly.com/python/webgl-vs-svg/</a>.</p>
+</dd>
+<dt><a href="#id1"><span class="problematic" id="id2">**</span></a>kwargs</dt><dd><p>Passed through to <cite>px.scatter()</cite>.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Permalink to this heading">#</a></h2>
+<dl class="simple">
+<dt>Figure or None</dt><dd><p>A plotly figure (only returned if show=False).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer">
+                  
+<div class="prev-next-area">
+    <a class="left-prev"
+       href="malariagen_data.ag3.Ag3.plot_pca_variance.html"
+       title="previous page">
+      <i class="fa-solid fa-angle-left"></i>
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">previous</p>
+        <p class="prev-next-title">malariagen_data.ag3.Ag3.plot_pca_variance</p>
+      </div>
+    </a>
+    <a class="right-next"
+       href="malariagen_data.ag3.Ag3.plot_pca_coords_3d.html"
+       title="next page">
+      <div class="prev-next-info">
+        <p class="prev-next-subtitle">next</p>
+        <p class="prev-next-title">malariagen_data.ag3.Ag3.plot_pca_coords_3d</p>
+      </div>
+      <i class="fa-solid fa-angle-right"></i>
+    </a>
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <div class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+  <div class="sidebar-secondary-item">
+
+  <div class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#malariagen_data.ag3.Ag3.plot_pca_coords"><code class="docutils literal notranslate"><span class="pre">Ag3.plot_pca_coords()</span></code></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/generated/malariagen_data.ag3.Ag3.plot_pca_coords.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script src="../_static/scripts/bootstrap.js?digest=5b4479735964841361fd"></script>
+<script src="../_static/scripts/pydata-sphinx-theme.js?digest=5b4479735964841361fd"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2023, MalariaGEN.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 7.1.2.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.14.4.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
