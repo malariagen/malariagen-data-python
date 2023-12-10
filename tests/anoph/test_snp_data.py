@@ -980,7 +980,7 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert pos.shape == pos.compute().shape
 
     # Check computation of diplotypes.
-    gn = api.biallelic_diplotypes(
+    gn, samples = api.biallelic_diplotypes(
         region=region,
         sample_sets=sample_sets,
         site_mask=site_mask,
@@ -990,12 +990,17 @@ def check_biallelic_snp_calls_and_diplotypes(
         n_snps=n_snps,
     )
     assert isinstance(gn, np.ndarray)
+    assert isinstance(samples, np.ndarray)
+    assert gn.ndim == 2
     assert gn.shape[0] == ds.dims["variants"]
     assert gn.shape[1] == ds.dims["samples"]
     assert np.all(gn >= 0)
     assert np.all(gn <= 2)
     ac = ds["variant_allele_count"].values
     assert np.all(np.sum(gn, axis=1) == ac[:, 1])
+    assert samples.ndim == 1
+    assert samples.shape[0] == gn.shape[1]
+    assert samples.tolist() == expected_samples
 
     return ds
 

@@ -138,6 +138,7 @@ class Ag3(AnophelesDataResource):
         aim_analysis=None,
         site_filters_analysis=None,
         pre=False,
+        tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
         super().__init__(
@@ -172,6 +173,7 @@ class Ag3(AnophelesDataResource):
             gff_gene_type="gene",
             gff_default_attributes=("ID", "Parent", "Name", "description"),
             storage_options=storage_options,  # used by fsspec via init_filesystem()
+            tqdm_class=tqdm_class,
         )
 
         # set up caches

@@ -29,17 +29,14 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: Install Poetry 📜
-        run: pip install poetry
+      - name: Install poetry
+        run: pipx install poetry==1.7.1
 
       - name: Eyeball native environment 👀
         run: python --version ; pip --version ; poetry --version ; pwd ; ls -la
 
       - name: Install package dependencies 📜
         run: poetry install
-
-      - name: Install docs dependencies 📜
-        run: poetry run pip install -r docs/requirements.txt
 
       - name: Build HTML 🏗️
         run: poetry run sphinx-build -b html docs/source docs/build/html

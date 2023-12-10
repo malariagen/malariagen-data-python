@@ -1,3 +1,4 @@
+from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import allel
@@ -807,21 +808,58 @@ class AnophelesSnpData(
         )
 
         # Normalise parameters.
-        sample_sets_prepped: List[str] = self._prep_sample_sets_param(
-            sample_sets=sample_sets
+        sample_sets_prepped: Tuple[str, ...] = tuple(
+            self._prep_sample_sets_param(sample_sets=sample_sets)
         )
         del sample_sets
-        regions: List[Region] = parse_multi_region(self, region)
+        if sample_indices is not None:
+            sample_indices_prepped: Optional[Tuple[int, ...]] = tuple(sample_indices)
+        else:
+            sample_indices_prepped = sample_indices
+        del sample_indices
+        regions: Tuple[Region, ...] = tuple(parse_multi_region(self, region))
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
 
+        return self._snp_calls(
+            regions=regions,
+            sample_sets=sample_sets_prepped,
+            sample_query=sample_query,
+            sample_indices=sample_indices_prepped,
+            site_mask=site_mask_prepped,
+            site_class=site_class,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+    @lru_cache(maxsize=2)
+    def _snp_calls(
+        self,
+        *,
+        regions,
+        sample_sets,
+        sample_query,
+        sample_indices,
+        site_mask,
+        site_class,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+        inline_array,
+        chunks,
+    ):
         # Access SNP calls and concatenate multiple sample sets and/or regions.
         with self._spinner("Access SNP calls"):
             lx = []
             for r in regions:
                 ly = []
-                for s in sample_sets_prepped:
+                for s in sample_sets:
                     y = self._snp_calls_for_contig(
                         contig=r.contig,
                         sample_set=s,
@@ -859,11 +897,11 @@ class AnophelesSnpData(
             # Concatenate data from multiple regions.
             ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
-        if site_mask_prepped is not None:
+        if site_mask is not None:
             with self._spinner(desc="Apply site filters"):
                 ds = dask_compress_dataset(
                     ds,
-                    indexer=f"variant_filter_pass_{site_mask_prepped}",
+                    indexer=f"variant_filter_pass_{site_mask}",
                     dim=DIM_VARIANT,
                 )
 
@@ -872,13 +910,13 @@ class AnophelesSnpData(
 
         # Handle sample selection.
         if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
             loc_samples = df_samples.eval(sample_query).values
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
         elif sample_indices is not None:
-            ds = ds.isel(samples=sample_indices)
+            ds = ds.isel(samples=list(sample_indices))
 
         # Handle cohort size, overrides min and max.
         if cohort_size is not None:
@@ -1475,10 +1513,13 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Load biallelic SNP genotypes.",
-        returns="""
-            An array of shape (variants, samples) where each value counts the
-            number of alternate alleles per genotype call.
-        """,
+        returns=dict(
+            gn="""
+                An array of shape (variants, samples) where each value counts the
+                number of alternate alleles per genotype call.
+            """,
+            samples="Sample identifiers.",
+        ),
     )
     def biallelic_diplotypes(
         self,
@@ -1488,8 +1529,6 @@ class AnophelesSnpData(
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -1498,7 +1537,9 @@ class AnophelesSnpData(
         max_missing_an: Optional[base_params.max_missing_an] = None,
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
-    ) -> np.ndarray:
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "biallelic_diplotypes"
@@ -1514,6 +1555,11 @@ class AnophelesSnpData(
         )
         region_prepped = self._prep_region_cache_param(region=region)
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del sample_sets
+        del sample_query
+        del sample_indices
+        del region
+        del site_mask
         params = dict(
             region=region_prepped,
             n_snps=n_snps,
@@ -1542,8 +1588,9 @@ class AnophelesSnpData(
 
         # Unpack results.
         gn = results["gn"]
+        samples = results["samples"]
 
-        return gn
+        return gn, samples
 
     def _biallelic_diplotypes(
         self,
@@ -1553,8 +1600,6 @@ class AnophelesSnpData(
         sample_indices,
         site_mask,
         site_class,
-        inline_array,
-        chunks,
         cohort_size,
         min_cohort_size,
         max_cohort_size,
@@ -1563,6 +1608,8 @@ class AnophelesSnpData(
         min_minor_ac,
         n_snps,
         thin_offset,
+        inline_array,
+        chunks,
     ):
         # Access biallelic SNPs.
         ds = self.biallelic_snp_calls(
@@ -1571,8 +1618,6 @@ class AnophelesSnpData(
             sample_indices=sample_indices,
             site_mask=site_mask,
             site_class=site_class,
-            inline_array=inline_array,
-            chunks=chunks,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -1581,11 +1626,16 @@ class AnophelesSnpData(
             min_minor_ac=min_minor_ac,
             n_snps=n_snps,
             thin_offset=thin_offset,
+            inline_array=inline_array,
+            chunks=chunks,
         )
+
+        # Load sample IDs
+        samples = ds["sample_id"].values.astype("U")
 
         # Compute diplotypes as the number of alt alleles per genotype call.
         gt = allel.GenotypeDaskArray(ds["call_genotype"].data)
         with self._dask_progress(desc="Compute biallelic diplotypes"):
             gn = gt.to_n_alt().compute()
 
-        return dict(gn=gn)
+        return dict(samples=samples, gn=gn)

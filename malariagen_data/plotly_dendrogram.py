@@ -13,15 +13,18 @@ def plot_dendrogram(
     width,
     height,
     title,
-    line_props,
+    line_width,
+    line_color,
+    marker_size,
     leaf_data,
     leaf_hover_name,
     leaf_hover_data,
     leaf_color,
     leaf_symbol,
-    leaf_scatter_kwargs,
-    leaf_y=0,
-    template="simple_white",
+    leaf_y,
+    leaf_color_discrete_map,
+    leaf_category_orders,
+    template,
 ):
     # Hierarchical clustering.
     Z = sch.linkage(dist, method=linkage_method)
@@ -57,13 +60,6 @@ def plot_dendrogram(
         template=template,
     )
 
-    # Style the lines.
-    if line_props is None:
-        line_props = dict()
-    line_props.setdefault("width", 0.5)
-    line_props.setdefault("color", "black")
-    fig.update_traces(line=line_props)
-
     # Reorder leaf data to align with dendrogram.
     leaves = dend["leaves"]
     n_leaves = len(leaves)
@@ -82,10 +78,21 @@ def plot_dendrogram(
                 hover_name=leaf_hover_name,
                 hover_data=leaf_hover_data,
                 template=template,
-                **leaf_scatter_kwargs,
+                color_discrete_map=leaf_color_discrete_map,
+                category_orders=leaf_category_orders,
             ).select_traces()
         )
     )
+
+    # Style the lines and markers.
+    line_props = dict(
+        width=line_width,
+        color=line_color,
+    )
+    marker_props = dict(
+        size=marker_size,
+    )
+    fig.update_traces(line=line_props, marker=marker_props)
 
     # Style the figure.
     fig.update_layout(

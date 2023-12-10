@@ -51,6 +51,8 @@ SNP data access
     plot_snps
     site_annotations
     is_accessible
+    biallelic_snp_calls
+    biallelic_diplotypes
 
 Haplotype data access
 ---------------------
@@ -116,6 +118,14 @@ Principal components analysis (PCA)
     plot_pca_coords
     plot_pca_coords_3d
 
+Genetic distance and neighbour-joining trees (NJT)
+--------------------------------------------------
+.. autosummary::
+    :toctree: generated/
+
+    plot_njt
+    biallelic_diplotype_pairwise_distances
+
 Heterozygosity analysis
 -----------------------
 .. autosummary::
@@ -161,6 +171,7 @@ Haplotype clustering and network analysis
 
     plot_haplotype_clustering
     plot_haplotype_network
+    haplotype_pairwise_distances
 
 Fst analysis
 ------------

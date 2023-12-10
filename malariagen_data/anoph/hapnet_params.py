@@ -1,6 +1,6 @@
 """Parameters for haplotype network functions."""
 
-from typing import List, Mapping
+from typing import Mapping
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -10,27 +10,6 @@ max_dist: TypeAlias = Annotated[
 ]
 
 max_dist_default: max_dist = 2
-
-color: TypeAlias = Annotated[
-    str,
-    """
-    Identifies a column in the sample metadata which determines the colour
-    of pie chart segments within nodes.
-    """,
-]
-
-color_discrete_sequence: TypeAlias = Annotated[
-    List, "Provide a list of colours to use."
-]
-
-color_discrete_map: TypeAlias = Annotated[
-    Mapping, "Provide an explicit mapping from values to colours."
-]
-
-category_order: TypeAlias = Annotated[
-    List,
-    "Control the order in which values appear in the legend.",
-]
 
 node_size_factor: TypeAlias = Annotated[
     int,
