@@ -239,7 +239,7 @@ def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
             )
             expected_samples = df_samples["sample_id"].tolist()
             n_samples_expected = len(expected_samples)
-            assert ds.dims["samples"] == n_samples_expected
+            assert ds.sizes["samples"] == n_samples_expected
 
             # check sample IDs
             assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
@@ -295,7 +295,7 @@ def test_cnv_hmm(fixture, api: AnophelesCnvData):
             # check dim lengths
             df_samples = api.sample_metadata(sample_sets=sample_sets)
             n_samples_expected = len(df_samples)
-            assert ds.dims["samples"] == n_samples_expected
+            assert ds.sizes["samples"] == n_samples_expected
 
             # check sample IDs
             assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
@@ -502,7 +502,7 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
             # check dim lengths
             df_samples = api.sample_metadata(sample_sets=sample_sets)
             n_samples = len(df_samples)
-            assert ds.dims["samples"] == n_samples
+            assert ds.sizes["samples"] == n_samples
 
             # check sample IDs
             assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()

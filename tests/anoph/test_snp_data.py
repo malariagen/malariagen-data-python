@@ -258,10 +258,10 @@ def test_open_site_annotations(fixture, api):
 
 def _check_site_annotations(api: AnophelesSnpData, region, site_mask):
     ds_snp = api.snp_variants(region=region, site_mask=site_mask)
-    n_variants = ds_snp.dims["variants"]
+    n_variants = ds_snp.sizes["variants"]
     ds_ann = api.site_annotations(region=region, site_mask=site_mask)
     # Site annotations dataset should be aligned with SNP sites.
-    assert ds_ann.dims["variants"] == n_variants
+    assert ds_ann.sizes["variants"] == n_variants
     assert isinstance(ds_ann, xr.Dataset)
     for f in (
         "codon_degeneracy",
@@ -481,10 +481,10 @@ def check_snp_calls(api, sample_sets, region, site_mask):
     n_variants = len(pos)
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
-    assert ds.dims["variants"] == n_variants
-    assert ds.dims["samples"] == n_samples
-    assert ds.dims["ploidy"] == 2
-    assert ds.dims["alleles"] == 4
+    assert ds.sizes["variants"] == n_variants
+    assert ds.sizes["samples"] == n_samples
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 4
 
     # Check shapes.
     for f in expected_coords | expected_data_vars:
@@ -613,7 +613,7 @@ def test_snp_calls_with_sample_query_param(ag3_sim_api: AnophelesSnpData, sample
 
     else:
         ds = ag3_sim_api.snp_calls(region="3L", sample_query=sample_query)
-        assert ds.dims["samples"] == len(df_samples)
+        assert ds.sizes["samples"] == len(df_samples)
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
@@ -631,7 +631,7 @@ def test_snp_calls_with_min_cohort_size_param(fixture, api: AnophelesSnpData):
         min_cohort_size=10,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] >= 10
+    assert ds.sizes["samples"] >= 10
     with pytest.raises(ValueError):
         api.snp_calls(
             sample_sets=sample_sets,
@@ -654,7 +654,7 @@ def test_snp_calls_with_max_cohort_size_param(fixture, api: AnophelesSnpData):
         max_cohort_size=15,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] <= 15
+    assert ds.sizes["samples"] <= 15
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -672,7 +672,7 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
         cohort_size=cohort_size,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] == cohort_size
+    assert ds.sizes["samples"] == cohort_size
     with pytest.raises(ValueError):
         api.snp_calls(
             sample_sets=sample_sets,
@@ -699,7 +699,7 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
 def test_snp_calls_with_site_class_param(ag3_sim_api: AnophelesSnpData, site_class):
     ds1 = ag3_sim_api.snp_calls(region="3L")
     ds2 = ag3_sim_api.snp_calls(region="3L", site_class=site_class)
-    assert ds2.dims["variants"] < ds1.dims["variants"]
+    assert ds2.sizes["variants"] < ds1.sizes["variants"]
 
 
 def check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
@@ -922,10 +922,10 @@ def check_biallelic_snp_calls_and_diplotypes(
     # Check dim lengths.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
-    n_variants = ds.dims["variants"]
-    assert ds.dims["samples"] == n_samples
-    assert ds.dims["ploidy"] == 2
-    assert ds.dims["alleles"] == 2
+    n_variants = ds.sizes["variants"]
+    assert ds.sizes["samples"] == n_samples
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 2
 
     # Check shapes.
     for f in expected_coords | expected_data_vars:
@@ -967,7 +967,7 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert isinstance(d1, xr.DataArray)
 
     # Check if any variants found, could be zero.
-    if ds.dims["variants"] == 0:
+    if ds.sizes["variants"] == 0:
         # Bail out early, can't run further tests.
         return ds
 
@@ -992,8 +992,8 @@ def check_biallelic_snp_calls_and_diplotypes(
     assert isinstance(gn, np.ndarray)
     assert isinstance(samples, np.ndarray)
     assert gn.ndim == 2
-    assert gn.shape[0] == ds.dims["variants"]
-    assert gn.shape[1] == ds.dims["samples"]
+    assert gn.shape[0] == ds.sizes["variants"]
+    assert gn.shape[1] == ds.sizes["samples"]
     assert np.all(gn >= 0)
     assert np.all(gn <= 2)
     ac = ds["variant_allele_count"].values
@@ -1090,7 +1090,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_sample_query_param(
 
     else:
         ds = ag3_sim_api.biallelic_snp_calls(region="3L", sample_query=sample_query)
-        assert ds.dims["samples"] == len(df_samples)
+        assert ds.sizes["samples"] == len(df_samples)
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
@@ -1110,7 +1110,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_min_cohort_size_param(
         min_cohort_size=10,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] >= 10
+    assert ds.sizes["samples"] >= 10
     with pytest.raises(ValueError):
         api.biallelic_snp_calls(
             sample_sets=sample_sets,
@@ -1135,7 +1135,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_max_cohort_size_param(
         max_cohort_size=15,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] <= 15
+    assert ds.sizes["samples"] <= 15
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -1155,7 +1155,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_cohort_size_param(
         cohort_size=cohort_size,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] == cohort_size
+    assert ds.sizes["samples"] == cohort_size
     with pytest.raises(ValueError):
         api.biallelic_snp_calls(
             sample_sets=sample_sets,
@@ -1185,7 +1185,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_site_class_param(
     contig = random.choice(ag3_sim_api.contigs)
     ds1 = ag3_sim_api.biallelic_snp_calls(region=contig)
     ds2 = ag3_sim_api.biallelic_snp_calls(region=contig, site_class=site_class)
-    assert ds2.dims["variants"] < ds1.dims["variants"]
+    assert ds2.sizes["variants"] < ds1.sizes["variants"]
     check_biallelic_snp_calls_and_diplotypes(
         ag3_sim_api, region=contig, site_class=site_class
     )
@@ -1220,14 +1220,14 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     ac_min = ac.min(axis=1)
     assert np.all(ac_min >= min_minor_ac)
     an = ac.sum(axis=1)
-    an_missing = (ds.dims["samples"] * ds.dims["ploidy"]) - an
+    an_missing = (ds.sizes["samples"] * ds.sizes["ploidy"]) - an
     assert np.all(an_missing <= max_missing_an)
     gt = ds["call_genotype"].values
     ac_check = allel.GenotypeArray(gt).count_alleles(max_allele=1)
     assert np.all(ac == ac_check)
 
     # Run tests with thinning.
-    n_snps_available = ds.dims["variants"]
+    n_snps_available = ds.sizes["variants"]
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some case.
     assert n_snps_available > 2
@@ -1241,7 +1241,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
         max_missing_an=max_missing_an,
         n_snps=n_snps_requested,
     )
-    n_snps_thinned = ds_thinned.dims["variants"]
+    n_snps_thinned = ds_thinned.sizes["variants"]
     assert n_snps_thinned >= n_snps_requested
     assert n_snps_thinned <= 2 * n_snps_requested
 

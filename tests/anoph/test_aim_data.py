@@ -75,7 +75,7 @@ def test_aim_variants(aims, ag3_sim_api):
     assert tuple(ds.attrs["contigs"]) == api.contigs
 
     # Check dimension lengths.
-    assert ds.dims["alleles"] == 2
+    assert ds.sizes["alleles"] == 2
 
 
 @pytest.mark.parametrize("aims", ["gambcolu_vs_arab", "gamb_vs_colu"])
@@ -152,9 +152,9 @@ def test_aim_calls(aims, ag3_sim_api):
         assert tuple(ds.attrs["contigs"]) == api.contigs
 
         # Check dimension lengths.
-        assert ds.dims["samples"] == len(df_samples)
-        assert ds.dims["alleles"] == 2
-        assert ds.dims["ploidy"] == 2
+        assert ds.sizes["samples"] == len(df_samples)
+        assert ds.sizes["alleles"] == 2
+        assert ds.sizes["ploidy"] == 2
 
 
 def test_aim_calls_errors(ag3_sim_api):

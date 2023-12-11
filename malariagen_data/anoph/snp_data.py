@@ -925,7 +925,7 @@ class AnophelesSnpData(
 
         # Handle min cohort size.
         if min_cohort_size is not None:
-            n_samples = ds.dims["samples"]
+            n_samples = ds.sizes["samples"]
             if n_samples < min_cohort_size:
                 raise ValueError(
                     f"not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
@@ -933,7 +933,7 @@ class AnophelesSnpData(
 
         # Handle max cohort size.
         if max_cohort_size is not None:
-            n_samples = ds.dims["samples"]
+            n_samples = ds.sizes["samples"]
             if n_samples > max_cohort_size:
                 rng = np.random.default_rng(seed=random_seed)
                 loc_downsample = rng.choice(
@@ -1480,12 +1480,12 @@ class AnophelesSnpData(
 
         # Apply conditions.
         if max_missing_an or min_minor_ac:
-            loc_out = np.ones(ds_out.dims["variants"], dtype=bool)
+            loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
 
             # Apply missingness condition.
             if max_missing_an is not None:
                 an = ac_out.sum(axis=1)
-                an_missing = (ds_out.dims["samples"] * ds_out.dims["ploidy"]) - an
+                an_missing = (ds_out.sizes["samples"] * ds_out.sizes["ploidy"]) - an
                 loc_missing = an_missing <= max_missing_an
                 loc_out &= loc_missing
 
@@ -1499,13 +1499,13 @@ class AnophelesSnpData(
 
         # Try to meet target number of SNPs.
         if n_snps is not None:
-            if ds_out.dims["variants"] > (n_snps * 2):
+            if ds_out.sizes["variants"] > (n_snps * 2):
                 # Do some thinning.
-                thin_step = ds_out.dims["variants"] // n_snps
+                thin_step = ds_out.sizes["variants"] // n_snps
                 loc_thin = slice(thin_offset, None, thin_step)
                 ds_out = ds_out.isel(variants=loc_thin)
 
-            elif ds_out.dims["variants"] < n_snps:
+            elif ds_out.sizes["variants"] < n_snps:
                 raise ValueError("Not enough SNPs.")
 
         return ds_out

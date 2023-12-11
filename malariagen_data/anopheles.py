@@ -563,7 +563,7 @@ class AnophelesDataResource(
             "event_nobs",
         ]
 
-        if ds.dims["variants"] == 1:
+        if ds.sizes["variants"] == 1:
             # keep everything as-is, no need for aggregation
             ds_out = ds[keep_vars + ["variant_alt_allele", "event_count"]]
 
@@ -2311,7 +2311,7 @@ class AnophelesDataResource(
         debug(
             "setup output dataframe - two rows for each gene, one for amplification and one for deletion"
         )
-        n_genes = ds_cnv.dims["genes"]
+        n_genes = ds_cnv.sizes["genes"]
         df_genes = ds_cnv[
             [
                 "gene_id",
@@ -2569,7 +2569,7 @@ class AnophelesDataResource(
         is_called = cn >= 0
 
         debug("set up main event variables")
-        n_genes = ds_cnv.dims["genes"]
+        n_genes = ds_cnv.sizes["genes"]
         n_variants, n_cohorts = n_genes * 2, len(df_cohorts)
         count = np.zeros((n_variants, n_cohorts), dtype=int)
         nobs = np.zeros((n_variants, n_cohorts), dtype=int)

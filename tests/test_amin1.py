@@ -142,10 +142,10 @@ def test_snp_calls(region, site_mask):
     # check dim lengths
     df_samples = amin1.sample_metadata()
     n_samples = len(df_samples)
-    n_variants = ds.dims["variants"]
-    assert ds.dims["samples"] == n_samples
-    assert ds.dims["ploidy"] == 2
-    assert ds.dims["alleles"] == 4
+    n_variants = ds.sizes["variants"]
+    assert ds.sizes["samples"] == n_samples
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 4
 
     # check shapes
     for f in expected_coords | expected_data_vars:

@@ -270,7 +270,7 @@ class AnophelesHapData(
 
         if min_cohort_size is not None:
             # Handle min cohort size.
-            n_samples = ds.dims["samples"]
+            n_samples = ds.sizes["samples"]
             if n_samples < min_cohort_size:
                 raise ValueError(
                     f"Not enough samples ({n_samples}) for minimum cohort size ({min_cohort_size})"
@@ -278,7 +278,7 @@ class AnophelesHapData(
 
         if max_cohort_size is not None:
             # Handle max cohort size.
-            n_samples = ds.dims["samples"]
+            n_samples = ds.sizes["samples"]
             if n_samples > max_cohort_size:
                 rng = np.random.default_rng(seed=random_seed)
                 loc_downsample = rng.choice(

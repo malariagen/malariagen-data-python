@@ -571,11 +571,11 @@ def test_gene_cnv(region, sample_sets):
     # check dim lengths
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
-    assert ds.dims["samples"] == n_samples
+    assert ds.sizes["samples"] == n_samples
     df_genome_features = ag3.genome_features(region=region)
     df_genes = df_genome_features.query("type == 'gene'")
     n_genes = len(df_genes)
-    assert ds.dims["genes"] == n_genes
+    assert ds.sizes["genes"] == n_genes
 
     # check IDs
     assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
@@ -638,11 +638,11 @@ def test_gene_cnv_xarray_indexing(region, sample_sets):
     o = ds.sel(genes=gene)
     assert isinstance(o, xr.Dataset)
     assert set(o.dims) == {"samples"}
-    assert o.dims["samples"] == ds.dims["samples"]
+    assert o.sizes["samples"] == ds.sizes["samples"]
     o = ds.sel(samples=sample)
     assert isinstance(o, xr.Dataset)
     assert set(o.dims) == {"genes"}
-    assert o.dims["genes"] == ds.dims["genes"]
+    assert o.sizes["genes"] == ds.sizes["genes"]
     o = ds.sel(genes=gene, samples=sample)
     assert isinstance(o, xr.Dataset)
     assert set(o.dims) == set()
@@ -1122,7 +1122,7 @@ def _check_snp_allele_frequencies_advanced(
         assert cohort_labels == expect_cohort_labels
 
         # check variants are consistent
-        assert ds.dims["variants"] == len(df_af)
+        assert ds.sizes["variants"] == len(df_af)
         for v in expected_variant_vars:
             c = v.split("variant_")[1]
             actual = ds[v]
@@ -1271,7 +1271,7 @@ def _check_aa_allele_frequencies_advanced(
         assert cohort_labels == expect_cohort_labels
 
         # check variants are consistent
-        assert ds.dims["variants"] == len(df_af)
+        assert ds.sizes["variants"] == len(df_af)
         for v in expected_variant_vars:
             c = v.split("variant_")[1]
             actual = ds[v]
@@ -1525,7 +1525,7 @@ def _check_gene_cnv_frequencies_advanced(
         assert cohort_labels == expect_cohort_labels
 
         # check variants are consistent
-        assert ds.dims["variants"] == len(df_af)
+        assert ds.sizes["variants"] == len(df_af)
         for v in expected_variant_vars:
             c = v.split("variant_")[1]
             actual = ds[v]
