@@ -10,14 +10,14 @@ jobs:
             - name: Checkout source
               uses: actions/checkout@v3
 
+            - name: Install poetry
+              run: pipx install poetry==1.7.1
+
             - name: Setup python
               uses: actions/setup-python@v4
               with:
                   python-version: '3.11'
                   cache: 'poetry'
-
-            - name: Install poetry
-              run: pipx install poetry==1.7.1
 
             - name: Configure poetry
               run: |
