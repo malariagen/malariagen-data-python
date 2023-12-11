@@ -3545,6 +3545,7 @@ class AnophelesDataResource(
         height: plotly_params.height = None,
         width: plotly_params.width = None,
         title: plotly_params.title = True,
+        legend_sizing: plotly_params.legend_sizing = "constant",
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
@@ -3634,7 +3635,10 @@ class AnophelesDataResource(
         )
 
         debug("tidy plot")
-        fig.update_layout(yaxis_range=[-0.05, 1.05])
+        fig.update_layout(
+            yaxis_range=[-0.05, 1.05],
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
+        )
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
@@ -3833,6 +3837,7 @@ class AnophelesDataResource(
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
+        legend_sizing: plotly_params.legend_sizing = "constant",
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
@@ -3897,7 +3902,7 @@ class AnophelesDataResource(
 
         # Tidy up.
         fig.update_layout(
-            legend=dict(itemsizing="constant"),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
         fig.update_traces(marker={"size": marker_size})
 
@@ -3933,6 +3938,7 @@ class AnophelesDataResource(
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
+        legend_sizing: plotly_params.legend_sizing = "constant",
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
@@ -3995,7 +4001,7 @@ class AnophelesDataResource(
         # Tidy up.
         fig.update_layout(
             scene=dict(aspectmode="cube"),
-            legend=dict(itemsizing="constant"),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
         fig.update_traces(marker={"size": marker_size})
 
@@ -6492,6 +6498,7 @@ class AnophelesDataResource(
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
+        legend_sizing: plotly_params.legend_sizing = "constant",
     ) -> plotly_params.figure:
         import sys
 
@@ -6594,6 +6601,7 @@ class AnophelesDataResource(
             title_font=dict(
                 size=title_font_size,
             ),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
 
         if show:  # pragma: no cover
@@ -7126,7 +7134,7 @@ class AnophelesDataResource(
         category_orders: plotly_params.category_order = None,
         edge_legend: bool = False,
         leaf_legend: bool = True,
-        legend_sizing: str = "trace",
+        legend_sizing: plotly_params.legend_sizing = "constant",
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -7297,7 +7305,7 @@ class AnophelesDataResource(
             title_font=dict(
                 size=title_font_size,
             ),
-            legend=dict(itemsizing=legend_sizing),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
 
         # Style axes.

@@ -166,3 +166,12 @@ zmax: TypeAlias = Annotated[
     Union[int, float],
     "The upper end of the range of values that the colormap covers.",
 ]
+
+legend_sizing: TypeAlias = Annotated[
+    Literal["constant", "trace"],
+    """
+    Determines if the legend items symbols scale with their corresponding
+    "trace" attributes or remain "constant" independent of the symbol size
+    on the graph.
+    """,
+]
