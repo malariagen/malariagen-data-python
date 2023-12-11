@@ -62,7 +62,7 @@ color_discrete_map: TypeAlias = Annotated[
 ]
 
 category_order: TypeAlias = Annotated[
-    Optional[List],
+    Optional[Union[List, Mapping]],
     "Control the order in which values appear in the legend.",
 ]
 
@@ -97,12 +97,12 @@ z: TypeAlias = Annotated[
 ]
 
 color: TypeAlias = Annotated[
-    Optional[str],
+    Optional[Union[str, Mapping]],
     "Name of variable to use to color the markers.",
 ]
 
 symbol: TypeAlias = Annotated[
-    Optional[str],
+    Optional[Union[str, Mapping]],
     "Name of the variable to use to choose marker symbols.",
 ]
 
@@ -165,4 +165,13 @@ zmin: TypeAlias = Annotated[
 zmax: TypeAlias = Annotated[
     Union[int, float],
     "The upper end of the range of values that the colormap covers.",
+]
+
+legend_sizing: TypeAlias = Annotated[
+    Literal["constant", "trace"],
+    """
+    Determines if the legend items symbols scale with their corresponding
+    "trace" attributes or remain "constant" independent of the symbol size
+    on the graph.
+    """,
 ]

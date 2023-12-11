@@ -1577,7 +1577,7 @@ class Ag3Simulator(AnophelesSimulator):
                     # Add call_genotype variable.
                     gt = np.random.choice(
                         np.arange(2, dtype="i1"),
-                        size=(ds.dims["variants"], ds.dims["samples"], 2),
+                        size=(ds.sizes["variants"], ds.sizes["samples"], 2),
                         replace=True,
                     )
                     ds["call_genotype"] = ("variants", "samples", "ploidy"), gt

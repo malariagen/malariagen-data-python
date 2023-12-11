@@ -272,12 +272,12 @@ def check_haplotypes(
         n_samples_expected = min(n_samples_selected, max_cohort_size)
     else:
         n_samples_expected = n_samples_selected
-    n_samples = ds.dims["samples"]
+    n_samples = ds.sizes["samples"]
     assert n_samples == n_samples_expected
     if min_cohort_size:
         assert n_samples >= min_cohort_size
-    assert ds.dims["ploidy"] == 2
-    assert ds.dims["alleles"] == 2
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 2
 
     # Check shapes.
     for f in expected_coords | expected_data_vars:

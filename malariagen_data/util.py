@@ -213,7 +213,7 @@ def dask_compress_dataset(ds, indexer, dim):
     assert isinstance(indexer, da.Array)
     assert indexer.ndim == 1
     assert indexer.dtype == bool
-    assert indexer.shape[0] == ds.dims[dim]
+    assert indexer.shape[0] == ds.sizes[dim]
 
     # temporarily compute the indexer once, to avoid multiple reads from
     # the underlying data
@@ -571,7 +571,7 @@ def _simple_xarray_concat_arrays(
 
     # Iterate over variable names.
     for k in names:
-        # Access the variable from the virst dataset.
+        # Access the variable from the first dataset.
         v = ds0[k]
 
         if dim in v.dims:

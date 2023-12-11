@@ -397,7 +397,7 @@ def _check_snp_allele_frequencies_advanced(
         assert cohort_labels == expect_cohort_labels
 
         # check variants are consistent
-        assert ds.dims["variants"] == len(df_af)
+        assert ds.sizes["variants"] == len(df_af)
         for v in expected_variant_vars:
             c = v.split("variant_")[1]
             actual = ds[v]
@@ -550,7 +550,7 @@ def _check_aa_allele_frequencies_advanced(
         assert cohort_labels == expect_cohort_labels
 
         # check variants are consistent
-        assert ds.dims["variants"] == len(df_af)
+        assert ds.sizes["variants"] == len(df_af)
         for v in expected_variant_vars:
             c = v.split("variant_")[1]
             actual = ds[v]
