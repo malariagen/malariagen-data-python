@@ -7370,7 +7370,10 @@ class AnophelesDataResource(
             # Special case, default taxon colors and order.
             color_params = self._setup_taxon_colors()
             color_discrete_map_prepped = color_params["color_discrete_map"]
-            category_orders_prepped = color_params["category_orders"]
+            if category_orders is None:
+                category_orders_prepped = color_params["category_orders"]
+            else:
+                category_orders_prepped = category_orders
             color_prepped = color
             # Bail out early.
             return (
