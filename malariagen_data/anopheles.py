@@ -3838,6 +3838,9 @@ class AnophelesDataResource(
         render_mode: plotly_params.render_mode = "svg",
         **kwargs,
     ) -> plotly_params.figure:
+        # Copy input data to avoid overwriting.
+        data = data.copy()
+
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
@@ -3934,6 +3937,9 @@ class AnophelesDataResource(
         renderer: plotly_params.renderer = None,
         **kwargs,
     ) -> plotly_params.figure:
+        # Copy input data to avoid overwriting.
+        data = data.copy()
+
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
