@@ -1439,74 +1439,79 @@ class AnophelesSnpData(
             chunks=chunks,
         )
 
-        # Subset to biallelic sites.
-        ds_bi = ds.isel(variants=loc_bi)
+        with self._spinner("Prepare biallelic SNP calls"):
+            # Subset to biallelic sites.
+            ds_bi = ds.isel(variants=loc_bi)
 
-        # Start building a new dataset.
-        coords: Dict[str, Any] = dict()
-        data_vars: Dict[str, Any] = dict()
+            # Start building a new dataset.
+            coords: Dict[str, Any] = dict()
+            data_vars: Dict[str, Any] = dict()
 
-        # Store sample IDs.
-        coords["sample_id"] = ("samples",), ds_bi["sample_id"].data
+            # Store sample IDs.
+            coords["sample_id"] = ("samples",), ds_bi["sample_id"].data
 
-        # Store contig.
-        coords["variant_contig"] = ("variants",), ds_bi["variant_contig"].data
+            # Store contig.
+            coords["variant_contig"] = ("variants",), ds_bi["variant_contig"].data
 
-        # Store position.
-        coords["variant_position"] = ("variants",), ds_bi["variant_position"].data
+            # Store position.
+            coords["variant_position"] = ("variants",), ds_bi["variant_position"].data
 
-        # Store alleles, transformed.
-        variant_allele = ds_bi["variant_allele"].data
-        variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
-        variant_allele_out = da.map_blocks(
-            lambda block: apply_allele_mapping(block, allele_mapping, max_allele=1),
-            variant_allele,
-            dtype=variant_allele.dtype,
-            chunks=(variant_allele.chunks[0], [2]),
-        )
-        data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
+            # Store alleles, transformed.
+            variant_allele = ds_bi["variant_allele"].data
+            variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
+            variant_allele_out = da.map_blocks(
+                lambda block: apply_allele_mapping(block, allele_mapping, max_allele=1),
+                variant_allele,
+                dtype=variant_allele.dtype,
+                chunks=(variant_allele.chunks[0], [2]),
+            )
+            data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
-        # Store allele counts, transformed, so we don't have to recompute.
-        ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
-        data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
+            # Store allele counts, transformed, so we don't have to recompute.
+            ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
+            data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
-        # Store genotype calls, transformed.
-        gt = ds_bi["call_genotype"].data
-        gt_out = allel.GenotypeDaskArray(gt).map_alleles(allele_mapping)
-        data_vars["call_genotype"] = ("variants", "samples", "ploidy"), gt_out.values
+            # Store genotype calls, transformed.
+            gt = ds_bi["call_genotype"].data
+            gt_out = allel.GenotypeDaskArray(gt).map_alleles(allele_mapping)
+            data_vars["call_genotype"] = (
+                "variants",
+                "samples",
+                "ploidy",
+            ), gt_out.values
 
-        # Build dataset.
-        ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)
+            # Build dataset.
+            ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)
 
-        # Apply conditions.
-        if max_missing_an or min_minor_ac:
-            loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
+            # Apply conditions.
+            if max_missing_an or min_minor_ac:
+                loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
 
-            # Apply missingness condition.
-            if max_missing_an is not None:
-                an = ac_out.sum(axis=1)
-                an_missing = (ds_out.sizes["samples"] * ds_out.sizes["ploidy"]) - an
-                loc_missing = an_missing <= max_missing_an
-                loc_out &= loc_missing
+                # Apply missingness condition.
+                if max_missing_an is not None:
+                    an = ac_out.sum(axis=1)
+                    an_missing = (ds_out.sizes["samples"] * ds_out.sizes["ploidy"]) - an
+                    loc_missing = an_missing <= max_missing_an
+                    loc_out &= loc_missing
 
-            # Apply minor allele count condition.
-            if min_minor_ac is not None:
-                ac_minor = ac_out.min(axis=1)
-                loc_minor = ac_minor >= min_minor_ac
-                loc_out &= loc_minor
+                # Apply minor allele count condition.
+                if min_minor_ac is not None:
+                    ac_minor = ac_out.min(axis=1)
+                    loc_minor = ac_minor >= min_minor_ac
+                    loc_out &= loc_minor
 
-            ds_out = ds_out.isel(variants=loc_out)
+                ds_out = ds_out.isel(variants=loc_out)
 
-        # Try to meet target number of SNPs.
-        if n_snps is not None:
-            if ds_out.sizes["variants"] > (n_snps * 2):
-                # Do some thinning.
-                thin_step = ds_out.sizes["variants"] // n_snps
-                loc_thin = slice(thin_offset, None, thin_step)
-                ds_out = ds_out.isel(variants=loc_thin)
+            # Try to meet target number of SNPs.
+            if n_snps is not None:
+                if ds_out.sizes["variants"] > (n_snps * 2):
+                    # Do some thinning.
+                    thin_step = ds_out.sizes["variants"] // n_snps
+                    loc_thin = slice(thin_offset, None, thin_step)
+                    ds_out = ds_out.isel(variants=loc_thin)
 
-            elif ds_out.sizes["variants"] < n_snps:
-                raise ValueError("Not enough SNPs.")
+                elif ds_out.sizes["variants"] < n_snps:
+                    raise ValueError("Not enough SNPs.")
 
         return ds_out
 
