@@ -1,5 +1,5 @@
 import io
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import ipyleaflet
 import numpy as np
@@ -508,14 +508,14 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        index: Union[str, Tuple[str, ...]] = (
+        index: Union[str, Sequence[str]] = (
             "country",
             "admin1_iso",
             "admin1_name",
             "admin2_name",
             "year",
         ),
-        columns: Union[str, Tuple[str, ...]] = "taxon",
+        columns: Union[str, Sequence[str]] = "taxon",
     ) -> pd.DataFrame:
         # Load sample metadata.
         df_samples = self.sample_metadata(
