@@ -837,15 +837,11 @@ class AnophelesSampleMetadata(AnophelesBase):
             )
         return plot_kwargs
 
-    def _setup_plotly_sample_colors(
+    def _setup_sample_symbol(
         self,
         *,
         data,
         symbol,
-        color,
-        color_discrete_sequence,
-        color_discrete_map,
-        category_orders,
     ):
         # Handle the symbol parameter.
         if isinstance(symbol, str):
@@ -868,13 +864,21 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             symbol_prepped = symbol
 
-        # Finish handling of symbol parameter.
-        del symbol
+        return symbol_prepped
 
+    def _setup_sample_colors_plotly(
+        self,
+        *,
+        data,
+        color,
+        color_discrete_sequence,
+        color_discrete_map,
+        category_orders,
+    ):
         # Check for no color.
         if color is None:
             # Bail out early.
-            return symbol_prepped, None, None, None
+            return None, None, None
 
         # Special handling for taxon colors.
         if (
@@ -890,9 +894,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             else:
                 category_orders_prepped = category_orders
             color_prepped = color
+
             # Bail out early.
             return (
-                symbol_prepped,
                 color_prepped,
                 color_discrete_map_prepped,
                 category_orders_prepped,
@@ -963,13 +967,12 @@ class AnophelesSampleMetadata(AnophelesBase):
         del category_orders
 
         return (
-            symbol_prepped,
             color_prepped,
             color_discrete_map_prepped,
             category_orders_prepped,
         )
 
-    def _setup_plotly_sample_hover_data(
+    def _setup_sample_hover_data_plotly(
         self,
         *,
         color,

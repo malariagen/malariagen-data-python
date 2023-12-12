@@ -6107,30 +6107,32 @@ class AnophelesDataResource(
         )
 
         # Normalise color and symbol parameters.
+        symbol_prepped = self._setup_sample_symbol(
+            data=df_samples_phased,
+            symbol=symbol,
+        )
+        del symbol
         (
-            symbol_prepped,
             color_prepped,
             color_discrete_map_prepped,
             category_orders_prepped,
-        ) = self._setup_plotly_sample_colors(
+        ) = self._setup_sample_colors_plotly(
             data=df_samples_phased,
             color=color,
             color_discrete_map=color_discrete_map,
             color_discrete_sequence=color_discrete_sequence,
             category_orders=category_orders,
-            symbol=symbol,
         )
         del color
         del color_discrete_map
         del color_discrete_sequence
-        del symbol
 
         # Repeat the dataframe so there is one row of metadata for each haplotype.
         df_haps = pd.DataFrame(np.repeat(df_samples_phased.values, 2, axis=0))
         df_haps.columns = df_samples_phased.columns
 
         # Configure hover data.
-        hover_data = self._setup_plotly_sample_hover_data(
+        hover_data = self._setup_sample_hover_data_plotly(
             color=color_prepped, symbol=symbol_prepped
         )
 
@@ -6767,23 +6769,25 @@ class AnophelesDataResource(
         df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
 
         # Normalise color and symbol parameters.
+        symbol_prepped = self._setup_sample_symbol(
+            data=df_samples,
+            symbol=symbol,
+        )
+        del symbol
         (
-            symbol_prepped,
             color_prepped,
             color_discrete_map_prepped,
             category_orders_prepped,
-        ) = self._setup_plotly_sample_colors(
+        ) = self._setup_sample_colors_plotly(
             data=df_samples,
             color=color,
             color_discrete_map=color_discrete_map,
             color_discrete_sequence=color_discrete_sequence,
             category_orders=category_orders,
-            symbol=symbol,
         )
         del color
         del color_discrete_map
         del color_discrete_sequence
-        del symbol
 
         # Extract data for leaf colors.
         if color_prepped is not None:
@@ -6839,7 +6843,7 @@ class AnophelesDataResource(
         )
 
         # Configure hover data.
-        hover_data = self._setup_plotly_sample_hover_data(
+        hover_data = self._setup_sample_hover_data_plotly(
             color=color_prepped, symbol=symbol_prepped
         )
 

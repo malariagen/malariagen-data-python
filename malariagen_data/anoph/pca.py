@@ -282,26 +282,28 @@ class AnophelesPca(
         data["country_location"] = data["country"] + " - " + data["location"]
 
         # Normalise color and symbol parameters.
+        symbol_prepped = self._setup_sample_symbol(
+            data=data,
+            symbol=symbol,
+        )
+        del symbol
         (
-            symbol_prepped,
             color_prepped,
             color_discrete_map_prepped,
             category_orders_prepped,
-        ) = self._setup_plotly_sample_colors(
+        ) = self._setup_sample_colors_plotly(
             data=data,
             color=color,
             color_discrete_map=color_discrete_map,
             color_discrete_sequence=color_discrete_sequence,
             category_orders=category_orders,
-            symbol=symbol,
         )
         del color
         del color_discrete_map
         del color_discrete_sequence
-        del symbol
 
         # Configure hover data.
-        hover_data = self._setup_plotly_sample_hover_data(
+        hover_data = self._setup_sample_hover_data_plotly(
             color=color_prepped, symbol=symbol_prepped
         )
 
@@ -383,26 +385,28 @@ class AnophelesPca(
         data["country_location"] = data["country"] + " - " + data["location"]
 
         # Normalise color and symbol parameters.
+        symbol_prepped = self._setup_sample_symbol(
+            data=data,
+            symbol=symbol,
+        )
+        del symbol
         (
-            symbol_prepped,
             color_prepped,
             color_discrete_map_prepped,
             category_orders_prepped,
-        ) = self._setup_plotly_sample_colors(
+        ) = self._setup_sample_colors_plotly(
             data=data,
             color=color,
             color_discrete_map=color_discrete_map,
             color_discrete_sequence=color_discrete_sequence,
             category_orders=category_orders,
-            symbol=symbol,
         )
         del color
         del color_discrete_map
         del color_discrete_sequence
-        del symbol
 
         # Configure hover data.
-        hover_data = self._setup_plotly_sample_hover_data(
+        hover_data = self._setup_sample_hover_data_plotly(
             color=color_prepped, symbol=symbol_prepped
         )
 
