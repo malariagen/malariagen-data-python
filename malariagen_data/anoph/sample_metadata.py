@@ -827,22 +827,15 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             return fig
 
-    def _setup_taxon_colors(self, plot_kwargs=None):
-        if plot_kwargs is None:
-            plot_kwargs = dict()
-        if self._taxon_colors is not None:
-            plot_kwargs.setdefault("color_discrete_map", self._taxon_colors)
-            plot_kwargs.setdefault(
-                "category_orders", {"taxon": list(self._taxon_colors.keys())}
-            )
-        return plot_kwargs
-
     def _setup_sample_symbol(
         self,
         *,
         data,
         symbol,
     ):
+        if symbol is None:
+            return None
+
         # Handle the symbol parameter.
         if isinstance(symbol, str):
             if "cohort_" + symbol in data.columns:
@@ -855,14 +848,13 @@ class AnophelesSampleMetadata(AnophelesBase):
                     f"{symbol_prepped!r} is not a known column in the data."
                 )
 
-        elif isinstance(symbol, dict):
+        else:
+            # Custom grouping using queries.
+            assert isinstance(symbol, Mapping)
             data["symbol"] = ""
             for key, value in symbol.items():
                 data.loc[data.query(value).index, "symbol"] = key
             symbol_prepped = "symbol"
-
-        else:
-            symbol_prepped = symbol
 
         return symbol_prepped
 
@@ -881,26 +873,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             return None, None, None
 
         # Special handling for taxon colors.
-        if (
-            color == "taxon"
-            and color_discrete_map is None
-            and color_discrete_sequence is None
-        ):
+        if color == "taxon" and color_discrete_map is None:
             # Special case, default taxon colors and order.
-            color_params = self._setup_taxon_colors()
-            color_discrete_map_prepped = color_params["color_discrete_map"]
-            if category_orders is None:
-                category_orders_prepped = color_params["category_orders"]
-            else:
-                category_orders_prepped = category_orders
-            color_prepped = color
-
-            # Bail out early.
-            return (
-                color_prepped,
-                color_discrete_map_prepped,
-                category_orders_prepped,
-            )
+            color_discrete_map = self._taxon_colors
 
         if isinstance(color, str):
             if "cohort_" + color in data.columns:
@@ -914,15 +889,13 @@ class AnophelesSampleMetadata(AnophelesBase):
                     f"{color_prepped!r} is not a known column in the data."
                 )
 
-        elif isinstance(color, dict):
+        else:
             # Custom grouping using queries.
+            assert isinstance(color, Mapping)
             data["color"] = ""
             for key, value in color.items():
                 data.loc[data.query(value).index, "color"] = key
             color_prepped = "color"
-
-        else:
-            color_prepped = color
 
         # Finish handling of color parameter.
         del color

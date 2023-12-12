@@ -74,21 +74,21 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pca(fixture, api: AnophelesPca):
+def test_pca_plotting(fixture, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
-        region=fixture.random_region_str(),
+        region=random.choice(api.contigs),
         sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
     )
+    ds = api.biallelic_snp_calls(**data_params)
 
     # PCA parameters.
-    ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
     n_snps = random.randint(n_samples, n_snps_available)
-    n_components = random.randint(1, n_samples)
+    n_components = random.randint(3, n_samples)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -117,31 +117,6 @@ def test_pca(fixture, api: AnophelesPca):
     assert pca_evr.ndim == 1
     assert pca_evr.shape[0] == n_components
 
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_pca_plotting(fixture, api: AnophelesPca):
-    # Parameters for selecting input data.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    data_params = dict(
-        region=fixture.random_region_str(),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
-    )
-
-    # PCA parameters.
-    ds = api.biallelic_snp_calls(**data_params)
-    n_samples = ds.sizes["samples"]
-    n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(n_samples, n_snps_available)
-    n_components = random.randint(1, n_samples)
-
-    # Run the PCA.
-    pca_df, pca_evr = api.pca(
-        n_snps=n_snps,
-        n_components=n_components,
-        **data_params,
-    )
-
     # Plot variance explained.
     fig_evr = api.plot_pca_variance(
         evr=pca_evr,
@@ -156,6 +131,8 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     }
     colors = [None, "taxon", "country", "admin1_year", custom_cohorts]
     symbols = ["country", None, custom_cohorts, "admin2_month", "taxon"]
+
+    # Test plotting with some different parameter combinations.
     for color, symbol in zip(colors, symbols):
         # Plot 2D coords.
         fig_2d = api.plot_pca_coords(

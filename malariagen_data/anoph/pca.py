@@ -301,6 +301,7 @@ class AnophelesPca(
         del color
         del color_discrete_map
         del color_discrete_sequence
+        del category_orders
 
         # Configure hover data.
         hover_data = self._setup_sample_hover_data_plotly(
@@ -404,6 +405,7 @@ class AnophelesPca(
         del color
         del color_discrete_map
         del color_discrete_sequence
+        del category_orders
 
         # Configure hover data.
         hover_data = self._setup_sample_hover_data_plotly(

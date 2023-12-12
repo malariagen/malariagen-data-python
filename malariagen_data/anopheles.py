@@ -3,7 +3,6 @@ import warnings
 from abc import abstractmethod
 from bisect import bisect_left, bisect_right
 from collections import Counter
-from itertools import cycle
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
 import allel
@@ -3605,15 +3604,31 @@ class AnophelesDataResource(
         scatter_plot_height: int = 500,
         scatter_plot_width: int = 500,
         template: plotly_params.template = "plotly_white",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
         plot_kwargs: Optional[Mapping] = None,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
     ) -> Optional[Tuple[go.Figure, ...]]:
-        debug = self._log.debug
+        # Handle color.
+        (
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        ) = self._setup_sample_colors_plotly(
+            data=df_stats,
+            color=color,
+            color_discrete_map=color_discrete_map,
+            color_discrete_sequence=color_discrete_sequence,
+            category_orders=category_orders,
+        )
+        del color
+        del color_discrete_map
+        del color_discrete_sequence
+        del category_orders
 
-        debug("set up common plotting parameters")
-        if plot_kwargs is None:
-            plot_kwargs = dict()
+        # Set up common plotting parameters.
         default_plot_kwargs = dict(
             hover_name="cohort",
             hover_data=[
@@ -3628,63 +3643,63 @@ class AnophelesDataResource(
                 "month",
             ],
             labels={
-                "theta_pi_estimate": r"$\widehat{\theta}_{\pi}$",
-                "theta_w_estimate": r"$\widehat{\theta}_{w}$",
-                "tajima_d_estimate": r"$D$",
+                "theta_pi_estimate": "θ<sub>π</sub>",
+                "theta_w_estimate": "θ<sub>𝑤</sub>",
+                "tajima_d_estimate": "𝐷",
                 "cohort": "Cohort",
                 "taxon": "Taxon",
                 "country": "Country",
             },
+            color=color_prepped,
+            color_discrete_map=color_discrete_map_prepped,
+            category_orders=category_orders_prepped,
+            template=template,
         )
-        if color == "taxon":
-            self._setup_taxon_colors(plot_kwargs=default_plot_kwargs)
+
+        # Finalise parameters.
+        if plot_kwargs is None:
+            plot_kwargs = dict()
         default_plot_kwargs.update(plot_kwargs)
         plot_kwargs = default_plot_kwargs
         bar_plot_width = 300 + bar_width * len(df_stats)
 
-        debug("nucleotide diversity bar plot")
+        # Nucleotide diversity bar plot.
         fig1 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="theta_pi_estimate",
             error_y="theta_pi_ci_err",
             title="Nucleotide diversity",
-            color=color,
             height=bar_plot_height,
             width=bar_plot_width,
-            template=template,
             **plot_kwargs,
         )
 
-        debug("Watterson's estimator bar plot")
+        # Watterson's estimator bar plot.
         fig2 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="theta_w_estimate",
             error_y="theta_w_ci_err",
             title="Watterson's estimator",
-            color=color,
             height=bar_plot_height,
             width=bar_plot_width,
-            template=template,
             **plot_kwargs,
         )
 
-        debug("Tajima's D bar plot")
+        # Tajima's D bar plot.
         fig3 = px.bar(
             data_frame=df_stats,
             x="cohort",
             y="tajima_d_estimate",
             error_y="tajima_d_ci_err",
             title="Tajima's D",
-            color=color,
             height=bar_plot_height,
             width=bar_plot_width,
-            template=template,
             **plot_kwargs,
         )
 
-        debug("scatter plot comparing diversity estimators")
+        # Scatter plot comparing diversity estimators.
         fig4 = px.scatter(
             data_frame=df_stats,
             x="theta_pi_estimate",
@@ -3692,10 +3707,8 @@ class AnophelesDataResource(
             error_x="theta_pi_ci_err",
             error_y="theta_w_ci_err",
             title="Diversity estimators",
-            color=color,
             width=scatter_plot_width,
             height=scatter_plot_height,
-            template=template,
             **plot_kwargs,
         )
 
@@ -6310,31 +6323,25 @@ class AnophelesDataResource(
                 for s in ht_distinct_sets
             ]
 
-            if color == "taxon" and color_discrete_map is None:
-                # special case, standardise taxon colors and order
-                color_params = self._setup_taxon_colors()
-                color_discrete_map = color_params["color_discrete_map"]
-                color_discrete_map_display = color_discrete_map
-                category_orders = color_params["category_orders"]
-
-            elif color_discrete_map is None:
-                # set up a color palette
-                if color_discrete_sequence is None:
-                    if len(color_values) <= 10:
-                        color_discrete_sequence = px.colors.qualitative.Plotly
-                    else:
-                        color_discrete_sequence = px.colors.qualitative.Alphabet
-
-                # map values to colors
-                color_discrete_map = {
-                    v: c for v, c in zip(color_values, cycle(color_discrete_sequence))
-                }
-                color_discrete_map_display = {
-                    v: c
-                    for v, c in zip(
-                        color_values_display, cycle(color_discrete_sequence)
-                    )
-                }
+            # Set up colors.
+            (
+                color_prepped,
+                color_discrete_map_prepped,
+                category_orders_prepped,
+            ) = self._setup_sample_colors_plotly(
+                data=df_haps,
+                color="partition",
+                color_discrete_map=color_discrete_map,
+                color_discrete_sequence=color_discrete_sequence,
+                category_orders=category_orders,
+            )
+            del color_discrete_map
+            del color_discrete_sequence
+            del category_orders
+            color_discrete_map_display = {
+                color_values_mapping[v]: c
+                for v, c in color_discrete_map_prepped.items()
+            }
 
         debug("construct graph")
         anon_width = np.sqrt(0.3 * node_size_factor)
@@ -6362,10 +6369,10 @@ class AnophelesDataResource(
             "height": "data(width)",
             "pie-size": "100%",
         }
-        if color and color_discrete_map is not None:
+        if color and color_discrete_map_prepped is not None:
             # here are the styles which control the display of nodes as pie
             # charts
-            for i, (v, c) in enumerate(color_discrete_map.items()):
+            for i, (v, c) in enumerate(color_discrete_map_prepped.items()):
                 node_style[f"pie-{i + 1}-background-color"] = c
                 node_style[
                     f"pie-{i + 1}-background-size"
@@ -6398,7 +6405,7 @@ class AnophelesDataResource(
                 color=color,
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,
-                category_orders=category_orders,
+                category_orders=category_orders_prepped,
             )
             legend_component = dcc.Graph(
                 id="legend",

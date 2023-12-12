@@ -3,6 +3,7 @@ import random
 import ipyleaflet
 import numpy as np
 import pandas as pd
+import plotly.express as px
 import plotly.graph_objects as go
 import pytest
 from pandas.testing import assert_frame_equal
@@ -31,6 +32,7 @@ def ag3_sim_api(ag3_sim_fixture):
             "aim_species_gambiae_coluzzii": object,
             "aim_species": object,
         },
+        taxon_colors=_ag3.TAXON_COLORS,
     )
 
 
@@ -43,6 +45,7 @@ def af1_sim_api(af1_sim_fixture):
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
+        taxon_colors=_af1.TAXON_COLORS,
     )
 
 
@@ -855,7 +858,81 @@ def test_setup_sample_colors_plotly(fixture, api):
     assert isinstance(category_orders_, dict)
     assert color_ in category_orders_
 
-    # # Convenience shortcut for cohort columns.
+    # Simple case, existing column, manual colour mapping.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map={"Burkina Faso": "blue", "Uganda": "green"},
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Simple case, existing column, manual colour sequence.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map=None,
+        color_discrete_sequence=px.colors.qualitative.D3,
+        category_orders=None,
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Simple case, existing column, manually ordered.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders={"country": ["Burkina Faso", "Uganda"]},
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+    assert category_orders_ == {"country": ["Burkina Faso", "Uganda"]}
+
+    # Special case, taxon column.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="taxon",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "taxon"
+    assert isinstance(color_discrete_map_, dict)
+    assert color_discrete_map_ == api._taxon_colors
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Special case, taxon column, manually ordered.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="taxon",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders={"taxon": ["coluzzii", "gambiae"]},
+    )
+    assert color_ == "taxon"
+    assert isinstance(color_discrete_map_, dict)
+    assert color_discrete_map_ == api._taxon_colors
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+    assert category_orders_ == {"taxon": ["coluzzii", "gambiae"]}
+
+    # Convenience shortcut for cohort columns.
     data = df_samples.copy()
     (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
         data=data,
