@@ -39,7 +39,6 @@ from .anoph import (
     het_params,
     ihs_params,
     map_params,
-    pca_params,
     plotly_params,
     xpehh_params,
 )
@@ -50,6 +49,7 @@ from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
+from .anoph.pca import AnophelesPca
 from .anoph.sample_metadata import AnophelesSampleMetadata
 from .anoph.snp_data import AnophelesSnpData
 from .mjn import median_joining_network, mjn_graph
@@ -62,7 +62,6 @@ from .util import (
     biallelic_diplotype_sqeuclidean,
     check_types,
     jackknife_ci,
-    jitter,
     locate_region,
     parse_multi_region,
     parse_single_region,
@@ -100,6 +99,7 @@ DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesPca,
     AnophelesCnvData,
     AnophelesAimData,
     AnophelesHapData,
@@ -170,11 +170,6 @@ class AnophelesDataResource(
         # set up caches
         # TODO review type annotations here, maybe can tighten
         self._cache_annotator = None
-
-    @property
-    @abstractmethod
-    def _pca_results_cache_name(self):
-        raise NotImplementedError("Must override _pca_results_cache_name")
 
     @property
     @abstractmethod
@@ -933,111 +928,6 @@ class AnophelesDataResource(
         debug("create IGV browser")
         self.igv(region=resolved_region, tracks=tracks)
 
-    def _pca(
-        self,
-        *,
-        region,
-        n_snps,
-        thin_offset,
-        sample_sets,
-        sample_indices,
-        site_mask,
-        site_class,
-        min_minor_ac,
-        max_missing_an,
-        n_components,
-        cohort_size,
-        min_cohort_size,
-        max_cohort_size,
-        random_seed,
-        chunks,
-        inline_array,
-    ):
-        # Load diplotypes.
-        gn, samples = self.biallelic_diplotypes(
-            region=region,
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-            sample_sets=sample_sets,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
-
-        with self._spinner(desc="Compute PCA"):
-            # Remove any sites where all genotypes are identical.
-            loc_var = np.any(gn != gn[:, 0, np.newaxis], axis=1)
-            gn_var = np.compress(loc_var, gn, axis=0)
-
-            # Run the PCA.
-            coords, model = allel.pca(gn_var, n_components=n_components)
-
-            # Work around sign indeterminacy.
-            for i in range(n_components):
-                c = coords[:, i]
-                if np.abs(c.min()) > np.abs(c.max()):
-                    coords[:, i] = c * -1
-
-        results = dict(
-            samples=samples, coords=coords, evr=model.explained_variance_ratio_
-        )
-        return results
-
-    @check_types
-    @doc(
-        summary="""
-            Plot explained variance ratios from a principal components analysis
-            (PCA) using a plotly bar plot.
-        """,
-        parameters=dict(
-            kwargs="Passed through to px.bar().",
-        ),
-    )
-    def plot_pca_variance(
-        self,
-        evr: pca_params.evr,
-        width: plotly_params.width = 900,
-        height: plotly_params.height = 400,
-        show: plotly_params.show = True,
-        renderer: plotly_params.renderer = None,
-        **kwargs,
-    ) -> plotly_params.figure:
-        debug = self._log.debug
-
-        debug("prepare plotting variables")
-        y = evr * 100  # convert to percent
-        x = [str(i + 1) for i in range(len(y))]
-
-        debug("set up plotting options")
-        plot_kwargs = dict(
-            labels={
-                "x": "Principal component",
-                "y": "Explained variance (%)",
-            },
-            template="simple_white",
-            width=width,
-            height=height,
-        )
-        debug("apply any user overrides")
-        plot_kwargs.update(kwargs)
-
-        debug("make a bar plot")
-        fig = px.bar(x=x, y=y, **plot_kwargs)
-
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
-
     def _cohort_alt_allele_counts_melt(self, gt, indices, max_allele):
         ac_alt_melt, an = self._cohort_alt_allele_counts_melt_kernel(
             gt, indices, max_allele
@@ -1599,116 +1489,6 @@ class AnophelesDataResource(
             return None
         else:
             return fig_all
-
-    @check_types
-    @doc(
-        summary="""
-            Run a principal components analysis (PCA) using biallelic SNPs from
-            the selected genome region and samples.
-        """,
-        extended_summary="""
-            .. versionchanged:: 8.0.0
-               SNP ascertainment has changed slightly.
-
-            This function uses biallelic SNPs as input to the PCA. The ascertainment
-            of SNPs to include has changed slightly in version 8.0.0 and therefore
-            the results of this function may also be slightly different. Previously,
-            SNPs were required to be biallelic and one of the observed alleles was
-            required to be the reference allele. Now SNPs just have to be biallelic.
-
-            The following additional parameters were also added in version 8.0.0:
-            `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
-            `random_seed`.
-
-        """,
-        returns=("df_pca", "evr"),
-        notes="""
-            This computation may take some time to run, depending on your computing
-            environment. Results of this computation will be cached and re-used if
-            the `results_cache` parameter was set when instantiating the API client.
-        """,
-    )
-    def pca(
-        self,
-        region: base_params.regions,
-        n_snps: base_params.n_snps,
-        n_components: pca_params.n_components = pca_params.n_components_default,
-        thin_offset: base_params.thin_offset = 0,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
-        site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> Tuple[pca_params.df_pca, pca_params.evr]:
-        # Change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data.
-        name = "pca_v2"
-
-        # Normalize params for consistent hash value.
-        (
-            sample_sets_prepped,
-            sample_indices_prepped,
-        ) = self._prep_sample_selection_cache_params(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_indices=sample_indices,
-        )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
-        params = dict(
-            region=region_prepped,
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
-            site_class=site_class,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-            n_components=n_components,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        # Try to retrieve results from the cache.
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._pca(chunks=chunks, inline_array=inline_array, **params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        # Unpack results.
-        coords = results["coords"]
-        evr = results["evr"]
-        samples = results["samples"]
-
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_indices=sample_indices_prepped,
-        )
-
-        # Ensure aligned with genotype data.
-        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
-
-        # Combine coords and sample metadata.
-        df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
-        )
-        df_pca = df_samples.join(df_coords, how="inner")
-
-        return df_pca, evr
 
     @check_types
     @doc(
@@ -3809,207 +3589,6 @@ class AnophelesDataResource(
         out = ipywidgets.VBox(components)
 
         return out
-
-    @check_types
-    @doc(
-        summary="""
-            Plot sample coordinates from a principal components analysis (PCA)
-            as a plotly scatter plot.
-        """,
-        parameters=dict(
-            opacity="Marker opacity.",
-            kwargs="Passed through to `px.scatter()`",
-        ),
-    )
-    def plot_pca_coords(
-        self,
-        data: pca_params.df_pca,
-        x: plotly_params.x = "PC1",
-        y: plotly_params.y = "PC2",
-        color: plotly_params.color = None,
-        symbol: plotly_params.symbol = None,
-        opacity: float = 0.9,
-        jitter_frac: plotly_params.jitter_frac = 0.02,
-        random_seed: base_params.random_seed = 42,
-        width: plotly_params.width = 900,
-        height: plotly_params.height = 600,
-        marker_size: plotly_params.marker_size = 10,
-        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
-        color_discrete_map: plotly_params.color_discrete_map = None,
-        category_orders: plotly_params.category_order = None,
-        legend_sizing: plotly_params.legend_sizing = "constant",
-        show: plotly_params.show = True,
-        renderer: plotly_params.renderer = None,
-        render_mode: plotly_params.render_mode = "svg",
-        **kwargs,
-    ) -> plotly_params.figure:
-        # Copy input data to avoid overwriting.
-        data = data.copy()
-
-        # Apply jitter if desired - helps spread out points when tightly clustered.
-        if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
-
-        # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
-
-        # Normalise color and symbol parameters.
-        (
-            symbol_prepped,
-            color_prepped,
-            color_discrete_map_prepped,
-            category_orders_prepped,
-        ) = self._setup_plotly_sample_colors(
-            data=data,
-            color=color,
-            color_discrete_map=color_discrete_map,
-            color_discrete_sequence=color_discrete_sequence,
-            category_orders=category_orders,
-            symbol=symbol,
-        )
-        del color
-        del color_discrete_map
-        del color_discrete_sequence
-        del symbol
-
-        # Configure hover data.
-        hover_data = self._setup_plotly_sample_hover_data(
-            color=color_prepped, symbol=symbol_prepped
-        )
-
-        # Set up plotting options.
-        plot_kwargs = dict(
-            width=width,
-            height=height,
-            color=color_prepped,
-            symbol=symbol_prepped,
-            color_discrete_map=color_discrete_map_prepped,
-            category_orders=category_orders_prepped,
-            template="simple_white",
-            hover_name="sample_id",
-            hover_data=hover_data,
-            opacity=opacity,
-            render_mode=render_mode,
-        )
-
-        # Apply any user overrides.
-        plot_kwargs.update(kwargs)
-
-        # 2D scatter plot.
-        fig = px.scatter(data, x=x, y=y, **plot_kwargs)
-
-        # Tidy up.
-        fig.update_layout(
-            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
-        )
-        fig.update_traces(marker={"size": marker_size})
-
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
-
-    @check_types
-    @doc(
-        summary="""
-            Plot sample coordinates from a principal components analysis (PCA)
-            as a plotly 3D scatter plot.
-        """,
-        parameters=dict(
-            kwargs="Passed through to `px.scatter_3d()`",
-        ),
-    )
-    def plot_pca_coords_3d(
-        self,
-        data: pca_params.df_pca,
-        x: plotly_params.x = "PC1",
-        y: plotly_params.y = "PC2",
-        z: plotly_params.z = "PC3",
-        color: plotly_params.color = None,
-        symbol: plotly_params.symbol = None,
-        jitter_frac: plotly_params.jitter_frac = 0.02,
-        random_seed: base_params.random_seed = 42,
-        width: plotly_params.width = 900,
-        height: plotly_params.height = 600,
-        marker_size: plotly_params.marker_size = 5,
-        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
-        color_discrete_map: plotly_params.color_discrete_map = None,
-        category_orders: plotly_params.category_order = None,
-        legend_sizing: plotly_params.legend_sizing = "constant",
-        show: plotly_params.show = True,
-        renderer: plotly_params.renderer = None,
-        **kwargs,
-    ) -> plotly_params.figure:
-        # Copy input data to avoid overwriting.
-        data = data.copy()
-
-        # Apply jitter if desired - helps spread out points when tightly clustered.
-        if jitter_frac:
-            np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
-            data[z] = jitter(data[z], jitter_frac)
-
-        # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
-
-        # Normalise color and symbol parameters.
-        (
-            symbol_prepped,
-            color_prepped,
-            color_discrete_map_prepped,
-            category_orders_prepped,
-        ) = self._setup_plotly_sample_colors(
-            data=data,
-            color=color,
-            color_discrete_map=color_discrete_map,
-            color_discrete_sequence=color_discrete_sequence,
-            category_orders=category_orders,
-            symbol=symbol,
-        )
-        del color
-        del color_discrete_map
-        del color_discrete_sequence
-        del symbol
-
-        # Configure hover data.
-        hover_data = self._setup_plotly_sample_hover_data(
-            color=color_prepped, symbol=symbol_prepped
-        )
-
-        # Set up plotting options.
-        plot_kwargs = dict(
-            width=width,
-            height=height,
-            hover_name="sample_id",
-            hover_data=hover_data,
-            color=color_prepped,
-            symbol=symbol_prepped,
-            color_discrete_map=color_discrete_map_prepped,
-            category_orders=category_orders_prepped,
-        )
-
-        # Apply any user overrides.
-        plot_kwargs.update(kwargs)
-
-        # 3D scatter plot.
-        fig = px.scatter_3d(data, x=x, y=y, z=z, **plot_kwargs)
-
-        # Tidy up.
-        fig.update_layout(
-            scene=dict(aspectmode="cube"),
-            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
-        )
-        fig.update_traces(marker={"size": marker_size})
-
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
 
     @check_types
     @doc(
@@ -7335,163 +6914,6 @@ class AnophelesDataResource(
             return None
         else:
             return fig
-
-    def _setup_plotly_sample_colors(
-        self,
-        *,
-        data,
-        symbol,
-        color,
-        color_discrete_sequence,
-        color_discrete_map,
-        category_orders,
-    ):
-        # Handle the symbol parameter.
-        if isinstance(symbol, str):
-            if "cohort_" + symbol in data.columns:
-                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
-                symbol_prepped = "cohort_" + symbol
-            else:
-                symbol_prepped = symbol
-            if symbol_prepped not in data.columns:
-                raise ValueError(
-                    f"{symbol_prepped!r} is not a known column in the data."
-                )
-
-        elif isinstance(symbol, dict):
-            data["symbol"] = ""
-            for key, value in symbol.items():
-                data.loc[data.query(value).index, "symbol"] = key
-            symbol_prepped = "symbol"
-
-        else:
-            symbol_prepped = symbol
-
-        # Finish handling of symbol parameter.
-        del symbol
-
-        # Check for no color.
-        if color is None:
-            # Bail out early.
-            return symbol_prepped, None, None, None
-
-        # Special handling for taxon colors.
-        if (
-            color == "taxon"
-            and color_discrete_map is None
-            and color_discrete_sequence is None
-        ):
-            # Special case, default taxon colors and order.
-            color_params = self._setup_taxon_colors()
-            color_discrete_map_prepped = color_params["color_discrete_map"]
-            if category_orders is None:
-                category_orders_prepped = color_params["category_orders"]
-            else:
-                category_orders_prepped = category_orders
-            color_prepped = color
-            # Bail out early.
-            return (
-                symbol_prepped,
-                color_prepped,
-                color_discrete_map_prepped,
-                category_orders_prepped,
-            )
-
-        if isinstance(color, str):
-            if "cohort_" + color in data.columns:
-                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
-                color_prepped = "cohort_" + color
-            else:
-                color_prepped = color
-
-            if color_prepped not in data.columns:
-                raise ValueError(
-                    f"{color_prepped!r} is not a known column in the data."
-                )
-
-        elif isinstance(color, dict):
-            # Custom grouping using queries.
-            data["color"] = ""
-            for key, value in color.items():
-                data.loc[data.query(value).index, "color"] = key
-            color_prepped = "color"
-
-        else:
-            color_prepped = color
-
-        # Finish handling of color parameter.
-        del color
-
-        # Obtain the values that we will be mapping to colors.
-        color_data_values = data[color_prepped]
-        color_data_unique_values = color_data_values.unique()
-
-        # Now set up color choices.
-        if color_discrete_map is None:
-            # Choose a color palette.
-            if color_discrete_sequence is None:
-                if len(color_data_unique_values) <= 10:
-                    color_discrete_sequence = px.colors.qualitative.Plotly
-                else:
-                    color_discrete_sequence = px.colors.qualitative.Alphabet
-
-            # Map values to colors.
-            color_discrete_map_prepped = {
-                v: c
-                for v, c in zip(
-                    color_data_unique_values, cycle(color_discrete_sequence)
-                )
-            }
-
-        else:
-            color_discrete_map_prepped = color_discrete_map
-
-        # Finished handling of color map params.
-        del color_discrete_map
-        del color_discrete_sequence
-
-        # Define category orders.
-        if category_orders is None:
-            # Default ordering.
-            category_orders_prepped = {color_prepped: color_data_unique_values}
-
-        else:
-            category_orders_prepped = category_orders
-
-        # Finised handling of category orders.
-        del category_orders
-
-        return (
-            symbol_prepped,
-            color_prepped,
-            color_discrete_map_prepped,
-            category_orders_prepped,
-        )
-
-    def _setup_plotly_sample_hover_data(
-        self,
-        *,
-        color,
-        symbol,
-    ):
-        hover_data = [
-            "sample_id",
-            "partner_sample_id",
-            "sample_set",
-            "taxon",
-            "country",
-            "admin1_iso",
-            "admin1_name",
-            "admin2_name",
-            "location",
-            "year",
-            "month",
-        ]
-        if color and color not in hover_data:
-            hover_data.append(color)
-        if symbol and symbol not in hover_data:
-            hover_data.append(symbol)
-        return hover_data
 
 
 def unrooted_tree_layout_equal_angle(

@@ -1,4 +1,5 @@
 import io
+from itertools import cycle
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import ipyleaflet
@@ -821,3 +822,160 @@ class AnophelesSampleMetadata(AnophelesBase):
             return None
         else:
             return fig
+
+    def _setup_plotly_sample_colors(
+        self,
+        *,
+        data,
+        symbol,
+        color,
+        color_discrete_sequence,
+        color_discrete_map,
+        category_orders,
+    ):
+        # Handle the symbol parameter.
+        if isinstance(symbol, str):
+            if "cohort_" + symbol in data.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                symbol_prepped = "cohort_" + symbol
+            else:
+                symbol_prepped = symbol
+            if symbol_prepped not in data.columns:
+                raise ValueError(
+                    f"{symbol_prepped!r} is not a known column in the data."
+                )
+
+        elif isinstance(symbol, dict):
+            data["symbol"] = ""
+            for key, value in symbol.items():
+                data.loc[data.query(value).index, "symbol"] = key
+            symbol_prepped = "symbol"
+
+        else:
+            symbol_prepped = symbol
+
+        # Finish handling of symbol parameter.
+        del symbol
+
+        # Check for no color.
+        if color is None:
+            # Bail out early.
+            return symbol_prepped, None, None, None
+
+        # Special handling for taxon colors.
+        if (
+            color == "taxon"
+            and color_discrete_map is None
+            and color_discrete_sequence is None
+        ):
+            # Special case, default taxon colors and order.
+            color_params = self._setup_taxon_colors()
+            color_discrete_map_prepped = color_params["color_discrete_map"]
+            if category_orders is None:
+                category_orders_prepped = color_params["category_orders"]
+            else:
+                category_orders_prepped = category_orders
+            color_prepped = color
+            # Bail out early.
+            return (
+                symbol_prepped,
+                color_prepped,
+                color_discrete_map_prepped,
+                category_orders_prepped,
+            )
+
+        if isinstance(color, str):
+            if "cohort_" + color in data.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                color_prepped = "cohort_" + color
+            else:
+                color_prepped = color
+
+            if color_prepped not in data.columns:
+                raise ValueError(
+                    f"{color_prepped!r} is not a known column in the data."
+                )
+
+        elif isinstance(color, dict):
+            # Custom grouping using queries.
+            data["color"] = ""
+            for key, value in color.items():
+                data.loc[data.query(value).index, "color"] = key
+            color_prepped = "color"
+
+        else:
+            color_prepped = color
+
+        # Finish handling of color parameter.
+        del color
+
+        # Obtain the values that we will be mapping to colors.
+        color_data_values = data[color_prepped]
+        color_data_unique_values = color_data_values.unique()
+
+        # Now set up color choices.
+        if color_discrete_map is None:
+            # Choose a color palette.
+            if color_discrete_sequence is None:
+                if len(color_data_unique_values) <= 10:
+                    color_discrete_sequence = px.colors.qualitative.Plotly
+                else:
+                    color_discrete_sequence = px.colors.qualitative.Alphabet
+
+            # Map values to colors.
+            color_discrete_map_prepped = {
+                v: c
+                for v, c in zip(
+                    color_data_unique_values, cycle(color_discrete_sequence)
+                )
+            }
+
+        else:
+            color_discrete_map_prepped = color_discrete_map
+
+        # Finished handling of color map params.
+        del color_discrete_map
+        del color_discrete_sequence
+
+        # Define category orders.
+        if category_orders is None:
+            # Default ordering.
+            category_orders_prepped = {color_prepped: color_data_unique_values}
+
+        else:
+            category_orders_prepped = category_orders
+
+        # Finised handling of category orders.
+        del category_orders
+
+        return (
+            symbol_prepped,
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        )
+
+    def _setup_plotly_sample_hover_data(
+        self,
+        *,
+        color,
+        symbol,
+    ):
+        hover_data = [
+            "sample_id",
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+        if color and color not in hover_data:
+            hover_data.append(color)
+        if symbol and symbol not in hover_data:
+            hover_data.append(symbol)
+        return hover_data

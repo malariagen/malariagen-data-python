@@ -17,7 +17,6 @@ MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 GCS_URL = "gs://vo_agam_release/"
-PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
@@ -67,10 +66,10 @@ class Ag3(AnophelesDataResource):
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
         Storage, or a local path on your file system if data have been
         downloaded.
-    cohorts_analysis : str
+    cohorts_analysis : str, optional
         Cohort analysis version.
-    species_analysis : {"aim_20200422", "pca_20200422"}, optional
-        Species analysis version.
+    aim_analysis : str, optional
+        AIM analysis version.
     site_filters_analysis : str, optional
         Site filters analysis version.
     bokeh_output_notebook : bool, optional
@@ -115,7 +114,6 @@ class Ag3(AnophelesDataResource):
     """
 
     virtual_contigs = "2RL", "3RL"
-    _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
