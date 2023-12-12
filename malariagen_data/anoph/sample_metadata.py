@@ -958,7 +958,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Define category orders.
         if category_orders is None:
             # Default ordering.
-            category_orders_prepped = {color_prepped: color_data_unique_values}
+            category_orders_prepped = {color_prepped: color_data_unique_values.tolist()}
 
         else:
             category_orders_prepped = category_orders
