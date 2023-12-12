@@ -147,8 +147,8 @@ def test_pca_plotting(fixture, api: AnophelesPca):
         "male": "sex_call == 'M'",
         "female": "sex_call == 'F'",
     }
-    colors = [None, "taxon", "country", custom_cohorts]
-    symbols = ["country", None, custom_cohorts, "taxon"]
+    colors = [None, "taxon", "country", "admin1_year", custom_cohorts]
+    symbols = ["country", None, custom_cohorts, "admin2_month", "taxon"]
     for color, symbol in zip(colors, symbols):
         # Plot 2D coords.
         fig_2d = api.plot_pca_coords(
