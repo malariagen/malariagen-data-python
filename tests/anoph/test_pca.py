@@ -81,15 +81,14 @@ def test_pca(fixture, api: AnophelesPca):
         region=fixture.random_region_str(),
         sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
-        min_minor_ac=random.randint(1, 3),
-        max_missing_an=random.randint(2, 10),
     )
 
     # PCA parameters.
     ds = api.biallelic_snp_calls(**data_params)
+    n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available // 2)
-    n_components = random.randint(1, ds.sizes["samples"])
+    n_snps = random.randint(n_samples, n_snps_available)
+    n_components = random.randint(1, n_samples)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -104,13 +103,16 @@ def test_pca(fixture, api: AnophelesPca):
 
     # Check sizes.
     assert len(pca_df) == ds.sizes["samples"]
-    # Not sure why sometimes we don't quite get all the components.
-    for i in range(n_components - 1):
+    for i in range(n_components):
         assert f"PC{i+1}" in pca_df.columns, (
             "n_components",
             n_components,
             "n_samples",
-            ds.sizes["samples"],
+            n_samples,
+            "n_snps_available",
+            n_snps_available,
+            "n_snps",
+            n_snps,
         )
     assert pca_evr.ndim == 1
     assert pca_evr.shape[0] == n_components
