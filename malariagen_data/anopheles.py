@@ -138,6 +138,7 @@ class AnophelesDataResource(
         gff_default_attributes: Tuple[str, ...],
         tqdm_class,
         storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
+        taxon_colors: Optional[Mapping[str, str]],
     ):
         super().__init__(
             url=url,
@@ -165,6 +166,7 @@ class AnophelesDataResource(
             default_coverage_calls_analysis=default_coverage_calls_analysis,
             results_cache=results_cache,
             tqdm_class=tqdm_class,
+            taxon_colors=taxon_colors,
         )
 
         # set up caches
@@ -421,14 +423,6 @@ class AnophelesDataResource(
         ds_out.attrs["title"] = title
 
         return ds_out
-
-    # Start of @staticmethod @abstractmethod
-
-    @staticmethod
-    @abstractmethod
-    def _setup_taxon_colors(plot_kwargs=None):
-        # Subclasses have different taxon_color_map.
-        raise NotImplementedError("Must override _setup_taxon_colors")
 
     # Start of @staticmethod
 

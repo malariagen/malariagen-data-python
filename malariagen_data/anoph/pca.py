@@ -127,7 +127,7 @@ class AnophelesPca(
 
         # Combine coords and sample metadata.
         df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(n_components)}
+            {f"PC{i + 1}": coords[:, i] for i in range(coords.shape[1])}
         )
         df_pca = df_samples.join(df_coords, how="inner")
 
@@ -181,7 +181,7 @@ class AnophelesPca(
             coords, model = allel.pca(gn_var, n_components=n_components)
 
             # Work around sign indeterminacy.
-            for i in range(n_components):
+            for i in range(coords.shape[1]):
                 c = coords[:, i]
                 if np.abs(c.min()) > np.abs(c.max()):
                     coords[:, i] = c * -1

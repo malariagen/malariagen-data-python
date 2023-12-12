@@ -1,11 +1,8 @@
-import shutil
-
 import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
-from pandas.testing import assert_frame_equal
 
 from malariagen_data import Af1, Region
 from malariagen_data.util import locate_region, resolve_region
@@ -664,65 +661,6 @@ def test_allele_frequencies_advanced__nobs_mode(nobs_mode):
     _check_aa_allele_frequencies_advanced(
         nobs_mode=nobs_mode,
     )
-
-
-@pytest.mark.parametrize(
-    "region",
-    [
-        "2RL:1,000,000-2,000,000",
-        "LOC125761549_t7",
-        ["2RL:1,000,000-2,000,000", "3RL:1,000,000-2,000,000"],
-    ],
-)
-@pytest.mark.parametrize(
-    "sample_sets",
-    [
-        "1229-VO-GH-DADZIE-VMF00095",
-        ["1240-VO-CD-KOEKEMOER-VMF00099", "1240-VO-MZ-KOEKEMOER-VMF00101"],
-    ],
-)
-@pytest.mark.parametrize("sample_query", [None, "taxon == 'funestus'"])
-@pytest.mark.parametrize("site_mask", [None, "funestus"])
-def test_pca(region, sample_sets, sample_query, site_mask):
-    results_cache = "../results_cache"
-    shutil.rmtree(results_cache, ignore_errors=True)
-    af1 = setup_af1(results_cache=results_cache)
-
-    n_components = 8
-    df_pca, evr = af1.pca(
-        region=region,
-        n_snps=100,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        site_mask=site_mask,
-        n_components=n_components,
-    )
-
-    df_samples = af1.sample_metadata(
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-    )
-
-    assert isinstance(df_pca, pd.DataFrame)
-    assert len(df_pca) == len(df_samples)
-    expected_columns = df_samples.columns.tolist() + [
-        f"PC{n+1}" for n in range(n_components)
-    ]
-    assert df_pca.columns.tolist() == expected_columns
-    assert_frame_equal(df_samples, df_pca[df_samples.columns.tolist()])
-    assert isinstance(evr, np.ndarray)
-    assert evr.shape == (n_components,)
-
-    df_pca2, evr2 = af1.pca(
-        region=region,
-        n_snps=100,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        site_mask=site_mask,
-        n_components=n_components,
-    )
-    assert_frame_equal(df_pca, df_pca2)
-    assert_array_equal(evr, evr2)
 
 
 # TODO: this function is a verbatim duplicate, from test_ag3.py

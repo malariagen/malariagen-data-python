@@ -19,6 +19,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohorts_analysis: Optional[str] = None,
         aim_analysis: Optional[str] = None,
         aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
+        taxon_colors: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -43,6 +44,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
         self._aim_metadata_dtype["sample_id"] = object
+
+        # Set up taxon colors.
+        self._taxon_colors = taxon_colors
 
         # Set up extra metadata.
         self._extra_metadata: List = []
@@ -822,6 +826,16 @@ class AnophelesSampleMetadata(AnophelesBase):
             return None
         else:
             return fig
+
+    def _setup_taxon_colors(self, plot_kwargs=None):
+        if plot_kwargs is None:
+            plot_kwargs = dict()
+        if self._taxon_colors is not None:
+            plot_kwargs.setdefault("color_discrete_map", self._taxon_colors)
+            plot_kwargs.setdefault(
+                "category_orders", {"taxon": list(self._taxon_colors.keys())}
+            )
+        return plot_kwargs
 
     def _setup_plotly_sample_colors(
         self,
