@@ -1,5 +1,7 @@
 import sys
 
+import plotly.express as px
+
 import malariagen_data  # used for .__version__
 
 from .anopheles import AnophelesDataResource
@@ -8,7 +10,6 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_URL = "gs://vo_afun_release/"
-PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
 FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
@@ -17,6 +18,11 @@ XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
 G123_CALIBRATION_CACHE_NAME = "af1_g123_calibration_v1"
 H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
+
+TAXON_PALETTE = px.colors.qualitative.Plotly
+TAXON_COLORS = {
+    "funestus": TAXON_PALETTE[0],
+}
 
 
 class Af1(AnophelesDataResource):
@@ -71,7 +77,6 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -122,23 +127,8 @@ class Af1(AnophelesDataResource):
             gff_default_attributes=("ID", "Parent", "Note", "description"),
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,
+            taxon_colors=TAXON_COLORS,
         )
-
-    @staticmethod
-    def _setup_taxon_colors(plot_kwargs=None):
-        import plotly.express as px
-
-        if plot_kwargs is None:
-            plot_kwargs = dict()
-        taxon_palette = px.colors.qualitative.Plotly
-        taxon_color_map = {
-            "funestus": taxon_palette[0],
-        }
-        plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
-        plot_kwargs.setdefault(
-            "category_orders", {"taxon": list(taxon_color_map.keys())}
-        )
-        return plot_kwargs
 
     def __repr__(self):
         text = (

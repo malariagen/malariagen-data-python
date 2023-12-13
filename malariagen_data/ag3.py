@@ -17,7 +17,6 @@ MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 GCS_URL = "gs://vo_agam_release/"
-PCA_RESULTS_CACHE_NAME = "ag3_pca_v1"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
@@ -57,6 +56,22 @@ def _setup_aim_palettes():
 
 AIM_PALETTES = _setup_aim_palettes()
 
+TAXON_PALETTE = px.colors.qualitative.Vivid
+TAXON_COLORS = {
+    "gambiae": TAXON_PALETTE[1],
+    "coluzzii": TAXON_PALETTE[0],
+    "arabiensis": TAXON_PALETTE[2],
+    "merus": TAXON_PALETTE[3],
+    "melas": TAXON_PALETTE[4],
+    "quadriannulatus": TAXON_PALETTE[5],
+    "fontenillei": TAXON_PALETTE[6],
+    "gcx1": TAXON_PALETTE[7],
+    "gcx2": TAXON_PALETTE[8],
+    "gcx3": TAXON_PALETTE[9],
+    "gcx4": TAXON_PALETTE[10],
+    "unassigned": "black",
+}
+
 
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
@@ -67,10 +82,10 @@ class Ag3(AnophelesDataResource):
         Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
         Storage, or a local path on your file system if data have been
         downloaded.
-    cohorts_analysis : str
+    cohorts_analysis : str, optional
         Cohort analysis version.
-    species_analysis : {"aim_20200422", "pca_20200422"}, optional
-        Species analysis version.
+    aim_analysis : str, optional
+        AIM analysis version.
     site_filters_analysis : str, optional
         Site filters analysis version.
     bokeh_output_notebook : bool, optional
@@ -115,7 +130,6 @@ class Ag3(AnophelesDataResource):
     """
 
     virtual_contigs = "2RL", "3RL"
-    _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -174,6 +188,7 @@ class Ag3(AnophelesDataResource):
             gff_default_attributes=("ID", "Parent", "Name", "description"),
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,
+            taxon_colors=TAXON_COLORS,
         )
 
         # set up caches
@@ -188,33 +203,6 @@ class Ag3(AnophelesDataResource):
             for x in self.sample_sets(release="3.0")["sample_set"].tolist()
             if x != "AG1000G-X"
         ]
-
-    @staticmethod
-    def _setup_taxon_colors(plot_kwargs=None):
-        import plotly.express as px
-
-        if plot_kwargs is None:
-            plot_kwargs = dict()
-        taxon_palette = px.colors.qualitative.Vivid
-        taxon_color_map = {
-            "gambiae": taxon_palette[1],
-            "coluzzii": taxon_palette[0],
-            "arabiensis": taxon_palette[2],
-            "merus": taxon_palette[3],
-            "melas": taxon_palette[4],
-            "quadriannulatus": taxon_palette[5],
-            "fontenillei": taxon_palette[6],
-            "gcx1": taxon_palette[7],
-            "gcx2": taxon_palette[8],
-            "gcx3": taxon_palette[9],
-            "gcx4": taxon_palette[10],
-            "unassigned": "black",
-        }
-        plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
-        plot_kwargs.setdefault(
-            "category_orders", {"taxon": list(taxon_color_map.keys())}
-        )
-        return plot_kwargs
 
     def __repr__(self):
         text = (
