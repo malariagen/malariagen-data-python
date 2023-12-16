@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional
+from typing import List, Optional
 
 import igv_notebook
 from numpydoc_decorator import doc
@@ -20,17 +20,12 @@ class AnophelesIgv(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
-    @doc(
-        summary="Create an IGV browser and inject into the current notebook.",
-        parameters=dict(
-            tracks="Configuration for any additional tracks.",
-        ),
-        returns="IGV browser.",
-    )
-    def igv(
-        self, region: base_params.region, tracks: Optional[List] = None
-    ) -> igv_notebook.Browser:
+    def _igv_config(
+        self,
+        *,
+        region: base_params.region,
+        tracks: Optional[List] = None,
+    ):
         # Resolve region.
         region_prepped: Region = parse_single_region(self, region)
         del region
@@ -57,14 +52,40 @@ class AnophelesIgv(
         if tracks:
             config["tracks"] = tracks
 
-        igv_notebook.init()
+        return config
+
+    @check_types
+    @doc(
+        summary="Create an IGV browser and inject into the current notebook.",
+        parameters=dict(
+            tracks="Configuration for any additional tracks.",
+            init="If True, call igv_notebook.init().",
+        ),
+        returns="IGV browser.",
+    )
+    def igv(
+        self,
+        region: base_params.region,
+        tracks: Optional[List] = None,
+        init: bool = True,
+    ) -> igv_notebook.Browser:
+        config = self._igv_config(
+            region=region,
+            tracks=tracks,
+        )
+        if init:  # pragma: no cover
+            igv_notebook.init()
         browser = igv_notebook.Browser(config)
 
         return browser
 
-    def _view_alignments_add_site_filters_tracks(
-        self, *, contig, visibility_window, tracks
+    def _igv_site_filters_tracks(
+        self,
+        *,
+        contig,
+        visibility_window,
     ):
+        tracks = []
         for site_mask in self.site_mask_ids:
             site_filters_vcf_url = f"{self._url}{self._major_version_path}/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             track_config = {
@@ -82,24 +103,11 @@ class AnophelesIgv(
                 },
             }
             tracks.append(track_config)
+        return tracks
 
-    @check_types
-    @doc(
-        summary="""
-            Launch IGV and view sequence read alignments and SNP genotypes from
-            the given sample.
-        """,
-        parameters=dict(
-            sample="Sample identifier.",
-            visibility_window="""
-                Zoom level in base pairs at which alignment and SNP data will become
-                visible.
-            """,
-        ),
-    )
-    def view_alignments(
+    def _igv_view_alignments_tracks(
         self,
-        region: base_params.region,
+        region: Region,
         sample: str,
         visibility_window: int = 20_000,
     ):
@@ -115,18 +123,12 @@ class AnophelesIgv(
         bam_url = cat_rec["alignments_bam"]
         vcf_url = cat_rec["snp_genotypes_vcf"]
 
-        # Parse region.
-        resolved_region: Region = parse_single_region(self, region)
-        del region
-        contig = resolved_region.contig
+        contig = region.contig
 
-        # begin creating tracks
-        tracks: List[Dict] = []
-
-        # https://github.com/igvteam/igv-notebook/issues/3 -- resolved now
         # Set up site filters tracks.
-        self._view_alignments_add_site_filters_tracks(
-            contig=contig, visibility_window=visibility_window, tracks=tracks
+        tracks = self._igv_site_filters_tracks(
+            contig=contig,
+            visibility_window=visibility_window,
         )
 
         # Add SNPs track.
@@ -155,5 +157,40 @@ class AnophelesIgv(
             }
         )
 
+        return tracks
+
+    @check_types
+    @doc(
+        summary="""
+            Launch IGV and view sequence read alignments and SNP genotypes from
+            the given sample.
+        """,
+        parameters=dict(
+            sample="Sample identifier.",
+            visibility_window="""
+                Zoom level in base pairs at which alignment and SNP data will become
+                visible.
+            """,
+            init="If True, call igv_notebook.init().",
+        ),
+    )
+    def view_alignments(
+        self,
+        region: base_params.region,
+        sample: str,
+        visibility_window: int = 20_000,
+        init: bool = True,
+    ):
+        # Parse region.
+        resolved_region: Region = parse_single_region(self, region)
+        del region
+
+        # Create tracks.
+        tracks = self._igv_view_alignments_tracks(
+            region=resolved_region,
+            sample=sample,
+            visibility_window=visibility_window,
+        )
+
         # Create IGV browser.
-        self.igv(region=resolved_region, tracks=tracks)
+        self.igv(region=resolved_region, tracks=tracks, init=init)
