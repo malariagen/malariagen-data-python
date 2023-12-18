@@ -1475,10 +1475,13 @@ class AnophelesSnpData(
             gt = ds_bi["call_genotype"].data
             gt_out = allel.GenotypeDaskArray(gt).map_alleles(allele_mapping)
             data_vars["call_genotype"] = (
-                "variants",
-                "samples",
-                "ploidy",
-            ), gt_out.values
+                (
+                    "variants",
+                    "samples",
+                    "ploidy",
+                ),
+                gt_out.values,
+            )
 
             # Build dataset.
             ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)

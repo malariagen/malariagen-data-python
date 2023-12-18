@@ -565,8 +565,9 @@ class AnophelesDataResource(
 
             # collapse alt allele
             alt_allele = "{" + ",".join(ds["variant_alt_allele"].values) + "}"
-            ds_out["variant_alt_allele"] = "variants", np.array(
-                [alt_allele], dtype=object
+            ds_out["variant_alt_allele"] = (
+                "variants",
+                np.array([alt_allele], dtype=object),
             )
 
         return ds_out
