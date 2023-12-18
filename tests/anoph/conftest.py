@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import zarr
+import zarr  # type: ignore
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any

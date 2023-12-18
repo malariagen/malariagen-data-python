@@ -1,7 +1,7 @@
 from typing import List, Optional
 
-import igv_notebook
-from numpydoc_decorator import doc
+import igv_notebook  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import Region, check_types, parse_single_region
 from . import base_params

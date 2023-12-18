@@ -1,6 +1,6 @@
 import random
 
-import igv_notebook
+import igv_notebook  # type: ignore
 import pytest
 from pytest_cases import parametrize_with_cases
 

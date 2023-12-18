@@ -1,10 +1,10 @@
 import random
 
-import ipyleaflet
+import ipyleaflet  # type: ignore
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import pytest
 from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
