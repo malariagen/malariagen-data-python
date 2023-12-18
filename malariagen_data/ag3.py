@@ -3,7 +3,7 @@ import sys
 import dask
 import dask.array as da
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # type: ignore
 
 import malariagen_data  # used for .__version__
 
