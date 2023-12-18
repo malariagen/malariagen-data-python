@@ -23,13 +23,9 @@ class AnophelesIgv(
     def _igv_config(
         self,
         *,
-        region: base_params.region,
+        region: Region,
         tracks: Optional[List] = None,
     ):
-        # Resolve region.
-        region_prepped: Region = parse_single_region(self, region)
-        del region
-
         # Create IGV config.
         config = {
             "reference": {
@@ -47,37 +43,12 @@ class AnophelesIgv(
                     }
                 ],
             },
-            "locus": str(region_prepped),
+            "locus": str(region),
         }
         if tracks:
             config["tracks"] = tracks
 
         return config
-
-    @check_types
-    @doc(
-        summary="Create an IGV browser and inject into the current notebook.",
-        parameters=dict(
-            tracks="Configuration for any additional tracks.",
-            init="If True, call igv_notebook.init().",
-        ),
-        returns="IGV browser.",
-    )
-    def igv(
-        self,
-        region: base_params.region,
-        tracks: Optional[List] = None,
-        init: bool = True,
-    ) -> igv_notebook.Browser:
-        config = self._igv_config(
-            region=region,
-            tracks=tracks,
-        )
-        if init:  # pragma: no cover
-            igv_notebook.init()
-        browser = igv_notebook.Browser(config)
-
-        return browser
 
     def _igv_site_filters_tracks(
         self,
@@ -123,9 +94,8 @@ class AnophelesIgv(
         bam_url = cat_rec["alignments_bam"]
         vcf_url = cat_rec["snp_genotypes_vcf"]
 
-        contig = region.contig
-
         # Set up site filters tracks.
+        contig = region.contig
         tracks = self._igv_site_filters_tracks(
             contig=contig,
             visibility_window=visibility_window,
@@ -161,6 +131,40 @@ class AnophelesIgv(
 
     @check_types
     @doc(
+        summary="Create an IGV browser and inject into the current notebook.",
+        parameters=dict(
+            tracks="Configuration for any additional tracks.",
+            init="If True, call igv_notebook.init().",
+        ),
+        returns="IGV browser.",
+    )
+    def igv(
+        self,
+        region: base_params.region,
+        tracks: Optional[List] = None,
+        init: bool = True,
+    ) -> igv_notebook.Browser:
+        # Parse region.
+        region_prepped: Region = parse_single_region(self, region)
+        del region
+
+        # Create config.
+        config = self._igv_config(
+            region=region_prepped,
+            tracks=tracks,
+        )
+
+        # Initialise IGV notebook.
+        if init:  # pragma: no cover
+            igv_notebook.init()
+
+        # Create IGV browser.
+        browser = igv_notebook.Browser(config)
+
+        return browser
+
+    @check_types
+    @doc(
         summary="""
             Launch IGV and view sequence read alignments and SNP genotypes from
             the given sample.
@@ -182,15 +186,15 @@ class AnophelesIgv(
         init: bool = True,
     ):
         # Parse region.
-        resolved_region: Region = parse_single_region(self, region)
+        region_prepped: Region = parse_single_region(self, region)
         del region
 
         # Create tracks.
         tracks = self._igv_view_alignments_tracks(
-            region=resolved_region,
+            region=region_prepped,
             sample=sample,
             visibility_window=visibility_window,
         )
 
         # Create IGV browser.
-        self.igv(region=resolved_region, tracks=tracks, init=init)
+        self.igv(region=region_prepped, tracks=tracks, init=init)
