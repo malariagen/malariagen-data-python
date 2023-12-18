@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import zarr
+import zarr  # type: ignore
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any
@@ -1202,6 +1202,10 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
+        df_general = pd.read_csv(src_path)
+        # Randomly downsample.
+        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1211,9 +1215,7 @@ class Ag3Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_general_ds.to_csv(dst_path, index=False)
 
         if aim:
             # Create AIM metadata by sampling from some real metadata files.
@@ -1226,6 +1228,8 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "samples.species_aim.csv"
             )
+            df_aim = pd.read_csv(src_path)
+            df_aim_ds = df_aim.set_index("sample_id").loc[samples_ds].reset_index()
             dst_path = (
                 self.bucket_path
                 / release_path
@@ -1235,9 +1239,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / "samples.species_aim.csv"
             )
             dst_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-                for line in src.readlines()[: n_samples_sim + 1]:
-                    print(line, file=dst)
+            df_aim_ds.to_csv(dst_path, index=False)
 
         if cohorts:
             # Create cohorts metadata by sampling from some real metadata files.
@@ -1250,6 +1252,8 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "samples.cohorts.csv"
             )
+            df_coh = pd.read_csv(src_path)
+            df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
             dst_path = (
                 self.bucket_path
                 / release_path
@@ -1259,9 +1263,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / "samples.cohorts.csv"
             )
             dst_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-                for line in src.readlines()[: n_samples_sim + 1]:
-                    print(line, file=dst)
+            df_coh_ds.to_csv(dst_path, index=False)
 
         # Create data catalog by sampling from some real metadata files.
         src_path = (
@@ -1273,6 +1275,8 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1282,9 +1286,7 @@ class Ag3Simulator(AnophelesSimulator):
             / "wgs_snp_data.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_cat_ds.to_csv(dst_path, index=False)
 
     def init_metadata(self):
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
@@ -1852,6 +1854,9 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
+        df_general = pd.read_csv(src_path)
+        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1861,9 +1866,7 @@ class Af1Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_general_ds.to_csv(dst_path, index=False)
 
         # Create cohorts metadata by sampling from some real metadata files.
         src_path = (
@@ -1875,6 +1878,8 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.cohorts.csv"
         )
+        df_coh = pd.read_csv(src_path)
+        df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1884,9 +1889,7 @@ class Af1Simulator(AnophelesSimulator):
             / "samples.cohorts.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_coh_ds.to_csv(dst_path, index=False)
 
         # Create data catalog by sampling from some real metadata files.
         src_path = (
@@ -1898,6 +1901,8 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1907,9 +1912,7 @@ class Af1Simulator(AnophelesSimulator):
             / "wgs_snp_data.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_cat_ds.to_csv(dst_path, index=False)
 
     def init_metadata(self):
         self.write_metadata(
