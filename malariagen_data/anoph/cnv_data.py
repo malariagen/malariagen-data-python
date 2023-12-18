@@ -4,8 +4,8 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     DIM_SAMPLE,
@@ -186,7 +186,7 @@ class AnophelesCnvData(
                 index = pd.IntervalIndex.from_arrays(start, end, closed="both")
                 # noinspection PyArgumentList
                 other = pd.Interval(r.start, r.end, closed="both")
-                loc_region = index.overlaps(other)
+                loc_region = index.overlaps(other)  # type: ignore
                 x = x.isel(variants=loc_region)
 
             lx.append(x)
@@ -377,7 +377,7 @@ class AnophelesCnvData(
                 index = pd.IntervalIndex.from_arrays(start, end, closed="both")
                 # noinspection PyArgumentList
                 other = pd.Interval(r.start, r.end, closed="both")
-                loc_region = index.overlaps(other)
+                loc_region = index.overlaps(other)  # type: ignore
                 x = x.isel(variants=loc_region)
 
             lx.append(x)

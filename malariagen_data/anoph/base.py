@@ -18,11 +18,11 @@ from typing import (
 import bokeh.io
 import numpy as np
 import pandas as pd
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 from tqdm.auto import tqdm as tqdm_auto
 from tqdm.dask import TqdmCallback
-from yaspin import yaspin
+from yaspin import yaspin  # type: ignore
 
 from ..util import (
     CacheMiss,

@@ -4,8 +4,8 @@ import bokeh.models
 import bokeh.plotting
 import numpy as np
 import pandas as pd
-from numpydoc_decorator import doc
-from pandas.io.common import infer_compression
+from numpydoc_decorator import doc  # type: ignore
+from pandas.io.common import infer_compression  # type: ignore
 
 from ..util import (
     Region,

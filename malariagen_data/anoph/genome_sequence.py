@@ -1,8 +1,8 @@
 from typing import Tuple
 
 import dask.array as da
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     Region,

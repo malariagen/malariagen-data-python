@@ -6,7 +6,7 @@
 
 from typing import List, Literal, Mapping, Optional, Union
 
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # type: ignore
 from typing_extensions import Annotated, TypeAlias
 
 x_label: TypeAlias = Annotated[

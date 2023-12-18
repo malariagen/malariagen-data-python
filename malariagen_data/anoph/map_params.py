@@ -2,8 +2,8 @@
 
 from typing import Dict, Tuple, Union
 
-import ipyleaflet
-import xyzservices
+import ipyleaflet  # type: ignore
+import xyzservices  # type: ignore
 from typing_extensions import Annotated, TypeAlias
 
 center: TypeAlias = Annotated[

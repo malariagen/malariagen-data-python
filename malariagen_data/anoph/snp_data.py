@@ -1,14 +1,14 @@
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import allel
+import allel  # type: ignore
 import bokeh
 import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     DIM_ALLELE,

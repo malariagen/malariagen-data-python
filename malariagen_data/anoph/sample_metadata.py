@@ -2,11 +2,11 @@ import io
 from itertools import cycle
 from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
-import ipyleaflet
+import ipyleaflet  # type: ignore
 import numpy as np
 import pandas as pd
-import plotly.express as px
-from numpydoc_decorator import doc
+import plotly.express as px  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import check_types
 from . import base_params, map_params, plotly_params
@@ -43,7 +43,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
-        self._aim_metadata_dtype["sample_id"] = object
+        self._aim_metadata_dtype["sample_id"] = "string"
 
         # Set up taxon colors.
         self._taxon_colors = taxon_colors
@@ -68,21 +68,21 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             dtype = {
-                "sample_id": object,
-                "partner_sample_id": object,
-                "contributor": object,
-                "country": object,
-                "location": object,
+                "sample_id": "string",
+                "partner_sample_id": "string",
+                "contributor": "string",
+                "country": "string",
+                "location": "string",
                 "year": "int64",
                 "month": "int64",
                 "latitude": "float64",
                 "longitude": "float64",
-                "sex_call": object,
+                "sex_call": "string",
             }
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
-            df.columns = [c.lower() for c in df.columns]
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
 
             # Add a couple of columns for convenience.
             df["sample_set"] = sample_set
@@ -207,8 +207,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         cols = self._cohorts_metadata_columns
         if cols:
             # All columns are string columns.
-            dtype = {c: object for c in cols}
-            dtype["sample_id"] = object
+            dtype = {c: "string" for c in cols}
+            dtype["sample_id"] = "string"
             return dtype
 
     def _parse_cohorts_metadata(
@@ -220,7 +220,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
-            df.columns = [c.lower() for c in df.columns]
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
 
             # Rename some columns for consistent naming.
             df.rename(
@@ -327,7 +327,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             )
 
             # Ensure all column names are lower case.
-            df.columns = [c.lower() for c in df.columns]
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
 
             return df
 
