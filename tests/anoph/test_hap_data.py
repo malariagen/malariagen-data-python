@@ -96,17 +96,6 @@ def test_open_haplotype_sites(fixture, api: AnophelesHapData):
         root = api.open_haplotype_sites(analysis=analysis)
         _check_haplotype_sites(root, api)
 
-        # Test _haplotype_sites_for_contig().
-        for contig in api.contigs:
-            haplotype_pos = api._haplotype_sites_for_contig(
-                contig=contig,
-                analysis=analysis,
-                field="POS",
-                inline_array=True,
-                chunks="native",
-            ).compute()
-            assert len(haplotype_pos) == len(root[contig]["variants"]["POS"])
-
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_open_haplotypes(fixture, api: AnophelesHapData):

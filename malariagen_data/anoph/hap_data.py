@@ -85,37 +85,6 @@ class AnophelesHapData(
             self._cache_haplotype_sites[analysis] = root
         return root
 
-    def _haplotype_sites_for_contig(
-        self, *, contig, analysis, field, inline_array, chunks
-    ):
-        # Handle virtual contig.
-        if contig in self.virtual_contigs:
-            contigs = self.virtual_contigs[contig]
-            arrs = []
-            offset = 0
-            for c in contigs:
-                arr = self._haplotype_sites_for_contig(
-                    contig=c,
-                    analysis=analysis,
-                    field=field,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                if field == "POS":
-                    if offset > 0:
-                        arr = arr + offset
-                    offset += self.genome_sequence(region=c).shape[0]
-                arrs.append(arr)
-            return da.concatenate(arrs)
-
-        # Handle contig in the reference genome.
-        else:
-            assert contig in self.contigs
-            sites = self.open_haplotype_sites(analysis=analysis)
-            arr = sites[f"{contig}/variants/{field}"]
-            arr = da_from_zarr(arr, inline_array=inline_array, chunks=chunks)
-            return arr
-
     @check_types
     @doc(
         summary="Open haplotypes zarr.",
