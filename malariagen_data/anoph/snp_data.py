@@ -1,14 +1,14 @@
 from functools import lru_cache
 from typing import Any, Dict, List, Optional, Tuple, Union
 
-import allel
+import allel  # type: ignore
 import bokeh
 import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     DIM_ALLELE,
@@ -388,37 +388,41 @@ class AnophelesSnpData(
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
 
-        # Concatenate multiple sample sets and/or contigs.
-        lx = []
-        for r in regions:
-            contig = r.contig
-            ly = []
+        with self._spinner("Access SNP genotypes"):
+            # Concatenate multiple sample sets and/or contigs.
+            lx = []
+            for r in regions:
+                contig = r.contig
+                ly = []
 
-            for s in sample_sets_prepped:
-                y = self._snp_genotypes_for_contig(
-                    contig=contig,
-                    sample_set=s,
-                    field=field,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                ly.append(y)
+                for s in sample_sets_prepped:
+                    y = self._snp_genotypes_for_contig(
+                        contig=contig,
+                        sample_set=s,
+                        field=field,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    ly.append(y)
 
-            # Concatenate data from multiple sample sets.
-            x = da_concat(ly, axis=1)
+                # Concatenate data from multiple sample sets.
+                x = da_concat(ly, axis=1)
 
-            # Locate region - do this only once, optimisation.
-            if r.start or r.end:
-                pos = self._snp_sites_for_contig(
-                    contig=contig, field="POS", inline_array=inline_array, chunks=chunks
-                )
-                loc_region = locate_region(r, np.asarray(pos))
-                x = x[loc_region]
+                # Locate region - do this only once, optimisation.
+                if r.start or r.end:
+                    pos = self._snp_sites_for_contig(
+                        contig=contig,
+                        field="POS",
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    loc_region = locate_region(r, np.asarray(pos))
+                    x = x[loc_region]
 
-            lx.append(x)
+                lx.append(x)
 
-        # Concatenate data from multiple regions.
-        d = da_concat(lx, axis=0)
+            # Concatenate data from multiple regions.
+            d = da_concat(lx, axis=0)
 
         # Apply site filters if requested.
         if site_mask_prepped is not None:
@@ -1475,10 +1479,13 @@ class AnophelesSnpData(
             gt = ds_bi["call_genotype"].data
             gt_out = allel.GenotypeDaskArray(gt).map_alleles(allele_mapping)
             data_vars["call_genotype"] = (
-                "variants",
-                "samples",
-                "ploidy",
-            ), gt_out.values
+                (
+                    "variants",
+                    "samples",
+                    "ploidy",
+                ),
+                gt_out.values,
+            )
 
             # Build dataset.
             ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)

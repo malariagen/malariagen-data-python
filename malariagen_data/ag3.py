@@ -3,7 +3,7 @@ import sys
 import dask
 import dask.array as da
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # type: ignore
 
 import malariagen_data  # used for .__version__
 
@@ -164,9 +164,9 @@ class Ag3(AnophelesDataResource):
                 "aim_species_fraction_arab": "float64",
                 "aim_species_fraction_colu": "float64",
                 "aim_species_fraction_colu_no2l": "float64",
-                "aim_species_gambcolu_arabiensis": object,
-                "aim_species_gambiae_coluzzii": object,
-                "aim_species": object,
+                "aim_species_gambcolu_arabiensis": "object",
+                "aim_species_gambiae_coluzzii": "object",
+                "aim_species": "object",
             },
             aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
             aim_palettes=AIM_PALETTES,

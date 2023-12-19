@@ -5,19 +5,19 @@ from bisect import bisect_left, bisect_right
 from collections import Counter
 from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
 
-import allel
+import allel  # type: ignore
 import bokeh.layouts
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
 import dask
-import numba
+import numba  # type: ignore
 import numpy as np
 import pandas as pd
-import plotly.express as px
-import plotly.graph_objects as go
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import xarray as xr
-from numpydoc_decorator import doc
+from numpydoc_decorator import doc  # type: ignore
 
 from malariagen_data.anoph import tree_params
 
@@ -557,15 +557,16 @@ class AnophelesDataResource(
 
             # collapse alt allele
             alt_allele = "{" + ",".join(ds["variant_alt_allele"].values) + "}"
-            ds_out["variant_alt_allele"] = "variants", np.array(
-                [alt_allele], dtype=object
+            ds_out["variant_alt_allele"] = (
+                "variants",
+                np.array([alt_allele], dtype=object),
             )
 
         return ds_out
 
     @staticmethod
     def _add_frequency_ci(ds, ci_method):
-        from statsmodels.stats.proportion import proportion_confint
+        from statsmodels.stats.proportion import proportion_confint  # type: ignore
 
         if ci_method is not None:
             count = ds["event_count"].values
@@ -643,13 +644,13 @@ class AnophelesDataResource(
     ):
         # This implementation is based on scikit-allel, but modified to use
         # moving window computation of het counts.
-        from allel.stats.misc import tabulate_state_blocks
-        from allel.stats.roh import _hmm_derive_transition_matrix
+        from allel.stats.misc import tabulate_state_blocks  # type: ignore
+        from allel.stats.roh import _hmm_derive_transition_matrix  # type: ignore
 
         # Protopunica is pomegranate frozen at version 0.14.8, wich is compatible
         # with the code here. Also protopunica has binary wheels available from
         # PyPI and so installs much faster.
-        from protopunica import HiddenMarkovModel, PoissonDistribution
+        from protopunica import HiddenMarkovModel, PoissonDistribution  # type: ignore
 
         # het probabilities
         het_px = np.concatenate([(phet_roh,), phet_nonroh])
@@ -704,46 +705,48 @@ class AnophelesDataResource(
 
         debug("get feature direct from genome_features")
         gs = self.genome_features()
-        feature = gs[gs["ID"] == transcript].squeeze()
-        if feature.empty:
-            raise ValueError(
-                f"No genome feature ID found matching transcript {transcript}"
-            )
-        contig = feature.contig
-        region = Region(contig, feature.start, feature.end)
 
-        debug("grab pos, ref and alt for chrom arm from snp_sites")
-        pos = self.snp_sites(region=contig, field="POS")
-        ref = self.snp_sites(region=contig, field="REF")
-        alt = self.snp_sites(region=contig, field="ALT")
-        loc_feature = locate_region(region, pos)
-        pos = pos[loc_feature].compute()
-        ref = ref[loc_feature].compute()
-        alt = alt[loc_feature].compute()
+        with self._spinner(desc="Prepare SNP data"):
+            feature = gs[gs["ID"] == transcript].squeeze()
+            if feature.empty:
+                raise ValueError(
+                    f"No genome feature ID found matching transcript {transcript}"
+                )
+            contig = feature.contig
+            region = Region(contig, feature.start, feature.end)
 
-        debug("access site filters")
-        filter_pass = dict()
-        masks = self.site_mask_ids
-        for m in masks:
-            x = self.site_filters(region=contig, mask=m)
-            x = x[loc_feature].compute()
-            filter_pass[m] = x
+            debug("grab pos, ref and alt for chrom arm from snp_sites")
+            pos = self.snp_sites(region=contig, field="POS")
+            ref = self.snp_sites(region=contig, field="REF")
+            alt = self.snp_sites(region=contig, field="ALT")
+            loc_feature = locate_region(region, pos)
+            pos = pos[loc_feature].compute()
+            ref = ref[loc_feature].compute()
+            alt = alt[loc_feature].compute()
 
-        debug("set up columns with contig, pos, ref, alt columns")
-        cols = {
-            "contig": contig,
-            "position": np.repeat(pos, 3),
-            "ref_allele": np.repeat(ref.astype("U1"), 3),
-            "alt_allele": alt.astype("U1").flatten(),
-        }
+            debug("access site filters")
+            filter_pass = dict()
+            masks = self.site_mask_ids
+            for m in masks:
+                x = self.site_filters(region=contig, mask=m)
+                x = x[loc_feature].compute()
+                filter_pass[m] = x
 
-        debug("add mask columns")
-        for m in masks:
-            x = filter_pass[m]
-            cols[f"pass_{m}"] = np.repeat(x, 3)
+            debug("set up columns with contig, pos, ref, alt columns")
+            cols = {
+                "contig": contig,
+                "position": np.repeat(pos, 3),
+                "ref_allele": np.repeat(ref.astype("U1"), 3),
+                "alt_allele": alt.astype("U1").flatten(),
+            }
 
-        debug("construct dataframe")
-        df_snps = pd.DataFrame(cols)
+            debug("add mask columns")
+            for m in masks:
+                x = filter_pass[m]
+                cols[f"pass_{m}"] = np.repeat(x, 3)
+
+            debug("construct dataframe")
+            df_snps = pd.DataFrame(cols)
 
         return region, df_snps
 
@@ -3200,7 +3203,7 @@ class AnophelesDataResource(
         debug("extract cohorts into a dataframe")
         cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
-        df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]
+        df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]  # type: ignore
 
         debug("extract variant labels")
         variant_labels = ds["variant_label"].values
@@ -3315,8 +3318,8 @@ class AnophelesDataResource(
     ):
         debug = self._log.debug
         # only import here because of some problems importing globally
-        import ipyleaflet
-        import ipywidgets
+        import ipyleaflet  # type: ignore
+        import ipywidgets  # type: ignore
 
         debug("slice dataset to variant of interest")
         if isinstance(variant, int):
@@ -5880,7 +5883,7 @@ class AnophelesDataResource(
         cohort_size,
         random_seed,
     ):
-        from scipy.spatial.distance import squareform
+        from scipy.spatial.distance import squareform  # type: ignore
 
         # Load haplotypes.
         ds_haps = self.haplotypes(
@@ -6103,9 +6106,9 @@ class AnophelesDataResource(
         width: Optional[dash_params.width] = "100%",
         serve_scripts_locally: dash_params.serve_scripts_locally = dash_params.serve_scripts_locally_default,
     ):
-        import dash_cytoscape as cyto
-        from dash import Dash, dcc, html
-        from dash.dependencies import Input, Output
+        import dash_cytoscape as cyto  # type: ignore
+        from dash import Dash, dcc, html  # type: ignore
+        from dash.dependencies import Input, Output  # type: ignore
 
         debug = self._log.debug
 
@@ -6600,8 +6603,8 @@ class AnophelesDataResource(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> plotly_params.figure:
-        from biotite.sequence.phylo import neighbor_joining
-        from scipy.spatial.distance import squareform
+        from biotite.sequence.phylo import neighbor_joining  # type: ignore
+        from scipy.spatial.distance import squareform  # type: ignore
 
         # Normalise params.
         if count_sort is None and distance_sort is None:

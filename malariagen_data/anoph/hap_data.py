@@ -3,8 +3,8 @@ from typing import Dict, List, Optional, Tuple
 import dask.array as da
 import numpy as np
 import xarray as xr
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     DIM_ALLELE,

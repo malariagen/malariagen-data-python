@@ -68,7 +68,7 @@ pytest-cov = "*"
 notebook = "*"
 jupyterlab = "*"
 pre-commit = "*"
-black = "*"
+ruff = "*"
 snakeviz = "*"
 mypy = "*"
 # docs
@@ -79,10 +79,13 @@ pydata-sphinx-theme = "*"
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
 
-[tool.isort]
-profile = "black"
-
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
 style = "semver"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = []

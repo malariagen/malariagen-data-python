@@ -1,10 +1,10 @@
 from typing import Optional, Tuple
 
-import allel
+import allel  # type: ignore
 import numpy as np
 import pandas as pd
-import plotly.express as px
-from numpydoc_decorator import doc
+import plotly.express as px  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import CacheMiss, check_types, jitter
 from . import base_params, pca_params, plotly_params

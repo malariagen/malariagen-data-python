@@ -69,7 +69,7 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, compression: Optional[str] = "gzip"):
+def read_gff3(buf, compression="gzip"):
     # read as dataframe
     df = pandas.read_csv(
         buf,
