@@ -1,14 +1,11 @@
 import sys
 
 import dask
-import dask.array as da
 import pandas as pd
 import plotly.express as px  # type: ignore
 
-import malariagen_data  # used for .__version__
-
+from . import __version__
 from .anopheles import AnophelesDataResource
-from .util import DIM_VARIANT, simple_xarray_concat
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
@@ -218,13 +215,13 @@ class Ag3(AnophelesDataResource):
             f"Cohorts analysis        : {self._cohorts_analysis}\n"
             f"AIM analysis            : {self._aim_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
-            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
+            f"Software version        : malariagen_data {__version__}\n"
             f"Client location         : {self.client_location}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
             f"or contact data@malariagen.net. For API documentation see \n"
-            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html"
+            f"https://malariagen.github.io/malariagen-data-python/v{__version__}/Ag3.html"
         )
         return text
 
@@ -239,7 +236,7 @@ class Ag3(AnophelesDataResource):
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
                         the MalariaGEN website</a> or contact data@malariagen.net.
-                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html">Ag3 API docs</a>.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{__version__}/Ag3.html">Ag3 API docs</a>.
                     </td></tr>
                 </thead>
                 <tbody>
@@ -283,7 +280,7 @@ class Ag3(AnophelesDataResource):
                         <th style="text-align: left">
                             Software version
                         </th>
-                        <td>malariagen_data {malariagen_data.__version__}</td>
+                        <td>malariagen_data {__version__}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -355,82 +352,6 @@ class Ag3(AnophelesDataResource):
             self._cache_cross_metadata = df
 
         return self._cache_cross_metadata.copy()
-
-    def _haplotype_sites_for_contig(
-        self, *, contig, analysis, field, inline_array, chunks
-    ):
-        """Access haplotype site data for a single contig/chromosome."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = self.virtual_contigs[contig]
-
-            pos_r = super()._haplotype_sites_for_contig(
-                contig=contig_r,
-                analysis=analysis,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            pos_l = super()._haplotype_sites_for_contig(
-                contig=contig_l,
-                analysis=analysis,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            max_r = super().genome_sequence(region=contig_r).shape[0]
-            pos_l = pos_l + max_r
-
-            return da.concatenate([pos_r, pos_l])
-
-        return super()._haplotype_sites_for_contig(
-            contig=contig,
-            analysis=analysis,
-            field=field,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
-    def _haplotypes_for_contig(
-        self, *, contig, sample_set, analysis, inline_array, chunks
-    ):
-        """Access haplotypes for a single whole chromosome and a single sample sets."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = self.virtual_contigs[contig]
-
-            ds_r = super()._haplotypes_for_contig(
-                contig=contig_r,
-                sample_set=sample_set,
-                analysis=analysis,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            ds_l = super()._haplotypes_for_contig(
-                contig=contig_l,
-                sample_set=sample_set,
-                analysis=analysis,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-
-            # handle case where no haplotypes available for given sample set
-            # then convert genome coordinates
-            if ds_l is not None:
-                max_r = super().genome_sequence(region=contig_r).shape[0]
-                ds_l["variant_position"] = ds_l["variant_position"] + max_r
-                ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
-                return ds
-
-            return None
-
-        return super()._haplotypes_for_contig(
-            contig=contig,
-            sample_set=sample_set,
-            analysis=analysis,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
 
     def _results_cache_add_analysis_params(self, params):
         super()._results_cache_add_analysis_params(params)

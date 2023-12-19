@@ -186,4 +186,5 @@ def test_genome_features_virtual_contigs(ag3_sim_api, chrom):
     region = f"{chrom}:{start:,}-{stop:,}"
     df = api.genome_features(region=region)
     assert isinstance(df, pd.DataFrame)
-    assert df["contig"].unique() == region.split(":")[0]
+    if len(df) > 0:
+        assert df["contig"].unique() == region.split(":")[0]

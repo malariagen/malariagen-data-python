@@ -88,10 +88,33 @@ class AnophelesHapData(
     def _haplotype_sites_for_contig(
         self, *, contig, analysis, field, inline_array, chunks
     ):
-        sites = self.open_haplotype_sites(analysis=analysis)
-        arr = sites[f"{contig}/variants/{field}"]
-        arr = da_from_zarr(arr, inline_array=inline_array, chunks=chunks)
-        return arr
+        # Handle virtual contig.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = []
+            offset = 0
+            for c in contigs:
+                arr = self._haplotype_sites_for_contig(
+                    contig=c,
+                    analysis=analysis,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                if field == "POS":
+                    if offset > 0:
+                        arr = arr + offset
+                    offset += self.genome_sequence(region=c).shape[0]
+                arrs.append(arr)
+            return da.concatenate(arrs)
+
+        # Handle contig in the reference genome.
+        else:
+            assert contig in self.contigs
+            sites = self.open_haplotype_sites(analysis=analysis)
+            arr = sites[f"{contig}/variants/{field}"]
+            arr = da_from_zarr(arr, inline_array=inline_array, chunks=chunks)
+            return arr
 
     @check_types
     @doc(
@@ -122,64 +145,98 @@ class AnophelesHapData(
     def _haplotypes_for_contig(
         self, *, contig, sample_set, analysis, inline_array, chunks
     ):
-        # Open haplotypes zarr.
-        root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
+        # Handle virtual contig.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            datasets = []
+            offset = 0
+            for c in contigs:
+                dsc = self._haplotypes_for_contig(
+                    contig=c,
+                    sample_set=sample_set,
+                    analysis=analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                if dsc is None:
+                    # Handle case where no haplotypes available for a sample set,
+                    # bail out early.
+                    return None
+                if offset > 0:
+                    dsc["variant_position"] = dsc["variant_position"] + offset
+                datasets.append(dsc)
+                offset += self.genome_sequence(region=c).shape[0]
+            ret = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            return ret
 
-        # Some sample sets have no data for a given analysis, handle this.
-        if root is None:
-            return None
+        # Handle contig in the reference genome.
+        else:
+            assert contig in self.contigs
 
-        # Open haplotype sites zarr.
-        sites = self.open_haplotype_sites(analysis=analysis)
+            # Open haplotypes zarr.
+            root = self.open_haplotypes(sample_set=sample_set, analysis=analysis)
 
-        coords = dict()
-        data_vars = dict()
+            # Some sample sets have no data for a given analysis, handle this.
+            if root is None:
+                return None
 
-        # Set up variant_position.
-        pos = sites[f"{contig}/variants/POS"]
-        coords["variant_position"] = (
-            [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
-        )
+            # Open haplotype sites zarr.
+            sites = self.open_haplotype_sites(analysis=analysis)
 
-        # Set up variant_contig.
-        contig_index = self.contigs.index(contig)
-        coords["variant_contig"] = (
-            [DIM_VARIANT],
-            da.full_like(pos, fill_value=contig_index, dtype="u1"),
-        )
+            coords = dict()
+            data_vars = dict()
 
-        # Set up variant_allele.
-        ref = da_from_zarr(
-            sites[f"{contig}/variants/REF"], inline_array=inline_array, chunks=chunks
-        )
-        alt = da_from_zarr(
-            sites[f"{contig}/variants/ALT"], inline_array=inline_array, chunks=chunks
-        )
-        variant_allele = da.hstack([ref[:, None], alt[:, None]])
-        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
+            # Set up variant_position.
+            pos = sites[f"{contig}/variants/POS"]
+            coords["variant_position"] = (
+                [DIM_VARIANT],
+                da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            )
 
-        # Set up call_genotype.
-        data_vars["call_genotype"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            da_from_zarr(
-                root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
-            ),
-        )
+            # Set up variant_contig.
+            contig_index = self.contigs.index(contig)
+            coords["variant_contig"] = (
+                [DIM_VARIANT],
+                da.full_like(pos, fill_value=contig_index, dtype="u1"),
+            )
 
-        # Set up sample array.
-        coords["sample_id"] = (
-            [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
-        )
+            # Set up variant_allele.
+            ref = da_from_zarr(
+                sites[f"{contig}/variants/REF"],
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            alt = da_from_zarr(
+                sites[f"{contig}/variants/ALT"],
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            variant_allele = da.hstack([ref[:, None], alt[:, None]])
+            data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
-        # Set up attributes.
-        attrs = {"contigs": self.contigs, "analysis": analysis}
+            # Set up call_genotype.
+            data_vars["call_genotype"] = (
+                [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+                da_from_zarr(
+                    root[f"{contig}/calldata/GT"],
+                    inline_array=inline_array,
+                    chunks=chunks,
+                ),
+            )
 
-        # Create a dataset.
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+            # Set up sample array.
+            coords["sample_id"] = (
+                [DIM_SAMPLE],
+                da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            )
 
-        return ds
+            # Set up attributes.
+            attrs = {"contigs": self.contigs, "analysis": analysis}
+
+            # Create a dataset.
+            ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+            return ds
 
     @check_types
     @doc(

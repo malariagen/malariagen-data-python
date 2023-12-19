@@ -1,9 +1,8 @@
 import sys
 
-import plotly.express as px
+import plotly.express as px  # type: ignore
 
-import malariagen_data  # used for .__version__
-
+from . import __version__
 from .anopheles import AnophelesDataResource
 
 MAJOR_VERSION_NUMBER = 1
@@ -139,13 +138,13 @@ class Af1(AnophelesDataResource):
             f"Results cache           : {self._results_cache}\n"
             f"Cohorts analysis        : {self._cohorts_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
-            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
+            f"Software version        : malariagen_data {__version__}\n"
             f"Client location         : {self.client_location}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
             f"or contact data@malariagen.net. For API documentation see \n"
-            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html"
+            f"https://malariagen.github.io/malariagen-data-python/v{__version__}/Af1.html"
         )
         return text
 
@@ -160,7 +159,7 @@ class Af1(AnophelesDataResource):
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
                         the MalariaGEN website</a> or contact data@malariagen.net.
-                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html">Af1 API docs</a>.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{__version__}/Af1.html">Af1 API docs</a>.
                     </td></tr>
                 </thead>
                 <tbody>
@@ -198,7 +197,7 @@ class Af1(AnophelesDataResource):
                         <th style="text-align: left">
                             Software version
                         </th>
-                        <td>malariagen_data {malariagen_data.__version__}</td>
+                        <td>malariagen_data {__version__}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">

@@ -4,7 +4,7 @@ import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
-import zarr
+import zarr  # type: ignore
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
@@ -33,6 +33,7 @@ def ag3_sim_api(ag3_sim_fixture):
         gff_default_attributes=("ID", "Parent", "Name", "description"),
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
         default_phasing_analysis="gamb_colu_arab",
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
 
@@ -516,3 +517,39 @@ def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapD
         analysis=analysis,
         sample_query=None,
     )
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_haplotypes_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    ds_r = api.haplotypes(region=contig_r)
+    ds_l = api.haplotypes(region=contig_l)
+    ds_chrom = api.haplotypes(region=chrom)
+    assert isinstance(ds_chrom, xr.Dataset)
+    assert len(ds_chrom.dims) == 4
+    assert ds_chrom.sizes["variants"] == (
+        ds_r.sizes["variants"] + ds_l.sizes["variants"]
+    )
+    for dim in "samples", "alleles", "ploidy":
+        assert ds_chrom.sizes[dim] == ds_r.sizes[dim] == ds_l.sizes[dim]
+    assert ds_chrom["call_genotype"].dtype == "int8"
+    assert ds_chrom["variant_position"].dtype == "int32"
+    pos = ds_chrom["variant_position"].values
+    assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    ds_region = api.haplotypes(region=region)
+    assert isinstance(ds_region, xr.Dataset)
+    assert len(ds_region.dims) == 4
+    for dim in "samples", "alleles", "ploidy":
+        assert ds_region.sizes[dim] == ds_chrom.sizes[dim]
+    assert ds_region["call_genotype"].dtype == "int8"
+    assert ds_region["variant_position"].dtype == "int32"
+    pos = ds_region["variant_position"].values
+    assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
+    assert np.all(pos >= start)
+    assert np.all(pos <= stop)

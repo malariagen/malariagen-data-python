@@ -54,37 +54,6 @@ def test_cross_metadata():
     assert df_crosses["sex"].unique().tolist() == expected_sex_values
 
 
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_haplotypes_for_joined_arms(chrom):
-    ag3 = setup_ag3()
-    contig_r = chrom[0] + chrom[1]
-    contig_l = chrom[0] + chrom[2]
-    ds_r = ag3.haplotypes(region=contig_r)
-    ds_l = ag3.haplotypes(region=contig_l)
-    ds_expected = xr.concat([ds_r, ds_l], dim="variants")
-
-    ds_actual = ag3.haplotypes(region=chrom)
-
-    assert isinstance(ds_actual, xr.Dataset)
-    assert len(ds_actual.dims) == 4
-    assert ds_actual["call_genotype"].dtype == "int8"
-    assert ds_actual["variant_position"].dtype == "int32"
-    assert ds_actual["call_genotype"].shape == ds_expected["call_genotype"].shape
-
-
-@pytest.mark.parametrize(
-    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
-)
-def test_haplotypes_for_joined_arms_region(region):
-    ag3 = setup_ag3()
-    ds_haps = ag3.haplotypes(region=region)
-
-    assert isinstance(ds_haps, xr.Dataset)
-    assert len(ds_haps.dims) == 4
-    assert ds_haps["call_genotype"].dtype == "int8"
-    assert ds_haps["variant_position"].dtype == "int32"
-
-
 def test_snp_effects():
     ag3 = setup_ag3()
     gste2 = "AGAP009194-RA"
