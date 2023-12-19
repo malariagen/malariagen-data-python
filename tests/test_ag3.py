@@ -38,34 +38,6 @@ def test_repr():
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_genome_features_joined_arms(chrom):
-    ag3 = setup_ag3()
-    contig_r = chrom[0] + chrom[1]
-    contig_l = chrom[0] + chrom[2]
-    df_r = ag3.genome_features(region=contig_r)
-    df_l = ag3.genome_features(region=contig_l)
-    max_r = ag3.genome_sequence(contig_r).shape[0]
-    df_l = df_l.assign(start=lambda x: x.start + max_r, end=lambda x: x.end + max_r)
-    df_concat = pd.concat([df_r, df_l], axis=0).reset_index(drop=True)
-    df_concat = df_concat.assign(contig=chrom)
-    df = ag3.genome_features(region=chrom)
-    assert isinstance(df, pd.DataFrame)
-    assert df.shape[0] == df_r.shape[0] + df_l.shape[0]
-    assert all(df["contig"] == chrom)
-    assert_frame_equal(df, df_concat)
-
-
-@pytest.mark.parametrize(
-    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
-)
-def test_genome_features_joined_arms_region(region):
-    ag3 = setup_ag3()
-    df = ag3.genome_features(region=region)
-    assert isinstance(df, pd.DataFrame)
-    assert df["contig"].unique() == region.split(":")[0]
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
 def test_snp_sites_for_joined_arms(chrom):
     ag3 = setup_ag3()
     contig_r = chrom[0] + chrom[1]

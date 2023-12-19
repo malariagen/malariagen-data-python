@@ -25,7 +25,11 @@ G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
-VIRTUAL_CONTIGS = {"2RL": ("2R", "2L"), "3RL": ("3R", "3L")}
+VIRTUAL_CONTIGS = {
+    "2RL": ("2R", "2L"),
+    "3RL": ("3R", "3L"),
+    "23X": ("2R", "2L", "3R", "3L", "X"),
+}
 
 
 def _setup_aim_palettes():
@@ -351,28 +355,6 @@ class Ag3(AnophelesDataResource):
             self._cache_cross_metadata = df
 
         return self._cache_cross_metadata.copy()
-
-    def _genome_features_for_contig(self, *, contig, attributes):
-        """Obtain the genome features for a given contig as a pandas DataFrame."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = self.virtual_contigs[contig]
-
-            df_r = super()._genome_features_for_contig(
-                contig=contig_r, attributes=attributes
-            )
-            df_l = super()._genome_features_for_contig(
-                contig=contig_l, attributes=attributes
-            )
-            max_r = super().genome_sequence(region=contig_r).shape[0]
-            df_l = df_l.assign(
-                start=lambda x: x.start + max_r, end=lambda x: x.end + max_r
-            )
-            df = pd.concat([df_r, df_l], axis=0)
-            df = df.assign(contig=contig)
-            return df
-
-        return super()._genome_features_for_contig(contig=contig, attributes=attributes)
 
     def _snp_genotypes_for_contig(
         self, *, contig, sample_set, field, inline_array, chunks

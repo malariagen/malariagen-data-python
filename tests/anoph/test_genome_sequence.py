@@ -100,28 +100,28 @@ def test_virtual_contigs(ag3_sim_api):
             assert x in contigs
 
 
-def test_genome_sequence_virtual_contigs(ag3_sim_api):
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_genome_sequence_virtual_contigs(ag3_sim_api, chrom):
     api = ag3_sim_api
-    for vc, contigs in api.virtual_contigs.items():
-        contig_r, contig_l = contigs
-        seq_r = api.genome_sequence(region=contig_r)
-        seq_l = api.genome_sequence(region=contig_l)
-        seq = api.genome_sequence(region=vc)
-        assert isinstance(seq, da.Array)
-        assert seq.dtype == seq_r.dtype == seq_l.dtype
-        assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
-        # N.B., we use a single-threaded computation here to avoid race conditions
-        # when data are being cached locally from GCS (which manifests as blosc
-        # decompression errors).
-        assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
-            scheduler="single-threaded"
-        )
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    seq_r = api.genome_sequence(region=contig_r)
+    seq_l = api.genome_sequence(region=contig_l)
+    seq = api.genome_sequence(region=chrom)
+    assert isinstance(seq, da.Array)
+    assert seq.dtype == seq_r.dtype == seq_l.dtype
+    assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
+    # N.B., we use a single-threaded computation here to avoid race conditions
+    # when data are being cached locally from GCS (which manifests as blosc
+    # decompression errors).
+    assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
+        scheduler="single-threaded"
+    )
 
-        # Test with region.
-        start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
-        region = f"{vc}:{start:,}-{stop:,}"
-        seq_region = api.genome_sequence(region=region)
-        assert isinstance(seq_region, da.Array)
-        assert seq_region.ndim == 1
-        assert seq_region.dtype == seq.dtype
-        assert seq_region.shape[0] == stop - start + 1
+    # Test with region.
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    seq_region = api.genome_sequence(region=region)
+    assert isinstance(seq_region, da.Array)
+    assert seq_region.ndim == 1
+    assert seq_region.dtype == seq.dtype
+    assert seq_region.shape[0] == stop - start + 1
