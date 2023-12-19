@@ -508,37 +508,46 @@ def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapD
     )
 
 
+@pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_haplotypes_virtual_contigs(ag3_sim_api, chrom):
+def test_haplotypes_virtual_contigs(ag3_sim_api, analysis, chrom):
     api = ag3_sim_api
     contig_r, contig_l = api.virtual_contigs[chrom]
-    ds_r = api.haplotypes(region=contig_r)
-    ds_l = api.haplotypes(region=contig_l)
-    ds_chrom = api.haplotypes(region=chrom)
-    assert isinstance(ds_chrom, xr.Dataset)
-    assert len(ds_chrom.dims) == 4
-    assert ds_chrom.sizes["variants"] == (
-        ds_r.sizes["variants"] + ds_l.sizes["variants"]
-    )
-    for dim in "samples", "alleles", "ploidy":
-        assert ds_chrom.sizes[dim] == ds_r.sizes[dim] == ds_l.sizes[dim]
-    assert ds_chrom["call_genotype"].dtype == "int8"
-    assert ds_chrom["variant_position"].dtype == "int32"
-    pos = ds_chrom["variant_position"].values
-    assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
+    try:
+        ds_r = api.haplotypes(region=contig_r, analysis=analysis)
+    except ValueError:
+        # Assume no haplotypes available for the given analysis.
+        with pytest.raises(ValueError):
+            api.haplotypes(region=contig_l, analysis=analysis)
+        with pytest.raises(ValueError):
+            api.haplotypes(region=chrom, analysis=analysis)
+    else:
+        ds_l = api.haplotypes(region=contig_l, analysis=analysis)
+        ds_chrom = api.haplotypes(region=chrom, analysis=analysis)
+        assert isinstance(ds_chrom, xr.Dataset)
+        assert len(ds_chrom.dims) == 4
+        assert ds_chrom.sizes["variants"] == (
+            ds_r.sizes["variants"] + ds_l.sizes["variants"]
+        )
+        for dim in "samples", "alleles", "ploidy":
+            assert ds_chrom.sizes[dim] == ds_r.sizes[dim] == ds_l.sizes[dim]
+        assert ds_chrom["call_genotype"].dtype == "int8"
+        assert ds_chrom["variant_position"].dtype == "int32"
+        pos = ds_chrom["variant_position"].values
+        assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
 
-    # Test with region.
-    seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
-    region = f"{chrom}:{start:,}-{stop:,}"
-    ds_region = api.haplotypes(region=region)
-    assert isinstance(ds_region, xr.Dataset)
-    assert len(ds_region.dims) == 4
-    for dim in "samples", "alleles", "ploidy":
-        assert ds_region.sizes[dim] == ds_chrom.sizes[dim]
-    assert ds_region["call_genotype"].dtype == "int8"
-    assert ds_region["variant_position"].dtype == "int32"
-    pos = ds_region["variant_position"].values
-    assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
-    assert np.all(pos >= start)
-    assert np.all(pos <= stop)
+        # Test with region.
+        seq = api.genome_sequence(region=chrom)
+        start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+        region = f"{chrom}:{start:,}-{stop:,}"
+        ds_region = api.haplotypes(region=region, analysis=analysis)
+        assert isinstance(ds_region, xr.Dataset)
+        assert len(ds_region.dims) == 4
+        for dim in "samples", "alleles", "ploidy":
+            assert ds_region.sizes[dim] == ds_chrom.sizes[dim]
+        assert ds_region["call_genotype"].dtype == "int8"
+        assert ds_region["variant_position"].dtype == "int32"
+        pos = ds_region["variant_position"].values
+        assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
+        assert np.all(pos >= start)
+        assert np.all(pos <= stop)
