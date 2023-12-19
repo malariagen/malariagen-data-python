@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Tuple, Mapping, Sequence, Optional
 
 import dask.array as da
 import zarr  # type: ignore
@@ -16,11 +16,18 @@ from .base import AnophelesBase
 
 
 class AnophelesGenomeSequenceData(AnophelesBase):
-    def __init__(self, **kwargs):
+    def __init__(
+        self, virtual_contigs: Optional[Mapping[str, Sequence[str]]] = None, **kwargs
+    ):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
         # to the superclass constructor.
         super().__init__(**kwargs)
+
+        # Store virtual contigs.
+        if virtual_contigs is None:
+            virtual_contigs = dict()
+        self._virtual_contigs = virtual_contigs
 
         # Initialize cache attributes.
         self._cache_genome = None
@@ -29,6 +36,11 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def contigs(self) -> Tuple[str, ...]:
         """Contigs in the reference genome."""
         return tuple(self.config["CONTIGS"])
+
+    @property
+    def virtual_contigs(self) -> Mapping[str, Sequence[str]]:
+        """Virtual contigs made by concatenating contigs in the reference genome."""
+        return self._virtual_contigs
 
     @property
     def _genome_zarr_path(self) -> str:
@@ -64,11 +76,26 @@ class AnophelesGenomeSequenceData(AnophelesBase):
 
     def _genome_sequence_for_contig(self, *, contig, inline_array, chunks):
         """Obtain the genome sequence for a given contig as an array."""
-        assert contig in self.contigs
-        root = self.open_genome()
-        z = root[contig]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+
+        # Handle virtual contigs.
+        if contig in self.virtual_contigs:
+            # Concatenate sequences from multiple contigs in the reference genome.
+            contigs = self.virtual_contigs[contig]
+            seqs = [
+                self._genome_sequence_for_contig(
+                    contig=c, inline_array=inline_array, chunks=chunks
+                )
+                for c in contigs
+            ]
+            return da.concatenate(seqs)
+
+        # Handle normal contigs in the reference genome.
+        else:
+            assert contig in self.contigs
+            root = self.open_genome()
+            z = root[contig]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return d
 
     @check_types
     @doc(

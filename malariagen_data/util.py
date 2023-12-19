@@ -429,9 +429,11 @@ def _handle_region_feature(resource, region):
 
 def _valid_contigs(resource):
     """Determine which contig identifiers are valid for the given data resource."""
-    valid_contigs = resource.contigs
+    valid_contigs = tuple(resource.contigs)
     # allow for optional virtual contigs
-    valid_contigs += getattr(resource, "virtual_contigs", ())
+    virtual_contigs = getattr(resource, "virtual_contigs", None)
+    if virtual_contigs is not None:
+        valid_contigs += tuple(virtual_contigs.keys())
     return valid_contigs
 
 

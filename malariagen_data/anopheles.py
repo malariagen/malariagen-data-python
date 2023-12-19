@@ -3,7 +3,7 @@ import warnings
 from abc import abstractmethod
 from bisect import bisect_left, bisect_right
 from collections import Counter
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union, Sequence
 
 import allel  # type: ignore
 import bokeh.layouts
@@ -139,6 +139,7 @@ class AnophelesDataResource(
         tqdm_class,
         storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
         taxon_colors: Optional[Mapping[str, str]],
+        virtual_contigs: Optional[Mapping[str, Sequence[str]]],
     ):
         super().__init__(
             url=url,
@@ -167,6 +168,7 @@ class AnophelesDataResource(
             results_cache=results_cache,
             tqdm_class=tqdm_class,
             taxon_colors=taxon_colors,
+            virtual_contigs=virtual_contigs,
         )
 
         # set up caches

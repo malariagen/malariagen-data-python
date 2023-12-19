@@ -128,6 +128,7 @@ class Af1(AnophelesDataResource):
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
+            virtual_contigs=None,
         )
 
     def __repr__(self):

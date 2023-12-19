@@ -25,6 +25,7 @@ G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+VIRTUAL_CONTIGS = {"2RL": ("2R", "2L"), "3RL": ("3R", "3L")}
 
 
 def _setup_aim_palettes():
@@ -129,7 +130,6 @@ class Ag3(AnophelesDataResource):
 
     """
 
-    virtual_contigs = "2RL", "3RL"
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -189,6 +189,7 @@ class Ag3(AnophelesDataResource):
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
+            virtual_contigs=VIRTUAL_CONTIGS,
         )
 
         # set up caches
@@ -351,29 +352,11 @@ class Ag3(AnophelesDataResource):
 
         return self._cache_cross_metadata.copy()
 
-    def _genome_sequence_for_contig(self, *, contig, inline_array, chunks):
-        """Obtain the genome sequence for a given contig as an array."""
-
-        if contig in self.virtual_contigs:
-            # handle virtual contig with joined arms
-            contig_r, contig_l = _chrom_to_contigs(contig)
-            d_r = super()._genome_sequence_for_contig(
-                contig=contig_r, inline_array=inline_array, chunks=chunks
-            )
-            d_l = super()._genome_sequence_for_contig(
-                contig=contig_l, inline_array=inline_array, chunks=chunks
-            )
-            return da.concatenate([d_r, d_l])
-
-        return super()._genome_sequence_for_contig(
-            contig=contig, inline_array=inline_array, chunks=chunks
-        )
-
     def _genome_features_for_contig(self, *, contig, attributes):
         """Obtain the genome features for a given contig as a pandas DataFrame."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             df_r = super()._genome_features_for_contig(
                 contig=contig_r, attributes=attributes
@@ -397,7 +380,7 @@ class Ag3(AnophelesDataResource):
         """Access SNP genotypes for a single contig/chromosome and multiple sample sets."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             d_r = super()._snp_genotypes_for_contig(
                 contig=contig_r,
@@ -427,7 +410,7 @@ class Ag3(AnophelesDataResource):
         """Access SNP sites for a single contig/chromosome."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             field_r = super()._snp_sites_for_contig(
                 contig=contig_r, field=field, inline_array=inline_array, chunks=chunks
@@ -450,7 +433,7 @@ class Ag3(AnophelesDataResource):
         """Access SNP calls for a single contig/chromosome and a single sample sets as an xarray dataset."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             ds_r = super()._snp_calls_for_contig(
                 contig=contig_r,
@@ -480,7 +463,7 @@ class Ag3(AnophelesDataResource):
         """Access SNP variants for a single contig/chromosome as an xarray dataset."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             ds_r = super()._snp_variants_for_contig(
                 contig=contig_r,
@@ -511,7 +494,7 @@ class Ag3(AnophelesDataResource):
         """Access haplotype site data for a single contig/chromosome."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             pos_r = super()._haplotype_sites_for_contig(
                 contig=contig_r,
@@ -546,7 +529,7 @@ class Ag3(AnophelesDataResource):
         """Access haplotypes for a single whole chromosome and a single sample sets."""
 
         if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
+            contig_r, contig_l = self.virtual_contigs[contig]
 
             ds_r = super()._haplotypes_for_contig(
                 contig=contig_r,
@@ -585,11 +568,3 @@ class Ag3(AnophelesDataResource):
         super()._results_cache_add_analysis_params(params)
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
-
-
-def _chrom_to_contigs(chrom):
-    """Split a chromosome name into two contig names."""
-    assert chrom in ["2RL", "3RL"]
-    contig_r = chrom[0] + chrom[1]
-    contig_l = chrom[0] + chrom[2]
-    return contig_r, contig_l

@@ -1,3 +1,5 @@
+from typing import Mapping, Sequence
+
 import dask.array as da
 import numpy as np
 import pytest
@@ -18,6 +20,7 @@ def ag3_sim_api(ag3_sim_fixture):
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
 
@@ -83,3 +86,42 @@ def test_genome_sequence_region(fixture, api):
         assert seq.ndim == 1
         assert seq.dtype.kind == "S"
         assert seq.shape[0] == stop - start + 1
+
+
+def test_virtual_contigs(ag3_sim_api):
+    api = ag3_sim_api
+    contigs = api.contigs
+    virtual_contigs = api.virtual_contigs
+    assert isinstance(virtual_contigs, Mapping)
+    for c, v in virtual_contigs.items():
+        assert isinstance(c, str)
+        assert isinstance(v, Sequence)
+        for x in v:
+            assert x in contigs
+
+
+def test_genome_sequence_virtual_contigs(ag3_sim_api):
+    api = ag3_sim_api
+    for vc, contigs in api.virtual_contigs.items():
+        contig_r, contig_l = contigs
+        seq_r = api.genome_sequence(region=contig_r)
+        seq_l = api.genome_sequence(region=contig_l)
+        seq = api.genome_sequence(region=vc)
+        assert isinstance(seq, da.Array)
+        assert seq.dtype == seq_r.dtype == seq_l.dtype
+        assert seq.shape[0] == seq_r.shape[0] + seq_l.shape[0]
+        # N.B., we use a single-threaded computation here to avoid race conditions
+        # when data are being cached locally from GCS (which manifests as blosc
+        # decompression errors).
+        assert da.all(seq == da.concatenate([seq_r, seq_l])).compute(
+            scheduler="single-threaded"
+        )
+
+        # Test with region.
+        start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+        region = f"{vc}:{start:,}-{stop:,}"
+        seq_region = api.genome_sequence(region=region)
+        assert isinstance(seq_region, da.Array)
+        assert seq_region.ndim == 1
+        assert seq_region.dtype == seq.dtype
+        assert seq_region.shape[0] == stop - start + 1
