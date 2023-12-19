@@ -388,29 +388,6 @@ class Ag3(AnophelesDataResource):
             chunks=chunks,
         )
 
-    def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
-        """Access SNP sites for a single contig/chromosome."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = self.virtual_contigs[contig]
-
-            field_r = super()._snp_sites_for_contig(
-                contig=contig_r, field=field, inline_array=inline_array, chunks=chunks
-            )
-            field_l = super()._snp_sites_for_contig(
-                contig=contig_l, field=field, inline_array=inline_array, chunks=chunks
-            )
-
-            if field == "POS":
-                max_r = super().genome_sequence(region=contig_r).shape[0]
-                field_l = field_l + max_r
-
-            return da.concatenate([field_r, field_l])
-
-        return super()._snp_sites_for_contig(
-            contig=contig, field=field, inline_array=inline_array, chunks=chunks
-        )
-
     def _snp_calls_for_contig(self, contig, *, sample_set, inline_array, chunks):
         """Access SNP calls for a single contig/chromosome and a single sample sets as an xarray dataset."""
 

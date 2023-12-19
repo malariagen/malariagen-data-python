@@ -259,10 +259,33 @@ class AnophelesSnpData(
         chunks: base_params.chunks,
     ) -> da.Array:
         """Access SNP sites data for a single contig."""
-        root = self.open_snp_sites()
-        z = root[f"{contig}/variants/{field}"]
-        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return ret
+
+        # Handle virtual contig.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = []
+            offset = 0
+            for c in contigs:
+                arr = self._snp_sites_for_contig(
+                    contig=c,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                if field == "POS":
+                    if offset > 0:
+                        arr = arr + offset
+                    offset += self.genome_sequence(region=c).shape[0]
+                arrs.append(arr)
+            return da.concatenate(arrs)
+
+        # Handle contig in the reference genome.
+        else:
+            assert contig in self.contigs
+            root = self.open_snp_sites()
+            z = root[f"{contig}/variants/{field}"]
+            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return ret
 
     def _snp_sites_for_region(
         self,

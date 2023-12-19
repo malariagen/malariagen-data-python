@@ -38,47 +38,6 @@ def test_repr():
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_sites_for_joined_arms(chrom):
-    ag3 = setup_ag3()
-    contig_r = chrom[0] + chrom[1]
-    contig_l = chrom[0] + chrom[2]
-    sites_r = ag3.snp_sites(region=contig_r, field="POS")
-    sites_l = ag3.snp_sites(region=contig_l, field="POS")
-    max_r = ag3.genome_sequence(region=contig_r).shape[0]
-    sites_expected = da.concatenate([sites_r, sites_l + max_r])
-    sites_actual = ag3.snp_sites(region=chrom, field="POS")
-
-    assert isinstance(sites_actual, da.Array)
-    assert sites_actual.ndim == 1
-    assert sites_actual.dtype == "int32"
-    assert da.all(sites_expected == sites_actual).compute(scheduler="single-threaded")
-
-
-@pytest.mark.parametrize(
-    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
-)
-@pytest.mark.parametrize("field", ["POS", "REF", "ALT"])
-def test_snp_sites_for_joined_arms_region(region, field):
-    ag3 = setup_ag3()
-    sites = ag3.snp_sites(region=region, field=field)
-
-    start, end = region.replace(",", "").split(":")[1].split("-")
-    size = int(end) - int(start)
-
-    assert isinstance(sites, da.Array)
-    assert sites.shape[0] <= size
-    if field == "POS":
-        assert sites.dtype == "int32"
-        assert sites.ndim == 1
-    elif field == "REF":
-        assert sites.dtype == "S1"
-        assert sites.ndim == 1
-    elif field == "ALT":
-        assert sites.dtype == "S1"
-        assert sites.ndim == 2
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
 def test_snp_genotypes_for_joined_arms(chrom):
     ag3 = setup_ag3()
     contig_r = chrom[0] + chrom[1]

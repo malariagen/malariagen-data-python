@@ -1,13 +1,13 @@
 import random
 from itertools import product
 
-import allel
+import allel  # type: ignore
 import bokeh.model
 import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
-import zarr
+import zarr  # type: ignore
 from numpy.testing import assert_array_equal
 from pytest_cases import parametrize_with_cases
 
@@ -38,6 +38,7 @@ def ag3_sim_api(ag3_sim_fixture):
         gff_default_attributes=("ID", "Parent", "Name", "description"),
         default_site_mask="gamb_colu_arab",
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
 
@@ -1255,3 +1256,38 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
             max_missing_an=max_missing_an,
             n_snps=n_snps_available + 10,
         )
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_sites_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    pos_r = api.snp_sites(region=contig_r, field="POS")
+    pos_l = api.snp_sites(region=contig_l, field="POS")
+    offset = api.genome_sequence(region=contig_r).shape[0]
+    pos_expected = da.concatenate([pos_r, pos_l + offset])
+    pos_actual = api.snp_sites(region=chrom, field="POS")
+    assert isinstance(pos_actual, da.Array)
+    assert pos_actual.ndim == 1
+    assert pos_actual.dtype == "int32"
+    assert da.all(pos_expected == pos_actual).compute(scheduler="single-threaded")
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    region_size = stop - start
+
+    for field in ["POS", "REF", "ALT"]:
+        x = api.snp_sites(region=region, field=field)
+        assert isinstance(x, da.Array)
+        assert x.shape[0] <= region_size
+        if field == "POS":
+            assert x.dtype == "int32"
+            assert x.ndim == 1
+        elif field == "REF":
+            assert x.dtype == "S1"
+            assert x.ndim == 1
+        elif field == "ALT":
+            assert x.dtype == "S1"
+            assert x.ndim == 2
