@@ -374,10 +374,27 @@ class AnophelesSnpData(
         chunks: base_params.chunks,
     ) -> da.Array:
         """Access SNP genotypes for a single contig and a single sample set."""
-        root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[f"{contig}/calldata/{field}"]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = [
+                self._snp_genotypes_for_contig(
+                    contig=c,
+                    sample_set=sample_set,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for c in contigs
+            ]
+            return da.concatenate(arrs)
+
+        else:
+            assert contig in self.contigs
+            root = self.open_snp_genotypes(sample_set=sample_set)
+            z = root[f"{contig}/calldata/{field}"]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return d
 
     @check_types
     @doc(

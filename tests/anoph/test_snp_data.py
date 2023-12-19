@@ -1291,3 +1291,28 @@ def test_snp_sites_virtual_contigs(ag3_sim_api, chrom):
         elif field == "ALT":
             assert x.dtype == "S1"
             assert x.ndim == 2
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_genotypes_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    d_r = api.snp_genotypes(region=contig_r)
+    d_l = api.snp_genotypes(region=contig_l)
+    d = da.concatenate([d_r, d_l])
+    gt = api.snp_genotypes(region=chrom)
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert gt.shape == d.shape
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    pos = api.snp_sites(region=region, field="POS")
+    gt = api.snp_genotypes(region=region)
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert pos.shape[0] == gt.shape[0]

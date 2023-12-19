@@ -356,38 +356,6 @@ class Ag3(AnophelesDataResource):
 
         return self._cache_cross_metadata.copy()
 
-    def _snp_genotypes_for_contig(
-        self, *, contig, sample_set, field, inline_array, chunks
-    ):
-        """Access SNP genotypes for a single contig/chromosome and multiple sample sets."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = self.virtual_contigs[contig]
-
-            d_r = super()._snp_genotypes_for_contig(
-                contig=contig_r,
-                sample_set=sample_set,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            d_l = super()._snp_genotypes_for_contig(
-                contig=contig_l,
-                sample_set=sample_set,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            return da.concatenate([d_r, d_l])
-
-        return super()._snp_genotypes_for_contig(
-            contig=contig,
-            sample_set=sample_set,
-            field=field,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
     def _snp_calls_for_contig(self, contig, *, sample_set, inline_array, chunks):
         """Access SNP calls for a single contig/chromosome and a single sample sets as an xarray dataset."""
 

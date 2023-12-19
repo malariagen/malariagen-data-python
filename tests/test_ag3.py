@@ -1,10 +1,9 @@
 import random
 
-import dask.array as da
 import numpy as np
 import pandas as pd
 import pytest
-import scipy.stats
+import scipy.stats  # type: ignore
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
@@ -35,37 +34,6 @@ def test_repr():
     assert isinstance(ag3, Ag3)
     r = repr(ag3)
     assert isinstance(r, str)
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_genotypes_for_joined_arms(chrom):
-    ag3 = setup_ag3()
-    contig_r = chrom[0] + chrom[1]
-    contig_l = chrom[0] + chrom[2]
-    d_r = ag3.snp_genotypes(region=contig_r)
-    d_l = ag3.snp_genotypes(region=contig_l)
-    d = da.concatenate([d_r, d_l])
-
-    gt = ag3.snp_genotypes(region=chrom)
-
-    assert isinstance(gt, da.Array)
-    assert gt.ndim == 3
-    assert gt.dtype == "i1"
-    assert gt.shape == d.shape
-
-
-@pytest.mark.parametrize(
-    "region", ["2RL:61,000,000-62,000,000", "3RL:53,000,000-54,000,000"]
-)
-def test_snp_genotypes_for_joined_arms_region(region):
-    ag3 = setup_ag3()
-    gt = ag3.snp_genotypes(region=region)
-    sites = ag3.snp_sites(region=region, field="POS")
-
-    assert isinstance(gt, da.Array)
-    assert gt.ndim == 3
-    assert gt.dtype == "i1"
-    assert sites.shape[0] == gt.shape[0]
 
 
 def test_cross_metadata():
