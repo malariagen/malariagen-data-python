@@ -446,7 +446,7 @@ class AnophelesDataResource(
             # remove the nans and sort
             cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
             for coh in cohort_labels:
-                loc_coh = df_samples[cohorts].fillna("") == coh
+                loc_coh = df_samples[cohorts] == coh
                 coh_dict[coh] = loc_coh.values
 
         return coh_dict

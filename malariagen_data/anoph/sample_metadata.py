@@ -43,7 +43,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
-        self._aim_metadata_dtype["sample_id"] = "string"
+        self._aim_metadata_dtype["sample_id"] = "object"
 
         # Set up taxon colors.
         self._taxon_colors = taxon_colors
@@ -68,16 +68,16 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             dtype = {
-                "sample_id": "string",
-                "partner_sample_id": "string",
-                "contributor": "string",
-                "country": "string",
-                "location": "string",
+                "sample_id": "object",
+                "partner_sample_id": "object",
+                "contributor": "object",
+                "country": "object",
+                "location": "object",
                 "year": "int64",
                 "month": "int64",
                 "latitude": "float64",
                 "longitude": "float64",
-                "sex_call": "string",
+                "sex_call": "object",
             }
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
@@ -207,8 +207,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         cols = self._cohorts_metadata_columns
         if cols:
             # All columns are string columns.
-            dtype = {c: "string" for c in cols}
-            dtype["sample_id"] = "string"
+            dtype = {c: "object" for c in cols}
+            dtype["sample_id"] = "object"
             return dtype
 
     def _parse_cohorts_metadata(
