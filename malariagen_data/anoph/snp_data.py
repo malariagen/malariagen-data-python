@@ -388,37 +388,41 @@ class AnophelesSnpData(
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
 
-        # Concatenate multiple sample sets and/or contigs.
-        lx = []
-        for r in regions:
-            contig = r.contig
-            ly = []
+        with self._spinner("Access SNP genotypes"):
+            # Concatenate multiple sample sets and/or contigs.
+            lx = []
+            for r in regions:
+                contig = r.contig
+                ly = []
 
-            for s in sample_sets_prepped:
-                y = self._snp_genotypes_for_contig(
-                    contig=contig,
-                    sample_set=s,
-                    field=field,
-                    inline_array=inline_array,
-                    chunks=chunks,
-                )
-                ly.append(y)
+                for s in sample_sets_prepped:
+                    y = self._snp_genotypes_for_contig(
+                        contig=contig,
+                        sample_set=s,
+                        field=field,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    ly.append(y)
 
-            # Concatenate data from multiple sample sets.
-            x = da_concat(ly, axis=1)
+                # Concatenate data from multiple sample sets.
+                x = da_concat(ly, axis=1)
 
-            # Locate region - do this only once, optimisation.
-            if r.start or r.end:
-                pos = self._snp_sites_for_contig(
-                    contig=contig, field="POS", inline_array=inline_array, chunks=chunks
-                )
-                loc_region = locate_region(r, np.asarray(pos))
-                x = x[loc_region]
+                # Locate region - do this only once, optimisation.
+                if r.start or r.end:
+                    pos = self._snp_sites_for_contig(
+                        contig=contig,
+                        field="POS",
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    loc_region = locate_region(r, np.asarray(pos))
+                    x = x[loc_region]
 
-            lx.append(x)
+                lx.append(x)
 
-        # Concatenate data from multiple regions.
-        d = da_concat(lx, axis=0)
+            # Concatenate data from multiple regions.
+            d = da_concat(lx, axis=0)
 
         # Apply site filters if requested.
         if site_mask_prepped is not None:

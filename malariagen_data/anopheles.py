@@ -446,7 +446,7 @@ class AnophelesDataResource(
             # remove the nans and sort
             cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
             for coh in cohort_labels:
-                loc_coh = df_samples[cohorts] == coh
+                loc_coh = df_samples[cohorts].fillna("") == coh
                 coh_dict[coh] = loc_coh.values
 
         return coh_dict
@@ -705,46 +705,48 @@ class AnophelesDataResource(
 
         debug("get feature direct from genome_features")
         gs = self.genome_features()
-        feature = gs[gs["ID"] == transcript].squeeze()
-        if feature.empty:
-            raise ValueError(
-                f"No genome feature ID found matching transcript {transcript}"
-            )
-        contig = feature.contig
-        region = Region(contig, feature.start, feature.end)
 
-        debug("grab pos, ref and alt for chrom arm from snp_sites")
-        pos = self.snp_sites(region=contig, field="POS")
-        ref = self.snp_sites(region=contig, field="REF")
-        alt = self.snp_sites(region=contig, field="ALT")
-        loc_feature = locate_region(region, pos)
-        pos = pos[loc_feature].compute()
-        ref = ref[loc_feature].compute()
-        alt = alt[loc_feature].compute()
+        with self._spinner(desc="Prepare SNP data"):
+            feature = gs[gs["ID"] == transcript].squeeze()
+            if feature.empty:
+                raise ValueError(
+                    f"No genome feature ID found matching transcript {transcript}"
+                )
+            contig = feature.contig
+            region = Region(contig, feature.start, feature.end)
 
-        debug("access site filters")
-        filter_pass = dict()
-        masks = self.site_mask_ids
-        for m in masks:
-            x = self.site_filters(region=contig, mask=m)
-            x = x[loc_feature].compute()
-            filter_pass[m] = x
+            debug("grab pos, ref and alt for chrom arm from snp_sites")
+            pos = self.snp_sites(region=contig, field="POS")
+            ref = self.snp_sites(region=contig, field="REF")
+            alt = self.snp_sites(region=contig, field="ALT")
+            loc_feature = locate_region(region, pos)
+            pos = pos[loc_feature].compute()
+            ref = ref[loc_feature].compute()
+            alt = alt[loc_feature].compute()
 
-        debug("set up columns with contig, pos, ref, alt columns")
-        cols = {
-            "contig": contig,
-            "position": np.repeat(pos, 3),
-            "ref_allele": np.repeat(ref.astype("U1"), 3),
-            "alt_allele": alt.astype("U1").flatten(),
-        }
+            debug("access site filters")
+            filter_pass = dict()
+            masks = self.site_mask_ids
+            for m in masks:
+                x = self.site_filters(region=contig, mask=m)
+                x = x[loc_feature].compute()
+                filter_pass[m] = x
 
-        debug("add mask columns")
-        for m in masks:
-            x = filter_pass[m]
-            cols[f"pass_{m}"] = np.repeat(x, 3)
+            debug("set up columns with contig, pos, ref, alt columns")
+            cols = {
+                "contig": contig,
+                "position": np.repeat(pos, 3),
+                "ref_allele": np.repeat(ref.astype("U1"), 3),
+                "alt_allele": alt.astype("U1").flatten(),
+            }
 
-        debug("construct dataframe")
-        df_snps = pd.DataFrame(cols)
+            debug("add mask columns")
+            for m in masks:
+                x = filter_pass[m]
+                cols[f"pass_{m}"] = np.repeat(x, 3)
+
+            debug("construct dataframe")
+            df_snps = pd.DataFrame(cols)
 
         return region, df_snps
 

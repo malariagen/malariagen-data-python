@@ -100,30 +100,31 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         attributes_normed = self._prep_gff_attributes(attributes)
         del attributes
 
-        if region is not None:
-            debug("Handle region.")
-            regions = parse_multi_region(self, region)
-            del region
+        with self._spinner(desc="Load genome features"):
+            if region is not None:
+                debug("Handle region.")
+                regions = parse_multi_region(self, region)
+                del region
 
-            debug("Apply region query.")
-            parts = []
-            for r in regions:
-                df_part = self._genome_features_for_contig(
-                    contig=r.contig, attributes=attributes_normed
-                )
-                if r.end is not None:
-                    df_part = df_part.query(f"start <= {r.end}")
-                if r.start is not None:
-                    df_part = df_part.query(f"end >= {r.start}")
-                parts.append(df_part)
-            df = pd.concat(parts, axis=0)
-            return df.reset_index(drop=True).copy()
+                debug("Apply region query.")
+                parts = []
+                for r in regions:
+                    df_part = self._genome_features_for_contig(
+                        contig=r.contig, attributes=attributes_normed
+                    )
+                    if r.end is not None:
+                        df_part = df_part.query(f"start <= {r.end}")
+                    if r.start is not None:
+                        df_part = df_part.query(f"end >= {r.start}")
+                    parts.append(df_part)
+                df = pd.concat(parts, axis=0)
+                return df.reset_index(drop=True).copy()
 
-        return (
-            self._genome_features(attributes=attributes_normed)
-            .reset_index(drop=True)
-            .copy()
-        )
+            return (
+                self._genome_features(attributes=attributes_normed)
+                .reset_index(drop=True)
+                .copy()
+            )
 
     def genome_feature_children(
         self, parent: str, attributes: base_params.gff_attributes = DEFAULT
