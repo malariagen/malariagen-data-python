@@ -20,6 +20,7 @@ import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
 from malariagen_data.anoph import tree_params
+from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 
 from . import veff
 from .anoph import (
@@ -61,7 +62,6 @@ from .util import (
     biallelic_diplotype_sqeuclidean,
     check_types,
     jackknife_ci,
-    locate_region,
     parse_multi_region,
     parse_single_region,
     pdist_abs_hamming,
@@ -98,6 +98,7 @@ DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
+    AnophelesSnpFrequencyAnalysis,
     AnophelesPca,
     AnophelesIgv,
     AnophelesCnvData,
@@ -701,57 +702,6 @@ class AnophelesDataResource(
             ]
         ]
 
-    def _snp_df(self, *, transcript: str) -> Tuple[Region, pd.DataFrame]:
-        """Set up a dataframe with SNP site and filter columns."""
-        debug = self._log.debug
-
-        debug("get feature direct from genome_features")
-        gs = self.genome_features()
-
-        with self._spinner(desc="Prepare SNP data"):
-            feature = gs[gs["ID"] == transcript].squeeze()
-            if feature.empty:
-                raise ValueError(
-                    f"No genome feature ID found matching transcript {transcript}"
-                )
-            contig = feature.contig
-            region = Region(contig, feature.start, feature.end)
-
-            debug("grab pos, ref and alt for chrom arm from snp_sites")
-            pos = self.snp_sites(region=contig, field="POS")
-            ref = self.snp_sites(region=contig, field="REF")
-            alt = self.snp_sites(region=contig, field="ALT")
-            loc_feature = locate_region(region, pos)
-            pos = pos[loc_feature].compute()
-            ref = ref[loc_feature].compute()
-            alt = alt[loc_feature].compute()
-
-            debug("access site filters")
-            filter_pass = dict()
-            masks = self.site_mask_ids
-            for m in masks:
-                x = self.site_filters(region=contig, mask=m)
-                x = x[loc_feature].compute()
-                filter_pass[m] = x
-
-            debug("set up columns with contig, pos, ref, alt columns")
-            cols = {
-                "contig": contig,
-                "position": np.repeat(pos, 3),
-                "ref_allele": np.repeat(ref.astype("U1"), 3),
-                "alt_allele": alt.astype("U1").flatten(),
-            }
-
-            debug("add mask columns")
-            for m in masks:
-                x = filter_pass[m]
-                cols[f"pass_{m}"] = np.repeat(x, 3)
-
-            debug("construct dataframe")
-            df_snps = pd.DataFrame(cols)
-
-        return region, df_snps
-
     def _annotator(self):
         """Set up variant effect annotator."""
         if self._cache_annotator is None:
@@ -776,7 +726,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         debug("setup initial dataframe of SNPs")
-        _, df_snps = self._snp_df(transcript=transcript)
+        _, df_snps = self._snp_df_for_transcript(transcript=transcript)
 
         debug("setup variant effect annotator")
         ann = self._annotator()
@@ -1391,7 +1341,7 @@ class AnophelesDataResource(
         )
 
         debug("setup initial dataframe of SNPs")
-        region, df_snps = self._snp_df(transcript=transcript)
+        region, df_snps = self._snp_df_for_transcript(transcript=transcript)
 
         debug("get genotypes")
         gt = self.snp_genotypes(
