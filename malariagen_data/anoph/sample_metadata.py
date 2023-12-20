@@ -969,3 +969,36 @@ class AnophelesSampleMetadata(AnophelesBase):
         if symbol and symbol not in hover_data:
             hover_data.append(symbol)
         return hover_data
+
+    @staticmethod
+    def _locate_cohorts(*, cohorts, df_samples):
+        # Build cohort dictionary where key=cohort_id, value=loc_coh.
+        coh_dict = {}
+
+        if isinstance(cohorts, dict):
+            # User has supplied a custom dictionary mapping cohort identifiers
+            # to pandas queries.
+
+            for coh, query in cohorts.items():
+                loc_coh = df_samples.eval(query).values
+                coh_dict[coh] = loc_coh
+
+        if isinstance(cohorts, str):
+            # User has supplied one of the predefined cohort sets.
+
+            # Fix the string to match columns.
+            if not cohorts.startswith("cohort_"):
+                cohorts = "cohort_" + cohorts
+
+            # Check the given cohort set exists.
+            if cohorts not in df_samples.columns:
+                raise ValueError(f"{cohorts!r} is not a known cohort set")
+            cohort_labels = df_samples[cohorts].unique()
+
+            # Remove the nans and sort.
+            cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
+            for coh in cohort_labels:
+                loc_coh = df_samples[cohorts] == coh
+                coh_dict[coh] = loc_coh.values
+
+        return coh_dict

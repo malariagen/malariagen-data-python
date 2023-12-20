@@ -12,24 +12,24 @@ from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
 
 try:
-    from google import colab
+    from google import colab  # type: ignore
 except ImportError:
     colab = None
 
-import allel
+import allel  # type: ignore
 import dask.array as da
-import ipinfo
-import numba
+import ipinfo  # type: ignore
+import numba  # type: ignore
 import numpy as np
 import pandas
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # type: ignore
 import typeguard
 import xarray as xr
-import zarr
-from fsspec.core import url_to_fs
-from fsspec.mapping import FSMap
-from numpydoc_decorator.impl import humanize_type
+import zarr  # type: ignore
+from fsspec.core import url_to_fs  # type: ignore
+from fsspec.mapping import FSMap  # type: ignore
+from numpydoc_decorator.impl import humanize_type  # type: ignore
 from typing_extensions import TypeAlias, get_type_hints
 
 DIM_VARIANT = "variants"
@@ -116,8 +116,7 @@ def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
 
 try:
     # zarr >= 2.11.0
-    # noinspection PyUnresolvedReferences
-    from zarr.storage import KVStore
+    from zarr.storage import KVStore  # type: ignore
 
     class SafeStore(KVStore):
         def __getitem__(self, key):
@@ -788,7 +787,7 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
     https://github.com/astropy/astropy/blob/8aba9632597e6bb489488109222bf2feff5835a6/astropy/stats/jackknife.py#L55
 
     """
-    from scipy.special import erfinv
+    from scipy.special import erfinv  # type: ignore
 
     n = len(jack_stat)
 
@@ -1151,3 +1150,11 @@ def apply_allele_mapping(x, mapping, max_allele):
                 out[i, new_allele_index] = x[i, allele_index]
 
     return out
+
+
+def pandas_apply(f, df, columns):
+    """Optimised alternative to pandas apply."""
+    df = df.reset_index(drop=True)
+    iterator = zip(*[df[c].values for c in columns])
+    ret = pd.Series((f(*vals) for vals in iterator))
+    return ret

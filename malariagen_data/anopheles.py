@@ -22,7 +22,6 @@ from numpydoc_decorator import doc  # type: ignore
 from malariagen_data.anoph import tree_params
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 
-from . import veff
 from .anoph import (
     aim_params,
     base_params,
@@ -68,6 +67,7 @@ from .util import (
     plotly_discrete_legend,
     region_str,
     simple_xarray_concat,
+    pandas_apply,
 )
 
 AA_CHANGE_QUERY = (
@@ -141,6 +141,7 @@ class AnophelesDataResource(
         storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
         taxon_colors: Optional[Mapping[str, str]],
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
+        gene_names: Optional[Mapping[str, str]],
     ):
         super().__init__(
             url=url,
@@ -170,11 +171,8 @@ class AnophelesDataResource(
             tqdm_class=tqdm_class,
             taxon_colors=taxon_colors,
             virtual_contigs=virtual_contigs,
+            gene_names=gene_names,
         )
-
-        # set up caches
-        # TODO review type annotations here, maybe can tighten
-        self._cache_annotator = None
 
     @property
     @abstractmethod
@@ -216,11 +214,6 @@ class AnophelesDataResource(
     def _ihs_gwss_cache_name(self):
         raise NotImplementedError("Must override _ihs_gwss_cache_name")
 
-    @abstractmethod
-    def _transcript_to_gene_name(self, transcript):
-        # children may have different manual overrides.
-        raise NotImplementedError("Must override _transcript_to_gene_name")
-
     @check_types
     @doc(
         summary="""
@@ -253,9 +246,6 @@ class AnophelesDataResource(
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
     ) -> xr.Dataset:
         debug = self._log.debug
-
-        debug("check parameters")
-        self._check_param_min_cohort_size(min_cohort_size)
 
         debug("load sample metadata")
         df_samples = self.sample_metadata(
@@ -366,7 +356,7 @@ class AnophelesDataResource(
             frequency = np.compress(loc_variant, frequency, axis=0)
 
         debug("set up variant effect annotator")
-        ann = self._annotator()
+        ann = self._snp_effect_annotator()
 
         debug("add effects to the dataframe")
         ann.get_effects(
@@ -374,7 +364,7 @@ class AnophelesDataResource(
         )
 
         debug("add variant labels")
-        df_variants["label"] = self._pandas_apply(
+        df_variants["label"] = pandas_apply(
             self._make_snp_label_effect,
             df_variants,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
@@ -419,40 +409,6 @@ class AnophelesDataResource(
         return ds_out
 
     # Start of @staticmethod
-
-    @staticmethod
-    def _locate_cohorts(*, cohorts, df_samples):
-        # build cohort dictionary where key=cohort_id, value=loc_coh
-        coh_dict = {}
-
-        if isinstance(cohorts, dict):
-            # user has supplied a custom dictionary mapping cohort identifiers
-            # to pandas queries
-
-            for coh, query in cohorts.items():
-                # locate samples
-                loc_coh = df_samples.eval(query).values
-                coh_dict[coh] = loc_coh
-
-        if isinstance(cohorts, str):
-            # user has supplied one of the predefined cohort sets
-
-            # fix the string to match columns
-            if not cohorts.startswith("cohort_"):
-                cohorts = "cohort_" + cohorts
-
-            # check the given cohort set exists
-            if cohorts not in df_samples.columns:
-                raise ValueError(f"{cohorts!r} is not a known cohort set")
-            cohort_labels = df_samples[cohorts].unique()
-
-            # remove the nans and sort
-            cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
-            for coh in cohort_labels:
-                loc_coh = df_samples[cohorts] == coh
-                coh_dict[coh] = loc_coh.values
-
-        return coh_dict
 
     @staticmethod
     def _make_sample_period_month(row):
@@ -504,17 +460,6 @@ class AnophelesDataResource(
                         an[i] += 1
 
         return ac_alt_melt, an
-
-    @staticmethod
-    def _make_snp_label(contig, position, ref_allele, alt_allele):
-        return f"{contig}:{position:,} {ref_allele}>{alt_allele}"
-
-    @staticmethod
-    def _make_snp_label_effect(contig, position, ref_allele, alt_allele, aa_change):
-        label = f"{contig}:{position:,} {ref_allele}>{alt_allele}"
-        if isinstance(aa_change, str):
-            label += f" ({aa_change})"
-        return label
 
     @staticmethod
     def _make_snp_label_aa(aa_change, contig, position, ref_allele, alt_allele):
@@ -615,25 +560,6 @@ class AnophelesDataResource(
         return df_cohorts
 
     @staticmethod
-    def _check_param_min_cohort_size(min_cohort_size):
-        if not isinstance(min_cohort_size, int):
-            raise TypeError(
-                f"Type of parameter min_cohort_size must be int; found {type(min_cohort_size)}."
-            )
-        if min_cohort_size < 1:
-            raise ValueError(
-                f"Value of parameter min_cohort_size must be at least 1; found {min_cohort_size}."
-            )
-
-    @staticmethod
-    def _pandas_apply(f, df, columns):
-        """Optimised alternative to pandas apply."""
-        df = df.reset_index(drop=True)
-        iterator = zip(*[df[c].values for c in columns])
-        ret = pd.Series((f(*vals) for vals in iterator))
-        return ret
-
-    @staticmethod
     def _roh_hmm_predict(
         *,
         windows,
@@ -701,48 +627,6 @@ class AnophelesDataResource(
                 "roh_is_marginal",
             ]
         ]
-
-    def _annotator(self):
-        """Set up variant effect annotator."""
-        if self._cache_annotator is None:
-            self._cache_annotator = veff.Annotator(
-                genome=self.open_genome(), genome_features=self.genome_features()
-            )
-        return self._cache_annotator
-
-    @check_types
-    @doc(
-        summary="Compute variant effects for a gene transcript.",
-        returns="""
-            A dataframe of all possible SNP variants and their effects, one row
-            per variant.
-        """,
-    )
-    def snp_effects(
-        self,
-        transcript: base_params.transcript,
-        site_mask: Optional[base_params.site_mask] = None,
-    ) -> pd.DataFrame:
-        debug = self._log.debug
-
-        debug("setup initial dataframe of SNPs")
-        _, df_snps = self._snp_df_for_transcript(transcript=transcript)
-
-        debug("setup variant effect annotator")
-        ann = self._annotator()
-
-        debug("apply mask if requested")
-        if site_mask is not None:
-            loc_sites = df_snps[f"pass_{site_mask}"]
-            df_snps = df_snps.loc[loc_sites]
-
-        debug("reset index after filtering")
-        df_snps.reset_index(inplace=True, drop=True)
-
-        debug("add effects to the dataframe")
-        ann.get_effects(transcript=transcript, variants=df_snps)
-
-        return df_snps
 
     def _cohort_alt_allele_counts_melt(self, gt, indices, max_allele):
         ac_alt_melt, an = self._cohort_alt_allele_counts_melt_kernel(
@@ -1309,139 +1193,6 @@ class AnophelesDataResource(
     @check_types
     @doc(
         summary="""
-            Compute SNP allele frequencies for a gene transcript.
-        """,
-        returns="""
-            A dataframe of SNP allele frequencies, one row per variant allele.
-        """,
-        notes="""
-            Cohorts with fewer samples than `min_cohort_size` will be excluded from
-            output data frame.
-        """,
-    )
-    def snp_allele_frequencies(
-        self,
-        transcript: base_params.transcript,
-        cohorts: base_params.cohorts,
-        sample_query: Optional[base_params.sample_query] = None,
-        min_cohort_size: base_params.min_cohort_size = 10,
-        site_mask: Optional[base_params.site_mask] = None,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        drop_invariant: frq_params.drop_invariant = True,
-        effects: frq_params.effects = True,
-    ) -> pd.DataFrame:
-        debug = self._log.debug
-
-        debug("check parameters")
-        self._check_param_min_cohort_size(min_cohort_size)
-
-        debug("access sample metadata")
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
-        )
-
-        debug("setup initial dataframe of SNPs")
-        region, df_snps = self._snp_df_for_transcript(transcript=transcript)
-
-        debug("get genotypes")
-        gt = self.snp_genotypes(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            field="GT",
-        )
-
-        debug("slice to feature location")
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gt = gt.compute()
-
-        debug("build coh dict")
-        coh_dict = self._locate_cohorts(cohorts=cohorts, df_samples=df_samples)
-
-        debug("count alleles")
-        freq_cols = dict()
-        cohorts_iterator = self._progress(
-            coh_dict.items(), desc="Compute allele frequencies"
-        )
-        for coh, loc_coh in cohorts_iterator:
-            n_samples = np.count_nonzero(loc_coh)
-            debug(f"{coh}, {n_samples} samples")
-            if n_samples >= min_cohort_size:
-                gt_coh = np.compress(loc_coh, gt, axis=1)
-                ac_coh = allel.GenotypeArray(gt_coh).count_alleles(max_allele=3)
-                af_coh = ac_coh.to_frequencies()
-                freq_cols["frq_" + coh] = af_coh[:, 1:].flatten()
-
-        debug("build a dataframe with the frequency columns")
-        df_freqs = pd.DataFrame(freq_cols)
-
-        debug("compute max_af")
-        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
-
-        debug("build the final dataframe")
-        df_snps.reset_index(drop=True, inplace=True)
-        df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
-
-        debug("apply site mask if requested")
-        if site_mask is not None:
-            loc_sites = df_snps[f"pass_{site_mask}"]
-            df_snps = df_snps.loc[loc_sites]
-
-        debug("drop invariants")
-        if drop_invariant:
-            loc_variant = df_snps["max_af"] > 0
-            df_snps = df_snps.loc[loc_variant]
-
-        debug("reset index after filtering")
-        df_snps.reset_index(inplace=True, drop=True)
-
-        if effects:
-            debug("add effect annotations")
-            ann = self._annotator()
-            ann.get_effects(
-                transcript=transcript, variants=df_snps, progress=self._progress
-            )
-
-            debug("add label")
-            df_snps["label"] = self._pandas_apply(
-                self._make_snp_label_effect,
-                df_snps,
-                columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-            )
-
-            debug("set index")
-            df_snps.set_index(
-                ["contig", "position", "ref_allele", "alt_allele", "aa_change"],
-                inplace=True,
-            )
-
-        else:
-            debug("add label")
-            df_snps["label"] = self._pandas_apply(
-                self._make_snp_label,
-                df_snps,
-                columns=["contig", "position", "ref_allele", "alt_allele"],
-            )
-
-            debug("set index")
-            df_snps.set_index(
-                ["contig", "position", "ref_allele", "alt_allele"],
-                inplace=True,
-            )
-
-        debug("add dataframe metadata")
-        gene_name = self._transcript_to_gene_name(transcript)
-        title = transcript
-        if gene_name:
-            title += f" ({gene_name})"
-        title += " SNP frequencies"
-        df_snps.attrs["title"] = title
-
-        return df_snps
-
-    @check_types
-    @doc(
-        summary="""
             Compute amino acid substitution frequencies for a gene transcript.
         """,
         returns="""
@@ -1507,7 +1258,7 @@ class AnophelesDataResource(
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         debug("add label")
-        df_aaf["label"] = self._pandas_apply(
+        df_aaf["label"] = pandas_apply(
             self._make_snp_label_aa,
             df_aaf,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
@@ -1625,7 +1376,7 @@ class AnophelesDataResource(
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
         debug("assign new variant label")
-        label = self._pandas_apply(
+        label = pandas_apply(
             self._make_snp_label_aa,
             df_variants,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
@@ -1839,7 +1590,6 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         debug("check and normalise parameters")
-        self._check_param_min_cohort_size(min_cohort_size)
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
@@ -1996,7 +1746,7 @@ class AnophelesDataResource(
         df.reset_index(drop=True, inplace=True)
 
         debug("add label")
-        df["label"] = self._pandas_apply(
+        df["label"] = pandas_apply(
             self._make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
         )
 
@@ -2072,8 +1822,6 @@ class AnophelesDataResource(
             calculations.
 
         """
-
-        self._check_param_min_cohort_size(min_cohort_size)
 
         regions: List[Region] = parse_multi_region(self, region)
         del region
@@ -2217,7 +1965,7 @@ class AnophelesDataResource(
         )
 
         debug("add variant label")
-        df_variants["label"] = self._pandas_apply(
+        df_variants["label"] = pandas_apply(
             self._make_gene_cnv_label,
             df_variants,
             columns=["gene_id", "gene_name", "cnv_type"],
