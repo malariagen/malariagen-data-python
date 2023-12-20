@@ -23,6 +23,8 @@ from malariagen_data.anoph import tree_params
 from malariagen_data.anoph.snp_frq import (
     AnophelesSnpFrequencyAnalysis,
     _add_frequency_ci,
+    _build_cohorts_from_sample_grouping,
+    _prep_samples_for_cohort_grouping,
 )
 
 from .anoph import (
@@ -1296,7 +1298,7 @@ class AnophelesDataResource(
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
         debug("prepare sample metadata for cohort grouping")
-        df_samples = self._prep_samples_for_cohort_grouping(
+        df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
@@ -1306,8 +1308,9 @@ class AnophelesDataResource(
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         debug("build cohorts dataframe")
-        df_cohorts = self._build_cohorts_from_sample_grouping(
-            group_samples_by_cohort, min_cohort_size
+        df_cohorts = _build_cohorts_from_sample_grouping(
+            group_samples_by_cohort=group_samples_by_cohort,
+            min_cohort_size=min_cohort_size,
         )
 
         debug("figure out expected copy number")
@@ -1410,7 +1413,7 @@ class AnophelesDataResource(
             ds_out = ds_out.isel(variants=loc_variants)
 
         debug("add confidence intervals")
-        _add_frequency_ci(ds_out, ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]
