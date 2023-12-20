@@ -20,7 +20,10 @@ import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
 from malariagen_data.anoph import tree_params
-from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
+from malariagen_data.anoph.snp_frq import (
+    AnophelesSnpFrequencyAnalysis,
+    _make_snp_label_effect,
+)
 
 from .anoph import (
     aim_params,
@@ -365,7 +368,7 @@ class AnophelesDataResource(
 
         debug("add variant labels")
         df_variants["label"] = pandas_apply(
-            self._make_snp_label_effect,
+            _make_snp_label_effect,
             df_variants,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
         )

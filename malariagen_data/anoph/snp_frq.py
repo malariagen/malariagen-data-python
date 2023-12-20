@@ -241,6 +241,13 @@ class AnophelesSnpFrequencyAnalysis(
 
         return df_snps
 
+    # TODO: aa_allele_frequencies
+    # TODO: snp_allele_frequencies_advanced
+    # TODO: aa_allele_frequencies_advanced
+    # TODO: plot_frequencies_heatmap
+    # TODO: plot_frequencies_time_series
+    # TODO: plot_frequencies_interactive_map
+
 
 def _make_snp_label(contig, position, ref_allele, alt_allele):
     return f"{contig}:{position:,} {ref_allele}>{alt_allele}"
