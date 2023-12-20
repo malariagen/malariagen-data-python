@@ -13,6 +13,7 @@ from ..util import (
     DIM_VARIANT,
     Region,
     check_types,
+    da_concat,
     da_from_zarr,
     init_zarr_store,
     locate_region,
@@ -84,6 +85,117 @@ class AnophelesHapData(
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
         return root
+
+    def _haplotype_sites_for_contig(
+        self,
+        *,
+        contig: base_params.contig,
+        field: base_params.field,
+        analysis: hap_params.analysis,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ) -> da.Array:
+        """Access haplotype sites data for a single contig."""
+
+        # Handle virtual contig.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = []
+            offset = 0
+            for c in contigs:
+                arr = self._haplotype_sites_for_contig(
+                    contig=c,
+                    field=field,
+                    analysis=analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                if field == "POS":
+                    if offset > 0:
+                        arr = arr + offset
+                    offset += self.genome_sequence(region=c).shape[0]
+                arrs.append(arr)
+            return da.concatenate(arrs)
+
+        # Handle contig in the reference genome.
+        else:
+            assert contig in self.contigs
+            root = self.open_haplotype_sites(analysis=analysis)
+            z = root[f"{contig}/variants/{field}"]
+            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return ret
+
+    def _haplotype_sites_for_region(
+        self,
+        *,
+        region: Region,
+        field: base_params.field,
+        analysis: hap_params.analysis,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ) -> da.Array:
+        # Access data for the requested contig.
+        ret = self._haplotype_sites_for_contig(
+            contig=region.contig,
+            field=field,
+            analysis=analysis,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+        # Deal with a region.
+        if region.start or region.end:
+            if field == "POS":
+                pos = ret
+            else:
+                pos = self._haplotype_sites_for_contig(
+                    contig=region.contig,
+                    field="POS",
+                    analysis=analysis,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+            loc_region = locate_region(region, np.asarray(pos))
+            ret = ret[loc_region]
+
+        return ret
+
+    @check_types
+    @doc(
+        summary="Access haplotype site data (positions or alleles).",
+        returns="""
+            An array of either SNP positions ("POS"), reference alleles ("REF") or
+            alternate alleles ("ALT").
+        """,
+    )
+    def haplotype_sites(
+        self,
+        region: base_params.regions,
+        field: base_params.field,
+        analysis: hap_params.analysis = DEFAULT,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> da.Array:
+        # Resolve the region parameter to a standard type.
+        regions: List[Region] = parse_multi_region(self, region)
+        del region
+
+        # Access SNP sites and concatenate over regions.
+        ret = da_concat(
+            [
+                self._haplotype_sites_for_region(
+                    region=r,
+                    field=field,
+                    analysis=analysis,
+                    chunks=chunks,
+                    inline_array=inline_array,
+                )
+                for r in regions
+            ],
+            axis=0,
+        )
+
+        return ret
 
     @check_types
     @doc(

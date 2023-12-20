@@ -236,6 +236,38 @@ def test_snp_sites(fixture, api: AnophelesSnpData):
     check_snp_sites(api=api, region=region)
 
 
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Standard checks.
+    check_snp_sites(api, region=chrom)
+
+    # Extra checks.
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    pos_r = api.snp_sites(region=contig_r, field="POS")
+    pos_l = api.snp_sites(region=contig_l, field="POS")
+    offset = api.genome_sequence(region=contig_r).shape[0]
+    pos_expected = da.concatenate([pos_r, pos_l + offset])
+    pos_actual = api.snp_sites(region=chrom, field="POS")
+    assert da.all(pos_expected == pos_actual).compute(scheduler="single-threaded")
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+
+    # Standard checks.
+    check_snp_sites(api, region=region)
+
+    # Extra checks.
+    region_size = stop - start
+    pos = api.snp_sites(region=region, field="POS").compute()
+    assert pos.shape[0] <= region_size
+    assert np.all(pos >= start)
+    assert np.all(pos <= stop)
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_open_site_annotations(fixture, api):
     root = api.open_site_annotations()
@@ -310,57 +342,62 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
     df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
 
     # Check default field (GT).
-    gt = api.snp_genotypes(
+    default = api.snp_genotypes(
         region=region, sample_sets=sample_sets, sample_query=sample_query
     )
-    assert isinstance(gt, da.Array)
-    assert gt.ndim == 3
-    assert gt.dtype == "i1"
-    assert gt.shape[1] == len(df_samples)
+    assert isinstance(default, da.Array)
+    assert default.ndim == 3
+    assert default.dtype == "i1"
+    assert default.shape[1] == len(df_samples)
 
     # Check GT.
-    x = api.snp_genotypes(
+    gt = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
         field="GT",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 3
-    assert x.dtype == "i1"
+    assert isinstance(gt, da.Array)
+    assert gt.ndim == 3
+    assert gt.dtype == "i1"
+    assert gt.shape == default.shape
 
     # Check GQ.
-    x = api.snp_genotypes(
+    gq = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
         field="GQ",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 2
-    assert x.dtype == "i1"
+    assert isinstance(gq, da.Array)
+    assert gq.ndim == 2
+    assert gq.dtype == "i1"
+    assert gq.shape == gt.shape[:2]
 
     # Check MQ.
-    x = api.snp_genotypes(
+    mq = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
         field="MQ",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 2
-    assert x.dtype == "f4"
+    assert isinstance(mq, da.Array)
+    assert mq.ndim == 2
+    assert mq.dtype == "f4"
+    assert mq.shape == gt.shape[:2]
 
     # Check AD.
-    x = api.snp_genotypes(
+    ad = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
         field="AD",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 3
-    assert x.dtype == "i2"
+    assert isinstance(ad, da.Array)
+    assert ad.ndim == 3
+    assert ad.dtype == "i2"
+    assert ad.shape[:2] == gt.shape[:2]
+    assert ad.shape[2] == 4
 
     # Check with site mask.
     mask = random.choice(api.site_mask_ids)
@@ -448,6 +485,59 @@ def test_snp_genotypes_with_sample_query_param(
 
     else:
         check_snp_genotypes(api=ag3_sim_api, region=contig, sample_query=sample_query)
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Standard checks.
+    check_snp_genotypes(api, region=chrom)
+
+    # Extra checks.
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    d_r = api.snp_genotypes(region=contig_r)
+    d_l = api.snp_genotypes(region=contig_l)
+    d = da.concatenate([d_r, d_l])
+    gt = api.snp_genotypes(region=chrom)
+    assert gt.shape == d.shape
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    # Standard checks.
+    check_snp_genotypes(api, region=region)
+    # Extra checks.
+    pos = api.snp_sites(region=region, field="POS")
+    gt = api.snp_genotypes(region=region)
+    assert pos.shape[0] == gt.shape[0]
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_variants_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Test with whole chromosome.
+    pos = api.snp_sites(region=chrom, field="POS").compute()
+    ds_chrom = api.snp_variants(region=chrom)
+    assert isinstance(ds_chrom, xr.Dataset)
+    assert len(ds_chrom.dims) == 2
+    assert ds_chrom.sizes["variants"] == pos.shape[0]
+    assert ds_chrom["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_chrom["variant_position"].values)
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    pos = api.snp_sites(region=region, field="POS").compute()
+    ds_region = api.snp_variants(region=region)
+    assert isinstance(ds_region, xr.Dataset)
+    assert len(ds_region.dims) == 2
+    assert ds_region.sizes["variants"] == pos.shape[0]
+    assert ds_region["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_region["variant_position"].values)
 
 
 def check_snp_calls(api, sample_sets, region, site_mask):
@@ -701,6 +791,47 @@ def test_snp_calls_with_site_class_param(ag3_sim_api: AnophelesSnpData, site_cla
     ds1 = ag3_sim_api.snp_calls(region="3L")
     ds2 = ag3_sim_api.snp_calls(region="3L", site_class=site_class)
     assert ds2.sizes["variants"] < ds1.sizes["variants"]
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Test with whole chromosome.
+
+    # Standard checks.
+    check_snp_calls(api, region=chrom, sample_sets=None, site_mask=None)
+
+    # Extra checks.
+    pos = api.snp_sites(region=chrom, field="POS").compute()
+    ds_chrom = api.snp_calls(region=chrom)
+    assert isinstance(ds_chrom, xr.Dataset)
+    assert len(ds_chrom.dims) == 4
+    assert pos.shape[0] == ds_chrom.sizes["variants"]
+    assert pos.shape[0] == ds_chrom["call_genotype"].shape[0]
+    assert ds_chrom["call_genotype"].dtype == "int8"
+    assert ds_chrom["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_chrom["variant_position"].values)
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+
+    # Standard checks.
+    check_snp_calls(api, region=region, sample_sets=None, site_mask=None)
+
+    # Extra checks.
+    ds_region = api.snp_calls(region=region)
+    pos = api.snp_sites(region=region, field="POS")
+    assert isinstance(ds_region, xr.Dataset)
+    assert len(ds_region.dims) == 4
+    assert ds_region.sizes["samples"] == ds_chrom.sizes["samples"]
+    assert pos.shape[0] == ds_region.sizes["variants"]
+    assert pos.shape[0] == ds_region["call_genotype"].shape[0]
+    assert ds_region["call_genotype"].dtype == "int8"
+    assert ds_region["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_region["variant_position"].values)
 
 
 def check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
@@ -1256,116 +1387,3 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
             max_missing_an=max_missing_an,
             n_snps=n_snps_available + 10,
         )
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_sites_virtual_contigs(ag3_sim_api, chrom):
-    api = ag3_sim_api
-    contig_r, contig_l = api.virtual_contigs[chrom]
-    pos_r = api.snp_sites(region=contig_r, field="POS")
-    pos_l = api.snp_sites(region=contig_l, field="POS")
-    offset = api.genome_sequence(region=contig_r).shape[0]
-    pos_expected = da.concatenate([pos_r, pos_l + offset])
-    pos_actual = api.snp_sites(region=chrom, field="POS")
-    assert isinstance(pos_actual, da.Array)
-    assert pos_actual.ndim == 1
-    assert pos_actual.dtype == "int32"
-    assert da.all(pos_expected == pos_actual).compute(scheduler="single-threaded")
-
-    # Test with region.
-    seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
-    region = f"{chrom}:{start:,}-{stop:,}"
-    region_size = stop - start
-
-    for field in ["POS", "REF", "ALT"]:
-        x = api.snp_sites(region=region, field=field)
-        assert isinstance(x, da.Array)
-        assert x.shape[0] <= region_size
-        if field == "POS":
-            assert x.dtype == "int32"
-            assert x.ndim == 1
-        elif field == "REF":
-            assert x.dtype == "S1"
-            assert x.ndim == 1
-        elif field == "ALT":
-            assert x.dtype == "S1"
-            assert x.ndim == 2
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_genotypes_virtual_contigs(ag3_sim_api, chrom):
-    api = ag3_sim_api
-    contig_r, contig_l = api.virtual_contigs[chrom]
-    d_r = api.snp_genotypes(region=contig_r)
-    d_l = api.snp_genotypes(region=contig_l)
-    d = da.concatenate([d_r, d_l])
-    gt = api.snp_genotypes(region=chrom)
-    assert isinstance(gt, da.Array)
-    assert gt.ndim == 3
-    assert gt.dtype == "i1"
-    assert gt.shape == d.shape
-
-    # Test with region.
-    seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
-    region = f"{chrom}:{start:,}-{stop:,}"
-    pos = api.snp_sites(region=region, field="POS")
-    gt = api.snp_genotypes(region=region)
-    assert isinstance(gt, da.Array)
-    assert gt.ndim == 3
-    assert gt.dtype == "i1"
-    assert pos.shape[0] == gt.shape[0]
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_variants_virtual_contigs(ag3_sim_api, chrom):
-    api = ag3_sim_api
-    pos = api.snp_sites(region=chrom, field="POS").compute()
-    ds_chrom = api.snp_variants(region=chrom)
-    assert isinstance(ds_chrom, xr.Dataset)
-    assert len(ds_chrom.dims) == 2
-    assert ds_chrom.sizes["variants"] == pos.shape[0]
-    assert ds_chrom["variant_position"].dtype == "int32"
-    assert_array_equal(pos, ds_chrom["variant_position"].values)
-
-    # Test with region.
-    seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
-    region = f"{chrom}:{start:,}-{stop:,}"
-    pos = api.snp_sites(region=region, field="POS").compute()
-    ds_region = api.snp_variants(region=region)
-    assert isinstance(ds_region, xr.Dataset)
-    assert len(ds_region.dims) == 2
-    assert ds_region.sizes["variants"] == pos.shape[0]
-    assert ds_region["variant_position"].dtype == "int32"
-    assert_array_equal(pos, ds_region["variant_position"].values)
-
-
-@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_snp_calls_virtual_contigs(ag3_sim_api, chrom):
-    api = ag3_sim_api
-    pos = api.snp_sites(region=chrom, field="POS").compute()
-    ds_chrom = api.snp_calls(region=chrom)
-    assert isinstance(ds_chrom, xr.Dataset)
-    assert len(ds_chrom.dims) == 4
-    assert pos.shape[0] == ds_chrom.sizes["variants"]
-    assert pos.shape[0] == ds_chrom["call_genotype"].shape[0]
-    assert ds_chrom["call_genotype"].dtype == "int8"
-    assert ds_chrom["variant_position"].dtype == "int32"
-    assert_array_equal(pos, ds_chrom["variant_position"].values)
-
-    # Test with region.
-    seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
-    region = f"{chrom}:{start:,}-{stop:,}"
-    ds_region = api.snp_calls(region=region)
-    pos = api.snp_sites(region=region, field="POS")
-    assert isinstance(ds_region, xr.Dataset)
-    assert len(ds_region.dims) == 4
-    assert ds_region.sizes["samples"] == ds_chrom.sizes["samples"]
-    assert pos.shape[0] == ds_region.sizes["variants"]
-    assert pos.shape[0] == ds_region["call_genotype"].shape[0]
-    assert ds_region["call_genotype"].dtype == "int8"
-    assert ds_region["variant_position"].dtype == "int32"
-    assert_array_equal(pos, ds_region["variant_position"].values)

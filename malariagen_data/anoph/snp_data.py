@@ -193,6 +193,37 @@ class AnophelesSnpData(
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
+    def _site_filters_for_contig(
+        self,
+        *,
+        contig: str,
+        mask: base_params.site_mask,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ):
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = [
+                self._site_filters_for_contig(
+                    contig=c,
+                    mask=mask,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for c in contigs
+            ]
+            d = da.concatenate(arrs)
+            return d
+
+        else:
+            assert contig in self.contigs
+            root = self.open_site_filters(mask=mask)
+            z = root[f"{contig}/variants/{field}"]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return d
+
     def _site_filters_for_region(
         self,
         *,
@@ -202,13 +233,21 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
     ):
-        root = self.open_site_filters(mask=mask)
-        z = root[f"{region.contig}/variants/{field}"]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = self._site_filters_for_contig(
+            contig=region.contig,
+            mask=mask,
+            field=field,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
         if region.start or region.end:
-            root = self.open_snp_sites()
-            pos = root[f"{region.contig}/variants/POS"][:]
-            loc_region = locate_region(region, pos)
+            pos = self._snp_sites_for_contig(
+                contig=region.contig,
+                field="POS",
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            loc_region = locate_region(region, np.asarray(pos))
             d = d[loc_region]
         return d
 

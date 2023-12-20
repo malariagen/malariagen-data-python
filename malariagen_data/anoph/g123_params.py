@@ -25,7 +25,7 @@ window_sizes: TypeAlias = Annotated[
     """,
 ]
 
-window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
+window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000)
 
 window_size: TypeAlias = Annotated[
     int,

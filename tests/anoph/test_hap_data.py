@@ -139,6 +139,7 @@ def test_open_haplotypes(fixture, api: AnophelesHapData):
 
 
 def check_haplotypes(
+    *,
     fixture,
     api: AnophelesHapData,
     sample_sets,
@@ -510,18 +511,34 @@ def test_haplotypes_with_empty_calls(ag3_sim_fixture, ag3_sim_api: AnophelesHapD
 
 @pytest.mark.parametrize("analysis", ["arab", "gamb_colu", "gamb_colu_arab"])
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
-def test_haplotypes_virtual_contigs(ag3_sim_api, analysis, chrom):
+def test_haplotypes_virtual_contigs(
+    ag3_sim_fixture,
+    ag3_sim_api: AnophelesHapData,
+    analysis,
+    chrom,
+):
+    fixture = ag3_sim_fixture
     api = ag3_sim_api
     contig_r, contig_l = api.virtual_contigs[chrom]
+
+    # Standard checks, whole chromosome.
+    check_haplotypes(
+        fixture=fixture, api=api, region=chrom, analysis=analysis, sample_sets=None
+    )
+
     try:
-        ds_r = api.haplotypes(region=contig_r, analysis=analysis)
+        api.haplotypes(region=contig_r, analysis=analysis)
+
     except ValueError:
         # Assume no haplotypes available for the given analysis.
         with pytest.raises(ValueError):
             api.haplotypes(region=contig_l, analysis=analysis)
         with pytest.raises(ValueError):
             api.haplotypes(region=chrom, analysis=analysis)
+
     else:
+        # Extra checks, whole chromosome.
+        ds_r = api.haplotypes(region=contig_r, analysis=analysis)
         ds_l = api.haplotypes(region=contig_l, analysis=analysis)
         ds_chrom = api.haplotypes(region=chrom, analysis=analysis)
         assert isinstance(ds_chrom, xr.Dataset)
@@ -540,6 +557,13 @@ def test_haplotypes_virtual_contigs(ag3_sim_api, analysis, chrom):
         seq = api.genome_sequence(region=chrom)
         start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
         region = f"{chrom}:{start:,}-{stop:,}"
+
+        # Standard checks.
+        check_haplotypes(
+            fixture=fixture, api=api, region=region, analysis=analysis, sample_sets=None
+        )
+
+        # Extra checks.
         ds_region = api.haplotypes(region=region, analysis=analysis)
         assert isinstance(ds_region, xr.Dataset)
         assert len(ds_region.dims) == 4
@@ -551,3 +575,67 @@ def test_haplotypes_virtual_contigs(ag3_sim_api, analysis, chrom):
         assert np.all(pos[1:] > pos[:-1])  # monotonically increasing
         assert np.all(pos >= start)
         assert np.all(pos <= stop)
+
+
+def check_haplotype_sites(*, api: AnophelesHapData, region):
+    pos = api.haplotype_sites(region=region, field="POS")
+    ref = api.haplotype_sites(region=region, field="REF")
+    alt = api.haplotype_sites(region=region, field="ALT")
+    assert isinstance(pos, da.Array)
+    assert pos.ndim == 1
+    assert pos.dtype == "i4"
+    assert isinstance(ref, da.Array)
+    assert ref.ndim == 1
+    assert ref.dtype == "S1"
+    assert isinstance(alt, da.Array)
+    assert alt.ndim == 1
+    assert alt.dtype == "S1"
+    assert pos.shape[0] == ref.shape[0] == alt.shape[0]
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_haplotype_sites(fixture, api: AnophelesHapData):
+    # Test with contig.
+    contig = fixture.random_contig()
+    check_haplotype_sites(api=api, region=contig)
+
+    # Test with region string.
+    region = fixture.random_region_str()
+    check_haplotype_sites(api=api, region=region)
+
+    # Test with genome feature ID.
+    df_gff = api.genome_features(attributes=["ID"])
+    region = random.choice(df_gff["ID"].dropna().to_list())
+    check_haplotype_sites(api=api, region=region)
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_haplotype_sites_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Standard checks.
+    check_haplotype_sites(api=api, region=chrom)
+
+    # Extra checks.
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    pos_r = api.haplotype_sites(region=contig_r, field="POS")
+    pos_l = api.haplotype_sites(region=contig_l, field="POS")
+    offset = api.genome_sequence(region=contig_r).shape[0]
+    pos_expected = da.concatenate([pos_r, pos_l + offset])
+    pos_actual = api.haplotype_sites(region=chrom, field="POS")
+    assert da.all(pos_expected == pos_actual).compute(scheduler="single-threaded")
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+
+    # Standard checks.
+    check_haplotype_sites(api=api, region=region)
+
+    # Extra checks.
+    region_size = stop - start
+    pos = api.haplotype_sites(region=region, field="POS").compute()
+    assert pos.shape[0] <= region_size
+    assert np.all(pos >= start)
+    assert np.all(pos <= stop)
