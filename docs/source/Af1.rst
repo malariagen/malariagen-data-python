@@ -61,6 +61,7 @@ Haplotype data access
 
     phasing_analysis_ids
     haplotypes
+    haplotype_sites
 
 CNV data access
 ---------------

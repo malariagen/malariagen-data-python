@@ -1,9 +1,8 @@
 import sys
 
-import plotly.express as px
+import plotly.express as px  # type: ignore
 
-import malariagen_data  # used for .__version__
-
+import malariagen_data
 from .anopheles import AnophelesDataResource
 
 MAJOR_VERSION_NUMBER = 1
@@ -128,6 +127,7 @@ class Af1(AnophelesDataResource):
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
+            virtual_contigs=None,
         )
 
     def __repr__(self):

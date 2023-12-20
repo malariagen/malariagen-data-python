@@ -1,14 +1,11 @@
 import sys
 
 import dask
-import dask.array as da
 import pandas as pd
 import plotly.express as px  # type: ignore
 
-import malariagen_data  # used for .__version__
-
+import malariagen_data
 from .anopheles import AnophelesDataResource
-from .util import DIM_VARIANT, simple_xarray_concat
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
@@ -25,6 +22,11 @@ G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
+VIRTUAL_CONTIGS = {
+    "2RL": ("2R", "2L"),
+    "3RL": ("3R", "3L"),
+    "23X": ("2R", "2L", "3R", "3L", "X"),
+}
 
 
 def _setup_aim_palettes():
@@ -129,7 +131,6 @@ class Ag3(AnophelesDataResource):
 
     """
 
-    virtual_contigs = "2RL", "3RL"
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
@@ -189,6 +190,7 @@ class Ag3(AnophelesDataResource):
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
+            virtual_contigs=VIRTUAL_CONTIGS,
         )
 
         # set up caches
@@ -351,245 +353,7 @@ class Ag3(AnophelesDataResource):
 
         return self._cache_cross_metadata.copy()
 
-    def _genome_sequence_for_contig(self, *, contig, inline_array, chunks):
-        """Obtain the genome sequence for a given contig as an array."""
-
-        if contig in self.virtual_contigs:
-            # handle virtual contig with joined arms
-            contig_r, contig_l = _chrom_to_contigs(contig)
-            d_r = super()._genome_sequence_for_contig(
-                contig=contig_r, inline_array=inline_array, chunks=chunks
-            )
-            d_l = super()._genome_sequence_for_contig(
-                contig=contig_l, inline_array=inline_array, chunks=chunks
-            )
-            return da.concatenate([d_r, d_l])
-
-        return super()._genome_sequence_for_contig(
-            contig=contig, inline_array=inline_array, chunks=chunks
-        )
-
-    def _genome_features_for_contig(self, *, contig, attributes):
-        """Obtain the genome features for a given contig as a pandas DataFrame."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            df_r = super()._genome_features_for_contig(
-                contig=contig_r, attributes=attributes
-            )
-            df_l = super()._genome_features_for_contig(
-                contig=contig_l, attributes=attributes
-            )
-            max_r = super().genome_sequence(region=contig_r).shape[0]
-            df_l = df_l.assign(
-                start=lambda x: x.start + max_r, end=lambda x: x.end + max_r
-            )
-            df = pd.concat([df_r, df_l], axis=0)
-            df = df.assign(contig=contig)
-            return df
-
-        return super()._genome_features_for_contig(contig=contig, attributes=attributes)
-
-    def _snp_genotypes_for_contig(
-        self, *, contig, sample_set, field, inline_array, chunks
-    ):
-        """Access SNP genotypes for a single contig/chromosome and multiple sample sets."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            d_r = super()._snp_genotypes_for_contig(
-                contig=contig_r,
-                sample_set=sample_set,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            d_l = super()._snp_genotypes_for_contig(
-                contig=contig_l,
-                sample_set=sample_set,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            return da.concatenate([d_r, d_l])
-
-        return super()._snp_genotypes_for_contig(
-            contig=contig,
-            sample_set=sample_set,
-            field=field,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
-    def _snp_sites_for_contig(self, contig, *, field, inline_array, chunks):
-        """Access SNP sites for a single contig/chromosome."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            field_r = super()._snp_sites_for_contig(
-                contig=contig_r, field=field, inline_array=inline_array, chunks=chunks
-            )
-            field_l = super()._snp_sites_for_contig(
-                contig=contig_l, field=field, inline_array=inline_array, chunks=chunks
-            )
-
-            if field == "POS":
-                max_r = super().genome_sequence(region=contig_r).shape[0]
-                field_l = field_l + max_r
-
-            return da.concatenate([field_r, field_l])
-
-        return super()._snp_sites_for_contig(
-            contig=contig, field=field, inline_array=inline_array, chunks=chunks
-        )
-
-    def _snp_calls_for_contig(self, contig, *, sample_set, inline_array, chunks):
-        """Access SNP calls for a single contig/chromosome and a single sample sets as an xarray dataset."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            ds_r = super()._snp_calls_for_contig(
-                contig=contig_r,
-                sample_set=sample_set,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            ds_l = super()._snp_calls_for_contig(
-                contig=contig_l,
-                sample_set=sample_set,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-
-            ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
-
-            return ds
-
-        return super()._snp_calls_for_contig(
-            contig=contig,
-            sample_set=sample_set,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
-    def _snp_variants_for_contig(self, contig, *, inline_array, chunks):
-        """Access SNP variants for a single contig/chromosome as an xarray dataset."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            ds_r = super()._snp_variants_for_contig(
-                contig=contig_r,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            ds_l = super()._snp_variants_for_contig(
-                contig=contig_l,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            max_r = super().genome_sequence(region=contig_r).shape[0]
-            ds_l["variant_position"] = ds_l["variant_position"] + max_r
-
-            ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
-
-            return ds
-
-        return super()._snp_variants_for_contig(
-            contig=contig,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
-    def _haplotype_sites_for_contig(
-        self, *, contig, analysis, field, inline_array, chunks
-    ):
-        """Access haplotype site data for a single contig/chromosome."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            pos_r = super()._haplotype_sites_for_contig(
-                contig=contig_r,
-                analysis=analysis,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            pos_l = super()._haplotype_sites_for_contig(
-                contig=contig_l,
-                analysis=analysis,
-                field=field,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            max_r = super().genome_sequence(region=contig_r).shape[0]
-            pos_l = pos_l + max_r
-
-            return da.concatenate([pos_r, pos_l])
-
-        return super()._haplotype_sites_for_contig(
-            contig=contig,
-            analysis=analysis,
-            field=field,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
-    def _haplotypes_for_contig(
-        self, *, contig, sample_set, analysis, inline_array, chunks
-    ):
-        """Access haplotypes for a single whole chromosome and a single sample sets."""
-
-        if contig in self.virtual_contigs:
-            contig_r, contig_l = _chrom_to_contigs(contig)
-
-            ds_r = super()._haplotypes_for_contig(
-                contig=contig_r,
-                sample_set=sample_set,
-                analysis=analysis,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            ds_l = super()._haplotypes_for_contig(
-                contig=contig_l,
-                sample_set=sample_set,
-                analysis=analysis,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-
-            # handle case where no haplotypes available for given sample set
-            # then convert genome coordinates
-            if ds_l is not None:
-                max_r = super().genome_sequence(region=contig_r).shape[0]
-                ds_l["variant_position"] = ds_l["variant_position"] + max_r
-                ds = simple_xarray_concat([ds_r, ds_l], dim=DIM_VARIANT)
-                return ds
-
-            return None
-
-        return super()._haplotypes_for_contig(
-            contig=contig,
-            sample_set=sample_set,
-            analysis=analysis,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
     def _results_cache_add_analysis_params(self, params):
         super()._results_cache_add_analysis_params(params)
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
-
-
-def _chrom_to_contigs(chrom):
-    """Split a chromosome name into two contig names."""
-    assert chrom in ["2RL", "3RL"]
-    contig_r = chrom[0] + chrom[1]
-    contig_l = chrom[0] + chrom[2]
-    return contig_r, contig_l

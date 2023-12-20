@@ -193,6 +193,37 @@ class AnophelesSnpData(
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 
+    def _site_filters_for_contig(
+        self,
+        *,
+        contig: str,
+        mask: base_params.site_mask,
+        field: base_params.field,
+        inline_array: base_params.inline_array,
+        chunks: base_params.chunks,
+    ):
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = [
+                self._site_filters_for_contig(
+                    contig=c,
+                    mask=mask,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for c in contigs
+            ]
+            d = da.concatenate(arrs)
+            return d
+
+        else:
+            assert contig in self.contigs
+            root = self.open_site_filters(mask=mask)
+            z = root[f"{contig}/variants/{field}"]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return d
+
     def _site_filters_for_region(
         self,
         *,
@@ -202,13 +233,21 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
     ):
-        root = self.open_site_filters(mask=mask)
-        z = root[f"{region.contig}/variants/{field}"]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = self._site_filters_for_contig(
+            contig=region.contig,
+            mask=mask,
+            field=field,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
         if region.start or region.end:
-            root = self.open_snp_sites()
-            pos = root[f"{region.contig}/variants/POS"][:]
-            loc_region = locate_region(region, pos)
+            pos = self._snp_sites_for_contig(
+                contig=region.contig,
+                field="POS",
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            loc_region = locate_region(region, np.asarray(pos))
             d = d[loc_region]
         return d
 
@@ -259,10 +298,33 @@ class AnophelesSnpData(
         chunks: base_params.chunks,
     ) -> da.Array:
         """Access SNP sites data for a single contig."""
-        root = self.open_snp_sites()
-        z = root[f"{contig}/variants/{field}"]
-        ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return ret
+
+        # Handle virtual contig.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = []
+            offset = 0
+            for c in contigs:
+                arr = self._snp_sites_for_contig(
+                    contig=c,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                if field == "POS":
+                    if offset > 0:
+                        arr = arr + offset
+                    offset += self.genome_sequence(region=c).shape[0]
+                arrs.append(arr)
+            return da.concatenate(arrs)
+
+        # Handle contig in the reference genome.
+        else:
+            assert contig in self.contigs
+            root = self.open_snp_sites()
+            z = root[f"{contig}/variants/{field}"]
+            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return ret
 
     def _snp_sites_for_region(
         self,
@@ -351,10 +413,27 @@ class AnophelesSnpData(
         chunks: base_params.chunks,
     ) -> da.Array:
         """Access SNP genotypes for a single contig and a single sample set."""
-        root = self.open_snp_genotypes(sample_set=sample_set)
-        z = root[f"{contig}/calldata/{field}"]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        return d
+
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            arrs = [
+                self._snp_genotypes_for_contig(
+                    contig=c,
+                    sample_set=sample_set,
+                    field=field,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for c in contigs
+            ]
+            return da.concatenate(arrs)
+
+        else:
+            assert contig in self.contigs
+            root = self.open_snp_genotypes(sample_set=sample_set)
+            z = root[f"{contig}/calldata/{field}"]
+            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            return d
 
     @check_types
     @doc(
@@ -451,44 +530,65 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
     ):
-        coords = dict()
-        data_vars = dict()
-        sites_root = self.open_snp_sites()
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            datasets = []
+            offset = 0
+            for c in contigs:
+                dsc = self._snp_variants_for_contig(
+                    contig=c,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                if offset > 0:
+                    dsc["variant_position"] = dsc["variant_position"] + offset
+                offset += self.genome_sequence(region=c).shape[0]
+                datasets.append(dsc)
+            ret = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            return ret
 
-        # Set up variant_position.
-        pos_z = sites_root[f"{contig}/variants/POS"]
-        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
-        coords["variant_position"] = [DIM_VARIANT], variant_position
+        else:
+            assert contig in self.contigs
+            coords = dict()
+            data_vars = dict()
+            sites_root = self.open_snp_sites()
 
-        # Set up variant_allele.
-        ref_z = sites_root[f"{contig}/variants/REF"]
-        alt_z = sites_root[f"{contig}/variants/ALT"]
-        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
-        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
-        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
+            # Set up variant_position.
+            pos_z = sites_root[f"{contig}/variants/POS"]
+            variant_position = da_from_zarr(
+                pos_z, inline_array=inline_array, chunks=chunks
+            )
+            coords["variant_position"] = [DIM_VARIANT], variant_position
 
-        # Set up variant_contig.
-        contig_index = self.contigs.index(contig)
-        variant_contig = da.full_like(
-            variant_position, fill_value=contig_index, dtype="u1"
-        )
-        coords["variant_contig"] = [DIM_VARIANT], variant_contig
+            # Set up variant_allele.
+            ref_z = sites_root[f"{contig}/variants/REF"]
+            alt_z = sites_root[f"{contig}/variants/ALT"]
+            ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+            alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+            variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+            data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
-        # Set up site filters arrays.
-        for mask in self.site_mask_ids:
-            filters_root = self.open_site_filters(mask=mask)
-            z = filters_root[f"{contig}/variants/filter_pass"]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-            data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
+            # Set up variant_contig.
+            contig_index = self.contigs.index(contig)
+            variant_contig = da.full_like(
+                variant_position, fill_value=contig_index, dtype="u1"
+            )
+            coords["variant_contig"] = [DIM_VARIANT], variant_contig
 
-        # Set up attributes.
-        attrs = {"contigs": self.contigs}
+            # Set up site filters arrays.
+            for mask in self.site_mask_ids:
+                filters_root = self.open_site_filters(mask=mask)
+                z = filters_root[f"{contig}/variants/filter_pass"]
+                d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+                data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
-        # Create a dataset.
-        ds = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+            # Set up attributes.
+            attrs = {"contigs": self.contigs}
 
-        return ds
+            # Create a dataset.
+            dsc = xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
+
+            return dsc
 
     @check_types
     @doc(
@@ -750,41 +850,60 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array,
         chunks: base_params.chunks,
     ) -> xr.Dataset:
-        coords = dict()
-        data_vars = dict()
+        # Handle virtual contig.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            datasets = [
+                self._snp_calls_for_contig(
+                    contig=c,
+                    sample_set=sample_set,
+                    inline_array=inline_array,
+                    chunks=chunks,
+                )
+                for c in contigs
+            ]
+            ds = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            return ds
 
-        # Set up call arrays.
-        calls_root = self.open_snp_genotypes(sample_set=sample_set)
-        gt_z = calls_root[f"{contig}/calldata/GT"]
-        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = calls_root[f"{contig}/calldata/GQ"]
-        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = calls_root[f"{contig}/calldata/AD"]
-        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = calls_root[f"{contig}/calldata/MQ"]
-        call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
-        data_vars["call_genotype"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            call_genotype,
-        )
-        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
-        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
-        data_vars["call_AD"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE],
-            call_ad,
-        )
+        # Handle contig in the reference genome.
+        else:
+            assert contig in self.contigs
 
-        # Set up sample arrays.
-        z = calls_root["samples"]
-        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        # Decode to unicode strings, as it is stored as bytes objects.
-        sample_id = sample_id.astype("U")
-        coords["sample_id"] = [DIM_SAMPLE], sample_id
+            coords = dict()
+            data_vars = dict()
 
-        # Create a dataset.
-        ds = xr.Dataset(data_vars=data_vars, coords=coords)
+            # Set up call arrays.
+            calls_root = self.open_snp_genotypes(sample_set=sample_set)
+            gt_z = calls_root[f"{contig}/calldata/GT"]
+            call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+            gq_z = calls_root[f"{contig}/calldata/GQ"]
+            call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+            ad_z = calls_root[f"{contig}/calldata/AD"]
+            call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+            mq_z = calls_root[f"{contig}/calldata/MQ"]
+            call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
+            data_vars["call_genotype"] = (
+                [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
+                call_genotype,
+            )
+            data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
+            data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
+            data_vars["call_AD"] = (
+                [DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE],
+                call_ad,
+            )
 
-        return ds
+            # Set up sample arrays.
+            z = calls_root["samples"]
+            sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            # Decode to unicode strings, as it is stored as bytes objects.
+            sample_id = sample_id.astype("U")
+            coords["sample_id"] = [DIM_SAMPLE], sample_id
+
+            # Create a dataset.
+            ds = xr.Dataset(data_vars=data_vars, coords=coords)
+
+            return ds
 
     @check_types
     @doc(

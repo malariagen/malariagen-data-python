@@ -3,7 +3,7 @@ import warnings
 from abc import abstractmethod
 from bisect import bisect_left, bisect_right
 from collections import Counter
-from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Tuple, Union, Sequence
 
 import allel  # type: ignore
 import bokeh.layouts
@@ -139,6 +139,7 @@ class AnophelesDataResource(
         tqdm_class,
         storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
         taxon_colors: Optional[Mapping[str, str]],
+        virtual_contigs: Optional[Mapping[str, Sequence[str]]],
     ):
         super().__init__(
             url=url,
@@ -167,6 +168,7 @@ class AnophelesDataResource(
             results_cache=results_cache,
             tqdm_class=tqdm_class,
             taxon_colors=taxon_colors,
+            virtual_contigs=virtual_contigs,
         )
 
         # set up caches
@@ -5055,6 +5057,8 @@ class AnophelesDataResource(
             base_params.max_cohort_size
         ] = g123_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -5088,7 +5092,9 @@ class AnophelesDataResource(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._g123_gwss(**params)
+            results = self._g123_gwss(
+                inline_array=inline_array, chunks=chunks, **params
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -5108,6 +5114,8 @@ class AnophelesDataResource(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        inline_array,
+        chunks,
     ):
         gt, pos = self._load_data_for_g123(
             contig=contig,
@@ -5118,10 +5126,15 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
-        g123 = allel.moving_statistic(gt, statistic=self._garud_g123, size=window_size)
-        x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+        with self._spinner("Compute G123"):
+            g123 = allel.moving_statistic(
+                gt, statistic=self._garud_g123, size=window_size
+            )
+            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, g123=g123)
 
@@ -5153,6 +5166,8 @@ class AnophelesDataResource(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> gplt_params.figure:
         # compute G123
         x, g123 = self.g123_gwss(
@@ -5165,6 +5180,8 @@ class AnophelesDataResource(
             sample_query=sample_query,
             sample_sets=sample_sets,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         # determine X axis range
@@ -5249,6 +5266,8 @@ class AnophelesDataResource(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
@@ -5267,6 +5286,8 @@ class AnophelesDataResource(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         fig1.xaxis.visible = False
@@ -5308,8 +5329,9 @@ class AnophelesDataResource(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        inline_array,
+        chunks,
     ):
-        debug = self._log.debug
         ds_snps = self.snp_calls(
             region=contig,
             sample_query=sample_query,
@@ -5318,6 +5340,8 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
@@ -5326,35 +5350,32 @@ class AnophelesDataResource(
         pos = ds_snps["variant_position"].values
 
         if sites in self.phasing_analysis_ids:
-            debug("subsetting to haplotype positions")
-            haplotype_pos = self._haplotype_sites_for_contig(
-                contig=contig,
-                analysis=sites,
-                field="POS",
-                inline_array=True,
-                chunks="native",
-            ).compute()
-            hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
-            pos = pos[hap_site_mask]
-            gt = gt.compress(hap_site_mask, axis=0)
+            with self._spinner("Subsetting to selected sites"):
+                haplotype_pos = self.haplotype_sites(
+                    region=contig,
+                    analysis=sites,
+                    field="POS",
+                    inline_array=True,
+                    chunks="native",
+                ).compute()
+                hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
+                pos = pos[hap_site_mask]
+                gt = gt.compress(hap_site_mask, axis=0)
 
         elif sites == "segregating":
-            debug("subsetting to segregating sites")
-            ac = gt.count_alleles(max_allele=3)
-            seg = ac.is_segregating()
-            pos = pos[seg]
-            gt = gt.compress(seg, axis=0)
-
-        elif sites == "all":
-            debug("using all sites")
+            with self._spinner("Subsetting to segregating sites"):
+                ac = gt.count_alleles(max_allele=3)
+                seg = ac.is_segregating()
+                pos = pos[seg]
+                gt = gt.compress(seg, axis=0)
 
         return gt, pos
 
     @check_types
     @doc(
-        summary="Generate g123 GWSS calibration data for different window sizes.",
+        summary="Generate G123 GWSS calibration data for different window sizes.",
         returns="""
-            A list of g123 calibration run arrays for each window size, containing
+            A list of G123 calibration run arrays for each window size, containing
             values and percentiles.
         """,
     )
@@ -5373,6 +5394,8 @@ class AnophelesDataResource(
         ] = g123_params.max_cohort_size_default,
         window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> Mapping[str, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -5397,7 +5420,9 @@ class AnophelesDataResource(
             calibration_runs = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            calibration_runs = self._g123_calibration(**params)
+            calibration_runs = self._g123_calibration(
+                inline_array=inline_array, chunks=chunks, **params
+            )
             self.results_cache_set(name=name, params=params, results=calibration_runs)
 
         return calibration_runs
@@ -5414,6 +5439,8 @@ class AnophelesDataResource(
         max_cohort_size,
         window_sizes,
         random_seed,
+        inline_array,
+        chunks,
     ) -> Mapping[str, np.ndarray]:
         gt, _ = self._load_data_for_g123(
             contig=contig,
@@ -5424,10 +5451,12 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         calibration_runs: Dict[str, np.ndarray] = dict()
-        for window_size in self._progress(window_sizes, desc="Compute g123"):
+        for window_size in self._progress(window_sizes, desc="Compute G123"):
             g123 = allel.moving_statistic(
                 gt, statistic=self._garud_g123, size=window_size
             )
@@ -5437,7 +5466,7 @@ class AnophelesDataResource(
 
     @check_types
     @doc(
-        summary="Plot g123 GWSS calibration data for different window sizes.",
+        summary="Plot G123 GWSS calibration data for different window sizes.",
     )
     def plot_g123_calibration(
         self,
@@ -5456,6 +5485,8 @@ class AnophelesDataResource(
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         show: gplt_params.show = True,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> gplt_params.figure:
         # get g123 values
         calibration_runs = self.g123_calibration(
@@ -5468,6 +5499,8 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         # compute summaries

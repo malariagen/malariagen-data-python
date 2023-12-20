@@ -1,6 +1,7 @@
 import bokeh.plotting
 import numpy as np
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -21,6 +22,7 @@ def ag3_sim_api(ag3_sim_fixture):
         pre=True,
         gff_gene_type="gene",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
 
@@ -160,3 +162,29 @@ def test_gh334(gh334_api):
     transcript = "LOC125767311_t2"
     df_gf = gh334_api.genome_feature_children(parent=transcript)
     assert len(df_gf) == 20
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_genome_features_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    df_r = api.genome_features(region=contig_r)
+    df_l = api.genome_features(region=contig_l)
+    max_r = api.genome_sequence(contig_r).shape[0]
+    df_l = df_l.assign(start=lambda x: x.start + max_r, end=lambda x: x.end + max_r)
+    df_concat = pd.concat([df_r, df_l], axis=0).reset_index(drop=True)
+    df_concat = df_concat.assign(contig=chrom)
+    df = api.genome_features(region=chrom)
+    assert isinstance(df, pd.DataFrame)
+    assert df.shape[0] == df_r.shape[0] + df_l.shape[0]
+    assert all(df["contig"] == chrom)
+    assert_frame_equal(df, df_concat)
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    df = api.genome_features(region=region)
+    assert isinstance(df, pd.DataFrame)
+    if len(df) > 0:
+        assert df["contig"].unique() == region.split(":")[0]

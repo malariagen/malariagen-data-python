@@ -65,12 +65,36 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return df
 
     def _genome_features_for_contig(self, *, contig: str, attributes: Tuple[str, ...]):
-        debug = self._log.debug
+        # Handle virtual contigs.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            dfs = []
+            offset = 0
+            for c in contigs:
+                dfc = self._genome_features_for_contig(contig=c, attributes=attributes)
+                if offset > 0:
+                    dfc = dfc.assign(
+                        start=lambda x: x.start + offset,
+                        end=lambda x: x.end + offset,
+                    )
+                dfs.append(dfc)
+                offset += self.genome_sequence(region=c).shape[0]
 
-        df = self._genome_features(attributes=attributes)
+            # Concatenate dataframes for each contig.
+            df = pd.concat(dfs, axis=0)
 
-        debug("Apply contig query.")
-        return df.query(f"contig == '{contig}'")
+            # Assign name of the virtual contig.
+            df = df.assign(contig=contig)
+            return df
+
+        # Handle normal contigs in the reference genome.
+        else:
+            assert contig in self.contigs
+            df = self._genome_features(attributes=attributes)
+
+            # Apply contig query.
+            df = df.query(f"contig == '{contig}'")
+            return df
 
     def _prep_gff_attributes(
         self, attributes: base_params.gff_attributes
