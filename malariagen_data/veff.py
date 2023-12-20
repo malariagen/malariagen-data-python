@@ -1,7 +1,7 @@
 import collections
 import operator
 
-from Bio.Seq import Seq
+from Bio.Seq import Seq  # type: ignore
 
 VariantEffect = collections.namedtuple(
     "VariantEffect",
@@ -212,8 +212,9 @@ def _get_within_transcript_effect(ann, base_effect, cdss, utr5, utr3, introns):
         effect = base_effect._replace(effect="THREE_PRIME_UTR", impact="LOW")
         return effect
 
-    # if none of the above
-    effect = base_effect._replace(effect="TODO", impact="UNKNOWN")
+    # If none of the above, all we can say is that the variant hits
+    # a transcript.
+    effect = base_effect._replace(effect="TRANSCRIPT", impact="MODIFIER")
     return effect
 
 
@@ -364,7 +365,9 @@ def _get_within_cds_effect(ann, base_effect, cds, cdss):
 
         else:
             # TODO in-frame complex variation (MNP + INDEL)
-            effect = base_effect._replace(effect="TODO", impact="UNKNOWN")
+            effect = base_effect._replace(
+                effect="TODO in-frame complex variation (MNP + INDEL)", impact="UNKNOWN"
+            )
 
     return effect
 
@@ -536,7 +539,7 @@ def _get_within_intron_effect(base_effect, intron):
             effect = base_effect._replace(effect="INTRONIC", impact="MODIFIER")
 
     else:
-        # TODO INDELs and MNPs
-        effect = base_effect._replace(effect="TODO")
+        # TODO intronic INDELs and MNPs
+        effect = base_effect._replace(effect="TODO intronic indels and MNPs")
 
     return effect
