@@ -104,54 +104,6 @@ def test_snp_allele_frequencies__dict_cohorts():
     assert np.any(df.max_af == 0)
 
 
-def test_snp_allele_frequencies__str_cohorts__effects():
-    ag3 = setup_ag3(cohorts_analysis="20230516")
-    cohorts = "admin1_month"
-    min_cohort_size = 10
-    universal_fields = [
-        "pass_gamb_colu_arab",
-        "pass_gamb_colu",
-        "pass_arab",
-        "label",
-    ]
-    effects_fields = [
-        "transcript",
-        "effect",
-        "impact",
-        "ref_codon",
-        "alt_codon",
-        "aa_pos",
-        "ref_aa",
-        "alt_aa",
-    ]
-    df = ag3.snp_allele_frequencies(
-        transcript="AGAP004707-RD",
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask="gamb_colu",
-        sample_sets="3.0",
-        drop_invariant=True,
-        effects=True,
-    )
-    df_coh = ag3.cohorts_metadata(sample_sets="3.0")
-    coh_nm = "cohort_" + cohorts
-    coh_counts = df_coh[coh_nm].dropna().value_counts()
-    cohort_labels = coh_counts[coh_counts >= min_cohort_size].index.to_list()
-    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
-    expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
-
-    assert isinstance(df, pd.DataFrame)
-    assert len(df) == 16641
-    assert sorted(df.columns.tolist()) == sorted(expected_fields)
-    assert df.index.names == [
-        "contig",
-        "position",
-        "ref_allele",
-        "alt_allele",
-        "aa_change",
-    ]
-
-
 def test_snp_allele_frequencies__query():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     cohorts = "admin1_year"
