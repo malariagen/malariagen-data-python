@@ -168,7 +168,7 @@ class AnophelesSnpFrequencyAnalysis(
             gt = gt.compute()
 
         # Build coh dict.
-        coh_dict = self._locate_cohorts(cohorts=cohorts, df_samples=df_samples)
+        coh_dict = self._locate_cohorts(cohorts=cohorts, data=df_samples)
 
         # Count alleles.
         freq_cols = dict()

@@ -1109,7 +1109,7 @@ class AnophelesDataResource(
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = self._locate_cohorts(cohorts=cohorts, df_samples=df_samples)
+        coh_dict = self._locate_cohorts(cohorts=cohorts, data=df_samples)
 
         debug("compute cohort frequencies")
         freq_cols = dict()
