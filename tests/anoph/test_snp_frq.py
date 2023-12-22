@@ -348,7 +348,6 @@ def test_snp_allele_frequencies_with_dict_cohorts(
 # TODO: test_allele_frequencies_advanced_with_nobs_mode
 
 # from test_anopheles
-# TODO: test_snp_allele_frequencies_with_str_cohorts
 # TODO: test_snp_allele_frequencies_with_dup_samples
 # TODO: test_snp_allele_frequencies_with_bad_transcript
 # TODO: test_aa_allele_frequencies_with_dup_samples
