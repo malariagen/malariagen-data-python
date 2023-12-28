@@ -210,133 +210,8 @@ def check_snp_allele_frequencies(
     assert np.all(df_aa["aa_change"] == expected_aa_change)
 
 
-@pytest.mark.parametrize("cohorts", ["admin1_year", "admin2_month", "country"])
-@parametrize_with_cases("fixture,api", cases=".")
-def test_snp_allele_frequencies_with_str_cohorts(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-    cohorts,
-):
-    # Pick test parameters at random.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
-    transcript = random_transcript(api=api)
-
-    # Figure out expected cohort labels.
-    df_samples = api.sample_metadata(sample_sets=sample_sets)
-    if "cohort_" + cohorts in df_samples:
-        cohort_column = "cohort_" + cohorts
-    else:
-        cohort_column = cohorts
-    cohort_counts = df_samples[cohort_column].value_counts()
-    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
-
-    # Run the function under test.
-    df = api.snp_allele_frequencies(
-        transcript=transcript.name,
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask=site_mask,
-        sample_sets=sample_sets,
-        drop_invariant=True,
-        effects=True,
-    )
-
-    # Standard checks.
-    check_snp_allele_frequencies(
-        api=api,
-        df=df,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_snp_allele_frequencies_with_str_cohorts_and_sample_query(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-):
-    # Pick test parameters at random.
-    sample_sets = None
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
-    transcript = random_transcript(api=api)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
-    )
-    df_samples = api.sample_metadata(sample_sets=sample_sets)
-    countries = df_samples["country"].unique()
-    country = random.choice(countries)
-    sample_query = f"country == '{country}'"
-
-    # Figure out expected cohort labels.
-    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
-    cohort_column = "cohort_" + cohorts
-    cohort_counts = df_samples[cohort_column].value_counts()
-    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
-
-    # Run the function under test.
-    df = api.snp_allele_frequencies(
-        transcript=transcript.name,
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask=site_mask,
-        sample_sets=sample_sets,
-        sample_query=sample_query,
-        drop_invariant=True,
-        effects=True,
-    )
-
-    # Standard checks.
-    check_snp_allele_frequencies(
-        api=api,
-        df=df,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_snp_allele_frequencies_with_dict_cohorts(
-    fixture, api: AnophelesSnpFrequencyAnalysis
-):
-    # Pick test parameters at random.
-    sample_sets = None  # all sample sets
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
-    transcript = random_transcript(api=api)
-
-    # Create cohorts by country.
-    df_samples = api.sample_metadata(sample_sets=sample_sets)
-    cohort_counts = df_samples["country"].value_counts()
-    cohorts = {cohort: f"country == '{cohort}'" for cohort in cohort_counts.index}
-    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
-
-    # Run the function under test.
-    df = api.snp_allele_frequencies(
-        transcript=transcript.name,
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask=site_mask,
-        sample_sets=sample_sets,
-        drop_invariant=True,
-        effects=True,
-    )
-
-    # Standard checks.
-    check_snp_allele_frequencies(
-        api=api,
-        df=df,
-        cohort_labels=cohort_labels,
-        transcript=transcript,
-    )
-
-
 def check_aa_allele_frequencies(
     *,
-    api,
     df,
     cohort_labels,
     transcript,
@@ -389,7 +264,7 @@ def check_aa_allele_frequencies(
 
 @pytest.mark.parametrize("cohorts", ["admin1_year", "admin2_month", "country"])
 @parametrize_with_cases("fixture,api", cases=".")
-def test_aa_allele_frequencies_with_str_cohorts(
+def test_allele_frequencies_with_str_cohorts(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
     cohorts,
@@ -410,8 +285,8 @@ def test_aa_allele_frequencies_with_str_cohorts(
     cohort_counts = df_samples[cohort_column].value_counts()
     cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
 
-    # Run the function under test.
-    df = api.aa_allele_frequencies(
+    # Set up call params.
+    params = dict(
         transcript=transcript.name,
         cohorts=cohorts,
         min_cohort_size=min_cohort_size,
@@ -420,10 +295,128 @@ def test_aa_allele_frequencies_with_str_cohorts(
         drop_invariant=True,
     )
 
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Run the function under test.
+    df_aa = api.aa_allele_frequencies(**params)
+
     # Standard checks.
     check_aa_allele_frequencies(
+        df=df_aa,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_str_cohorts_and_sample_query(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    sample_sets = None
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    transcript = random_transcript(api=api)
+    cohorts = random.choice(
+        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
+    )
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    countries = df_samples["country"].unique()
+    country = random.choice(countries)
+    sample_query = f"country == '{country}'"
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    cohort_column = "cohort_" + cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        drop_invariant=True,
+    )
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
         api=api,
-        df=df,
+        df=df_snp,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Run the function under test.
+    df_aa = api.aa_allele_frequencies(**params)
+
+    # Standard checks.
+    check_aa_allele_frequencies(
+        df=df_aa,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_dict_cohorts(
+    fixture, api: AnophelesSnpFrequencyAnalysis
+):
+    # Pick test parameters at random.
+    sample_sets = None  # all sample sets
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    transcript = random_transcript(api=api)
+
+    # Create cohorts by country.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    cohort_counts = df_samples["country"].value_counts()
+    cohorts = {cohort: f"country == '{cohort}'" for cohort in cohort_counts.index}
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        drop_invariant=True,
+    )
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Run the function under test.
+    df_aa = api.aa_allele_frequencies(**params)
+
+    # Standard checks.
+    check_aa_allele_frequencies(
+        df=df_aa,
         cohort_labels=cohort_labels,
         transcript=transcript,
     )
