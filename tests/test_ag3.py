@@ -484,43 +484,6 @@ def test_locate_region(region_raw):
         assert region == Region("2R", 24630355, 24633221)
 
 
-def test_aa_allele_frequencies():
-    ag3 = setup_ag3(cohorts_analysis="20230516")
-
-    expected_fields = [
-        "transcript",
-        "aa_pos",
-        "ref_allele",
-        "alt_allele",
-        "ref_aa",
-        "alt_aa",
-        "effect",
-        "impact",
-        "frq_BF-09_gamb_2012",
-        "frq_BF-09_colu_2012",
-        "frq_BF-09_colu_2014",
-        "frq_BF-09_gamb_2014",
-        "frq_BF-07_gamb_2004",
-        "max_af",
-        "label",
-    ]
-
-    df = ag3.aa_allele_frequencies(
-        transcript="AGAP004707-RD",
-        cohorts="admin1_year",
-        min_cohort_size=10,
-        site_mask="gamb_colu",
-        sample_sets=("AG1000G-BF-A", "AG1000G-BF-B", "AG1000G-BF-C"),
-        drop_invariant=True,
-    )
-
-    assert sorted(df.columns.tolist()) == sorted(expected_fields)
-    assert isinstance(df, pd.DataFrame)
-    assert df.index.names == ["aa_change", "contig", "position"]
-    assert df.shape == (61, len(expected_fields))
-    assert df.loc["V402L"].max_af[0] == pytest.approx(0.121951, abs=1e-6)
-
-
 # noinspection PyDefaultArgument
 def _check_snp_allele_frequencies_advanced(
     transcript="AGAP004707-RD",

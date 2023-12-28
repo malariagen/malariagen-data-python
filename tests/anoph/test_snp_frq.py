@@ -334,10 +334,112 @@ def test_snp_allele_frequencies_with_dict_cohorts(
     )
 
 
+def check_aa_allele_frequencies(
+    *,
+    api,
+    df,
+    cohort_labels,
+    transcript,
+):
+    assert isinstance(df, pd.DataFrame)
+
+    # Check columns.
+    universal_fields = [
+        "label",
+    ]
+    effects_fields = [
+        "transcript",
+        "effect",
+        "impact",
+        "aa_pos",
+        "ref_allele",
+        "alt_allele",
+        "ref_aa",
+        "alt_aa",
+    ]
+    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
+    expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+    assert df.index.names == [
+        "aa_change",
+        "contig",
+        "position",
+    ]
+
+    # Check some values.
+    df = df.reset_index()
+    assert np.all(df["contig"] == transcript["contig"])
+    position = df["position"].values
+    assert np.all(position >= transcript["start"])
+    assert np.all(position <= transcript["end"])
+    assert np.all(position[1:] >= position[:-1])
+    assert np.all(df["ref_allele"].isin(expected_alleles))
+    # N.B., alt_allele may contain multiple alleles, e.g., "{A,T}", if
+    # multiple SNP alleles at the same position cause the same amino acid
+    # change.
+    assert np.all(df["transcript"] == transcript.name)
+    assert np.all(df["effect"].isin(expected_effects))
+    assert np.all(df["impact"].isin(expected_impacts))
+    df_aa = df[~df["aa_change"].isna()]
+    expected_aa_change = (
+        df_aa["ref_aa"] + df_aa["aa_pos"].astype(int).astype(str) + df_aa["alt_aa"]
+    )
+    assert np.all(df_aa["aa_change"] == expected_aa_change)
+
+
+@pytest.mark.parametrize("cohorts", ["admin1_year", "admin2_month", "country"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_aa_allele_frequencies_with_str_cohorts(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+    cohorts,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    transcript = random_transcript(api=api)
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Run the function under test.
+    df = api.aa_allele_frequencies(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        drop_invariant=True,
+    )
+
+    # Standard checks.
+    check_aa_allele_frequencies(
+        api=api,
+        df=df,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+
+# TODO: test_snp_allele_frequencies with and without drop_invariant
+# TODO: test_snp_allele_frequencies with and without effects
+
+# from test_anopheles
+# TODO: test_snp_allele_frequencies_with_dup_samples
+# TODO: test_snp_allele_frequencies_with_bad_transcript
+# TODO: test_aa_allele_frequencies_with_dup_samples
+# TODO: test_snp_allele_frequencies_advanced_with_dup_samples
+# TODO: test_aa_allele_frequencies_advanced_with_dup_samples
+
 # from test_ag3 and test_af1
-# TODO: test with and without drop_invariant
-# TODO: test with and without effects
-# TODO: test_aa_allele_frequencies_with_str_cohorts
 # TODO: test_allele_frequencies_advanced_with_transcript
 # TODO: test_allele_frequencies_advanced_with_area_by
 # TODO: test_allele_frequencies_advanced_with_period_by
@@ -346,10 +448,3 @@ def test_snp_allele_frequencies_with_dict_cohorts(
 # TODO: test_allele_frequencies_advanced_with_min_cohort_size
 # TODO: test_allele_frequencies_advanced_with_variant_query
 # TODO: test_allele_frequencies_advanced_with_nobs_mode
-
-# from test_anopheles
-# TODO: test_snp_allele_frequencies_with_dup_samples
-# TODO: test_snp_allele_frequencies_with_bad_transcript
-# TODO: test_aa_allele_frequencies_with_dup_samples
-# TODO: test_snp_allele_frequencies_advanced_with_dup_samples
-# TODO: test_aa_allele_frequencies_advanced_with_dup_samples
