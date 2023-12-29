@@ -157,6 +157,12 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
     assert np.all(df_aa["aa_change"] == expected_aa_change)
 
 
+def check_frequency(x):
+    loc_nan = np.isnan(x)
+    assert np.all(x[~loc_nan] >= 0)
+    assert np.all(x[~loc_nan] <= 1)
+
+
 def check_snp_allele_frequencies(
     *,
     api,
@@ -180,8 +186,8 @@ def check_snp_allele_frequencies(
         "ref_aa",
         "alt_aa",
     ]
-    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
-    expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
+    frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
+    expected_fields = universal_fields + frq_fields + effects_fields
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == [
         "contig",
@@ -208,6 +214,9 @@ def check_snp_allele_frequencies(
         df_aa["ref_aa"] + df_aa["aa_pos"].astype(int).astype(str) + df_aa["alt_aa"]
     )
     assert np.all(df_aa["aa_change"] == expected_aa_change)
+    for f in frq_fields:
+        x = df[f]
+        check_frequency(x)
 
 
 def check_aa_allele_frequencies(
@@ -232,8 +241,9 @@ def check_aa_allele_frequencies(
         "ref_aa",
         "alt_aa",
     ]
-    frq_cohort_labels = ["frq_" + s for s in cohort_labels]
-    expected_fields = universal_fields + frq_cohort_labels + ["max_af"] + effects_fields
+    frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
+    expected_fields = universal_fields + frq_fields + effects_fields
+    expected_fields = universal_fields + frq_fields + effects_fields
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
     assert df.index.names == [
         "aa_change",
@@ -260,6 +270,9 @@ def check_aa_allele_frequencies(
         df_aa["ref_aa"] + df_aa["aa_pos"].astype(int).astype(str) + df_aa["alt_aa"]
     )
     assert np.all(df_aa["aa_change"] == expected_aa_change)
+    for f in frq_fields:
+        x = df[f]
+        check_frequency(x)
 
 
 @pytest.mark.parametrize("cohorts", ["admin1_year", "admin2_month", "country"])
@@ -422,7 +435,61 @@ def test_allele_frequencies_with_dict_cohorts(
     )
 
 
-# TODO: test_snp_allele_frequencies with and without drop_invariant
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_without_drop_invariant(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    transcript = random_transcript(api=api)
+    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+    )
+
+    # Run the function under test.
+    df_snp_a = api.snp_allele_frequencies(drop_invariant=True, **params)
+    df_snp_b = api.snp_allele_frequencies(drop_invariant=False, **params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp_a,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp_b,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Check specifics.
+    assert len(df_snp_b) > len(df_snp_a)
+    assert min(df_snp_a["max_af"]) > 0  # all SNPs show some variation
+    assert min(df_snp_b["max_af"]) == 0  # some SNPs show no variation
+
+
 # TODO: test_snp_allele_frequencies with and without effects
 
 # from test_anopheles
