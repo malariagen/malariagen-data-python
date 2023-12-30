@@ -2,6 +2,7 @@ import random
 
 import numpy as np
 import pandas as pd
+from pandas.testing import assert_frame_equal
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -486,11 +487,86 @@ def test_allele_frequencies_without_drop_invariant(
 
     # Check specifics.
     assert len(df_snp_b) > len(df_snp_a)
-    assert min(df_snp_a["max_af"]) > 0  # all SNPs show some variation
-    assert min(df_snp_b["max_af"]) == 0  # some SNPs show no variation
 
 
-# TODO: test_snp_allele_frequencies with and without effects
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_without_effects(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    transcript = random_transcript(api=api)
+    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        drop_invariant=True,
+    )
+
+    # Run the function under test.
+    df_snp_a = api.snp_allele_frequencies(effects=True, **params)
+    df_snp_b = api.snp_allele_frequencies(effects=False, **params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp_a,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Check specifics.
+    assert len(df_snp_b) == len(df_snp_a)
+
+    # Check columns and index names.
+    filter_fields = [f"pass_{m}" for m in api.site_mask_ids]
+    universal_fields = filter_fields + ["label"]
+    frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
+    expected_fields = universal_fields + frq_fields
+    assert sorted(df_snp_b.columns.tolist()) == sorted(expected_fields)
+    assert df_snp_b.index.names == [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+    ]
+
+    # Compare values with and without effects.
+    comparable_fields = (
+        [
+            "contig",
+            "position",
+            "ref_allele",
+            "alt_allele",
+        ]
+        + filter_fields
+        + frq_fields
+    )
+    # N.B., values of the "label" field are different with and without
+    # effects, so don't compare them.
+    assert_frame_equal(
+        df_snp_b.reset_index()[comparable_fields],
+        df_snp_a.reset_index()[comparable_fields],
+    )
+
 
 # from test_anopheles
 # TODO: test_snp_allele_frequencies_with_dup_samples
