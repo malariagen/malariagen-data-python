@@ -568,10 +568,72 @@ def test_allele_frequencies_without_effects(
     )
 
 
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_bad_transcript(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+
+    # Set up call params.
+    params = dict(
+        transcript="foobar",
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        drop_invariant=True,
+    )
+
+    # Run the function under test.
+    with pytest.raises(ValueError):
+        api.snp_allele_frequencies(**params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_dup_samples(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 10)
+    transcript = random_transcript(api=api)
+    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+    )
+
+    # Run the function under test.
+    df_snp_a = api.snp_allele_frequencies(sample_sets=[sample_set], **params)
+    df_snp_b = api.snp_allele_frequencies(
+        sample_sets=[sample_set, sample_set], **params
+    )
+
+    # Expect automatically deduplicate sample sets.
+    assert_frame_equal(df_snp_b, df_snp_a)
+
+    # Run the function under test.
+    df_aa_a = api.aa_allele_frequencies(sample_sets=[sample_set], **params)
+    df_aa_b = api.aa_allele_frequencies(sample_sets=[sample_set, sample_set], **params)
+
+    # Expect automatically deduplicate sample sets.
+    assert_frame_equal(df_aa_b, df_aa_a)
+
+
 # from test_anopheles
-# TODO: test_snp_allele_frequencies_with_dup_samples
-# TODO: test_snp_allele_frequencies_with_bad_transcript
-# TODO: test_aa_allele_frequencies_with_dup_samples
 # TODO: test_snp_allele_frequencies_advanced_with_dup_samples
 # TODO: test_aa_allele_frequencies_advanced_with_dup_samples
 

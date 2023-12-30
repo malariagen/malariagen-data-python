@@ -1,7 +1,6 @@
 import numpy as np
 import pytest
 from numpy.testing import assert_allclose
-from pandas.testing import assert_frame_equal
 
 from malariagen_data import Af1, Ag3
 from malariagen_data.af1 import GCS_URL as AF1_GCS_URL
@@ -40,105 +39,6 @@ def setup_subclass_cached(subclass, **kwargs):
     else:
         raise ValueError
     return setup_subclass(subclass, url=url, **kwargs)
-
-
-@pytest.mark.parametrize(
-    "subclass, transcript, sample_set",
-    [
-        (
-            Ag3,
-            "AGAP004707-RD",
-            "AG1000G-FR",
-        ),
-        (
-            Af1,
-            "LOC125767311_t2",
-            "1229-VO-GH-DADZIE-VMF00095",
-        ),
-    ],
-)
-def test_snp_allele_frequencies__dup_samples(
-    subclass,
-    transcript,
-    sample_set,
-):
-    # Expect automatically deduplicate any sample sets.
-    anoph = setup_subclass_cached(subclass)
-    df = anoph.snp_allele_frequencies(
-        transcript=transcript,
-        cohorts="admin1_year",
-        sample_sets=[sample_set],
-    )
-    df_dup = anoph.snp_allele_frequencies(
-        transcript=transcript,
-        cohorts="admin1_year",
-        sample_sets=[sample_set, sample_set],
-    )
-    assert_frame_equal(df, df_dup)
-
-
-@pytest.mark.parametrize(
-    "subclass, transcript, sample_sets",
-    [
-        (
-            Ag3,
-            "foobar",
-            "3.0",
-        ),
-        (
-            Af1,
-            "foobar",
-            "1.0",
-        ),
-    ],
-)
-def test_snp_allele_frequencies__bad_transcript(
-    subclass,
-    transcript,
-    sample_sets,
-):
-    anoph = setup_subclass_cached(subclass)
-    with pytest.raises(ValueError):
-        anoph.snp_allele_frequencies(
-            transcript=transcript,
-            cohorts="admin1_year",
-            sample_sets=sample_sets,
-        )
-
-
-@pytest.mark.parametrize(
-    "subclass, cohorts_analysis, transcript, sample_set",
-    [
-        (
-            Ag3,
-            "20211101",
-            "AGAP004707-RD",
-            "AG1000G-FR",
-        ),
-        (
-            Af1,
-            "20221129",
-            "LOC125767311_t2",
-            "1229-VO-GH-DADZIE-VMF00095",
-        ),
-    ],
-)
-def test_aa_allele_frequencies__dup_samples(
-    subclass, cohorts_analysis, transcript, sample_set
-):
-    # Expect automatically deduplicate sample sets.
-    anoph = setup_subclass_cached(subclass=subclass, cohorts_analysis=cohorts_analysis)
-    df = anoph.aa_allele_frequencies(
-        transcript=transcript,
-        cohorts="admin1_year",
-        sample_sets=[sample_set],
-    )
-    df_dup = anoph.aa_allele_frequencies(
-        transcript=transcript,
-        cohorts="admin1_year",
-        sample_sets=[sample_set, sample_set],
-    )
-    assert_frame_equal(df, df_dup)
 
 
 @pytest.mark.parametrize(
