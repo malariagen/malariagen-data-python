@@ -671,6 +671,62 @@ def test_allele_frequencies_with_bad_transcript(
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_region(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 2)
+    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    # This should work, as long as effects=False - i.e., can get frequencies
+    # for any genome region.
+    transcript = fixture.random_region_str(region_size=500)
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        drop_invariant=False,
+        effects=False,
+    )
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    # Basic checks.
+    assert isinstance(df_snp, pd.DataFrame)
+    assert len(df_snp) > 0
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Check columns and index names.
+    filter_fields = [f"pass_{m}" for m in api.site_mask_ids]
+    universal_fields = filter_fields + ["label"]
+    frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
+    expected_fields = universal_fields + frq_fields
+    assert sorted(df_snp.columns.tolist()) == sorted(expected_fields)
+    assert df_snp.index.names == [
+        "contig",
+        "position",
+        "ref_allele",
+        "alt_allele",
+    ]
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_allele_frequencies_with_dup_samples(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
@@ -1284,27 +1340,25 @@ def test_plot_frequencies_heatmap(
         sample_sets=sample_sets,
     )
 
-    # Compute SNP allele frequencies.
+    # Test SNP allele frequencies.
     df_snp = api.snp_allele_frequencies(**params)
-
-    # Plot.
     fig = api.plot_frequencies_heatmap(df_snp, show=False, max_len=None)
-
-    # Test.
     assert isinstance(fig, go.Figure)
 
-    # Compute amino acid change allele frequencies.
+    # Test amino acid change allele frequencies.
     df_aa = api.aa_allele_frequencies(**params)
-
-    # Plot.
     fig = api.plot_frequencies_heatmap(df_aa, show=False, max_len=None)
-
-    # Test.
     assert isinstance(fig, go.Figure)
 
     # Test max_len behaviour.
     with pytest.raises(ValueError):
         api.plot_frequencies_heatmap(df_snp, show=False, max_len=len(df_snp) - 1)
+
+    # Test index parameter - if None, should use dataframe index.
+    fig = api.plot_frequencies_heatmap(df_snp, show=False, index=None, max_len=None)
+    # Not unique.
+    with pytest.raises(ValueError):
+        api.plot_frequencies_heatmap(df_snp, show=False, index="contig", max_len=None)
 
 
 @parametrize_with_cases("fixture,api", cases=".")

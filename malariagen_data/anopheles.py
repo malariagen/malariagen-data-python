@@ -52,7 +52,7 @@ from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
-from .anoph.sample_metadata import AnophelesSampleMetadata
+from .anoph.sample_metadata import AnophelesSampleMetadata, locate_cohorts
 from .anoph.snp_data import AnophelesSnpData
 from .mjn import median_joining_network, mjn_graph
 from .util import (
@@ -1109,7 +1109,7 @@ class AnophelesDataResource(
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = self._locate_cohorts(cohorts=cohorts, data=df_samples)
+        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
 
         debug("compute cohort frequencies")
         freq_cols = dict()

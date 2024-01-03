@@ -168,7 +168,7 @@ class AnophelesSnpFrequencyAnalysis(
         )
 
         # Early check for no SNPs.
-        if ds_snp.sizes["variants"] == 0:
+        if ds_snp.sizes["variants"] == 0:  # pragma: no cover
             raise ValueError("No SNPs available for the given region and site mask.")
 
         # Access genotypes.
@@ -224,7 +224,7 @@ class AnophelesSnpFrequencyAnalysis(
             loc_variant = df_snps["max_af"] > 0
 
             # Check for no SNPs remaining after dropping invariants.
-            if np.count_nonzero(loc_variant) == 0:
+            if np.count_nonzero(loc_variant) == 0:  # pragma: no cover
                 raise ValueError("No SNPs remaining after dropping invariant SNPs.")
 
             df_snps = df_snps.loc[loc_variant]
@@ -267,7 +267,7 @@ class AnophelesSnpFrequencyAnalysis(
             )
 
         # Add dataframe metadata.
-        gene_name = self._transcript_to_gene_name(transcript)
+        gene_name = self._transcript_to_parent_name(transcript)
         title = transcript
         if gene_name:
             title += f" ({gene_name})"
@@ -318,7 +318,7 @@ class AnophelesSnpFrequencyAnalysis(
         df_ns_snps = df_snps.query(AA_CHANGE_QUERY).copy()
 
         # Early check for no matching SNPs.
-        if len(df_ns_snps) == 0:
+        if len(df_ns_snps) == 0:  # pragma: no cover
             raise ValueError(
                 "No amino acid change SNPs found for the given transcript and site mask."
             )
@@ -379,7 +379,7 @@ class AnophelesSnpFrequencyAnalysis(
         df_aaf.set_index(["aa_change", "contig", "position"], inplace=True)
 
         # Add metadata.
-        gene_name = self._transcript_to_gene_name(transcript)
+        gene_name = self._transcript_to_parent_name(transcript)
         title = transcript
         if gene_name:
             title += f" ({gene_name})"
@@ -455,7 +455,7 @@ class AnophelesSnpFrequencyAnalysis(
         )
 
         # Early check for no SNPs.
-        if ds_snps.sizes["variants"] == 0:
+        if ds_snps.sizes["variants"] == 0:  # pragma: no cover
             raise ValueError("No SNPs available for the given region and site mask.")
 
         # Access genotypes.
@@ -534,7 +534,7 @@ class AnophelesSnpFrequencyAnalysis(
             loc_variant = max_af > 0
 
             # Check for no SNPs remaining after dropping invariants.
-            if np.count_nonzero(loc_variant) == 0:
+            if np.count_nonzero(loc_variant) == 0:  # pragma: no cover
                 raise ValueError("No SNPs remaining after dropping invariant SNPs.")
 
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
@@ -577,7 +577,7 @@ class AnophelesSnpFrequencyAnalysis(
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
 
-            # Check for no SNPs remaining after dropping invariants.
+            # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
                 raise ValueError(
                     f"No SNPs remaining after applying variant query {variant_query!r}."
@@ -593,7 +593,7 @@ class AnophelesSnpFrequencyAnalysis(
         ds_out = ds_out[sorted_vars]
 
         # Add metadata.
-        gene_name = self._transcript_to_gene_name(transcript)
+        gene_name = self._transcript_to_parent_name(transcript)
         title = transcript
         if gene_name:
             title += f" ({gene_name})"
@@ -707,7 +707,7 @@ class AnophelesSnpFrequencyAnalysis(
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
 
-            # Check for no SNPs remaining after dropping invariants.
+            # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
                 raise ValueError(
                     f"No SNPs remaining after applying variant query {variant_query!r}."
@@ -721,7 +721,7 @@ class AnophelesSnpFrequencyAnalysis(
         # Tidy up display by sorting variables.
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
 
-        gene_name = self._transcript_to_gene_name(transcript)
+        gene_name = self._transcript_to_parent_name(transcript)
         title = transcript
         if gene_name:
             title += f" ({gene_name})"
@@ -769,7 +769,7 @@ class AnophelesSnpFrequencyAnalysis(
     def plot_frequencies_heatmap(
         self,
         df: pd.DataFrame,
-        index: Union[str, List[str]] = "label",
+        index: Optional[Union[str, List[str]]] = "label",
         max_len: Optional[int] = 100,
         col_width: int = 40,
         row_height: int = 20,
@@ -1223,7 +1223,7 @@ def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
         make_period = _make_sample_period_quarter
     elif period_by == "month":
         make_period = _make_sample_period_month
-    else:
+    else:  # pragma: no cover
         raise ValueError(
             f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
         )

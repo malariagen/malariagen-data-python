@@ -436,17 +436,20 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         fig.xaxis.minor_tick_line_color = None
         fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
 
-    def _transcript_to_gene_name(self, transcript):
+    def _transcript_to_parent_name(self, transcript):
         df_genome_features = self.genome_features().set_index("ID")
-        rec_transcript = df_genome_features.loc[transcript]
+
+        try:
+            rec_transcript = df_genome_features.loc[transcript]
+        except KeyError:
+            return None
+
         parent_id = rec_transcript["Parent"]
 
-        if parent_id in self._gene_name_overrides:
+        try:
             # Manual override.
-            parent_name = self._gene_name_overrides[parent_id]
-        else:
+            return self._gene_name_overrides[parent_id]
+        except KeyError:
             rec_parent = df_genome_features.loc[parent_id]
-            # Try to access "Name", fall back to ID if not present.
-            parent_name = rec_parent.get("Name", parent_id)
-
-        return parent_name
+            # Try to access "Name" attribute, fall back to "ID" if not present.
+            return rec_parent.get("Name", parent_id)

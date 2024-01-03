@@ -1011,11 +1011,14 @@ class AnophelesSimulator:
     def random_contig(self):
         return choice(self.contigs)
 
-    def random_region_str(self):
+    def random_region_str(self, region_size=None):
         contig = self.random_contig()
         contig_size = self.contig_sizes[contig]
         region_start = randint(1, contig_size)
-        region_end = randint(region_start, contig_size)
+        if region_size:
+            region_end = region_start + region_size
+        else:
+            region_end = randint(region_start, contig_size)
         region = f"{contig}:{region_start:,}-{region_end:,}"
         return region
 
