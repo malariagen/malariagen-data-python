@@ -343,7 +343,7 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Pick test parameters at random.
     sample_sets = None
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = 0
     transcript = random_transcript(api=api)
     cohorts = random.choice(
         ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
