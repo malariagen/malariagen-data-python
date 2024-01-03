@@ -343,6 +343,69 @@ def test_allele_frequencies_with_str_cohorts(
     )
 
 
+@pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_min_cohort_size(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+    min_cohort_size,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    transcript = random_transcript(api=api)
+    cohorts = "admin1_year"
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        drop_invariant=True,
+    )
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    if len(cohort_labels) == 0:
+        # No cohorts, expect error.
+        with pytest.raises(ValueError):
+            api.snp_allele_frequencies(**params)
+        with pytest.raises(ValueError):
+            api.aa_allele_frequencies(**params)
+        return
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Run the function under test.
+    df_aa = api.aa_allele_frequencies(**params)
+
+    # Standard checks.
+    check_aa_allele_frequencies(
+        df=df_aa,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_allele_frequencies_with_str_cohorts_and_sample_query(
     fixture,
