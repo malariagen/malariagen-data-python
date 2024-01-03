@@ -73,8 +73,8 @@ class Gff3Simulator:
         n_exons_low=1,
         n_exons_high=5,
         intron_size_low=10,
-        intron_size_high=1_000,
-        exon_size_low=10,
+        intron_size_high=100,
+        exon_size_low=100,
         exon_size_high=1_000,
         source="random",
         max_genes=1_000,
@@ -256,15 +256,21 @@ class Gff3Simulator:
         transcript_size = transcript_end - transcript_start
         exons = []
         exon_end = transcript_start
-        for exon_ix in range(randint(self.n_exons_low, self.n_exons_high)):
+        n_exons = randint(self.n_exons_low, self.n_exons_high)
+        for exon_ix in range(n_exons):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
-            intron_size = randint(
-                self.intron_size_low, min(transcript_size, self.intron_size_high)
-            )
-            exon_start = exon_end + intron_size
-            if exon_start >= transcript_end:
-                # Stop making exons, no more space left in the transcript.
-                break
+            if exon_ix > 0:
+                # Insert an intron between this exon and the previous one.
+                intron_size = randint(
+                    self.intron_size_low, min(transcript_size, self.intron_size_high)
+                )
+                exon_start = exon_end + intron_size
+                if exon_start >= transcript_end:
+                    # Stop making exons, no more space left in the transcript.
+                    break
+            else:
+                # First exon, assume exon starts where the transcript starts.
+                exon_start = transcript_start
             exon_size = randint(self.exon_size_low, self.exon_size_high)
             exon_end = min(exon_start + exon_size, transcript_end)
             assert exon_end > exon_start
@@ -282,20 +288,20 @@ class Gff3Simulator:
             yield exon
             exons.append(exon)
 
-        # Note that this is not perfect, because sometimes we end up
-        # without any CDSs. Also in reality, an exon can contain
-        # part of a UTR and part of a CDS, but that is harder to
-        # simulate. So keep things simple for now.
+        # Note that this is not perfect, because in reality an exon can contain
+        # part of a UTR and part of a CDS, but that is harder to simulate. So
+        # keep things simple for now.
         if strand == "-":
             # Take exons in reverse order.
             exons == exons[::-1]
         for exon_ix, exon in enumerate(exons):
             first_exon = exon_ix == 0
             last_exon = exon_ix == len(exons) - 1
-            if first_exon:
+            # Ensure at least one CDS.
+            if first_exon and len(exons) > 1:
                 feature_type = self.utr5_type
                 phase = "."
-            elif last_exon:
+            elif last_exon and len(exons) > 2:
                 feature_type = self.utr3_type
                 phase = "."
             else:
@@ -1005,11 +1011,14 @@ class AnophelesSimulator:
     def random_contig(self):
         return choice(self.contigs)
 
-    def random_region_str(self):
+    def random_region_str(self, region_size=None):
         contig = self.random_contig()
         contig_size = self.contig_sizes[contig]
         region_start = randint(1, contig_size)
-        region_end = randint(region_start, contig_size)
+        if region_size:
+            region_end = region_start + region_size
+        else:
+            region_end = randint(region_start, contig_size)
         region = f"{contig}:{region_start:,}-{region_end:,}"
         return region
 

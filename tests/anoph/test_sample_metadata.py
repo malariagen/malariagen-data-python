@@ -683,13 +683,20 @@ def test_count_samples(fixture, api):
     )
 
 
-@pytest.mark.parametrize(
-    "basemap", ["satellite", None, ipyleaflet.basemaps.OpenTopoMap]
-)
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_samples_interactive_map(fixture, api, basemap):
-    m = api.plot_samples_interactive_map(basemap=basemap)
+def test_plot_samples_interactive_map(fixture, api):
+    # Test behaviour with bad basemap param.
+    with pytest.raises(ValueError):
+        api.plot_samples_interactive_map(basemap="foobar")
+
+    # Default params.
+    m = api.plot_samples_interactive_map()
     assert isinstance(m, ipyleaflet.Map)
+
+    # Explicit params.
+    for basemap in ["satellite", None, ipyleaflet.basemaps.OpenTopoMap]:
+        m = api.plot_samples_interactive_map(basemap=basemap, width=500, height=300)
+        assert isinstance(m, ipyleaflet.Map)
 
 
 @parametrize_with_cases("fixture,api", cases=".")

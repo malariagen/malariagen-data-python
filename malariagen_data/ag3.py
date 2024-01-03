@@ -27,6 +27,9 @@ VIRTUAL_CONTIGS = {
     "3RL": ("3R", "3L"),
     "23X": ("2R", "2L", "3R", "3L", "X"),
 }
+GENE_NAMES = {
+    "AGAP004707": "Vgsc/para",
+}
 
 
 def _setup_aim_palettes():
@@ -191,6 +194,7 @@ class Ag3(AnophelesDataResource):
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=VIRTUAL_CONTIGS,
+            gene_names=GENE_NAMES,
         )
 
         # set up caches
@@ -292,20 +296,6 @@ class Ag3(AnophelesDataResource):
             </table>
         """
         return html
-
-    def _transcript_to_gene_name(self, transcript):
-        df_genome_features = self.genome_features().set_index("ID")
-        rec_transcript = df_genome_features.loc[transcript]
-        parent = rec_transcript["Parent"]
-        rec_parent = df_genome_features.loc[parent]
-
-        # manual overrides
-        if parent == "AGAP004707":
-            parent_name = "Vgsc/para"
-        else:
-            parent_name = rec_parent["Name"]
-
-        return parent_name
 
     def cross_metadata(self):
         """Load a dataframe containing metadata about samples in colony crosses,

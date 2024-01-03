@@ -1,4 +1,4 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Mapping
 
 import bokeh.models
 import bokeh.plotting
@@ -26,6 +26,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         *,
         gff_gene_type: str,
         gff_default_attributes: Tuple[str, ...],
+        gene_names: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -38,6 +39,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self._gff_gene_type = gff_gene_type
         self._gff_default_attributes = gff_default_attributes
 
+        # Allow manual override of gene names.
+        if gene_names is None:
+            gene_names = dict()
+        self._gene_name_overrides = gene_names
+
         # Setup caches.
         self._cache_genome_features: Dict[Tuple[str, ...], pd.DataFrame] = dict()
 
@@ -45,7 +51,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def _geneset_gff3_path(self):
         return self.config["GENESET_GFF3_PATH"]
 
-    def geneset(self, *args, **kwargs):
+    def geneset(self, *args, **kwargs):  # pragma: no cover
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
@@ -429,3 +435,21 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
         fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
+
+    def _transcript_to_parent_name(self, transcript):
+        df_genome_features = self.genome_features().set_index("ID")
+
+        try:
+            rec_transcript = df_genome_features.loc[transcript]
+        except KeyError:
+            return None
+
+        parent_id = rec_transcript["Parent"]
+
+        try:
+            # Manual override.
+            return self._gene_name_overrides[parent_id]
+        except KeyError:
+            rec_parent = df_genome_features.loc[parent_id]
+            # Try to access "Name" attribute, fall back to "ID" if not present.
+            return rec_parent.get("Name", parent_id)

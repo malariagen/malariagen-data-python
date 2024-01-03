@@ -2,7 +2,7 @@ import random
 
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # type: ignore
 import pytest
 from pytest_cases import parametrize_with_cases
 

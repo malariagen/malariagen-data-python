@@ -128,6 +128,7 @@ class Af1(AnophelesDataResource):
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
+            gene_names=None,
         )
 
     def __repr__(self):
@@ -209,21 +210,3 @@ class Af1(AnophelesDataResource):
             </table>
         """
         return html
-
-    def _transcript_to_gene_name(self, transcript):
-        df_genome_features = self.genome_features().set_index("ID")
-        rec_transcript = df_genome_features.loc[transcript]
-        parent = rec_transcript["Parent"]
-
-        # E.g. manual overrides (used in Ag3)
-        # if parent == "AGAP004707":
-        #     parent_name = "Vgsc/para"
-        # else:
-        #     parent_name = rec_parent["Name"]
-
-        # Note: Af1 doesn't have the "Name" attribute
-        # rec_parent = df_genome_features.loc[parent]
-        # parent_name = rec_parent["Name"]
-        parent_name = parent
-
-        return parent_name
