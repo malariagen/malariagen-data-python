@@ -5,10 +5,13 @@ import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
 from pytest_cases import parametrize_with_cases
+import xarray as xr
+from numpy.testing import assert_allclose, assert_array_equal
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
+from malariagen_data.util import compare_series_like
 
 
 @pytest.fixture
@@ -287,7 +290,7 @@ def test_allele_frequencies_with_str_cohorts(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
 
     # Figure out expected cohort labels.
@@ -339,7 +342,7 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Pick test parameters at random.
     sample_sets = None
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(
         ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
@@ -395,7 +398,7 @@ def test_allele_frequencies_with_dict_cohorts(
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
 
     # Create cohorts by country.
@@ -445,7 +448,7 @@ def test_allele_frequencies_without_drop_invariant(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -498,7 +501,7 @@ def test_allele_frequencies_without_effects(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -577,7 +580,7 @@ def test_allele_frequencies_with_bad_transcript(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
@@ -604,7 +607,7 @@ def test_allele_frequencies_with_dup_samples(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_set = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 10)
+    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -633,16 +636,553 @@ def test_allele_frequencies_with_dup_samples(
     assert_frame_equal(df_aa_b, df_aa_a)
 
 
-# from test_anopheles
-# TODO: test_snp_allele_frequencies_advanced_with_dup_samples
-# TODO: test_aa_allele_frequencies_advanced_with_dup_samples
+def check_snp_allele_frequencies_advanced(
+    *,
+    api: AnophelesSnpFrequencyAnalysis,
+    transcript=None,
+    area_by="admin1_iso",
+    period_by="year",
+    sample_sets=None,
+    sample_query=None,
+    min_cohort_size=None,
+    nobs_mode="called",
+    variant_query=None,
+    site_mask=None,
+):
+    # Pick test parameters at random.
+    if transcript is None:
+        transcript = random_transcript(api=api).name
+    if area_by is None:
+        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+    if period_by is None:
+        period_by = random.choice(["year", "quarter", "month"])
+    if sample_sets is None:
+        all_sample_sets = api.sample_sets()["sample_set"].to_list()
+        sample_sets = random.choice(all_sample_sets)
+    if min_cohort_size is None:
+        min_cohort_size = random.randint(0, 2)
+    if site_mask is None:
+        site_mask = random.choice(api.site_mask_ids + (None,))
 
-# from test_ag3 and test_af1
-# TODO: test_allele_frequencies_advanced_with_transcript
-# TODO: test_allele_frequencies_advanced_with_area_by
-# TODO: test_allele_frequencies_advanced_with_period_by
-# TODO: test_allele_frequencies_advanced_with_sample_sets
-# TODO: test_allele_frequencies_advanced_with_sample_query
-# TODO: test_allele_frequencies_advanced_with_min_cohort_size
-# TODO: test_allele_frequencies_advanced_with_variant_query
-# TODO: test_allele_frequencies_advanced_with_nobs_mode
+    # Run function under test.
+    ds = api.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        nobs_mode=nobs_mode,
+        variant_query=variant_query,
+        site_mask=site_mask,
+    )
+
+    # Check the result.
+    assert isinstance(ds, xr.Dataset)
+    assert set(ds.dims) == {"cohorts", "variants"}
+
+    # Check variant variables.
+    expected_variant_vars = [
+        "variant_label",
+        "variant_contig",
+        "variant_position",
+        "variant_ref_allele",
+        "variant_alt_allele",
+        "variant_max_af",
+        "variant_transcript",
+        "variant_effect",
+        "variant_impact",
+        "variant_ref_codon",
+        "variant_alt_codon",
+        "variant_ref_aa",
+        "variant_alt_aa",
+        "variant_aa_pos",
+        "variant_aa_change",
+    ]
+    expected_variant_vars += [f"variant_pass_{m}" for m in api.site_mask_ids]
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    # Check cohort variables.
+    expected_cohort_vars = [
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    ]
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    # Check event variables.
+    expected_event_vars = [
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    ]
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # Sanity check for frequency values.
+    x = ds["event_frequency"].values
+    check_frequency(x)
+
+    # Sanity check area values.
+    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    expected_area_values = np.unique(df_samples[area_by].dropna().values)
+    area_values = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area_values:
+        assert a in expected_area_values
+
+    # Sanity checks for period values.
+    period_values = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period_values:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # Sanity check cohort sizes.
+    cohort_size_values = ds["cohort_size"].values
+    for s in cohort_size_values:
+        assert s >= min_cohort_size
+
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler snp_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # Check consistency with the basic snp allele frequencies method.
+        df_af = api.snp_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            site_mask=site_mask,
+            include_counts=True,
+        )
+        # Make sure all variables available to check.
+        df_af = df_af.reset_index()
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # Check cohorts are consistent.
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # Check variants are consistent.
+        assert ds.sizes["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            compare_series_like(actual, expect)
+
+        # Check frequencies are consistent.
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            actual_nobs = ds["event_nobs"].values[:, cohort_index]
+            expect_nobs = df_af[f"nobs_{cohort_label}"].values
+            assert_array_equal(actual_nobs, expect_nobs)
+            actual_count = ds["event_count"].values[:, cohort_index]
+            expect_count = df_af[f"count_{cohort_label}"].values
+            assert_array_equal(actual_count, expect_count)
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+def check_aa_allele_frequencies_advanced(
+    *,
+    api: AnophelesSnpFrequencyAnalysis,
+    transcript=None,
+    area_by="admin1_iso",
+    period_by="year",
+    sample_sets=None,
+    sample_query=None,
+    min_cohort_size=None,
+    nobs_mode="called",
+    variant_query=None,
+):
+    # Pick test parameters at random.
+    if transcript is None:
+        transcript = random_transcript(api=api).name
+    if area_by is None:
+        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+    if period_by is None:
+        period_by = random.choice(["year", "quarter", "month"])
+    if sample_sets is None:
+        all_sample_sets = api.sample_sets()["sample_set"].to_list()
+        sample_sets = random.choice(all_sample_sets)
+    if min_cohort_size is None:
+        min_cohort_size = random.randint(0, 2)
+
+    # Run function under test.
+    ds = api.aa_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        min_cohort_size=min_cohort_size,
+        nobs_mode=nobs_mode,
+        variant_query=variant_query,
+    )
+
+    # Check the result.
+    assert isinstance(ds, xr.Dataset)
+    assert set(ds.dims) == {"cohorts", "variants"}
+
+    expected_variant_vars = (
+        "variant_label",
+        "variant_contig",
+        "variant_position",
+        "variant_max_af",
+        "variant_transcript",
+        "variant_effect",
+        "variant_impact",
+        "variant_ref_aa",
+        "variant_alt_aa",
+        "variant_aa_pos",
+        "variant_aa_change",
+    )
+    for v in expected_variant_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants",)
+
+    expected_cohort_vars = (
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    )
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    expected_event_vars = (
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    )
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # Sanity check for frequency values.
+    x = ds["event_frequency"].values
+    check_frequency(x)
+
+    # Sanity checks for area values.
+    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    expected_area_values = np.unique(df_samples[area_by].dropna().values)
+    area_values = ds["cohort_area"].values
+    # N.B., some areas may not end up in final dataset if cohort
+    # size is too small, so do a set membership test
+    for a in area_values:
+        assert a in expected_area_values
+
+    # Sanity checks for period values.
+    period_values = ds["cohort_period"].values
+    if period_by == "year":
+        expected_freqstr = "A-DEC"
+    elif period_by == "month":
+        expected_freqstr = "M"
+    elif period_by == "quarter":
+        expected_freqstr = "Q-DEC"
+    else:
+        assert False, "not implemented"
+    for p in period_values:
+        assert isinstance(p, pd.Period)
+        assert p.freqstr == expected_freqstr
+
+    # Sanity check cohort size.
+    cohort_size_values = ds["cohort_size"].values
+    for s in cohort_size_values:
+        assert s >= min_cohort_size
+
+    if area_by == "admin1_iso" and period_by == "year" and nobs_mode == "called":
+        # Here we test the behaviour of the function when grouping by admin level
+        # 1 and year. We can do some more in-depth testing in this case because
+        # we can compare results directly against the simpler aa_allele_frequencies()
+        # function with the admin1_year cohorts.
+
+        # Check consistency with the basic aa allele frequencies method.
+        df_af = api.aa_allele_frequencies(
+            transcript=transcript,
+            cohorts="admin1_year",
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            min_cohort_size=min_cohort_size,
+            include_counts=True,
+        )
+        # Make sure all variables available to check.
+        df_af = df_af.reset_index()
+        if variant_query is not None:
+            df_af = df_af.query(variant_query)
+
+        # Check cohorts are consistent.
+        expect_cohort_labels = sorted(
+            [c.split("frq_")[1] for c in df_af.columns if c.startswith("frq_")]
+        )
+        cohort_labels = sorted(ds["cohort_label"].values)
+        assert cohort_labels == expect_cohort_labels
+
+        # Check variants are consistent.
+        assert ds.sizes["variants"] == len(df_af)
+        for v in expected_variant_vars:
+            c = v.split("variant_")[1]
+            actual = ds[v]
+            expect = df_af[c]
+            compare_series_like(actual, expect)
+
+        # Check frequencies are consistent.
+        for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
+            actual_nobs = ds["event_nobs"].values[:, cohort_index]
+            expect_nobs = df_af[f"nobs_{cohort_label}"].values
+            assert_array_equal(actual_nobs, expect_nobs)
+            actual_count = ds["event_count"].values[:, cohort_index]
+            expect_count = df_af[f"count_{cohort_label}"].values
+            assert_array_equal(actual_count, expect_count)
+            actual_frq = ds["event_frequency"].values[:, cohort_index]
+            expect_frq = df_af[f"frq_{cohort_label}"].values
+            assert_allclose(actual_frq, expect_frq)
+
+
+# Here we don't explore the full matrix, but vary one parameter at a time, otherwise
+# the test suite would take too long to run.
+
+
+@pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_area_by(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+    area_by,
+):
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        area_by=area_by,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        area_by=area_by,
+    )
+
+
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_period_by(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+    period_by,
+):
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        period_by=period_by,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        period_by=period_by,
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_sample_query(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
+    countries = df_samples["country"].unique()
+    country = random.choice(countries)
+    sample_query = f"country == '{country}'"
+
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        sample_sets=all_sample_sets,
+        sample_query=sample_query,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        sample_sets=all_sample_sets,
+        sample_query=sample_query,
+    )
+
+
+@pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_min_cohort_size(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+    min_cohort_size,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    area_by = "admin1_iso"
+    period_by = "year"
+    transcript = random_transcript(api=api).name
+
+    if min_cohort_size <= 10:
+        # Expect this to find at least one cohort, so go ahead with full
+        # checks.
+        check_snp_allele_frequencies_advanced(
+            api=api,
+            transcript=transcript,
+            sample_sets=all_sample_sets,
+            min_cohort_size=min_cohort_size,
+            area_by=area_by,
+            period_by=period_by,
+        )
+        check_aa_allele_frequencies_advanced(
+            api=api,
+            transcript=transcript,
+            sample_sets=all_sample_sets,
+            min_cohort_size=min_cohort_size,
+            area_by=area_by,
+            period_by=period_by,
+        )
+    else:
+        # Expect this to find no cohorts.
+        with pytest.raises(ValueError):
+            api.snp_allele_frequencies_advanced(
+                transcript=transcript,
+                sample_sets=all_sample_sets,
+                min_cohort_size=min_cohort_size,
+                area_by=area_by,
+                period_by=period_by,
+            )
+        with pytest.raises(ValueError):
+            api.aa_allele_frequencies_advanced(
+                transcript=transcript,
+                sample_sets=all_sample_sets,
+                min_cohort_size=min_cohort_size,
+                area_by=area_by,
+                period_by=period_by,
+            )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_variant_query(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    area_by = "admin1_iso"
+    period_by = "year"
+    transcript = random_transcript(api=api).name
+
+    # Test a query that should succeed.
+    variant_query = "effect == 'NON_SYNONYMOUS_CODING'"
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        transcript=transcript,
+        sample_sets=all_sample_sets,
+        area_by=area_by,
+        period_by=period_by,
+        variant_query=variant_query,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        transcript=transcript,
+        sample_sets=all_sample_sets,
+        area_by=area_by,
+        period_by=period_by,
+        variant_query=variant_query,
+    )
+
+    # Test a query that should fail.
+    variant_query = "effect == 'foobar'"
+    with pytest.raises(ValueError):
+        api.snp_allele_frequencies_advanced(
+            transcript=transcript,
+            sample_sets=all_sample_sets,
+            area_by=area_by,
+            period_by=period_by,
+            variant_query=variant_query,
+        )
+    with pytest.raises(ValueError):
+        api.aa_allele_frequencies_advanced(
+            transcript=transcript,
+            sample_sets=all_sample_sets,
+            area_by=area_by,
+            period_by=period_by,
+            variant_query=variant_query,
+        )
+
+
+@pytest.mark.parametrize("nobs_mode", ["called", "fixed"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_nobs_mode(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+    nobs_mode,
+):
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        nobs_mode=nobs_mode,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        nobs_mode=nobs_mode,
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_dup_samples(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_set = random.choice(all_sample_sets)
+    sample_sets = [sample_set, sample_set]
+
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        sample_sets=sample_sets,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        sample_sets=sample_sets,
+    )

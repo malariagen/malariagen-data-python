@@ -10,6 +10,7 @@ from inspect import getcallargs
 from textwrap import dedent, fill
 from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
 from urllib.parse import unquote_plus
+from numpy.testing import assert_allclose, assert_array_equal
 
 try:
     from google import colab  # type: ignore
@@ -930,7 +931,7 @@ def check_types(f):
     """
 
     @wraps(f)
-    def wrapper(*args, **kwargs):
+    def check_types_wrapper(*args, **kwargs):
         type_hints = get_type_hints(f)
         call_args = getcallargs(f, *args, **kwargs)
         for k, t in type_hints.items():
@@ -954,7 +955,7 @@ def check_types(f):
                     raise error from None
         return f(*args, **kwargs)
 
-    return wrapper
+    return check_types_wrapper
 
 
 @numba.njit
@@ -1158,3 +1159,19 @@ def pandas_apply(f, df, columns):
     iterator = zip(*[df[c].values for c in columns])
     ret = pd.Series((f(*vals) for vals in iterator))
     return ret
+
+
+def compare_series_like(actual, expect):
+    """Compare pandas series-like objects for equality or floating point
+    similarity, handling missing values appropriately."""
+
+    # Handle object arrays, these don't get nans compared properly.
+    t = actual.dtype
+    if t == object:
+        expect = expect.fillna("NA")
+        actual = actual.fillna("NA")
+
+    if t.kind == "f":
+        assert_allclose(actual.values, expect.values)
+    else:
+        assert_array_equal(actual.values, expect.values)
