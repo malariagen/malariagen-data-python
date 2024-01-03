@@ -317,7 +317,6 @@ class AnophelesSnpFrequencyAnalysis(
 
         # Early check for no matching SNPs.
         if len(df_ns_snps) == 0:
-            print(df_snps["effect"].value_counts())
             raise ValueError(
                 "No amino acid change SNPs found for the given transcript and site mask."
             )
@@ -501,10 +500,9 @@ class AnophelesSnpFrequencyAnalysis(
 
             if nobs_mode == "called":
                 nobs[:, cohort_index] = cohort_an
-            elif nobs_mode == "fixed":
-                nobs[:, cohort_index] = cohort.size * 2
             else:
-                raise ValueError(f"Bad nobs_mode: {nobs_mode!r}")
+                assert nobs_mode == "fixed"
+                nobs[:, cohort_index] = cohort.size * 2
 
         # Compute frequency.
         with np.errstate(divide="ignore", invalid="ignore"):
@@ -1031,13 +1029,10 @@ class AnophelesSnpFrequencyAnalysis(
         if isinstance(variant, int):
             ds_variant = ds.isel(variants=variant)
             variant_label = ds["variant_label"].values[variant]
-        elif isinstance(variant, str):
+        else:
+            assert isinstance(variant, str)
             ds_variant = ds.set_index(variants="variant_label").sel(variants=variant)
             variant_label = variant
-        else:
-            raise TypeError(
-                f"Bad type for variant parameter; expected int or str, found {type(variant)}."
-            )
 
         # Convert to a dataframe for convenience.
         df_markers = ds_variant[
@@ -1270,7 +1265,9 @@ def _cohort_alt_allele_counts_melt(*, gt, indices, max_allele):
 
 
 @numba.njit
-def _cohort_alt_allele_counts_melt_kernel(gt, sample_indices, max_allele):
+def _cohort_alt_allele_counts_melt_kernel(
+    gt, sample_indices, max_allele
+):  # pragma: no cover
     n_variants = gt.shape[0]
     n_samples = sample_indices.shape[0]
     ploidy = gt.shape[2]
