@@ -32,7 +32,7 @@ jobs:
       # Run a subset of tests first which run quickly without accessing
       # any remote data in order to fail fast where possible.
       - name: Run fast unit tests
-        run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
+        run: poetry run pytest --durations=20 --durations-min=10.0 -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
 
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
