@@ -1172,11 +1172,13 @@ def test_allele_frequencies_advanced_with_sample_query(
         api=api,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
+        min_cohort_size=0,
     )
     check_aa_allele_frequencies_advanced(
         api=api,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
+        min_cohort_size=0,
     )
 
 
