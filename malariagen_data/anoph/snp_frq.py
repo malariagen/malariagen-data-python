@@ -13,6 +13,7 @@ import plotly.express as px  # type: ignore
 from .. import veff
 from ..util import check_types, pandas_apply
 from .snp_data import AnophelesSnpData
+from .sample_metadata import locate_cohorts
 from . import base_params, frq_params, map_params, plotly_params
 
 
@@ -143,7 +144,7 @@ class AnophelesSnpFrequencyAnalysis(
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
-        coh_dict = self._locate_cohorts(cohorts=cohorts, data=df_samples)
+        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
 
         # Remove cohorts below minimum cohort size.
         coh_dict = {
@@ -946,7 +947,7 @@ class AnophelesSnpFrequencyAnalysis(
         df_events = pd.concat(dfs, axis=0).reset_index(drop=True)
 
         # Remove events with no observations.
-        df_events = df_events.query("nobs > 0")
+        df_events = df_events.query("nobs > 0").copy()
 
         # Calculate error bars.
         frq = df_events["frequency"]

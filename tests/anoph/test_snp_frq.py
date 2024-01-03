@@ -280,7 +280,9 @@ def check_aa_allele_frequencies(
         check_frequency(x)
 
 
-@pytest.mark.parametrize("cohorts", ["admin1_year", "admin2_month", "country"])
+@pytest.mark.parametrize(
+    "cohorts", ["admin1_year", "admin2_month", "country", "foobar"]
+)
 @parametrize_with_cases("fixture,api", cases=".")
 def test_allele_frequencies_with_str_cohorts(
     fixture,
@@ -294,15 +296,6 @@ def test_allele_frequencies_with_str_cohorts(
     min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api)
 
-    # Figure out expected cohort labels.
-    df_samples = api.sample_metadata(sample_sets=sample_sets)
-    if "cohort_" + cohorts in df_samples:
-        cohort_column = "cohort_" + cohorts
-    else:
-        cohort_column = cohorts
-    cohort_counts = df_samples[cohort_column].value_counts()
-    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
-
     # Set up call params.
     params = dict(
         transcript=transcript.name,
@@ -313,8 +306,23 @@ def test_allele_frequencies_with_str_cohorts(
         drop_invariant=True,
     )
 
+    # Test behaviour with bad cohorts param.
+    if cohorts == "foobar":
+        with pytest.raises(ValueError):
+            api.snp_allele_frequencies(**params)
+        return
+
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
 
     # Standard checks.
     check_snp_allele_frequencies(

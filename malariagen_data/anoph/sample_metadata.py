@@ -970,36 +970,36 @@ class AnophelesSampleMetadata(AnophelesBase):
             hover_data.append(symbol)
         return hover_data
 
-    @staticmethod
-    def _locate_cohorts(*, cohorts, data):
-        # Build cohort dictionary where key=cohort_id, value=loc_coh.
-        coh_dict = {}
 
-        if isinstance(cohorts, Mapping):
-            # User has supplied a custom dictionary mapping cohort identifiers
-            # to pandas queries.
+def locate_cohorts(*, cohorts, data):
+    # Build cohort dictionary where key=cohort_id, value=loc_coh.
+    coh_dict = {}
 
-            for coh, query in cohorts.items():
-                loc_coh = data.eval(query).values
-                coh_dict[coh] = loc_coh
+    if isinstance(cohorts, Mapping):
+        # User has supplied a custom dictionary mapping cohort identifiers
+        # to pandas queries.
 
-        else:
-            assert isinstance(cohorts, str)
-            # User has supplied the name of a sample metadata column.
+        for coh, query in cohorts.items():
+            loc_coh = data.eval(query).values
+            coh_dict[coh] = loc_coh
 
-            # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
-            if "cohort_" + cohorts in data.columns:
-                cohorts = "cohort_" + cohorts
+    else:
+        assert isinstance(cohorts, str)
+        # User has supplied the name of a sample metadata column.
 
-            # Check the given cohort set exists.
-            if cohorts not in data.columns:
-                raise ValueError(f"{cohorts!r} is not a known column in the data.")
-            cohort_labels = data[cohorts].unique()
+        # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+        if "cohort_" + cohorts in data.columns:
+            cohorts = "cohort_" + cohorts
 
-            # Remove the nans and sort.
-            cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
-            for coh in cohort_labels:
-                loc_coh = data[cohorts] == coh
-                coh_dict[coh] = loc_coh.values
+        # Check the given cohort set exists.
+        if cohorts not in data.columns:
+            raise ValueError(f"{cohorts!r} is not a known column in the data.")
+        cohort_labels = data[cohorts].unique()
 
-        return coh_dict
+        # Remove the nans and sort.
+        cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
+        for coh in cohort_labels:
+            loc_coh = data[cohorts] == coh
+            coh_dict[coh] = loc_coh.values
+
+    return coh_dict

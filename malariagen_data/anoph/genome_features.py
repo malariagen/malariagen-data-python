@@ -42,7 +42,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         # Allow manual override of gene names.
         if gene_names is None:
             gene_names = dict()
-        self._gene_names = gene_names
+        self._gene_name_overrides = gene_names
 
         # Setup caches.
         self._cache_genome_features: Dict[Tuple[str, ...], pd.DataFrame] = dict()
@@ -51,7 +51,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def _geneset_gff3_path(self):
         return self.config["GENESET_GFF3_PATH"]
 
-    def geneset(self, *args, **kwargs):
+    def geneset(self, *args, **kwargs):  # pragma: no cover
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
@@ -441,9 +441,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         rec_transcript = df_genome_features.loc[transcript]
         parent_id = rec_transcript["Parent"]
 
-        if parent_id in self._gene_names:
+        if parent_id in self._gene_name_overrides:
             # Manual override.
-            parent_name = self._gene_names[parent_id]
+            parent_name = self._gene_name_overrides[parent_id]
         else:
             rec_parent = df_genome_features.loc[parent_id]
             # Try to access "Name", fall back to ID if not present.
