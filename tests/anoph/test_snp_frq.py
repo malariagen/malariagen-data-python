@@ -7,7 +7,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # type: ignore
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
