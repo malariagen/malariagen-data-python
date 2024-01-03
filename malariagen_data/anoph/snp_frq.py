@@ -1,5 +1,6 @@
 from typing import Optional, Dict, Union, Callable, List
 import warnings
+from textwrap import dedent
 
 import allel  # type: ignore
 import numpy as np
@@ -786,7 +787,15 @@ class AnophelesSnpFrequencyAnalysis(
     ) -> plotly_params.figure:
         # Check len of input.
         if max_len and len(df) > max_len:
-            raise ValueError(f"Input DataFrame is longer than {max_len}")
+            raise ValueError(
+                dedent(
+                    f"""
+                Input DataFrame is longer than max_len parameter value {max_len}, which means
+                that the plot is likely to be very large. If you really want to go ahead,
+                please rerun the function with max_len=None.
+                """
+                )
+            )
 
         # Handle title.
         if title is True:
@@ -805,10 +814,9 @@ class AnophelesSnpFrequencyAnalysis(
                     axis="columns",
                 )
             )
-        elif isinstance(index, str):
-            index_col = df[index].astype(str)
         else:
-            raise TypeError("wrong type for index parameter, expected list or str")
+            assert isinstance(index, str)
+            index_col = df[index].astype(str)
 
         # Check that index is unique.
         if not index_col.is_unique:
@@ -1083,7 +1091,7 @@ class AnophelesSnpFrequencyAnalysis(
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
             )
-            m.add_layer(marker)
+            m.add(marker)
 
     @check_types
     @doc(
