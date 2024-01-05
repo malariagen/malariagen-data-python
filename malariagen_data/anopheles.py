@@ -2533,7 +2533,7 @@ class AnophelesDataResource(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
-            h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
             calibration_runs[str(window_size)] = h12
 
         return calibration_runs
@@ -2712,7 +2712,7 @@ class AnophelesDataResource(
 
         with self._spinner(desc="Compute H12"):
             # Compute H12.
-            h1, h12, h123, h2_h1 = allel.moving_garud_h(ht, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
 
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
@@ -3684,33 +3684,6 @@ class AnophelesDataResource(
         else:
             return fig
 
-    def _garud_g123(self, gt):
-        """Compute Garud's G123."""
-
-        # compute diplotype frequencies
-        frq_counter = _diplotype_frequencies(gt)
-
-        # convert to array of sorted frequencies
-        f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
-
-        # compute G123
-        g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
-
-        # These other statistics are not currently needed, but leaving here
-        # commented out for future reference...
-
-        # compute G1
-        # g1 = np.sum(f**2)
-
-        # compute G12
-        # g12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)  # type: ignore[index]
-
-        # compute G2/G1
-        # g2 = g1 - f[0] ** 2  # type: ignore[index]
-        # g2_g1 = g2 / g1
-
-        return g123
-
     @check_types
     @doc(
         summary="Run a G123 genome-wide selection scan.",
@@ -3808,9 +3781,7 @@ class AnophelesDataResource(
         )
 
         with self._spinner("Compute G123"):
-            g123 = allel.moving_statistic(
-                gt, statistic=self._garud_g123, size=window_size
-            )
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, g123=g123)
@@ -4135,9 +4106,7 @@ class AnophelesDataResource(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute G123"):
-            g123 = allel.moving_statistic(
-                gt, statistic=self._garud_g123, size=window_size
-            )
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             calibration_runs[str(window_size)] = g123
 
         return calibration_runs
@@ -5633,8 +5602,8 @@ def _unrooted_tree_layout_equal_angle(
         leaf_nodes.append([x, y, tree_node.index, leaf_color])
 
 
-@numba.njit("int64[:](int16[:, :])")
-def _hash_diplotypes(x):
+@numba.njit
+def _hash_columns(x):
     # Here we want to compute a hash for each column in the
     # input array. However, we assume the input array is in
     # C contiguous order, and therefore we scan the array
@@ -5667,7 +5636,7 @@ def _diplotype_frequencies(gt):
     x = np.asarray(gt).view(np.int16).reshape((m, n))
 
     # Now call optimised hashing function.
-    hashes = _hash_diplotypes(x)
+    hashes = _hash_columns(x)
 
     # Now compute counts and frequencies of distinct haplotypes.
     counts = Counter(hashes)
@@ -5676,15 +5645,57 @@ def _diplotype_frequencies(gt):
     return freqs
 
 
+def _garud_g123(gt):
+    """Compute Garud's G123."""
+
+    # compute diplotype frequencies
+    frq_counter = _diplotype_frequencies(gt)
+
+    # convert to array of sorted frequencies
+    f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    # compute G123
+    g123 = np.sum(f[:3]) ** 2 + np.sum(f[3:] ** 2)
+
+    # These other statistics are not currently needed, but leaving here
+    # commented out for future reference...
+
+    # compute G1
+    # g1 = np.sum(f**2)
+
+    # compute G12
+    # g12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)  # type: ignore[index]
+
+    # compute G2/G1
+    # g2 = g1 - f[0] ** 2  # type: ignore[index]
+    # g2_g1 = g2 / g1
+
+    return g123
+
+
 def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
     haplotype hash values to frequencies."""
-    # TODO could use faster hashing
     n = h.shape[1]
-    hashes = [hash(h[:, i].tobytes()) for i in range(n)]
+    hashes = _hash_columns(np.asarray(h))
     counts = Counter(hashes)
     freqs = {key: count / n for key, count in counts.items()}
     return freqs
+
+
+def _garud_h12(ht):
+    """Compute Garud's H12."""
+
+    # compute diplotype frequencies
+    frq_counter = _haplotype_frequencies(ht)
+
+    # convert to array of sorted frequencies
+    f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
+
+    # compute H12
+    h12 = np.sum(f[:2]) ** 2 + np.sum(f[2:] ** 2)
+
+    return h12
 
 
 def _haplotype_joint_frequencies(ha, hb):
