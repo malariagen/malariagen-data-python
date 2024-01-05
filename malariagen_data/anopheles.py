@@ -4024,7 +4024,9 @@ class AnophelesDataResource(
         gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
         with self._dask_progress(desc="Load genotypes"):
             gt = gt.compute()
-        pos = ds_snps["variant_position"].values
+
+        with self._dask_progress(desc="Load SNP positions"):
+            pos = ds_snps["variant_position"].data.compute()
 
         if sites in self.phasing_analysis_ids:
             with self._spinner("Subsetting to selected sites"):
@@ -5632,12 +5634,25 @@ def _unrooted_tree_layout_equal_angle(
         leaf_nodes.append([x, y, tree_node.index, leaf_color])
 
 
+@numba.njit(parallel=True)
+def _hash_diplotypes(x):
+    n = x.shape[0]
+    out = np.empty(n, dtype=np.int64)
+    for i in numba.prange(n):
+        out[i] = 5381
+        for j in range(x.shape[1]):
+            for k in range(x.shape[2]):
+                out[i] = out[i] * 33 + x[i, j, k]
+    return out
+
+
 def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
-    # TODO could use faster hashing
-    n = gt.shape[1]
-    hashes = [hash(gt[:, i].tobytes()) for i in range(n)]
+    # hashes = [hash(gt[:, i].tobytes()) for i in range(n)]
+    x = np.ascontiguousarray(np.swapaxes(gt, 0, 1))
+    n = x.shape[0]
+    hashes = _hash_diplotypes(x)
     counts = Counter(hashes)
     freqs = {key: count / n for key, count in counts.items()}
     return freqs
