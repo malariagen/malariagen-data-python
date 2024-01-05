@@ -8,7 +8,7 @@ from enum import Enum
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
-from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
+from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union, Callable
 from urllib.parse import unquote_plus
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -168,7 +168,11 @@ class SiteClass(Enum):
 
 
 def da_from_zarr(
-    z: zarr.core.Array, inline_array: bool, chunks: Union[str, Tuple[int, ...]] = "auto"
+    z: zarr.core.Array,
+    inline_array: bool,
+    chunks: Union[
+        str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]
+    ] = "auto",
 ) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 
@@ -176,10 +180,16 @@ def da_from_zarr(
     our own here to get a little more control.
 
     """
-    if chunks == "native" or z.dtype == object:
+    if callable(chunks):
+        dask_chunks = chunks(z.chunks)
+    elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
-        chunks = z.chunks
-    kwargs = dict(chunks=chunks, fancy=False, lock=False, inline_array=inline_array)
+        dask_chunks = z.chunks
+    else:
+        dask_chunks = chunks
+    kwargs = dict(
+        chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
+    )
     try:
         d = da.from_array(z, **kwargs)
     except TypeError:

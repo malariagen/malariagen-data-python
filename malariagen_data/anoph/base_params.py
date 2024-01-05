@@ -1,6 +1,6 @@
 """General parameters common to many functions in the public API."""
 
-from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union, Callable
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -226,7 +226,7 @@ inline_array: TypeAlias = Annotated[
 inline_array_default: inline_array = True
 
 chunks: TypeAlias = Annotated[
-    Union[str, Tuple[int, ...]],
+    Union[str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]],
     """
     If 'auto' let dask decide chunk size. If 'native' use native zarr
     chunks. Also, can be a target size, e.g., '200 MiB', or a tuple of

@@ -4021,9 +4021,8 @@ class AnophelesDataResource(
             chunks=chunks,
         )
 
-        gt = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
         with self._dask_progress(desc="Load genotypes"):
-            gt = gt.compute()
+            gt = ds_snps["call_genotype"].data.compute()
 
         with self._dask_progress(desc="Load SNP positions"):
             pos = ds_snps["variant_position"].data.compute()
@@ -4043,7 +4042,7 @@ class AnophelesDataResource(
 
         elif sites == "segregating":
             with self._spinner("Subsetting to segregating sites"):
-                ac = gt.count_alleles(max_allele=3)
+                ac = allel.GenotypeArray(gt).count_alleles(max_allele=3)
                 seg = ac.is_segregating()
                 pos = pos[seg]
                 gt = gt.compress(seg, axis=0)
@@ -5634,27 +5633,46 @@ def _unrooted_tree_layout_equal_angle(
         leaf_nodes.append([x, y, tree_node.index, leaf_color])
 
 
-@numba.njit(parallel=True)
+@numba.njit("int64[:](int16[:, :])")
 def _hash_diplotypes(x):
-    n = x.shape[0]
+    # Here we want to compute a hash for each column in the
+    # input array. However, we assume the input array is in
+    # C contiguous order, and therefore we scan the array
+    # and perform the computation in this order for more
+    # efficient memory access.
+    #
+    # This function uses the DJBX33A hash function which
+    # is much faster than computing Python hashes of
+    # bytes, as discovered by Tom White in work on sgkit.
+    m = x.shape[0]
+    n = x.shape[1]
     out = np.empty(n, dtype=np.int64)
-    for i in numba.prange(n):
-        out[i] = 5381
-        for j in range(x.shape[1]):
-            for k in range(x.shape[2]):
-                out[i] = out[i] * 33 + x[i, j, k]
+    out[:] = 5381
+    for i in range(m):
+        for j in range(n):
+            v = x[i, j]
+            out[j] = out[j] * 33 + v
     return out
 
 
 def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
-    # hashes = [hash(gt[:, i].tobytes()) for i in range(n)]
-    x = np.ascontiguousarray(np.swapaxes(gt, 0, 1))
-    n = x.shape[0]
+
+    # Here are some optimisations to speed up the computation
+    # of diplotype hashes. First we combine the two int8 alleles
+    # in each genotype call into a single int16.
+    m = gt.shape[0]
+    n = gt.shape[1]
+    x = np.asarray(gt).view(np.int16).reshape((m, n))
+
+    # Now call optimised hashing function.
     hashes = _hash_diplotypes(x)
+
+    # Now compute counts and frequencies of distinct haplotypes.
     counts = Counter(hashes)
     freqs = {key: count / n for key, count in counts.items()}
+
     return freqs
 
 
