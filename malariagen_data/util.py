@@ -181,7 +181,7 @@ def da_from_zarr(
 
     """
     if callable(chunks):
-        dask_chunks = chunks(z.chunks)
+        dask_chunks: Union[Tuple[int, ...], str] = chunks(z.chunks)
     elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks
