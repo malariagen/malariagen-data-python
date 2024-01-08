@@ -17,8 +17,6 @@ GCS_URL = "gs://vo_agam_release/"
 FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
-G123_CALIBRATION_CACHE_NAME = "ag3_g123_calibration_v1"
-G123_GWSS_CACHE_NAME = "ag3_g123_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 H1X_GWSS_CACHE_NAME = "ag3_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
@@ -137,9 +135,7 @@ class Ag3(AnophelesDataResource):
     _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
-    _g123_gwss_cache_name = G123_GWSS_CACHE_NAME
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
-    _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
     _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
 
