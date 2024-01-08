@@ -1,9 +1,19 @@
 [
     {
+        "name": "8.4.0",
+        "version": "v8.4.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.4.0/",
+        "preferred": true
+    },
+    {
+        "name": "8.3.0",
+        "version": "v8.3.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.3.0/"
+    },
+    {
         "name": "8.2.0",
         "version": "v8.2.0",
-        "url": "https:///malariagen.github.io/malariagen-data-python/v8.2.0/",
-        "preferred": true
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.2.0/"
     },
     {
         "name": "8.1.0",
