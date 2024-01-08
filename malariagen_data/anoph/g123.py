@@ -539,15 +539,16 @@ class AnophelesG123Analysis(
             x_axis_type="log",
             x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
         )
+        patch_x = tuple(window_sizes) + tuple(window_sizes)[::-1]
         fig.patch(
-            window_sizes + window_sizes[::-1],
+            patch_x,
             q75 + q25[::-1],
             alpha=0.75,
             line_width=2,
             legend_label="25-75%",
         )
         fig.patch(
-            window_sizes + window_sizes[::-1],
+            patch_x,
             q95 + q05[::-1],
             alpha=0.5,
             line_width=2,
