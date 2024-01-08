@@ -74,7 +74,11 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-def check_g123_gwss_results(*, x, g123):
+def check_g123_gwss(*, api, g123_params):
+    # Run main gwss function under test.
+    x, g123 = api.g123_gwss(**g123_params)
+
+    # Check results.
     assert isinstance(x, np.ndarray)
     assert isinstance(g123, np.ndarray)
     assert x.ndim == 1
@@ -84,6 +88,27 @@ def check_g123_gwss_results(*, x, g123):
     assert g123.dtype.kind == "f"
     assert np.all(g123 >= 0)
     assert np.all(g123 <= 1)
+
+    # Check plotting functions.
+    fig = api.plot_g123_gwss_track(**g123_params, show=False)
+    assert isinstance(fig, bokeh.models.Plot)
+    fig = api.plot_g123_gwss(**g123_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    g123_params = dict(
+        contig=random.choice(api.contigs),
+        sample_sets=[random.choice(all_sample_sets)],
+        window_size=random.randint(100, 500),
+        min_cohort_size=10,
+    )
+
+    # Run checks.
+    check_g123_gwss(api=api, g123_params=g123_params)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -98,17 +123,8 @@ def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
         min_cohort_size=10,
     )
 
-    # Run function under test.
-    x, g123 = api.g123_gwss(**g123_params)
-
-    # Check results.
-    check_g123_gwss_results(x=x, g123=g123)
-
-    # Run plotting functions.
-    fig = api.plot_g123_gwss_track(**g123_params, show=False)
-    assert isinstance(fig, bokeh.models.Plot)
-    fig = api.plot_g123_gwss(**g123_params, show=False)
-    assert isinstance(fig, bokeh.models.GridPlot)
+    # Run checks.
+    check_g123_gwss(api=api, g123_params=g123_params)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -124,17 +140,8 @@ def test_g123_gwss_with_segregating_sites(fixture, api: AnophelesG123Analysis):
         min_cohort_size=10,
     )
 
-    # Run function under test.
-    x, g123 = api.g123_gwss(**g123_params)
-
-    # Check results.
-    check_g123_gwss_results(x=x, g123=g123)
-
-    # Run plotting functions.
-    fig = api.plot_g123_gwss_track(**g123_params, show=False)
-    assert isinstance(fig, bokeh.models.Plot)
-    fig = api.plot_g123_gwss(**g123_params, show=False)
-    assert isinstance(fig, bokeh.models.GridPlot)
+    # Run checks.
+    check_g123_gwss(api=api, g123_params=g123_params)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -150,17 +157,25 @@ def test_g123_gwss_with_all_sites(fixture, api: AnophelesG123Analysis):
         min_cohort_size=10,
     )
 
+    # Run checks.
+    check_g123_gwss(api=api, g123_params=g123_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    g123_params = dict(
+        contig=random.choice(api.contigs),
+        sample_sets=[random.choice(all_sample_sets)],
+        window_size=random.randint(100, 500),
+        min_cohort_size=10,
+        sites="foobar",
+    )
+
     # Run function under test.
-    x, g123 = api.g123_gwss(**g123_params)
-
-    # Check results.
-    check_g123_gwss_results(x=x, g123=g123)
-
-    # Run plotting functions.
-    fig = api.plot_g123_gwss_track(**g123_params, show=False)
-    assert isinstance(fig, bokeh.models.Plot)
-    fig = api.plot_g123_gwss(**g123_params, show=False)
-    assert isinstance(fig, bokeh.models.GridPlot)
+    with pytest.raises(ValueError):
+        api.g123_gwss(**g123_params)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
