@@ -2,6 +2,9 @@
 name = "malariagen_data"
 version = "0.0.0"
 description = "A package for accessing and analysing MalariaGEN data."
+readme = "README.md"
+documentation = "https://malariagen.github.io/malariagen-data-python/latest/"
+repository = "https://github.com/malariagen/malariagen-data-python"
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
     "Chris Clarkson <cc28@sanger.ac.uk>",
