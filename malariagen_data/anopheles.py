@@ -1675,61 +1675,18 @@ class AnophelesDataResource(
         n_jack: base_params.n_jack = 200,
         confidence_level: base_params.confidence_level = 0.95,
     ) -> pd.DataFrame:
-        debug = self._log.debug
-        info = self._log.info
+        # Normalise cohorts parameter.
+        cohort_queries = self._setup_cohort_queries(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            min_cohort_size=None,
+        )
 
-        debug("set up cohorts")
-        if isinstance(cohorts, dict):
-            # user has supplied a custom dictionary mapping cohort identifiers
-            # to pandas queries
-            cohort_queries = cohorts
-
-        elif isinstance(cohorts, str):
-            # user has supplied one of the predefined cohort sets
-
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=sample_query
-            )
-
-            # determine column in dataframe - allow abbreviation
-            if cohorts.startswith("cohort_"):
-                cohorts_col = cohorts
-            else:
-                cohorts_col = "cohort_" + cohorts
-            if cohorts_col not in df_samples.columns:
-                raise ValueError(f"{cohorts_col!r} is not a known cohort set")
-
-            # find cohort labels and build queries dictionary
-            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
-            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
-
-        else:
-            raise TypeError("cohorts parameter should be dict or str")
-
-        debug("handle sample_query parameter")
-        if sample_query is not None:
-            cohort_queries = {
-                cohort_label: f"({cohort_query}) and ({sample_query})"
-                for cohort_label, cohort_query in cohort_queries.items()
-            }
-
-        debug("check cohort sizes, drop any cohorts which are too small")
-        cohort_queries_checked = dict()
-        for cohort_label, cohort_query in cohort_queries.items():
-            df_cohort_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=cohort_query
-            )
-            n_samples = len(df_cohort_samples)
-            if n_samples < cohort_size:
-                info(
-                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"  # noqa
-                )  # noqa
-            else:
-                cohort_queries_checked[cohort_label] = cohort_query
-
-        debug("compute diversity stats for cohorts")
+        # Compute diversity stats for cohorts.
         all_stats = []
-        for cohort_label, cohort_query in cohort_queries_checked.items():
+        for cohort_label, cohort_query in cohort_queries.items():
             stats = self.cohort_diversity_stats(
                 cohort=(cohort_label, cohort_query),
                 cohort_size=cohort_size,
