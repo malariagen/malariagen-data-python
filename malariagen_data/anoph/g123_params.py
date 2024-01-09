@@ -1,6 +1,6 @@
 """Parameter definitions for G123 analysis functions."""
 
-from typing import Tuple
+from typing import Sequence
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -19,7 +19,7 @@ sites: TypeAlias = Annotated[
 ]
 
 window_sizes: TypeAlias = Annotated[
-    Tuple[int, ...],
+    Sequence[int],
     """
     The sizes of windows (number of sites) used to calculate statistics within.
     """,

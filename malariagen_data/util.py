@@ -1185,3 +1185,25 @@ def compare_series_like(actual, expect):
         assert_allclose(actual.values, expect.values)
     else:
         assert_array_equal(actual.values, expect.values)
+
+
+@numba.njit
+def hash_columns(x):
+    # Here we want to compute a hash for each column in the
+    # input array. However, we assume the input array is in
+    # C contiguous order, and therefore we scan the array
+    # and perform the computation in this order for more
+    # efficient memory access.
+    #
+    # This function uses the DJBX33A hash function which
+    # is much faster than computing Python hashes of
+    # bytes, as discovered by Tom White in work on sgkit.
+    m = x.shape[0]
+    n = x.shape[1]
+    out = np.empty(n, dtype=np.int64)
+    out[:] = 5381
+    for i in range(m):
+        for j in range(n):
+            v = x[i, j]
+            out[j] = out[j] * 33 + v
+    return out
