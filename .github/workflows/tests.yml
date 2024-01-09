@@ -41,7 +41,7 @@ jobs:
           key: gcs_cache_tests_20231119
 
       - name: Run full test suite
-        run: poetry run pytest --durations=20 --durations-min=10.0 -v tests
+        run: poetry run pytest --durations=20 -v tests
 
       - name: Save GCS cache
         uses: actions/cache/save@v3

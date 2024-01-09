@@ -1209,12 +1209,16 @@ def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
-    # Fix intermediate taxon values - we only want to build cohorts with clean
-    # taxon calls, so we set intermediate values to None.
+    # Fix "intermediate" or "unassigned" taxon values - we only want to build
+    # cohorts with clean taxon calls, so we set other values to None.
     loc_intermediate_taxon = (
         df_samples["taxon"].str.startswith("intermediate").fillna(False)
     )
     df_samples.loc[loc_intermediate_taxon, "taxon"] = None
+    loc_unassigned_taxon = (
+        df_samples["taxon"].str.startswith("unassigned").fillna(False)
+    )
+    df_samples.loc[loc_unassigned_taxon, "taxon"] = None
 
     # Add period column.
     if period_by == "year":
@@ -1241,11 +1245,11 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
     df_cohorts = group_samples_by_cohort.agg(
         size=("sample_id", len),
         lat_mean=("latitude", "mean"),
-        lat_max=("latitude", "mean"),
-        lat_min=("latitude", "mean"),
+        lat_max=("latitude", "max"),
+        lat_min=("latitude", "min"),
         lon_mean=("longitude", "mean"),
-        lon_max=("longitude", "mean"),
-        lon_min=("longitude", "mean"),
+        lon_max=("longitude", "max"),
+        lon_min=("longitude", "min"),
     )
     # Reset index so that the index fields are included as columns.
     df_cohorts = df_cohorts.reset_index()
