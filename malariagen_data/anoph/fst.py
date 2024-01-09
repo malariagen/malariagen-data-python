@@ -68,8 +68,7 @@ class AnophelesFstAnalysis(
             chunks=chunks,
         )
 
-        # Access SNP positions.
-        with self._dask_progress(desc="Load SNP positions"):
+        with self._spinner(desc="Load SNP positions"):
             pos = self.snp_sites(
                 region=contig,
                 field="POS",
