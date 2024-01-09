@@ -79,6 +79,8 @@ class AnophelesFstAnalysis(
 
         with self._spinner(desc="Compute Fst"):
             fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
+            # Sometimes Fst can be very slightly below zero, clip for simplicity.
+            fst = np.clip(fst, a_min=0, a_max=1)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, fst=fst)
@@ -117,7 +119,7 @@ class AnophelesFstAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "fst_gwss_v1"
+        name = "fst_gwss_v2"
 
         params = dict(
             contig=contig,
