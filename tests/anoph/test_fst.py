@@ -1,8 +1,11 @@
+import itertools
 import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
 import bokeh.models
+import pandas as pd
+import plotly.graph_objects as go
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -72,33 +75,11 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-def check_fst_gwss(*, api, fst_params):
-    # Run main gwss function under test.
-    x, fst = api.fst_gwss(**fst_params)
-
-    # Check results.
-    assert isinstance(x, np.ndarray)
-    assert isinstance(fst, np.ndarray)
-    assert x.ndim == 1
-    assert fst.ndim == 1
-    assert x.shape == fst.shape
-    assert x.dtype.kind == "f"
-    assert fst.dtype.kind == "f"
-    assert np.all(fst >= 0)
-    assert np.all(fst <= 1)
-
-    # Check plotting functions.
-    fig = api.plot_fst_gwss_track(**fst_params, show=False)
-    assert isinstance(fig, bokeh.models.Plot)
-    fig = api.plot_fst_gwss(**fst_params, show=False)
-    assert isinstance(fig, bokeh.models.GridPlot)
-
-
 @parametrize_with_cases("fixture,api", cases=".")
 def test_fst_gwss(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    all_countries = api.sample_metadata()["country"].unique().tolist()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
     countries = random.sample(all_countries, 2)
     cohort1_query = f"country == {countries[0]!r}"
     cohort2_query = f"country == {countries[1]!r}"
@@ -112,5 +93,91 @@ def test_fst_gwss(fixture, api: AnophelesFstAnalysis):
         min_cohort_size=1,
     )
 
-    # Run checks.
-    check_fst_gwss(api=api, fst_params=fst_params)
+    # Run main gwss function under test.
+    x, fst = api.fst_gwss(**fst_params)
+
+    # Check results.
+    assert isinstance(x, np.ndarray)
+    assert isinstance(fst, np.ndarray)
+    assert x.ndim == 1
+    assert fst.ndim == 1
+    assert x.shape == fst.shape
+    assert x.dtype.kind == "f"
+    assert fst.dtype.kind == "f"
+    assert np.all(fst[~np.isnan(fst)] >= 0)
+    assert np.all(fst[~np.isnan(fst)] <= 1)
+
+    # Check plotting functions.
+    fig = api.plot_fst_gwss_track(**fst_params, show=False)
+    assert isinstance(fig, bokeh.models.Plot)
+    fig = api.plot_fst_gwss(**fst_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_average_fst(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    countries = random.sample(all_countries, 2)
+    cohort1_query = f"country == {countries[0]!r}"
+    cohort2_query = f"country == {countries[1]!r}"
+    fst_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=all_sample_sets,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        site_mask=random.choice(api.site_mask_ids),
+        min_cohort_size=1,
+    )
+
+    # Run main gwss function under test.
+    fst, se = api.average_fst(**fst_params)
+
+    # Checks.
+    assert isinstance(fst, float)
+    assert isinstance(se, float)
+    assert 0 <= fst <= 1
+    assert 0 <= se <= 1
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    cohorts = random.choice(["admin1_year", "admin2_month"])
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
+    fst_params = dict(
+        region=region,
+        cohorts=cohorts,
+        sample_sets=all_sample_sets,
+        site_mask=site_mask,
+        min_cohort_size=1,
+    )
+
+    # Run function under test.
+    fst_df = api.pairwise_average_fst(**fst_params)
+
+    # Checks.
+    assert isinstance(fst_df, pd.DataFrame)
+    assert fst_df.columns.to_list() == ["cohort1", "cohort2", "fst", "se"]
+    assert np.all(fst_df["fst"] >= 0)
+    assert np.all(fst_df["fst"] <= 1)
+    assert np.all(fst_df["se"] >= 0)
+    assert np.all(fst_df["se"] <= 1)
+    expected_cohort_labels = sorted(
+        api.sample_metadata(sample_sets=all_sample_sets)["cohort_" + cohorts]
+        .dropna()
+        .unique()
+    )
+    expected_pairs = itertools.combinations(expected_cohort_labels, 2)
+    actual_pairs = fst_df[["cohort1", "cohort2"]].itertuples(index=False)
+    for expected_pair, actual_pair in zip(expected_pairs, actual_pairs):
+        assert expected_pair == actual_pair
+
+    # Check plotting.
+    fig = api.plot_pairwise_average_fst(fst_df, show=False)
+    assert isinstance(fig, go.Figure)
+    fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
+    assert isinstance(fig, go.Figure)

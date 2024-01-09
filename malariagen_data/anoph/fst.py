@@ -352,9 +352,9 @@ class AnophelesFstAnalysis(
         site_mask: base_params.site_mask = DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
-    ):
-        # calculate allele counts for each cohort
-        cohort1_counts = self.snp_allele_counts(
+    ) -> Tuple[float, float]:
+        # Calculate allele counts for each cohort.
+        ac1 = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
             sample_query=cohort1_query,
@@ -365,8 +365,7 @@ class AnophelesFstAnalysis(
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
         )
-
-        cohort2_counts = self.snp_allele_counts(
+        ac2 = self.snp_allele_counts(
             region=region,
             sample_sets=sample_sets,
             sample_query=cohort2_query,
@@ -378,16 +377,23 @@ class AnophelesFstAnalysis(
             random_seed=random_seed,
         )
 
-        # calculate block length for blen
-        n_sites = cohort1_counts.shape[0]  # number of sites
+        # Calculate block length for jackknife.
+        n_sites = ac1.shape[0]  # number of sites
         block_length = n_sites // n_jack  # number of sites in each block
 
-        # calculate pairwise fst
-        fst_hudson, se_hudson, _, _ = allel.blockwise_hudson_fst(
-            cohort1_counts, cohort2_counts, blen=block_length
-        )
+        # Calculate average Fst.
+        fst, se, _, _ = allel.blockwise_hudson_fst(ac1, ac2, blen=block_length)
 
-        return fst_hudson, se_hudson
+        # Normalise to Python scalar types.
+        fst = float(fst)
+        se = float(se)
+
+        # Fst estimate can sometimes be slightly negative, but clip at
+        # zero.
+        if fst < 0:
+            fst = 0.0
+
+        return fst, se
 
     @check_types
     @doc(
@@ -432,10 +438,7 @@ class AnophelesFstAnalysis(
         n_cohorts = len(cohorts_checked)
         for i in range(n_cohorts):
             for j in range(i + 1, n_cohorts):
-                (
-                    fst_hudson,
-                    se_hudson,
-                ) = self.average_fst(
+                (fst, se) = self.average_fst(
                     region=region,
                     cohort1_query=cohort_queries[i],
                     cohort2_query=cohort_queries[j],
@@ -448,14 +451,10 @@ class AnophelesFstAnalysis(
                     site_class=site_class,
                     random_seed=random_seed,
                 )
-                # convert minus numbers to 0
-                if fst_hudson < 0:
-                    fst_hudson = 0
-                # add values to lists
                 cohort1_ids.append(cohort_ids[i])
                 cohort2_ids.append(cohort_ids[j])
-                fst_stats.append(fst_hudson)
-                se_stats.append(se_hudson)
+                fst_stats.append(fst)
+                se_stats.append(se)
 
         fst_df = pd.DataFrame(
             {
