@@ -9,7 +9,6 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_URL = "gs://vo_afun_release/"
-FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
@@ -74,7 +73,6 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
