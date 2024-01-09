@@ -729,6 +729,32 @@ def test_wgs_data_catalog(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_wgs_accessions_catalog(fixture, api):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    # sample_set = random.choice(all_sample_sets)
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.wgs_accessions_catalog(sample_set=sample_set)
+        # Check output.
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "sample_id",
+            "run_ena",
+        ]
+        assert df.columns.to_list() == expected_cols
+        assert len(df) == sample_count.loc[sample_set]
+
+        # Compare with sample metadata.
+        df_samples = api.sample_metadata(sample_sets=sample_set)
+        # Don't enforce same order, but require same set.
+        assert set(df["sample_id"]) == set(df_samples["sample_id"])
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_samples_bar(fixture, api):
     # By country.
     fig = api.plot_samples_bar(
