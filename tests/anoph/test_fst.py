@@ -142,6 +142,62 @@ def test_average_fst(fixture, api: AnophelesFstAnalysis):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    countries = random.sample(all_countries, 2)
+    cohort1_query = f"country == {countries[0]!r}"
+    cohort2_query = f"country == {countries[1]!r}"
+    fst_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=all_sample_sets,
+        cohort1_query=cohort1_query,
+        cohort2_query=cohort2_query,
+        site_mask=random.choice(api.site_mask_ids),
+        min_cohort_size=100,
+    )
+
+    # Run main gwss function under test.
+    with pytest.raises(ValueError):
+        api.average_fst(**fst_params)
+
+
+def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
+    # Run main function under test.
+    fst_df = api.pairwise_average_fst(**fst_params)
+
+    # Checks.
+    assert isinstance(fst_df, pd.DataFrame)
+    assert fst_df.columns.to_list() == ["cohort1", "cohort2", "fst", "se"]
+    assert np.all(fst_df["fst"] >= 0)
+    assert np.all(fst_df["fst"] <= 1)
+    assert np.all(fst_df["se"] >= 0)
+    assert np.all(fst_df["se"] <= 1)
+    sample_sets = fst_params["sample_sets"]
+    sample_query = fst_params.get("sample_query")
+    cohorts = fst_params["cohorts"]
+    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    if isinstance(cohorts, str):
+        expected_cohort_labels = sorted(
+            df_samples["cohort_" + cohorts].dropna().unique()
+        )
+    else:
+        assert isinstance(cohorts, dict)
+        expected_cohort_labels = list(cohorts.keys())
+    expected_pairs = itertools.combinations(expected_cohort_labels, 2)
+    actual_pairs = fst_df[["cohort1", "cohort2"]].itertuples(index=False)
+    for expected_pair, actual_pair in zip(expected_pairs, actual_pairs):
+        assert expected_pair == actual_pair
+
+    # Check plotting.
+    fig = api.plot_pairwise_average_fst(fst_df, show=False)
+    assert isinstance(fig, go.Figure)
+    fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
+    assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_pairwise_average_fst(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -156,28 +212,68 @@ def test_pairwise_average_fst(fixture, api: AnophelesFstAnalysis):
         min_cohort_size=1,
     )
 
-    # Run function under test.
-    fst_df = api.pairwise_average_fst(**fst_params)
+    # Run checks.
+    check_pairwise_average_fst(api=api, fst_params=fst_params)
 
-    # Checks.
-    assert isinstance(fst_df, pd.DataFrame)
-    assert fst_df.columns.to_list() == ["cohort1", "cohort2", "fst", "se"]
-    assert np.all(fst_df["fst"] >= 0)
-    assert np.all(fst_df["fst"] <= 1)
-    assert np.all(fst_df["se"] >= 0)
-    assert np.all(fst_df["se"] <= 1)
-    expected_cohort_labels = sorted(
-        api.sample_metadata(sample_sets=all_sample_sets)["cohort_" + cohorts]
-        .dropna()
-        .unique()
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst_with_dict_cohorts(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
+    cohorts = {country: f"country == '{country}'" for country in all_countries}
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
+    fst_params = dict(
+        region=region,
+        cohorts=cohorts,
+        sample_sets=all_sample_sets,
+        site_mask=site_mask,
+        min_cohort_size=1,
     )
-    expected_pairs = itertools.combinations(expected_cohort_labels, 2)
-    actual_pairs = fst_df[["cohort1", "cohort2"]].itertuples(index=False)
-    for expected_pair, actual_pair in zip(expected_pairs, actual_pairs):
-        assert expected_pair == actual_pair
 
-    # Check plotting.
-    fig = api.plot_pairwise_average_fst(fst_df, show=False)
-    assert isinstance(fig, go.Figure)
-    fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
-    assert isinstance(fig, go.Figure)
+    # Run checks.
+    check_pairwise_average_fst(api=api, fst_params=fst_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_taxa = api.sample_metadata()["taxon"].dropna().unique().tolist()
+    taxon = random.choice(all_taxa)
+    sample_query = f"taxon == '{taxon}'"
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    cohorts = random.choice(["admin1_year", "admin2_month"])
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
+    fst_params = dict(
+        region=region,
+        cohorts=cohorts,
+        sample_sets=all_sample_sets,
+        sample_query=sample_query,
+        site_mask=site_mask,
+        min_cohort_size=1,
+    )
+
+    # Run checks.
+    check_pairwise_average_fst(api=api, fst_params=fst_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst_with_bad_cohorts(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    cohorts = "foobar"
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
+    fst_params = dict(
+        region=region,
+        cohorts=cohorts,
+        sample_sets=all_sample_sets,
+        site_mask=site_mask,
+        min_cohort_size=1,
+    )
+
+    # Run function under test.
+    with pytest.raises(ValueError):
+        api.pairwise_average_fst(**fst_params)

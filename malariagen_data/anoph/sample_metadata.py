@@ -978,6 +978,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohort_size: Optional[base_params.cohort_size],
         min_cohort_size: Optional[base_params.min_cohort_size],
     ):
+        """Convenience function to normalise the `cohorts` paramater to a
+        dictionary mapping cohort labels to sample metadata queries."""
+
         if isinstance(cohorts, dict):
             # User has supplied a custom dictionary mapping cohort identifiers
             # to pandas queries.
@@ -985,24 +988,22 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             assert isinstance(cohorts, str)
-            # User has supplied one of the predefined cohort sets.
+            # User has supplied a column in the sample metadata.
             df_samples = self.sample_metadata(
                 sample_sets=sample_sets, sample_query=sample_query
             )
 
             # Determine column in dataframe - allow abbreviation.
-            if cohorts.startswith("cohort_"):
-                cohorts_col = cohorts
-            elif "cohort_" + cohorts in df_samples.columns:
-                cohorts_col = "cohort_" + cohorts
-            if cohorts_col not in df_samples.columns:
+            if "cohort_" + cohorts in df_samples.columns:
+                cohorts = "cohort_" + cohorts
+            if cohorts not in df_samples.columns:
                 raise ValueError(
-                    f"{cohorts_col!r} is not a known column in the sample metadata"
+                    f"{cohorts!r} is not a known column in the sample metadata"
                 )
 
             # Find cohort labels and build queries dictionary.
-            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
-            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
+            cohort_labels = sorted(df_samples[cohorts].dropna().unique())
+            cohort_queries = {coh: f"{cohorts} == '{coh}'" for coh in cohort_labels}
 
         # Handle sample_query parameter.
         if sample_query is not None:
