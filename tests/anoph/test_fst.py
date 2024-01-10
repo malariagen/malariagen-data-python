@@ -168,20 +168,28 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     # Run main function under test.
     fst_df = api.pairwise_average_fst(**fst_params)
 
-    # Checks.
+    # Basic checks.
     assert isinstance(fst_df, pd.DataFrame)
     assert fst_df.columns.to_list() == ["cohort1", "cohort2", "fst", "se"]
     assert np.all(fst_df["fst"] >= 0)
     assert np.all(fst_df["fst"] <= 1)
     assert np.all(fst_df["se"] >= 0)
     assert np.all(fst_df["se"] <= 1)
+
+    # Check cohort pairs are correct.
     sample_sets = fst_params["sample_sets"]
     sample_query = fst_params.get("sample_query")
     cohorts = fst_params["cohorts"]
+    min_cohort_size = fst_params["min_cohort_size"]
     df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
     if isinstance(cohorts, str):
+        if "cohort_" + cohorts in df_samples:
+            cohort_column = "cohort_" + cohorts
+        else:
+            cohort_column = cohorts
+        cohort_counts = df_samples[cohort_column].value_counts()
         expected_cohort_labels = sorted(
-            df_samples["cohort_" + cohorts].dropna().unique()
+            cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
         )
     else:
         assert isinstance(cohorts, dict)
@@ -200,11 +208,13 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
         assert isinstance(fig, go.Figure)
 
 
+@pytest.mark.parametrize("cohorts", ["country", "admin1_year", "cohort_admin2_month"])
 @parametrize_with_cases("fixture,api", cases=".")
-def test_pairwise_average_fst(fixture, api: AnophelesFstAnalysis):
+def test_pairwise_average_fst_with_str_cohorts(
+    fixture, api: AnophelesFstAnalysis, cohorts
+):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    cohorts = random.choice(["admin1_year", "admin2_month"])
     region = random.choice(api.contigs)
     site_mask = random.choice(api.site_mask_ids)
     fst_params = dict(
@@ -213,6 +223,26 @@ def test_pairwise_average_fst(fixture, api: AnophelesFstAnalysis):
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
+        n_jack=random.randint(10, 200),
+    )
+
+    # Run checks.
+    check_pairwise_average_fst(api=api, fst_params=fst_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pairwise_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAnalysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    region = random.choice(api.contigs)
+    site_mask = random.choice(api.site_mask_ids)
+    cohorts = "admin1_year"
+    fst_params = dict(
+        region=region,
+        cohorts=cohorts,
+        sample_sets=all_sample_sets,
+        site_mask=site_mask,
+        min_cohort_size=15,
         n_jack=random.randint(10, 200),
     )
 
