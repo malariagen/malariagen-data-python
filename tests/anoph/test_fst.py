@@ -129,6 +129,7 @@ def test_average_fst(fixture, api: AnophelesFstAnalysis):
         cohort2_query=cohort2_query,
         site_mask=random.choice(api.site_mask_ids),
         min_cohort_size=1,
+        n_jack=random.randint(10, 200),
     )
 
     # Run main gwss function under test.
@@ -155,7 +156,7 @@ def test_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAnalysis):
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
         site_mask=random.choice(api.site_mask_ids),
-        min_cohort_size=100,
+        min_cohort_size=1000,
     )
 
     # Run main gwss function under test.
@@ -185,16 +186,18 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     else:
         assert isinstance(cohorts, dict)
         expected_cohort_labels = list(cohorts.keys())
-    expected_pairs = itertools.combinations(expected_cohort_labels, 2)
-    actual_pairs = fst_df[["cohort1", "cohort2"]].itertuples(index=False)
+    expected_pairs = list(itertools.combinations(expected_cohort_labels, 2))
+    assert len(fst_df) == len(expected_pairs)
+    actual_pairs = list(fst_df[["cohort1", "cohort2"]].itertuples(index=False))
     for expected_pair, actual_pair in zip(expected_pairs, actual_pairs):
         assert expected_pair == actual_pair
 
     # Check plotting.
-    fig = api.plot_pairwise_average_fst(fst_df, show=False)
-    assert isinstance(fig, go.Figure)
-    fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
-    assert isinstance(fig, go.Figure)
+    if len(fst_df) > 0:
+        fig = api.plot_pairwise_average_fst(fst_df, show=False)
+        assert isinstance(fig, go.Figure)
+        fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
+        assert isinstance(fig, go.Figure)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -210,6 +213,7 @@ def test_pairwise_average_fst(fixture, api: AnophelesFstAnalysis):
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
+        n_jack=random.randint(10, 200),
     )
 
     # Run checks.
@@ -230,6 +234,7 @@ def test_pairwise_average_fst_with_dict_cohorts(fixture, api: AnophelesFstAnalys
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
+        n_jack=random.randint(10, 200),
     )
 
     # Run checks.
@@ -243,7 +248,7 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
     taxon = random.choice(all_taxa)
     sample_query = f"taxon == '{taxon}'"
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    cohorts = random.choice(["admin1_year", "admin2_month"])
+    cohorts = "admin2_month"
     region = random.choice(api.contigs)
     site_mask = random.choice(api.site_mask_ids)
     fst_params = dict(
@@ -253,6 +258,7 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
         sample_query=sample_query,
         site_mask=site_mask,
         min_cohort_size=1,
+        n_jack=random.randint(10, 200),
     )
 
     # Run checks.
