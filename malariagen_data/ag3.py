@@ -14,7 +14,6 @@ MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 GCS_URL = "gs://vo_agam_release/"
-FST_GWSS_CACHE_NAME = "ag3_fst_gwss_v1"
 H12_CALIBRATION_CACHE_NAME = "ag3_h12_calibration_v1"
 H12_GWSS_CACHE_NAME = "ag3_h12_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
@@ -132,7 +131,6 @@ class Ag3(AnophelesDataResource):
 
     """
 
-    _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
     _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
     _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME

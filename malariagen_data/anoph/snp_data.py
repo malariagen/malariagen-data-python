@@ -1103,6 +1103,8 @@ class AnophelesSnpData(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        inline_array,
+        chunks,
     ):
         # Access SNP calls.
         ds_snps = self.snp_calls(
@@ -1115,6 +1117,8 @@ class AnophelesSnpData(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
         gt = ds_snps["call_genotype"]
 
@@ -1161,6 +1165,8 @@ class AnophelesSnpData(
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ) -> np.ndarray:
         # Change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data.
@@ -1198,7 +1204,9 @@ class AnophelesSnpData(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._snp_allele_counts(**params)
+            results = self._snp_allele_counts(
+                **params, inline_array=inline_array, chunks=chunks
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         ac = results["ac"]
