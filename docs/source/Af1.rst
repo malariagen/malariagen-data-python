@@ -1,7 +1,22 @@
 Af1
 ===
 
-This page provides a curated list of functions and properties available in the malariagen_data API relating to *Anopheles funestus* data.
+This page provides a curated list of functions and properties available in the ``malariagen_data`` API
+for data on mosquitoes from the *Anopheles funestus* subgroup.
+
+To set up the API, use the following code::
+
+    import malariagen_data
+    af1 = malariagen_data.Af1()
+
+All the functions below can then be accessed as methods on the ``af1`` object. E.g., to call the
+``sample_metadata()`` function, do::
+
+    df_samples = af1.sample_metadata()
+
+For more information about the data and terns of use, please see the
+`MalariaGEN Anopheles funestus genomic surveillance project <https://www.malariagen.net/projects/anopheles-funestus-genomic-surveillance-project>`_
+home page.
 
 .. currentmodule:: malariagen_data.af1.Af1
 
