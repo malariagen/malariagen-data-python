@@ -637,25 +637,13 @@ class AnophelesSnpData(
 
         return ds
 
-    @check_types
-    @doc(
-        summary="Load site annotations.",
-        returns="A dataset of site annotations.",
-    )
-    def site_annotations(
+    def _site_annotations_raw(
         self,
-        region: base_params.region,
-        site_mask: Optional[base_params.site_mask] = None,
+        *,
+        contig,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> xr.Dataset:
-        # Resolve region.
-        resolved_region: Region = parse_single_region(self, region)
-        del region
-        contig = resolved_region.contig
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
-        del site_mask
-
         # Open site annotations zarr.
         root = self.open_site_annotations()
 
@@ -677,6 +665,32 @@ class AnophelesSnpData(
             )
             ds[field] = "variants", data
 
+        return ds
+
+    @check_types
+    @doc(
+        summary="Load site annotations.",
+        returns="A dataset of site annotations.",
+    )
+    def site_annotations(
+        self,
+        region: base_params.region,
+        site_mask: Optional[base_params.site_mask] = None,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
+    ) -> xr.Dataset:
+        # Resolve region.
+        resolved_region: Region = parse_single_region(self, region)
+        del region
+        contig = resolved_region.contig
+        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        del site_mask
+
+        # Access site annotations.
+        ds = self._site_annotations_raw(
+            contig=contig, inline_array=inline_array, chunks=chunks
+        )
+
         # N.B., site annotations data are provided for every position in the genome. We need to
         # therefore subset to SNP positions.
         pos = self.snp_sites(
@@ -694,9 +708,11 @@ class AnophelesSnpData(
     def _locate_site_class(
         self,
         *,
-        region: base_params.region,
+        region: Region,
         site_mask: Optional[base_params.site_mask],
         site_class: base_params.site_class,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.chunks_default,
     ):
         # Cache these data in memory to avoid repeated computation.
         cache_key = (region, site_mask, site_class)
@@ -706,9 +722,10 @@ class AnophelesSnpData(
 
         except KeyError:
             # Access site annotations data.
-            ds_ann = self.site_annotations(
-                region=region,
-                site_mask=site_mask,
+            ds_ann = self._site_annotations_raw(
+                contig=region.contig,
+                inline_array=inline_array,
+                chunks=chunks,
             )
             codon_pos = ds_ann["codon_position"].data
             codon_deg = ds_ann["codon_degeneracy"].data
@@ -828,6 +845,18 @@ class AnophelesSnpData(
 
             else:
                 raise NotImplementedError(site_class)
+
+            # N.B., site annotations data are provided for every position in the genome. We need to
+            # therefore subset to SNP positions.
+            pos = self.snp_sites(
+                region=region,
+                field="POS",
+                site_mask=site_mask,
+                inline_array=inline_array,
+                chunks=chunks,
+            )
+            idx = (pos - 1).compute()
+            loc_ann = da.take(loc_ann, idx, axis=0)
 
             # Compute site selection.
             with self._dask_progress(desc=f"Locate {site_class} sites"):
@@ -967,7 +996,7 @@ class AnophelesSnpData(
     def _snp_calls(
         self,
         *,
-        regions,
+        regions: Tuple[Region, ...],
         sample_sets,
         sample_query,
         sample_indices,
@@ -1015,6 +1044,8 @@ class AnophelesSnpData(
                         region=r,
                         site_class=site_class,
                         site_mask=None,
+                        inline_array=inline_array,
+                        chunks=chunks,
                     )
                     assert x.sizes["variants"] == loc_ann.shape[0]
                     x = x.isel(variants=loc_ann)
