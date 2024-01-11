@@ -29,6 +29,7 @@
 <link rel="preload" as="font" type="font/woff2" crossorigin href="_static/vendor/fontawesome/6.1.2/webfonts/fa-regular-400.woff2" />
 
     <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="_static/design-style.1e8bd061cd6da7fc9cf755528e8ffc24.min.css?v=0a3b3ea7" />
   
   <!-- Pre-loaded scripts that we'll load fully later -->
   <link rel="preload" as="script" href="_static/scripts/bootstrap.js?digest=5b4479735964841361fd" />
@@ -38,6 +39,7 @@
     <script data-url_root="./" id="documentation_options" src="_static/documentation_options.js?v=b3ba4146"></script>
     <script src="_static/doctools.js?v=888ff710"></script>
     <script src="_static/sphinx_highlight.js?v=4825356b"></script>
+    <script src="_static/design-tabs.js?v=36754332"></script>
     <script>DOCUMENTATION_OPTIONS.pagename = 'Amin1';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.14.4';
@@ -48,8 +50,6 @@
     <link rel="icon" href="_static/favicon.ico"/>
     <link rel="index" title="Index" href="genindex.html" />
     <link rel="search" title="Search" href="search.html" />
-    <link rel="next" title="malariagen_data.amin1.Amin1.contigs" href="generated/malariagen_data.amin1.Amin1.contigs.html" />
-    <link rel="prev" title="malariagen_data.af1.Af1.plot_fst_gwss" href="generated/malariagen_data.af1.Af1.plot_fst_gwss.html" />
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <meta name="docsearch:language" content="en"/>
   </head>
@@ -173,26 +173,6 @@ document.write(`
   </p>
   <ul class="bd-navbar-elements navbar-nav">
     
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="Ag3.html">
-                        Ag3
-                      </a>
-                    </li>
-                
-
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="Af1.html">
-                        Af1
-                      </a>
-                    </li>
-                
-
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
-                        Amin1
-                      </a>
-                    </li>
-                
   </ul>
 </nav></div>
       
@@ -275,7 +255,7 @@ document.write(`
   <div class="bd-container">
     <div class="bd-container__inner bd-page-width">
       
-      <div class="bd-sidebar-primary bd-sidebar">
+      <div class="bd-sidebar-primary bd-sidebar hide-on-wide">
         
 
   
@@ -318,26 +298,6 @@ document.write(`
   </p>
   <ul class="bd-navbar-elements navbar-nav">
     
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="Ag3.html">
-                        Ag3
-                      </a>
-                    </li>
-                
-
-                    <li class="nav-item">
-                      <a class="nav-link nav-internal" href="Af1.html">
-                        Af1
-                      </a>
-                    </li>
-                
-
-                    <li class="nav-item current active">
-                      <a class="nav-link nav-internal" href="#">
-                        Amin1
-                      </a>
-                    </li>
-                
   </ul>
 </nav></div>
         
@@ -378,26 +338,6 @@ document.write(`
       </div>
     
   </div>
-  
-    <div class="sidebar-primary-items__start sidebar-primary__section">
-        <div class="sidebar-primary-item">
-<nav class="bd-docs-nav bd-links"
-     aria-label="Section Navigation">
-  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
-  <div class="bd-toc-item navbar-nav"><ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.amin1.Amin1.contigs.html">malariagen_data.amin1.Amin1.contigs</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.amin1.Amin1.genome_sequence.html">malariagen_data.amin1.Amin1.genome_sequence</a></li>
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.amin1.Amin1.genome_features.html">malariagen_data.amin1.Amin1.genome_features</a></li>
-</ul>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.amin1.Amin1.sample_metadata.html">malariagen_data.amin1.Amin1.sample_metadata</a></li>
-</ul>
-<ul class="nav bd-sidenav">
-<li class="toctree-l1"><a class="reference internal" href="generated/malariagen_data.amin1.Amin1.snp_calls.html">malariagen_data.amin1.Amin1.snp_calls</a></li>
-</ul>
-</div>
-</nav></div>
-    </div>
   
   
   <div class="sidebar-primary-items__end sidebar-primary__section">
@@ -450,7 +390,21 @@ document.write(`
                   
   <section id="amin1">
 <h1>Amin1<a class="headerlink" href="#amin1" title="Permalink to this heading">#</a></h1>
-<p>This page provides a curated list of functions and properties available in the malariagen_data API relating to <em>Anopheles minimus</em> data.</p>
+<p>This page provides a curated list of functions and properties available in the <code class="docutils literal notranslate"><span class="pre">malariagen_data</span></code> API
+for data on <em>Anopheles minimus</em> mosquitoes.</p>
+<p>To set up the API, use the following code:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">malariagen_data</span>
+<span class="n">amin1</span> <span class="o">=</span> <span class="n">malariagen_data</span><span class="o">.</span><span class="n">Amin1</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>All the functions below can then be accessed as methods on the <code class="docutils literal notranslate"><span class="pre">amin1</span></code> object. E.g., to call the
+<code class="docutils literal notranslate"><span class="pre">sample_metadata()</span></code> function, do:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">df_samples</span> <span class="o">=</span> <span class="n">amin1</span><span class="o">.</span><span class="n">sample_metadata</span><span class="p">()</span>
+</pre></div>
+</div>
+<p>For more information about the data and terns of use, please see the
+<a class="reference external" href="https://www.malariagen.net/mosquito/vector-observatory-asia">MalariaGEN Vector Observatory Asia</a>
+home page.</p>
 <section id="reference-genome-data-access">
 <h2>Reference genome data access<a class="headerlink" href="#reference-genome-data-access" title="Permalink to this heading">#</a></h2>
 <table class="autosummary longtable table autosummary">
@@ -499,24 +453,6 @@ document.write(`
                 <footer class="prev-next-footer">
                   
 <div class="prev-next-area">
-    <a class="left-prev"
-       href="generated/malariagen_data.af1.Af1.plot_fst_gwss.html"
-       title="previous page">
-      <i class="fa-solid fa-angle-left"></i>
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">previous</p>
-        <p class="prev-next-title">malariagen_data.af1.Af1.plot_fst_gwss</p>
-      </div>
-    </a>
-    <a class="right-next"
-       href="generated/malariagen_data.amin1.Amin1.contigs.html"
-       title="next page">
-      <div class="prev-next-info">
-        <p class="prev-next-subtitle">next</p>
-        <p class="prev-next-title">malariagen_data.amin1.Amin1.contigs</p>
-      </div>
-      <i class="fa-solid fa-angle-right"></i>
-    </a>
 </div>
                 </footer>
               
