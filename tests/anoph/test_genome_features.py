@@ -21,6 +21,7 @@ def ag3_sim_api(ag3_sim_fixture):
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
         gff_gene_type="gene",
+        gff_gene_name="Name",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
         virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
@@ -36,6 +37,7 @@ def af1_sim_api(af1_sim_fixture):
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
         gff_gene_type="protein_coding_gene",
+        gff_gene_name="Note",
         gff_default_attributes=("ID", "Parent", "Note", "description"),
     )
 
@@ -152,6 +154,7 @@ def gh334_api(fixture_dir):
         major_version_path="v1.0",
         pre=False,
         gff_gene_type="protein_coding_gene",
+        gff_gene_name="Note",
         gff_default_attributes=("ID", "Parent"),
     )
 
