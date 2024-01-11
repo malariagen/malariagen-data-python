@@ -77,6 +77,7 @@ mypy = "*"
 # docs
 sphinx = "*"
 pydata-sphinx-theme = "*"
+memory-profiler = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
