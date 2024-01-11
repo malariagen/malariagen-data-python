@@ -649,8 +649,6 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> xr.Dataset:
-        # N.B., we default to chunks="auto" here for performance reasons
-
         # Resolve region.
         resolved_region: Region = parse_single_region(self, region)
         del region
@@ -679,19 +677,16 @@ class AnophelesSnpData(
             )
             ds[field] = "variants", data
 
-        # Subset to SNP positions.
+        # N.B., site annotations data are provided for every position in the genome. We need to
+        # therefore subset to SNP positions.
         pos = self.snp_sites(
-            region=contig,
+            region=resolved_region,
             field="POS",
             site_mask=site_mask_prepped,
             inline_array=inline_array,
             chunks=chunks,
         )
-        pos = pos.compute()
-        if resolved_region.start or resolved_region.end:
-            loc_region = locate_region(resolved_region, pos)
-            pos = pos[loc_region]
-        idx = pos - 1
+        idx = (pos - 1).compute()
         ds = ds.isel(variants=idx)
 
         return ds
