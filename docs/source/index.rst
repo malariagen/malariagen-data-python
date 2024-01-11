@@ -4,11 +4,10 @@ MalariaGEN Python API documentation
 **Useful links**: `Source Repository <https://github.com/malariagen/malariagen-data-python>`_ | `Issues & Ideas <https://github.com/malariagen/malariagen-data-python/issues>`_ | `Q&A Support <https://github.com/malariagen/malariagen-data-python/discussions>`_ | `Online Training <https://anopheles-genomic-surveillance.github.io/>`_
 
 The ``malariagen_data`` Python package provides a library of functions (API) for accessing and analysing
-publicly available MalariaGEN data. This site provides reference documentation for the ``malariagen_data``
-API.
+publicly available MalariaGEN data.
 
-API reference documentation
----------------------------
+API documentation
+-----------------
 
 .. grid::
 
