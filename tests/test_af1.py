@@ -1,5 +1,6 @@
 import numpy as np
 import pytest
+import xarray as xr
 from numpy.testing import assert_allclose
 
 from malariagen_data import Af1, Region
@@ -25,6 +26,95 @@ def test_repr():
     assert isinstance(af1, Af1)
     r = repr(af1)
     assert isinstance(r, str)
+
+
+# noinspection PyArgumentList
+@pytest.mark.parametrize(
+    "sample_sets",
+    [
+        "1229-VO-GH-DADZIE-VMF00095",
+        ("1230-VO-GA-CF-AYALA-VMF00045", "1231-VO-MULTI-WONDJI-VMF00043"),
+        "1.0",
+    ],
+)
+@pytest.mark.parametrize("region", ["2RL", ["3RL", "X"], "3RL:28,000,000-29,000,000"])
+def test_gene_cnv(region, sample_sets):
+    af1 = setup_af1()
+
+    ds = af1.gene_cnv(
+        region=region, sample_sets=sample_sets, max_coverage_variance=None
+    )
+
+    assert isinstance(ds, xr.Dataset)
+
+    # check fields
+    expected_data_vars = {
+        "CN_mode",
+        "CN_mode_count",
+        "gene_windows",
+        "gene_contig",
+        "gene_start",
+        "gene_end",
+        "gene_name",
+        "gene_description",
+        "gene_strand",
+        "sample_coverage_variance",
+        "sample_is_high_variance",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "gene_id",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # check dimensions
+    assert set(ds.dims) == {"samples", "genes"}
+
+    # check dim lengths
+    df_samples = af1.sample_metadata(sample_sets=sample_sets)
+    n_samples = len(df_samples)
+    assert ds.sizes["samples"] == n_samples
+    df_genome_features = af1.genome_features(region=region)
+    df_genes = df_genome_features.query("type == 'protein_coding_gene'")
+    n_genes = len(df_genes)
+    assert ds.sizes["genes"] == n_genes
+
+    # check IDs
+    assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+    assert ds["gene_id"].values.tolist() == df_genes["ID"].tolist()
+
+    # check shapes
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        assert isinstance(x.data, np.ndarray)
+
+        if f.startswith("gene_"):
+            assert x.ndim == 1
+            assert x.dims == ("genes",)
+        elif f.startswith("CN"):
+            assert x.ndim == 2
+            assert x.dims == ("genes", "samples")
+        elif f.startswith("sample_"):
+            assert x.ndim == 1
+            assert x.dims == ("samples",)
+            assert x.shape == (n_samples,)
+
+    # check can set up computations
+    d1 = ds["gene_start"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+    d2 = ds["CN_mode"].max(axis=1)
+    assert isinstance(d2, xr.DataArray)
+
+    # sanity checks
+    x = ds["gene_windows"].values
+    y = ds["CN_mode_count"].values.max(axis=1)
+    assert np.all(x >= y)
+    z = ds["CN_mode"].values
+    assert np.max(z) <= 12
+    assert np.min(z) >= -1
 
 
 @pytest.mark.parametrize(
@@ -138,35 +228,3 @@ def test_h1x_gwss():
     assert_allclose(h1x[0], 0.008621, atol=1e-5), h1x[0]
     assert np.all(h1x <= 1)
     assert np.all(h1x >= 0)
-
-
-def test_fst_gwss():
-    af1 = setup_af1(cohorts_analysis="20230823")
-    cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"
-    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu_fune_2017'"
-    contig = "2RL"
-    window_size = 10_000
-
-    x, fst = af1.fst_gwss(
-        contig=contig,
-        cohort1_query=cohort1_query,
-        cohort2_query=cohort2_query,
-        window_size=window_size,
-        cohort_size=None,
-        min_cohort_size=None,
-        max_cohort_size=None,
-    )
-
-    # check data
-    assert isinstance(x, np.ndarray)
-    assert isinstance(fst, np.ndarray)
-
-    # check dimensions
-    assert x.ndim == fst.ndim == 1
-    assert x.shape == fst.shape
-
-    # check some values
-    assert_allclose(x[0], 87935.3098, rtol=1e-5), x[0]
-    assert_allclose(fst[0], -0.105572, rtol=1e-5), fst[0]
-    assert np.all(fst <= 1), np.max(fst)
-    assert np.all(np.logical_and(fst >= -0.5, fst <= 1)), (np.min(fst), np.max(fst))

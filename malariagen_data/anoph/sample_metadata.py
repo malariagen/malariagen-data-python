@@ -998,6 +998,66 @@ class AnophelesSampleMetadata(AnophelesBase):
             hover_data.append(symbol)
         return hover_data
 
+    def _setup_cohort_queries(
+        self,
+        cohorts: base_params.cohorts,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        cohort_size: Optional[base_params.cohort_size],
+        min_cohort_size: Optional[base_params.min_cohort_size],
+    ):
+        """Convenience function to normalise the `cohorts` paramater to a
+        dictionary mapping cohort labels to sample metadata queries."""
+
+        if isinstance(cohorts, dict):
+            # User has supplied a custom dictionary mapping cohort identifiers
+            # to pandas queries.
+            cohort_queries = cohorts
+
+        else:
+            assert isinstance(cohorts, str)
+            # User has supplied a column in the sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=sample_query
+            )
+
+            # Determine column in dataframe - allow abbreviation.
+            if "cohort_" + cohorts in df_samples.columns:
+                cohorts = "cohort_" + cohorts
+            if cohorts not in df_samples.columns:
+                raise ValueError(
+                    f"{cohorts!r} is not a known column in the sample metadata"
+                )
+
+            # Find cohort labels and build queries dictionary.
+            cohort_labels = sorted(df_samples[cohorts].dropna().unique())
+            cohort_queries = {coh: f"{cohorts} == '{coh}'" for coh in cohort_labels}
+
+        # Handle sample_query parameter.
+        if sample_query is not None:
+            cohort_queries = {
+                cohort_label: f"({cohort_query}) and ({sample_query})"
+                for cohort_label, cohort_query in cohort_queries.items()
+            }
+
+        # Check cohort sizes, drop any cohorts which are too small.
+        cohort_queries_checked = dict()
+        for cohort_label, cohort_query in cohort_queries.items():
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=cohort_query
+            )
+            n_samples = len(df_cohort_samples)
+            if min_cohort_size is not None:
+                cohort_size = min_cohort_size
+            if cohort_size is not None and n_samples < cohort_size:
+                print(
+                    f"Cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping."
+                )
+            else:
+                cohort_queries_checked[cohort_label] = cohort_query
+
+        return cohort_queries_checked
+
 
 def locate_cohorts(*, cohorts, data):
     # Build cohort dictionary where key=cohort_id, value=loc_coh.

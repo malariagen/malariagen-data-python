@@ -1,7 +1,22 @@
 Ag3
 ===
 
-This page provides a curated list of functions and properties available in the malariagen_data API relating to *Anopheles gambiae* data.
+This page provides a curated list of functions and properties available in the ``malariagen_data`` API
+for data on mosquitoes from the *Anopheles gambiae* complex.
+
+To set up the API, use the following code::
+
+    import malariagen_data
+    ag3 = malariagen_data.Ag3()
+
+All the functions below can then be accessed as methods on the ``ag3`` object. E.g., to call the
+``sample_metadata()`` function, do::
+
+    df_samples = ag3.sample_metadata()
+
+For more information about the data and terns of use, please see the
+`MalariaGEN Anopheles gambiae genomic surveillance project <https://www.malariagen.net/anopheles-gambiae-genomic-surveillance-project>`_
+home page.
 
 .. currentmodule:: malariagen_data.ag3.Ag3
 
