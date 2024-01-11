@@ -706,9 +706,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             Load a data accessions catalog providing ENA run accessions
             for samples in a given sample set.
         """,
-        returns="One row per sample, columns provide accessions.",
+        returns="One row per sample, columns provide run accessions.",
     )
-    def wgs_accessions_catalog(self, sample_set: base_params.sample_set):
+    def wgs_run_accessions(self, sample_set: base_params.sample_set):
         # Look up release for sample set.
         release = self.lookup_release(sample_set=sample_set)
         release_path = self._release_to_path(release=release)

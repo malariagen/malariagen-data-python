@@ -729,7 +729,7 @@ def test_wgs_data_catalog(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_wgs_accessions_catalog(fixture, api):
+def test_wgs_run_accessions(fixture, api):
     # Set up test.
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
@@ -738,7 +738,7 @@ def test_wgs_accessions_catalog(fixture, api):
 
     for sample_set in all_sample_sets:
         # Call function to be tested.
-        df = api.wgs_accessions_catalog(sample_set=sample_set)
+        df = api.wgs_run_accessions(sample_set=sample_set)
         # Check output.
         assert isinstance(df, pd.DataFrame)
         expected_cols = [
