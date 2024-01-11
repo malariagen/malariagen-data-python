@@ -881,7 +881,7 @@ class AnophelesDataResource(
 
         debug("access genes")
         df_genome_features = self.genome_features(region=region)
-        df_genes = df_genome_features.query("type == 'gene'")
+        df_genes = df_genome_features.query("type in ['gene','protein_coding_gene']")
 
         debug("setup intermediates")
         windows = []
