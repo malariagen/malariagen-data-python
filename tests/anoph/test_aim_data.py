@@ -30,7 +30,7 @@ def ag3_sim_api(ag3_sim_fixture):
         aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
         aim_palettes=_ag3.AIM_PALETTES,
         gff_gene_type="gene",
-        gff_gene_name="Name",
+        gff_gene_name_attribute="Name",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
     )
 

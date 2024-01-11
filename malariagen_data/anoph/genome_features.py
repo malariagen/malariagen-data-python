@@ -25,7 +25,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self,
         *,
         gff_gene_type: str,
-        gff_gene_name: str,
+        gff_gene_name_attribute: str,
         gff_default_attributes: Tuple[str, ...],
         gene_names: Optional[Mapping[str, str]] = None,
         **kwargs,
@@ -38,7 +38,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         # TODO Consider moving these parameters to configuration, as they could
         # change if the GFF ever changed.
         self._gff_gene_type = gff_gene_type
-        self._gff_gene_name = gff_gene_name
+        self._gff_gene_name_attribute = gff_gene_name_attribute
         self._gff_default_attributes = gff_default_attributes
 
         # Allow manual override of gene names.
