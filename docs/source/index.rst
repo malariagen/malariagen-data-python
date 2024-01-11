@@ -17,17 +17,27 @@ API documentation
 
       *Anopheles gambiae* complex.
 
+      .. image:: https://upload.wikimedia.org/wikipedia/commons/0/0a/AnophelesGambiaemosquito.jpg
+
    .. grid-item-card:: ``Af1``
       :link: Af1
       :link-type: doc
 
       *Anopheles funestus* subgroup.
 
+      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/f/ff/Anopheles_Funetus.jpg/640px-Anopheles_Funetus.jpg
+
    .. grid-item-card:: ``Amin1``
       :link: Amin1
       :link-type: doc
 
       *Anopheles minimus*.
+
+      .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Anopheles_minimus_1.jpg/640px-Anopheles_minimus_1.jpg
+
+Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
+and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
+currently hosted on a separate site.
 
 Installation
 ------------
