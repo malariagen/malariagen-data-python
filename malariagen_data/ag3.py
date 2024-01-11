@@ -183,6 +183,7 @@ class Ag3(AnophelesDataResource):
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
             gff_gene_type="gene",
+            gff_gene_name_attribute="Name",
             gff_default_attributes=("ID", "Parent", "Name", "description"),
             storage_options=storage_options,  # used by fsspec via init_filesystem()
             tqdm_class=tqdm_class,

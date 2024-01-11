@@ -139,6 +139,7 @@ class AnophelesDataResource(
         major_version_number: int,
         major_version_path: str,
         gff_gene_type: str,
+        gff_gene_name_attribute: str,
         gff_default_attributes: Tuple[str, ...],
         tqdm_class,
         storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
@@ -160,6 +161,7 @@ class AnophelesDataResource(
             major_version_path=major_version_path,
             storage_options=storage_options,
             gff_gene_type=gff_gene_type,
+            gff_gene_name_attribute=gff_gene_name_attribute,
             gff_default_attributes=gff_default_attributes,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
@@ -877,7 +879,7 @@ class AnophelesDataResource(
 
         debug("access genes")
         df_genome_features = self.genome_features(region=region)
-        df_genes = df_genome_features.query("type == 'gene'")
+        df_genes = df_genome_features.query(f"type == '{self._gff_gene_type}'")
 
         debug("setup intermediates")
         windows = []
@@ -921,7 +923,10 @@ class AnophelesDataResource(
                 "gene_start": (["genes"], df_genes["start"].values),
                 "gene_end": (["genes"], df_genes["end"].values),
                 "gene_windows": (["genes"], windows),
-                "gene_name": (["genes"], df_genes["Name"].values),
+                "gene_name": (
+                    ["genes"],
+                    df_genes[self._gff_gene_name_attribute].values,
+                ),
                 "gene_strand": (["genes"], df_genes["strand"].values),
                 "gene_description": (["genes"], df_genes["description"].values),
                 "CN_mode": (["genes", "samples"], modes),
