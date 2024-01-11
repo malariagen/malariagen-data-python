@@ -228,35 +228,3 @@ def test_h1x_gwss():
     assert_allclose(h1x[0], 0.008621, atol=1e-5), h1x[0]
     assert np.all(h1x <= 1)
     assert np.all(h1x >= 0)
-
-
-def test_fst_gwss():
-    af1 = setup_af1(cohorts_analysis="20230823")
-    cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"
-    cohort2_query = "cohort_admin2_year == 'GH-NP_Zabzugu_fune_2017'"
-    contig = "2RL"
-    window_size = 10_000
-
-    x, fst = af1.fst_gwss(
-        contig=contig,
-        cohort1_query=cohort1_query,
-        cohort2_query=cohort2_query,
-        window_size=window_size,
-        cohort_size=None,
-        min_cohort_size=None,
-        max_cohort_size=None,
-    )
-
-    # check data
-    assert isinstance(x, np.ndarray)
-    assert isinstance(fst, np.ndarray)
-
-    # check dimensions
-    assert x.ndim == fst.ndim == 1
-    assert x.shape == fst.shape
-
-    # check some values
-    assert_allclose(x[0], 87935.3098, rtol=1e-5), x[0]
-    assert_allclose(fst[0], -0.105572, rtol=1e-5), fst[0]
-    assert np.all(fst <= 1), np.max(fst)
-    assert np.all(np.logical_and(fst >= -0.5, fst <= 1)), (np.min(fst), np.max(fst))

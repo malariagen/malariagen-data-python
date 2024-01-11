@@ -32,7 +32,6 @@ from .anoph import (
     base_params,
     dash_params,
     diplotype_distance_params,
-    fst_params,
     gplt_params,
     h12_params,
     hapclust_params,
@@ -54,6 +53,7 @@ from .anoph.pca import AnophelesPca
 from .anoph.sample_metadata import AnophelesSampleMetadata, locate_cohorts
 from .anoph.snp_data import AnophelesSnpData
 from .anoph.g123 import AnophelesG123Analysis
+from .anoph.fst import AnophelesFstAnalysis
 from .mjn import median_joining_network, mjn_graph
 from .util import (
     CacheMiss,
@@ -100,6 +100,7 @@ DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
     AnophelesG123Analysis,
+    AnophelesFstAnalysis,
     AnophelesSnpFrequencyAnalysis,
     AnophelesPca,
     AnophelesIgv,
@@ -177,11 +178,6 @@ class AnophelesDataResource(
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
         )
-
-    @property
-    @abstractmethod
-    def _fst_gwss_results_cache_name(self):
-        raise NotImplementedError("Must override _fst_gwss_results_cache_name")
 
     @property
     @abstractmethod
@@ -1658,65 +1654,6 @@ class AnophelesDataResource(
 
         return pd.Series(stats)
 
-    # @staticmethod?
-    def _setup_cohorts(
-        self,
-        cohorts: base_params.cohorts,
-        sample_sets: Optional[base_params.sample_sets],
-        sample_query: Optional[base_params.sample_query],
-        cohort_size: Optional[base_params.cohort_size],
-        min_cohort_size: Optional[base_params.min_cohort_size],
-    ):
-        if isinstance(cohorts, dict):
-            # user has supplied a custom dictionary mapping cohort identifiers
-            # to pandas queries
-            cohort_queries = cohorts
-
-        elif isinstance(cohorts, str):
-            # user has supplied one of the predefined cohort sets
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=sample_query
-            )
-
-            # determine column in dataframe - allow abbreviation
-            if cohorts.startswith("cohort_"):
-                cohorts_col = cohorts
-            else:
-                cohorts_col = "cohort_" + cohorts
-            if cohorts_col not in df_samples.columns:
-                raise ValueError(f"{cohorts_col!r} is not a known cohort set")
-
-            # find cohort labels and build queries dictionary
-            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
-            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
-
-        else:
-            raise TypeError("cohorts parameter should be dict or str")
-
-        # handle sample_query parameter
-        if sample_query is not None:
-            cohort_queries = {
-                cohort_label: f"({cohort_query}) and ({sample_query})"
-                for cohort_label, cohort_query in cohort_queries.items()
-            }
-
-        # check cohort sizes, drop any cohorts which are too small
-        cohort_queries_checked = dict()
-        for cohort_label, cohort_query in cohort_queries.items():
-            df_cohort_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=cohort_query
-            )
-            n_samples = len(df_cohort_samples)
-            if min_cohort_size is not None:
-                cohort_size = min_cohort_size
-            if cohort_size is not None and n_samples < cohort_size:
-                print(
-                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"
-                )
-            else:
-                cohort_queries_checked[cohort_label] = cohort_query
-        return cohort_queries_checked
-
     @check_types
     @doc(
         summary="""
@@ -1740,61 +1677,18 @@ class AnophelesDataResource(
         n_jack: base_params.n_jack = 200,
         confidence_level: base_params.confidence_level = 0.95,
     ) -> pd.DataFrame:
-        debug = self._log.debug
-        info = self._log.info
+        # Normalise cohorts parameter.
+        cohort_queries = self._setup_cohort_queries(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            min_cohort_size=None,
+        )
 
-        debug("set up cohorts")
-        if isinstance(cohorts, dict):
-            # user has supplied a custom dictionary mapping cohort identifiers
-            # to pandas queries
-            cohort_queries = cohorts
-
-        elif isinstance(cohorts, str):
-            # user has supplied one of the predefined cohort sets
-
-            df_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=sample_query
-            )
-
-            # determine column in dataframe - allow abbreviation
-            if cohorts.startswith("cohort_"):
-                cohorts_col = cohorts
-            else:
-                cohorts_col = "cohort_" + cohorts
-            if cohorts_col not in df_samples.columns:
-                raise ValueError(f"{cohorts_col!r} is not a known cohort set")
-
-            # find cohort labels and build queries dictionary
-            cohort_labels = sorted(df_samples[cohorts_col].dropna().unique())
-            cohort_queries = {coh: f"{cohorts_col} == '{coh}'" for coh in cohort_labels}
-
-        else:
-            raise TypeError("cohorts parameter should be dict or str")
-
-        debug("handle sample_query parameter")
-        if sample_query is not None:
-            cohort_queries = {
-                cohort_label: f"({cohort_query}) and ({sample_query})"
-                for cohort_label, cohort_query in cohort_queries.items()
-            }
-
-        debug("check cohort sizes, drop any cohorts which are too small")
-        cohort_queries_checked = dict()
-        for cohort_label, cohort_query in cohort_queries.items():
-            df_cohort_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=cohort_query
-            )
-            n_samples = len(df_cohort_samples)
-            if n_samples < cohort_size:
-                info(
-                    f"cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping"  # noqa
-                )  # noqa
-            else:
-                cohort_queries_checked[cohort_label] = cohort_query
-
-        debug("compute diversity stats for cohorts")
+        # Compute diversity stats for cohorts.
         all_stats = []
-        for cohort_label, cohort_query in cohort_queries_checked.items():
+        for cohort_label, cohort_query in cohort_queries.items():
             stats = self.cohort_diversity_stats(
                 cohort=(cohort_label, cohort_query),
                 cohort_size=cohort_size,
@@ -1810,322 +1704,6 @@ class AnophelesDataResource(
         df_stats = pd.DataFrame(all_stats)
 
         return df_stats
-
-    @check_types
-    @doc(
-        summary="""
-            Compute average Hudson's Fst between two specified cohorts.
-        """,
-        returns="""
-            A NumPy float of the Fst value and the standard error (SE).
-        """,
-    )
-    def average_fst(
-        self,
-        region: base_params.region,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = fst_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = fst_params.max_cohort_size_default,
-        n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
-        site_class: Optional[base_params.site_class] = None,
-        random_seed: base_params.random_seed = 42,
-    ):
-        # calculate allele counts for each cohort
-        cohort1_counts = self.snp_allele_counts(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=cohort1_query,
-            cohort_size=cohort_size,
-            site_mask=site_mask,
-            site_class=site_class,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        cohort2_counts = self.snp_allele_counts(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=cohort2_query,
-            cohort_size=cohort_size,
-            site_mask=site_mask,
-            site_class=site_class,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        # calculate block length for blen
-        n_sites = cohort1_counts.shape[0]  # number of sites
-        block_length = n_sites // n_jack  # number of sites in each block
-
-        # calculate pairwise fst
-        fst_hudson, se_hudson, _, _ = allel.blockwise_hudson_fst(
-            cohort1_counts, cohort2_counts, blen=block_length
-        )
-
-        return fst_hudson, se_hudson
-
-    @check_types
-    @doc(
-        summary="""
-            Compute pairwise average Hudson's Fst between a set of specified cohorts.
-        """,
-    )
-    def pairwise_average_fst(
-        self,
-        region: base_params.region,
-        cohorts: base_params.cohorts,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = fst_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = fst_params.max_cohort_size_default,
-        n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
-        site_class: Optional[base_params.site_class] = None,
-        random_seed: base_params.random_seed = 42,
-    ) -> fst_params.df_pairwise_fst:
-        # set up cohort queries
-        cohorts_checked = self._setup_cohorts(
-            cohorts,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-        )
-
-        cohort_ids = list(cohorts_checked.keys())
-        cohort_queries = list(cohorts_checked.values())
-        cohort1_ids = []
-        cohort2_ids = []
-        fst_stats = []
-        se_stats = []
-
-        n_cohorts = len(cohorts_checked)
-        for i in range(n_cohorts):
-            for j in range(i + 1, n_cohorts):
-                (
-                    fst_hudson,
-                    se_hudson,
-                ) = self.average_fst(
-                    region=region,
-                    cohort1_query=cohort_queries[i],
-                    cohort2_query=cohort_queries[j],
-                    sample_sets=sample_sets,
-                    cohort_size=cohort_size,
-                    min_cohort_size=min_cohort_size,
-                    max_cohort_size=max_cohort_size,
-                    n_jack=n_jack,
-                    site_mask=site_mask,
-                    site_class=site_class,
-                    random_seed=random_seed,
-                )
-                # convert minus numbers to 0
-                if fst_hudson < 0:
-                    fst_hudson = 0
-                # add values to lists
-                cohort1_ids.append(cohort_ids[i])
-                cohort2_ids.append(cohort_ids[j])
-                fst_stats.append(fst_hudson)
-                se_stats.append(se_hudson)
-
-        fst_df = pd.DataFrame(
-            {
-                "cohort1": cohort1_ids,
-                "cohort2": cohort2_ids,
-                "fst": fst_stats,
-                "se": se_stats,
-            }
-        )
-
-        return fst_df
-
-    @check_types
-    @doc(
-        summary="""
-            Plot a heatmap of pairwise average Fst values.
-        """,
-        parameters=dict(
-            annotate_se="If True, show standard error values in the upper triangle of the plot.",
-            kwargs="Passed through to `px.imshow()`",
-        ),
-    )
-    def plot_pairwise_average_fst(
-        self,
-        fst_df: fst_params.df_pairwise_fst,
-        annotate_se: bool = False,
-        zmin: Optional[plotly_params.zmin] = 0.0,
-        zmax: Optional[plotly_params.zmax] = None,
-        text_auto: plotly_params.text_auto = ".3f",
-        color_continuous_scale: plotly_params.color_continuous_scale = "gray_r",
-        width: plotly_params.width = 700,
-        height: plotly_params.height = 600,
-        show: plotly_params.show = True,
-        renderer: plotly_params.renderer = None,
-        **kwargs,
-    ):
-        # setup df
-        cohort_list = np.unique(fst_df[["cohort1", "cohort2"]].values)
-        # df to fill
-        fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
-        # fill df from fst_df
-        for index_key in range(len(fst_df)):
-            index = fst_df.iloc[index_key]["cohort1"]
-            col = fst_df.iloc[index_key]["cohort2"]
-            fst = fst_df.iloc[index_key]["fst"]
-            fig_df[index][col] = fst
-            if annotate_se is True:
-                se = fst_df.iloc[index_key]["se"]
-                fig_df[col][index] = se
-            else:
-                fig_df[col][index] = fst
-
-        # create plot
-        with np.errstate(invalid="ignore"):
-            fig = px.imshow(
-                img=fig_df,
-                zmin=zmin,
-                zmax=zmax,
-                width=width,
-                height=height,
-                text_auto=text_auto,
-                color_continuous_scale=color_continuous_scale,
-                aspect="auto",
-                **kwargs,
-            )
-        fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
-        fig.update_yaxes(showgrid=False, linecolor="black")
-        fig.update_xaxes(showgrid=False, linecolor="black")
-
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
-
-    @check_types
-    @doc(
-        summary="""
-            Run a Fst genome-wide scan to investigate genetic differentiation
-            between two cohorts.
-        """,
-        returns=dict(
-            x="An array containing the window centre point genomic positions",
-            fst="An array with Fst statistic values for each window.",
-        ),
-    )
-    def fst_gwss(
-        self,
-        contig: base_params.contig,
-        window_size: fst_params.window_size,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = fst_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = fst_params.max_cohort_size_default,
-        random_seed: base_params.random_seed = 42,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        # TODO could generalise, do this on a region rather than a contig
-
-        # change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data
-        name = self._fst_gwss_results_cache_name
-
-        params = dict(
-            contig=contig,
-            window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
-            site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._fst_gwss(**params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        x = results["x"]
-        fst = results["fst"]
-
-        return x, fst
-
-    def _fst_gwss(
-        self,
-        contig,
-        window_size,
-        sample_sets,
-        cohort1_query,
-        cohort2_query,
-        site_mask,
-        cohort_size,
-        min_cohort_size,
-        max_cohort_size,
-        random_seed,
-    ):
-        ds_snps1 = self.snp_calls(
-            region=contig,
-            sample_query=cohort1_query,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        ds_snps2 = self.snp_calls(
-            region=contig,
-            sample_query=cohort2_query,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        gt1 = allel.GenotypeDaskArray(ds_snps1["call_genotype"].data)
-        with self._dask_progress(desc="Compute allele counts for cohort 1"):
-            ac1 = gt1.count_alleles(max_allele=3).compute()
-
-        gt2 = allel.GenotypeDaskArray(ds_snps2["call_genotype"].data)
-        with self._dask_progress(desc="Compute allele counts for cohort 2"):
-            ac2 = gt2.count_alleles(max_allele=3).compute()
-
-        with self._spinner(desc="Compute Fst"):
-            fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
-            pos = ds_snps1["variant_position"].values
-            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
-
-        results = dict(x=x, fst=fst)
-
-        return results
 
     @check_types
     @doc(
@@ -2264,186 +1842,6 @@ class AnophelesDataResource(
             return None
         else:
             return (fig1, fig2, fig3, fig4)
-
-    @check_types
-    @doc(
-        summary="""
-            Run and plot a Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
-        """,
-    )
-    def plot_fst_gwss_track(
-        self,
-        contig: base_params.contig,
-        window_size: fst_params.window_size,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = fst_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = fst_params.max_cohort_size_default,
-        random_seed: base_params.random_seed = 42,
-        title: Optional[gplt_params.title] = None,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        height: gplt_params.height = 200,
-        show: gplt_params.show = True,
-        x_range: Optional[gplt_params.x_range] = None,
-        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
-        # compute Fst
-        x, fst = self.fst_gwss(
-            contig=contig,
-            window_size=window_size,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            random_seed=random_seed,
-        )
-
-        # determine X axis range
-        x_min = x[0]
-        x_max = x[-1]
-        if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
-
-        # create a figure
-        xwheel_zoom = bokeh.models.WheelZoomTool(
-            dimensions="width", maintain_focus=False
-        )
-        if title is None:
-            title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
-        fig = bokeh.plotting.figure(
-            title=title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            sizing_mode=sizing_mode,
-            width=width,
-            height=height,
-            toolbar_location="above",
-            x_range=x_range,
-            y_range=(0, 1),
-            output_backend=output_backend,
-        )
-
-        # plot Fst
-        fig.circle(
-            x=x,
-            y=fst,
-            size=3,
-            line_width=1,
-            line_color="black",
-            fill_color=None,
-        )
-
-        # tidy up the plot
-        fig.yaxis.axis_label = "Fst"
-        fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
-
-        if show:  # pragma: no cover
-            bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
-
-    @check_types
-    @doc(
-        summary="""
-            Run and plot a Fst genome-wide scan to investigate genetic
-            differentiation between two cohorts.
-        """,
-    )
-    def plot_fst_gwss(
-        self,
-        contig: base_params.contig,
-        window_size: fst_params.window_size,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
-        cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = fst_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = fst_params.max_cohort_size_default,
-        random_seed: base_params.random_seed = 42,
-        title: Optional[gplt_params.title] = None,
-        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
-        width: gplt_params.width = gplt_params.width_default,
-        track_height: gplt_params.track_height = 190,
-        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
-        show: gplt_params.show = True,
-        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
-        # gwss track
-        fig1 = self.plot_fst_gwss_track(
-            contig=contig,
-            window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=sample_sets,
-            site_mask=site_mask,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            title=title,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=track_height,
-            show=False,
-            output_backend=output_backend,
-        )
-
-        fig1.xaxis.visible = False
-
-        # plot genes
-        fig2 = self.plot_genes(
-            region=contig,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=genes_height,
-            x_range=fig1.x_range,
-            show=False,
-            output_backend=output_backend,
-        )
-
-        # combine plots into a single figure
-        fig = bokeh.layouts.gridplot(
-            [fig1, fig2],
-            ncols=1,
-            toolbar_location="above",
-            merge_tools=True,
-            sizing_mode=sizing_mode,
-        )
-
-        if show:  # pragma: no cover
-            bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
 
     @check_types
     @doc(
