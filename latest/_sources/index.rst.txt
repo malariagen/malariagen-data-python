@@ -51,4 +51,4 @@ Training
 --------
 
 If you would like to learn more about how to use ``malariagen_data`` to analyse data for genomic
-surveillance of malaria vectors, please see the associated `online training course <anopheles-genomic-surveillance.github.io>`_.
+surveillance of malaria vectors, please see the associated `online training course <https://anopheles-genomic-surveillance.github.io>`_.
