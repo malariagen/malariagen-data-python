@@ -34,7 +34,7 @@ jobs:
           key: gcs_cache_notebooks_20231119
 
       - name: Run notebooks
-        run: poetry run jupyter nbconvert --execute notebooks/* --inplace
+        run: poetry run jupyter nbconvert --execute notebooks/*.ipynb --inplace
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
