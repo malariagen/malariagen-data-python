@@ -52,3 +52,25 @@ Training
 
 If you would like to learn more about how to use ``malariagen_data`` to analyse data for genomic
 surveillance of malaria vectors, please see the associated `online training course <https://anopheles-genomic-surveillance.github.io>`_.
+
+About the data
+--------------
+
+This software package provides access to data from MalariaGEN. MalariaGEN is a network
+of malaria researchers and control programmes using genomics to learn more about malaria
+transmission and control in Africa and Asia.
+
+MalariaGEN generates **genome variation data** from whole-genome sequencing (WGS) of malaria 
+parasites (*Plasmodium*) or malaria-transmitting mosquitoes (*Anopheles*). Parasite and mosquitoes
+are generally sampled from natural infections and mosquito populations, and so these are data on
+natural genetic variation.
+
+Some data from MalariaGEN are subject to **terms of use** which may include an embargo on
+public communication of any analysis results without permission from data owners. If you
+have any questions about terms of use please email data@malariagen.net.
+
+By default, this sofware package accesses data directly from the **MalariaGEN cloud data repository** 
+hosted in Google Cloud Storage in the US. Note that data access will be more efficient if your
+computations are also run within the same region. Google Colab provides a convenient and free
+service which you can use to explore data and run computations. If you have any questions about
+other options for running computations please `open a discussion <https://github.com/malariagen/malariagen-data-python/discussions>`_.
