@@ -170,13 +170,46 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
 def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    h12_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        analysis=random.choice(api.phasing_analysis_ids),
-        window_size=random.randint(100, 500),
-        min_cohort_size=5,
-    )
+    sample_sets = [random.choice(all_sample_sets)]
+    contig = random.choice(api.contigs)
+    window_size = random.randint(100, 500)
 
-    # Run checks.
-    check_h12_gwss(api=api, h12_params=h12_params)
+    for analysis in api.phasing_analysis_ids:
+        # Check if any samples available for the given phasing analysis.
+        try:
+            ds_hap = api.haplotypes(
+                sample_sets=sample_sets, analysis=analysis, region=contig
+            )
+
+        except ValueError:
+            # No samples available, check similar error raised from H12.
+            with pytest.raises(ValueError):
+                api.h12_gwss(
+                    contig=contig,
+                    sample_sets=sample_sets,
+                    analysis=analysis,
+                    window_size=window_size,
+                    min_cohort_size=1,
+                )
+
+        else:
+            # Samples are available, run full checks.
+            n_samples = ds_hap.sizes["samples"]
+            h12_params = dict(
+                contig=contig,
+                sample_sets=sample_sets,
+                analysis=analysis,
+                window_size=window_size,
+                min_cohort_size=n_samples,
+            )
+            check_h12_gwss(api=api, h12_params=h12_params)
+
+            # Check min_cohort_size behaviour.
+            with pytest.raises(ValueError):
+                api.h12_gwss(
+                    contig=contig,
+                    sample_sets=sample_sets,
+                    analysis=analysis,
+                    window_size=window_size,
+                    min_cohort_size=n_samples + 1,
+                )
