@@ -54,9 +54,9 @@ def test_haplotype_frequencies():
         ],
         dtype="i1",
     )
-    from malariagen_data.anopheles import _haplotype_frequencies
+    from malariagen_data.anoph.h12 import haplotype_frequencies
 
-    f = _haplotype_frequencies(h1)
+    f = haplotype_frequencies(h1)
     assert isinstance(f, dict)
     vals = np.array(list(f.values()))
     vals.sort()
@@ -90,9 +90,9 @@ def test_haplotype_joint_frequencies():
         ],
         dtype="i1",
     )
-    from malariagen_data.anopheles import _haplotype_joint_frequencies
+    from malariagen_data.anoph.h1x import haplotype_joint_frequencies
 
-    f = _haplotype_joint_frequencies(h1, h2)
+    f = haplotype_joint_frequencies(h1, h2)
     assert isinstance(f, dict)
     vals = np.array(list(f.values()))
     vals.sort()
