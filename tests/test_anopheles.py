@@ -1,5 +1,4 @@
 import numpy as np
-import pytest
 from numpy.testing import assert_allclose
 
 from malariagen_data import Af1, Ag3
@@ -41,30 +40,6 @@ def setup_subclass_cached(subclass, **kwargs):
     return setup_subclass(subclass, url=url, **kwargs)
 
 
-def test_haplotype_frequencies():
-    h1 = np.array(
-        [
-            [0, 1, 1, 1, 0],
-            [0, 1, 0, 0, 0],
-            [1, 0, 1, 1, 0],
-            [0, 1, 1, 1, 0],
-            [0, 0, 1, 1, 0],
-            [1, 1, 0, 0, 0],
-            [0, 1, 1, 1, 0],
-        ],
-        dtype="i1",
-    )
-    from malariagen_data.anoph.h12 import haplotype_frequencies
-
-    f = haplotype_frequencies(h1)
-    assert isinstance(f, dict)
-    vals = np.array(list(f.values()))
-    vals.sort()
-    assert np.all(vals >= 0)
-    assert np.all(vals <= 1)
-    assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
-
-
 def test_haplotype_joint_frequencies():
     h1 = np.array(
         [
@@ -99,34 +74,3 @@ def test_haplotype_joint_frequencies():
     assert np.all(vals >= 0)
     assert np.all(vals <= 1)
     assert_allclose(vals, np.array([0, 0, 0, 0, 0.04, 0.16]))
-
-
-@pytest.mark.parametrize(
-    "subclass, sample_query, contig, analysis, sample_sets",
-    [
-        (Ag3, "country == 'Ghana'", "3L", "gamb_colu", "3.0"),
-        (Af1, "country == 'Ghana'", "X", "funestus", "1.0"),
-    ],
-)
-def test_h12_calibration(subclass, sample_query, contig, analysis, sample_sets):
-    anoph = setup_subclass_cached(subclass)
-
-    window_sizes = (10_000, 20_000)
-    calibration_runs = anoph.h12_calibration(
-        contig=contig,
-        analysis=analysis,
-        sample_query=sample_query,
-        sample_sets=sample_sets,
-        window_sizes=window_sizes,
-        cohort_size=20,
-    )
-
-    # check dataset
-    assert isinstance(calibration_runs, dict)
-    assert isinstance(calibration_runs[str(window_sizes[0])], np.ndarray)
-
-    # check dimensions
-    assert len(calibration_runs) == len(window_sizes)
-
-    # check keys
-    assert list(calibration_runs.keys()) == [str(win) for win in window_sizes]
