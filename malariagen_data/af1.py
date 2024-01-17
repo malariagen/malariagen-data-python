@@ -9,10 +9,7 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_URL = "gs://vo_afun_release/"
-H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
-H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
-H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
 
 TAXON_PALETTE = px.colors.qualitative.Plotly
@@ -73,10 +70,7 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
-    _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
-    _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
 
     def __init__(
