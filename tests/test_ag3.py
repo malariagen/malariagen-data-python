@@ -793,36 +793,6 @@ def test_gene_cnv_frequencies_advanced__dup_samples():
     assert ds.dims == ds_dup.dims
 
 
-def test_h12_gwss():
-    ag3 = setup_ag3(cohorts_analysis="20230516")
-    sample_query = "country == 'Ghana'"
-    contig = "3L"
-    analysis = "gamb_colu"
-    sample_sets = "3.0"
-    window_size = 1000
-
-    x, h12 = ag3.h12_gwss(
-        contig=contig,
-        analysis=analysis,
-        sample_query=sample_query,
-        sample_sets=sample_sets,
-        window_size=window_size,
-        cohort_size=20,
-    )
-
-    # check dataset
-    assert isinstance(x, np.ndarray)
-    assert isinstance(h12, np.ndarray)
-
-    # check dimensions
-    assert len(x) == 11354
-    assert len(x) == len(h12)
-
-    # check some values
-    assert_allclose(x[0], 27701.195)
-    assert_allclose(h12[11353], 0.17875)
-
-
 def test_h1x_gwss():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     cohort1_query = "cohort_admin2_year == 'ML-2_Kati_colu_2014'"

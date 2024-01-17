@@ -168,36 +168,6 @@ def test_locate_region(region_raw):
         assert region == Region("2RL", 24630355, 24633221)
 
 
-def test_h12_gwss():
-    af1 = setup_af1(cohorts_analysis="20230823")
-    sample_query = "country == 'Ghana'"
-    contig = "3RL"
-    analysis = "funestus"
-    sample_sets = "1.0"
-    window_size = 1000
-
-    x, h12 = af1.h12_gwss(
-        contig=contig,
-        analysis=analysis,
-        sample_query=sample_query,
-        sample_sets=sample_sets,
-        window_size=window_size,
-        cohort_size=20,
-    )
-
-    # check dataset
-    assert isinstance(x, np.ndarray)
-    assert isinstance(h12, np.ndarray)
-
-    # check dimensions
-    assert len(x) == 15845
-    assert len(x) == len(h12)
-
-    # check some values
-    assert_allclose(x[0], 185756.747)
-    assert_allclose(h12[11353], 0.0525)
-
-
 def test_h1x_gwss():
     af1 = setup_af1(cohorts_analysis="20230823")
     cohort1_query = "cohort_admin2_year == 'GH-NP_Kumbungu_fune_2017'"

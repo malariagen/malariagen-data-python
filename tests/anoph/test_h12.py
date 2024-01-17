@@ -106,9 +106,9 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     window_sizes = sorted([int(x) for x in window_sizes])
     h12_params = dict(
         contig=random.choice(api.contigs),
-        analysis=random.choice(api.phasing_analysis_ids),
         sample_sets=[random.choice(all_sample_sets)],
         window_sizes=window_sizes,
+        min_cohort_size=5,
     )
 
     # Run function under test.
@@ -127,3 +127,56 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Run plotting function.
     fig = api.plot_h12_calibration(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.Plot)
+
+
+def check_h12_gwss(*, api, h12_params):
+    # Run main gwss function under test.
+    x, h12 = api.h12_gwss(**h12_params)
+
+    # Check results.
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h12, np.ndarray)
+    assert x.ndim == 1
+    assert h12.ndim == 1
+    assert x.shape == h12.shape
+    assert x.dtype.kind == "f"
+    assert h12.dtype.kind == "f"
+    assert np.all(h12 >= 0)
+    assert np.all(h12 <= 1)
+
+    # Check plotting functions.
+    fig = api.plot_h12_gwss_track(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.Plot)
+    fig = api.plot_h12_gwss(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    h12_params = dict(
+        contig=random.choice(api.contigs),
+        sample_sets=[random.choice(all_sample_sets)],
+        window_size=random.randint(100, 500),
+        min_cohort_size=5,
+    )
+
+    # Run checks.
+    check_h12_gwss(api=api, h12_params=h12_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    h12_params = dict(
+        contig=random.choice(api.contigs),
+        sample_sets=[random.choice(all_sample_sets)],
+        analysis=random.choice(api.phasing_analysis_ids),
+        window_size=random.randint(100, 500),
+        min_cohort_size=5,
+    )
+
+    # Run checks.
+    check_h12_gwss(api=api, h12_params=h12_params)
