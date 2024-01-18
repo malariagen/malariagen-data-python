@@ -191,6 +191,7 @@ def test_h1x_gwss_with_analysis(fixture, api: AnophelesH1XAnalysis):
         if n1 > 0 and n2 > 0:
             # Samples are available, run full checks.
             h1x_params = dict(
+                analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
                 window_size=random.randint(100, 500),
