@@ -60,7 +60,7 @@ This software package provides access to data from MalariaGEN. MalariaGEN is a n
 of malaria researchers and control programmes using genomics to learn more about malaria
 transmission and control in Africa and Asia.
 
-MalariaGEN generates **genome variation data** from whole-genome sequencing (WGS) of malaria 
+MalariaGEN generates **genome variation data** from whole-genome sequencing (WGS) of malaria
 parasites (*Plasmodium*) or malaria-transmitting mosquitoes (*Anopheles*). Parasite and mosquitoes
 are generally sampled from natural infections and mosquito populations, and so these are data on
 natural genetic variation.
@@ -69,7 +69,7 @@ Some data from MalariaGEN are subject to **terms of use** which may include an e
 public communication of any analysis results without permission from data owners. If you
 have any questions about terms of use please email data@malariagen.net.
 
-By default, this sofware package accesses data directly from the **MalariaGEN cloud data repository** 
+By default, this sofware package accesses data directly from the **MalariaGEN cloud data repository**
 hosted in Google Cloud Storage in the US. Note that data access will be more efficient if your
 computations are also run within the same region. Google Colab provides a convenient and free
 service which you can use to explore data and run computations. If you have any questions about
