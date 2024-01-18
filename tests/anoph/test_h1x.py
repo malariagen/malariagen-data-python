@@ -144,7 +144,7 @@ def test_h1x_gwss_with_default_analysis(fixture, api: AnophelesH1XAnalysis):
         contig=random.choice(api.contigs),
         sample_sets=all_sample_sets,
         window_size=random.randint(100, 500),
-        min_cohort_size=5,
+        min_cohort_size=1,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
     )
