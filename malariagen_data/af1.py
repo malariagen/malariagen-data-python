@@ -100,6 +100,7 @@ class Af1(AnophelesDataResource):
             default_site_mask="funestus",
             default_phasing_analysis="funestus",
             default_coverage_calls_analysis="funestus",
+            default_discordant_read_calls_analysis="",
             bokeh_output_notebook=bokeh_output_notebook,
             results_cache=results_cache,
             log=log,
