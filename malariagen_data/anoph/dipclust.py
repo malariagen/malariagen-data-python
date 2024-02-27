@@ -17,7 +17,7 @@ from .base_params import DEFAULT
 from .snp_data import AnophelesSnpData
 
 
-class AnophelesDipclust(
+class AnophelesDipClust(
     AnophelesSnpData,
 ):
     def __init__(

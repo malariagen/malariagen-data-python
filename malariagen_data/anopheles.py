@@ -55,7 +55,7 @@ from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
 from .mjn import median_joining_network, mjn_graph
-from .anoph.dipclust import AnophelesDipclust
+from .anoph.dipclust import AnophelesDipClust
 from .util import (
     CacheMiss,
     Region,
@@ -99,7 +99,7 @@ DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
 # work around pycharm failing to recognise that doc() is callable
 # noinspection PyCallingNonCallable
 class AnophelesDataResource(
-    AnophelesDipclust,
+    AnophelesDipClust,
     AnophelesH1XAnalysis,
     AnophelesH12Analysis,
     AnophelesG123Analysis,
