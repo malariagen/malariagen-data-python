@@ -261,12 +261,12 @@ class AnophelesDipClust(
         with self._spinner(desc="Compute pairwise distances"):
             dist = multiallelic_diplotype_pdist(X, metric=metric)
 
-        # Extract IDs of phased samples. Convert to "U" dtype here
+        # Extract IDs of samples. Convert to "U" dtype here
         # to allow these to be saved to the results cache.
-        phased_samples = ds_snps["sample_id"].values.astype("U")
+        gt_samples = ds_snps["sample_id"].values.astype("U")
 
         return dict(
             dist=dist,
-            phased_samples=phased_samples,
+            gt_samples=gt_samples,
             n_snps=np.array(gt_seg.shape[0]),
         )
