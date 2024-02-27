@@ -2,15 +2,20 @@ from typing import Optional, Tuple
 
 import allel  # type: ignore
 import numpy as np
-import pandas as pd
-import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, multiallelic_diplotype_pdist, multiallelic_diplotype_mean_sqeuclidean, multiallelic_diplotype_mean_cityblock
+from ..util import (
+    CacheMiss,
+    check_types,
+    multiallelic_diplotype_pdist,
+    multiallelic_diplotype_mean_sqeuclidean,
+    multiallelic_diplotype_mean_cityblock,
+)
 from ..plotly_dendrogram import plot_dendrogram
 from . import base_params, plotly_params, tree_params, dipclust_params
 from .base_params import DEFAULT
 from .snp_data import AnophelesSnpData
+
 
 class AnophelesDipclust(
     AnophelesSnpData,
@@ -31,7 +36,6 @@ class AnophelesDipclust(
             leaf_y="Y coordinate at which to plot the leaf markers.",
         ),
     )
-
     def plot_diplotype_clustering(
         self,
         region: base_params.regions,
@@ -61,7 +65,7 @@ class AnophelesDipclust(
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
         legend_sizing: plotly_params.legend_sizing = "constant",
-        ) -> plotly_params.figure:
+    ) -> plotly_params.figure:
         import sys
 
         debug = self._log.debug
@@ -81,14 +85,14 @@ class AnophelesDipclust(
         )
 
         dist, gt_samples, n_snps_used = self.diplotype_pairwise_distances(
-                self=self,
-                region=region,
-                site_mask=site_mask,
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                cohort_size=cohort_size,
-                distance_metric=distance_metric,
-                random_seed=random_seed,
+            self=self,
+            region=region,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            distance_metric=distance_metric,
+            random_seed=random_seed,
         )
 
         # Align sample metadata with genotypes.
@@ -171,7 +175,6 @@ class AnophelesDipclust(
         else:
             return fig
 
-
     def diplotype_pairwise_distances(
         self,
         region: base_params.regions,
@@ -225,7 +228,6 @@ class AnophelesDipclust(
         distance_metric,
         random_seed,
     ):
-        from scipy.spatial.distance import squareform  # type: ignore
         import dask.array as da
 
         if distance_metric == "cityblock":
@@ -233,7 +235,9 @@ class AnophelesDipclust(
         elif distance_metric == "euclidean":
             metric = multiallelic_diplotype_mean_sqeuclidean
         else:
-            raise ValueError(f"Distance metric should be 'cityblock' or 'euclidean', not {distance_metric}.")
+            raise ValueError(
+                f"Distance metric should be 'cityblock' or 'euclidean', not {distance_metric}."
+            )
 
         # Load haplotypes.
         ds_snps = self.snp_calls(
@@ -261,7 +265,7 @@ class AnophelesDipclust(
         with self._spinner(desc="Compute pairwise distances"):
             dist = multiallelic_diplotype_pdist(X, metric=metric)
 
-        #dist = squareform(dist_sq) # i think its already squareform or not necessary?
+        # dist = squareform(dist_sq) # i think its already squareform or not necessary?
 
         # Extract IDs of phased samples. Convert to "U" dtype here
         # to allow these to be saved to the results cache.
@@ -272,4 +276,3 @@ class AnophelesDipclust(
             phased_samples=phased_samples,
             n_snps=np.array(gt_seg.shape[0]),
         )
-        

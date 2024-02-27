@@ -1136,7 +1136,6 @@ def multiallelic_diplotype_mean_cityblock(x, y):
 
         # Loop over alleles.
         for j in range(n_alleles):
-
             # Access allele counts.
             xc = np.float32(x[i, j])
             yc = np.float32(y[i, j])
@@ -1163,7 +1162,6 @@ def multiallelic_diplotype_mean_cityblock(x, y):
     return mean_distance
 
 
-
 @numba.njit
 def multiallelic_diplotype_mean_sqeuclidean(x, y):
     """Compute the mean squared euclidean distance between two diplotypes x and
@@ -1188,7 +1186,6 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
 
         # Loop over alleles.
         for j in range(n_alleles):
-
             # Access allele counts.
             xc = np.float32(x[i, j])
             yc = np.float32(y[i, j])
@@ -1198,7 +1195,7 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
             y_is_called = y_is_called or (yc > 0)
 
             # Compute squared euclidean distance.
-            d += (xc - yc)**2
+            d += (xc - yc) ** 2
 
         # Accumulate distance for the current pair, but only if both samples
         # have a called genotype.
@@ -1213,18 +1210,6 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
         mean_distance = np.nan
 
     return mean_distance
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 @numba.njit
