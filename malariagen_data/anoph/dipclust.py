@@ -85,7 +85,6 @@ class AnophelesDipclust(
         )
 
         dist, gt_samples, n_snps_used = self.diplotype_pairwise_distances(
-            self=self,
             region=region,
             site_mask=site_mask,
             sample_sets=sample_sets,
