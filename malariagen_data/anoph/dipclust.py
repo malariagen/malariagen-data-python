@@ -254,17 +254,12 @@ class AnophelesDipClust(
         # Compute allele count, remove non-segregating sites.
         ac = allel.GenotypeArray(gt).count_alleles(max_allele=3)
         gt_seg = gt.compress(ac.is_segregating(), axis=0)
-        ac_seg = gt_seg.to_allele_counts(max_allele=3)
+        ac_seg = allel.GenotypeArray(gt_seg).to_allele_counts(max_allele=3)
         X = da.swapaxes(ac_seg.values, 0, 1).compute()
-
-        # Transpose memory layout for faster hamming distance calculations.
-        # gt_t = np.ascontiguousarray(X.T) # is that what da.swapaxes does?
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
             dist = multiallelic_diplotype_pdist(X, metric=metric)
-
-        # dist = squareform(dist_sq) # i think its already squareform or not necessary?
 
         # Extract IDs of phased samples. Convert to "U" dtype here
         # to allow these to be saved to the results cache.
