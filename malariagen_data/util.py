@@ -1077,6 +1077,156 @@ def biallelic_diplotype_euclidean(x, y):
     return np.sqrt(biallelic_diplotype_sqeuclidean(x, y))
 
 
+@numba.njit(parallel=True)
+def multiallelic_diplotype_pdist(X, metric):
+    """Optimised implementation of pairwise distance between diplotypes.
+
+    N.B., here we assume the array X provides diplotypes as genotype allele
+    counts, with axes in the order (n_samples, n_sites, n_alleles).
+
+    Computation will be faster if X is a contiguous (C order) array.
+
+    The metric argument is the function to compute distance for a pair of
+    diplotypes. This can be a numba jitted function.
+
+    """
+    n_samples = X.shape[0]
+    n_pairs = (n_samples * (n_samples - 1)) // 2
+    out = np.zeros(n_pairs, dtype=np.float32)
+
+    # Loop over samples, first in pair.
+    for i in range(n_samples):
+        x = X[i, :, :]
+
+        # Loop over observations again, second in pair.
+        for j in numba.prange(i + 1, n_samples):
+            y = X[j, :, :]
+
+            # Compute distance for the current pair.
+            d = metric(x, y)
+
+            # Store result for the current pair.
+            k = square_to_condensed(i, j, n_samples)
+            out[k] = d
+
+    return out
+
+
+@numba.njit
+def multiallelic_diplotype_mean_cityblock(x, y):
+    """Compute the mean cityblock distance between two diplotypes x and y. The
+    diplotype vectors are expected as genotype allele counts, i.e., x and y
+    should have the same shape (n_sites, n_alleles).
+
+    N.B., here we compute the mean value of the distance over sites where
+    both individuals have a called genotype. This avoids computing distance
+    at missing sites.
+
+    """
+    n_sites = x.shape[0]
+    n_alleles = x.shape[1]
+    distance = np.float32(0)
+    n_sites_called = np.float32(0)
+
+    # Loop over sites.
+    for i in range(n_sites):
+        x_is_called = False
+        y_is_called = False
+        d = np.float32(0)
+
+        # Loop over alleles.
+        for j in range(n_alleles):
+
+            # Access allele counts.
+            xc = np.float32(x[i, j])
+            yc = np.float32(y[i, j])
+
+            # Check if any alleles observed.
+            x_is_called = x_is_called or (xc > 0)
+            y_is_called = y_is_called or (yc > 0)
+
+            # Compute cityblock distance (absolute difference).
+            d += np.fabs(xc - yc)
+
+        # Accumulate distance for the current pair, but only if both samples
+        # have a called genotype.
+        if x_is_called and y_is_called:
+            distance += d
+            n_sites_called += np.float32(1)
+
+    # Compute the mean distance over sites with called genotypes.
+    if n_sites_called > 0:
+        mean_distance = distance / n_sites_called
+    else:
+        mean_distance = np.nan
+
+    return mean_distance
+
+
+
+@numba.njit
+def multiallelic_diplotype_mean_sqeuclidean(x, y):
+    """Compute the mean squared euclidean distance between two diplotypes x and
+    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
+    y should have the same shape (n_sites, n_alleles).
+
+    N.B., here we compute the mean value of the distance over sites where
+    both individuals have a called genotype. This avoids computing distance
+    at missing sites.
+
+    """
+    n_sites = x.shape[0]
+    n_alleles = x.shape[1]
+    distance = np.float32(0)
+    n_sites_called = np.float32(0)
+
+    # Loop over sites.
+    for i in range(n_sites):
+        x_is_called = False
+        y_is_called = False
+        d = np.float32(0)
+
+        # Loop over alleles.
+        for j in range(n_alleles):
+
+            # Access allele counts.
+            xc = np.float32(x[i, j])
+            yc = np.float32(y[i, j])
+
+            # Check if any alleles observed.
+            x_is_called = x_is_called or (xc > 0)
+            y_is_called = y_is_called or (yc > 0)
+
+            # Compute squared euclidean distance.
+            d += (xc - yc)**2
+
+        # Accumulate distance for the current pair, but only if both samples
+        # have a called genotype.
+        if x_is_called and y_is_called:
+            distance += d
+            n_sites_called += np.float32(1)
+
+    # Compute the mean distance over sites with called genotypes.
+    if n_sites_called > 0:
+        mean_distance = distance / n_sites_called
+    else:
+        mean_distance = np.nan
+
+    return mean_distance
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 @numba.njit
 def trim_alleles(ac):
     """Remap allele indices to trim out unobserved alleles.
