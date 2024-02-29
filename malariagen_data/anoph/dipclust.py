@@ -8,6 +8,8 @@ from ..util import (
     CacheMiss,
     check_types,
     multiallelic_diplotype_pdist,
+    multiallelic_diplotype_mean_sqeuclidean,
+    multiallelic_diplotype_mean_cityblock,
 )
 from ..plotly_dendrogram import plot_dendrogram
 from . import base_params, plotly_params, tree_params, dipclust_params
@@ -226,6 +228,11 @@ class AnophelesDipClust(
         random_seed,
     ):
         import dask.array as da
+
+        if distance_metric == "cityblock":
+            metric = multiallelic_diplotype_mean_cityblock
+        elif distance_metric == "euclidean":
+            metric = multiallelic_diplotype_mean_sqeuclidean
 
         # Load haplotypes.
         ds_snps = self.snp_calls(
