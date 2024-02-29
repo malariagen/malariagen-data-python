@@ -85,7 +85,7 @@ def test_plot_diplotype_clustering(fixture, api: AnophelesDipClust):
         "median",
         "ward",
     )
-    sample_queries = (None, "sex == 'F'")
+    sample_queries = (None, "sex_call == 'F'")
     distance_metrics = ("euclidean", "cityblock")
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
