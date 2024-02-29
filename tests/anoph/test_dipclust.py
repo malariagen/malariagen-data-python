@@ -91,7 +91,8 @@ def test_plot_diplotype_clustering(fixture, api: AnophelesDipClust):
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric=random.choice(distance_metrics),
+        show=False
     )
 
     # Run checks.
-    api.plot_diplotype_clustering(dipclust_params=dipclust_params)
+    fig = api.plot_diplotype_clustering(**dipclust_params)
