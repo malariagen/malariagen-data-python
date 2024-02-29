@@ -1772,10 +1772,10 @@ class Af1Simulator(AnophelesSimulator):
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
             "DEFAULT_COHORTS_ANALYSIS": "20221129",
+            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
             "SITE_MASK_IDS": ["funestus"],
             "PHASING_ANALYSIS_IDS": ["funestus"],
             "COVERAGE_CALLS_ANALYSIS_IDS": ["funestus"],
-            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
         }
         config_path = self.bucket_path / "v1.0-config.json"
         with config_path.open(mode="w") as f:
