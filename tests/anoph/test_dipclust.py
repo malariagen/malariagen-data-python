@@ -95,4 +95,4 @@ def test_plot_diplotype_clustering(fixture, api: AnophelesDipClust):
     )
 
     # Run checks.
-    fig = api.plot_diplotype_clustering(**dipclust_params)
+    api.plot_diplotype_clustering(**dipclust_params)
