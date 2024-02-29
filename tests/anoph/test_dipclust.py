@@ -49,7 +49,6 @@ def af1_sim_api(af1_sim_fixture):
         default_site_mask="funestus",
         results_cache=af1_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_af1.TAXON_COLORS,
-        default_phasing_analysis="funestus",
     )
 
 
