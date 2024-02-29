@@ -30,7 +30,6 @@ def ag3_sim_api(ag3_sim_fixture):
         default_site_mask="gamb_colu_arab",
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_ag3.TAXON_COLORS,
-        default_phasing_analysis="gamb_colu_arab",
         virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
