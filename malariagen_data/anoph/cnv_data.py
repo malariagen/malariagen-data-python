@@ -419,7 +419,7 @@ class AnophelesCnvData(
             else:
                 calls_version = "discordant_read_calls"
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/{calls_version}/zarr"
-            print(path)
+            # print(analysis)
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
