@@ -1,7 +1,6 @@
 import random
 import pytest
 from pytest_cases import parametrize_with_cases
-import numpy as np
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -70,14 +69,24 @@ def af1_sim_api(af1_sim_fixture):
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
+
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering(fixture, api: AnophelesDipClust):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    linkage_methods = ("single", "complete", "average", "weighted", "centroid", "median", "ward")
+    linkage_methods = (
+        "single",
+        "complete",
+        "average",
+        "weighted",
+        "centroid",
+        "median",
+        "ward",
+    )
     distance_metrics = ("euclidean", "cityblock")
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
