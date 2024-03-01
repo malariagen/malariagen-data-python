@@ -14,7 +14,7 @@ def ag3_sim_api(ag3_sim_fixture):
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
-        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        cohorts_analysis=None,
     )
 
 
