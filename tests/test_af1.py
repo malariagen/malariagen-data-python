@@ -26,7 +26,7 @@ def test_repr():
     r = repr(af1)
     assert isinstance(r, str)
 
-    
+
 # noinspection PyArgumentList
 @pytest.mark.parametrize(
     "sample_sets",
