@@ -1,13 +1,13 @@
 """Parameter definitions for H12 analysis functions."""
 
-from typing import Optional, Tuple
+from typing import Optional, Sequence
 
 from typing_extensions import Annotated, TypeAlias
 
 from . import base_params
 
 window_sizes: TypeAlias = Annotated[
-    Tuple[int, ...],
+    Sequence[int],
     """
     The sizes of windows (number of SNPs) used to calculate statistics within.
     """,

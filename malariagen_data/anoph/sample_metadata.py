@@ -1,11 +1,12 @@
 import io
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Union
+from itertools import cycle
+from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
-import ipyleaflet
+import ipyleaflet  # type: ignore
 import numpy as np
 import pandas as pd
-import plotly.express as px
-from numpydoc_decorator import doc
+import plotly.express as px  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import check_types
 from . import base_params, map_params, plotly_params
@@ -18,6 +19,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohorts_analysis: Optional[str] = None,
         aim_analysis: Optional[str] = None,
         aim_metadata_dtype: Optional[Mapping[str, Any]] = None,
+        taxon_colors: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -41,7 +43,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
-        self._aim_metadata_dtype["sample_id"] = object
+        self._aim_metadata_dtype["sample_id"] = "object"
+
+        # Set up taxon colors.
+        self._taxon_colors = taxon_colors
 
         # Set up extra metadata.
         self._extra_metadata: List = []
@@ -63,21 +68,21 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             dtype = {
-                "sample_id": object,
-                "partner_sample_id": object,
-                "contributor": object,
-                "country": object,
-                "location": object,
+                "sample_id": "object",
+                "partner_sample_id": "object",
+                "contributor": "object",
+                "country": "object",
+                "location": "object",
                 "year": "int64",
                 "month": "int64",
                 "latitude": "float64",
                 "longitude": "float64",
-                "sex_call": object,
+                "sex_call": "object",
             }
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
-            df.columns = [c.lower() for c in df.columns]
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
 
             # Add a couple of columns for convenience.
             df["sample_set"] = sample_set
@@ -202,8 +207,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         cols = self._cohorts_metadata_columns
         if cols:
             # All columns are string columns.
-            dtype = {c: object for c in cols}
-            dtype["sample_id"] = object
+            dtype = {c: "object" for c in cols}
+            dtype["sample_id"] = "object"
             return dtype
 
     def _parse_cohorts_metadata(
@@ -215,7 +220,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
-            df.columns = [c.lower() for c in df.columns]
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
 
             # Rename some columns for consistent naming.
             df.rename(
@@ -322,7 +327,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             )
 
             # Ensure all column names are lower case.
-            df.columns = [c.lower() for c in df.columns]
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
 
             return df
 
@@ -459,18 +464,19 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = self._cache_sample_metadata[cache_key]
 
         except KeyError:
-            # Build a dataframe from all available metadata.
-            df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
-            if self._aim_analysis:
-                df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
-                df_samples = df_samples.merge(
-                    df_aim, on="sample_id", sort=False, how="left"
-                )
-            if self._cohorts_analysis:
-                df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
-                df_samples = df_samples.merge(
-                    df_cohorts, on="sample_id", sort=False, how="left"
-                )
+            with self._spinner(desc="Load sample metadata"):
+                # Build a dataframe from all available metadata.
+                df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
+                if self._aim_analysis:
+                    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
+                    df_samples = df_samples.merge(
+                        df_aim, on="sample_id", sort=False, how="left"
+                    )
+                if self._cohorts_analysis:
+                    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
+                    df_samples = df_samples.merge(
+                        df_cohorts, on="sample_id", sort=False, how="left"
+                    )
 
             # Store sample metadata in the cache.
             self._cache_sample_metadata[cache_key] = df_samples
@@ -507,14 +513,14 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        index: Union[str, Tuple[str, ...]] = (
+        index: Union[str, Sequence[str]] = (
             "country",
             "admin1_iso",
             "admin1_name",
             "admin2_name",
             "year",
         ),
-        columns: Union[str, Tuple[str, ...]] = "taxon",
+        columns: Union[str, Sequence[str]] = "taxon",
     ) -> pd.DataFrame:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -820,3 +826,240 @@ class AnophelesSampleMetadata(AnophelesBase):
             return None
         else:
             return fig
+
+    def _setup_sample_symbol(
+        self,
+        *,
+        data,
+        symbol,
+    ):
+        if symbol is None:
+            return None
+
+        # Handle the symbol parameter.
+        if isinstance(symbol, str):
+            if "cohort_" + symbol in data.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                symbol_prepped = "cohort_" + symbol
+            else:
+                symbol_prepped = symbol
+            if symbol_prepped not in data.columns:
+                raise ValueError(
+                    f"{symbol_prepped!r} is not a known column in the data."
+                )
+
+        else:
+            # Custom grouping using queries.
+            assert isinstance(symbol, Mapping)
+            data["symbol"] = ""
+            for key, value in symbol.items():
+                data.loc[data.query(value).index, "symbol"] = key
+            symbol_prepped = "symbol"
+
+        return symbol_prepped
+
+    def _setup_sample_colors_plotly(
+        self,
+        *,
+        data,
+        color,
+        color_discrete_sequence,
+        color_discrete_map,
+        category_orders,
+    ):
+        # Check for no color.
+        if color is None:
+            # Bail out early.
+            return None, None, None
+
+        # Special handling for taxon colors.
+        if color == "taxon" and color_discrete_map is None:
+            # Special case, default taxon colors and order.
+            color_discrete_map = self._taxon_colors
+
+        if isinstance(color, str):
+            if "cohort_" + color in data.columns:
+                # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+                color_prepped = "cohort_" + color
+            else:
+                color_prepped = color
+
+            if color_prepped not in data.columns:
+                raise ValueError(
+                    f"{color_prepped!r} is not a known column in the data."
+                )
+
+        else:
+            # Custom grouping using queries.
+            assert isinstance(color, Mapping)
+            data["color"] = ""
+            for key, value in color.items():
+                data.loc[data.query(value).index, "color"] = key
+            color_prepped = "color"
+
+        # Finish handling of color parameter.
+        del color
+
+        # Obtain the values that we will be mapping to colors.
+        color_data_values = data[color_prepped]
+        color_data_unique_values = color_data_values.unique()
+
+        # Now set up color choices.
+        if color_discrete_map is None:
+            # Choose a color palette.
+            if color_discrete_sequence is None:
+                if len(color_data_unique_values) <= 10:
+                    color_discrete_sequence = px.colors.qualitative.Plotly
+                else:
+                    color_discrete_sequence = px.colors.qualitative.Alphabet
+
+            # Map values to colors.
+            color_discrete_map_prepped = {
+                v: c
+                for v, c in zip(
+                    color_data_unique_values, cycle(color_discrete_sequence)
+                )
+            }
+
+        else:
+            color_discrete_map_prepped = color_discrete_map
+
+        # Finished handling of color map params.
+        del color_discrete_map
+        del color_discrete_sequence
+
+        # Define category orders.
+        if category_orders is None:
+            # Default ordering.
+            category_orders_prepped = {color_prepped: color_data_unique_values.tolist()}
+
+        else:
+            category_orders_prepped = category_orders
+
+        # Finised handling of category orders.
+        del category_orders
+
+        return (
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        )
+
+    def _setup_sample_hover_data_plotly(
+        self,
+        *,
+        color,
+        symbol,
+    ):
+        hover_data = [
+            "sample_id",
+            "partner_sample_id",
+            "sample_set",
+            "taxon",
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "year",
+            "month",
+        ]
+        if color and color not in hover_data:
+            hover_data.append(color)
+        if symbol and symbol not in hover_data:
+            hover_data.append(symbol)
+        return hover_data
+
+    def _setup_cohort_queries(
+        self,
+        cohorts: base_params.cohorts,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        cohort_size: Optional[base_params.cohort_size],
+        min_cohort_size: Optional[base_params.min_cohort_size],
+    ):
+        """Convenience function to normalise the `cohorts` paramater to a
+        dictionary mapping cohort labels to sample metadata queries."""
+
+        if isinstance(cohorts, dict):
+            # User has supplied a custom dictionary mapping cohort identifiers
+            # to pandas queries.
+            cohort_queries = cohorts
+
+        else:
+            assert isinstance(cohorts, str)
+            # User has supplied a column in the sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=sample_query
+            )
+
+            # Determine column in dataframe - allow abbreviation.
+            if "cohort_" + cohorts in df_samples.columns:
+                cohorts = "cohort_" + cohorts
+            if cohorts not in df_samples.columns:
+                raise ValueError(
+                    f"{cohorts!r} is not a known column in the sample metadata"
+                )
+
+            # Find cohort labels and build queries dictionary.
+            cohort_labels = sorted(df_samples[cohorts].dropna().unique())
+            cohort_queries = {coh: f"{cohorts} == '{coh}'" for coh in cohort_labels}
+
+        # Handle sample_query parameter.
+        if sample_query is not None:
+            cohort_queries = {
+                cohort_label: f"({cohort_query}) and ({sample_query})"
+                for cohort_label, cohort_query in cohort_queries.items()
+            }
+
+        # Check cohort sizes, drop any cohorts which are too small.
+        cohort_queries_checked = dict()
+        for cohort_label, cohort_query in cohort_queries.items():
+            df_cohort_samples = self.sample_metadata(
+                sample_sets=sample_sets, sample_query=cohort_query
+            )
+            n_samples = len(df_cohort_samples)
+            if min_cohort_size is not None:
+                cohort_size = min_cohort_size
+            if cohort_size is not None and n_samples < cohort_size:
+                print(
+                    f"Cohort ({cohort_label}) has insufficient samples ({n_samples}) for requested cohort size ({cohort_size}), dropping."
+                )
+            else:
+                cohort_queries_checked[cohort_label] = cohort_query
+
+        return cohort_queries_checked
+
+
+def locate_cohorts(*, cohorts, data):
+    # Build cohort dictionary where key=cohort_id, value=loc_coh.
+    coh_dict = {}
+
+    if isinstance(cohorts, Mapping):
+        # User has supplied a custom dictionary mapping cohort identifiers
+        # to pandas queries.
+
+        for coh, query in cohorts.items():
+            loc_coh = data.eval(query).values
+            coh_dict[coh] = loc_coh
+
+    else:
+        assert isinstance(cohorts, str)
+        # User has supplied the name of a sample metadata column.
+
+        # Convenience to allow things like "admin1_year" instead of "cohort_admin1_year".
+        if "cohort_" + cohorts in data.columns:
+            cohorts = "cohort_" + cohorts
+
+        # Check the given cohort set exists.
+        if cohorts not in data.columns:
+            raise ValueError(f"{cohorts!r} is not a known column in the data.")
+        cohort_labels = data[cohorts].unique()
+
+        # Remove the nans and sort.
+        cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
+        for coh in cohort_labels:
+            loc_coh = data[cohorts] == coh
+            coh_dict[coh] = loc_coh.values
+
+    return coh_dict

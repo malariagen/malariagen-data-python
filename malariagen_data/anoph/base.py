@@ -1,4 +1,5 @@
 import json
+from contextlib import nullcontext
 from pathlib import Path
 from typing import (
     IO,
@@ -17,9 +18,11 @@ from typing import (
 import bokeh.io
 import numpy as np
 import pandas as pd
-from numpydoc_decorator import doc
-from tqdm.auto import tqdm
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
+from tqdm.auto import tqdm as tqdm_auto
 from tqdm.dask import TqdmCallback
+from yaspin import yaspin  # type: ignore
 
 from ..util import (
     CacheMiss,
@@ -49,6 +52,7 @@ class AnophelesBase:
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
+        tqdm_class=None,
     ):
         self._url = url
         self._config_path = config_path
@@ -58,6 +62,9 @@ class AnophelesBase:
         self._major_version_path = major_version_path
         self._debug = debug
         self._show_progress = show_progress
+        if tqdm_class is None:
+            tqdm_class = tqdm_auto
+        self._tqdm_class = tqdm_class
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
@@ -76,11 +83,11 @@ class AnophelesBase:
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
-        if bokeh_output_notebook:
+        if bokeh_output_notebook:  # pragma: no cover
             bokeh.io.output_notebook(hide_banner=True)
 
         # Check colab location is in the US.
-        if check_location and self._gcs_url is not None:
+        if check_location and self._gcs_url is not None:  # pragma: no cover
             self._client_details = check_colab_location(
                 gcs_url=self._gcs_url, url=self._url
             )
@@ -99,14 +106,36 @@ class AnophelesBase:
         if results_cache is not None:
             self._results_cache = Path(results_cache).expanduser().resolve()
 
-    def _progress(self, iterable, **kwargs):
-        # progress doesn't mix well with debug logging
-        disable = self._debug or not self._show_progress
-        return tqdm(iterable, disable=disable, **kwargs)
+    def _progress(self, iterable, desc=None, leave=False, **kwargs):  # pragma: no cover
+        # Progress doesn't mix well with debug logging.
+        show_progress = self._show_progress and not self._debug
+        if show_progress:
+            return self._tqdm_class(iterable, desc=desc, leave=leave, **kwargs)
+        else:
+            return iterable
 
-    def _dask_progress(self, **kwargs):
-        disable = not self._show_progress
-        return TqdmCallback(disable=disable, **kwargs)
+    def _dask_progress(self, desc=None, leave=False, **kwargs):  # pragma: no cover
+        # Progress doesn't mix well with debug logging.
+        show_progress = self._show_progress and not self._debug
+        if show_progress:
+            return TqdmCallback(
+                desc=desc, leave=leave, tqdm_class=self._tqdm_class, **kwargs
+            )
+        else:
+            return nullcontext()
+
+    def _spinner(
+        self, desc=None, spinner=None, side="right", timer=True, **kwargs
+    ):  # pragma: no cover
+        # Progress doesn't mix well with debug logging.
+        show_progress = self._show_progress and not self._debug
+        if show_progress:
+            if desc:
+                # For consistent behaviour with tqdm.
+                desc += ":"
+            return yaspin(text=desc, spinner=spinner, side=side, timer=timer, **kwargs)
+        else:
+            return nullcontext()
 
     @check_types
     def open_file(self, path: str) -> IO:
@@ -237,6 +266,7 @@ class AnophelesBase:
 
     @property
     def releases(self) -> Tuple[str, ...]:
+        """Currently available data releases."""
         if self._cache_releases is None:
             if self._pre:
                 self._cache_releases = self._discover_releases()
@@ -400,12 +430,18 @@ class AnophelesBase:
         self._results_cache_add_analysis_params(params)
         cache_key, _ = hash_params(params)
         cache_path = self._results_cache / name / cache_key
-        results_path = cache_path / "results.npz"
-        if not results_path.exists():
-            raise CacheMiss
-        results = np.load(results_path)
-        # TODO Do we need to read the arrays and then close the npz file?
-        return results
+
+        # Read zipped zarr format.
+        results_path = cache_path / "results.zarr.zip"
+        if results_path.exists():
+            return zarr.load(results_path)
+
+        # For backwards compatibility, read npz format.
+        legacy_results_path = cache_path / "results.npz"
+        if legacy_results_path.exists():  # pragma: no cover
+            return np.load(legacy_results_path)
+
+        raise CacheMiss
 
     @check_types
     def results_cache_set(
@@ -414,13 +450,23 @@ class AnophelesBase:
         name = type(self).__name__.lower() + "_" + name
         if self._results_cache is None:
             return
+
+        # Set up parameters for the results to be saved.
         params = params.copy()
         self._results_cache_add_analysis_params(params)
         cache_key, params_json = hash_params(params)
+
+        # Determine storage path.
         cache_path = self._results_cache / name / cache_key
         cache_path.mkdir(exist_ok=True, parents=True)
+
+        # Write the parameters as a JSON file.
         params_path = cache_path / "params.json"
-        results_path = cache_path / "results.npz"
-        with params_path.open(mode="w") as f:
-            f.write(params_json)
-        np.savez_compressed(results_path, **results)
+
+        # Write the data to be cached as a zipped zarr file.
+        results_path = cache_path / "results.zarr.zip"
+
+        with self._spinner("Save results to cache"):
+            with params_path.open(mode="w") as f:
+                f.write(params_json)
+            zarr.save(results_path, **results)

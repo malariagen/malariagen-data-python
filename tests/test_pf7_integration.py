@@ -225,10 +225,10 @@ def test_variant_calls(extended):
     # check dim lengths
     df_samples = pf7.sample_metadata()
     n_samples = len(df_samples)
-    n_variants = ds.dims["variants"]
-    assert ds.dims["samples"] == n_samples
-    assert ds.dims["ploidy"] == 2
-    assert ds.dims["alleles"] == 7
+    n_variants = ds.sizes["variants"]
+    assert ds.sizes["samples"] == n_samples
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 7
 
     # check shapes
     for f in expected_coords | expected_data_vars:

@@ -1,9 +1,10 @@
 import random
 
-import ipyleaflet
+import ipyleaflet  # type: ignore
 import numpy as np
 import pandas as pd
-import plotly.graph_objects as go
+import plotly.express as px  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import pytest
 from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases
@@ -31,6 +32,7 @@ def ag3_sim_api(ag3_sim_fixture):
             "aim_species_gambiae_coluzzii": object,
             "aim_species": object,
         },
+        taxon_colors=_ag3.TAXON_COLORS,
     )
 
 
@@ -43,6 +45,7 @@ def af1_sim_api(af1_sim_fixture):
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
+        taxon_colors=_af1.TAXON_COLORS,
     )
 
 
@@ -680,13 +683,20 @@ def test_count_samples(fixture, api):
     )
 
 
-@pytest.mark.parametrize(
-    "basemap", ["satellite", None, ipyleaflet.basemaps.OpenTopoMap]
-)
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_samples_interactive_map(fixture, api, basemap):
-    m = api.plot_samples_interactive_map(basemap=basemap)
+def test_plot_samples_interactive_map(fixture, api):
+    # Test behaviour with bad basemap param.
+    with pytest.raises(ValueError):
+        api.plot_samples_interactive_map(basemap="foobar")
+
+    # Default params.
+    m = api.plot_samples_interactive_map()
     assert isinstance(m, ipyleaflet.Map)
+
+    # Explicit params.
+    for basemap in ["satellite", None, ipyleaflet.basemaps.OpenTopoMap]:
+        m = api.plot_samples_interactive_map(basemap=basemap, width=500, height=300)
+        assert isinstance(m, ipyleaflet.Map)
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -695,21 +705,27 @@ def test_wgs_data_catalog(fixture, api):
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    # sample_set = random.choice(all_sample_sets)
 
-    # Call function to be tested.
-    df = api.wgs_data_catalog(sample_set=sample_set)
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.wgs_data_catalog(sample_set=sample_set)
 
-    # Check output.
-    assert isinstance(df, pd.DataFrame)
-    expected_cols = [
-        "sample_id",
-        "alignments_bam",
-        "snp_genotypes_vcf",
-        "snp_genotypes_zarr",
-    ]
-    assert df.columns.to_list() == expected_cols
-    assert len(df) == sample_count.loc[sample_set]
+        # Check output.
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "sample_id",
+            "alignments_bam",
+            "snp_genotypes_vcf",
+            "snp_genotypes_zarr",
+        ]
+        assert df.columns.to_list() == expected_cols
+        assert len(df) == sample_count.loc[sample_set]
+
+        # Compare with sample metadata.
+        df_samples = api.sample_metadata(sample_sets=sample_set)
+        # Don't enforce same order, but require same set.
+        assert set(df["sample_id"]) == set(df_samples["sample_id"])
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -801,3 +817,176 @@ def test_lookup_sample(fixture, api):
     assert sample_rec_by_sample_loc_set.name == sample_id
     assert sample_rec_by_sample_loc_set["sample_set"] == sample_set
     assert sorted(list(sample_rec_by_sample_loc_set.index)) == sorted_expected_fields
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_setup_sample_symbol(fixture, api):
+    # Set up test.
+    df_samples = api.sample_metadata()
+
+    # Simple case, existing column.
+    data = df_samples.copy()
+    symbol_prepped = api._setup_sample_symbol(data=data, symbol="taxon")
+    assert symbol_prepped == "taxon"
+
+    # Convenience shortcut for cohort columns.
+    data = df_samples.copy()
+    symbol_prepped = api._setup_sample_symbol(data=data, symbol="admin1_year")
+    assert symbol_prepped == "cohort_admin1_year"
+
+    # Dict of queries.
+    data = df_samples.copy()
+    symbol = {
+        "male": "sex_call == 'M'",
+        "female": "sex_call == 'F'",
+    }
+    symbol_prepped = api._setup_sample_symbol(data=data, symbol=symbol)
+    assert symbol_prepped == "symbol"
+    assert "symbol" in data.columns
+    for label, query in symbol.items():
+        assert_frame_equal(data.query(query), data[data["symbol"] == label])
+
+    # Bad column.
+    with pytest.raises(ValueError):
+        data = df_samples.copy()
+        api._setup_sample_symbol(data=data, symbol="foo")
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_setup_sample_colors_plotly(fixture, api):
+    # Set up test.
+    df_samples = api.sample_metadata()
+
+    # Simple case, existing column.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Simple case, existing column, manual colour mapping.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map={"Burkina Faso": "blue", "Uganda": "green"},
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Simple case, existing column, manual colour sequence.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map=None,
+        color_discrete_sequence=px.colors.qualitative.D3,
+        category_orders=None,
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Simple case, existing column, manually ordered.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="country",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders={"country": ["Burkina Faso", "Uganda"]},
+    )
+    assert color_ == "country"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+    assert category_orders_ == {"country": ["Burkina Faso", "Uganda"]}
+
+    # Special case, taxon column.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="taxon",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "taxon"
+    assert isinstance(color_discrete_map_, dict)
+    assert color_discrete_map_ == api._taxon_colors
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Special case, taxon column, manually ordered.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="taxon",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders={"taxon": ["coluzzii", "gambiae"]},
+    )
+    assert color_ == "taxon"
+    assert isinstance(color_discrete_map_, dict)
+    assert color_discrete_map_ == api._taxon_colors
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+    assert category_orders_ == {"taxon": ["coluzzii", "gambiae"]}
+
+    # Convenience shortcut for cohort columns.
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color="admin1_year",
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "cohort_admin1_year"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+
+    # Dict of queries.
+    color = {
+        "male": "sex_call == 'M'",
+        "female": "sex_call == 'F'",
+    }
+    data = df_samples.copy()
+    (color_, color_discrete_map_, category_orders_) = api._setup_sample_colors_plotly(
+        data=data,
+        color=color,
+        color_discrete_map=None,
+        color_discrete_sequence=None,
+        category_orders=None,
+    )
+    assert color_ == "color"
+    assert isinstance(color_discrete_map_, dict)
+    assert isinstance(category_orders_, dict)
+    assert color_ in category_orders_
+    assert color_ in data.columns
+    for label, query in color.items():
+        assert_frame_equal(data.query(query), data[data["color"] == label])
+
+    # Bad column.
+    with pytest.raises(ValueError):
+        data = df_samples.copy()
+        api._setup_sample_colors_plotly(
+            data=data,
+            color="foo",
+            color_discrete_map=None,
+            color_discrete_sequence=None,
+            category_orders=None,
+        )

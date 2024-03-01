@@ -8,28 +8,29 @@ from enum import Enum
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
-from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union
+from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union, Callable
 from urllib.parse import unquote_plus
+from numpy.testing import assert_allclose, assert_array_equal
 
 try:
-    from google import colab
+    from google import colab  # type: ignore
 except ImportError:
     colab = None
 
-import allel
+import allel  # type: ignore
 import dask.array as da
-import ipinfo
-import numba
+import ipinfo  # type: ignore
+import numba  # type: ignore
 import numpy as np
 import pandas
 import pandas as pd
-import plotly.express as px
+import plotly.express as px  # type: ignore
 import typeguard
 import xarray as xr
-import zarr
-from fsspec.core import url_to_fs
-from fsspec.mapping import FSMap
-from numpydoc_decorator.impl import humanize_type
+import zarr  # type: ignore
+from fsspec.core import url_to_fs  # type: ignore
+from fsspec.mapping import FSMap  # type: ignore
+from numpydoc_decorator.impl import humanize_type  # type: ignore
 from typing_extensions import TypeAlias, get_type_hints
 
 DIM_VARIANT = "variants"
@@ -69,7 +70,7 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, compression: Optional[str] = "gzip"):
+def read_gff3(buf, compression="gzip"):
     # read as dataframe
     df = pandas.read_csv(
         buf,
@@ -116,8 +117,7 @@ def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
 
 try:
     # zarr >= 2.11.0
-    # noinspection PyUnresolvedReferences
-    from zarr.storage import KVStore
+    from zarr.storage import KVStore  # type: ignore
 
     class SafeStore(KVStore):
         def __getitem__(self, key):
@@ -168,7 +168,11 @@ class SiteClass(Enum):
 
 
 def da_from_zarr(
-    z: zarr.core.Array, inline_array: bool, chunks: Union[str, Tuple[int, ...]] = "auto"
+    z: zarr.core.Array,
+    inline_array: bool,
+    chunks: Union[
+        str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]
+    ] = "auto",
 ) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 
@@ -176,10 +180,16 @@ def da_from_zarr(
     our own here to get a little more control.
 
     """
-    if chunks == "native" or z.dtype == object:
+    if callable(chunks):
+        dask_chunks: Union[Tuple[int, ...], str] = chunks(z.chunks)
+    elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
-        chunks = z.chunks
-    kwargs = dict(chunks=chunks, fancy=False, lock=False, inline_array=inline_array)
+        dask_chunks = z.chunks
+    else:
+        dask_chunks = chunks
+    kwargs = dict(
+        chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
+    )
     try:
         d = da.from_array(z, **kwargs)
     except TypeError:
@@ -213,18 +223,22 @@ def dask_compress_dataset(ds, indexer, dim):
     assert isinstance(indexer, da.Array)
     assert indexer.ndim == 1
     assert indexer.dtype == bool
-    assert indexer.shape[0] == ds.dims[dim]
+    assert indexer.shape[0] == ds.sizes[dim]
+
+    # temporarily compute the indexer once, to avoid multiple reads from
+    # the underlying data
+    indexer_computed = indexer.compute()
 
     coords = dict()
     for k in ds.coords:
         a = ds[k]
-        v = _dask_compress_dataarray(a, indexer, dim)
+        v = _dask_compress_dataarray(a, indexer, indexer_computed, dim)
         coords[k] = (a.dims, v)
 
     data_vars = dict()
     for k in ds.data_vars:
         a = ds[k]
-        v = _dask_compress_dataarray(a, indexer, dim)
+        v = _dask_compress_dataarray(a, indexer, indexer_computed, dim)
         data_vars[k] = (a.dims, v)
 
     attrs = ds.attrs.copy()
@@ -232,7 +246,7 @@ def dask_compress_dataset(ds, indexer, dim):
     return xr.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
 
 
-def _dask_compress_dataarray(a, indexer, dim):
+def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
     try:
         # find the axis for the given dimension
         axis = a.dims.index(dim)
@@ -243,7 +257,9 @@ def _dask_compress_dataarray(a, indexer, dim):
 
     else:
         # apply the indexing operation
-        v = da_compress(indexer, a.data, axis)
+        v = da_compress(
+            indexer=indexer, data=a.data, axis=axis, indexer_computed=indexer_computed
+        )
 
     return v
 
@@ -252,6 +268,7 @@ def da_compress(
     indexer: da.Array,
     data: da.Array,
     axis: int,
+    indexer_computed: Optional[np.ndarray] = None,
 ):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
@@ -261,7 +278,10 @@ def da_compress(
     # useful variables
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
-    axis_n_chunks = len(axis_old_chunks)
+
+    # load the indexer temporarily for chunk size computations
+    if indexer_computed is None:
+        indexer_computed = indexer.compute()
 
     # ensure indexer and data are chunked in the same way
     indexer = indexer.rechunk((axis_old_chunks,))
@@ -273,12 +293,14 @@ def da_compress(
     # would normally do v.compute_chunk_sizes() but that is slow for
     # multidimensional arrays, so hack something more efficient
 
-    axis_new_chunks = tuple(
-        indexer.map_blocks(
-            lambda b: np.sum(b, keepdims=True),
-            chunks=((1,) * axis_n_chunks,),
-        ).compute()
-    )
+    axis_new_chunks_list = []
+    slice_start = 0
+    for old_chunk_size in axis_old_chunks:
+        slice_stop = slice_start + old_chunk_size
+        new_chunk_size = np.sum(indexer_computed[slice_start:slice_stop])
+        axis_new_chunks_list.append(new_chunk_size)
+        slice_start = slice_stop
+    axis_new_chunks = tuple(axis_new_chunks_list)
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )
@@ -340,6 +362,9 @@ class Region:
     @property
     def end(self):
         return self._end
+
+    def __hash__(self):
+        return hash((self.contig, self.start, self.end))
 
     def __eq__(self, other):
         return (
@@ -414,9 +439,11 @@ def _handle_region_feature(resource, region):
 
 def _valid_contigs(resource):
     """Determine which contig identifiers are valid for the given data resource."""
-    valid_contigs = resource.contigs
+    valid_contigs = tuple(resource.contigs)
     # allow for optional virtual contigs
-    valid_contigs += getattr(resource, "virtual_contigs", ())
+    virtual_contigs = getattr(resource, "virtual_contigs", None)
+    if virtual_contigs is not None:
+        valid_contigs += tuple(virtual_contigs.keys())
     return valid_contigs
 
 
@@ -556,7 +583,7 @@ def _simple_xarray_concat_arrays(
 
     # Iterate over variable names.
     for k in names:
-        # Access the variable from the virst dataset.
+        # Access the variable from the first dataset.
         v = ds0[k]
 
         if dim in v.dims:
@@ -771,7 +798,7 @@ def jackknife_ci(stat_data, jack_stat, confidence_level):
     https://github.com/astropy/astropy/blob/8aba9632597e6bb489488109222bf2feff5835a6/astropy/stats/jackknife.py#L55
 
     """
-    from scipy.special import erfinv
+    from scipy.special import erfinv  # type: ignore
 
     n = len(jack_stat)
 
@@ -914,7 +941,7 @@ def check_types(f):
     """
 
     @wraps(f)
-    def wrapper(*args, **kwargs):
+    def check_types_wrapper(*args, **kwargs):
         type_hints = get_type_hints(f)
         call_args = getcallargs(f, *args, **kwargs)
         for k, t in type_hints.items():
@@ -938,7 +965,7 @@ def check_types(f):
                     raise error from None
         return f(*args, **kwargs)
 
-    return wrapper
+    return check_types_wrapper
 
 
 @numba.njit
@@ -957,3 +984,226 @@ def true_runs(a):
     if in_run:
         stops.append(a.shape[0])
     return np.array(starts, dtype=np.int64), np.array(stops, dtype=np.int64)
+
+
+@numba.njit(parallel=True)
+def pdist_abs_hamming(X):
+    n_obs = X.shape[0]
+    n_ftr = X.shape[1]
+    out = np.zeros((n_obs, n_obs), dtype=np.int32)
+    for i in range(n_obs):
+        x = X[i]
+        for j in numba.prange(i + 1, n_obs):
+            y = X[j]
+            d = 0
+            for k in range(n_ftr):
+                if x[k] != y[k]:
+                    d += 1
+            out[i, j] = d
+            out[j, i] = d
+    return out
+
+
+@numba.njit
+def square_to_condensed(i, j, n):
+    """Convert distance matrix coordinates from square form (i, j) to condensed form."""
+
+    assert i != j, "no diagonal elements in condensed matrix"
+    if i < j:
+        i, j = j, i
+    return n * j - j * (j + 1) // 2 + i - 1 - j
+
+
+@numba.njit(parallel=True)
+def biallelic_diplotype_pdist(X, distfun):
+    n_samples = X.shape[0]
+    n_pairs = (n_samples * (n_samples - 1)) // 2
+    out = np.zeros(n_pairs, dtype=np.float32)
+
+    # Loop over samples, first in pair.
+    for i in range(n_samples):
+        x = X[i, :]
+
+        # Loop over observations again, second in pair.
+        for j in numba.prange(i + 1, n_samples):
+            y = X[j, :]
+
+            # Compute distance for the current pair.
+            d = distfun(x, y)
+
+            # Store result for the current pair.
+            k = square_to_condensed(i, j, n_samples)
+            out[k] = d
+
+    return out
+
+
+@numba.njit
+def biallelic_diplotype_cityblock(x, y):
+    n_sites = x.shape[0]
+    distance = np.float32(0)
+
+    # Loop over sites.
+    for i in range(n_sites):
+        # Compute cityblock distance (absolute difference).
+        d = np.fabs(x[i] - y[i])
+
+        # Accumulate distance for the current pair, but only if both samples
+        # have a called genotype.
+        distance += d
+
+    return distance
+
+
+@numba.njit
+def biallelic_diplotype_sqeuclidean(x, y):
+    n_sites = x.shape[0]
+    distance = np.float32(0)
+
+    # Loop over sites.
+    for i in range(n_sites):
+        # Compute squared euclidean distance.
+        d = (x[i] - y[i]) ** 2
+
+        # Accumulate distance for the current pair, but only if both samples
+        # have a called genotype.
+        distance += d
+
+    return distance
+
+
+@numba.njit
+def biallelic_diplotype_euclidean(x, y):
+    return np.sqrt(biallelic_diplotype_sqeuclidean(x, y))
+
+
+@numba.njit
+def trim_alleles(ac):
+    """Remap allele indices to trim out unobserved alleles.
+
+    The idea here is that our SNP data includes alleles which
+    may not ever be observed, or may not be observed within a
+    particular subset of the data. For convenience, it is useful
+    to retain only alleles which are observed.
+
+    Here we use a given set of allele counts (ac) to identify
+    observed alleles and derive a mapping from old allele
+    indices to a new set of allele indices.
+
+    For example, if alleles 0 and 2 are observed at a given
+    site in ac, then 0 will be mapped to 0 and 2 will be mapped
+    to 1.
+
+    Similarly, if alleles 1 and 3 are observed at a given site
+    in ac, then 1 will be mapped to 0 and 3 will be mapped to 1.
+
+    """
+
+    n_variants = ac.shape[0]
+    n_alleles = ac.shape[1]
+
+    # Create the output array - this is an allele mapping array,
+    # that specifies how to recode allele indices.
+    mapping = np.empty((n_variants, n_alleles), dtype=np.int32)
+
+    # The value of -1 indicates that there is no mapping for
+    # a given allele. We fill with -1 so we can then set
+    # values where we do observe alleles and can define a
+    # mapping.
+    mapping[:] = -1
+
+    # Iterate over variants.
+    for i in range(n_variants):
+        # This will be the new index that we are mapping this allele to, if the
+        # allele is observed.
+        new_allele_index = 0
+
+        # Iterate over columns (alleles) in the input array.
+        for allele_index in range(n_alleles):
+            # Access the count for the jth allele.
+            c = ac[i, allele_index]
+            if c > 0:
+                # We have found a non-zero allele count, remap the allele.
+                mapping[i, allele_index] = new_allele_index
+
+                # Increment to be ready for the next allele.
+                new_allele_index += 1
+
+    return mapping
+
+
+@numba.njit
+def apply_allele_mapping(x, mapping, max_allele):
+    """Transform an array x, where the columns correspond to alleles,
+    according to an allele mapping.
+
+    Values from columns in x will be move to different columns in the
+    output according to the allele index mapping given.
+
+    """
+    n_sites = x.shape[0]
+    n_alleles = x.shape[1]
+    assert mapping.shape[0] == n_sites
+    assert mapping.shape[1] == n_alleles
+
+    # Create output array.
+    out = np.empty(shape=(n_sites, max_allele + 1), dtype=x.dtype)
+
+    # Iterate over sites.
+    for i in range(n_sites):
+        # Iterate over alleles.
+        for allele_index in range(n_alleles):
+            # Find the new index for this allele.
+            new_allele_index = mapping[i, allele_index]
+
+            # Copy data to the new allele index.
+            if new_allele_index >= 0 and new_allele_index <= max_allele:
+                out[i, new_allele_index] = x[i, allele_index]
+
+    return out
+
+
+def pandas_apply(f, df, columns):
+    """Optimised alternative to pandas apply."""
+    df = df.reset_index(drop=True)
+    iterator = zip(*[df[c].values for c in columns])
+    ret = pd.Series((f(*vals) for vals in iterator))
+    return ret
+
+
+def compare_series_like(actual, expect):
+    """Compare pandas series-like objects for equality or floating point
+    similarity, handling missing values appropriately."""
+
+    # Handle object arrays, these don't get nans compared properly.
+    t = actual.dtype
+    if t == object:
+        expect = expect.fillna("NA")
+        actual = actual.fillna("NA")
+
+    if t.kind == "f":
+        assert_allclose(actual.values, expect.values)
+    else:
+        assert_array_equal(actual.values, expect.values)
+
+
+@numba.njit
+def hash_columns(x):
+    # Here we want to compute a hash for each column in the
+    # input array. However, we assume the input array is in
+    # C contiguous order, and therefore we scan the array
+    # and perform the computation in this order for more
+    # efficient memory access.
+    #
+    # This function uses the DJBX33A hash function which
+    # is much faster than computing Python hashes of
+    # bytes, as discovered by Tom White in work on sgkit.
+    m = x.shape[0]
+    n = x.shape[1]
+    out = np.empty(n, dtype=np.int64)
+    out[:] = 5381
+    for i in range(m):
+        for j in range(n):
+            v = x[i, j]
+            out[j] = out[j] * 33 + v
+    return out

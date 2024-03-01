@@ -1,6 +1,6 @@
 """General parameters common to many functions in the public API."""
 
-from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union, Callable
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -226,7 +226,7 @@ inline_array: TypeAlias = Annotated[
 inline_array_default: inline_array = True
 
 chunks: TypeAlias = Annotated[
-    Union[str, Tuple[int, ...]],
+    Union[str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]],
     """
     If 'auto' let dask decide chunk size. If 'native' use native zarr
     chunks. Also, can be a target size, e.g., '200 MiB', or a tuple of
@@ -245,3 +245,36 @@ gff_attributes: TypeAlias = Annotated[
 ]
 
 DEFAULT: Final[str] = "default"
+
+n_snps: TypeAlias = Annotated[
+    int,
+    """
+    The desired number of SNPs to use when running the analysis.
+    SNPs will be evenly thinned to approximately this number.
+    """,
+]
+
+thin_offset: TypeAlias = Annotated[
+    int,
+    """
+    Starting index for SNP thinning. Change this to repeat the analysis
+    using a different set of SNPs.
+    """,
+]
+
+min_minor_ac: TypeAlias = Annotated[
+    int,
+    """
+    The minimum minor allele count. SNPs with a minor allele count
+    below this value will be excluded.
+    """,
+]
+
+max_missing_an: TypeAlias = Annotated[
+    int,
+    """
+    The maximum number of missing allele calls to accept. SNPs with
+    more than this value will be excluded. Set to 0 to require no
+    missing calls.
+    """,
+]

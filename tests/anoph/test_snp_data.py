@@ -1,17 +1,19 @@
 import random
 from itertools import product
 
+import allel  # type: ignore
 import bokeh.model
 import dask.array as da
 import numpy as np
 import pytest
 import xarray as xr
-import zarr
+import zarr  # type: ignore
 from numpy.testing import assert_array_equal
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data.anoph.base_params import DEFAULT
 from malariagen_data.anoph.snp_data import AnophelesSnpData
 
 
@@ -33,9 +35,11 @@ def ag3_sim_api(ag3_sim_fixture):
             "aim_species": object,
         },
         gff_gene_type="gene",
+        gff_gene_name_attribute="Name",
         gff_default_attributes=("ID", "Parent", "Name", "description"),
         default_site_mask="gamb_colu_arab",
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
+        virtual_contigs=_ag3.VIRTUAL_CONTIGS,
     )
 
 
@@ -49,6 +53,7 @@ def af1_sim_api(af1_sim_fixture):
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
         gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
         gff_default_attributes=("ID", "Parent", "Note", "description"),
         default_site_mask="funestus",
         results_cache=af1_sim_fixture.results_cache_path.as_posix(),
@@ -233,6 +238,38 @@ def test_snp_sites(fixture, api: AnophelesSnpData):
     check_snp_sites(api=api, region=region)
 
 
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Standard checks.
+    check_snp_sites(api, region=chrom)
+
+    # Extra checks.
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    pos_r = api.snp_sites(region=contig_r, field="POS")
+    pos_l = api.snp_sites(region=contig_l, field="POS")
+    offset = api.genome_sequence(region=contig_r).shape[0]
+    pos_expected = da.concatenate([pos_r, pos_l + offset])
+    pos_actual = api.snp_sites(region=chrom, field="POS")
+    assert da.all(pos_expected == pos_actual).compute(scheduler="single-threaded")
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+
+    # Standard checks.
+    check_snp_sites(api, region=region)
+
+    # Extra checks.
+    region_size = stop - start
+    pos = api.snp_sites(region=region, field="POS").compute()
+    assert pos.shape[0] <= region_size
+    assert np.all(pos >= start)
+    assert np.all(pos <= stop)
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_open_site_annotations(fixture, api):
     root = api.open_site_annotations()
@@ -256,10 +293,10 @@ def test_open_site_annotations(fixture, api):
 
 def _check_site_annotations(api: AnophelesSnpData, region, site_mask):
     ds_snp = api.snp_variants(region=region, site_mask=site_mask)
-    n_variants = ds_snp.dims["variants"]
+    n_variants = ds_snp.sizes["variants"]
     ds_ann = api.site_annotations(region=region, site_mask=site_mask)
     # Site annotations dataset should be aligned with SNP sites.
-    assert ds_ann.dims["variants"] == n_variants
+    assert ds_ann.sizes["variants"] == n_variants
     assert isinstance(ds_ann, xr.Dataset)
     for f in (
         "codon_degeneracy",
@@ -303,55 +340,66 @@ def test_site_annotations(fixture, api):
         )
 
 
-def check_snp_genotypes(api, sample_sets, region):
-    df_samples = api.sample_metadata(sample_sets=sample_sets)
+def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
+    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
 
     # Check default field (GT).
-    gt = api.snp_genotypes(region=region, sample_sets=sample_sets)
+    default = api.snp_genotypes(
+        region=region, sample_sets=sample_sets, sample_query=sample_query
+    )
+    assert isinstance(default, da.Array)
+    assert default.ndim == 3
+    assert default.dtype == "i1"
+    assert default.shape[1] == len(df_samples)
+
+    # Check GT.
+    gt = api.snp_genotypes(
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        field="GT",
+    )
     assert isinstance(gt, da.Array)
     assert gt.ndim == 3
     assert gt.dtype == "i1"
-    assert gt.shape[1] == len(df_samples)
-
-    # Check GT.
-    x = api.snp_genotypes(
-        region=region,
-        sample_sets=sample_sets,
-        field="GT",
-    )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 3
-    assert x.dtype == "i1"
+    assert gt.shape == default.shape
 
     # Check GQ.
-    x = api.snp_genotypes(
+    gq = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
+        sample_query=sample_query,
         field="GQ",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 2
-    assert x.dtype == "i1"
+    assert isinstance(gq, da.Array)
+    assert gq.ndim == 2
+    assert gq.dtype == "i1"
+    assert gq.shape == gt.shape[:2]
 
     # Check MQ.
-    x = api.snp_genotypes(
+    mq = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
+        sample_query=sample_query,
         field="MQ",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 2
-    assert x.dtype == "f4"
+    assert isinstance(mq, da.Array)
+    assert mq.ndim == 2
+    assert mq.dtype == "f4"
+    assert mq.shape == gt.shape[:2]
 
     # Check AD.
-    x = api.snp_genotypes(
+    ad = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
+        sample_query=sample_query,
         field="AD",
     )
-    assert isinstance(x, da.Array)
-    assert x.ndim == 3
-    assert x.dtype == "i2"
+    assert isinstance(ad, da.Array)
+    assert ad.ndim == 3
+    assert ad.dtype == "i2"
+    assert ad.shape[:2] == gt.shape[:2]
+    assert ad.shape[2] == 4
 
     # Check with site mask.
     mask = random.choice(api.site_mask_ids)
@@ -359,6 +407,7 @@ def check_snp_genotypes(api, sample_sets, region):
     gt_pass = api.snp_genotypes(
         region=region,
         sample_sets=sample_sets,
+        sample_query=sample_query,
         site_mask=mask,
     )
     assert isinstance(gt_pass, da.Array)
@@ -370,9 +419,14 @@ def check_snp_genotypes(api, sample_sets, region):
 
     # Check native versus auto chunks.
     gt_native = api.snp_genotypes(
-        region=region, sample_sets=sample_sets, chunks="native"
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        chunks="native",
     )
-    gt_auto = api.snp_genotypes(region=region, sample_sets=sample_sets, chunks="auto")
+    gt_auto = api.snp_genotypes(
+        region=region, sample_sets=sample_sets, sample_query=sample_query, chunks="auto"
+    )
     assert gt_native.chunks != gt_auto.chunks
 
 
@@ -417,6 +471,77 @@ def test_snp_genotypes_with_region_param(fixture, api: AnophelesSnpData):
         check_snp_genotypes(api=api, sample_sets=sample_sets, region=region)
 
 
+@pytest.mark.parametrize(
+    "sample_query",
+    ["sex_call == 'F'", "taxon == 'coluzzii'", "taxon == 'robot'"],
+)
+def test_snp_genotypes_with_sample_query_param(
+    ag3_sim_api: AnophelesSnpData, sample_query
+):
+    contig = random.choice(ag3_sim_api.contigs)
+    df_samples = ag3_sim_api.sample_metadata().query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3_sim_api.snp_genotypes(region=contig, sample_query=sample_query)
+
+    else:
+        check_snp_genotypes(api=ag3_sim_api, region=contig, sample_query=sample_query)
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Standard checks.
+    check_snp_genotypes(api, region=chrom)
+
+    # Extra checks.
+    contig_r, contig_l = api.virtual_contigs[chrom]
+    d_r = api.snp_genotypes(region=contig_r)
+    d_l = api.snp_genotypes(region=contig_l)
+    d = da.concatenate([d_r, d_l])
+    gt = api.snp_genotypes(region=chrom)
+    assert gt.shape == d.shape
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    # Standard checks.
+    check_snp_genotypes(api, region=region)
+    # Extra checks.
+    pos = api.snp_sites(region=region, field="POS")
+    gt = api.snp_genotypes(region=region)
+    assert pos.shape[0] == gt.shape[0]
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_variants_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Test with whole chromosome.
+    pos = api.snp_sites(region=chrom, field="POS").compute()
+    ds_chrom = api.snp_variants(region=chrom)
+    assert isinstance(ds_chrom, xr.Dataset)
+    assert len(ds_chrom.dims) == 2
+    assert ds_chrom.sizes["variants"] == pos.shape[0]
+    assert ds_chrom["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_chrom["variant_position"].values)
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+    pos = api.snp_sites(region=region, field="POS").compute()
+    ds_region = api.snp_variants(region=region)
+    assert isinstance(ds_region, xr.Dataset)
+    assert len(ds_region.dims) == 2
+    assert ds_region.sizes["variants"] == pos.shape[0]
+    assert ds_region["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_region["variant_position"].values)
+
+
 def check_snp_calls(api, sample_sets, region, site_mask):
     ds = api.snp_calls(region=region, sample_sets=sample_sets, site_mask=site_mask)
     assert isinstance(ds, xr.Dataset)
@@ -449,10 +574,10 @@ def check_snp_calls(api, sample_sets, region, site_mask):
     n_variants = len(pos)
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
-    assert ds.dims["variants"] == n_variants
-    assert ds.dims["samples"] == n_samples
-    assert ds.dims["ploidy"] == 2
-    assert ds.dims["alleles"] == 4
+    assert ds.sizes["variants"] == n_variants
+    assert ds.sizes["samples"] == n_samples
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 4
 
     # Check shapes.
     for f in expected_coords | expected_data_vars:
@@ -559,7 +684,7 @@ def test_snp_calls_with_site_mask_param(fixture, api: AnophelesSnpData):
     region = fixture.random_region_str()
 
     # Parametrize site_mask.
-    parametrize_site_mask = (None,) + api.site_mask_ids
+    parametrize_site_mask = (None, DEFAULT) + api.site_mask_ids
 
     # Run tests.
     for site_mask in parametrize_site_mask:
@@ -581,7 +706,7 @@ def test_snp_calls_with_sample_query_param(ag3_sim_api: AnophelesSnpData, sample
 
     else:
         ds = ag3_sim_api.snp_calls(region="3L", sample_query=sample_query)
-        assert ds.dims["samples"] == len(df_samples)
+        assert ds.sizes["samples"] == len(df_samples)
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
@@ -599,7 +724,7 @@ def test_snp_calls_with_min_cohort_size_param(fixture, api: AnophelesSnpData):
         min_cohort_size=10,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] >= 10
+    assert ds.sizes["samples"] >= 10
     with pytest.raises(ValueError):
         api.snp_calls(
             sample_sets=sample_sets,
@@ -622,7 +747,7 @@ def test_snp_calls_with_max_cohort_size_param(fixture, api: AnophelesSnpData):
         max_cohort_size=15,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] <= 15
+    assert ds.sizes["samples"] <= 15
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -640,7 +765,7 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
         cohort_size=cohort_size,
     )
     assert isinstance(ds, xr.Dataset)
-    assert ds.dims["samples"] == cohort_size
+    assert ds.sizes["samples"] == cohort_size
     with pytest.raises(ValueError):
         api.snp_calls(
             sample_sets=sample_sets,
@@ -667,7 +792,48 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
 def test_snp_calls_with_site_class_param(ag3_sim_api: AnophelesSnpData, site_class):
     ds1 = ag3_sim_api.snp_calls(region="3L")
     ds2 = ag3_sim_api.snp_calls(region="3L", site_class=site_class)
-    assert ds2.dims["variants"] < ds1.dims["variants"]
+    assert ds2.sizes["variants"] < ds1.sizes["variants"]
+
+
+@pytest.mark.parametrize("chrom", ["2RL", "3RL"])
+def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
+    api = ag3_sim_api
+
+    # Test with whole chromosome.
+
+    # Standard checks.
+    check_snp_calls(api, region=chrom, sample_sets=None, site_mask=None)
+
+    # Extra checks.
+    pos = api.snp_sites(region=chrom, field="POS").compute()
+    ds_chrom = api.snp_calls(region=chrom)
+    assert isinstance(ds_chrom, xr.Dataset)
+    assert len(ds_chrom.dims) == 4
+    assert pos.shape[0] == ds_chrom.sizes["variants"]
+    assert pos.shape[0] == ds_chrom["call_genotype"].shape[0]
+    assert ds_chrom["call_genotype"].dtype == "int8"
+    assert ds_chrom["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_chrom["variant_position"].values)
+
+    # Test with region.
+    seq = api.genome_sequence(region=chrom)
+    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    region = f"{chrom}:{start:,}-{stop:,}"
+
+    # Standard checks.
+    check_snp_calls(api, region=region, sample_sets=None, site_mask=None)
+
+    # Extra checks.
+    ds_region = api.snp_calls(region=region)
+    pos = api.snp_sites(region=region, field="POS")
+    assert isinstance(ds_region, xr.Dataset)
+    assert len(ds_region.dims) == 4
+    assert ds_region.sizes["samples"] == ds_chrom.sizes["samples"]
+    assert pos.shape[0] == ds_region.sizes["variants"]
+    assert pos.shape[0] == ds_region["call_genotype"].shape[0]
+    assert ds_region["call_genotype"].dtype == "int8"
+    assert ds_region["variant_position"].dtype == "int32"
+    assert_array_equal(pos, ds_region["variant_position"].values)
 
 
 def check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
@@ -846,3 +1012,380 @@ def test_plot_snps(fixture, api: AnophelesSnpData):
         show=False,
     )
     assert isinstance(fig, bokeh.model.Model)
+
+
+def check_biallelic_snp_calls_and_diplotypes(
+    api,
+    region,
+    sample_sets=None,
+    site_mask=None,
+    site_class=None,
+    min_minor_ac=None,
+    max_missing_an=None,
+    n_snps=None,
+):
+    ds = api.biallelic_snp_calls(
+        region=region,
+        sample_sets=sample_sets,
+        site_mask=site_mask,
+        site_class=site_class,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+        n_snps=n_snps,
+    )
+    assert isinstance(ds, xr.Dataset)
+
+    # Check fields.
+    expected_data_vars = {
+        "variant_allele",
+        "variant_allele_count",
+        "call_genotype",
+    }
+    assert set(ds.data_vars) == expected_data_vars
+
+    expected_coords = {
+        "variant_contig",
+        "variant_position",
+        "sample_id",
+    }
+    assert set(ds.coords) == expected_coords
+
+    # Check dimensions.
+    assert set(ds.dims) == {"alleles", "ploidy", "samples", "variants"}
+
+    # Check dim lengths.
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    n_samples = len(df_samples)
+    n_variants = ds.sizes["variants"]
+    assert ds.sizes["samples"] == n_samples
+    assert ds.sizes["ploidy"] == 2
+    assert ds.sizes["alleles"] == 2
+
+    # Check shapes.
+    for f in expected_coords | expected_data_vars:
+        x = ds[f]
+        assert isinstance(x, xr.DataArray)
+        if f == "variant_allele_count":
+            # This will have been computed.
+            assert isinstance(x.data, np.ndarray)
+        else:
+            assert isinstance(x.data, da.Array)
+
+        if f.startswith("variant_allele"):
+            assert x.ndim == 2
+            assert x.shape == (n_variants, 2)
+            assert x.dims == ("variants", "alleles")
+        elif f.startswith("variant_"):
+            assert x.ndim == 1
+            assert x.shape == (n_variants,)
+            assert x.dims == ("variants",)
+        elif f == "call_genotype":
+            assert x.ndim == 3
+            assert x.dims == ("variants", "samples", "ploidy")
+            assert x.shape == (n_variants, n_samples, 2)
+        elif f.startswith("sample_"):
+            assert x.ndim == 1
+            assert x.dims == ("samples",)
+            assert x.shape == (n_samples,)
+
+    # Check samples.
+    expected_samples = df_samples["sample_id"].tolist()
+    assert ds["sample_id"].values.tolist() == expected_samples
+
+    # Check attributes.
+    assert "contigs" in ds.attrs
+    assert ds.attrs["contigs"] == api.contigs
+
+    # Check can set up computations.
+    d1 = ds["variant_position"] > 10_000
+    assert isinstance(d1, xr.DataArray)
+
+    # Check if any variants found, could be zero.
+    if ds.sizes["variants"] == 0:
+        # Bail out early, can't run further tests.
+        return ds
+
+    # Check biallelic.
+    gt = ds["call_genotype"].data
+    assert gt.max().compute() <= 1
+
+    # Check compress bug.
+    pos = ds["variant_position"].data
+    assert pos.shape == pos.compute().shape
+
+    # Check computation of diplotypes.
+    gn, samples = api.biallelic_diplotypes(
+        region=region,
+        sample_sets=sample_sets,
+        site_mask=site_mask,
+        site_class=site_class,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+        n_snps=n_snps,
+    )
+    assert isinstance(gn, np.ndarray)
+    assert isinstance(samples, np.ndarray)
+    assert gn.ndim == 2
+    assert gn.shape[0] == ds.sizes["variants"]
+    assert gn.shape[1] == ds.sizes["samples"]
+    assert np.all(gn >= 0)
+    assert np.all(gn <= 2)
+    ac = ds["variant_allele_count"].values
+    assert np.all(np.sum(gn, axis=1) == ac[:, 1])
+    assert samples.ndim == 1
+    assert samples.shape[0] == gn.shape[1]
+    assert samples.tolist() == expected_samples
+
+    return ds
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_sample_sets_param(
+    fixture, api: AnophelesSnpData
+):
+    # Fixed parameters.
+    region = fixture.random_region_str()
+    site_mask = random.choice((None,) + api.site_mask_ids)
+
+    # Parametrize sample_sets.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_releases = api.releases
+    parametrize_sample_sets = [
+        None,
+        random.choice(all_sample_sets),
+        random.sample(all_sample_sets, 2),
+        random.choice(all_releases),
+    ]
+
+    # Run tests.
+    for sample_sets in parametrize_sample_sets:
+        check_biallelic_snp_calls_and_diplotypes(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_region_param(
+    fixture, api: AnophelesSnpData
+):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice((None,) + api.site_mask_ids)
+
+    # Parametrize region.
+    contig = fixture.random_contig()
+    df_gff = api.genome_features(attributes=["ID"])
+    parametrize_region = [
+        contig,
+        fixture.random_region_str(),
+        [fixture.random_region_str(), fixture.random_region_str()],
+        random.choice(df_gff["ID"].dropna().to_list()),
+    ]
+
+    # Run tests.
+    for region in parametrize_region:
+        check_biallelic_snp_calls_and_diplotypes(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_site_mask_param(
+    fixture, api: AnophelesSnpData
+):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Parametrize site_mask.
+    parametrize_site_mask = (None,) + api.site_mask_ids
+
+    # Run tests.
+    for site_mask in parametrize_site_mask:
+        check_biallelic_snp_calls_and_diplotypes(
+            api=api, sample_sets=sample_sets, region=region, site_mask=site_mask
+        )
+
+
+@pytest.mark.parametrize(
+    "sample_query",
+    ["sex_call == 'F'", "taxon == 'coluzzii'", "taxon == 'robot'"],
+)
+def test_biallelic_snp_calls_and_diplotypes_with_sample_query_param(
+    ag3_sim_api: AnophelesSnpData, sample_query
+):
+    df_samples = ag3_sim_api.sample_metadata().query(sample_query)
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3_sim_api.biallelic_snp_calls(region="3L", sample_query=sample_query)
+
+    else:
+        ds = ag3_sim_api.biallelic_snp_calls(region="3L", sample_query=sample_query)
+        assert ds.sizes["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_min_cohort_size_param(
+    fixture, api: AnophelesSnpData
+):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Test with minimum cohort size.
+    ds = api.biallelic_snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        min_cohort_size=10,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.sizes["samples"] >= 10
+    with pytest.raises(ValueError):
+        api.biallelic_snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            min_cohort_size=1_000,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_max_cohort_size_param(
+    fixture, api: AnophelesSnpData
+):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Test with maximum cohort size.
+    ds = api.biallelic_snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        max_cohort_size=15,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.sizes["samples"] <= 15
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_cohort_size_param(
+    fixture, api: AnophelesSnpData
+):
+    # Randomly fix some input parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+
+    # Test with specific cohort size.
+    cohort_size = random.randint(1, 10)
+    ds = api.biallelic_snp_calls(
+        sample_sets=sample_sets,
+        region=region,
+        cohort_size=cohort_size,
+    )
+    assert isinstance(ds, xr.Dataset)
+    assert ds.sizes["samples"] == cohort_size
+    with pytest.raises(ValueError):
+        api.biallelic_snp_calls(
+            sample_sets=sample_sets,
+            region=region,
+            cohort_size=1_000,
+        )
+
+
+@pytest.mark.parametrize(
+    "site_class",
+    [
+        "CDS_DEG_4",
+        "CDS_DEG_2_SIMPLE",
+        "CDS_DEG_0",
+        "INTRON_SHORT",
+        "INTRON_LONG",
+        "INTRON_SPLICE_5PRIME",
+        "INTRON_SPLICE_3PRIME",
+        "UTR_5PRIME",
+        "UTR_3PRIME",
+        "INTERGENIC",
+    ],
+)
+def test_biallelic_snp_calls_and_diplotypes_with_site_class_param(
+    ag3_sim_api: AnophelesSnpData, site_class
+):
+    contig = random.choice(ag3_sim_api.contigs)
+    ds1 = ag3_sim_api.biallelic_snp_calls(region=contig)
+    ds2 = ag3_sim_api.biallelic_snp_calls(region=contig, site_class=site_class)
+    assert ds2.sizes["variants"] < ds1.sizes["variants"]
+    check_biallelic_snp_calls_and_diplotypes(
+        ag3_sim_api, region=contig, site_class=site_class
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_conditions(
+    fixture, api: AnophelesSnpData
+):
+    # Fixed parameters.
+    contig = random.choice(api.contigs)
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice((None,) + api.site_mask_ids)
+
+    # Parametrise conditions.
+    min_minor_ac = random.randint(1, 3)
+    max_missing_an = random.randint(2, 10)
+
+    # Run tests.
+    ds = check_biallelic_snp_calls_and_diplotypes(
+        api=api,
+        sample_sets=sample_sets,
+        region=contig,
+        site_mask=site_mask,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+    )
+
+    # Check conditions are met.
+    ac = ds["variant_allele_count"].values
+    ac_min = ac.min(axis=1)
+    assert np.all(ac_min >= min_minor_ac)
+    an = ac.sum(axis=1)
+    an_missing = (ds.sizes["samples"] * ds.sizes["ploidy"]) - an
+    assert np.all(an_missing <= max_missing_an)
+    gt = ds["call_genotype"].values
+    ac_check = allel.GenotypeArray(gt).count_alleles(max_allele=1)
+    assert np.all(ac == ac_check)
+
+    # Run tests with thinning.
+    n_snps_available = ds.sizes["variants"]
+    # This should always be true, although depends on min_minor_ac and max_missing_an,
+    # so the range of values for those parameters needs to be chosen with some case.
+    assert n_snps_available > 2
+    n_snps_requested = random.randint(1, n_snps_available // 2)
+    ds_thinned = check_biallelic_snp_calls_and_diplotypes(
+        api=api,
+        sample_sets=sample_sets,
+        region=contig,
+        site_mask=site_mask,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+        n_snps=n_snps_requested,
+    )
+    n_snps_thinned = ds_thinned.sizes["variants"]
+    assert n_snps_thinned >= n_snps_requested
+    assert n_snps_thinned <= 2 * n_snps_requested
+
+    # Ask for more SNPs than available.
+    with pytest.raises(ValueError):
+        api.biallelic_snp_calls(
+            sample_sets=sample_sets,
+            region=contig,
+            site_mask=site_mask,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            n_snps=n_snps_available + 10,
+        )

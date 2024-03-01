@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import xarray as xr
-import zarr
+import zarr  # type: ignore
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any
@@ -73,8 +73,8 @@ class Gff3Simulator:
         n_exons_low=1,
         n_exons_high=5,
         intron_size_low=10,
-        intron_size_high=1_000,
-        exon_size_low=10,
+        intron_size_high=100,
+        exon_size_low=100,
         exon_size_high=1_000,
         source="random",
         max_genes=1_000,
@@ -256,15 +256,21 @@ class Gff3Simulator:
         transcript_size = transcript_end - transcript_start
         exons = []
         exon_end = transcript_start
-        for exon_ix in range(randint(self.n_exons_low, self.n_exons_high)):
+        n_exons = randint(self.n_exons_low, self.n_exons_high)
+        for exon_ix in range(n_exons):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
-            intron_size = randint(
-                self.intron_size_low, min(transcript_size, self.intron_size_high)
-            )
-            exon_start = exon_end + intron_size
-            if exon_start >= transcript_end:
-                # Stop making exons, no more space left in the transcript.
-                break
+            if exon_ix > 0:
+                # Insert an intron between this exon and the previous one.
+                intron_size = randint(
+                    self.intron_size_low, min(transcript_size, self.intron_size_high)
+                )
+                exon_start = exon_end + intron_size
+                if exon_start >= transcript_end:
+                    # Stop making exons, no more space left in the transcript.
+                    break
+            else:
+                # First exon, assume exon starts where the transcript starts.
+                exon_start = transcript_start
             exon_size = randint(self.exon_size_low, self.exon_size_high)
             exon_end = min(exon_start + exon_size, transcript_end)
             assert exon_end > exon_start
@@ -282,20 +288,20 @@ class Gff3Simulator:
             yield exon
             exons.append(exon)
 
-        # Note that this is not perfect, because sometimes we end up
-        # without any CDSs. Also in reality, an exon can contain
-        # part of a UTR and part of a CDS, but that is harder to
-        # simulate. So keep things simple for now.
+        # Note that this is not perfect, because in reality an exon can contain
+        # part of a UTR and part of a CDS, but that is harder to simulate. So
+        # keep things simple for now.
         if strand == "-":
             # Take exons in reverse order.
             exons == exons[::-1]
         for exon_ix, exon in enumerate(exons):
             first_exon = exon_ix == 0
             last_exon = exon_ix == len(exons) - 1
-            if first_exon:
+            # Ensure at least one CDS.
+            if first_exon and len(exons) > 1:
                 feature_type = self.utr5_type
                 phase = "."
-            elif last_exon:
+            elif last_exon and len(exons) > 2:
                 feature_type = self.utr3_type
                 phase = "."
             else:
@@ -1005,11 +1011,14 @@ class AnophelesSimulator:
     def random_contig(self):
         return choice(self.contigs)
 
-    def random_region_str(self):
+    def random_region_str(self, region_size=None):
         contig = self.random_contig()
         contig_size = self.contig_sizes[contig]
         region_start = randint(1, contig_size)
-        region_end = randint(region_start, contig_size)
+        if region_size:
+            region_end = region_start + region_size
+        else:
+            region_end = randint(region_start, contig_size)
         region = f"{contig}:{region_start:,}-{region_end:,}"
         return region
 
@@ -1202,6 +1211,10 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
+        df_general = pd.read_csv(src_path)
+        # Randomly downsample.
+        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1211,9 +1224,7 @@ class Ag3Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_general_ds.to_csv(dst_path, index=False)
 
         if aim:
             # Create AIM metadata by sampling from some real metadata files.
@@ -1226,6 +1237,8 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "samples.species_aim.csv"
             )
+            df_aim = pd.read_csv(src_path)
+            df_aim_ds = df_aim.set_index("sample_id").loc[samples_ds].reset_index()
             dst_path = (
                 self.bucket_path
                 / release_path
@@ -1235,9 +1248,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / "samples.species_aim.csv"
             )
             dst_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-                for line in src.readlines()[: n_samples_sim + 1]:
-                    print(line, file=dst)
+            df_aim_ds.to_csv(dst_path, index=False)
 
         if cohorts:
             # Create cohorts metadata by sampling from some real metadata files.
@@ -1250,6 +1261,8 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "samples.cohorts.csv"
             )
+            df_coh = pd.read_csv(src_path)
+            df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
             dst_path = (
                 self.bucket_path
                 / release_path
@@ -1259,9 +1272,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / "samples.cohorts.csv"
             )
             dst_path.parent.mkdir(parents=True, exist_ok=True)
-            with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-                for line in src.readlines()[: n_samples_sim + 1]:
-                    print(line, file=dst)
+            df_coh_ds.to_csv(dst_path, index=False)
 
             # Create cohorts data by sampling from some real files.
             src_path = (
@@ -1292,6 +1303,8 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1301,9 +1314,7 @@ class Ag3Simulator(AnophelesSimulator):
             / "wgs_snp_data.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_cat_ds.to_csv(dst_path, index=False)
 
     def init_metadata(self):
         self.write_metadata(release="3.0", release_path="v3", sample_set="AG1000G-AO")
@@ -1596,7 +1607,7 @@ class Ag3Simulator(AnophelesSimulator):
                     # Add call_genotype variable.
                     gt = np.random.choice(
                         np.arange(2, dtype="i1"),
-                        size=(ds.dims["variants"], ds.dims["samples"], 2),
+                        size=(ds.sizes["variants"], ds.sizes["samples"], 2),
                         replace=True,
                     )
                     ds["call_genotype"] = ("variants", "samples", "ploidy"), gt
@@ -1871,6 +1882,9 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
+        df_general = pd.read_csv(src_path)
+        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1880,9 +1894,7 @@ class Af1Simulator(AnophelesSimulator):
             / "samples.meta.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_general_ds.to_csv(dst_path, index=False)
 
         # Create cohorts metadata by sampling from some real metadata files.
         src_path = (
@@ -1894,6 +1906,8 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.cohorts.csv"
         )
+        df_coh = pd.read_csv(src_path)
+        df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1903,9 +1917,7 @@ class Af1Simulator(AnophelesSimulator):
             / "samples.cohorts.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_coh_ds.to_csv(dst_path, index=False)
 
         # Create cohorts data by sampling from some real files.
         src_path = (
@@ -1936,6 +1948,8 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
             / release_path
@@ -1945,9 +1959,7 @@ class Af1Simulator(AnophelesSimulator):
             / "wgs_snp_data.csv"
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(src_path, mode="r") as src, open(dst_path, mode="w") as dst:
-            for line in src.readlines()[: n_samples_sim + 1]:
-                print(line, file=dst)
+        df_cat_ds.to_csv(dst_path, index=False)
 
     def init_metadata(self):
         self.write_metadata(

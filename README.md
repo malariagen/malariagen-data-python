@@ -1,7 +1,6 @@
-# `malariagen_data` - access MalariaGEN data from Python
+# `malariagen_data` - analyse MalariaGEN data from Python
 
-This Python package provides convenience methods for accessing
-data from MalariaGEN.
+This Python package provides methods for accessing and analysing data from MalariaGEN.
 
 ## Installation
 
@@ -18,10 +17,10 @@ Documentation of classes and methods in the public API are available
 from the following locations:
 
 -   [Ag3 API
-    docs](https://malariagen.github.io/vector-data/ag3/api.html)
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Ag3.html)
 
 -   [Amin1 API
-    docs](https://malariagen.github.io/vector-data/amin1/api.html)
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Amin1.html)
 
 -   [Pf7 API
     docs](https://malariagen.github.io/parasite-data/pf7/api.html)

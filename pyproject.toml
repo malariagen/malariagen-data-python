@@ -2,6 +2,9 @@
 name = "malariagen_data"
 version = "0.0.0"
 description = "A package for accessing and analysing MalariaGEN data."
+readme = "README.md"
+documentation = "https://malariagen.github.io/malariagen-data-python/latest/"
+repository = "https://github.com/malariagen/malariagen-data-python"
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
     "Chris Clarkson <cc28@sanger.ac.uk>",
@@ -14,10 +17,10 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-# numba cannot yet support python 3.12
+# ensure compatibility with numba
 python = ">=3.8,<3.12"
-# numba cannot yet support numpy 1.25
-numpy = "<1.25"
+# ensure compatibility with numba
+numpy = "<1.27"
 numba = "*"
 # force llvmlite above broken version
 llvmlite = ">0.34"
@@ -39,21 +42,26 @@ ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
 # https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
 # compatibility issue with xarray zarr backend
-importlib_metadata = "<5.0"
+# importlib_metadata = "<5.0"
 # https://github.com/malariagen/malariagen-data-python/issues/299
 # bug in ipinfo 4.4.1
 ipinfo = "!=4.4.1"
 igv-notebook = ">=0.2.3"
 tqdm = "*"
-dash = "*"
+# ensure support for dash in jupyter notebooks
+# https://dash.plotly.com/dash-in-jupyter
+dash = ">=2.11.0"
 dash-cytoscape = "*"
-jupyter-dash = "*"
 numpydoc_decorator = ">=2.1.0"
 typing_extensions = "*"
 typeguard = ">=4.0.0"
 protopunica = "*"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
 orjson = "*"
+# providers spinners
+yaspin = "*"
+# provides efficient neighbour-joining tree implementation
+biotite = "*"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
@@ -63,18 +71,26 @@ pytest-cov = "*"
 notebook = "*"
 jupyterlab = "*"
 pre-commit = "*"
-black = "*"
+ruff = "*"
 snakeviz = "*"
 mypy = "*"
+memory-profiler = "*"
+# docs
+sphinx = "*"
+pydata-sphinx-theme = "*"
+sphinx_design = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning"]
 build-backend = "poetry_dynamic_versioning.backend"
 
-[tool.isort]
-profile = "black"
-
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
 style = "semver"
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+extend-select = []

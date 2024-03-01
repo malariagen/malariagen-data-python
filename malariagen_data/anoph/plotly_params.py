@@ -4,9 +4,9 @@
 # and so we set as Optional here, rather than having to repeat
 # that for each function doc.
 
-from typing import List, Literal, Optional, Union
+from typing import List, Literal, Mapping, Optional, Union
 
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # type: ignore
 from typing_extensions import Annotated, TypeAlias
 
 x_label: TypeAlias = Annotated[
@@ -42,6 +42,8 @@ title: TypeAlias = Annotated[
     """,
 ]
 
+title_font_size = Annotated[int, "Font size for the plot title."]
+
 text_auto: TypeAlias = Annotated[
     Union[bool, str],
     """
@@ -49,6 +51,19 @@ text_auto: TypeAlias = Annotated[
     string like '.2f' will be interpreted as a texttemplate numeric formatting
     directive.
     """,
+]
+
+color_discrete_sequence: TypeAlias = Annotated[
+    Optional[List], "Provide a list of colours to use."
+]
+
+color_discrete_map: TypeAlias = Annotated[
+    Optional[Mapping], "Provide an explicit mapping from values to colours."
+]
+
+category_order: TypeAlias = Annotated[
+    Optional[Union[List, Mapping]],
+    "Control the order in which values appear in the legend.",
 ]
 
 color_continuous_scale: TypeAlias = Annotated[
@@ -82,12 +97,12 @@ z: TypeAlias = Annotated[
 ]
 
 color: TypeAlias = Annotated[
-    Optional[str],
+    Optional[Union[str, Mapping]],
     "Name of variable to use to color the markers.",
 ]
 
 symbol: TypeAlias = Annotated[
-    Optional[str],
+    Optional[Union[str, Mapping]],
     "Name of the variable to use to choose marker symbols.",
 ]
 
@@ -97,9 +112,13 @@ jitter_frac: TypeAlias = Annotated[
 ]
 
 marker_size: TypeAlias = Annotated[
-    int,
+    Union[int, float],
     "Marker size.",
 ]
+
+line_width: TypeAlias = Annotated[Union[int, float], "Line width."]
+
+line_color: TypeAlias = Annotated[str, "Line color"]
 
 template: TypeAlias = Annotated[
     Optional[
@@ -127,6 +146,32 @@ show: TypeAlias = Annotated[
 
 renderer: TypeAlias = Annotated[Optional[str], "The name of the renderer to use."]
 
+render_mode: TypeAlias = Annotated[
+    Literal["auto", "svg", "webgl"],
+    "The type of rendering backend to use. See also https://plotly.com/python/webgl-vs-svg/",
+]
+
+render_mode_default: render_mode = "auto"
+
 figure: TypeAlias = Annotated[
     Optional[go.Figure], "A plotly figure (only returned if show=False)."
+]
+
+zmin: TypeAlias = Annotated[
+    Union[int, float],
+    "The lower end of the range of values that the colormap covers.",
+]
+
+zmax: TypeAlias = Annotated[
+    Union[int, float],
+    "The upper end of the range of values that the colormap covers.",
+]
+
+legend_sizing: TypeAlias = Annotated[
+    Literal["constant", "trace"],
+    """
+    Determines if the legend items symbols scale with their corresponding
+    "trace" attributes or remain "constant" independent of the symbol size
+    on the graph.
+    """,
 ]

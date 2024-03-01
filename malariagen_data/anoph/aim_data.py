@@ -1,12 +1,12 @@
 from textwrap import dedent
 from typing import Dict, Optional
 
-import allel
+import allel  # type: ignore
 import numpy as np
-import plotly.graph_objects as go
+import plotly.graph_objects as go  # type: ignore
 import xarray as xr
-from numpydoc_decorator import doc
-from plotly.subplots import make_subplots as go_make_subplots
+from numpydoc_decorator import doc  # type: ignore
+from plotly.subplots import make_subplots as go_make_subplots  # type: ignore
 
 from malariagen_data.anoph import plotly_params
 

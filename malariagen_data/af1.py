@@ -1,22 +1,21 @@
 import sys
 
-import malariagen_data  # used for .__version__
+import plotly.express as px  # type: ignore
 
+import malariagen_data
 from .anopheles import AnophelesDataResource
 
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_URL = "gs://vo_afun_release/"
-PCA_RESULTS_CACHE_NAME = "af1_pca_v1"
-FST_GWSS_CACHE_NAME = "af1_fst_gwss_v1"
-H12_CALIBRATION_CACHE_NAME = "af1_h12_calibration_v1"
-H12_GWSS_CACHE_NAME = "af1_h12_gwss_v1"
-G123_GWSS_CACHE_NAME = "af1_g123_gwss_v1"
 XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
-G123_CALIBRATION_CACHE_NAME = "af1_g123_calibration_v1"
-H1X_GWSS_CACHE_NAME = "af1_h1x_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
+
+TAXON_PALETTE = px.colors.qualitative.Plotly
+TAXON_COLORS = {
+    "funestus": TAXON_PALETTE[0],
+}
 
 
 class Af1(AnophelesDataResource):
@@ -71,14 +70,7 @@ class Af1(AnophelesDataResource):
 
     """
 
-    _pca_results_cache_name = PCA_RESULTS_CACHE_NAME
-    _fst_gwss_results_cache_name = FST_GWSS_CACHE_NAME
-    _h12_calibration_cache_name = H12_CALIBRATION_CACHE_NAME
-    _h12_gwss_cache_name = H12_GWSS_CACHE_NAME
-    _g123_gwss_cache_name = G123_GWSS_CACHE_NAME
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
-    _g123_calibration_cache_name = G123_CALIBRATION_CACHE_NAME
-    _h1x_gwss_cache_name = H1X_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
 
     def __init__(
@@ -93,6 +85,7 @@ class Af1(AnophelesDataResource):
         cohorts_analysis=None,
         site_filters_analysis=None,
         pre=False,
+        tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
         super().__init__(
@@ -118,25 +111,14 @@ class Af1(AnophelesDataResource):
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
             gff_gene_type="protein_coding_gene",
+            gff_gene_name_attribute="Note",
             gff_default_attributes=("ID", "Parent", "Note", "description"),
             storage_options=storage_options,  # used by fsspec via init_filesystem()
+            tqdm_class=tqdm_class,
+            taxon_colors=TAXON_COLORS,
+            virtual_contigs=None,
+            gene_names=None,
         )
-
-    @staticmethod
-    def _setup_taxon_colors(plot_kwargs=None):
-        import plotly.express as px
-
-        if plot_kwargs is None:
-            plot_kwargs = dict()
-        taxon_palette = px.colors.qualitative.Plotly
-        taxon_color_map = {
-            "funestus": taxon_palette[0],
-        }
-        plot_kwargs.setdefault("color_discrete_map", taxon_color_map)
-        plot_kwargs.setdefault(
-            "category_orders", {"taxon": list(taxon_color_map.keys())}
-        )
-        return plot_kwargs
 
     def __repr__(self):
         text = (
@@ -151,13 +133,12 @@ class Af1(AnophelesDataResource):
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net."
+            f"or contact data@malariagen.net. For API documentation see \n"
+            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html"
         )
-        # TODO: API doc https://malariagen.github.io/vector-data/af1/api.html
         return text
 
     def _repr_html_(self):
-        # TODO: See also the <a href="https://malariagen.github.io/vector-data/af1/api.html">Af1 API docs</a>.
         html = f"""
             <table class="malariagen-af1">
                 <thead>
@@ -168,6 +149,7 @@ class Af1(AnophelesDataResource):
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
                         the MalariaGEN website</a> or contact data@malariagen.net.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html">Af1 API docs</a>.
                     </td></tr>
                 </thead>
                 <tbody>
@@ -217,45 +199,3 @@ class Af1(AnophelesDataResource):
             </table>
         """
         return html
-
-    def _transcript_to_gene_name(self, transcript):
-        df_genome_features = self.genome_features().set_index("ID")
-        rec_transcript = df_genome_features.loc[transcript]
-        parent = rec_transcript["Parent"]
-
-        # E.g. manual overrides (used in Ag3)
-        # if parent == "AGAP004707":
-        #     parent_name = "Vgsc/para"
-        # else:
-        #     parent_name = rec_parent["Name"]
-
-        # Note: Af1 doesn't have the "Name" attribute
-        # rec_parent = df_genome_features.loc[parent]
-        # parent_name = rec_parent["Name"]
-        parent_name = parent
-
-        return parent_name
-
-    def _view_alignments_add_site_filters_tracks(
-        self, *, contig, visibility_window, tracks
-    ):
-        debug = self._log.debug
-
-        for site_mask in self.site_mask_ids:
-            site_filters_vcf_url = f"gs://vo_afun_release/v1.0/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
-            debug(site_filters_vcf_url)
-            track_config = {
-                "name": f"Filters - {site_mask}",
-                "url": site_filters_vcf_url,
-                "indexURL": f"{site_filters_vcf_url}.tbi",
-                "format": "vcf",
-                "type": "variant",
-                "visibilityWindow": visibility_window,  # bp
-                "height": 30,
-                "colorBy": "FILTER",
-                "colorTable": {
-                    "PASS": "#00cc96",
-                    "*": "#ef553b",
-                },
-            }
-            tracks.append(track_config)

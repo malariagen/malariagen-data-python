@@ -1,11 +1,11 @@
-from typing import Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple, Mapping
 
 import bokeh.models
 import bokeh.plotting
 import numpy as np
 import pandas as pd
-from numpydoc_decorator import doc
-from pandas.io.common import infer_compression
+from numpydoc_decorator import doc  # type: ignore
+from pandas.io.common import infer_compression  # type: ignore
 
 from ..util import (
     Region,
@@ -25,7 +25,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         self,
         *,
         gff_gene_type: str,
+        gff_gene_name_attribute: str,
         gff_default_attributes: Tuple[str, ...],
+        gene_names: Optional[Mapping[str, str]] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
@@ -36,7 +38,13 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         # TODO Consider moving these parameters to configuration, as they could
         # change if the GFF ever changed.
         self._gff_gene_type = gff_gene_type
+        self._gff_gene_name_attribute = gff_gene_name_attribute
         self._gff_default_attributes = gff_default_attributes
+
+        # Allow manual override of gene names.
+        if gene_names is None:
+            gene_names = dict()
+        self._gene_name_overrides = gene_names
 
         # Setup caches.
         self._cache_genome_features: Dict[Tuple[str, ...], pd.DataFrame] = dict()
@@ -45,7 +53,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def _geneset_gff3_path(self):
         return self.config["GENESET_GFF3_PATH"]
 
-    def geneset(self, *args, **kwargs):
+    def geneset(self, *args, **kwargs):  # pragma: no cover
         """Deprecated, this method has been renamed to genome_features()."""
         return self.genome_features(*args, **kwargs)
 
@@ -65,12 +73,36 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         return df
 
     def _genome_features_for_contig(self, *, contig: str, attributes: Tuple[str, ...]):
-        debug = self._log.debug
+        # Handle virtual contigs.
+        if contig in self.virtual_contigs:
+            contigs = self.virtual_contigs[contig]
+            dfs = []
+            offset = 0
+            for c in contigs:
+                dfc = self._genome_features_for_contig(contig=c, attributes=attributes)
+                if offset > 0:
+                    dfc = dfc.assign(
+                        start=lambda x: x.start + offset,
+                        end=lambda x: x.end + offset,
+                    )
+                dfs.append(dfc)
+                offset += self.genome_sequence(region=c).shape[0]
 
-        df = self._genome_features(attributes=attributes)
+            # Concatenate dataframes for each contig.
+            df = pd.concat(dfs, axis=0)
 
-        debug("Apply contig query.")
-        return df.query(f"contig == '{contig}'")
+            # Assign name of the virtual contig.
+            df = df.assign(contig=contig)
+            return df
+
+        # Handle normal contigs in the reference genome.
+        else:
+            assert contig in self.contigs
+            df = self._genome_features(attributes=attributes)
+
+            # Apply contig query.
+            df = df.query(f"contig == '{contig}'")
+            return df
 
     def _prep_gff_attributes(
         self, attributes: base_params.gff_attributes
@@ -100,30 +132,31 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         attributes_normed = self._prep_gff_attributes(attributes)
         del attributes
 
-        if region is not None:
-            debug("Handle region.")
-            regions = parse_multi_region(self, region)
-            del region
+        with self._spinner(desc="Load genome features"):
+            if region is not None:
+                debug("Handle region.")
+                regions = parse_multi_region(self, region)
+                del region
 
-            debug("Apply region query.")
-            parts = []
-            for r in regions:
-                df_part = self._genome_features_for_contig(
-                    contig=r.contig, attributes=attributes_normed
-                )
-                if r.end is not None:
-                    df_part = df_part.query(f"start <= {r.end}")
-                if r.start is not None:
-                    df_part = df_part.query(f"end >= {r.start}")
-                parts.append(df_part)
-            df = pd.concat(parts, axis=0)
-            return df.reset_index(drop=True).copy()
+                debug("Apply region query.")
+                parts = []
+                for r in regions:
+                    df_part = self._genome_features_for_contig(
+                        contig=r.contig, attributes=attributes_normed
+                    )
+                    if r.end is not None:
+                        df_part = df_part.query(f"start <= {r.end}")
+                    if r.start is not None:
+                        df_part = df_part.query(f"end >= {r.start}")
+                    parts.append(df_part)
+                df = pd.concat(parts, axis=0)
+                return df.reset_index(drop=True).copy()
 
-        return (
-            self._genome_features(attributes=attributes_normed)
-            .reset_index(drop=True)
-            .copy()
-        )
+            return (
+                self._genome_features(attributes=attributes_normed)
+                .reset_index(drop=True)
+                .copy()
+            )
 
     def genome_feature_children(
         self, parent: str, attributes: base_params.gff_attributes = DEFAULT
@@ -404,3 +437,21 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         fig.xaxis.ticker = bokeh.models.AdaptiveTicker(min_interval=1)
         fig.xaxis.minor_tick_line_color = None
         fig.xaxis[0].formatter = bokeh.models.NumeralTickFormatter(format="0,0")
+
+    def _transcript_to_parent_name(self, transcript):
+        df_genome_features = self.genome_features().set_index("ID")
+
+        try:
+            rec_transcript = df_genome_features.loc[transcript]
+        except KeyError:
+            return None
+
+        parent_id = rec_transcript["Parent"]
+
+        try:
+            # Manual override.
+            return self._gene_name_overrides[parent_id]
+        except KeyError:
+            rec_parent = df_genome_features.loc[parent_id]
+            # Try to access "Name" attribute, fall back to "ID" if not present.
+            return rec_parent.get("Name", parent_id)

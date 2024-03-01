@@ -65,3 +65,8 @@ ds_frequencies_advanced: TypeAlias = Annotated[
     `gene_cnv_frequencies_advanced()`.
     """,
 ]
+
+include_counts: TypeAlias = Annotated[
+    bool,
+    "Include columns with allele counts and number of non-missing allele calls (nobs).",
+]

@@ -4,8 +4,8 @@ import dask.array as da
 import numpy as np
 import pandas as pd
 import xarray as xr
-import zarr
-from numpydoc_decorator import doc
+import zarr  # type: ignore
+from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     DIM_SAMPLE,
@@ -163,60 +163,61 @@ class AnophelesCnvData(
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
-        debug("access CNV HMM data and concatenate as needed")
-        lx = []
-        for r in regions:
-            ly = []
-            for s in sample_sets:
-                y = self._cnv_hmm_dataset(
-                    contig=r.contig,
-                    sample_set=s,
-                    inline_array=inline_array,
-                    chunks=chunks,
+        with self._spinner("Access CNV HMM data"):
+            debug("access CNV HMM data and concatenate as needed")
+            lx = []
+            for r in regions:
+                ly = []
+                for s in sample_sets:
+                    y = self._cnv_hmm_dataset(
+                        contig=r.contig,
+                        sample_set=s,
+                        inline_array=inline_array,
+                        chunks=chunks,
+                    )
+                    ly.append(y)
+
+                debug("concatenate data from multiple sample sets")
+                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+
+                debug("handle region, do this only once - optimisation")
+                if r.start is not None or r.end is not None:
+                    start = x["variant_position"].values
+                    end = x["variant_end"].values
+                    index = pd.IntervalIndex.from_arrays(start, end, closed="both")
+                    # noinspection PyArgumentList
+                    other = pd.Interval(r.start, r.end, closed="both")
+                    loc_region = index.overlaps(other)  # type: ignore
+                    x = x.isel(variants=loc_region)
+
+                lx.append(x)
+
+            debug("concatenate data from multiple regions")
+            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+
+            debug("handle sample query")
+            if sample_query is not None:
+                debug("load sample metadata")
+                df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+                debug("align sample metadata with CNV data")
+                cnv_samples = ds["sample_id"].values.tolist()
+                df_samples_cnv = (
+                    df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
                 )
-                ly.append(y)
 
-            debug("concatenate data from multiple sample sets")
-            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                debug("apply the query")
+                loc_query_samples = df_samples_cnv.eval(sample_query).values
+                if np.count_nonzero(loc_query_samples) == 0:
+                    raise ValueError(f"No samples found for query {sample_query!r}")
 
-            debug("handle region, do this only once - optimisation")
-            if r.start is not None or r.end is not None:
-                start = x["variant_position"].values
-                end = x["variant_end"].values
-                index = pd.IntervalIndex.from_arrays(start, end, closed="both")
-                # noinspection PyArgumentList
-                other = pd.Interval(r.start, r.end, closed="both")
-                loc_region = index.overlaps(other)
-                x = x.isel(variants=loc_region)
+                ds = ds.isel(samples=loc_query_samples)
 
-            lx.append(x)
-
-        debug("concatenate data from multiple regions")
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
-
-        debug("handle sample query")
-        if sample_query is not None:
-            debug("load sample metadata")
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-
-            debug("align sample metadata with CNV data")
-            cnv_samples = ds["sample_id"].values.tolist()
-            df_samples_cnv = (
-                df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
-            )
-
-            debug("apply the query")
-            loc_query_samples = df_samples_cnv.eval(sample_query).values
-            if np.count_nonzero(loc_query_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-
-            ds = ds.isel(samples=loc_query_samples)
-
-        debug("handle coverage variance filter")
-        if max_coverage_variance is not None:
-            cov_var = ds["sample_coverage_variance"].values
-            loc_pass_samples = cov_var <= max_coverage_variance
-            ds = ds.isel(samples=loc_pass_samples)
+            debug("handle coverage variance filter")
+            if max_coverage_variance is not None:
+                cov_var = ds["sample_coverage_variance"].values
+                loc_pass_samples = cov_var <= max_coverage_variance
+                ds = ds.isel(samples=loc_pass_samples)
 
         return ds
 
@@ -377,7 +378,7 @@ class AnophelesCnvData(
                 index = pd.IntervalIndex.from_arrays(start, end, closed="both")
                 # noinspection PyArgumentList
                 other = pd.Interval(r.start, r.end, closed="both")
-                loc_region = index.overlaps(other)
+                loc_region = index.overlaps(other)  # type: ignore
                 x = x.isel(variants=loc_region)
 
             lx.append(x)
