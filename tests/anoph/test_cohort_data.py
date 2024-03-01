@@ -28,7 +28,7 @@ def af1_sim_api(af1_sim_fixture):
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
-        cohorts_analysis=af1_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        cohorts_analysis=None,
     )
 
 
