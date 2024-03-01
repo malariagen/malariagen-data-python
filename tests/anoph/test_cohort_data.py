@@ -14,12 +14,29 @@ def ag3_sim_api(ag3_sim_fixture):
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+    )
+
+
+@pytest.fixture
+def ag3_sim_def_api(ag3_sim_fixture):
+    return AnophelesCohortData(
+        url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        gcs_url=_ag3.GCS_URL,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
         cohorts_analysis=None,
     )
 
 
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
+
+
+def case_ag3_sim_def(ag3_sim_fixture, ag3_sim_def_api):
+    return ag3_sim_fixture, ag3_sim_def_api
 
 
 def cohort_data_expected_columns():
