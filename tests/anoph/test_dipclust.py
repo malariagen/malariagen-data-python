@@ -98,6 +98,7 @@ def test_plot_diplotype_clustering_cityblock(fixture, api: AnophelesDipClust):
     # Run checks.
     api.plot_diplotype_clustering(**dipclust_params)
 
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering_euclidean(fixture, api: AnophelesDipClust):
     # Set up test parameters.
