@@ -159,7 +159,7 @@ class AnophelesDipClust(
                 leaf_category_orders=category_orders_prepped,
                 template="simple_white",
                 y_axis_title=f"Distance ({distance_metric})",
-                y_axis_buffer=0,
+                y_axis_buffer=0.1,
             )
 
         # Tidy up.
