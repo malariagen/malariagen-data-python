@@ -52,7 +52,7 @@ class AnophelesCnvData(
 
     @property
     def _discordant_read_calls_analysis(self) -> Optional[str]:
-        if self._discordant_read_calls_analysis_override:
+        if isinstance(self._discordant_read_calls_analysis_override, str):
             return self._discordant_read_calls_analysis_override
         else:
             # N.B., this will return None if the key is not present in the
