@@ -155,6 +155,8 @@ class AnophelesHapClust(AnophelesHapData, AnophelesSnpData):
                 leaf_color_discrete_map=color_discrete_map_prepped,
                 leaf_category_orders=category_orders_prepped,
                 template="simple_white",
+                y_axis_title="Distance (no. SNPs)",
+                y_axis_buffer=1,
             )
 
         # Tidy up.
