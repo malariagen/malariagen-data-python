@@ -33,6 +33,7 @@ def ag3_sim_api(ag3_sim_fixture):
             "aim_species": object,
         },
         taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
     )
 
 
@@ -990,3 +991,42 @@ def test_setup_sample_colors_plotly(fixture, api):
             color_discrete_sequence=None,
             category_orders=None,
         )
+
+
+def cohort_data_expected_columns():
+    return {
+        "cohort_id": "O",
+        "cohort_size": "i",
+        "country": "O",
+        "country_alpha2": "O",
+        "country_alpha3": "O",
+        "taxon": "O",
+        "year": "i",
+        "quarter": "i",
+        "month": "i",
+        "admin1_name": "O",
+        "admin1_iso": "O",
+        "admin1_geoboundaries_shape_id": "O",
+        "admin1_representative_longitude": "f",
+        "admin1_representative_latitude": "f",
+    }
+
+
+def validate_cohort_data(df, expected_columns):
+    # Check column names.
+    expected_column_names = list(expected_columns.keys())
+    assert df.columns.to_list() == expected_column_names
+
+    # Check column types.
+    for c in df.columns:
+        assert df[c].dtype.kind == expected_columns[c]
+
+
+@parametrize_with_cases("fixture,api", cases=case_ag3_sim)
+def test_cohort_data(fixture, api):
+    # Set up the test.
+    cohort_name = "admin1_month"
+    # Call function to be tested.
+    df_cohorts = api.cohorts(cohort_name)
+    # Check output.
+    validate_cohort_data(df_cohorts, cohort_data_expected_columns())

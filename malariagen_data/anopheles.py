@@ -43,7 +43,6 @@ from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
 from .anoph.base_params import DEFAULT
 from .anoph.cnv_data import AnophelesCnvData
-from .anoph.cohort_data import AnophelesCohortData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
@@ -111,7 +110,6 @@ class AnophelesDataResource(
     AnophelesHapData,
     AnophelesSnpData,
     AnophelesSampleMetadata,
-    AnophelesCohortData,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
     AnophelesBase,
