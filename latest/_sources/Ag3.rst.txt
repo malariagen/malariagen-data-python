@@ -54,6 +54,7 @@ Sample metadata access
     plot_samples_bar
     plot_samples_interactive_map
     wgs_data_catalog
+    cohorts
 
 SNP data access
 ---------------
