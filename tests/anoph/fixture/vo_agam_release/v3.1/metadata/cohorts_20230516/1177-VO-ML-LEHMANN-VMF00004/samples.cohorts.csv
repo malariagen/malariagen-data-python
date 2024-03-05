@@ -1,7 +1,4 @@
 sample_id,country_ISO,adm1_name,adm1_ISO,adm2_name,taxon,cohort_admin1_year,cohort_admin1_month,cohort_admin1_quarter,cohort_admin2_year,cohort_admin2_month,cohort_admin2_quarter
-VBS00388-4651STDY7017222,MLI,Koulikouro,ML-2,Banamba,arabiensis,ML-2_arab_2012,ML-2_arab_2012_10,ML-2_arab_2012_Q4,ML-2_Banamba_arab_2012,ML-2_Banamba_arab_2012_10,ML-2_Banamba_arab_2012_Q4
-VBS01026-4651STDY7017295,MLI,Koulikouro,ML-2,Banamba,arabiensis,ML-2_arab_2014,ML-2_arab_2014_10,ML-2_arab_2014_Q4,ML-2_Banamba_arab_2014,ML-2_Banamba_arab_2014_10,ML-2_Banamba_arab_2014_Q4
-VBS01053-4651STDY7017308,MLI,Koulikouro,ML-2,Banamba,arabiensis,ML-2_arab_2014,ML-2_arab_2014_10,ML-2_arab_2014_Q4,ML-2_Banamba_arab_2014,ML-2_Banamba_arab_2014_10,ML-2_Banamba_arab_2014_Q4
 VBS00256-4651STDY7017184,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_06,ML-2_colu_2012_Q2,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_06,ML-2_Banamba_colu_2012_Q2
 VBS00257-4651STDY7017185,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_06,ML-2_colu_2012_Q2,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_06,ML-2_Banamba_colu_2012_Q2
 VBS00259-4651STDY7017186,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_06,ML-2_colu_2012_Q2,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_06,ML-2_Banamba_colu_2012_Q2
@@ -34,6 +31,7 @@ VBS00370-4651STDY7017216,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-
 VBS00371-4651STDY7017217,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_10,ML-2_colu_2012_Q4,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_10,ML-2_Banamba_colu_2012_Q4
 VBS00373-4651STDY7017218,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_11,ML-2_colu_2012_Q4,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_11,ML-2_Banamba_colu_2012_Q4
 VBS00375-4651STDY7017220,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_11,ML-2_colu_2012_Q4,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_11,ML-2_Banamba_colu_2012_Q4
+VBS00388-4651STDY7017222,MLI,Koulikouro,ML-2,Banamba,arabiensis,ML-2_arab_2012,ML-2_arab_2012_10,ML-2_arab_2012_Q4,ML-2_Banamba_arab_2012,ML-2_Banamba_arab_2012_10,ML-2_Banamba_arab_2012_Q4
 VBS00449-4651STDY7017223,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2012,ML-2_colu_2012_09,ML-2_colu_2012_Q3,ML-2_Banamba_colu_2012,ML-2_Banamba_colu_2012_09,ML-2_Banamba_colu_2012_Q3
 VBS00912-4651STDY7017225,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_05,ML-2_colu_2014_Q2,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_05,ML-2_Banamba_colu_2014_Q2
 VBS00913-4651STDY7017226,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_05,ML-2_colu_2014_Q2,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_05,ML-2_Banamba_colu_2014_Q2
@@ -100,6 +98,7 @@ VBS01014-4651STDY7017290,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-
 VBS01015-4651STDY7017291,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_06,ML-2_colu_2014_Q2,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_06,ML-2_Banamba_colu_2014_Q2
 VBS01016-4651STDY7017292,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_06,ML-2_colu_2014_Q2,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_06,ML-2_Banamba_colu_2014_Q2
 VBS01018-4651STDY7017293,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
+VBS01026-4651STDY7017295,MLI,Koulikouro,ML-2,Banamba,arabiensis,ML-2_arab_2014,ML-2_arab_2014_10,ML-2_arab_2014_Q4,ML-2_Banamba_arab_2014,ML-2_Banamba_arab_2014_10,ML-2_Banamba_arab_2014_Q4
 VBS01029-4651STDY7017296,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
 VBS01030-4651STDY7017297,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
 VBS01031-4651STDY7017298,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
@@ -111,6 +110,7 @@ VBS01048-4651STDY7017304,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-
 VBS01049-4651STDY7017305,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
 VBS01050-4651STDY7017306,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
 VBS01052-4651STDY7017307,MLI,Koulikouro,ML-2,Banamba,gambiae,ML-2_gamb_2014,ML-2_gamb_2014_10,ML-2_gamb_2014_Q4,ML-2_Banamba_gamb_2014,ML-2_Banamba_gamb_2014_10,ML-2_Banamba_gamb_2014_Q4
+VBS01053-4651STDY7017308,MLI,Koulikouro,ML-2,Banamba,arabiensis,ML-2_arab_2014,ML-2_arab_2014_10,ML-2_arab_2014_Q4,ML-2_Banamba_arab_2014,ML-2_Banamba_arab_2014_10,ML-2_Banamba_arab_2014_Q4
 VBS01054-4651STDY7017309,MLI,Koulikouro,ML-2,Banamba,gambiae,ML-2_gamb_2014,ML-2_gamb_2014_10,ML-2_gamb_2014_Q4,ML-2_Banamba_gamb_2014,ML-2_Banamba_gamb_2014_10,ML-2_Banamba_gamb_2014_Q4
 VBS01055-4651STDY7017310,MLI,Koulikouro,ML-2,Banamba,coluzzii,ML-2_colu_2014,ML-2_colu_2014_10,ML-2_colu_2014_Q4,ML-2_Banamba_colu_2014,ML-2_Banamba_colu_2014_10,ML-2_Banamba_colu_2014_Q4
 VBS01056-4651STDY7017311,MLI,Koulikouro,ML-2,Banamba,gambiae,ML-2_gamb_2014,ML-2_gamb_2014_10,ML-2_gamb_2014_Q4,ML-2_Banamba_gamb_2014,ML-2_Banamba_gamb_2014_10,ML-2_Banamba_gamb_2014_Q4
