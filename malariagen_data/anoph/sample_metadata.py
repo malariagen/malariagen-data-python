@@ -700,6 +700,34 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df
 
+    @check_types
+    @doc(
+        summary="""
+            Load a data accessions catalog providing ENA run accessions
+            for samples in a given sample set.
+        """,
+        returns="One row per sample, columns provide run accessions.",
+    )
+    def wgs_run_accessions(self, sample_set: base_params.sample_set):
+        # Look up release for sample set.
+        release = self.lookup_release(sample_set=sample_set)
+        release_path = self._release_to_path(release=release)
+
+        # Load data catalog.
+        path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_accession_data.csv"
+        with self._fs.open(path) as f:
+            df = pd.read_csv(f, na_values="")
+
+        # Normalise columns.
+        df = df[
+            [
+                "sample_id",
+                "run_ena",
+            ]
+        ]
+
+        return df
+
     def _prep_sample_selection_cache_params(
         self,
         *,
