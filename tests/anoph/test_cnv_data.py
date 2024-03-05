@@ -36,6 +36,9 @@ def ag3_sim_api(ag3_sim_fixture):
         gff_default_attributes=("ID", "Parent", "Name", "description"),
         results_cache=ag3_sim_fixture.results_cache_path.as_posix(),
         default_coverage_calls_analysis="gamb_colu",
+        discordant_read_calls_analysis=ag3_sim_fixture.config[
+            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS"
+        ],
     )
 
 
@@ -53,6 +56,7 @@ def af1_sim_api(af1_sim_fixture):
         gff_default_attributes=("ID", "Parent", "Note", "description"),
         results_cache=af1_sim_fixture.results_cache_path.as_posix(),
         default_coverage_calls_analysis="funestus",
+        discordant_read_calls_analysis=None,
     )
 
 

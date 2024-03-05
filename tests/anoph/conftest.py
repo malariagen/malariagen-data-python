@@ -1103,6 +1103,7 @@ class Ag3Simulator(AnophelesSimulator):
             "SITE_MASK_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "PHASING_ANALYSIS_IDS": ["gamb_colu_arab", "gamb_colu", "arab"],
             "COVERAGE_CALLS_ANALYSIS_IDS": ["gamb_colu", "arab"],
+            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "20230911",
         }
         config_path = self.bucket_path / "v3-config.json"
         with config_path.open(mode="w") as f:
@@ -1720,6 +1721,7 @@ class Ag3Simulator(AnophelesSimulator):
                 )
 
     def init_cnv_discordant_read_calls(self):
+        analysis = self.config["DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS"]
         # Iterate over releases.
         for release, manifest in self.release_manifests.items():
             # Determine release path.
@@ -1739,16 +1741,26 @@ class Ag3Simulator(AnophelesSimulator):
                     / sample_set
                     / "samples.meta.csv"
                 )
-
-                # Create zarr hierarchy.
-                zarr_path = (
-                    self.bucket_path
-                    / release_path
-                    / "cnv"
-                    / sample_set
-                    / "discordant_read_calls"
-                    / "zarr"
-                )
+                if analysis:
+                    # Create zarr hierarchy.
+                    zarr_path = (
+                        self.bucket_path
+                        / release_path
+                        / "cnv"
+                        / sample_set
+                        / f"discordant_read_calls_{analysis}"
+                        / "zarr"
+                    )
+                else:
+                    # Create zarr hierarchy.
+                    zarr_path = (
+                        self.bucket_path
+                        / release_path
+                        / "cnv"
+                        / sample_set
+                        / "discordant_read_calls"
+                        / "zarr"
+                    )
 
                 # Simulate CNV discordant read calls.
                 simulate_cnv_discordant_read_calls(
@@ -1783,6 +1795,7 @@ class Af1Simulator(AnophelesSimulator):
             "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/idAnoFuneDA-416_04/Anopheles-funestus-DA-416_04_1_SEQANNOTATION.zarr",
             "DEFAULT_SITE_FILTERS_ANALYSIS": "dt_20200416",
             "DEFAULT_COHORTS_ANALYSIS": "20221129",
+            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
             "SITE_MASK_IDS": ["funestus"],
             "PHASING_ANALYSIS_IDS": ["funestus"],
             "COVERAGE_CALLS_ANALYSIS_IDS": ["funestus"],
@@ -2179,6 +2192,7 @@ class Af1Simulator(AnophelesSimulator):
                 )
 
     def init_cnv_discordant_read_calls(self):
+        analysis = self.config["DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS"]
         # Iterate over releases.
         for release, manifest in self.release_manifests.items():
             # Determine release path.
@@ -2195,16 +2209,26 @@ class Af1Simulator(AnophelesSimulator):
                     / sample_set
                     / "samples.meta.csv"
                 )
-
-                # Create zarr hierarchy.
-                zarr_path = (
-                    self.bucket_path
-                    / release_path
-                    / "cnv"
-                    / sample_set
-                    / "discordant_read_calls"
-                    / "zarr"
-                )
+                if analysis:
+                    # Create zarr hierarchy.
+                    zarr_path = (
+                        self.bucket_path
+                        / release_path
+                        / "cnv"
+                        / sample_set
+                        / "discordant_read_calls_{analysis}"
+                        / "zarr"
+                    )
+                else:
+                    # Create zarr hierarchy.
+                    zarr_path = (
+                        self.bucket_path
+                        / release_path
+                        / "cnv"
+                        / sample_set
+                        / "discordant_read_calls"
+                        / "zarr"
+                    )
 
                 # Simulate CNV discordant read calls.
                 simulate_cnv_discordant_read_calls(

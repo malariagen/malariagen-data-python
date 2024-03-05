@@ -84,6 +84,7 @@ class Af1(AnophelesDataResource):
         check_location=True,
         cohorts_analysis=None,
         site_filters_analysis=None,
+        discordant_read_calls_analysis=None,
         pre=False,
         tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
@@ -97,6 +98,7 @@ class Af1(AnophelesDataResource):
             aim_ids=None,
             aim_palettes=None,
             site_filters_analysis=site_filters_analysis,
+            discordant_read_calls_analysis=discordant_read_calls_analysis,
             default_site_mask="funestus",
             default_phasing_analysis="funestus",
             default_coverage_calls_analysis="funestus",
