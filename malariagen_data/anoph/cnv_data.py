@@ -29,6 +29,7 @@ class AnophelesCnvData(
 ):
     def __init__(
         self,
+        discordant_read_calls_analysis: Optional[str] = None,
         default_coverage_calls_analysis: Optional[str] = None,
         **kwargs,
     ):
@@ -37,6 +38,10 @@ class AnophelesCnvData(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+        # If provided, this analysis version will override the
+        # default value provided in the release configuration.
+        self._discordant_read_calls_analysis_override = discordant_read_calls_analysis
+
         # These will vary between data resources.
         self._default_coverage_calls_analysis = default_coverage_calls_analysis
 
@@ -44,6 +49,15 @@ class AnophelesCnvData(
         self._cache_cnv_hmm: Dict = dict()
         self._cache_cnv_coverage_calls: Dict = dict()
         self._cache_cnv_discordant_read_calls: Dict = dict()
+
+    @property
+    def _discordant_read_calls_analysis(self) -> Optional[str]:
+        if isinstance(self._discordant_read_calls_analysis_override, str):
+            return self._discordant_read_calls_analysis_override
+        else:
+            # N.B., this will return None if the key is not present in the
+            # config.
+            return self.config.get("DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS")
 
     @property
     def coverage_calls_analysis_ids(self) -> Tuple[str, ...]:
@@ -399,7 +413,13 @@ class AnophelesCnvData(
         except KeyError:
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
-            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/discordant_read_calls/zarr"
+            analysis = self._discordant_read_calls_analysis
+            if analysis:
+                calls_version = f"discordant_read_calls_{analysis}"
+            else:
+                calls_version = "discordant_read_calls"
+            path = f"{self._base_path}/{release_path}/cnv/{sample_set}/{calls_version}/zarr"
+            # print(analysis)
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
