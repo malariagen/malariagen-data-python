@@ -182,13 +182,14 @@ class AnophelesDipClust(
         site_mask: base_params.site_mask = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        site_class: Optional[base_params.site_class] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         distance_metric: dipclust_params.distance_metric = dipclust_params.distance_metric_default,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[np.ndarray, np.ndarray, int]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "diplotype_pairwise_distances"
+        name = "diplotype_pairwise_distances_v1"
 
         # Normalize params for consistent hash value.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -198,6 +199,7 @@ class AnophelesDipClust(
             site_mask=site_mask,
             sample_sets=sample_sets_prepped,
             sample_query=sample_query,
+            site_class=site_class,
             cohort_size=cohort_size,
             distance_metric=distance_metric,
             random_seed=random_seed,
@@ -225,12 +227,11 @@ class AnophelesDipClust(
         site_mask,
         sample_sets,
         sample_query,
+        site_class,
         cohort_size,
         distance_metric,
         random_seed,
     ):
-        import dask.array as da
-
         if distance_metric == "cityblock":
             metric = multiallelic_diplotype_mean_cityblock
         elif distance_metric == "euclidean":
@@ -242,6 +243,7 @@ class AnophelesDipClust(
             sample_query=sample_query,
             sample_sets=sample_sets,
             site_mask=site_mask,
+            site_class=site_class,
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
@@ -249,11 +251,15 @@ class AnophelesDipClust(
         with self._dask_progress(desc="Load genotypes"):
             gt = ds_snps["call_genotype"].data.compute()
 
-        # Compute allele count, remove non-segregating sites.
-        ac = allel.GenotypeArray(gt).count_alleles(max_allele=3)
-        gt_seg = gt.compress(ac.is_segregating(), axis=0)
-        ac_seg = allel.GenotypeArray(gt_seg).to_allele_counts(max_allele=3)
-        X = da.swapaxes(ac_seg.values, 0, 1).compute()
+        with self._spinner(
+            desc="Compute allele counts and remove non-segregating sites"
+        ):
+            # Compute allele count, remove non-segregating sites.
+            ac = allel.GenotypeArray(gt).count_alleles(max_allele=3)
+            gt_seg = gt.compress(ac.is_segregating(), axis=0)
+            ac_seg = allel.GenotypeArray(gt_seg).to_allele_counts(max_allele=3)
+            X = np.ascontiguousarray(np.swapaxes(ac_seg.values, 0, 1))
+            print(X.data.c_contiguous)
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):

@@ -72,8 +72,9 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
+@pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_diplotype_clustering_cityblock(fixture, api: AnophelesDipClust):
+def test_plot_diplotype_clustering(fixture, api: AnophelesDipClust, distance_metric):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     linkage_methods = (
@@ -90,34 +91,7 @@ def test_plot_diplotype_clustering_cityblock(fixture, api: AnophelesDipClust):
         region=fixture.random_region_str(region_size=5000),
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
-        distance_metric="cityblock",
-        sample_query=random.choice(sample_queries),
-        show=False,
-    )
-
-    # Run checks.
-    api.plot_diplotype_clustering(**dipclust_params)
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_plot_diplotype_clustering_euclidean(fixture, api: AnophelesDipClust):
-    # Set up test parameters.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    linkage_methods = (
-        "single",
-        "complete",
-        "average",
-        "weighted",
-        "centroid",
-        "median",
-        "ward",
-    )
-    sample_queries = (None, "sex_call == 'F'")
-    dipclust_params = dict(
-        region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
-        distance_metric="euclidean",
+        distance_metric=distance_metric,
         sample_query=random.choice(sample_queries),
         show=False,
     )
