@@ -1016,6 +1016,10 @@ class AnophelesSimulator:
         contig_size = self.contig_sizes[contig]
         region_start = randint(1, contig_size)
         if region_size:
+            # Ensure we the region span doesn't exceed the contig size.
+            if contig_size - region_start < region_size:
+                region_start = contig_size - region_size
+
             region_end = region_start + region_size
         else:
             region_end = randint(region_start, contig_size)

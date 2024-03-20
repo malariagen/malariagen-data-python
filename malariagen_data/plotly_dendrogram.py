@@ -25,6 +25,8 @@ def plot_dendrogram(
     leaf_color_discrete_map,
     leaf_category_orders,
     template,
+    y_axis_title,
+    y_axis_buffer,
 ):
     # Hierarchical clustering.
     Z = sch.linkage(dist, method=linkage_method)
@@ -105,7 +107,7 @@ def plot_dendrogram(
         # it's above the plot it often overlaps the title, so hiding it
         # for now.
         xaxis_title=None,
-        yaxis_title="Distance (no. SNPs)",
+        yaxis_title=y_axis_title,
         showlegend=True,
     )
 
@@ -124,7 +126,7 @@ def plot_dendrogram(
         showline=False,
         showticklabels=True,
         ticks="outside",
-        range=(leaf_y - 1, np.max(dcoord) + 1),
+        range=(leaf_y - y_axis_buffer, np.max(dcoord) + y_axis_buffer),
     )
 
     return fig
