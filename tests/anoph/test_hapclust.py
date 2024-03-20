@@ -4,12 +4,12 @@ from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.hapclust import AnophelesHapClust
+from malariagen_data.anoph.hapclust import AnophelesHapClustAnalysis
 
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
-    return AnophelesHapClust(
+    return AnophelesHapClustAnalysis(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         gcs_url=_ag3.GCS_URL,
@@ -36,7 +36,7 @@ def ag3_sim_api(ag3_sim_fixture):
 
 @pytest.fixture
 def af1_sim_api(af1_sim_fixture):
-    return AnophelesHapClust(
+    return AnophelesHapClustAnalysis(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         gcs_url=_af1.GCS_URL,
@@ -73,7 +73,7 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_haplotype_clustering(fixture, api: AnophelesHapClust):
+def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     linkage_methods = (

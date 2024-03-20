@@ -13,7 +13,7 @@ from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
 
 
-class AnophelesHapClust(AnophelesHapData, AnophelesSnpData):
+class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
     def __init__(
         self,
         **kwargs,

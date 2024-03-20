@@ -17,7 +17,7 @@ from .base_params import DEFAULT
 from .snp_data import AnophelesSnpData
 
 
-class AnophelesDipClust(
+class AnophelesDipClustAnalysis(
     AnophelesSnpData,
 ):
     def __init__(
@@ -259,7 +259,6 @@ class AnophelesDipClust(
             gt_seg = gt.compress(ac.is_segregating(), axis=0)
             ac_seg = allel.GenotypeArray(gt_seg).to_allele_counts(max_allele=3)
             X = np.ascontiguousarray(np.swapaxes(ac_seg.values, 0, 1))
-            print(X.data.c_contiguous)
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
