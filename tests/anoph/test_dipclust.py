@@ -74,7 +74,9 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 @pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
-def test_plot_diplotype_clustering(fixture, api: AnophelesDipClustAnalysis, distance_metric):
+def test_plot_diplotype_clustering(
+    fixture, api: AnophelesDipClustAnalysis, distance_metric
+):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     linkage_methods = (
