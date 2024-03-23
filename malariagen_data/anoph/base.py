@@ -76,7 +76,12 @@ class AnophelesBase:
         # be used to read from Google Cloud Storage.
         if storage_options is None:
             storage_options = dict()
-        self._fs, self._base_path = init_filesystem(url, **storage_options)
+        try:
+            self._fs, self._base_path = init_filesystem(url, **storage_options)
+        except Exception as exc:
+            raise IOError(
+                "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
+            ) from exc
 
         # Eagerly load config to trigger any access problems early.
         try:
@@ -84,7 +89,7 @@ class AnophelesBase:
                 self._config = json.load(f)
         except Exception as exc:
             raise IOError(
-                "An error occurred reading the release configuration file."
+                "An error occurred reading the release configuration file. Please see the nested exception for more details."
             ) from exc
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
