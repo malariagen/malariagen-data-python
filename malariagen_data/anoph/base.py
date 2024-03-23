@@ -78,8 +78,14 @@ class AnophelesBase:
             storage_options = dict()
         self._fs, self._base_path = init_filesystem(url, **storage_options)
 
-        # Lazily load config.
-        self._config: Optional[Dict] = None
+        # Eagerly load config to trigger any access problems early.
+        try:
+            with self.open_file(self._config_path) as f:
+                self._config = json.load(f)
+        except Exception as exc:
+            raise IOError(
+                "An error occurred reading the release configuration file."
+            ) from exc
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
@@ -186,9 +192,6 @@ class AnophelesBase:
 
     @property
     def config(self) -> Dict:
-        if self._config is None:
-            with self.open_file(self._config_path) as f:
-                self._config = json.load(f)
         return self._config.copy()
 
     # Note regarding release identifiers and storage paths. Within the
