@@ -13,6 +13,10 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
     runs-on: ubuntu-latest
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
@@ -33,6 +37,20 @@ jobs:
       # any remote data in order to fail fast where possible.
       - name: Run fast unit tests
         run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
+
+      # Set up full test suite accessing GCS.
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+
+      - name: 'Use gcloud CLI'
+        run: 'gcloud info'
 
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
