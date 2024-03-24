@@ -13,9 +13,13 @@ jobs:
       matrix:
         python-version: ["3.8", "3.9", "3.10", "3.11"]
     runs-on: ubuntu-latest
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install poetry
         run: pipx install poetry==1.7.1
@@ -26,6 +30,20 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
 
+      - id: 'auth'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/160816776314/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider'
+          service_account: 'github-actions@malariagen-jupyterhub.iam.gserviceaccount.com'
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+
+      - name: 'Use gcloud CLI'
+        run: 'gcloud info'
+
       - name: Install dependencies
         run: poetry install
 
@@ -34,6 +52,7 @@ jobs:
       - name: Run fast unit tests
         run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
 
+      # Set up full test suite accessing GCS.
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
         with:
