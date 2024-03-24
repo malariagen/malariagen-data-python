@@ -323,7 +323,9 @@ def init_filesystem(url, **kwargs):
         import google.auth  # type: ignore
 
         # Load application-default credentials.
-        credentials, project = google.auth.default()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            credentials, _ = google.auth.default()
 
         # Ensure credentials are passed through to gcsfs.
         if url.startswith("gs://") or url.startswith("gcs://"):
