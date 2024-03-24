@@ -314,7 +314,7 @@ def init_filesystem(url, **kwargs):
 
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
-        if colab is not None:
+        if colab is not None:  # pragma: no cover
             # We are in colab, use colab's built-in authentication function.
             colab.auth.authenticate_user()
         else:
