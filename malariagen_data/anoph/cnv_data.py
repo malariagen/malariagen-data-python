@@ -784,7 +784,7 @@ class AnophelesCnvData(
         debug("set up plot title")
         title = "CNV HMM"
         if sample_sets is not None:
-            if isinstance(sample_sets, Sequence):
+            if isinstance(sample_sets, (list, tuple)):
                 sample_sets_text = ", ".join(sample_sets)
             else:
                 sample_sets_text = sample_sets
