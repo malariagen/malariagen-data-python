@@ -23,3 +23,7 @@ notebooks/*.html
 # docs
 docs/build
 docs/source/generated
+
+# gcloud cli
+google-cloud-cli-*
+google-cloud-sdk
