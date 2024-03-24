@@ -30,20 +30,6 @@ jobs:
           python-version: ${{ matrix.python-version }}
           cache: "poetry"
 
-      - id: 'auth'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          workload_identity_provider: 'projects/160816776314/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider'
-          service_account: 'github-actions@malariagen-jupyterhub.iam.gserviceaccount.com'
-
-      - name: 'Set up Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
-        with:
-          version: '>= 363.0.0'
-
-      - name: 'Use gcloud CLI'
-        run: 'gcloud info'
-
       - name: Install dependencies
         run: poetry install
 
@@ -53,6 +39,21 @@ jobs:
         run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
 
       # Set up full test suite accessing GCS.
+      - id: 'auth'
+        name: 'Set up Google Cloud authentication'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          workload_identity_provider: 'projects/160816776314/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider'
+          service_account: 'github-actions@malariagen-jupyterhub.iam.gserviceaccount.com'
+
+      - name: 'Set up Google Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+
+      - name: 'Check gcloud CLI'
+        run: 'gcloud info'
+
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
         with:
