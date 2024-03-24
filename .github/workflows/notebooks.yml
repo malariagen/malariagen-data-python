@@ -17,7 +17,7 @@ jobs:
       id-token: 'write'
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install poetry
         run: pipx install poetry==1.7.1
@@ -50,7 +50,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20231119
+          key: gcs_cache_notebooks_20240324
 
       - name: Run notebooks
         run: poetry run jupyter nbconvert --execute notebooks/*.ipynb --inplace
@@ -60,4 +60,4 @@ jobs:
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20231119
+          key: gcs_cache_notebooks_20240324

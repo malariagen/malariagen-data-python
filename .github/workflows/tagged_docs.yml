@@ -20,7 +20,7 @@ jobs:
           echo ${{ env.VERSION_TAG }}
 
       - name: Check out VERSION_TAG 🛒
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: ${{ env.VERSION_TAG }}
 

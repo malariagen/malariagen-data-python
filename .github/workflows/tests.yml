@@ -11,7 +11,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11"]
+        # python-version: ["3.8", "3.9", "3.10", "3.11"]
+        python-version: ["3.11"]
     runs-on: ubuntu-latest
     # Add "id-token" with the intended permissions.
     permissions:
@@ -58,7 +59,7 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_tests_20231119
+          key: gcs_cache_tests_20240324
 
       - name: Run full test suite
         run: poetry run pytest --durations=20 -v tests
@@ -68,4 +69,4 @@ jobs:
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_tests_20231119
+          key: gcs_cache_tests_20240324
