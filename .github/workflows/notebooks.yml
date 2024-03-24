@@ -11,6 +11,10 @@ jobs:
     strategy:
       fail-fast: true
     runs-on: ubuntu-latest
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - name: Checkout source
         uses: actions/checkout@v3
