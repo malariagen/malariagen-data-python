@@ -91,10 +91,28 @@ Run pre-commit checks (isort, black, blackdoc, flake8, ...) manually:
 pre-commit run --all-files
 ```
 
-Run tests:
+Run fast unit tests using simulated data:
 
 ```bash
-poetry run pytest -v
+poetry run pytest -v tests/anoph
+```
+
+To run legacy tests which read data from GCS, you'll need to [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
+
+```bash
+./install_gcloud.sh
+```
+
+You'll then need to obtain application-default credentials, e.g.:
+
+```bash
+./google-cloud-sdk/bin/gcloud auth application-default login
+```
+
+Once this is done, you can run legacy tests:
+
+```bash
+poetry run pytest --ignore=tests/anoph -v tests
 ```
 
 Tests will run slowly the first time, as data required for testing
