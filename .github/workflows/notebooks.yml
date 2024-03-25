@@ -35,8 +35,7 @@ jobs:
         name: 'Set up Google Cloud authentication'
         uses: 'google-github-actions/auth@v2'
         with:
-          workload_identity_provider: 'projects/160816776314/locations/global/workloadIdentityPools/gh-actions-pool/providers/gh-actions-provider'
-          service_account: 'github-actions@malariagen-jupyterhub.iam.gserviceaccount.com'
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
 
       - name: 'Set up Google Cloud SDK'
         uses: 'google-github-actions/setup-gcloud@v2'
