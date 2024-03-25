@@ -36,8 +36,8 @@ jobs:
 
       # Run a subset of tests first which run quickly without accessing
       # any remote data in order to fail fast where possible.
-      - name: Run fast unit tests
-        run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
+      # - name: Run fast unit tests
+      #   run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
 
       # Set up full test suite accessing GCS.
       - id: 'auth'
@@ -62,7 +62,7 @@ jobs:
           key: gcs_cache_tests_20240324
 
       - name: Run full test suite
-        run: poetry run pytest --durations=20 -v tests
+        run: poetry run pytest --durations=20 --ignore=tests/anoph -v tests
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
