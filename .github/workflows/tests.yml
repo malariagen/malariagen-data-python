@@ -11,13 +11,9 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        # python-version: ["3.8", "3.9", "3.10", "3.11"]
-        python-version: ["3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     runs-on: ubuntu-latest
-    # Add "id-token" with the intended permissions.
-    permissions:
-      contents: 'read'
-      id-token: 'write'
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -34,38 +30,5 @@ jobs:
       - name: Install dependencies
         run: poetry install
 
-      # Run a subset of tests first which run quickly without accessing
-      # any remote data in order to fail fast where possible.
-      # - name: Run fast unit tests
-      #   run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
-
-      # Set up full test suite accessing GCS.
-      - id: 'auth'
-        name: 'Set up Google Cloud authentication'
-        uses: 'google-github-actions/auth@v2'
-        with:
-          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-
-      - name: 'Set up Google Cloud SDK'
-        uses: 'google-github-actions/setup-gcloud@v2'
-        with:
-          version: '>= 363.0.0'
-
-      - name: 'Check gcloud CLI'
-        run: 'gcloud info'
-
-      - name: Restore GCS cache
-        uses: actions/cache/restore@v3
-        with:
-          path: gcs_cache
-          key: gcs_cache_tests_20240324
-
-      - name: Run full test suite
-        run: poetry run pytest --durations=20 --ignore=tests/anoph -x -v tests
-
-      - name: Save GCS cache
-        uses: actions/cache/save@v3
-        if: always()
-        with:
-          path: gcs_cache
-          key: gcs_cache_tests_20240324
+      - name: Run fast unit tests
+        run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
