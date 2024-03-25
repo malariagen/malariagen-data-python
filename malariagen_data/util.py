@@ -324,7 +324,12 @@ def init_filesystem(url, **kwargs):
 
         # Load application-default credentials.
         with warnings.catch_warnings():
+            # Warnings are generally not that useful here, silence them.
             warnings.simplefilter("ignore")
+
+            # To make this work with a service account on github actions, the
+            # scopes parameter is needed, see also:
+            # https://stackoverflow.com/a/74562563/761177
             credentials, _ = google.auth.default(
                 scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )

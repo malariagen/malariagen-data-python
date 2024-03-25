@@ -258,7 +258,7 @@ class AnophelesBase:
         """
     )
     def _discover_releases(self) -> Tuple[str, ...]:
-        sub_dirs = sorted([p.split("/")[-1] for p in self._fs.ls(self._base_path)])
+        sub_dirs = sorted([p.split("/")[-1] for p in self._fs.ls(self._base_path, detail=False)])
         discovered_releases = tuple(
             sorted(
                 [
