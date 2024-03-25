@@ -39,6 +39,7 @@ Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.h
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
 currently hosted on a separate site.
 
+
 Installation
 ------------
 
@@ -47,11 +48,25 @@ via pip::
 
    pip install malariagen_data
 
+For accessing data in Google Cloud Storage (GCS) you will also need to authenticate with Google Cloud.
+
+If you are using ``malariagen_data`` from within Google Colab, authentication will be automatically
+initiated, please allow access when requested.
+
+If you are using ``malariagen_data`` from any location other than Google Colab, you will need to [set up application
+default credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc). Generally
+the best way to do this will be to [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
+and then run the following command::
+
+   gcloud auth application-default login
+
+
 Training
 --------
 
 If you would like to learn more about how to use ``malariagen_data`` to analyse data for genomic
 surveillance of malaria vectors, please see the associated `online training course <https://anopheles-genomic-surveillance.github.io>`_.
+
 
 About the data
 --------------

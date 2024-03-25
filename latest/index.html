@@ -414,6 +414,16 @@ via pip:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">pip</span> <span class="n">install</span> <span class="n">malariagen_data</span>
 </pre></div>
 </div>
+<p>For accessing data in Google Cloud Storage (GCS) you will also need to authenticate with Google Cloud.</p>
+<p>If you are using <code class="docutils literal notranslate"><span class="pre">malariagen_data</span></code> from within Google Colab, authentication will be automatically
+initiated, please allow access when requested.</p>
+<p>If you are using <code class="docutils literal notranslate"><span class="pre">malariagen_data</span></code> from any location other than Google Colab, you will need to [set up application
+default credentials](<a class="reference external" href="https://cloud.google.com/docs/authentication/provide-credentials-adc">https://cloud.google.com/docs/authentication/provide-credentials-adc</a>). Generally
+the best way to do this will be to [install the Google Cloud CLI](<a class="reference external" href="https://cloud.google.com/sdk/docs/install">https://cloud.google.com/sdk/docs/install</a>)
+and then run the following command:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">gcloud</span> <span class="n">auth</span> <span class="n">application</span><span class="o">-</span><span class="n">default</span> <span class="n">login</span>
+</pre></div>
+</div>
 </section>
 <section id="training">
 <h2>Training<a class="headerlink" href="#training" title="Permalink to this heading">#</a></h2>
