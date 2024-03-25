@@ -56,7 +56,7 @@ jobs:
         run: 'gcloud info'
 
       - name: 'Create application default credentials'
-        run: 'gcloud auth application-default login'  
+        run: 'gcloud auth application-default login --quiet'  
 
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
