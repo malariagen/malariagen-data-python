@@ -312,20 +312,42 @@ def da_compress(
 def init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
 
-    # special case Google Cloud Storage, use anonymous access, avoids a delay
-    if url.startswith("gs://") or url.startswith("gcs://"):
-        kwargs["token"] = "anon"
-    elif "gs://" in url:
-        # chained URL
-        kwargs["gs"] = dict(token="anon")
-    elif "gcs://" in url:
-        # chained URL
-        kwargs["gcs"] = dict(token="anon")
+    # Special case Google Cloud Storage, authenticate the user.
+    if "gs://" in url or "gcs://" in url:
+        if colab is not None:  # pragma: no cover
+            # We are in colab, use colab's built-in authentication function.
+            colab.auth.authenticate_user()
+        else:
+            # Assume user has performed gcloud auth application-default login
+            pass
+        import google.auth  # type: ignore
 
-    # process the url using fsspec
+        # Load application-default credentials.
+        with warnings.catch_warnings():
+            # Warnings are generally not that useful here, silence them.
+            warnings.simplefilter("ignore")
+
+            # To make this work with a service account on github actions, the
+            # scopes parameter is needed, see also:
+            # https://stackoverflow.com/a/74562563/761177
+            credentials, _ = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
+
+        # Ensure credentials are passed through to gcsfs.
+        if url.startswith("gs://") or url.startswith("gcs://"):
+            kwargs["token"] = credentials
+        elif "gs://" in url:
+            # Chained URL.
+            kwargs["gs"] = dict(token=credentials)
+        elif "gcs://" in url:
+            # Chained URL.
+            kwargs["gcs"] = dict(token=credentials)
+
+    # Process the URL using fsspec.
     fs, path = url_to_fs(url, **kwargs)
 
-    # path compatibility, fsspec/gcsfs behaviour varies between version
+    # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
         path = path[:-1]
 

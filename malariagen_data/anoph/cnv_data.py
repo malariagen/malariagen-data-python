@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import dask.array as da
 import numpy as np
@@ -784,10 +784,10 @@ class AnophelesCnvData(
         debug("set up plot title")
         title = "CNV HMM"
         if sample_sets is not None:
-            if isinstance(sample_sets, Sequence):
-                sample_sets_text = ", ".join(sample_sets)
-            else:
+            if isinstance(sample_sets, str):
                 sample_sets_text = sample_sets
+            else:
+                sample_sets_text = ", ".join(sample_sets)
             title += f" - {sample_sets_text}"
         if sample_query is not None:
             title += f" ({sample_query})"

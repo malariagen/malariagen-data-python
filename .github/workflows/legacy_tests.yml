@@ -1,4 +1,4 @@
-name: notebooks
+name: legacy_tests
 on:
   push:
     branches:
@@ -7,14 +7,18 @@ on:
     branches:
       - master
 jobs:
-  notebooks:
+  tests:
     strategy:
       fail-fast: true
+      matrix:
+        python-version: ["3.11"]
     runs-on: ubuntu-latest
+
     # Add "id-token" with the intended permissions.
     permissions:
       contents: 'read'
       id-token: 'write'
+
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
@@ -25,7 +29,7 @@ jobs:
       - name: Setup python
         uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           cache: "poetry"
 
       - name: Install dependencies
@@ -49,14 +53,14 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20240324
+          key: gcs_cache_tests_20240324
 
-      - name: Run notebooks
-        run: poetry run jupyter nbconvert --execute notebooks/*.ipynb --inplace
+      - name: Run full test suite
+        run: poetry run pytest --durations=20 --ignore=tests/anoph -v tests
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20240324
+          key: gcs_cache_tests_20240324

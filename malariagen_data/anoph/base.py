@@ -76,10 +76,21 @@ class AnophelesBase:
         # be used to read from Google Cloud Storage.
         if storage_options is None:
             storage_options = dict()
-        self._fs, self._base_path = init_filesystem(url, **storage_options)
+        try:
+            self._fs, self._base_path = init_filesystem(url, **storage_options)
+        except Exception as exc:
+            raise IOError(
+                "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
+            ) from exc
 
-        # Lazily load config.
-        self._config: Optional[Dict] = None
+        # Eagerly load config to trigger any access problems early.
+        try:
+            with self.open_file(self._config_path) as f:
+                self._config = json.load(f)
+        except Exception as exc:
+            raise IOError(
+                "An error occurred reading the release configuration file. Please see the nested exception for more details."
+            ) from exc
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
@@ -186,9 +197,6 @@ class AnophelesBase:
 
     @property
     def config(self) -> Dict:
-        if self._config is None:
-            with self.open_file(self._config_path) as f:
-                self._config = json.load(f)
         return self._config.copy()
 
     # Note regarding release identifiers and storage paths. Within the
@@ -250,7 +258,9 @@ class AnophelesBase:
         """
     )
     def _discover_releases(self) -> Tuple[str, ...]:
-        sub_dirs = sorted([p.split("/")[-1] for p in self._fs.ls(self._base_path)])
+        sub_dirs = sorted(
+            [p.split("/")[-1] for p in self._fs.ls(self._base_path, detail=False)]
+        )
         discovered_releases = tuple(
             sorted(
                 [

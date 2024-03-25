@@ -30,6 +30,7 @@ zarr = "*"
 dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
+google-auth = "*"
 BioPython = "*"
 scikit-allel = "*"
 xarray = "*"
