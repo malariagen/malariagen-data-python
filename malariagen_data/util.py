@@ -325,7 +325,9 @@ def init_filesystem(url, **kwargs):
         # Load application-default credentials.
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
-            credentials, _ = google.auth.default()
+            credentials, _ = google.auth.default(
+                scopes=["https://www.googleapis.com/auth/cloud-platform"]
+            )
 
         # Ensure credentials are passed through to gcsfs.
         if url.startswith("gs://") or url.startswith("gcs://"):
