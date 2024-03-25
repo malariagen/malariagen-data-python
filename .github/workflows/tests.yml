@@ -62,7 +62,7 @@ jobs:
           key: gcs_cache_tests_20240324
 
       - name: Run full test suite
-        run: poetry run pytest --durations=20 --ignore=tests/anoph -v tests
+        run: poetry run pytest --durations=20 --ignore=tests/anoph -x -v tests
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
