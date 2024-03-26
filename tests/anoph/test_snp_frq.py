@@ -885,7 +885,7 @@ def check_snp_allele_frequencies_advanced(
     # Sanity checks for period values.
     period_values = ds["cohort_period"].values
     if period_by == "year":
-        expected_freqstr = "A-DEC"
+        expected_freqstr = "Y-DEC"
     elif period_by == "month":
         expected_freqstr = "M"
     elif period_by == "quarter":
@@ -1057,7 +1057,7 @@ def check_aa_allele_frequencies_advanced(
     # Sanity checks for period values.
     period_values = ds["cohort_period"].values
     if period_by == "year":
-        expected_freqstr = "A-DEC"
+        expected_freqstr = "Y-DEC"
     elif period_by == "month":
         expected_freqstr = "M"
     elif period_by == "quarter":
