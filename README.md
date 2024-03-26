@@ -61,7 +61,7 @@ python3.9 -m pipx ensurepath
 Install [poetry](https://python-poetry.org/docs/#installation), e.g.:
 
 ```bash
-pipx install poetry==1.7.1 --python=/usr/bin/python3.9
+pipx install poetry==1.8.2 --python=/usr/bin/python3.9
 ```
 
 Create development environment:
