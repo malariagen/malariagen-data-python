@@ -578,7 +578,7 @@ def _check_gene_cnv_frequencies_advanced(
     # sanity checks for period values
     period = ds["cohort_period"].values
     if period_by == "year":
-        expected_freqstr = "A-DEC"
+        expected_freqstr = "Y-DEC"
     elif period_by == "month":
         expected_freqstr = "M"
     elif period_by == "quarter":
