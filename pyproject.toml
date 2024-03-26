@@ -18,9 +18,9 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 # ensure compatibility with numba
-python = ">=3.8,<3.12"
+python = ">=3.9,<3.13"
 # ensure compatibility with numba
-numpy = "<1.27"
+numpy = "*"
 numba = "*"
 # force llvmlite above broken version
 llvmlite = ">0.34"
