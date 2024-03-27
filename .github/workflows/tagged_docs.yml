@@ -25,12 +25,12 @@ jobs:
           ref: ${{ env.VERSION_TAG }}
 
       - name: Set up Python 🐍
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
 
       - name: Install poetry
-        run: pipx install poetry==1.7.1
+        run: pipx install poetry==1.8.2
 
       - name: Eyeball native environment 👀
         run: python --version ; pip --version ; poetry --version ; pwd ; ls -la
