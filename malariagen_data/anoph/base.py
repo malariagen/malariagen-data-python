@@ -14,7 +14,7 @@ from typing import (
     Tuple,
     Union,
 )
-
+from textwrap import dedent
 import bokeh.io
 import numpy as np
 import pandas as pd
@@ -78,7 +78,7 @@ class AnophelesBase:
             storage_options = dict()
         try:
             self._fs, self._base_path = init_filesystem(url, **storage_options)
-        except Exception as exc:
+        except Exception as exc:  # pragma: no cover
             raise IOError(
                 "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
             ) from exc
@@ -87,10 +87,26 @@ class AnophelesBase:
         try:
             with self.open_file(self._config_path) as f:
                 self._config = json.load(f)
-        except Exception as exc:
-            raise IOError(
-                "An error occurred reading the release configuration file. Please see the nested exception for more details."
-            ) from exc
+        except Exception as exc:  # pragma: no cover
+            if isinstance(exc, OSError) and "forbidden" in str(exc):
+                # This seems to be the best way to detect the case where the
+                # current user is trying to access GCS but has not been granted
+                # permissions. Reraise with a helpful message.
+                raise PermissionError(
+                    dedent(
+                        """
+                           Your Google account does not appear to have permission to access the data.
+                           If you have not yet submitted a data access request, please complete the form
+                           at the following link: https://forms.gle/d1NV3aL3EoVQGSHYA
+
+                           If you are still experiencing problems accessing data, please email
+                           data@malariagen.net for support.
+                        """
+                    )
+                ) from exc
+            else:
+                # Some other kind of error, reraise.
+                raise exc
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
