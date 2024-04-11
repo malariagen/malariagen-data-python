@@ -71,7 +71,7 @@ class PlinkConverter(
             return plink_file_path
 
         # get snps
-        ds_snps = self.snp_calls(
+        ds_snps = self.biallelic_snp_calls(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -82,6 +82,7 @@ class PlinkConverter(
             random_seed=random_seed,
             inline_array=inline_array,
             chunks=chunks,
+            n_snps=n_snps,
         )
 
         # filter snps on segregating sites
@@ -104,11 +105,11 @@ class PlinkConverter(
                 )
                 print(f"ascertained {np.count_nonzero(loc_sites):,} sites")
 
-        print("thin sites")
-        ix_sites = np.nonzero(loc_sites)[0]
-        thin_step = max(ix_sites.shape[0] // n_snps, 1)
-        ix_sites_thinned = ix_sites[thin_offset::thin_step]
-        print(f"thinned to {np.count_nonzero(ix_sites_thinned):,} sites")
+        # print("thin sites")
+        # ix_sites = np.nonzero(loc_sites)[0]
+        # thin_step = max(ix_sites.shape[0] // n_snps, 1)
+        # ix_sites_thinned = ix_sites[thin_offset::thin_step]
+        # print(f"thinned to {np.count_nonzero(ix_sites_thinned):,} sites")
 
         # set up dataset with required vars for plink conversion
         print("Set up dataset")
@@ -121,9 +122,8 @@ class PlinkConverter(
                     "sample_id",
                     "call_genotype",
                 ]
-            ]
-            .isel(alleles=slice(0, 2))
-            .sel(variants=ix_sites_thinned)
+            ].isel(alleles=slice(0, 2))
+            # .sel(variants=ix_sites_thinned)
         )
 
         # compute gt ref counts
