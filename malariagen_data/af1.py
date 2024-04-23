@@ -150,7 +150,7 @@ class Af1(AnophelesDataResource):
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
-                        the MalariaGEN website</a> or contact data@malariagen.net.
+                        the MalariaGEN website</a> or contact support@malariagen.net.
                         See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html">Af1 API docs</a>.
                     </td></tr>
                 </thead>
