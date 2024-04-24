@@ -215,7 +215,7 @@ class Ag3(AnophelesDataResource):
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net. For API documentation see \n"
+            f"or contact support@malariagen.net. For API documentation see \n"
             f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html"
         )
         return text
@@ -230,7 +230,7 @@ class Ag3(AnophelesDataResource):
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
-                        the MalariaGEN website</a> or contact data@malariagen.net.
+                        the MalariaGEN website</a> or contact support@malariagen.net.
                         See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html">Ag3 API docs</a>.
                     </td></tr>
                 </thead>
