@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.haplotype\_pairwise\_distances
+=======================================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.haplotype_pairwise_distances
