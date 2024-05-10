@@ -1,0 +1,57 @@
+[
+    {
+        "name": "8.6.0",
+        "version": "v8.6.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.6.0/",
+        "preferred": true
+    },
+    {
+        "name": "8.5.0",
+        "version": "v8.5.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.5.0/"
+    },
+    {
+        "name": "8.4.0",
+        "version": "v8.4.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.4.0/"
+    },
+    {
+        "name": "8.3.0",
+        "version": "v8.3.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.3.0/"
+    },
+    {
+        "name": "8.2.0",
+        "version": "v8.2.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.2.0/"
+    },
+    {
+        "name": "8.1.0",
+        "version": "v8.1.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.1.0/"
+    },
+    {
+        "name": "8.0.0",
+        "version": "v8.0.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v8.0.0/"
+    },
+    {
+        "name": "7.15.0",
+        "version": "v7.15.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v7.15.0/"
+    },
+    {
+        "name": "7.14.1",
+        "version": "v7.14.1",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v7.14.1/"
+    },
+    {
+        "name": "7.14.0",
+        "version": "v7.14.0",
+        "url": "https:///malariagen.github.io/malariagen-data-python/v7.14.0/"
+    },
+    {
+        "version": "dev",
+        "url": "https:///malariagen.github.io/malariagen-data-python/latest/"
+    }
+]
