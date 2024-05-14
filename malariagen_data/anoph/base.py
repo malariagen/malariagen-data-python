@@ -118,7 +118,9 @@ class AnophelesBase:
             with self.open_file(self._config_path) as f:
                 self._config = json.load(f)
         except Exception as exc:  # pragma: no cover
-            if isinstance(exc, OSError) and "forbidden" in str(exc):
+            if (isinstance(exc, OSError) and "forbidden" in str(exc).lower()) or (
+                getattr(exc, "status", None) == 403
+            ):
                 # This seems to be the best way to detect the case where the
                 # current user is trying to access GCS but has not been granted
                 # permissions. Reraise with a helpful message.
@@ -130,7 +132,7 @@ class AnophelesBase:
                            at the following link: https://forms.gle/d1NV3aL3EoVQGSHYA
 
                            If you are still experiencing problems accessing data, please email
-                           data@malariagen.net for support.
+                           support@malariagen.net for assistance.
                         """
                     )
                 ) from exc
