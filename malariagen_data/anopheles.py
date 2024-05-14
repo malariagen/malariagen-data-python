@@ -139,7 +139,7 @@ class AnophelesDataResource(
         show_progress,
         check_location,
         pre,
-        gcs_default_url: str,
+        gcs_default_url: Optional[str],
         gcs_region_urls: Mapping[str, str],
         major_version_number: int,
         major_version_path: str,

@@ -98,6 +98,7 @@ class AnophelesBase:
             self._url = self._gcs_default_url
         else:
             raise ValueError("A value for the `url` parameter must be provided.")
+        del url
 
         # Set up fsspec filesystem. N.B., we use fsspec here to allow for
         # accessing different types of storage - fsspec will automatically
@@ -107,7 +108,7 @@ class AnophelesBase:
         if storage_options is None:
             storage_options = dict()
         try:
-            self._fs, self._base_path = init_filesystem(url, **storage_options)
+            self._fs, self._base_path = init_filesystem(self._url, **storage_options)
         except Exception as exc:  # pragma: no cover
             raise IOError(
                 "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
