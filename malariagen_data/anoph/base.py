@@ -16,13 +16,13 @@ from typing import (
 )
 from textwrap import dedent
 import bokeh.io
-import ipinfo
+import ipinfo  # type: ignore
 import numpy as np
-import pandas as pd
+import pandas as pd  # type: ignore
 import zarr  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
-from tqdm.auto import tqdm as tqdm_auto
-from tqdm.dask import TqdmCallback
+from tqdm.auto import tqdm as tqdm_auto  # type: ignore
+from tqdm.dask import TqdmCallback  # type: ignore
 from yaspin import yaspin  # type: ignore
 
 from ..util import (
@@ -44,10 +44,10 @@ class AnophelesBase:
         url: str,
         config_path: str,
         pre: bool,
-        gcs_default_url: str,
-        gcs_region_urls: Mapping[str, str],
         major_version_number: int,
         major_version_path: str,
+        gcs_default_url: str,
+        gcs_region_urls: Mapping[str, str] = {},
         bokeh_output_notebook: bool = False,
         log: Optional[Union[str, IO]] = None,
         debug: bool = False,

@@ -20,7 +20,7 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesSampleMetadata(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
+        gcs_default_url=_ag3.GCS_DEFAULT_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -42,7 +42,7 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
+        gcs_default_url=_af1.GCS_DEFAULT_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
@@ -57,7 +57,7 @@ def missing_metadata_api(fixture_dir):
     return AnophelesSampleMetadata(
         url=(fixture_dir / "missing_metadata").as_uri(),
         config_path="config.json",
-        gcs_url=None,
+        gcs_default_url=None,
         major_version_number=3,
         major_version_path="v3",
         pre=False,

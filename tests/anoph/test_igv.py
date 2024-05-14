@@ -14,7 +14,7 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesIgv(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
+        gcs_default_url=_ag3.GCS_DEFAULT_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -39,7 +39,7 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesIgv(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
+        gcs_default_url=_af1.GCS_DEFAULT_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
