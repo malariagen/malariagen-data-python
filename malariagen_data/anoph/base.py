@@ -46,7 +46,7 @@ class AnophelesBase:
         pre: bool,
         major_version_number: int,
         major_version_path: str,
-        gcs_default_url: str,
+        gcs_default_url: Optional[str] = None,
         gcs_region_urls: Mapping[str, str] = {},
         bokeh_output_notebook: bool = False,
         log: Optional[Union[str, IO]] = None,
@@ -93,9 +93,11 @@ class AnophelesBase:
         elif self._gcp_region in self._gcs_region_urls:
             # Choose URL in the same GCP region.
             self._url = self._gcs_region_urls[self._gcp_region]
-        else:
-            # Fall back to default URL.
+        elif self._gcs_default_url:
+            # Fall back to default URL if available.
             self._url = self._gcs_default_url
+        else:
+            raise ValueError("A value for the `url` parameter must be provided.")
 
         # Set up fsspec filesystem. N.B., we use fsspec here to allow for
         # accessing different types of storage - fsspec will automatically
