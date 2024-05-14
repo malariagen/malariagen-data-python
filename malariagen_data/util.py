@@ -948,7 +948,7 @@ def get_gcp_region(details):
             elif country == "ZA":
                 if region == "Gauteng":
                     return "africa-south1"
-            # Add other region checks later if needed.
+            # Add other regions later if needed.
     return None
 
 

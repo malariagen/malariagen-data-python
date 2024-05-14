@@ -26,10 +26,9 @@ class Af1(AnophelesDataResource):
 
     Parameters
     ----------
-    url : str
-        Base path to data. Give "gs://vo_afun_release/" to use Google Cloud
-        Storage, or a local path on your file system if data have been
-        downloaded.
+    url : str, optional
+        Base path to data. Defaults to use Google Cloud Storage, or can
+        be a local path on your file system if data have been downloaded.
     site_filters_analysis : str, optional
         Site filters analysis version.
     bokeh_output_notebook : bool, optional
