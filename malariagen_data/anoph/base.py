@@ -16,6 +16,7 @@ from typing import (
 )
 from textwrap import dedent
 import bokeh.io
+import ipinfo
 import numpy as np
 import pandas as pd
 import zarr  # type: ignore
@@ -29,6 +30,7 @@ from ..util import (
     LoggingHelper,
     check_colab_location,
     check_types,
+    get_gcp_region,
     hash_params,
     init_filesystem,
 )
@@ -42,7 +44,8 @@ class AnophelesBase:
         url: str,
         config_path: str,
         pre: bool,
-        gcs_url: Optional[str],  # only used for colab location check
+        gcs_default_url: str,
+        gcs_region_urls: Mapping[str, str],
         major_version_number: int,
         major_version_path: str,
         bokeh_output_notebook: bool = False,
@@ -54,10 +57,10 @@ class AnophelesBase:
         results_cache: Optional[str] = None,
         tqdm_class=None,
     ):
-        self._url = url
         self._config_path = config_path
         self._pre = pre
-        self._gcs_url = gcs_url
+        self._gcs_default_url = gcs_default_url
+        self._gcs_region_urls = gcs_region_urls
         self._major_version_number = major_version_number
         self._major_version_path = major_version_path
         self._debug = debug
@@ -68,6 +71,31 @@ class AnophelesBase:
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
+
+        # Check client location.
+        self._client_details = None
+        if check_location:
+            try:
+                self._client_details = ipinfo.getHandler().getDetails()
+            except OSError:
+                pass
+
+        # Determine cloud location details.
+        self._gcp_region = get_gcp_region(self._client_details)
+
+        # Check colab location.
+        check_colab_location(self._gcp_region)
+
+        # Determine storage URL.
+        if url:
+            # User has explicitly provided a URL to use.
+            self._url = url
+        elif self._gcp_region in self._gcs_region_urls:
+            # Choose URL in the same GCP region.
+            self._url = self._gcs_region_urls[self._gcp_region]
+        else:
+            # Fall back to default URL.
+            self._url = self._gcs_default_url
 
         # Set up fsspec filesystem. N.B., we use fsspec here to allow for
         # accessing different types of storage - fsspec will automatically
@@ -112,14 +140,6 @@ class AnophelesBase:
         # users forget to do this and wonder why bokeh plots don't show.
         if bokeh_output_notebook:  # pragma: no cover
             bokeh.io.output_notebook(hide_banner=True)
-
-        # Check colab location is in the US.
-        if check_location and self._gcs_url is not None:  # pragma: no cover
-            self._client_details = check_colab_location(
-                gcs_url=self._gcs_url, url=self._url
-            )
-        else:
-            self._client_details = None
 
         # Set up cache attributes.
         self._cache_releases: Optional[Tuple[str, ...]] = None
@@ -305,8 +325,10 @@ class AnophelesBase:
         details = self._client_details
         if details is not None:
             region = details.region
-            country = details.country
+            country = details.country_name
             location = f"{region}, {country}"
+            if self._gcp_region:
+                location += f" (Google Cloud {self._gcp_region})"
         else:
             location = "unknown"
         return location

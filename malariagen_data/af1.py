@@ -8,7 +8,10 @@ from .anopheles import AnophelesDataResource
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
-GCS_URL = "gs://vo_afun_release/"
+GCS_DEFAULT_URL = "gs://vo_afun_release/"
+GCS_REGION_URLS = {
+    "us-central1": "gs://vo_afun_release_master_us_central1",
+}
 XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
 
@@ -75,7 +78,7 @@ class Af1(AnophelesDataResource):
 
     def __init__(
         self,
-        url=GCS_URL,
+        url=None,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -109,7 +112,8 @@ class Af1(AnophelesDataResource):
             show_progress=show_progress,
             check_location=check_location,
             pre=pre,
-            gcs_url=GCS_URL,
+            gcs_default_url=GCS_DEFAULT_URL,
+            gcs_region_urls=GCS_REGION_URLS,
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
             gff_gene_type="protein_coding_gene",
