@@ -221,9 +221,10 @@ class AnophelesH1XAnalysis(
         )
 
         # Plot H1X.
-        fig.circle(
+        fig.scatter(
             x=x,
             y=h1x,
+            marker="circle",
             size=3,
             line_width=1,
             line_color="black",

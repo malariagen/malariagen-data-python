@@ -193,7 +193,14 @@ class AnophelesH12Analysis(
         fig.line(
             window_sizes, q50, line_color="black", line_width=4, legend_label="median"
         )
-        fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
+        fig.scatter(
+            window_sizes,
+            q50,
+            marker="circle",
+            color="black",
+            fill_color="black",
+            size=8,
+        )
 
         fig.xaxis.ticker = window_sizes
         if show:  # pragma: no cover
@@ -372,9 +379,10 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        fig.circle(
+        fig.scatter(
             x=x,
             y=h12,
+            marker="circle",
             size=3,
             line_width=1,
             line_color="black",

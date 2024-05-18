@@ -641,8 +641,12 @@ class AnophelesCnvData(
         circle_kwargs_mutable["legend_label"] = circle_kwargs_mutable.get(
             "legend_label", "Coverage"
         )
-        fig.circle(
-            x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs_mutable
+        fig.scatter(
+            x="variant_midpoint",
+            y="call_NormCov",
+            source=data,
+            marker="circle",
+            **circle_kwargs_mutable,
         )
 
         debug("plot the HMM state")

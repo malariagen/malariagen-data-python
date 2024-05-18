@@ -227,10 +227,11 @@ class AnophelesFstAnalysis(
         )
 
         # plot Fst
-        fig.circle(
+        fig.scatter(
             x=x,
             y=fst,
             size=3,
+            marker="circle",
             line_width=1,
             line_color="black",
             fill_color=None,
