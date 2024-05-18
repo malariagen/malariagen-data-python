@@ -557,6 +557,80 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
         api.cnv_discordant_read_calls(contig="foobar", sample_sets="bazqux")
 
 
+def test_cnv_dicordant_read_calls__sample_query(
+    ag3_sim_fixture, ag3_sim_api: AnophelesCnvData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    sample_sets = "AG1000G-BF-A"
+    contig = fixture.random_contig()
+
+    # Parametrize query.
+    parametrize_query = [
+        "taxon == 'coluzzii' and location == 'Bana Village'",
+        "taxon == 'gambiae' and location == 'Pala'",
+        "taxon == 'robot'",
+    ]
+
+    # Run tests.
+    for sample_query in parametrize_query:
+        # Get the number of samples for this query
+        df_samples = ag3_sim_api.sample_metadata().query(sample_query)
+
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                ds = api.cnv_discordant_read_calls(
+                    contig=contig,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    max_coverage_variance=None,
+                )
+        else:
+            ds = api.cnv_discordant_read_calls(
+                contig=contig,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                max_coverage_variance=None,
+            )
+            assert isinstance(ds, xr.Dataset)
+
+            # check fields
+            expected_data_vars = {
+                "variant_Region",
+                "variant_StartBreakpoitMethod",
+                "variant_EndBreakpoitMethod",
+                "call_genotype",
+                "sample_coverage_variance",
+                "sample_is_high_variance",
+            }
+            assert set(ds.data_vars) == expected_data_vars
+
+            expected_coords = {
+                "variant_position",
+                "variant_end",
+                "variant_id",
+                "variant_contig",
+                "sample_id",
+            }
+            assert set(ds.coords) == expected_coords
+
+            # check dimensions
+            assert set(ds.dims) == {"variants", "samples"}
+
+            # check expected samples
+            df_samples = api.sample_metadata(sample_sets=sample_sets).query(
+                sample_query
+            )
+            expected_samples = df_samples["sample_id"].tolist()
+            n_samples_expected = len(expected_samples)
+            assert ds.sizes["samples"] == n_samples_expected
+
+            # check sample IDs
+            assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
     # Set up test.
