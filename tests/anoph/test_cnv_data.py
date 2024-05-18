@@ -585,14 +585,12 @@ def test_cnv_dicordant_read_calls__sample_query(
                     contig=contig,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
-                    max_coverage_variance=None,
                 )
         else:
             ds = api.cnv_discordant_read_calls(
                 contig=contig,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
-                max_coverage_variance=None,
             )
             assert isinstance(ds, xr.Dataset)
 
