@@ -597,8 +597,8 @@ def test_cnv_dicordant_read_calls__sample_query(
             # check fields
             expected_data_vars = {
                 "variant_Region",
-                "variant_StartBreakpoitMethod",
-                "variant_EndBreakpoitMethod",
+                "variant_StartBreakpointMethod",
+                "variant_EndBreakpointMethod",
                 "call_genotype",
                 "sample_coverage_variance",
                 "sample_is_high_variance",
