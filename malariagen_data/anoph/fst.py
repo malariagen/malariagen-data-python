@@ -500,12 +500,11 @@ class AnophelesFstAnalysis(
             index = fst_df.iloc[index_key]["cohort1"]
             col = fst_df.iloc[index_key]["cohort2"]
             fst = fst_df.iloc[index_key]["fst"]
-            fig_df[index][col] = fst
             if annotate_se is True:
                 se = fst_df.iloc[index_key]["se"]
-                fig_df[col][index] = se
+                fig_df.loc[index, col] = se
             else:
-                fig_df[col][index] = fst
+                fig_df.loc[index, col] = fst
 
         # create plot
         with np.errstate(invalid="ignore"):
