@@ -1200,7 +1200,7 @@ def _make_sample_period_quarter(row):
 def _make_sample_period_year(row):
     year = row.year
     if year > 0:
-        return pd.Period(freq="A", year=year)
+        return pd.Period(freq="Y", year=year)
     else:
         return pd.NaT
 
