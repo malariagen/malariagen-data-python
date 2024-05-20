@@ -377,10 +377,11 @@ class AnophelesG123Analysis(
         )
 
         # plot G123
-        fig.circle(
+        fig.scatter(
             x=x,
             y=g123,
             size=3,
+            marker="circle",
             line_width=1,
             line_color="black",
             fill_color=None,
@@ -557,7 +558,14 @@ class AnophelesG123Analysis(
         fig.line(
             window_sizes, q50, line_color="black", line_width=4, legend_label="median"
         )
-        fig.circle(window_sizes, q50, color="black", fill_color="black", size=8)
+        fig.scatter(
+            window_sizes,
+            q50,
+            marker="circle",
+            color="black",
+            fill_color="black",
+            size=8,
+        )
 
         fig.xaxis.ticker = window_sizes
 
