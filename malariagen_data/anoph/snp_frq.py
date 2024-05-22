@@ -387,6 +387,42 @@ class AnophelesSnpFrequencyAnalysis(
         df_aaf.attrs["title"] = title
 
         return df_aaf
+    
+
+    def aa_individual_allele_frequencies(
+        self,
+        transcript: base_params.transcript,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        drop_invariant: frq_params.drop_invariant = True,
+        include_counts: frq_params.include_counts = False,
+    ) -> pd.DataFrame:
+        
+        # load sample metadata
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets, sample_query=sample_query
+        )
+            
+        # create dict mapping sample_id to sample_query for each individual
+        coh_dict = {
+            id : f"sample_id == '{id}'"
+            for id in df_samples['sample_id']
+        }        
+        
+        # get individual allele frequencies
+        df_snps = self.aa_allele_frequencies(
+            transcript=transcript,
+            cohorts=coh_dict,
+            sample_query=sample_query,
+            min_cohort_size=1,
+            site_mask=site_mask,
+            sample_sets=sample_sets,
+            drop_invariant=drop_invariant,
+            include_counts=include_counts,
+        )
+
+        return df_snps
 
     @check_types
     @doc(
