@@ -177,17 +177,14 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         # return dict with sample order if for advanced diplotype clustering
         if not return_order_dict and not show:
             return fig
-        elif return_order_dict:      
+        elif return_order_dict:
             out_dict = {"dist": dist, "samples": gt_samples, "n_snps": n_snps_used}
 
             order_df = self.extract_dendro_sample_order(fig)
             out_dict["order_data"] = order_df
-            return fig, out_dict 
+            return fig, out_dict
         else:
-            return None 
-
-
-     
+            return None
 
     def diplotype_pairwise_distances(
         self,
