@@ -387,7 +387,6 @@ class AnophelesSnpFrequencyAnalysis(
         df_aaf.attrs["title"] = title
 
         return df_aaf
-    
 
     def aa_individual_allele_frequencies(
         self,
@@ -398,18 +397,14 @@ class AnophelesSnpFrequencyAnalysis(
         drop_invariant: frq_params.drop_invariant = True,
         include_counts: frq_params.include_counts = False,
     ) -> pd.DataFrame:
-        
         # load sample metadata
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
-            
+
         # create dict mapping sample_id to sample_query for each individual
-        coh_dict = {
-            id : f"sample_id == '{id}'"
-            for id in df_samples['sample_id']
-        }        
-        
+        coh_dict = {id: f"sample_id == '{id}'" for id in df_samples["sample_id"]}
+
         # get individual allele frequencies
         df_snps = self.aa_allele_frequencies(
             transcript=transcript,
