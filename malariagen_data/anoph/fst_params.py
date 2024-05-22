@@ -1,6 +1,6 @@
 """Parameter definitions for Fst functions."""
 
-from typing import Optional
+from typing import Optional, Union, Literal
 
 import pandas as pd
 from typing_extensions import Annotated, TypeAlias
@@ -20,5 +20,14 @@ df_pairwise_fst: TypeAlias = Annotated[
     pd.DataFrame,
     """
     A dataframe of pairwise Fst and standard error values.
+    """,
+]
+
+annotate_se: TypeAlias = Annotated[
+    Optional[Union[Literal["standard error", "Z score"], bool]],
+    """
+    How to annotate the upper-right corner of the plot. Default behaviour is using Fst, other options
+    are using the standard error (if annotate_se is True or 'standard error') or the Z score of the two
+    cohorts being the same (if annotate_se is 'Z score').
     """,
 ]
