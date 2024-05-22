@@ -171,21 +171,23 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
 
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+
         # return dict with sample order if for advanced diplotype clustering
-        if return_order_dict:
+        if not return_order_dict and not show:
+            return fig
+        elif return_order_dict:      
             out_dict = {"dist": dist, "samples": gt_samples, "n_snps": n_snps_used}
 
             order_df = self.extract_dendro_sample_order(fig)
             out_dict["order_data"] = order_df
-
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-            return None
+            return fig, out_dict 
         else:
-            if out_dict:
-                return fig, out_dict
-            else:
-                return fig
+            return None 
+
+
+     
 
     def diplotype_pairwise_distances(
         self,
