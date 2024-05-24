@@ -7,7 +7,7 @@ import xarray
 from malariagen_data.pv4 import Pv4
 
 
-def setup_pv4(url="simplecache::gs://pv4_staging/", **storage_kwargs):
+def setup_pv4(url="simplecache::gs://pv4_release/", **storage_kwargs):
     if url.startswith("simplecache::"):
         storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
     return Pv4(url, **storage_kwargs)
@@ -16,12 +16,12 @@ def setup_pv4(url="simplecache::gs://pv4_staging/", **storage_kwargs):
 @pytest.mark.parametrize(
     "url",
     [
-        "gs://pv4_staging/",
-        "gcs://pv4_staging/",
-        "gs://pv4_staging",
-        "gcs://pv4_staging",
-        "simplecache::gs://pv4_staging/",
-        "simplecache::gcs://pv4_staging/",
+        "gs://pv4_release/",
+        "gcs://pv4_release/",
+        "gs://pv4_release",
+        "gcs://pv4_release",
+        "simplecache::gs://pv4_release/",
+        "simplecache::gcs://pv4_release/",
     ],
 )
 def test_sample_metadata(url):
