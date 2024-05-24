@@ -7,7 +7,7 @@ import xarray
 from malariagen_data.pf7 import Pf7
 
 
-def setup_pf7(url="simplecache::gs://pf7_staging/", **storage_kwargs):
+def setup_pf7(url="simplecache::gs://pf7_release/", **storage_kwargs):
     if url.startswith("simplecache::"):
         storage_kwargs["simplecache"] = dict(cache_storage="gcs_cache")
     return Pf7(url, **storage_kwargs)
@@ -16,12 +16,12 @@ def setup_pf7(url="simplecache::gs://pf7_staging/", **storage_kwargs):
 @pytest.mark.parametrize(
     "url",
     [
-        "gs://pf7_staging/",
-        "gcs://pf7_staging/",
-        "gs://pf7_staging",
-        "gcs://pf7_staging",
-        "simplecache::gs://pf7_staging/",
-        "simplecache::gcs://pf7_staging/",
+        "gs://pf7_release/",
+        "gcs://pf7_release/",
+        "gs://pf7_release",
+        "gcs://pf7_release",
+        "simplecache::gs://pf7_release/",
+        "simplecache::gcs://pf7_release/",
     ],
 )
 def test_sample_metadata(url):
