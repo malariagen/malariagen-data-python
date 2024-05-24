@@ -12,7 +12,7 @@ from ..util import (
     multiallelic_diplotype_mean_cityblock,
 )
 from ..plotly_dendrogram import plot_dendrogram
-from . import base_params, plotly_params, tree_params, dipclust_params
+from . import base_params, plotly_params, tree_params, dipclust_params, cnv_params
 from .base_params import DEFAULT
 from .snp_frq import AnophelesSnpFrequencyAnalysis
 import pandas as pd
@@ -359,6 +359,81 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         )
 
         return fig
+    
+    @doc(
+        summary="Plot CNV calls as a track.",
+        parameters=dict(
+            x_range="The x-axis order of the plot.",
+            dendro_sample_id_order="The order of samples in the clustering dendrogram.",
+            samples="The samples present in the diplotype clustering dendrogram.",
+            color_continuous_scale="The colorscale to use for the plot.",
+            range_color="The range of the colorscale to use for the plot.",
+        ),
+    )
+    def _plot_dendro_cnv_bar(
+        self,
+        transcript: base_params.transcript,
+        x_range: np.ndarray,
+        dendro_sample_id_order: np.ndarray,
+        samples: np.ndarray,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        max_coverage_variance: Optional[cnv_params.max_coverage_variance] = 0.2,
+        color_continuous_scale: Optional[plotly_params.color_continuous_scale] = "Greys",
+        range_color=None,
+    ):
+        # use try except to prevent ValueError if no CNV data is available for some sample sets
+        try:
+            ds_cnv = self.gene_cnv(
+                region=transcript, 
+                sample_sets=sample_sets, 
+                sample_query=sample_query, 
+                max_coverage_variance=max_coverage_variance
+                )
+            
+            cnv_df = pd.DataFrame({'sample_id':ds_cnv['sample_id'].values, 'cn_mode':ds_cnv['CN_mode'].values[0]})
+  
+        except ValueError:
+        
+            cnv_df = pd.DataFrame(columns=['sample_id', 'cn_mode'])
+
+        cnv_df.set_index('sample_id', inplace=True)
+        
+        # some samples have no cnv calls, add them to the dataframe with copy number of 0, so that samples align with dendrogram
+        cnv_order = cnv_df.index.to_list()
+        mask  = np.array([i in cnv_order for i in samples])
+        missing_samples = samples[~mask]
+        missing_sample_df = pd.DataFrame({'sample_id':missing_samples, 'cn_mode':0}).set_index('sample_id')
+        cnv_df = pd.concat([cnv_df, missing_sample_df])
+        
+        # align data to dendrogram order and rename
+        cnv_df = cnv_df.loc[dendro_sample_id_order, :].rename(columns={'cn_mode':'CNV'})
+
+        # convert to number of extra copies  
+        #cnv_df.loc[:, 'CNV'] = (cnv_df.loc[:, 'CNV'] - 2).apply(lambda x: np.max([x, 0]))
+        
+        cnv_df = cnv_df.T
+        cnv_df.columns = x_range
+        
+        fig = self.plotly_track(df=cnv_df, colorscale=color_continuous_scale, range_color=range_color)
+    
+        return fig
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     def concat_subplots(
         self,
@@ -414,6 +489,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             amino_acids="Plot amino acid variants.",
             leaf_y="Y coordinate at which to plot the leaf markers.",
             filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
+            cnv= "Plot CNV calls as a track."
         ),
     )
     def plot_diplotype_clustering_advanced(
@@ -448,8 +524,11 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         legend_sizing: plotly_params.legend_sizing = "constant",
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
+        cnv_colorscale: plotly_params.color_continuous_scale = "Greys",
         amino_acids: bool = True,
         filter_min_maf: float = 0.05,
+        cnv: bool = False,
+        cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
     ):
         if cohort_size and amino_acids:
             cohort_size = None
@@ -512,6 +591,20 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                 random_seed=random_seed,
             )
             figures.append(fig_het)
+            row_heights.append(0.012)
+
+        if cnv:
+            fig_cnv = self._plot_dendro_cnv_bar(
+                transcript=transcript,
+                dendro_sample_id_order=dendro_sample_id_order,
+                x_range=x_range,
+                samples=out_dict["samples"],
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                max_coverage_variance=cnv_max_coverage_variance,
+                color_continuous_scale=cnv_colorscale,
+            )
+            figures.append(fig_cnv)
             row_heights.append(0.012)
 
         if transcript and amino_acids:
