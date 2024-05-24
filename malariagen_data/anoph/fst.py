@@ -493,7 +493,9 @@ class AnophelesFstAnalysis(
         **kwargs,
     ):
         # setup df
-        cohort_list = np.unique(fst_df[["cohort1", "cohort2"]].values)
+        cohort_list = pd.unique(
+            [c for cl in fst_df[["cohort1", "cohort2"]].values for c in cl]
+        )
         # df to fill
         fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
         # fill df from fst_df
