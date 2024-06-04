@@ -506,13 +506,11 @@ class AnophelesDataResource(
         self,
         sample: base_params.sample,
         region: Region,
-        site_mask: base_params.site_mask,
+        site_mask: Optional[base_params.site_mask],
         window_size: het_params.window_size,
         sample_set: Optional[base_params.sample_set] = None,
     ):
         debug = self._log.debug
-
-        site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
         sample_rec = self.lookup_sample(sample=sample, sample_set=sample_set)

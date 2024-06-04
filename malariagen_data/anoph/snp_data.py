@@ -1340,7 +1340,8 @@ class AnophelesSnpData(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # Normalise params.
-        site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+        site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Resolve and check region.
         resolved_region: Region = parse_single_region(self, region)
@@ -1468,7 +1469,9 @@ class AnophelesSnpData(
         data["right"] = data["pos"] + 0.4
         data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
         data["top"] = data["bottom"] + 0.8
-        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
+        data["color"] = np.where(
+            data[f"pass_{site_mask_prepped}"], color_pass, color_fail
+        )
         fig.quad(
             top="top",
             bottom="bottom",
