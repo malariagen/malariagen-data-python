@@ -3159,7 +3159,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[base_params.min_minor_ac] = None,
         max_missing_an: Optional[base_params.max_missing_an] = None,
