@@ -40,7 +40,6 @@ from .anoph import (
 )
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
-from .anoph.base_params import DEFAULT
 from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
@@ -1849,7 +1848,7 @@ class AnophelesDataResource(
     def ihs_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
@@ -2012,7 +2011,7 @@ class AnophelesDataResource(
     def plot_ihs_gwss_track(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
@@ -2152,7 +2151,7 @@ class AnophelesDataResource(
     def plot_xpehh_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
@@ -2244,7 +2243,7 @@ class AnophelesDataResource(
     def plot_ihs_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
@@ -2346,7 +2345,7 @@ class AnophelesDataResource(
     def xpehh_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
@@ -2507,7 +2506,7 @@ class AnophelesDataResource(
     def plot_xpehh_gwss_track(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
@@ -2654,7 +2653,7 @@ class AnophelesDataResource(
     def plot_haplotype_network(
         self,
         region: base_params.regions,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,

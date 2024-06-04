@@ -9,7 +9,6 @@ import bokeh.plotting
 from .hap_data import AnophelesHapData
 from ..util import hash_columns, check_types, CacheMiss
 from . import base_params
-from .base_params import DEFAULT
 from . import h12_params, gplt_params, hap_params
 
 
@@ -70,7 +69,7 @@ class AnophelesH12Analysis(
     def h12_calibration(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -122,7 +121,7 @@ class AnophelesH12Analysis(
     def plot_h12_calibration(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -260,7 +259,7 @@ class AnophelesH12Analysis(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -311,7 +310,7 @@ class AnophelesH12Analysis(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -408,7 +407,7 @@ class AnophelesH12Analysis(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,

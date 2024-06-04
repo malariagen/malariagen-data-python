@@ -10,7 +10,6 @@ import bokeh.layouts
 import plotly.express as px
 
 from .snp_data import AnophelesSnpData
-from .base_params import DEFAULT
 from . import base_params, fst_params, gplt_params, plotly_params
 from ..util import CacheMiss, check_types
 

@@ -32,7 +32,6 @@ from ..util import (
     true_runs,
 )
 from . import base_params
-from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -94,7 +93,7 @@ class AnophelesSnpData(
         *,
         site_mask: base_params.site_mask,
     ) -> base_params.site_mask:
-        if site_mask == DEFAULT:
+        if site_mask == base_params.DEFAULT:
             # Use whatever is the default site mask for this data resource.
             assert self._default_site_mask is not None
             return self._default_site_mask
@@ -166,7 +165,7 @@ class AnophelesSnpData(
     )
     def open_site_filters(
         self,
-        mask: base_params.site_mask = DEFAULT,
+        mask: base_params.site_mask = base_params.DEFAULT,
     ) -> zarr.hierarchy.Group:
         self._require_site_filters_analysis()
         mask_prepped = self._prep_site_mask_param(site_mask=mask)
@@ -261,7 +260,7 @@ class AnophelesSnpData(
     def site_filters(
         self,
         region: base_params.regions,
-        mask: base_params.site_mask = DEFAULT,
+        mask: base_params.site_mask = base_params.DEFAULT,
         field: base_params.field = "filter_pass",
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
@@ -1507,7 +1506,7 @@ class AnophelesSnpData(
     def is_accessible(
         self,
         region: base_params.region,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: base_params.site_mask = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> np.ndarray:

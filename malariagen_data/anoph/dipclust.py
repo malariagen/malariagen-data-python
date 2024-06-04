@@ -13,7 +13,6 @@ from ..util import (
 )
 from ..plotly_dendrogram import plot_dendrogram
 from . import base_params, plotly_params, tree_params, dipclust_params
-from .base_params import DEFAULT
 from .snp_data import AnophelesSnpData
 
 

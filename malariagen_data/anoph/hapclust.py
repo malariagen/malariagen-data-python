@@ -8,7 +8,6 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import CacheMiss, check_types, pdist_abs_hamming
 from ..plotly_dendrogram import plot_dendrogram
 from . import base_params, plotly_params, tree_params, hap_params, hapclust_params
-from .base_params import DEFAULT
 from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
 
@@ -35,7 +34,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
     def plot_haplotype_clustering(
         self,
         region: base_params.regions,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
@@ -186,7 +185,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
     def haplotype_pairwise_distances(
         self,
         region: base_params.regions,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         cohort_size: Optional[base_params.cohort_size] = None,

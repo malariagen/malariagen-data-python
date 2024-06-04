@@ -16,7 +16,6 @@ from ..util import (
     unpack_gff3_attributes,
 )
 from . import base_params, gplt_params
-from .base_params import DEFAULT
 from .genome_sequence import AnophelesGenomeSequenceData
 
 
@@ -109,7 +108,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     ) -> Tuple[str, ...]:
         if attributes is None:
             attributes_normed: Tuple[str, ...] = ()
-        elif attributes == DEFAULT:
+        elif attributes == base_params.DEFAULT:
             attributes_normed = self._gff_default_attributes
         elif isinstance(attributes, str):
             attributes_normed = (attributes,)
@@ -125,7 +124,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     def genome_features(
         self,
         region: Optional[base_params.regions] = None,
-        attributes: base_params.gff_attributes = DEFAULT,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> pd.DataFrame:
         debug = self._log.debug
 
@@ -159,7 +158,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             )
 
     def genome_feature_children(
-        self, parent: str, attributes: base_params.gff_attributes = DEFAULT
+        self, parent: str, attributes: base_params.gff_attributes = base_params.DEFAULT
     ) -> pd.DataFrame:
         # Normalise attributes and ensure Parent is included.
         attributes_normed = self._prep_gff_attributes(attributes)
