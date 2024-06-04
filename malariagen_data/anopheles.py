@@ -2811,9 +2811,9 @@ class AnophelesDataResource(
             # charts
             for i, (v, c) in enumerate(color_discrete_map_prepped.items()):
                 node_style[f"pie-{i + 1}-background-color"] = c
-                node_style[f"pie-{i + 1}-background-size"] = (
-                    f"mapData({v}, 0, 100, 0, 100)"
-                )
+                node_style[
+                    f"pie-{i + 1}-background-size"
+                ] = f"mapData({v}, 0, 100, 0, 100)"
         node_stylesheet = {
             "selector": "node",
             "style": node_style,
