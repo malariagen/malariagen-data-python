@@ -39,7 +39,7 @@ class AnophelesDipClustAnalysis(
     def plot_diplotype_clustering(
         self,
         region: base_params.regions,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
@@ -179,7 +179,7 @@ class AnophelesDipClustAnalysis(
     def diplotype_pairwise_distances(
         self,
         region: base_params.regions,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_class: Optional[base_params.site_class] = None,

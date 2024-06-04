@@ -362,7 +362,7 @@ class AnophelesDataResource(
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -421,7 +421,7 @@ class AnophelesDataResource(
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -561,7 +561,7 @@ class AnophelesDataResource(
         sample: base_params.sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         phet_roh: het_params.phet_roh = het_params.phet_roh_default,
         phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
@@ -696,7 +696,7 @@ class AnophelesDataResource(
         sample: base_params.sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         phet_roh: het_params.phet_roh = het_params.phet_roh_default,
         phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
@@ -1563,7 +1563,7 @@ class AnophelesDataResource(
         region: base_params.regions,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         random_seed: base_params.random_seed = 42,
@@ -1664,7 +1664,7 @@ class AnophelesDataResource(
         cohorts: base_params.cohorts,
         cohort_size: base_params.cohort_size,
         region: base_params.regions,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -2812,9 +2812,9 @@ class AnophelesDataResource(
             # charts
             for i, (v, c) in enumerate(color_discrete_map_prepped.items()):
                 node_style[f"pie-{i + 1}-background-color"] = c
-                node_style[
-                    f"pie-{i + 1}-background-size"
-                ] = f"mapData({v}, 0, 100, 0, 100)"
+                node_style[f"pie-{i + 1}-background-size"] = (
+                    f"mapData({v}, 0, 100, 0, 100)"
+                )
         node_stylesheet = {
             "selector": "node",
             "style": node_style,
@@ -2979,7 +2979,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[base_params.min_minor_ac] = None,
         max_missing_an: Optional[base_params.max_missing_an] = None,

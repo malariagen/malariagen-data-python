@@ -151,7 +151,7 @@ class AnophelesG123Analysis(
         contig: base_params.contig,
         window_size: g123_params.window_size,
         sites: g123_params.sites = DEFAULT,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: Optional[
@@ -253,7 +253,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         sites: g123_params.sites = DEFAULT,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         min_cohort_size: Optional[
@@ -306,7 +306,7 @@ class AnophelesG123Analysis(
         contig: base_params.contig,
         window_size: g123_params.window_size,
         sites: g123_params.sites = DEFAULT,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: Optional[
@@ -407,7 +407,7 @@ class AnophelesG123Analysis(
         contig: base_params.contig,
         window_size: g123_params.window_size,
         sites: g123_params.sites = DEFAULT,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: Optional[
@@ -484,7 +484,7 @@ class AnophelesG123Analysis(
         self,
         contig: base_params.contig,
         sites: g123_params.sites,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         min_cohort_size: Optional[

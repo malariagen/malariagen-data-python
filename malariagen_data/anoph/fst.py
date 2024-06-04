@@ -105,7 +105,7 @@ class AnophelesFstAnalysis(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -160,7 +160,7 @@ class AnophelesFstAnalysis(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -262,7 +262,7 @@ class AnophelesFstAnalysis(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -350,7 +350,7 @@ class AnophelesFstAnalysis(
             base_params.max_cohort_size
         ] = fst_params.max_cohort_size_default,
         n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[float, float]:
@@ -416,7 +416,7 @@ class AnophelesFstAnalysis(
             base_params.max_cohort_size
         ] = fst_params.max_cohort_size_default,
         n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
     ) -> fst_params.df_pairwise_fst:
