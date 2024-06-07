@@ -8,7 +8,6 @@ import bokeh.plotting
 from .hap_data import AnophelesHapData
 from ..util import check_types, CacheMiss
 from . import base_params
-from .base_params import DEFAULT
 from . import h12_params, gplt_params, hap_params
 from .h12 import haplotype_frequencies
 
@@ -97,7 +96,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -153,7 +152,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -255,7 +254,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
