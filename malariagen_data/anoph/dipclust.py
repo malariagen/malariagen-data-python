@@ -18,6 +18,21 @@ from .snp_frq import AnophelesSnpFrequencyAnalysis
 import pandas as pd
 
 
+CNV_COLORSCALE = [
+            [0.0, 'rgb(255, 255, 255)'],   # white
+            [0.08333333333333333, 'rgb(255, 255, 210)'],   # white
+            [0.16666666666666666, 'rgb(255, 237, 160)'],
+            [0.25, 'rgb(254, 217, 118)'],
+            [0.3333333333333333, 'rgb(254, 178, 76)'],
+            [0.41666666666666663, 'rgb(253, 141, 60)'],
+            [0.5833333333333333, 'rgb(252, 78, 42)'],
+            [0.6666666666666666, 'rgb(227, 26, 28)'],
+            [0.75, 'rgb(189, 0, 38)'],
+            [0.8333333333333333, 'rgb(128, 0, 38)'],
+            [0.9166666666666666, 'rgb(77, 0, 75)'],    # Dark purple
+            [1.0, 'rgb(0,0,0)']
+        ]
+
 class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
     def __init__(
         self,
@@ -412,6 +427,17 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                 }
             ).set_index("sample_id")
 
+            # need to ensure that colorscale is same for all CNV tracks
+            # in plotly this is not that simple
+            # min_cn = cnv_df['cn_mode'].min()
+            # max_cn = cnv_df['cn_mode'].max()
+            
+            # # subset colorscale to max min cn and rescale to 0,1
+            # cnv_colorscale = list(CNV_COLORSCALE[min_cn:max_cn+1])
+            # max_ = float(cnv_colorscale[-1][0])
+            # for i in range(len(cnv_colorscale)):
+            #     cnv_colorscale[i][0] = float(cnv_colorscale[i][0]) / max_
+ 
             # NB. some samples do not have CNV data due to missing / high coverage variance
             # we therefore must add these samples to the dataframe with NaN values
             mask = np.array([s in ds_cnv["sample_id"].values for s in samples])
@@ -420,11 +446,12 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                     {"sample_id": missing_cnv_samples, "cn_mode": 'NaN'}
                 ).set_index("sample_id")
             cnv_df = pd.concat([cnv_df, missing_cnv_df]).loc[dendro_sample_id_order, :].rename(columns={"cn_mode": f"CNV {gene}"})
+            
             cnv_df = cnv_df.T
             cnv_df.columns = x_range
 
             fig_cnv = self.plotly_imshow(
-                df=cnv_df, colorscale=color_continuous_scale, range_color=range_color
+                df=cnv_df, colorscale=CNV_COLORSCALE, range_color=range_color
             )
 
             figures.append(fig_cnv)
@@ -474,7 +501,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             height=height,
             hovermode="closest",
             plot_bgcolor="white",
-            xaxis_range=(x_range[0], x_range[-1]),
+            xaxis_range=(0, np.max(x_range)),
         )
 
         return fig
