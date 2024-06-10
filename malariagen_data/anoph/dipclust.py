@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import allel  # type: ignore
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
+import plotly.express as px
 
 from ..util import (
     CacheMiss,
@@ -16,22 +17,6 @@ from . import base_params, plotly_params, tree_params, dipclust_params, cnv_para
 from .base_params import DEFAULT
 from .snp_frq import AnophelesSnpFrequencyAnalysis
 import pandas as pd
-
-
-CNV_COLORSCALE = [
-    [0.0, "rgb(255, 255, 255)"],  # white
-    [0.08333333333333333, "rgb(255, 255, 210)"],  # white
-    [0.16666666666666666, "rgb(255, 237, 160)"],
-    [0.25, "rgb(254, 217, 118)"],
-    [0.3333333333333333, "rgb(254, 178, 76)"],
-    [0.41666666666666663, "rgb(253, 141, 60)"],
-    [0.5833333333333333, "rgb(252, 78, 42)"],
-    [0.6666666666666666, "rgb(227, 26, 28)"],
-    [0.75, "rgb(189, 0, 38)"],
-    [0.8333333333333333, "rgb(128, 0, 38)"],
-    [0.9166666666666666, "rgb(77, 0, 75)"],  # Dark purple
-    [1.0, "rgb(0,0,0)"],
-]
 
 
 class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
@@ -337,7 +322,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
         range_color=None,
-        color_continuous_scale=plotly_params.color_continuous_scale,
+        color_continuous_scale: Optional[plotly_params.color_continuous_scale] = None,
     ):
         ds_snps = self.snp_calls(
             region=region,
@@ -388,14 +373,10 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         cnv_region: base_params.region,
         x_range: np.ndarray,
         dendro_sample_id_order: np.ndarray,
-        samples: np.ndarray,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_coverage_variance: Optional[cnv_params.max_coverage_variance] = 0.2,
-        # COMMENT maybe use the same colours as used in CNV heatmap plots? E.g., oranges for amplification, blues for deletion?
-        # Then could use grey for missing (no data) or missing (coverage variance too high)
-        color_continuous_scale: Optional[plotly_params.color_continuous_scale] = "PuOr",
-        range_color=None,
+        color_continuous_scale: Optional[plotly_params.color_continuous_scale] = "RdBu",
     ):
         try:
             ds_cnv = self.gene_cnv(
@@ -405,58 +386,31 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                 max_coverage_variance=max_coverage_variance,
             )
 
-            cnv_df = pd.DataFrame(
-                {
-                    "sample_id": ds_cnv["sample_id"].values,
-                    "cn_mode": ds_cnv["CN_mode"].values[0],
-                }
-            ).set_index("sample_id")
-
         except ValueError:
             return figures, row_heights  # No cnv data
 
-        # for each gene in data make bar
-        for i, gene in enumerate(ds_cnv["gene_id"].values):
-            cnv_df = pd.DataFrame(
-                {
-                    "sample_id": ds_cnv["sample_id"].values,
-                    "cn_mode": ds_cnv["CN_mode"].values[i],
-                }
-            ).set_index("sample_id")
+        # Reindex to match the order of samples to the dendrogram, and fill
+        # any missing samples with NaN - xarray will do this for us by default.
+        ds_cnv_ordered = ds_cnv.set_index(samples="sample_id").reindex(
+            samples=dendro_sample_id_order,
+        )
 
-            # need to ensure that colorscale is same for all CNV tracks
-            # in plotly this is not that simple
-            # min_cn = cnv_df['cn_mode'].min()
-            # max_cn = cnv_df['cn_mode'].max()
+        # Get the copy number data to plot.
+        cn_mode = ds_cnv_ordered["CN_mode"].values
 
-            # # subset colorscale to max min cn and rescale to 0,1
-            # cnv_colorscale = list(CNV_COLORSCALE[min_cn:max_cn+1])
-            # max_ = float(cnv_colorscale[-1][0])
-            # for i in range(len(cnv_colorscale)):
-            #     cnv_colorscale[i][0] = float(cnv_colorscale[i][0]) / max_
+        # Plot the copy number data.
+        print(f"Plot imshow with colorscale {color_continuous_scale!r}")
+        fig_cnv = px.imshow(
+            cn_mode,
+            zmin=0,
+            zmax=4,
+            color_continuous_scale=color_continuous_scale,
+        )
+        # DEBUG: show the CNV subplot, to check zmin, zmax and colorscale
+        fig_cnv.show()
 
-            # NB. some samples do not have CNV data due to missing / high coverage variance
-            # we therefore must add these samples to the dataframe with NaN values
-            mask = np.array([s in ds_cnv["sample_id"].values for s in samples])
-            missing_cnv_samples = samples[~mask]
-            missing_cnv_df = pd.DataFrame(
-                {"sample_id": missing_cnv_samples, "cn_mode": "NaN"}
-            ).set_index("sample_id")
-            cnv_df = (
-                pd.concat([cnv_df, missing_cnv_df])
-                .loc[dendro_sample_id_order, :]
-                .rename(columns={"cn_mode": f"CNV {gene}"})
-            )
-
-            cnv_df = cnv_df.T
-            cnv_df.columns = x_range
-
-            fig_cnv = self.plotly_imshow(
-                df=cnv_df, colorscale=CNV_COLORSCALE, range_color=range_color
-            )
-
-            figures.append(fig_cnv)
-            row_heights.append(0.012)
+        figures.append(fig_cnv)
+        row_heights.append(0.02 * ds_cnv.sizes["genes"])
 
         return figures, row_heights
 
@@ -549,7 +503,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         legend_sizing: plotly_params.legend_sizing = "constant",
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        cnv_colorscale: plotly_params.color_continuous_scale = "PuOr",
+        cnv_colorscale: plotly_params.color_continuous_scale = "RdBu",
         amino_acids: bool = True,
         filter_min_maf: float = 0.05,
         cnv_region: base_params.regions = None,
@@ -625,7 +579,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                 cnv_region=cnv_region,
                 dendro_sample_id_order=dendro_sample_id_order,
                 x_range=x_range,
-                samples=res["samples"],
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 max_coverage_variance=cnv_max_coverage_variance,
