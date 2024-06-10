@@ -519,8 +519,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
     )
     def plot_diplotype_clustering_advanced(
         self,
-        transcript: base_params.transcript,
         region: base_params.regions,
+        transcript: Optional[base_params.transcript] = None,
         site_mask: Optional[base_params.site_mask] = DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
