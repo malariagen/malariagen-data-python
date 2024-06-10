@@ -65,7 +65,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
         legend_sizing: plotly_params.legend_sizing = "constant",
-        return_order_dict: bool = False,
     ) -> plotly_params.figure:
         import sys
 
@@ -173,21 +172,14 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-
         # return dict with sample order if for advanced diplotype clustering
-        
-        # COMMENT maybe if not show then just return a dict which includes the figure
-        # as an entry? 
-        if not return_order_dict and not show:
-            return fig
-        elif return_order_dict:
-            out_dict = {"dist": dist, "samples": gt_samples, "n_snps": n_snps_used}
-
-            order_df = self.extract_dendro_sample_order(fig)
-            out_dict["order_data"] = order_df
-            return fig, out_dict
         else:
-            return None
+            return {'figure':fig, 
+                    'order_data':self.extract_dendro_sample_order(fig),
+                    'samples': gt_samples,
+                    'n_snps': n_snps_used
+                    }
+    
 
     def diplotype_pairwise_distances(
         self,
@@ -299,8 +291,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             {"xs": np.concatenate(xs), "sample_id": np.concatenate(samples)}
         )
 
-    def plotly_track(self, df, colorscale="greys", range_color=None):
-        # COMMENT rename to be more descriptive?
+    def plotly_imshow(self, df, colorscale="greys", range_color=None):
         import plotly.express as px
 
         fig = px.imshow(df, range_color=range_color)
@@ -345,22 +336,16 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         samples = ds_snps["sample_id"].values.astype("U")
 
         with self._spinner(desc="Compute heterozygosity"):
-            # COMMENT this looks like it could be simplified, e.g., gt.is_het().mean(axis=1)?
-            het_per_sample = [
-                np.nanmean(allel.heterozygosity_observed(gt[:, [i], :]))
-                for i in range(gt.shape[1])
-            ]
+            het_per_sample = gt.is_het().mean(axis=0)
 
-        # COMMENT is it necessary to use dataframe here? can use a series? or an array?
-        df_het = pd.DataFrame(
-            {"sample_id": samples, "Sample Heterozygosity": het_per_sample}
-        ).set_index("sample_id")
+        df_het = pd.DataFrame({'sample_id':samples,
+                               'Sample Heterozygosity':het_per_sample}).set_index('sample_id')
 
         # order according to dendrogram and transpose, make column names match x_range
         df_het = df_het.loc[dendro_sample_id_order, :].T
-        df_het.columns = x_range  # COMMENT why is this necessary?
+        df_het.columns = x_range  
 
-        fig = self.plotly_track(
+        fig = self.plotly_imshow(
             df=df_het, colorscale=color_continuous_scale, range_color=range_color
         )
 
@@ -369,6 +354,9 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
     @doc(
         summary="Plot CNV calls as a track.",
         parameters=dict(
+            figures="The plotly figures to add the CNV track to.",
+            row_heights="The height of each row in the plot.",
+            cnv_region="The region to plot CNV calls for.",
             x_range="The x-axis order of the plot.",
             dendro_sample_id_order="The order of samples in the clustering dendrogram.",
             samples="The samples present in the diplotype clustering dendrogram.",
@@ -376,26 +364,30 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             range_color="The range of the colorscale to use for the plot.",
         ),
     )
+        
     def _plot_dendro_cnv_bar(
-        self,
-        transcript: base_params.transcript,
-        x_range: np.ndarray,
-        dendro_sample_id_order: np.ndarray,
-        samples: np.ndarray,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        max_coverage_variance: Optional[cnv_params.max_coverage_variance] = 0.2,
-        # COMMENT maybe use the same colours as used in CNV heatmap plots? E.g., oranges for amplification, blues for deletion?
-        # Then could use grey for missing (no data) or missing (coverage variance too high)
-        color_continuous_scale: Optional[
-            plotly_params.color_continuous_scale
-        ] = "Greys",
-        range_color=None,
-    ):
-        # use try except to prevent ValueError if no CNV data is available for some sample sets
+            self,
+            figures, 
+            row_heights,
+            cnv_region: base_params.region,
+            x_range: np.ndarray,
+            dendro_sample_id_order: np.ndarray,
+            samples: np.ndarray,
+            sample_sets: Optional[base_params.sample_sets] = None,
+            sample_query: Optional[base_params.sample_query] = None,
+            max_coverage_variance: Optional[cnv_params.max_coverage_variance] = 0.2,
+            # COMMENT maybe use the same colours as used in CNV heatmap plots? E.g., oranges for amplification, blues for deletion?
+            # Then could use grey for missing (no data) or missing (coverage variance too high)
+            color_continuous_scale: Optional[
+                plotly_params.color_continuous_scale
+            ] = "PuOr",
+            range_color=None,
+        ):
+        
         try:
+        
             ds_cnv = self.gene_cnv(
-                region=transcript,
+                region=cnv_region,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 max_coverage_variance=max_coverage_variance,
@@ -406,38 +398,39 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                     "sample_id": ds_cnv["sample_id"].values,
                     "cn_mode": ds_cnv["CN_mode"].values[0],
                 }
-            )
+            ).set_index("sample_id")
 
         except ValueError:
-            cnv_df = pd.DataFrame(columns=["sample_id", "cn_mode"])
+            return figures, row_heights # No cnv data
+        
+        # for each gene in data make bar
+        for i, gene in enumerate(ds_cnv['gene_id'].values):
+            cnv_df = pd.DataFrame(
+                {
+                    "sample_id": ds_cnv["sample_id"].values,
+                    "cn_mode": ds_cnv["CN_mode"].values[i],
+                }
+            ).set_index("sample_id")
 
-        cnv_df.set_index("sample_id", inplace=True)
+            # NB. some samples do not have CNV data due to missing / high coverage variance
+            # we therefore must add these samples to the dataframe with NaN values
+            mask = np.array([s in ds_cnv["sample_id"].values for s in samples])
+            missing_cnv_samples = samples[~mask]
+            missing_cnv_df = pd.DataFrame(
+                    {"sample_id": missing_cnv_samples, "cn_mode": 'NaN'}
+                ).set_index("sample_id")
+            cnv_df = pd.concat([cnv_df, missing_cnv_df]).loc[dendro_sample_id_order, :].rename(columns={"cn_mode": f"CNV {gene}"})
+            cnv_df = cnv_df.T
+            cnv_df.columns = x_range
 
-        # some samples have no cnv calls, add them to the dataframe with copy number of 0, so that samples align with dendrogram
-        cnv_order = cnv_df.index.to_list()
-        mask = np.array([i in cnv_order for i in samples])
-        missing_samples = samples[~mask]
-        missing_sample_df = pd.DataFrame(
-            {"sample_id": missing_samples, "cn_mode": 0}
-        ).set_index("sample_id")
-        cnv_df = pd.concat([cnv_df, missing_sample_df])
+            fig_cnv = self.plotly_imshow(
+                df=cnv_df, colorscale=color_continuous_scale, range_color=range_color
+            )
 
-        # align data to dendrogram order and rename
-        cnv_df = cnv_df.loc[dendro_sample_id_order, :].rename(
-            columns={"cn_mode": "CNV"}
-        )
-
-        # convert to number of extra copies
-        # cnv_df.loc[:, 'CNV'] = (cnv_df.loc[:, 'CNV'] - 2).apply(lambda x: np.max([x, 0]))
-
-        cnv_df = cnv_df.T
-        cnv_df.columns = x_range  # COMMENT why is this necessary?
-
-        fig = self.plotly_track(
-            df=cnv_df, colorscale=color_continuous_scale, range_color=range_color
-        )
-
-        return fig
+            figures.append(fig_cnv)
+            row_heights.append(0.012)
+            
+        return figures, row_heights
 
     def concat_subplots(
         self,
@@ -493,7 +486,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             amino_acids="Plot amino acid variants.",
             leaf_y="Y coordinate at which to plot the leaf markers.",
             filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
-            cnv="Plot CNV calls as a track.",
+            cnv_region="The region to plot CNV calls for.",
         ),
     )
     def plot_diplotype_clustering_advanced(
@@ -528,10 +521,10 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         legend_sizing: plotly_params.legend_sizing = "constant",
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        cnv_colorscale: plotly_params.color_continuous_scale = "Greys",
+        cnv_colorscale: plotly_params.color_continuous_scale = "PuOr",
         amino_acids: bool = True,
         filter_min_maf: float = 0.05,
-        cnv: bool = False,
+        cnv_region: base_params.regions = None,
         cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
     ):
         if cohort_size and amino_acids:
@@ -540,7 +533,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
                 "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None."
             )
 
-        fig_dendro, out_dict = self.plot_diplotype_clustering(
+        res = self.plot_diplotype_clustering(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -568,16 +561,15 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             category_orders=category_orders,
             legend_sizing=legend_sizing,
             random_seed=random_seed,
-            return_order_dict=True,
         )
 
-        # COMMENT why is x_range needed?
-        x_range = np.sort(out_dict["order_data"]["xs"].to_list())
-        n_snps = out_dict["n_snps"]
+        fig_dendro = res['figure']
+
+        x_range = np.sort(res["order_data"]["xs"].to_list())
+        n_snps = res["n_snps"]
         dendro_sample_id_order = (
-            out_dict["order_data"].sort_values("xs")["sample_id"].to_list()
+            res["order_data"].sort_values("xs")["sample_id"].to_list()
         )
-        frq_sample_id_in_order = ["frq_" + s for s in dendro_sample_id_order]
 
         figures = []
         row_heights = [0.2]
@@ -598,52 +590,44 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
             figures.append(fig_het)
             row_heights.append(0.012)
 
-        if cnv:
-            fig_cnv = self._plot_dendro_cnv_bar(
-                # COMMENT should we instead pass in a separate parameter for the region to use
-                # and include multiple genes within the region? E.g., cnv_region?
-                transcript=transcript,
+        if cnv_region:
+            figures, row_heights = self._plot_dendro_cnv_bar(
+                figures=figures,
+                row_heights=row_heights,
+                cnv_region=cnv_region,
                 dendro_sample_id_order=dendro_sample_id_order,
                 x_range=x_range,
-                samples=out_dict["samples"],
+                samples=res["samples"],
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 max_coverage_variance=cnv_max_coverage_variance,
                 color_continuous_scale=cnv_colorscale,
             )
-            figures.append(fig_cnv)
-            row_heights.append(0.012)
 
         if transcript and amino_acids:
-            # COMMENT can this be done more directly on genotypes?
-            # Could go via GenotypeArray.to_allele_counts()?
-
-            # COMMENT maybe have to use SNPs rather than amino acid changes?
-            # I.e., one row per SNP?
-
-            # load genotypes at amino acid variants for each sample
-            df_snps = self.aa_individual_allele_frequencies(
+            # load allele counts at amino acid variants for each sample
+            df_snps = self.aa_allele_counts(
                 transcript=transcript,
                 sample_query=sample_query,
                 sample_sets=sample_sets,
                 site_mask=site_mask,
             )
+            df_snps = df_snps.reset_index(drop=True).set_index('aa_change')
 
             # set to diplotype cluster order
-            df_snps = df_snps.reset_index(drop=True).set_index("label")
             df_snps = (
-                df_snps.filter(like="frq").fillna(0).loc[:, frq_sample_id_in_order]
+                df_snps.filter(like="count_").loc[:, ["count_" + s for s in dendro_sample_id_order]]
             )
             df_snps.columns = x_range
 
             if filter_min_maf:
-                df_snps = df_snps.assign(af=lambda x: x.sum(axis=1) / x.shape[1])
+                df_snps = df_snps.assign(af=lambda x: x.sum(axis=1) / (x.shape[1]*2))
                 df_snps = df_snps.query("af > @filter_min_maf").drop(columns="af")
 
-            # aa_height = np.max([df_snps.shape[0]/100, 0.1]) # minimum height of 0.1
-            fig_aa = self.plotly_track(df_snps)
+            aa_height = np.max([df_snps.shape[0]/100, 0.2]) # minimum height of 0.2
+            fig_aa = self.plotly_imshow(df_snps)
             figures.append(fig_aa)
-            row_heights.append(0.2)
+            row_heights.append(aa_height)
 
         fig = self.concat_subplots(
             figures=figures,
