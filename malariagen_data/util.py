@@ -1328,7 +1328,9 @@ def apply_allele_mapping(x, mapping, max_allele):
     n_sites = x.shape[0]
     n_alleles = x.shape[1]
     assert mapping.shape[0] == n_sites
-    assert mapping.shape[1] == n_alleles
+    assert (
+        mapping.shape[1] == n_alleles
+    )  # these are not the same, work out what's going on - try running code with debugger? or print statementsd
 
     # Create output array.
     out = np.empty(shape=(n_sites, max_allele + 1), dtype=x.dtype)
