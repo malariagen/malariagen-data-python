@@ -294,34 +294,23 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             {"xs": np.concatenate(xs), "sample_id": np.concatenate(samples)}
         )
 
-    def plotly_imshow(self, df, colorscale="greys", range_color=None):
-        fig = px.imshow(df, range_color=range_color)
-        fig.update_layout(showlegend=False)
-        fig.update_traces(dict(showscale=False, coloraxis=None, colorscale=colorscale))
-        fig.update_xaxes(visible=False)
-
-        return fig
 
     @doc(
         summary="Calculate heterozygosity per sample over a region and plot as a track.",
         parameters=dict(
-            x_range="The x-axis range of the plot.",
             dendro_sample_id_order="The order of samples in the clustering dendrogram.",
-            range_color="The range of the colorscale to use for the plot.",
             color_continuous_scale="The colorscale to use for the plot.",
         ),
     )
-    def _plot_dendro_heterozygosity_bar(
+    def _dendro_het_bar_trace(
         self,
         region: base_params.regions,
-        x_range: np.ndarray,
         dendro_sample_id_order: np.ndarray,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: base_params.site_mask = DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-        range_color=None,
         color_continuous_scale: Optional[plotly_params.color_continuous_scale] = None,
     ):
         ds_snps = self.snp_calls(
@@ -343,15 +332,16 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             {"sample_id": samples, "Sample Heterozygosity": het_per_sample}
         ).set_index("sample_id")
 
-        # order according to dendrogram and transpose, make column names match x_range
+        # order according to dendrogram and transpose
         df_het = df_het.loc[dendro_sample_id_order, :].T
-        df_het.columns = x_range
 
-        fig = self.plotly_imshow(
-            df=df_het, colorscale=color_continuous_scale, range_color=range_color
+        trace = go.Heatmap(
+            z=df_het,
+            y=["Heterozygosity"],
+            colorscale=color_continuous_scale,
         )
 
-        return fig
+        return trace
 
     @doc(
         summary="Plot CNV calls as a track.",
@@ -359,11 +349,9 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             figures="The plotly figures to add the CNV track to.",
             row_heights="The height of each row in the plot.",
             cnv_region="The region to plot CNV calls for.",
-            x_range="The x-axis order of the plot.",
             dendro_sample_id_order="The order of samples in the clustering dendrogram.",
             samples="The samples present in the diplotype clustering dendrogram.",
             color_continuous_scale="The colorscale to use for the plot.",
-            range_color="The range of the colorscale to use for the plot.",
         ),
     )
     def _dendro_cnv_bar_trace(
@@ -398,6 +386,14 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         # Get the copy number data to plot.
         cn_mode = ds_cnv_ordered["CN_mode"].values
 
+        # get labels
+        gene_names = ds_cnv['gene_name'].values
+        gene_ids = ds_cnv['gene_id'].values
+        gene_labels = [
+            n if not pd.isna(n) else gene_ids[i] 
+            for i, n in enumerate(gene_names)
+            ]
+
         # Plot the copy number data.
         # N.B., here we have to use go.Heatmap directly rather than
         # px.imshow because the latter fails to incorporate zmin,
@@ -406,9 +402,11 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         # figure.
         trace = go.Heatmap(
             z=cn_mode,
+            y=gene_labels,
             zmin=0,
             zmax=4,
             colorscale=colorscale,
+            showlegend=None
         )
 
         return trace, ds_cnv.sizes["genes"]
@@ -416,7 +414,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
     def concat_subplots(
         self,
         figures,
-        x_range,
         width,
         height,
         row_heights,
@@ -460,8 +457,13 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             height=height,
             hovermode="closest",
             plot_bgcolor="white",
-            xaxis_range=(0, np.max(x_range)),
         )
+
+        # remove colorbar for all heatmap traces. This has to be determined dynamically as the 
+        # number of traces can vary depending on scatter color/symbol variables 
+        for trace in [trace for trace in fig['data'] if trace.type == 'heatmap']:  
+            idx = int(trace['yaxis'].lstrip("y"))
+            fig.update_traces(showscale=False, row=idx, col=0)
 
         return fig
 
@@ -550,22 +552,18 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         fig_dendro = res["figure"]
-
-        x_range = np.sort(res["order_data"]["xs"].to_list())
         n_snps = res["n_snps"]
         dendro_sample_id_order = (
             res["order_data"].sort_values("xs")["sample_id"].to_list()
         )
 
-        figures = []
+        figures = [fig_dendro]
         row_heights = [0.2]
-        figures.append(fig_dendro)
 
         if heterozygosity:
-            fig_het = self._plot_dendro_heterozygosity_bar(
+            het_trace = self._dendro_het_bar_trace(
                 region=region,
                 dendro_sample_id_order=dendro_sample_id_order,
-                x_range=x_range,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 cohort_size=cohort_size,
@@ -573,7 +571,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 color_continuous_scale=heterozygosity_colorscale,
                 random_seed=random_seed,
             )
-            figures.append(fig_het)
+            figures.append(het_trace)
             row_heights.append(0.012)
 
         if cnv_region:
@@ -586,7 +584,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 colorscale=cnv_colorscale,
             )
             figures.append(cnv_trace)
-            row_heights.append(0.02 * cnv_genes)
+            row_heights.append(0.015 * cnv_genes)
 
         if transcript and amino_acids:
             # load allele counts at amino acid variants for each sample
@@ -602,20 +600,28 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             df_snps = df_snps.filter(like="count_").loc[
                 :, ["count_" + s for s in dendro_sample_id_order]
             ]
-            df_snps.columns = x_range
 
             if filter_min_maf:
                 df_snps = df_snps.assign(af=lambda x: x.sum(axis=1) / (x.shape[1] * 2))
                 df_snps = df_snps.query("af > @filter_min_maf").drop(columns="af")
 
-            aa_height = np.max([df_snps.shape[0] / 100, 0.2])  # minimum height of 0.2
-            fig_aa = self.plotly_imshow(df_snps)
-            figures.append(fig_aa)
-            row_heights.append(aa_height)
+            # if there are aa snps then add heatmap to plot, otherwise skip 
+            if not df_snps.empty:
+                aa_height = np.max([df_snps.shape[0] / 100, 0.2])  # minimum height of 0.2
+                aa_trace = go.Heatmap(
+                    z=df_snps.values,
+                    y=df_snps.index.to_list(),
+                    colorscale="Greys",
+                    colorbar=None
+                    )
+
+                figures.append(aa_trace)
+                row_heights.append(aa_height)
+            else:
+                print(f"No amino acid mutations were found below {filter_min_maf} allele frequency. Omitting amino acid heatmap.")
 
         fig = self.concat_subplots(
             figures=figures,
-            x_range=x_range,
             width=width,
             height=height,
             row_heights=row_heights,
@@ -623,10 +629,12 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             sample_query=sample_query,
             region=region,
             n_snps=n_snps,
-        )
+        )       
+        
+        fig["layout"]["yaxis"]["title"] = "Distance (manhattan)"
 
-        if transcript and amino_acids:
-            # add lines to aa plot
+        if transcript and amino_acids and not df_snps.empty:
+            # add lines to aa plot to make prettier
             aa_idx = len(figures)
             fig.add_hline(y=-0.5, line_width=1, line_color="grey", row=aa_idx, col=1)
             for i, y in enumerate(df_snps.index.to_list()):
@@ -651,8 +659,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 col=1,
                 mirror=True,
             )
-
-        fig["layout"]["yaxis"]["title"] = "Distance (manhattan)"
 
         if show:
             fig.show(renderer=renderer)
