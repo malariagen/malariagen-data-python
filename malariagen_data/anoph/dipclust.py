@@ -3,6 +3,7 @@ from typing import Optional, Tuple
 import allel  # type: ignore
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
+import plotly.graph_objects as go  # type: ignore
 import plotly.express as px  # type: ignore
 import pandas as pd  # type: ignore
 
@@ -294,8 +295,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
     def plotly_imshow(self, df, colorscale="greys", range_color=None):
-        import plotly.express as px
-
         fig = px.imshow(df, range_color=range_color)
         fig.update_layout(showlegend=False)
         fig.update_traces(dict(showscale=False, coloraxis=None, colorscale=colorscale))
@@ -367,17 +366,14 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             range_color="The range of the colorscale to use for the plot.",
         ),
     )
-    def _plot_dendro_cnv_bar(
+    def _dendro_cnv_bar_trace(
         self,
-        figures,
-        row_heights,
         cnv_region: base_params.region,
-        x_range: np.ndarray,
         dendro_sample_id_order: np.ndarray,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        max_coverage_variance: Optional[cnv_params.max_coverage_variance] = 0.2,
-        color_continuous_scale: Optional[plotly_params.color_continuous_scale] = "RdBu",
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        max_coverage_variance: Optional[cnv_params.max_coverage_variance],
+        colorscale: Optional[plotly_params.color_continuous_scale],
     ):
         try:
             # TODO The gene_cnv() method still needs to get migrated to the
@@ -391,7 +387,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             )
 
         except ValueError:
-            return figures, row_heights  # No cnv data
+            return None, 0  # No cnv data
 
         # Reindex to match the order of samples to the dendrogram, and fill
         # any missing samples with NaN - xarray will do this for us by default.
@@ -403,20 +399,19 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         cn_mode = ds_cnv_ordered["CN_mode"].values
 
         # Plot the copy number data.
-        print(f"Plot imshow with colorscale {color_continuous_scale!r}")
-        fig_cnv = px.imshow(
-            cn_mode,
+        # N.B., here we have to use go.Heatmap directly rather than
+        # px.imshow because the latter fails to incorporate zmin,
+        # zmax and colorscale within the trace data, and so these
+        # then get lost later when we try to combined into a single
+        # figure.
+        trace = go.Heatmap(
+            z=cn_mode,
             zmin=0,
             zmax=4,
-            color_continuous_scale=color_continuous_scale,
+            colorscale=colorscale,
         )
-        # DEBUG: show the CNV subplot, to check zmin, zmax and colorscale
-        fig_cnv.show()
 
-        figures.append(fig_cnv)
-        row_heights.append(0.02 * ds_cnv.sizes["genes"])
-
-        return figures, row_heights
+        return trace, ds_cnv.sizes["genes"]
 
     def concat_subplots(
         self,
@@ -450,8 +445,13 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         for i, figure in enumerate(figures):
-            for trace in range(len(figure["data"])):
-                fig.append_trace(figure["data"][trace], row=i + 1, col=1)
+            if isinstance(figure, go.Figure):
+                # This is a figure, access the traces within it.
+                for trace in range(len(figure["data"])):
+                    fig.append_trace(figure["data"][trace], row=i + 1, col=1)
+            else:
+                # Assume this is a trace, add directly.
+                fig.append_trace(figure, row=i + 1, col=1)
 
         fig.update_xaxes(visible=False)
         fig.update_layout(
@@ -507,7 +507,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         legend_sizing: plotly_params.legend_sizing = "constant",
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        cnv_colorscale: plotly_params.color_continuous_scale = "RdBu",
+        cnv_colorscale: plotly_params.color_continuous_scale = "PuOr_r",
         amino_acids: bool = True,
         filter_min_maf: float = 0.05,
         cnv_region: Optional[base_params.regions] = None,
@@ -577,17 +577,16 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             row_heights.append(0.012)
 
         if cnv_region:
-            figures, row_heights = self._plot_dendro_cnv_bar(
-                figures=figures,
-                row_heights=row_heights,
+            cnv_trace, cnv_genes = self._dendro_cnv_bar_trace(
                 cnv_region=cnv_region,
                 dendro_sample_id_order=dendro_sample_id_order,
-                x_range=x_range,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 max_coverage_variance=cnv_max_coverage_variance,
-                color_continuous_scale=cnv_colorscale,
+                colorscale=cnv_colorscale,
             )
+            figures.append(cnv_trace)
+            row_heights.append(0.02 * cnv_genes)
 
         if transcript and amino_acids:
             # load allele counts at amino acid variants for each sample
