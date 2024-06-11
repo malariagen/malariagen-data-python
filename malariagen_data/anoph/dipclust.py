@@ -4,7 +4,6 @@ import allel  # type: ignore
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-import plotly.express as px  # type: ignore
 import pandas as pd  # type: ignore
 
 from ..util import (
@@ -294,7 +293,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             {"xs": np.concatenate(xs), "sample_id": np.concatenate(samples)}
         )
 
-
     @doc(
         summary="Calculate heterozygosity per sample over a region and plot as a track.",
         parameters=dict(
@@ -387,12 +385,11 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         cn_mode = ds_cnv_ordered["CN_mode"].values
 
         # get labels
-        gene_names = ds_cnv['gene_name'].values
-        gene_ids = ds_cnv['gene_id'].values
+        gene_names = ds_cnv["gene_name"].values
+        gene_ids = ds_cnv["gene_id"].values
         gene_labels = [
-            n if not pd.isna(n) else gene_ids[i] 
-            for i, n in enumerate(gene_names)
-            ]
+            n if not pd.isna(n) else gene_ids[i] for i, n in enumerate(gene_names)
+        ]
 
         # Plot the copy number data.
         # N.B., here we have to use go.Heatmap directly rather than
@@ -406,7 +403,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             zmin=0,
             zmax=4,
             colorscale=colorscale,
-            showlegend=None
+            showlegend=None,
         )
 
         return trace, ds_cnv.sizes["genes"]
@@ -459,10 +456,10 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             plot_bgcolor="white",
         )
 
-        # remove colorbar for all heatmap traces. This has to be determined dynamically as the 
-        # number of traces can vary depending on scatter color/symbol variables 
-        for trace in [trace for trace in fig['data'] if trace.type == 'heatmap']:  
-            idx = int(trace['yaxis'].lstrip("y"))
+        # remove colorbar for all heatmap traces. This has to be determined dynamically as the
+        # number of traces can vary depending on scatter color/symbol variables
+        for trace in [trace for trace in fig["data"] if trace.type == "heatmap"]:
+            idx = int(trace["yaxis"].lstrip("y"))
             fig.update_traces(showscale=False, row=idx, col=0)
 
         return fig
@@ -605,20 +602,24 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 df_snps = df_snps.assign(af=lambda x: x.sum(axis=1) / (x.shape[1] * 2))
                 df_snps = df_snps.query("af > @filter_min_maf").drop(columns="af")
 
-            # if there are aa snps then add heatmap to plot, otherwise skip 
+            # if there are aa snps then add heatmap to plot, otherwise skip
             if not df_snps.empty:
-                aa_height = np.max([df_snps.shape[0] / 100, 0.2])  # minimum height of 0.2
+                aa_height = np.max(
+                    [df_snps.shape[0] / 100, 0.2]
+                )  # minimum height of 0.2
                 aa_trace = go.Heatmap(
                     z=df_snps.values,
                     y=df_snps.index.to_list(),
                     colorscale="Greys",
-                    colorbar=None
-                    )
+                    colorbar=None,
+                )
 
                 figures.append(aa_trace)
                 row_heights.append(aa_height)
             else:
-                print(f"No amino acid mutations were found below {filter_min_maf} allele frequency. Omitting amino acid heatmap.")
+                print(
+                    f"No amino acid mutations were found below {filter_min_maf} allele frequency. Omitting amino acid heatmap."
+                )
 
         fig = self.concat_subplots(
             figures=figures,
@@ -629,8 +630,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             sample_query=sample_query,
             region=region,
             n_snps=n_snps,
-        )       
-        
+        )
+
         fig["layout"]["yaxis"]["title"] = "Distance (manhattan)"
 
         if transcript and amino_acids and not df_snps.empty:
