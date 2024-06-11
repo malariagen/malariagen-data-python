@@ -3,7 +3,8 @@ from typing import Optional, Tuple
 import allel  # type: ignore
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
-import plotly.express as px
+import plotly.express as px  # type: ignore
+import pandas as pd  # type: ignore
 
 from ..util import (
     CacheMiss,
@@ -16,10 +17,10 @@ from ..plotly_dendrogram import plot_dendrogram
 from . import base_params, plotly_params, tree_params, dipclust_params, cnv_params
 from .base_params import DEFAULT
 from .snp_frq import AnophelesSnpFrequencyAnalysis
-import pandas as pd
+from .cnv_data import AnophelesCnvData
 
 
-class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
+class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData):
     def __init__(
         self,
         **kwargs,
@@ -66,7 +67,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
         legend_sizing: plotly_params.legend_sizing = "constant",
-    ) -> plotly_params.figure:
+    ) -> Optional[dict]:
         import sys
 
         debug = self._log.debug
@@ -173,7 +174,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
 
         if show:  # pragma: no cover
             fig.show(renderer=renderer)
-        # return dict with sample order if for advanced diplotype clustering
+            return None
         else:
             return {
                 "figure": fig,
@@ -379,6 +380,9 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         color_continuous_scale: Optional[plotly_params.color_continuous_scale] = "RdBu",
     ):
         try:
+            # TODO The gene_cnv() method still needs to get migrated to the
+            # AnophelesCnvData class, so that it can be found in the class
+            # hierarchy.
             ds_cnv = self.gene_cnv(
                 region=cnv_region,
                 sample_sets=sample_sets,
@@ -426,7 +430,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ):
-        from plotly.subplots import make_subplots
+        from plotly.subplots import make_subplots  # type: ignore
 
         title_lines = []
         if sample_sets is not None:
@@ -506,7 +510,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis):
         cnv_colorscale: plotly_params.color_continuous_scale = "RdBu",
         amino_acids: bool = True,
         filter_min_maf: float = 0.05,
-        cnv_region: base_params.regions = None,
+        cnv_region: Optional[base_params.regions] = None,
         cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
     ):
         if cohort_size and amino_acids:
