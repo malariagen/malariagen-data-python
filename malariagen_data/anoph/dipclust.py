@@ -631,7 +631,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
             if aa_filter_min_maf:
                 df_aa = df_aa.assign(af=lambda x: x.sum(axis=1) / (x.shape[1] * 2))
-                df_aa = df_aa.query("af > @filter_min_maf").drop(columns="af")
+                df_aa = df_aa.query("af > @aa_filter_min_maf").drop(columns="af")
 
             # if there are aa snps then add heatmap to plot, otherwise skip
             if not df_aa.empty:
