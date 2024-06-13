@@ -340,6 +340,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             z=df_het,
             y=["Heterozygosity"],
             colorscale=color_continuous_scale,
+            showlegend=False,
+            showscale=False,
         )
 
         return trace
@@ -408,7 +410,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             zmin=0,
             zmax=4,
             colorscale=colorscale,
-            showlegend=None,
+            showlegend=False,
+            showscale=False,
         )
 
         return trace, ds_cnv.sizes["genes"]
@@ -450,6 +453,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 z=df_aa.values,
                 y=df_aa.index.to_list(),
                 colorscale=aa_colorscale,
+                showlegend=False,
+                showscale=False,
             )
         else:
             aa_trace = None
@@ -504,15 +509,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             hovermode="closest",
             plot_bgcolor="white",
         )
-
-        # COMMENT: this feels overly complex - can we somehow remove the colorbar earlier,
-        # when the heatmap traces are being created?
-        #
-        # remove colorbar for all heatmap traces.
-        for trace in fig["data"]:
-            if trace.type == "heatmap":
-                idx = int(trace["yaxis"].lstrip("y"))
-                fig.update_traces(showscale=False, row=idx, col=0)
 
         return fig
 
