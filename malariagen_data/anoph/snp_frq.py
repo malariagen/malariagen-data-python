@@ -1162,7 +1162,7 @@ class AnophelesSnpFrequencyAnalysis(
 
         return out
 
-    def snp_allele_counts(
+    def snp_genotype_allele_counts(
         self,
         transcript: base_params.transcript,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
