@@ -14,15 +14,20 @@ from ..util import (
     multiallelic_diplotype_mean_cityblock,
 )
 from ..plotly_dendrogram import plot_dendrogram
-from . import base_params, plotly_params, tree_params, dipclust_params, cnv_params
-from .base_params import DEFAULT
+from . import (
+    base_params,
+    plotly_params,
+    tree_params,
+    dipclust_params,
+    cnv_params,
+)
 from .snp_frq import AnophelesSnpFrequencyAnalysis
 from .cnv_data import AnophelesCnvData
-from .snp_data import AnophelesSnpData
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
+
 
 class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData):
     def __init__(
@@ -81,8 +86,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             count_sort = True
             distance_sort = False
 
-        # This is needed to avoid RecursionError on some haplotype clustering analyses
-        # with larger numbers of haplotypes.
+        # This is needed to avoid RecursionError on some clustering analyses
+        # with larger numbers of nodes.
         sys.setrecursionlimit(10_000)
 
         debug("load sample metadata")
@@ -182,7 +187,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         else:
             return {
                 "figure": fig,
-                "dendro_sample_id_order": leaf_data['sample_id'].to_list(),
+                "dendro_sample_id_order": leaf_data["sample_id"].to_list(),
                 "n_snps": n_snps_used,
             }
 
@@ -415,7 +420,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query],
-        site_mask: base_params.site_mask,
+        site_mask: Optional[base_params.site_mask],
         dendro_sample_id_order: np.ndarray,
         aa_filter_min_maf: float,
         aa_colorscale: Optional[plotly_params.color_continuous_scale],
@@ -439,7 +444,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             df_aa = df_aa.assign(af=lambda x: x.sum(axis=1) / (x.shape[1] * 2))
             df_aa = df_aa.query("af > @aa_filter_min_maf").drop(columns="af")
 
-
         if not df_aa.empty:
             aa_height = np.max([df_aa.shape[0] / 100, 0.2])  # minimum height of 0.2
             aa_trace = go.Heatmap(
@@ -450,9 +454,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         else:
             aa_trace = None
             aa_height = 0
-        
-        return aa_trace, aa_height
 
+        return aa_trace, aa_height
 
     def _dipclust_concat_subplots(
         self,
@@ -505,7 +508,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         # COMMENT: this feels overly complex - can we somehow remove the colorbar earlier,
         # when the heatmap traces are being created?
         #
-        # remove colorbar for all heatmap traces. 
+        # remove colorbar for all heatmap traces.
         for trace in fig["data"]:
             if trace.type == "heatmap":
                 idx = int(trace["yaxis"].lstrip("y"))
@@ -600,9 +603,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
         fig_dendro = res["figure"]
         n_snps = res["n_snps"]
-        dendro_sample_id_order = (
-            res["dendro_sample_id_order"]
-        )
+        dendro_sample_id_order = res["dendro_sample_id_order"]
 
         figures = [fig_dendro]
         row_heights = [0.2]
@@ -671,7 +672,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         fig["layout"]["yaxis"]["title"] = "Distance (manhattan)"
-        
 
         if df_aa is not None:
             # add lines to aa plot to make prettier

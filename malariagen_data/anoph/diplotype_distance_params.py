@@ -2,7 +2,7 @@ from typing import Literal
 
 from typing_extensions import Annotated, TypeAlias
 
-metric: TypeAlias = Annotated[
+distance_metric: TypeAlias = Annotated[
     Literal[
         "cityblock",
         "euclidean",
