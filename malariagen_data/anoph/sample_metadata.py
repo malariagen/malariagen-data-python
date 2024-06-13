@@ -58,8 +58,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         *,
         sample_sets: Optional[base_params.sample_sets] = None,
-        paths_func: Callable[[List[str]], Dict[str, str]],
-        parse_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
+        paths_func: Callable[[List[str]], Dict[str, str]] = None,
+        parse_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame] = None,
     ) -> pd.DataFrame:
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
