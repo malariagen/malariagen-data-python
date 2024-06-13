@@ -19,6 +19,9 @@ from .base_params import DEFAULT
 from .snp_frq import AnophelesSnpFrequencyAnalysis
 from .cnv_data import AnophelesCnvData
 
+AA_CHANGE_QUERY = (
+    "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
+)
 
 class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData):
     def __init__(
@@ -139,7 +142,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig = plot_dendrogram(
+            fig, leaf_data = plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,
@@ -178,8 +181,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         else:
             return {
                 "figure": fig,
-                "order_data": self._dipclust_extract_dendro_sample_order(fig),
-                "samples": gt_samples,
+                "dendro_sample_id_order": leaf_data['sample_id'].to_list(),
                 "n_snps": n_snps_used,
             }
 
@@ -279,21 +281,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             dist=dist,
             gt_samples=gt_samples,
             n_snps=np.array(gt_seg.shape[0]),
-        )
-
-    def _dipclust_extract_dendro_sample_order(self, fig):
-        # COMMENT: Is there a simpler way to obtain the sample order?
-        # Can we get it directly from the plot_dendrogram() function somehow?
-
-        n_traces = len(fig["data"])
-        xs = []
-        samples = []
-        for i in np.arange(1, n_traces):
-            xs.append(fig["data"][i]["x"])
-            samples.append(fig["data"][i]["hovertext"])
-
-        return pd.DataFrame(
-            {"xs": np.concatenate(xs), "sample_id": np.concatenate(samples)}
         )
 
     @doc(
@@ -420,6 +407,52 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
         return trace, ds_cnv.sizes["genes"]
 
+    def _dipclust_aa_trace(
+        self,
+        *,
+        transcript: base_params.transcript,
+        snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        site_mask: base_params.site_mask,
+        dendro_sample_id_order: np.ndarray,
+        aa_filter_min_maf: float,
+        aa_colorscale: Optional[plotly_params.color_continuous_scale],
+    ):
+        # load allele counts at amino acid variants for each sample
+        df_aa = self.snp_allele_counts(
+            transcript=transcript,
+            snp_query=snp_query,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            site_mask=site_mask,
+        )
+        df_aa = df_aa.set_index("label")
+
+        # set to diplotype cluster order
+        df_aa = df_aa.filter(like="count_").loc[
+            :, ["count_" + s for s in dendro_sample_id_order]
+        ]
+
+        if aa_filter_min_maf:
+            df_aa = df_aa.assign(af=lambda x: x.sum(axis=1) / (x.shape[1] * 2))
+            df_aa = df_aa.query("af > @aa_filter_min_maf").drop(columns="af")
+
+
+        if not df_aa.empty:
+            aa_height = np.max([df_aa.shape[0] / 100, 0.2])  # minimum height of 0.2
+            aa_trace = go.Heatmap(
+                z=df_aa.values,
+                y=df_aa.index.to_list(),
+                colorscale=aa_colorscale,
+            )
+        else:
+            aa_trace = None
+            aa_height = 0
+        
+        return aa_trace, aa_height
+
+
     def _dipclust_concat_subplots(
         self,
         figures,
@@ -471,8 +504,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         # COMMENT: this feels overly complex - can we somehow remove the colorbar earlier,
         # when the heatmap traces are being created?
         #
-        # remove colorbar for all heatmap traces. This has to be determined dynamically as the
-        # number of traces can vary depending on scatter color/symbol variables
+        # remove colorbar for all heatmap traces. 
         for trace in fig["data"]:
             if trace.type == "heatmap":
                 idx = int(trace["yaxis"].lstrip("y"))
@@ -498,10 +530,11 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         aa_transcript: Optional[base_params.transcript] = None,
         aa_colorscale: plotly_params.color_continuous_scale = "Greys",
         aa_filter_min_maf: float = 0.05,
+        snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         cnv_region: Optional[base_params.regions] = None,
         cnv_colorscale: plotly_params.color_continuous_scale = "PuOr_r",
         cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         random_seed: base_params.random_seed = 42,
@@ -567,8 +600,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         fig_dendro = res["figure"]
         n_snps = res["n_snps"]
         dendro_sample_id_order = (
-            # COMMENT: Can we simplify? Why do this sorting here?
-            res["order_data"].sort_values("xs")["sample_id"].to_list()
+            res["dendro_sample_id_order"]
         )
 
         figures = [fig_dendro]
@@ -607,42 +639,18 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 row_heights.append(0.015 * cnv_genes)
 
         if aa_transcript:
-            # COMMENT: Maybe factor this section of code out into a separate
-            # _dipclust_aa_trace() method, similar to the other subplot
-            # methods?
-
-            # COMMENT: What about situations like Vgsc V402L where there could
-            # be two difference SNPs causing the same amino acid change? Would
-            # we want to see the difference?
-
-            # load allele counts at amino acid variants for each sample
-            df_aa = self.aa_allele_counts(
+            aa_trace, aa_height = self._dipclust_aa_trace(
                 transcript=aa_transcript,
-                sample_query=sample_query,
                 sample_sets=sample_sets,
+                sample_query=sample_query,
+                snp_query=snp_query,
                 site_mask=site_mask,
+                dendro_sample_id_order=dendro_sample_id_order,
+                aa_filter_min_maf=aa_filter_min_maf,
+                aa_colorscale=aa_colorscale,
             )
-            df_aa = df_aa.reset_index(drop=True).set_index("aa_change")
 
-            # set to diplotype cluster order
-            df_aa = df_aa.filter(like="count_").loc[
-                :, ["count_" + s for s in dendro_sample_id_order]
-            ]
-
-            if aa_filter_min_maf:
-                df_aa = df_aa.assign(af=lambda x: x.sum(axis=1) / (x.shape[1] * 2))
-                df_aa = df_aa.query("af > @aa_filter_min_maf").drop(columns="af")
-
-            # if there are aa snps then add heatmap to plot, otherwise skip
-            if not df_aa.empty:
-                aa_height = np.max([df_aa.shape[0] / 100, 0.2])  # minimum height of 0.2
-                aa_trace = go.Heatmap(
-                    z=df_aa.values,
-                    y=df_aa.index.to_list(),
-                    colorscale=aa_colorscale,
-                    colorbar=None,
-                )
-
+            if aa_trace:
                 figures.append(aa_trace)
                 row_heights.append(aa_height)
             else:
@@ -662,21 +670,22 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         fig["layout"]["yaxis"]["title"] = "Distance (manhattan)"
+        
 
         if df_aa is not None:
             # add lines to aa plot to make prettier
             aa_idx = len(figures)
-            fig.add_hline(y=-0.5, line_width=1, line_color="grey", row=aa_idx, col=1)
+            fig.add_hline(y=-0.5, line_width=1.25, line_color="grey", row=aa_idx, col=1)
             for i in range(len(df_aa)):
                 fig.add_hline(
-                    y=i + 0.5, line_width=1, line_color="grey", row=aa_idx, col=1
+                    y=i + 0.5, line_width=1.25, line_color="grey", row=aa_idx, col=1
                 )
 
             fig["layout"][f"yaxis{aa_idx}"]["title"] = f"{aa_transcript} amino acids"
             fig.update_xaxes(
                 showline=True,
                 linecolor="grey",
-                linewidth=1,
+                linewidth=1.25,
                 row=aa_idx,
                 col=1,
                 mirror=True,
@@ -684,7 +693,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             fig.update_yaxes(
                 showline=True,
                 linecolor="grey",
-                linewidth=1,
+                linewidth=1.25,
                 row=aa_idx,
                 col=1,
                 mirror=True,

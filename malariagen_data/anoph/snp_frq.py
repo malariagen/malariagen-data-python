@@ -1162,9 +1162,10 @@ class AnophelesSnpFrequencyAnalysis(
 
         return out
 
-    def aa_allele_counts(
+    def snp_allele_counts(
         self,
         transcript: base_params.transcript,
+        snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: Optional[base_params.site_mask] = None,
@@ -1197,11 +1198,6 @@ class AnophelesSnpFrequencyAnalysis(
         )
         df_snps = pd.concat([df_snps, df_counts], axis=1)
 
-        ### CHECK THIS JUST ADDED AND NOT TESTED 10/06/24
-        if site_mask is not None:
-            loc_sites = df_snps[f"pass_{site_mask}"]
-            df_snps = df_snps.loc[loc_sites]
-
         # Add effect annotations.
         ann = self._snp_effect_annotator()
         ann.get_effects(
@@ -1215,36 +1211,40 @@ class AnophelesSnpFrequencyAnalysis(
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
         )
 
-        df_ns_snps = df_snps.query(AA_CHANGE_QUERY)
+        if site_mask is not None:
+            loc_sites = df_snps[f"pass_{site_mask}"]
+            df_snps = df_snps.loc[loc_sites]
 
-        # Group and sum to collapse multi variant allele changes.
-        count_cols = [col for col in df_ns_snps if col.startswith("count_")]
+        df_ns_snps = df_snps.query(snp_query)
 
-        # Special handling here to ensure nans don't get summed to zero.
-        # See also https://github.com/pandas-dev/pandas/issues/20824#issuecomment-705376621
-        def np_sum(g):
-            return np.sum(g.values)
+        # # Group and sum to collapse multi variant allele changes.
+        # count_cols = [col for col in df_ns_snps if col.startswith("count_")]
 
-        agg: Dict[str, Union[Callable, str]] = {c: np_sum for c in count_cols}
+        # # Special handling here to ensure nans don't get summed to zero.
+        # # See also https://github.com/pandas-dev/pandas/issues/20824#issuecomment-705376621
+        # def np_sum(g):
+        #     return np.sum(g.values)
 
-        keep_cols = (
-            "contig",
-            "transcript",
-            "aa_pos",
-            "ref_allele",
-            "ref_aa",
-            "alt_aa",
-            "effect",
-            "impact",
-            "label",
-        )
+        # agg: Dict[str, Union[Callable, str]] = {c: np_sum for c in count_cols}
 
-        for c in keep_cols:
-            agg[c] = "first"
-        agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
-        df_ns_snps = (
-            df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
-        )
+        # keep_cols = (
+        #     "contig",
+        #     "transcript",
+        #     "aa_pos",
+        #     "ref_allele",
+        #     "ref_aa",
+        #     "alt_aa",
+        #     "effect",
+        #     "impact",
+        #     "label",
+        # )
+
+        # for c in keep_cols:
+        #     agg[c] = "first"
+        # agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
+        # df_ns_snps = (
+        #     df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
+        # )
 
         return df_ns_snps
 
