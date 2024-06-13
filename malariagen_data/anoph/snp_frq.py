@@ -1215,38 +1215,7 @@ class AnophelesSnpFrequencyAnalysis(
             loc_sites = df_snps[f"pass_{site_mask}"]
             df_snps = df_snps.loc[loc_sites]
 
-        df_ns_snps = df_snps.query(snp_query)
-
-        # # Group and sum to collapse multi variant allele changes.
-        # count_cols = [col for col in df_ns_snps if col.startswith("count_")]
-
-        # # Special handling here to ensure nans don't get summed to zero.
-        # # See also https://github.com/pandas-dev/pandas/issues/20824#issuecomment-705376621
-        # def np_sum(g):
-        #     return np.sum(g.values)
-
-        # agg: Dict[str, Union[Callable, str]] = {c: np_sum for c in count_cols}
-
-        # keep_cols = (
-        #     "contig",
-        #     "transcript",
-        #     "aa_pos",
-        #     "ref_allele",
-        #     "ref_aa",
-        #     "alt_aa",
-        #     "effect",
-        #     "impact",
-        #     "label",
-        # )
-
-        # for c in keep_cols:
-        #     agg[c] = "first"
-        # agg["alt_allele"] = lambda v: "{" + ",".join(v) + "}" if len(v) > 1 else v
-        # df_ns_snps = (
-        #     df_ns_snps.groupby(["position", "aa_change"]).agg(agg).reset_index()
-        # )
-
-        return df_ns_snps
+        return df_snps.query(snp_query)
 
 
 @numba.jit(nopython=True)
