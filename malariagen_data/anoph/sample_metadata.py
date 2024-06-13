@@ -1,6 +1,6 @@
 import io
 from itertools import cycle
-from typing import Any, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -53,6 +53,39 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
+
+    def _parse_sample_set_paths(
+        self,
+        *,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        paths_func: Callable[[List[str]], Dict[str, str]],
+        parse_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
+    ) -> pd.DataFrame:
+        # Normalise input parameters.
+        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
+        # Obtain paths for all files we need to fetch.
+        file_paths: Mapping[str, str] = paths_func(sample_sets=sample_sets_prepped)
+
+        # Fetch all files. N.B., here is an optimisation, this allows us to fetch
+        # multiple files concurrently.
+        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
+            paths=file_paths.values(), on_error="return"
+        )
+
+        # Parse files into DataFrames.
+        dfs = []
+        for sample_set in sample_sets_prepped:
+            path = file_paths[sample_set]
+            data = files[path]
+            df = parse_func(sample_set=sample_set, data=data)
+            dfs.append(df)
+
+        # Concatenate all DataFrames.
+        df_ret = pd.concat(dfs, axis=0, ignore_index=True)
+
+        return df_ret
 
     def _general_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
         paths = dict()
@@ -117,33 +150,105 @@ class AnophelesSampleMetadata(AnophelesBase):
     def general_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        # Normalise input parameters.
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
-
-        # Obtain paths for all files we need to fetch.
-        file_paths: Mapping[str, str] = self._general_metadata_paths(
-            sample_sets=sample_sets_prepped
+        return self._parse_sample_set_paths(
+            sample_sets=sample_sets,
+            paths_func=self._general_metadata_paths,
+            parse_func=self._parse_general_metadata,
         )
 
-        # Fetch all files. N.B., here is an optimisation, this allows us to fetch
-        # multiple files concurrently.
-        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
-            paths=file_paths.values(), on_error="return"
+    def _sequence_qc_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
+        paths = dict()
+        for sample_set in sample_sets:
+            release = self.lookup_release(sample_set=sample_set)
+            release_path = self._release_to_path(release=release)
+            path = (
+                f"{release_path}/metadata/curation/{sample_set}/sequence_qc_stats.csv"
+            )
+            paths[sample_set] = path
+        return paths
+
+    @property
+    def _sequence_qc_metadata_dtype(self):
+        # Note: tests expect an ordered dictionary.
+        # Note: insertion order in dictionary keys is guaranteed since Python 3.7
+        # Note: using nullable dtypes (e.g. Int64 instead of int64) to allow missing data.
+
+        dtype = {
+            "sample_id": "object",
+            "mean_cov": "Float64",
+            "median_cov": "Int64",
+            "modal_cov": "Int64",
+        }
+
+        for contig in sorted(self.config["CONTIGS"]):
+            dtype[f"mean_cov_{contig}"] = "Float64"
+            dtype[f"median_cov_{contig}"] = "Int64"
+            dtype[f"mode_cov_{contig}"] = "Int64"
+
+        dtype.update(
+            {
+                "frac_gen_cov": "Float64",
+                "divergence": "Float64",
+                "contam_pct": "Float64",
+                "contam_LLR": "Float64",
+            }
         )
 
-        # Parse files into dataframes.
-        dfs = []
-        for sample_set in sample_sets_prepped:
-            path = file_paths[sample_set]
-            data = files[path]
-            df = self._parse_general_metadata(sample_set=sample_set, data=data)
-            dfs.append(df)
+        return dtype
 
-        # Concatenate all dataframes.
-        df_ret = pd.concat(dfs, axis=0, ignore_index=True)
+    def _parse_sequence_qc_metadata(
+        self, *, sample_set: str, data: Union[bytes, Exception]
+    ) -> pd.DataFrame:
+        if isinstance(data, bytes):
+            # Get the dtype of the constant columns.
+            dtype = self._sequence_qc_metadata_dtype
 
-        return df_ret
+            # Read the CSV using the dtype dict.
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+
+            return df
+
+        elif isinstance(data, FileNotFoundError):
+            # Sequence QC metadata are missing for this sample set,
+            # so return a blank DataFrame.
+
+            # Copy the sample ids from the general metadata.
+            df_general = self.general_metadata(sample_sets=sample_set)
+            df = df_general[["sample_id"]].copy()
+
+            # Add the sequence QC columns with appropriate missing values.
+            # For each column, set the value to either NA or NaN.
+            for c, dtype in self._sequence_qc_metadata_dtype.items():
+                if pd.api.types.is_integer_dtype(dtype):
+                    # Note: this creates a column with dtype int64.
+                    df[c] = -1
+                else:
+                    # Note: this creates a column with dtype float64.
+                    df[c] = np.nan
+
+            # Set the column data types.
+            df = df.astype(self._sequence_qc_metadata_dtype)
+
+            return df
+
+        else:
+            raise data
+
+    @check_types
+    @doc(
+        summary="""
+            Access sequence QC metadata for one or more sample sets.
+        """,
+        returns="A pandas DataFrame, one row per sample.",
+    )
+    def sequence_qc_metadata(
+        self, sample_sets: Optional[base_params.sample_sets] = None
+    ) -> pd.DataFrame:
+        return self._parse_sample_set_paths(
+            sample_sets=sample_sets,
+            paths_func=self._sequence_qc_metadata_paths,
+            parse_func=self._parse_sequence_qc_metadata,
+        )
 
     @property
     def _cohorts_analysis(self):
@@ -265,33 +370,11 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_cohorts_analysis()
 
-        # Normalise input parameters.
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
-
-        # Obtain paths for all files we need to fetch.
-        file_paths: Mapping[str, str] = self._cohorts_metadata_paths(
-            sample_sets=sample_sets_prepped
+        return self._parse_sample_set_paths(
+            sample_sets=sample_sets,
+            paths_func=self._cohorts_metadata_paths,
+            parse_func=self._parse_cohorts_metadata,
         )
-
-        # Fetch all files. N.B., here is an optimisation, this allows us to fetch
-        # multiple files concurrently.
-        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
-            paths=file_paths.values(), on_error="return"
-        )
-
-        # Parse files into dataframes.
-        dfs = []
-        for sample_set in sample_sets_prepped:
-            path = file_paths[sample_set]
-            data = files[path]
-            df = self._parse_cohorts_metadata(sample_set=sample_set, data=data)
-            dfs.append(df)
-
-        # Concatenate all dataframes.
-        df_ret = pd.concat(dfs, axis=0, ignore_index=True)
-
-        return df_ret
 
     @property
     def _aim_analysis(self):
@@ -360,33 +443,11 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_aim_analysis()
 
-        # Normalise input parameters.
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
-
-        # Obtain paths for all files we need to fetch.
-        file_paths: Mapping[str, str] = self._aim_metadata_paths(
-            sample_sets=sample_sets_prepped
+        return self._parse_sample_set_paths(
+            sample_sets=sample_sets,
+            paths_func=self._aim_metadata_paths,
+            parse_func=self._parse_aim_metadata,
         )
-
-        # Fetch all files. N.B., here is an optimisation, this allows us to fetch
-        # multiple files concurrently.
-        files: Mapping[str, Union[bytes, Exception]] = self.read_files(
-            paths=file_paths.values(), on_error="return"
-        )
-
-        # Parse files into dataframes.
-        dfs = []
-        for sample_set in sample_sets_prepped:
-            path = file_paths[sample_set]
-            data = files[path]
-            df = self._parse_aim_metadata(sample_set=sample_set, data=data)
-            dfs.append(df)
-
-        # Concatenate all dataframes.
-        df_ret = pd.concat(dfs, axis=0, ignore_index=True)
-
-        return df_ret
 
     @check_types
     @doc(
@@ -465,13 +526,29 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         except KeyError:
             with self._spinner(desc="Load sample metadata"):
-                # Build a dataframe from all available metadata.
+                ## Build a single DataFrame using all available metadata.
+
+                # Get the general sample metadata.
                 df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
+
+                # Merge with the sequence QC metadata.
+                df_sequence_qc = self.sequence_qc_metadata(
+                    sample_sets=prepped_sample_sets
+                )
+
+                # Note: merging can change column dtypes
+                df_samples = df_samples.merge(
+                    df_sequence_qc, on="sample_id", sort=False, how="left"
+                )
+
+                # If available, merge with the AIM metadata.
                 if self._aim_analysis:
                     df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
                     df_samples = df_samples.merge(
                         df_aim, on="sample_id", sort=False, how="left"
                     )
+
+                # If available, merge with the cohorts metadata.
                 if self._cohorts_analysis:
                     df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
                     df_samples = df_samples.merge(
