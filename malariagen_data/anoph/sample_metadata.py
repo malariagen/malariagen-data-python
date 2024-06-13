@@ -56,10 +56,9 @@ class AnophelesSampleMetadata(AnophelesBase):
 
     def _parse_sample_set_paths(
         self,
-        *,
+        paths_func: Callable[[List[str]], Dict[str, str]],
+        parse_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
         sample_sets: Optional[base_params.sample_sets] = None,
-        paths_func: Callable[[List[str]], Dict[str, str]] = None,
-        parse_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame] = None,
     ) -> pd.DataFrame:
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -151,9 +150,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
         return self._parse_sample_set_paths(
-            sample_sets=sample_sets,
             paths_func=self._general_metadata_paths,
             parse_func=self._parse_general_metadata,
+            sample_sets=sample_sets,
         )
 
     def _sequence_qc_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
@@ -245,9 +244,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
         return self._parse_sample_set_paths(
-            sample_sets=sample_sets,
             paths_func=self._sequence_qc_metadata_paths,
             parse_func=self._parse_sequence_qc_metadata,
+            sample_sets=sample_sets,
         )
 
     @property
@@ -371,9 +370,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         self._require_cohorts_analysis()
 
         return self._parse_sample_set_paths(
-            sample_sets=sample_sets,
             paths_func=self._cohorts_metadata_paths,
             parse_func=self._parse_cohorts_metadata,
+            sample_sets=sample_sets,
         )
 
     @property
@@ -444,9 +443,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         self._require_aim_analysis()
 
         return self._parse_sample_set_paths(
-            sample_sets=sample_sets,
             paths_func=self._aim_metadata_paths,
             parse_func=self._parse_aim_metadata,
+            sample_sets=sample_sets,
         )
 
     @check_types
