@@ -54,10 +54,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
 
-    def _parse_sample_set_paths(
+    def _parse_metadata_paths(
         self,
-        paths_func: Callable[[List[str]], Dict[str, str]],
-        parse_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
+        metadata_paths_func: Callable[[List[str]], Dict[str, str]],
+        parse_metadata_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
         sample_sets: Optional[base_params.sample_sets] = None,
     ) -> pd.DataFrame:
         # Normalise input parameters.
@@ -65,7 +65,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         del sample_sets
 
         # Obtain paths for all files we need to fetch.
-        file_paths: Mapping[str, str] = paths_func(sample_sets=sample_sets_prepped)
+        file_paths: Mapping[str, str] = metadata_paths_func(sample_sets_prepped)
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
@@ -78,7 +78,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         for sample_set in sample_sets_prepped:
             path = file_paths[sample_set]
             data = files[path]
-            df = parse_func(sample_set=sample_set, data=data)
+            df = parse_metadata_func(sample_set, data)
             dfs.append(df)
 
         # Concatenate all DataFrames.
@@ -86,7 +86,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_ret
 
-    def _general_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
+    def _general_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
         paths = dict()
         for sample_set in sample_sets:
             release = self.lookup_release(sample_set=sample_set)
@@ -96,7 +96,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         return paths
 
     def _parse_general_metadata(
-        self, *, sample_set: str, data: Union[bytes, Exception]
+        self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             dtype = {
@@ -149,13 +149,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     def general_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        return self._parse_sample_set_paths(
-            paths_func=self._general_metadata_paths,
-            parse_func=self._parse_general_metadata,
+        return self._parse_metadata_paths(
+            metadata_paths_func=self._general_metadata_paths,
+            parse_metadata_func=self._parse_general_metadata,
             sample_sets=sample_sets,
         )
 
-    def _sequence_qc_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
+    def _sequence_qc_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
         paths = dict()
         for sample_set in sample_sets:
             release = self.lookup_release(sample_set=sample_set)
@@ -196,7 +196,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         return dtype
 
     def _parse_sequence_qc_metadata(
-        self, *, sample_set: str, data: Union[bytes, Exception]
+        self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Get the dtype of the constant columns.
@@ -243,9 +243,9 @@ class AnophelesSampleMetadata(AnophelesBase):
     def sequence_qc_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
-        return self._parse_sample_set_paths(
-            paths_func=self._sequence_qc_metadata_paths,
-            parse_func=self._parse_sequence_qc_metadata,
+        return self._parse_metadata_paths(
+            metadata_paths_func=self._sequence_qc_metadata_paths,
+            parse_metadata_func=self._parse_sequence_qc_metadata,
             sample_sets=sample_sets,
         )
 
@@ -258,7 +258,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             # config.
             return self.config.get("DEFAULT_COHORTS_ANALYSIS")
 
-    def _cohorts_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
+    def _cohorts_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
         cohorts_analysis = self._cohorts_analysis
         # Guard to ensure this function is only ever called if a cohort
         # analysis is configured for this data resource.
@@ -316,7 +316,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             return dtype
 
     def _parse_cohorts_metadata(
-        self, *, sample_set: str, data: Union[bytes, Exception]
+        self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Parse CSV data.
@@ -369,9 +369,9 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_cohorts_analysis()
 
-        return self._parse_sample_set_paths(
-            paths_func=self._cohorts_metadata_paths,
-            parse_func=self._parse_cohorts_metadata,
+        return self._parse_metadata_paths(
+            metadata_paths_func=self._cohorts_metadata_paths,
+            parse_metadata_func=self._parse_cohorts_metadata,
             sample_sets=sample_sets,
         )
 
@@ -384,7 +384,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             # config.
             return self.config.get("DEFAULT_AIM_ANALYSIS")
 
-    def _aim_metadata_paths(self, *, sample_sets: List[str]) -> Dict[str, str]:
+    def _aim_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
         aim_analysis = self._aim_analysis
         # Guard to ensure this function is only ever called if an AIM
         # analysis is configured for this data resource.
@@ -398,7 +398,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         return paths
 
     def _parse_aim_metadata(
-        self, *, sample_set: str, data: Union[bytes, Exception]
+        self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         assert self._aim_metadata_columns is not None
         assert self._aim_metadata_dtype is not None
@@ -442,9 +442,9 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_aim_analysis()
 
-        return self._parse_sample_set_paths(
-            paths_func=self._aim_metadata_paths,
-            parse_func=self._parse_aim_metadata,
+        return self._parse_metadata_paths(
+            metadata_paths_func=self._aim_metadata_paths,
+            parse_metadata_func=self._parse_aim_metadata,
             sample_sets=sample_sets,
         )
 
