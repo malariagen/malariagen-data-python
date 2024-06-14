@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.gene\_cnv
+==================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.gene_cnv
