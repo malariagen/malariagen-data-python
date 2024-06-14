@@ -16,3 +16,8 @@ linkage_method: TypeAlias = Annotated[
 linkage_method_default: linkage_method = "complete"
 
 distance_metric_default: distance_metric = "cityblock"
+
+leaf_y: TypeAlias = Annotated[
+    int,
+    "Y coordinate at which to plot the leaf markers.",
+]
