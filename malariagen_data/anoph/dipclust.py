@@ -6,8 +6,8 @@ from numpydoc_decorator import doc  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pandas as pd  # type: ignore
 
-# TODO: Fix X width when selecting
 # TODO: Hover Y as sample ID
+# TODO: Check SNPs are in region
 
 from ..util import (
     CacheMiss,
@@ -668,6 +668,14 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         fig["layout"]["yaxis"]["title"] = f"Distance ({distance_metric})"
+
+        # Tidy up.
+        fig.update_layout(
+            title_font=dict(
+                size=title_font_size,
+            ),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
+        )
 
         if show:
             fig.show(renderer=renderer)
