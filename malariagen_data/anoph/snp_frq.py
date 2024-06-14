@@ -1162,6 +1162,74 @@ class AnophelesSnpFrequencyAnalysis(
 
         return out
 
+    def snp_genotype_allele_counts(
+        self,
+        transcript: base_params.transcript,
+        snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+    ) -> pd.DataFrame:
+        ds_snp = self.snp_calls(
+            region=transcript,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            site_mask=None,
+        )
+
+        # Early check for no SNPs.
+        if ds_snp.sizes["variants"] == 0:  # pragma: no cover
+            raise ValueError("No SNPs available for the given region and site mask.")
+
+        # Access genotypes.
+        gt = ds_snp["call_genotype"].data
+        with self._dask_progress(desc="Load SNP genotypes"):
+            gt = allel.GenotypeArray(gt.compute())
+
+        # Set up initial dataframe of SNPs.
+        df_snps = self._snp_df_melt(ds_snp=ds_snp)
+
+        # Get allele counts.
+        gt_counts = gt.to_allele_counts()
+        gt_counts_melt = _melt_gt_counts(gt_counts.values)
+
+        df_counts = pd.DataFrame(
+            gt_counts_melt, columns=["count_" + s for s in ds_snp["sample_id"].values]
+        )
+        df_snps = pd.concat([df_snps, df_counts], axis=1)
+
+        # Add effect annotations.
+        ann = self._snp_effect_annotator()
+        ann.get_effects(
+            transcript=transcript, variants=df_snps, progress=self._progress
+        )
+
+        # Add label.
+        df_snps["label"] = pandas_apply(
+            _make_snp_label_effect,
+            df_snps,
+            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
+        )
+
+        if site_mask is not None:
+            loc_sites = df_snps[f"pass_{site_mask}"]
+            df_snps = df_snps.loc[loc_sites]
+
+        return df_snps.query(snp_query)
+
+
+@numba.jit(nopython=True)
+def _melt_gt_counts(gt_counts):
+    n_snps, n_samples, n_alleles = gt_counts.shape
+    melted_counts = np.zeros((n_snps * (n_alleles - 1), n_samples), dtype=np.int32)
+
+    for i in range(n_snps):
+        for j in range(n_samples):
+            for k in range(n_alleles - 1):
+                melted_counts[(i * 3) + k][j] = gt_counts[i][j][k + 1]
+
+    return melted_counts
+
 
 def _make_snp_label(contig, position, ref_allele, alt_allele):
     return f"{contig}:{position:,} {ref_allele}>{alt_allele}"

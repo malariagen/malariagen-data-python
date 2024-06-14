@@ -278,3 +278,11 @@ max_missing_an: TypeAlias = Annotated[
     missing calls.
     """,
 ]
+
+snp_query: TypeAlias = Annotated[
+    str,
+    """
+    A pandas query string to be evaluated against the SNP data,
+    to select SNPs to be included
+    """,
+]
