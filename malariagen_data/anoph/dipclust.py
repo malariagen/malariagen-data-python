@@ -18,6 +18,7 @@ from . import (
     base_params,
     plotly_params,
     tree_params,
+    clustering_params,
     dipclust_params,
     cnv_params,
 )
@@ -42,10 +43,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
     @check_types
     @doc(
         summary="Hierarchically cluster diplotypes in region and produce an interactive plot.",
-        parameters=dict(
-            leaf_y="Y coordinate at which to plot the leaf markers.",
-            return_order_dict="Return a dictionary containing the order of samples in the dendrogram.",
-        ),
     )
     def plot_diplotype_clustering(
         self,
@@ -63,12 +60,12 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         distance_sort: Optional[tree_params.distance_sort] = None,
         title: plotly_params.title = True,
         title_font_size: plotly_params.title_font_size = 14,
-        width: plotly_params.width = None,
-        height: plotly_params.height = 500,
+        width: plotly_params.fig_width = None,
+        height: plotly_params.fig_height = 500,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
-        leaf_y: int = 0,
+        leaf_y: clustering_params.leaf_y = 0,
         marker_size: plotly_params.marker_size = 5,
         line_width: plotly_params.line_width = 0.5,
         line_color: plotly_params.line_color = "black",
@@ -79,8 +76,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
     ) -> Optional[dict]:
         import sys
 
-        debug = self._log.debug
-
         # Normalise params.
         if count_sort is None and distance_sort is None:
             count_sort = True
@@ -90,7 +85,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         # with larger numbers of nodes.
         sys.setrecursionlimit(10_000)
 
-        debug("load sample metadata")
+        # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets, sample_query=sample_query
         )
@@ -448,7 +443,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             df_snps = df_snps.query("af > @snp_filter_min_maf").drop(columns="af")
 
         if not df_snps.empty:
-            snp_height = np.max([df_snps.shape[0] / 100, 0.2])  # minimum height of 0.2
+            n_snps = len(df_snps)
             snp_trace = go.Heatmap(
                 z=df_snps.values,
                 y=df_snps.index.to_list(),
@@ -457,10 +452,10 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 showscale=False,
             )
         else:
+            n_snps = 0
             snp_trace = None
-            snp_height = 0
 
-        return snp_trace, snp_height
+        return snp_trace, n_snps
 
     def _dipclust_concat_subplots(
         self,
@@ -518,7 +513,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             heterozygosity="Plot heterozygosity track.",
             snp_transcript="Plot amino acid variants for this transcript.",
             cnv_region="Plot gene CNV calls for this region.",
-            leaf_y="Y coordinate at which to plot the leaf markers.",
             snp_filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
         ),
     )
@@ -547,12 +541,15 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         distance_sort: Optional[tree_params.distance_sort] = None,
         title: plotly_params.title = True,
         title_font_size: plotly_params.title_font_size = 14,
-        width: plotly_params.width = None,
-        height: plotly_params.height = 500,
+        width: plotly_params.fig_width = None,
+        dendrogram_height: plotly_params.height = 300,
+        heterozygosity_height: plotly_params.height = 25,
+        snp_row_height: plotly_params.height = 25,
+        cnv_row_height: plotly_params.height = 25,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
-        leaf_y: int = 0,
+        leaf_y: clustering_params.leaf_y = 0,
         marker_size: plotly_params.marker_size = 5,
         line_width: plotly_params.line_width = 0.5,
         line_color: plotly_params.line_color = "black",
@@ -582,7 +579,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             title=title,
             title_font_size=title_font_size,
             width=width,
-            height=height,
+            height=dendrogram_height,
             show=False,
             renderer=renderer,
             render_mode=render_mode,
@@ -602,7 +599,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         dendro_sample_id_order = res["dendro_sample_id_order"]
 
         figures = [fig_dendro]
-        row_heights = [0.2]
+        subplot_heights = [dendrogram_height]
 
         if heterozygosity:
             het_trace = self._dipclust_het_bar_trace(
@@ -616,10 +613,10 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 random_seed=random_seed,
             )
             figures.append(het_trace)
-            row_heights.append(0.012)
+            subplot_heights.append(heterozygosity_height)
 
         if cnv_region:
-            cnv_trace, cnv_genes = self._dipclust_cnv_bar_trace(
+            cnv_trace, n_cnv_genes = self._dipclust_cnv_bar_trace(
                 cnv_region=cnv_region,
                 dendro_sample_id_order=dendro_sample_id_order,
                 sample_sets=sample_sets,
@@ -631,10 +628,10 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             # see if the trace is not None.
             if cnv_trace is not None:
                 figures.append(cnv_trace)
-                row_heights.append(0.015 * cnv_genes)
+                subplot_heights.append(cnv_row_height * n_cnv_genes)
 
         if snp_transcript:
-            snp_trace, snp_height = self._dipclust_snp_trace(
+            snp_trace, n_snps = self._dipclust_snp_trace(
                 transcript=snp_transcript,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
@@ -647,17 +644,20 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
             if snp_trace:
                 figures.append(snp_trace)
-                row_heights.append(snp_height)
+                subplot_heights.append(snp_row_height * n_snps)
             else:
                 print(
                     f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
                 )
 
+        # Calculate total height based on subplot heights, plus a fixed
+        # additional component to allow for title, axes etc.
+        height = sum(subplot_heights) + 50
         fig = self._dipclust_concat_subplots(
             figures=figures,
             width=width,
             height=height,
-            row_heights=row_heights,
+            row_heights=subplot_heights,
             sample_sets=sample_sets,
             sample_query=sample_query,
             region=region,
@@ -665,6 +665,14 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         fig["layout"]["yaxis"]["title"] = f"Distance ({distance_metric})"
+
+        # Tidy up.
+        fig.update_layout(
+            title_font=dict(
+                size=title_font_size,
+            ),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
+        )
 
         if show:
             fig.show(renderer=renderer)
