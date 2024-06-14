@@ -137,7 +137,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig = plot_dendrogram(
+            fig, _ = plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,
