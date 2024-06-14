@@ -6,9 +6,6 @@ from numpydoc_decorator import doc  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pandas as pd  # type: ignore
 
-# TODO: Hover Y as sample ID
-# TODO: Check SNPs are in region
-
 from ..util import (
     CacheMiss,
     check_types,
@@ -21,6 +18,7 @@ from . import (
     base_params,
     plotly_params,
     tree_params,
+    clustering_params,
     dipclust_params,
     cnv_params,
 )
@@ -67,7 +65,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
-        leaf_y: dipclust_params.leaf_y = 0,
+        leaf_y: clustering_params.leaf_y = 0,
         marker_size: plotly_params.marker_size = 5,
         line_width: plotly_params.line_width = 0.5,
         line_color: plotly_params.line_color = "black",
@@ -515,7 +513,6 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             heterozygosity="Plot heterozygosity track.",
             snp_transcript="Plot amino acid variants for this transcript.",
             cnv_region="Plot gene CNV calls for this region.",
-            leaf_y="Y coordinate at which to plot the leaf markers.",
             snp_filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
         ),
     )
@@ -552,7 +549,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
-        leaf_y: dipclust_params.leaf_y = 0,
+        leaf_y: clustering_params.leaf_y = 0,
         marker_size: plotly_params.marker_size = 5,
         line_width: plotly_params.line_width = 0.5,
         line_color: plotly_params.line_color = "black",

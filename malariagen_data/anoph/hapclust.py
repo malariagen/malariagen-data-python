@@ -7,7 +7,14 @@ from numpydoc_decorator import doc  # type: ignore
 
 from ..util import CacheMiss, check_types, pdist_abs_hamming
 from ..plotly_dendrogram import plot_dendrogram
-from . import base_params, plotly_params, tree_params, hap_params, hapclust_params
+from . import (
+    base_params,
+    plotly_params,
+    tree_params,
+    hap_params,
+    clustering_params,
+    hapclust_params,
+)
 from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
 
@@ -27,9 +34,6 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         summary="""
             Hierarchically cluster haplotypes in region and produce an interactive plot.
         """,
-        parameters=dict(
-            leaf_y="Y coordinate at which to plot the leaf markers.",
-        ),
     )
     def plot_haplotype_clustering(
         self,
@@ -51,7 +55,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
-        leaf_y: int = 0,
+        leaf_y: clustering_params.leaf_y = 0,
         marker_size: plotly_params.marker_size = 5,
         line_width: plotly_params.line_width = 0.5,
         line_color: plotly_params.line_color = "black",
