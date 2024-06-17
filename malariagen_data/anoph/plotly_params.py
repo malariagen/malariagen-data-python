@@ -19,14 +19,19 @@ y_label: TypeAlias = Annotated[
     "Y axis label.",
 ]
 
-width: TypeAlias = Annotated[
+fig_width: TypeAlias = Annotated[
     Optional[int],
-    "Plot width in pixels (px).",
+    "Figure width in pixels (px).",
+]
+
+fig_height: TypeAlias = Annotated[
+    Optional[int],
+    "Figure weight in pixels (px).",
 ]
 
 height: TypeAlias = Annotated[
-    Optional[int],
-    "Plot height in pixels (px).",
+    int,
+    "Height in pixels (px).",
 ]
 
 aspect: TypeAlias = Annotated[

@@ -19,7 +19,6 @@ except ImportError:
 
 import allel  # type: ignore
 import dask.array as da
-import ipinfo  # type: ignore
 import numba  # type: ignore
 import numpy as np
 import pandas
@@ -918,7 +917,42 @@ def plotly_discrete_legend(
     return fig
 
 
-def check_colab_location(*, gcs_url: str, url: str) -> Optional[ipinfo.details.Details]:
+def get_gcp_region(details):
+    """Attempt to determine the current GCP region based on
+    response from ipinfo."""
+
+    if details is not None:
+        org = details.org
+        country = details.country
+        region = details.region
+        if org == "AS396982 Google LLC":
+            if country == "US":
+                if region == "Iowa":
+                    return "us-central1"
+                elif region == "South Carolina":
+                    return "us-east1"
+                elif region == "Virginia":
+                    return "us-east4"
+                elif region == "Ohio":
+                    return "us-east5"
+                elif region == "Oregon":
+                    return "us-west1"
+                elif region == "California":
+                    return "us-west2"
+                elif region == "Utah":
+                    return "us-west3"
+                elif region == "Nevada":
+                    return "us-west4"
+                elif region == "Texas":
+                    return "us-south1"
+            elif country == "ZA":
+                if region == "Gauteng":
+                    return "africa-south1"
+            # Add other regions later if needed.
+    return None
+
+
+def check_colab_location(gcp_region: Optional[str]):
     """
     Sometimes, colab will allocate a VM outside the US, e.g., in
     Europe or Asia. Because the MalariaGEN GCS buckets are located
@@ -927,27 +961,20 @@ def check_colab_location(*, gcs_url: str, url: str) -> Optional[ipinfo.details.D
     issue a warning if not in the US.
     """
 
-    details = None
-    if colab and gcs_url in url:
-        try:
-            details = ipinfo.getHandler().getDetails()
-            if details.country != "US":
-                warnings.warn(
-                    fill(
-                        dedent(
-                            """
-                    Your currently allocated Google Colab VM is not located in the US.
-                    This usually means that data access will be substantially slower.
-                    If possible, select "Runtime > Disconnect and delete runtime" from
-                    the menu to request a new VM and try again.
-                """
-                        )
+    if colab and gcp_region:
+        if not gcp_region.startswith("us-"):
+            warnings.warn(
+                fill(
+                    dedent(
+                        """
+                Your currently allocated Google Colab VM is not located in the US.
+                This usually means that data access will be substantially slower.
+                If possible, select "Runtime > Disconnect and delete runtime" from
+                the menu to request a new VM and try again.
+            """
                     )
                 )
-        except OSError:
-            pass
-
-    return details
+            )
 
 
 def check_types(f):
@@ -1185,16 +1212,7 @@ def multiallelic_diplotype_mean_cityblock(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_sqeuclidean(x, y):
-    """Compute the mean squared euclidean distance between two diplotypes x and
-    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
-    y should have the same shape (n_sites, n_alleles).
-
-    N.B., here we compute the mean value of the distance over sites where
-    both individuals have a called genotype. This avoids computing distance
-    at missing sites.
-
-    """
+def multiallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     n_alleles = x.shape[1]
     distance = np.float32(0)
@@ -1224,6 +1242,47 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
         if x_is_called and y_is_called:
             distance += d
             n_sites_called += np.float32(1)
+
+    return distance, n_sites_called
+
+
+@numba.njit
+def multiallelic_diplotype_mean_sqeuclidean(x, y):
+    """Compute the mean squared euclidean distance between two diplotypes x and
+    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
+    y should have the same shape (n_sites, n_alleles).
+
+    N.B., here we compute the mean value of the distance over sites where
+    both individuals have a called genotype. This avoids computing distance
+    at missing sites.
+
+    """
+
+    distance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+
+    # Compute the mean distance over sites with called genotypes.
+    if n_sites_called > 0:
+        mean_distance = distance / n_sites_called
+    else:
+        mean_distance = np.nan
+
+    return mean_distance
+
+
+@numba.njit
+def multiallelic_diplotype_mean_euclidean(x, y):
+    """Compute the mean euclidean distance between two diplotypes x and
+    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
+    y should have the same shape (n_sites, n_alleles).
+
+    N.B., here we compute the mean value of the distance over sites where
+    both individuals have a called genotype. This avoids computing distance
+    at missing sites.
+
+    """
+
+    sqdistance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    distance = np.sqrt(sqdistance)
 
     # Compute the mean distance over sites with called genotypes.
     if n_sites_called > 0:

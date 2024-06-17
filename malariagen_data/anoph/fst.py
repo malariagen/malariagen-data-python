@@ -10,7 +10,6 @@ import bokeh.layouts
 import plotly.express as px
 
 from .snp_data import AnophelesSnpData
-from .base_params import DEFAULT
 from . import base_params, fst_params, gplt_params, plotly_params
 from ..util import CacheMiss, check_types
 
@@ -105,7 +104,7 @@ class AnophelesFstAnalysis(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -160,7 +159,7 @@ class AnophelesFstAnalysis(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -227,10 +226,11 @@ class AnophelesFstAnalysis(
         )
 
         # plot Fst
-        fig.circle(
+        fig.scatter(
             x=x,
             y=fst,
             size=3,
+            marker="circle",
             line_width=1,
             line_color="black",
             fill_color=None,
@@ -261,7 +261,7 @@ class AnophelesFstAnalysis(
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
         sample_sets: Optional[base_params.sample_sets] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -349,7 +349,7 @@ class AnophelesFstAnalysis(
             base_params.max_cohort_size
         ] = fst_params.max_cohort_size_default,
         n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
     ) -> Tuple[float, float]:
@@ -415,7 +415,7 @@ class AnophelesFstAnalysis(
             base_params.max_cohort_size
         ] = fst_params.max_cohort_size_default,
         n_jack: base_params.n_jack = 200,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         random_seed: base_params.random_seed = 42,
     ) -> fst_params.df_pairwise_fst:
@@ -485,8 +485,8 @@ class AnophelesFstAnalysis(
         zmax: Optional[plotly_params.zmax] = None,
         text_auto: plotly_params.text_auto = ".3f",
         color_continuous_scale: plotly_params.color_continuous_scale = "gray_r",
-        width: plotly_params.width = 700,
-        height: plotly_params.height = 600,
+        width: plotly_params.fig_width = 700,
+        height: plotly_params.fig_height = 600,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
@@ -509,7 +509,7 @@ class AnophelesFstAnalysis(
                     zs = fst_df.iloc[index_key]["fst"] / fst_df.iloc[index_key]["se"]
                     fig_df[col][index] = zs
             else:
-                fig_df[col][index] = fst
+                fig_df.loc[index, col] = fst
 
         # create plot
         with np.errstate(invalid="ignore"):
