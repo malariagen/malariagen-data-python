@@ -40,7 +40,6 @@ from .anoph import (
 )
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
-from .anoph.base_params import DEFAULT
 from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
@@ -107,10 +106,10 @@ class AnophelesDataResource(
     AnophelesSnpFrequencyAnalysis,
     AnophelesPca,
     AnophelesIgv,
-    AnophelesCnvData,
     AnophelesAimData,
     AnophelesHapData,
     AnophelesSnpData,
+    AnophelesCnvData,
     AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
@@ -362,7 +361,7 @@ class AnophelesDataResource(
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -421,7 +420,7 @@ class AnophelesDataResource(
         window_size: het_params.window_size = het_params.window_size_default,
         y_max: het_params.y_max = het_params.y_max_default,
         circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -507,13 +506,11 @@ class AnophelesDataResource(
         self,
         sample: base_params.sample,
         region: Region,
-        site_mask: base_params.site_mask,
+        site_mask: Optional[base_params.site_mask],
         window_size: het_params.window_size,
         sample_set: Optional[base_params.sample_set] = None,
     ):
         debug = self._log.debug
-
-        site_mask = self._prep_site_mask_param(site_mask=site_mask)
 
         debug("access sample metadata, look up sample")
         sample_rec = self.lookup_sample(sample=sample, sample_set=sample_set)
@@ -561,7 +558,7 @@ class AnophelesDataResource(
         sample: base_params.sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         phet_roh: het_params.phet_roh = het_params.phet_roh_default,
         phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
@@ -696,7 +693,7 @@ class AnophelesDataResource(
         sample: base_params.sample,
         region: base_params.region,
         window_size: het_params.window_size = het_params.window_size_default,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_set: Optional[base_params.sample_set] = None,
         phet_roh: het_params.phet_roh = het_params.phet_roh_default,
         phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
@@ -1563,7 +1560,7 @@ class AnophelesDataResource(
         region: base_params.regions,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         random_seed: base_params.random_seed = 42,
@@ -1664,7 +1661,7 @@ class AnophelesDataResource(
         cohorts: base_params.cohorts,
         cohort_size: base_params.cohort_size,
         region: base_params.regions,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -1849,7 +1846,7 @@ class AnophelesDataResource(
     def ihs_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
@@ -2012,7 +2009,7 @@ class AnophelesDataResource(
     def plot_ihs_gwss_track(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
@@ -2152,7 +2149,7 @@ class AnophelesDataResource(
     def plot_xpehh_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
@@ -2244,7 +2241,7 @@ class AnophelesDataResource(
     def plot_ihs_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
@@ -2346,7 +2343,7 @@ class AnophelesDataResource(
     def xpehh_gwss(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
@@ -2507,7 +2504,7 @@ class AnophelesDataResource(
     def plot_xpehh_gwss_track(
         self,
         contig: base_params.contig,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
@@ -2654,7 +2651,7 @@ class AnophelesDataResource(
     def plot_haplotype_network(
         self,
         region: base_params.regions,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,
@@ -2974,12 +2971,12 @@ class AnophelesDataResource(
         self,
         region: base_params.regions,
         n_snps: base_params.n_snps,
-        metric: diplotype_distance_params.metric = "cityblock",
+        metric: diplotype_distance_params.distance_metric = "cityblock",
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[base_params.min_minor_ac] = None,
         max_missing_an: Optional[base_params.max_missing_an] = None,
@@ -3133,15 +3130,15 @@ class AnophelesDataResource(
         n_snps: base_params.n_snps,
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
-        metric: diplotype_distance_params.metric = "cityblock",
+        metric: diplotype_distance_params.distance_metric = "cityblock",
         distance_sort: Optional[tree_params.distance_sort] = None,
         count_sort: Optional[tree_params.count_sort] = None,
         center_x=0,
         center_y=0,
         arc_start=0,
         arc_stop=2 * math.pi,
-        width: plotly_params.width = 800,
-        height: plotly_params.height = 600,
+        width: plotly_params.fig_width = 800,
+        height: plotly_params.fig_height = 600,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
@@ -3159,7 +3156,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[base_params.min_minor_ac] = None,
         max_missing_an: Optional[base_params.max_missing_an] = None,

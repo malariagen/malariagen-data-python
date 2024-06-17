@@ -1212,16 +1212,7 @@ def multiallelic_diplotype_mean_cityblock(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_sqeuclidean(x, y):
-    """Compute the mean squared euclidean distance between two diplotypes x and
-    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
-    y should have the same shape (n_sites, n_alleles).
-
-    N.B., here we compute the mean value of the distance over sites where
-    both individuals have a called genotype. This avoids computing distance
-    at missing sites.
-
-    """
+def multiallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     n_alleles = x.shape[1]
     distance = np.float32(0)
@@ -1251,6 +1242,47 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
         if x_is_called and y_is_called:
             distance += d
             n_sites_called += np.float32(1)
+
+    return distance, n_sites_called
+
+
+@numba.njit
+def multiallelic_diplotype_mean_sqeuclidean(x, y):
+    """Compute the mean squared euclidean distance between two diplotypes x and
+    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
+    y should have the same shape (n_sites, n_alleles).
+
+    N.B., here we compute the mean value of the distance over sites where
+    both individuals have a called genotype. This avoids computing distance
+    at missing sites.
+
+    """
+
+    distance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+
+    # Compute the mean distance over sites with called genotypes.
+    if n_sites_called > 0:
+        mean_distance = distance / n_sites_called
+    else:
+        mean_distance = np.nan
+
+    return mean_distance
+
+
+@numba.njit
+def multiallelic_diplotype_mean_euclidean(x, y):
+    """Compute the mean euclidean distance between two diplotypes x and
+    y. The diplotype vectors are expected as genotype allele counts, i.e., x and
+    y should have the same shape (n_sites, n_alleles).
+
+    N.B., here we compute the mean value of the distance over sites where
+    both individuals have a called genotype. This avoids computing distance
+    at missing sites.
+
+    """
+
+    sqdistance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    distance = np.sqrt(sqdistance)
 
     # Compute the mean distance over sites with called genotypes.
     if n_sites_called > 0:
