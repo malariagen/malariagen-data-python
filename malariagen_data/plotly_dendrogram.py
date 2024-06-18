@@ -129,4 +129,4 @@ def plot_dendrogram(
         range=(leaf_y - y_axis_buffer, np.max(dcoord) + y_axis_buffer),
     )
 
-    return fig
+    return fig, leaf_data

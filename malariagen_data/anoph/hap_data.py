@@ -21,7 +21,6 @@ from ..util import (
     simple_xarray_concat,
 )
 from . import base_params, hap_params
-from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -57,7 +56,7 @@ class AnophelesHapData(
         return tuple(self.config.get("PHASING_ANALYSIS_IDS", ()))  # ensure tuple
 
     def _prep_phasing_analysis_param(self, *, analysis: hap_params.analysis) -> str:
-        if analysis == DEFAULT:
+        if analysis == base_params.DEFAULT:
             # Use whatever is the default phasing analysis for this data resource.
             assert self._default_phasing_analysis is not None
             return self._default_phasing_analysis
@@ -74,7 +73,7 @@ class AnophelesHapData(
         returns="Zarr hierarchy.",
     )
     def open_haplotype_sites(
-        self, analysis: hap_params.analysis = DEFAULT
+        self, analysis: hap_params.analysis = base_params.DEFAULT
     ) -> zarr.hierarchy.Group:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
@@ -172,7 +171,7 @@ class AnophelesHapData(
         self,
         region: base_params.regions,
         field: base_params.field,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> da.Array:
@@ -205,7 +204,7 @@ class AnophelesHapData(
     def open_haplotypes(
         self,
         sample_set: base_params.sample_set,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
     ) -> Optional[zarr.hierarchy.Group]:
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
         try:
@@ -327,7 +326,7 @@ class AnophelesHapData(
     def haplotypes(
         self,
         region: base_params.regions,
-        analysis: hap_params.analysis = DEFAULT,
+        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
