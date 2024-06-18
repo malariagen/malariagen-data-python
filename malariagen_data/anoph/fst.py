@@ -492,9 +492,7 @@ class AnophelesFstAnalysis(
         **kwargs,
     ):
         # setup df
-        cohort_list = pd.unique(
-            [c for cl in fst_df[["cohort1", "cohort2"]].values for c in cl]
-        )
+        cohort_list = pd.unique(fst_df[["cohort1", "cohort2"]].values.flatten())
         # df to fill
         fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
         # fill df from fst_df
@@ -502,6 +500,7 @@ class AnophelesFstAnalysis(
             index = fst_df.iloc[index_key]["cohort1"]
             col = fst_df.iloc[index_key]["cohort2"]
             fst = fst_df.iloc[index_key]["fst"]
+            fig_df.loc[col, index] = fst
             if annotate_se is True:
                 se = fst_df.iloc[index_key]["se"]
                 fig_df.loc[index, col] = se
