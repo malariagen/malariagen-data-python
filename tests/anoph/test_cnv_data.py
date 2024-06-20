@@ -19,7 +19,6 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesCnvData(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -47,7 +46,6 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesCnvData(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
@@ -555,6 +553,78 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
     # Check with a contig and sample set that should not exist
     with pytest.raises(ValueError):
         api.cnv_discordant_read_calls(contig="foobar", sample_sets="bazqux")
+
+
+def test_cnv_dicordant_read_calls__sample_query(
+    ag3_sim_fixture, ag3_sim_api: AnophelesCnvData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    sample_sets = "AG1000G-BF-A"
+    contig = fixture.random_contig()
+
+    # Parametrize query.
+    parametrize_query = [
+        "taxon == 'coluzzii' and location == 'Bana Village'",
+        "taxon == 'gambiae' and location == 'Pala'",
+        "taxon == 'robot'",
+    ]
+
+    # Run tests.
+    for sample_query in parametrize_query:
+        # Get the number of samples for this query
+        df_samples = ag3_sim_api.sample_metadata().query(sample_query)
+
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                ds = api.cnv_discordant_read_calls(
+                    contig=contig,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                )
+        else:
+            ds = api.cnv_discordant_read_calls(
+                contig=contig,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+            )
+            assert isinstance(ds, xr.Dataset)
+
+            # check fields
+            expected_data_vars = {
+                "variant_Region",
+                "variant_StartBreakpointMethod",
+                "variant_EndBreakpointMethod",
+                "call_genotype",
+                "sample_coverage_variance",
+                "sample_is_high_variance",
+            }
+            assert set(ds.data_vars) == expected_data_vars
+
+            expected_coords = {
+                "variant_position",
+                "variant_end",
+                "variant_id",
+                "variant_contig",
+                "sample_id",
+            }
+            assert set(ds.coords) == expected_coords
+
+            # check dimensions
+            assert set(ds.dims) == {"variants", "samples"}
+
+            # check expected samples
+            df_samples = api.sample_metadata(sample_sets=sample_sets).query(
+                sample_query
+            )
+            expected_samples = df_samples["sample_id"].tolist()
+            n_samples_expected = len(expected_samples)
+            assert ds.sizes["samples"] == n_samples_expected
+
+            # check sample IDs
+            assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
 
 
 @parametrize_with_cases("fixture,api", cases=".")

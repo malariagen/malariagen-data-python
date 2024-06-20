@@ -96,7 +96,7 @@ output_backend_default: output_backend = "webgl"
 
 circle_kwargs: TypeAlias = Annotated[
     Mapping,
-    "Passed through to bokeh circle() function.",
+    "Passed through to bokeh scatter() function with marker = 'circle'.",
 ]
 
 line_kwargs: TypeAlias = Annotated[

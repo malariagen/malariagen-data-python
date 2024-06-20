@@ -20,7 +20,6 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesSampleMetadata(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -42,7 +41,6 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
@@ -53,11 +51,10 @@ def af1_sim_api(af1_sim_fixture):
 @pytest.fixture
 def missing_metadata_api(fixture_dir):
     # In this fixture, one of the sample sets (AG1000G-BF-A) has missing files
-    # for both AIM and cohorts metadata.
+    # for sequence QC, AIM and cohorts metadata.
     return AnophelesSampleMetadata(
         url=(fixture_dir / "missing_metadata").as_uri(),
         config_path="config.json",
-        gcs_url=None,
         major_version_number=3,
         major_version_path="v3",
         pre=False,
@@ -102,6 +99,7 @@ def general_metadata_expected_columns():
 
 def validate_metadata(df, expected_columns):
     # Check column names.
+    # Note: insertion order in dictionary keys is guaranteed since Python 3.7
     expected_column_names = list(expected_columns.keys())
     assert df.columns.to_list() == expected_column_names
 
@@ -158,6 +156,116 @@ def test_general_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     validate_metadata(df, general_metadata_expected_columns())
     expected_len = api.sample_sets(release=release)["sample_count"].sum()
     assert len(df) == expected_len
+
+
+def sequence_qc_metadata_expected_columns(ordered_contigs):
+    # Note: validate_metadata() expects an ordered dictionary.
+    # Note: insertion order in dictionary keys is guaranteed since Python 3.7
+
+    expected_columns = {
+        "sample_id": "O",
+        "mean_cov": "f",
+        "median_cov": "i",
+        "modal_cov": "i",
+    }
+
+    for contig in ordered_contigs:
+        expected_columns[f"mean_cov_{contig}"] = "f"
+        expected_columns[f"median_cov_{contig}"] = "i"
+        expected_columns[f"mode_cov_{contig}"] = "i"
+
+    expected_columns.update(
+        {
+            "frac_gen_cov": "f",
+            "divergence": "f",
+            "contam_pct": "f",
+            "contam_LLR": "f",
+        }
+    )
+
+    return expected_columns
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sequence_qc_metadata_with_single_sample_set(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_set = random.choice(all_sample_sets)
+
+    # Call function to be tested.
+    df = api.sequence_qc_metadata(sample_sets=sample_set)
+
+    # Check output.
+    validate_metadata(
+        df, sequence_qc_metadata_expected_columns(sorted(fixture.config["CONTIGS"]))
+    )
+    expected_len = sample_count.loc[sample_set]
+    assert len(df) == expected_len
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sequence_qc_metadata_with_multiple_sample_sets(
+    fixture, api: AnophelesSampleMetadata
+):
+    # Set up the test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+
+    # Call function to be tested.
+    df = api.sequence_qc_metadata(sample_sets=sample_sets)
+
+    # Check output.
+    validate_metadata(
+        df, sequence_qc_metadata_expected_columns(sorted(fixture.config["CONTIGS"]))
+    )
+    expected_len = sum([sample_count.loc[s] for s in sample_sets])
+    assert len(df) == expected_len
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_sequence_qc_metadata_with_release(fixture, api: AnophelesSampleMetadata):
+    # Set up the test.
+    release = random.choice(api.releases)
+
+    # Call function to be tested.
+    df = api.sequence_qc_metadata(sample_sets=release)
+
+    # Check output.
+    validate_metadata(
+        df, sequence_qc_metadata_expected_columns(sorted(fixture.config["CONTIGS"]))
+    )
+    expected_len = api.sample_sets(release=release)["sample_count"].sum()
+    assert len(df) == expected_len
+
+
+def test_sequence_qc_metadata_with_missing_file(
+    missing_metadata_api: AnophelesSampleMetadata,
+):
+    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # We expect this to be filled with empty values.
+    api = missing_metadata_api
+
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.sequence_qc_metadata(sample_sets=sample_set)
+
+        # Check output.
+        validate_metadata(
+            df, sequence_qc_metadata_expected_columns(sorted(api.config["CONTIGS"]))
+        )
+        expected_len = sample_count.loc[sample_set]
+        assert len(df) == expected_len
 
 
 def aim_metadata_expected_columns():
@@ -375,8 +483,12 @@ def test_cohorts_metadata_with_missing_file(
         assert len(df) == expected_len
 
 
-def sample_metadata_expected_columns(has_aims, has_cohorts_by_quarter):
+def sample_metadata_expected_columns(
+    has_aims, has_cohorts_by_quarter, has_sequence_qc, ordered_contigs
+):
     expected_columns = general_metadata_expected_columns()
+    if has_sequence_qc:
+        expected_columns.update(sequence_qc_metadata_expected_columns(ordered_contigs))
     if has_aims:
         expected_columns.update(aim_metadata_expected_columns())
     expected_columns.update(
@@ -410,6 +522,8 @@ def test_sample_metadata_with_single_sample_set(fixture, api: AnophelesSampleMet
         sample_metadata_expected_columns(
             has_aims=fixture.has_aims,
             has_cohorts_by_quarter=fixture.has_cohorts_by_quarter,
+            has_sequence_qc=fixture.has_sequence_qc,
+            ordered_contigs=sorted(fixture.config["CONTIGS"]),
         ),
     )
     expected_len = sample_count.loc[sample_set]
@@ -435,6 +549,8 @@ def test_sample_metadata_with_multiple_sample_sets(
         sample_metadata_expected_columns(
             has_aims=fixture.has_aims,
             has_cohorts_by_quarter=fixture.has_cohorts_by_quarter,
+            has_sequence_qc=fixture.has_sequence_qc,
+            ordered_contigs=sorted(fixture.config["CONTIGS"]),
         ),
     )
     expected_len = sum([sample_count.loc[s] for s in sample_sets])
@@ -455,6 +571,8 @@ def test_sample_metadata_with_release(fixture, api: AnophelesSampleMetadata):
         sample_metadata_expected_columns(
             has_aims=fixture.has_aims,
             has_cohorts_by_quarter=fixture.has_cohorts_by_quarter,
+            has_sequence_qc=fixture.has_sequence_qc,
+            ordered_contigs=sorted(fixture.config["CONTIGS"]),
         ),
     )
     expected_len = api.sample_sets(release=release)["sample_count"].sum()
@@ -489,7 +607,13 @@ def test_sample_metadata_with_duplicate_sample_sets(
 def test_sample_metadata_with_query(ag3_sim_api):
     df = ag3_sim_api.sample_metadata(sample_query="country == 'Burkina Faso'")
     validate_metadata(
-        df, sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True)
+        df,
+        sample_metadata_expected_columns(
+            has_aims=True,
+            has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
+            ordered_contigs=sorted(ag3_sim_api.config["CONTIGS"]),
+        ),
     )
     assert (df["country"] == "Burkina Faso").all()
 
@@ -502,12 +626,22 @@ def test_sample_metadata_with_indices(ag3_sim_api):
     df2 = ag3_sim_api.sample_metadata(sample_indices=indices)
     validate_metadata(
         df1,
-        sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True),
+        sample_metadata_expected_columns(
+            has_aims=True,
+            has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
+            ordered_contigs=sorted(ag3_sim_api.config["CONTIGS"]),
+        ),
     )
     assert (df1["country"] == "Burkina Faso").all()
     validate_metadata(
         df2,
-        sample_metadata_expected_columns(has_aims=True, has_cohorts_by_quarter=True),
+        sample_metadata_expected_columns(
+            has_aims=True,
+            has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
+            ordered_contigs=sorted(ag3_sim_api.config["CONTIGS"]),
+        ),
     )
     assert (df2["country"] == "Burkina Faso").all()
     assert_frame_equal(df1, df2)
@@ -552,7 +686,10 @@ def test_sample_metadata_with_missing_file(
         validate_metadata(
             df,
             sample_metadata_expected_columns(
-                has_aims=True, has_cohorts_by_quarter=True
+                has_aims=True,
+                has_cohorts_by_quarter=True,
+                has_sequence_qc=True,
+                ordered_contigs=sorted(api.config["CONTIGS"]),
             ),
         )
         expected_len = sample_count.loc[sample_set]
@@ -1040,6 +1177,7 @@ def cohort_data_expected_columns():
 
 def validate_cohort_data(df, expected_columns):
     # Check column names.
+    # Note: insertion order in dictionary keys is guaranteed since Python 3.7
     expected_column_names = list(expected_columns.keys())
     assert df.columns.to_list() == expected_column_names
 
