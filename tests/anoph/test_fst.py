@@ -206,9 +206,11 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     if len(fst_df) > 0:
         fig = api.plot_pairwise_average_fst(fst_df, show=False)
         assert isinstance(fig, go.Figure)
-        fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
+        fig = api.plot_pairwise_average_fst(
+            fst_df, annotation="standard error", show=False
+        )
         assert isinstance(fig, go.Figure)
-        fig = api.plot_pairwise_average_fst(fst_df, annotate_se="Z score", show=False)
+        fig = api.plot_pairwise_average_fst(fst_df, annotation="Z score", show=False)
         assert isinstance(fig, go.Figure)
 
 

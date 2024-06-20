@@ -480,7 +480,7 @@ class AnophelesFstAnalysis(
     def plot_pairwise_average_fst(
         self,
         fst_df: fst_params.df_pairwise_fst,
-        annotate_se: fst_params.annotate_se = None,
+        annotation: fst_params.annotation = None,
         zmin: Optional[plotly_params.zmin] = 0.0,
         zmax: Optional[plotly_params.zmax] = None,
         text_auto: plotly_params.text_auto = ".3f",
@@ -501,11 +501,11 @@ class AnophelesFstAnalysis(
             col = fst_df.iloc[index_key]["cohort2"]
             fst = fst_df.iloc[index_key]["fst"]
             fig_df[index][col] = fst
-            if annotate_se:
-                if annotate_se is True or annotate_se == "standard error":
+            if annotation:
+                if annotation == "standard error":
                     se = fst_df.iloc[index_key]["se"]
                     fig_df[col][index] = se
-                elif annotate_se == "Z score":
+                elif annotation == "Z score":
                     zs = fst_df.iloc[index_key]["fst"] / fst_df.iloc[index_key]["se"]
                     fig_df[col][index] = zs
             else:
