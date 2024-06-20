@@ -501,13 +501,12 @@ class AnophelesFstAnalysis(
             col = fst_df.iloc[index_key]["cohort2"]
             fst = fst_df.iloc[index_key]["fst"]
             fig_df[index][col] = fst
-            if annotation:
-                if annotation == "standard error":
-                    se = fst_df.iloc[index_key]["se"]
-                    fig_df[col][index] = se
-                elif annotation == "Z score":
-                    zs = fst_df.iloc[index_key]["fst"] / fst_df.iloc[index_key]["se"]
-                    fig_df[col][index] = zs
+            if annotation == "standard error":
+                se = fst_df.iloc[index_key]["se"]
+                fig_df[col][index] = se
+            elif annotation == "Z score":
+                zs = fst_df.iloc[index_key]["fst"] / fst_df.iloc[index_key]["se"]
+                fig_df[col][index] = zs
             else:
                 fig_df.loc[index, col] = fst
 
