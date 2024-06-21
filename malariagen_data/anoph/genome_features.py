@@ -361,8 +361,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         data["bottom"] = np.where(data["strand"] == "+", 1, 0)
         data["top"] = data["bottom"] + 0.8
 
-        # debug("tidy up missing values for presentation")
-        # data.fillna("", inplace=True)
+        debug("tidy up missing values for presentation")
+        data = data.drop(["score", "phase"], axis=1)
+        data.fillna("", inplace=True)
 
         debug("make a figure")
         xwheel_zoom = bokeh.models.WheelZoomTool(
