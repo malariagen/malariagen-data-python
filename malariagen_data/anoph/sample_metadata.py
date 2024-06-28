@@ -54,18 +54,56 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Initialize cache attributes.
         self._cache_sample_metadata: Dict = dict()
 
+    def _metadata_paths(
+        self,
+        *,
+        sample_sets: List[str],
+        path_template: str,
+        aim_analysis: Optional[str] = None,
+        cohorts_analysis: Optional[str] = None,
+    ) -> Dict[str, str]:
+        paths = dict()
+        for sample_set in sample_sets:
+            release = self.lookup_release(sample_set=sample_set)
+            release_path = self._release_to_path(release=release)
+            if aim_analysis:
+                path = path_template.format(
+                    release_path=release_path,
+                    sample_set=sample_set,
+                    aim_analysis=aim_analysis,
+                )
+            elif cohorts_analysis:
+                path = path_template.format(
+                    release_path=release_path,
+                    sample_set=sample_set,
+                    cohorts_analysis=cohorts_analysis,
+                )
+            else:
+                path = path_template.format(
+                    release_path=release_path, sample_set=sample_set
+                )
+            paths[sample_set] = path
+        return paths
+
     def _parse_metadata_paths(
         self,
-        metadata_paths_func: Callable[[List[str]], Dict[str, str]],
+        path_template: str,
         parse_metadata_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
         sample_sets: Optional[base_params.sample_sets] = None,
+        aim_analysis: Optional[str] = None,
+        cohorts_analysis: Optional[str] = None,
     ) -> pd.DataFrame:
         # Normalise input parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
 
         # Obtain paths for all files we need to fetch.
-        file_paths: Mapping[str, str] = metadata_paths_func(sample_sets_prepped)
+        file_paths: Mapping[str, str] = self._metadata_paths(
+            sample_sets=sample_sets_prepped,
+            path_template=path_template,
+            aim_analysis=aim_analysis,
+            cohorts_analysis=cohorts_analysis,
+        )
 
         # Fetch all files. N.B., here is an optimisation, this allows us to fetch
         # multiple files concurrently.
@@ -85,15 +123,6 @@ class AnophelesSampleMetadata(AnophelesBase):
         df_ret = pd.concat(dfs, axis=0, ignore_index=True)
 
         return df_ret
-
-    def _general_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
-        paths = dict()
-        for sample_set in sample_sets:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release=release)
-            path = f"{release_path}/metadata/general/{sample_set}/samples.meta.csv"
-            paths[sample_set] = path
-        return paths
 
     def _parse_general_metadata(
         self, sample_set: str, data: Union[bytes, Exception]
@@ -150,21 +179,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
         return self._parse_metadata_paths(
-            metadata_paths_func=self._general_metadata_paths,
+            path_template="{release_path}/metadata/general/{sample_set}/samples.meta.csv",
             parse_metadata_func=self._parse_general_metadata,
             sample_sets=sample_sets,
         )
-
-    def _sequence_qc_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
-        paths = dict()
-        for sample_set in sample_sets:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release=release)
-            path = (
-                f"{release_path}/metadata/curation/{sample_set}/sequence_qc_stats.csv"
-            )
-            paths[sample_set] = path
-        return paths
 
     @property
     def _sequence_qc_metadata_dtype(self):
@@ -244,7 +262,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
         return self._parse_metadata_paths(
-            metadata_paths_func=self._sequence_qc_metadata_paths,
+            path_template="{release_path}/metadata/curation/{sample_set}/sequence_qc_stats.csv",
             parse_metadata_func=self._parse_sequence_qc_metadata,
             sample_sets=sample_sets,
         )
@@ -257,19 +275,6 @@ class AnophelesSampleMetadata(AnophelesBase):
             # N.B., this will return None if the key is not present in the
             # config.
             return self.config.get("DEFAULT_COHORTS_ANALYSIS")
-
-    def _cohorts_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
-        cohorts_analysis = self._cohorts_analysis
-        # Guard to ensure this function is only ever called if a cohort
-        # analysis is configured for this data resource.
-        assert cohorts_analysis
-        paths = dict()
-        for sample_set in sample_sets:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release=release)
-            path = f"{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv"
-            paths[sample_set] = path
-        return paths
 
     @property
     def _cohorts_metadata_columns(self):
@@ -370,9 +375,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         self._require_cohorts_analysis()
 
         return self._parse_metadata_paths(
-            metadata_paths_func=self._cohorts_metadata_paths,
+            path_template="{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv",
             parse_metadata_func=self._parse_cohorts_metadata,
             sample_sets=sample_sets,
+            cohorts_analysis=self._cohorts_analysis,
         )
 
     @property
@@ -383,19 +389,6 @@ class AnophelesSampleMetadata(AnophelesBase):
             # N.B., this will return None if the key is not present in the
             # config.
             return self.config.get("DEFAULT_AIM_ANALYSIS")
-
-    def _aim_metadata_paths(self, sample_sets: List[str]) -> Dict[str, str]:
-        aim_analysis = self._aim_analysis
-        # Guard to ensure this function is only ever called if an AIM
-        # analysis is configured for this data resource.
-        assert aim_analysis
-        paths = dict()
-        for sample_set in sample_sets:
-            release = self.lookup_release(sample_set=sample_set)
-            release_path = self._release_to_path(release=release)
-            path = f"{release_path}/metadata/species_calls_aim_{aim_analysis}/{sample_set}/samples.species_aim.csv"
-            paths[sample_set] = path
-        return paths
 
     def _parse_aim_metadata(
         self, sample_set: str, data: Union[bytes, Exception]
@@ -443,9 +436,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         self._require_aim_analysis()
 
         return self._parse_metadata_paths(
-            metadata_paths_func=self._aim_metadata_paths,
+            path_template="{release_path}/metadata/species_calls_aim_{aim_analysis}/{sample_set}/samples.species_aim.csv",
             parse_metadata_func=self._parse_aim_metadata,
             sample_sets=sample_sets,
+            aim_analysis=self._aim_analysis,
         )
 
     @check_types
