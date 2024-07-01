@@ -2,6 +2,7 @@ import json
 from contextlib import nullcontext
 from datetime import date
 from pathlib import Path
+import re
 from typing import (
     IO,
     Any,
@@ -305,13 +306,14 @@ class AnophelesBase:
         sub_dirs = sorted(
             [p.split("/")[-1] for p in self._fs.ls(self._base_path, detail=False)]
         )
+        # Note: this matches v3, v3. and v3.1, but not v3001.1
+        version_pattern = re.compile(f"^v{self._major_version_number}(\\..*)?$")
         discovered_releases = tuple(
             sorted(
                 [
                     self._path_to_release(d)
                     for d in sub_dirs
-                    # FIXME: this matches v3 and v3.1, but also v3001.1
-                    if d.startswith(f"v{self._major_version_number}")
+                    if version_pattern.match(d)
                     and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
                 ]
             )
