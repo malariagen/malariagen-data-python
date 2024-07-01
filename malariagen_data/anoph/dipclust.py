@@ -631,7 +631,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 subplot_heights.append(cnv_row_height * n_cnv_genes)
 
         if snp_transcript:
-            snp_trace, n_snps_df = self._dipclust_snp_trace(
+            snp_trace, n_snps_transcript = self._dipclust_snp_trace(
                 transcript=snp_transcript,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
