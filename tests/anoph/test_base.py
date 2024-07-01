@@ -89,10 +89,11 @@ def test_sample_sets_default(fixture, api):
         "sample_count",
         "study_id",
         "study_url",
-        "release",
         "has_terms_of_use",
         "terms_of_use_expiry_date",
         "terms_of_use_url",
+        "release",
+        "unrestricted_use",
     ]
     assert len(df) > 0
     assert_frame_equal(
@@ -122,12 +123,27 @@ def test_sample_sets_release(fixture, api):
             "sample_count",
             "study_id",
             "study_url",
+            "has_terms_of_use",
+            "terms_of_use_expiry_date",
+            "terms_of_use_url",
             "release",
+            "unrestricted_use",
         ]
         assert len(df_ss) > 0
         expected = fixture.release_manifests[release]
         assert_frame_equal(
-            df_ss[["sample_set", "sample_count", "study_id", "study_url"]], expected
+            df_ss[
+                [
+                    "sample_set",
+                    "sample_count",
+                    "study_id",
+                    "study_url",
+                    "has_terms_of_use",
+                    "terms_of_use_expiry_date",
+                    "terms_of_use_url",
+                ]
+            ],
+            expected,
         )
         assert (df_ss["release"] == release).all()
 
