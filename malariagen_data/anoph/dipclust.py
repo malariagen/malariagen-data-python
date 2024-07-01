@@ -644,7 +644,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
             if snp_trace:
                 figures.append(snp_trace)
-                subplot_heights.append(snp_row_height * n_snps_df)
+                subplot_heights.append(snp_row_height * n_snps_transcript)
             else:
                 print(
                     f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
