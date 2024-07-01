@@ -595,7 +595,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         )
 
         fig_dendro = res["figure"]
-        n_snps = res["n_snps"]
+        n_snps_cluster = res["n_snps"]
         dendro_sample_id_order = res["dendro_sample_id_order"]
 
         figures = [fig_dendro]
@@ -631,7 +631,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 subplot_heights.append(cnv_row_height * n_cnv_genes)
 
         if snp_transcript:
-            snp_trace, n_snps = self._dipclust_snp_trace(
+            snp_trace, n_snps_transcript = self._dipclust_snp_trace(
                 transcript=snp_transcript,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
@@ -644,7 +644,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
             if snp_trace:
                 figures.append(snp_trace)
-                subplot_heights.append(snp_row_height * n_snps)
+                subplot_heights.append(snp_row_height * n_snps_transcript)
             else:
                 print(
                     f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
@@ -661,7 +661,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             sample_sets=sample_sets,
             sample_query=sample_query,
             region=region,
-            n_snps=n_snps,
+            n_snps=n_snps_cluster,
         )
 
         fig["layout"]["yaxis"]["title"] = f"Distance ({distance_metric})"
