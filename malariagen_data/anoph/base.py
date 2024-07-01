@@ -1,5 +1,6 @@
 import json
 from contextlib import nullcontext
+from datetime import date
 from pathlib import Path
 from typing import (
     IO,
@@ -151,6 +152,8 @@ class AnophelesBase:
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
         self._cache_sample_set_to_study: Optional[Dict[str, str]] = None
+        self._cache_sample_set_to_study_info: Optional[Dict[str, dict]] = None
+        self._cache_sample_set_to_terms_of_use_info: Optional[Dict[str, dict]] = None
         self._cache_files: Dict[str, bytes] = dict()
 
         # Set up results cache directory path.
@@ -350,6 +353,17 @@ class AnophelesBase:
 
         # Add a "release" column for convenience.
         df["release"] = single_release
+
+        # If there is a terms-of-use expiry date, derive the "unrestricted_use".
+        terms_of_use_expiry_date_column = "terms_of_use_expiry_date"
+        if terms_of_use_expiry_date_column in df.columns:
+            # Get today's date in ISO format
+            today_date_iso = date.today().isoformat()
+            # Add an "unrestricted_use" column, set to True if terms-of-use expiry date <= today's date.
+            df["unrestricted_use"] = df[terms_of_use_expiry_date_column].apply(
+                lambda d: True if pd.isna(d) else (d <= today_date_iso)
+            )
+
         return df
 
     @check_types
@@ -400,7 +414,7 @@ class AnophelesBase:
     @doc(
         summary="Find which release a sample set was included in.",
     )
-    def lookup_release(self, sample_set: base_params.sample_set):
+    def lookup_release(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_release is None:
             df_sample_sets = self.sample_sets().set_index("sample_set")
             self._cache_sample_set_to_release = df_sample_sets["release"].to_dict()
@@ -414,7 +428,7 @@ class AnophelesBase:
     @doc(
         summary="Find which study a sample set belongs to.",
     )
-    def lookup_study(self, sample_set: base_params.sample_set):
+    def lookup_study(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_study is None:
             df_sample_sets = self.sample_sets().set_index("sample_set")
             self._cache_sample_set_to_study = df_sample_sets["study_id"].to_dict()
@@ -422,6 +436,43 @@ class AnophelesBase:
             return self._cache_sample_set_to_study[sample_set]
         except KeyError:
             raise ValueError(f"No study ID found for sample set {sample_set!r}")
+
+    @check_types
+    @doc(
+        summary="Find the study info for a sample set.",
+    )
+    def lookup_study_info(self, sample_set: base_params.sample_set) -> dict:
+        if self._cache_sample_set_to_study_info is None:
+            df_sample_sets = self.sample_sets().set_index("sample_set")
+            self._cache_sample_set_to_study_info = df_sample_sets[
+                ["study_id", "study_url"]
+            ].to_dict(orient="index")
+        try:
+            return self._cache_sample_set_to_study_info[sample_set]
+        except KeyError:
+            raise ValueError(f"No study info found for sample set {sample_set!r}")
+
+    @check_types
+    @doc(
+        summary="Find the terms-of-use info for a sample set.",
+    )
+    def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
+        if self._cache_sample_set_to_terms_of_use_info is None:
+            df_sample_sets = self.sample_sets().set_index("sample_set")
+            self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
+                [
+                    "terms_of_use_expiry_date",
+                    "terms_of_use_url",
+                    "has_terms_of_use",
+                    "unrestricted_use",
+                ]
+            ].to_dict(orient="index")
+        try:
+            return self._cache_sample_set_to_terms_of_use_info[sample_set]
+        except KeyError:
+            raise ValueError(
+                f"No terms-of-use info found for sample set {sample_set!r}"
+            )
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]

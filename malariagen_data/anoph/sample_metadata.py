@@ -156,12 +156,16 @@ class AnophelesSampleMetadata(AnophelesBase):
                 axis="columns",
             )
 
-            # Add study metadata columns.
-            study = self.lookup_study(sample_set=sample_set)
-            df["study_id"] = study
-            df[
-                "study_url"
-            ] = f"https://www.malariagen.net/network/where-we-work/{study}"
+            # Add study columns.
+            study_info = self.lookup_study_info(sample_set=sample_set)
+            for column in study_info:
+                df[column] = study_info[column]
+
+            # Add terms-of-use columns.
+            terms_of_use_info = self.lookup_terms_of_use_info(sample_set=sample_set)
+            for column in terms_of_use_info:
+                df[column] = terms_of_use_info[column]
+
             return df
 
         else:
@@ -522,6 +526,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 ## Build a single DataFrame using all available metadata.
 
                 # Get the general sample metadata.
+                # Note: this includes study and terms-of-use info.
                 df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
 
                 # Merge with the sequence QC metadata.

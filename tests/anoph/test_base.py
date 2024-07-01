@@ -90,10 +90,24 @@ def test_sample_sets_default(fixture, api):
         "study_id",
         "study_url",
         "release",
+        "has_terms_of_use",
+        "terms_of_use_expiry_date",
+        "terms_of_use_url",
     ]
     assert len(df) > 0
     assert_frame_equal(
-        df[["sample_set", "sample_count", "study_id", "study_url"]], expected
+        df[
+            [
+                "sample_set",
+                "sample_count",
+                "study_id",
+                "study_url",
+                "has_terms_of_use",
+                "terms_of_use_expiry_date",
+                "terms_of_use_url",
+            ]
+        ],
+        expected,
     )
 
 
