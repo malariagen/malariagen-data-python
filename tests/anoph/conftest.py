@@ -1132,6 +1132,14 @@ class Ag3Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/AG1000G-AO",
                     "https://www.malariagen.net/network/where-we-work/AG1000G-BF-1",
                 ],
+                "terms_of_use_expiry_date": [
+                    "2025-01-01",
+                    "2025-01-01",
+                ],
+                "terms_of_use_url": [
+                    "https://www.malariagen.net/data/our-approach-sharing-data/ag1000g-terms-of-use/",
+                    "https://www.malariagen.net/data/our-approach-sharing-data/ag1000g-terms-of-use/",
+                ],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -1154,6 +1162,12 @@ class Ag3Simulator(AnophelesSimulator):
                 "study_id": ["1177-VO-ML-LEHMANN"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1177-VO-ML-LEHMANN"
+                ],
+                "terms_of_use_expiry_date": [
+                    "2025-11-17",
+                ],
+                "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/ag3/ag3.1.html#terms-of-use",
                 ],
             }
         )
@@ -1891,6 +1905,16 @@ class Af1Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/1229-VO-GH-DADZIE",
                     "https://www.malariagen.net/network/where-we-work/1230-VO-MULTI-AYALA",
                     "https://www.malariagen.net/network/where-we-work/1231-VO-MULTI-WONDJI",
+                ],
+                "terms_of_use_expiry_date": [
+                    "2025-06-01",
+                    "2025-06-01",
+                    "2025-06-01",
+                ],
+                "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                 ],
             }
         )
