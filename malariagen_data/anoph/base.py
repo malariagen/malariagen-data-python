@@ -356,6 +356,7 @@ class AnophelesBase:
         # Add a "release" column for convenience.
         df["release"] = single_release
 
+        # Note: terms-of-use columns might not exist in the manifest, e.g. during pre-release.
         # If there is a terms-of-use expiry date, derive the "unrestricted_use".
         terms_of_use_expiry_date_column = "terms_of_use_expiry_date"
         if terms_of_use_expiry_date_column in df.columns:
@@ -365,6 +366,8 @@ class AnophelesBase:
             df["unrestricted_use"] = df[terms_of_use_expiry_date_column].apply(
                 lambda d: True if pd.isna(d) else (d <= today_date_iso)
             )
+            # Make the "unrestricted_use" column a nullable boolean, to allow missing data.
+            df["unrestricted_use"] = df["unrestricted_use"].astype(pd.BooleanDtype())
 
         return df
 
@@ -465,7 +468,6 @@ class AnophelesBase:
                 [
                     "terms_of_use_expiry_date",
                     "terms_of_use_url",
-                    "has_terms_of_use",
                     "unrestricted_use",
                 ]
             ].to_dict(orient="index")

@@ -1132,10 +1132,6 @@ class Ag3Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/AG1000G-AO",
                     "https://www.malariagen.net/network/where-we-work/AG1000G-BF-1",
                 ],
-                "has_terms_of_use": [
-                    True,
-                    True,
-                ],
                 "terms_of_use_expiry_date": [
                     "2025-01-01",
                     "2025-01-01",
@@ -1166,9 +1162,6 @@ class Ag3Simulator(AnophelesSimulator):
                 "study_id": ["1177-VO-ML-LEHMANN"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1177-VO-ML-LEHMANN"
-                ],
-                "has_terms_of_use": [
-                    True,
                 ],
                 "terms_of_use_expiry_date": [
                     "2025-11-17",
@@ -1912,11 +1905,6 @@ class Af1Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/1229-VO-GH-DADZIE",
                     "https://www.malariagen.net/network/where-we-work/1230-VO-MULTI-AYALA",
                     "https://www.malariagen.net/network/where-we-work/1231-VO-MULTI-WONDJI",
-                ],
-                "has_terms_of_use": [
-                    True,
-                    True,
-                    True,
                 ],
                 "terms_of_use_expiry_date": [
                     "2025-06-01",

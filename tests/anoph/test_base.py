@@ -89,7 +89,6 @@ def test_sample_sets_default(fixture, api):
         "sample_count",
         "study_id",
         "study_url",
-        "has_terms_of_use",
         "terms_of_use_expiry_date",
         "terms_of_use_url",
         "release",
@@ -103,7 +102,6 @@ def test_sample_sets_default(fixture, api):
                 "sample_count",
                 "study_id",
                 "study_url",
-                "has_terms_of_use",
                 "terms_of_use_expiry_date",
                 "terms_of_use_url",
             ]
@@ -123,7 +121,6 @@ def test_sample_sets_release(fixture, api):
             "sample_count",
             "study_id",
             "study_url",
-            "has_terms_of_use",
             "terms_of_use_expiry_date",
             "terms_of_use_url",
             "release",
@@ -138,7 +135,6 @@ def test_sample_sets_release(fixture, api):
                     "sample_count",
                     "study_id",
                     "study_url",
-                    "has_terms_of_use",
                     "terms_of_use_expiry_date",
                     "terms_of_use_url",
                 ]
