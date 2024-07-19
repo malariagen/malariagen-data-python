@@ -88,8 +88,13 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(n_samples, n_snps_available)
     n_components = random.randint(3, n_samples)
+
+    # If there are more samples than SNPs available, use all SNPs.
+    if n_samples > n_snps_available:
+        n_snps = n_snps_available
+    else:
+        n_snps = random.randint(n_samples, n_snps_available)
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
