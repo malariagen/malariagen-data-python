@@ -270,6 +270,8 @@ min_minor_ac: TypeAlias = Annotated[
     """,
 ]
 
+min_minor_ac_default: min_minor_ac = 2
+
 max_missing_an: TypeAlias = Annotated[
     int,
     """
@@ -278,6 +280,8 @@ max_missing_an: TypeAlias = Annotated[
     missing calls.
     """,
 ]
+
+max_missing_an_default: max_missing_an = 0
 
 snp_query: TypeAlias = Annotated[
     str,

@@ -1565,8 +1565,12 @@ class AnophelesSnpData(
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = base_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = base_params.max_missing_an_default,
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
     ) -> xr.Dataset:
@@ -1709,8 +1713,12 @@ class AnophelesSnpData(
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = base_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = base_params.max_missing_an_default,
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
         inline_array: base_params.inline_array = base_params.inline_array_default,
