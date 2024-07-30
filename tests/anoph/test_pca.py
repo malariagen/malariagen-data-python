@@ -94,7 +94,8 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
     n_snps = random.randint(1, n_snps_available)
-    n_components = random.randint(2, min(n_samples, n_snps))
+    # PC3 required for plot_pca_coords_3d()
+    n_components = random.randint(3, min(n_samples, n_snps))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
