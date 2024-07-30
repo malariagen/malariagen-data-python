@@ -95,6 +95,8 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     pca_df, pca_evr = api.pca(
         n_snps=n_snps,
         n_components=n_components,
+        min_minor_ac=0,  # FIXME
+        max_missing_an=0,  # FIXME
         **data_params,
     )
 
