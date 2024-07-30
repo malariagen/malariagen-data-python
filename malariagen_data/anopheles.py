@@ -35,6 +35,7 @@ from .anoph import (
     hapnet_params,
     het_params,
     ihs_params,
+    pca_params,
     plotly_params,
     xpehh_params,
 )
@@ -2978,12 +2979,8 @@ class AnophelesDataResource(
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[
-            base_params.min_minor_ac
-        ] = base_params.min_minor_ac_default,
-        max_missing_an: Optional[
-            base_params.max_missing_an
-        ] = base_params.max_missing_an_default,
+        min_minor_ac: Optional[base_params.min_minor_ac] = None,
+        max_missing_an: Optional[base_params.max_missing_an] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -3164,10 +3161,10 @@ class AnophelesDataResource(
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[
             base_params.min_minor_ac
-        ] = base_params.min_minor_ac_default,
+        ] = pca_params.min_minor_ac_default,
         max_missing_an: Optional[
             base_params.max_missing_an
-        ] = base_params.max_missing_an_default,
+        ] = pca_params.max_missing_an_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
