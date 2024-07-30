@@ -53,9 +53,9 @@ For accessing data in Google Cloud Storage (GCS) you will also need to authentic
 If you are using ``malariagen_data`` from within Google Colab, authentication will be automatically
 initiated, please allow access when requested.
 
-If you are using ``malariagen_data`` from any location other than Google Colab, you will need to [set up application
-default credentials](https://cloud.google.com/docs/authentication/provide-credentials-adc). Generally
-the best way to do this will be to [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install)
+If you are using ``malariagen_data`` from any location other than Google Colab, you will need to `set up application
+default credentials <https://cloud.google.com/docs/authentication/provide-credentials-adc>`_. Generally
+the best way to do this will be to `install the Google Cloud CLI <https://cloud.google.com/sdk/docs/install>`_
 and then run the following command::
 
    gcloud auth application-default login
