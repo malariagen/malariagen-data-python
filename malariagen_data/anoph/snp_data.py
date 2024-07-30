@@ -1655,7 +1655,7 @@ class AnophelesSnpData(
             ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)
 
             # Apply conditions.
-            if max_missing_an or min_minor_ac:
+            if max_missing_an is not None or min_minor_ac is not None:
                 loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
 
                 # Apply missingness condition.
