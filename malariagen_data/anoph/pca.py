@@ -62,8 +62,12 @@ class AnophelesPca(
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = pca_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = pca_params.max_missing_an_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -73,7 +77,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v2"
+        name = "pca_v3"
 
         # Normalize params for consistent hash value.
         (
