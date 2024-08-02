@@ -256,7 +256,7 @@ class AnophelesCnvData(
             marker = path + "/.zmetadata"
             if not self._fs.exists(marker):
                 raise ValueError(
-                    f"CNV coverage calls analysis f{analysis!r} not implemented for sample set {sample_set!r}"
+                    f"CNV coverage calls analysis {analysis!r} not implemented for sample set {sample_set!r}"
                 )
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
@@ -419,7 +419,13 @@ class AnophelesCnvData(
             else:
                 calls_version = "discordant_read_calls"
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/{calls_version}/zarr"
-            # print(analysis)
+            # Note: DRCs do not exist for all sample sets or analyses.
+            marker = path + "/.zmetadata"
+            if not self._fs.exists(marker):
+                analysis_msg = f" {analysis!r}" if analysis else ""
+                raise ValueError(
+                    f"CNV discordant read calls{analysis_msg} not implemented for sample set {sample_set!r}"
+                )
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
