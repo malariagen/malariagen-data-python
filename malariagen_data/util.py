@@ -1348,7 +1348,7 @@ def trim_alleles(ac):
     return mapping
 
 
-# @numba.njit
+@numba.njit
 def apply_allele_mapping(x, mapping, max_allele):
     """Transform an array x, where the columns correspond to alleles,
     according to an allele mapping.
