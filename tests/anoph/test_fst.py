@@ -17,7 +17,6 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesFstAnalysis(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -44,7 +43,6 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesFstAnalysis(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
@@ -206,7 +204,11 @@ def check_pairwise_average_fst(api: AnophelesFstAnalysis, fst_params):
     if len(fst_df) > 0:
         fig = api.plot_pairwise_average_fst(fst_df, show=False)
         assert isinstance(fig, go.Figure)
-        fig = api.plot_pairwise_average_fst(fst_df, annotate_se=True, show=False)
+        fig = api.plot_pairwise_average_fst(
+            fst_df, annotation="standard error", show=False
+        )
+        assert isinstance(fig, go.Figure)
+        fig = api.plot_pairwise_average_fst(fst_df, annotation="Z score", show=False)
         assert isinstance(fig, go.Figure)
 
 

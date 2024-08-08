@@ -14,14 +14,15 @@ from typing import (
     Tuple,
     Union,
 )
-
+from textwrap import dedent
 import bokeh.io
+import ipinfo  # type: ignore
 import numpy as np
-import pandas as pd
+import pandas as pd  # type: ignore
 import zarr  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
-from tqdm.auto import tqdm as tqdm_auto
-from tqdm.dask import TqdmCallback
+from tqdm.auto import tqdm as tqdm_auto  # type: ignore
+from tqdm.dask import TqdmCallback  # type: ignore
 from yaspin import yaspin  # type: ignore
 
 from ..util import (
@@ -29,6 +30,7 @@ from ..util import (
     LoggingHelper,
     check_colab_location,
     check_types,
+    get_gcp_region,
     hash_params,
     init_filesystem,
 )
@@ -42,9 +44,10 @@ class AnophelesBase:
         url: str,
         config_path: str,
         pre: bool,
-        gcs_url: Optional[str],  # only used for colab location check
         major_version_number: int,
         major_version_path: str,
+        gcs_default_url: Optional[str] = None,
+        gcs_region_urls: Mapping[str, str] = {},
         bokeh_output_notebook: bool = False,
         log: Optional[Union[str, IO]] = None,
         debug: bool = False,
@@ -54,10 +57,10 @@ class AnophelesBase:
         results_cache: Optional[str] = None,
         tqdm_class=None,
     ):
-        self._url = url
         self._config_path = config_path
         self._pre = pre
-        self._gcs_url = gcs_url
+        self._gcs_default_url = gcs_default_url
+        self._gcs_region_urls = gcs_region_urls
         self._major_version_number = major_version_number
         self._major_version_path = major_version_path
         self._debug = debug
@@ -69,6 +72,34 @@ class AnophelesBase:
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
 
+        # Check client location.
+        self._client_details = None
+        if check_location:
+            try:
+                self._client_details = ipinfo.getHandler().getDetails()
+            except OSError:
+                pass
+
+        # Determine cloud location details.
+        self._gcp_region = get_gcp_region(self._client_details)
+
+        # Check colab location.
+        check_colab_location(self._gcp_region)
+
+        # Determine storage URL.
+        if url:
+            # User has explicitly provided a URL to use.
+            self._url = url
+        elif self._gcp_region in self._gcs_region_urls:
+            # Choose URL in the same GCP region.
+            self._url = self._gcs_region_urls[self._gcp_region]
+        elif self._gcs_default_url:
+            # Fall back to default URL if available.
+            self._url = self._gcs_default_url
+        else:
+            raise ValueError("A value for the `url` parameter must be provided.")
+        del url
+
         # Set up fsspec filesystem. N.B., we use fsspec here to allow for
         # accessing different types of storage - fsspec will automatically
         # detect which type of storage to use based on the URL provided.
@@ -76,23 +107,44 @@ class AnophelesBase:
         # be used to read from Google Cloud Storage.
         if storage_options is None:
             storage_options = dict()
-        self._fs, self._base_path = init_filesystem(url, **storage_options)
+        try:
+            self._fs, self._base_path = init_filesystem(self._url, **storage_options)
+        except Exception as exc:  # pragma: no cover
+            raise IOError(
+                "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
+            ) from exc
 
-        # Lazily load config.
-        self._config: Optional[Dict] = None
+        # Eagerly load config to trigger any access problems early.
+        try:
+            with self.open_file(self._config_path) as f:
+                self._config = json.load(f)
+        except Exception as exc:  # pragma: no cover
+            if (isinstance(exc, OSError) and "forbidden" in str(exc).lower()) or (
+                getattr(exc, "status", None) == 403
+            ):
+                # This seems to be the best way to detect the case where the
+                # current user is trying to access GCS but has not been granted
+                # permissions. Reraise with a helpful message.
+                raise PermissionError(
+                    dedent(
+                        """
+                           Your Google account does not appear to have permission to access the data.
+                           If you have not yet submitted a data access request, please complete the form
+                           at the following link: https://forms.gle/d1NV3aL3EoVQGSHYA
+
+                           If you are still experiencing problems accessing data, please email
+                           support@malariagen.net for assistance.
+                        """
+                    )
+                ) from exc
+            else:
+                # Some other kind of error, reraise.
+                raise exc
 
         # Get bokeh to output plots to the notebook - this is a common gotcha,
         # users forget to do this and wonder why bokeh plots don't show.
         if bokeh_output_notebook:  # pragma: no cover
             bokeh.io.output_notebook(hide_banner=True)
-
-        # Check colab location is in the US.
-        if check_location and self._gcs_url is not None:  # pragma: no cover
-            self._client_details = check_colab_location(
-                gcs_url=self._gcs_url, url=self._url
-            )
-        else:
-            self._client_details = None
 
         # Set up cache attributes.
         self._cache_releases: Optional[Tuple[str, ...]] = None
@@ -186,9 +238,6 @@ class AnophelesBase:
 
     @property
     def config(self) -> Dict:
-        if self._config is None:
-            with self.open_file(self._config_path) as f:
-                self._config = json.load(f)
         return self._config.copy()
 
     # Note regarding release identifiers and storage paths. Within the
@@ -250,7 +299,9 @@ class AnophelesBase:
         """
     )
     def _discover_releases(self) -> Tuple[str, ...]:
-        sub_dirs = sorted([p.split("/")[-1] for p in self._fs.ls(self._base_path)])
+        sub_dirs = sorted(
+            [p.split("/")[-1] for p in self._fs.ls(self._base_path, detail=False)]
+        )
         discovered_releases = tuple(
             sorted(
                 [
@@ -279,8 +330,10 @@ class AnophelesBase:
         details = self._client_details
         if details is not None:
             region = details.region
-            country = details.country
+            country = details.country_name
             location = f"{region}, {country}"
+            if self._gcp_region:
+                location += f" (Google Cloud {self._gcp_region})"
         else:
             location = "unknown"
         return location

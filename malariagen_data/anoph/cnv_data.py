@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Sequence, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import dask.array as da
 import numpy as np
@@ -511,6 +511,7 @@ class AnophelesCnvData(
         self,
         contig: base_params.contigs,
         sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> xr.Dataset:
@@ -541,6 +542,24 @@ class AnophelesCnvData(
             lx.append(x)
 
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+
+        debug("handle sample query")
+        if sample_query is not None:
+            debug("load sample metadata")
+            df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+            debug("align sample metadata with CNV data")
+            cnv_samples = ds["sample_id"].values.tolist()
+            df_samples_cnv = (
+                df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
+            )
+
+            debug("apply the query")
+            loc_query_samples = df_samples_cnv.eval(sample_query).values
+            if np.count_nonzero(loc_query_samples) == 0:
+                raise ValueError(f"No samples found for query {sample_query!r}")
+
+            ds = ds.isel(samples=loc_query_samples)
 
         return ds
 
@@ -641,8 +660,12 @@ class AnophelesCnvData(
         circle_kwargs_mutable["legend_label"] = circle_kwargs_mutable.get(
             "legend_label", "Coverage"
         )
-        fig.circle(
-            x="variant_midpoint", y="call_NormCov", source=data, **circle_kwargs_mutable
+        fig.scatter(
+            x="variant_midpoint",
+            y="call_NormCov",
+            source=data,
+            marker="circle",
+            **circle_kwargs_mutable,
         )
 
         debug("plot the HMM state")
@@ -784,10 +807,10 @@ class AnophelesCnvData(
         debug("set up plot title")
         title = "CNV HMM"
         if sample_sets is not None:
-            if isinstance(sample_sets, Sequence):
-                sample_sets_text = ", ".join(sample_sets)
-            else:
+            if isinstance(sample_sets, str):
                 sample_sets_text = sample_sets
+            else:
+                sample_sets_text = ", ".join(sample_sets)
             title += f" - {sample_sets_text}"
         if sample_query is not None:
             title += f" ({sample_query})"

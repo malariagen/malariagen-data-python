@@ -20,7 +20,6 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesSnpFrequencyAnalysis(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -46,7 +45,6 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesSnpFrequencyAnalysis(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
@@ -885,7 +883,7 @@ def check_snp_allele_frequencies_advanced(
     # Sanity checks for period values.
     period_values = ds["cohort_period"].values
     if period_by == "year":
-        expected_freqstr = "A-DEC"
+        expected_freqstr = "Y-DEC"
     elif period_by == "month":
         expected_freqstr = "M"
     elif period_by == "quarter":
@@ -1057,7 +1055,7 @@ def check_aa_allele_frequencies_advanced(
     # Sanity checks for period values.
     period_values = ds["cohort_period"].values
     if period_by == "year":
-        expected_freqstr = "A-DEC"
+        expected_freqstr = "Y-DEC"
     elif period_by == "month":
         expected_freqstr = "M"
     elif period_by == "quarter":

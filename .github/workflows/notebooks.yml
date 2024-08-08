@@ -11,27 +11,45 @@ jobs:
     strategy:
       fail-fast: true
     runs-on: ubuntu-latest
+    # Add "id-token" with the intended permissions.
+    permissions:
+      contents: 'read'
+      id-token: 'write'
     steps:
       - name: Checkout source
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install poetry
-        run: pipx install poetry==1.7.1
+        run: pipx install poetry==1.8.2
 
       - name: Setup python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
+          python-version: "3.12"
           cache: "poetry"
 
       - name: Install dependencies
         run: poetry install
 
+      - id: 'auth'
+        name: 'Set up Google Cloud authentication'
+        uses: 'google-github-actions/auth@v2'
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+
+      - name: 'Set up Google Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          version: '>= 363.0.0'
+
+      - name: 'Check gcloud CLI'
+        run: 'gcloud info'
+
       - name: Restore GCS cache
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20231119
+          key: gcs_cache_notebooks_20240324
 
       - name: Run notebooks
         run: poetry run jupyter nbconvert --execute notebooks/*.ipynb --inplace
@@ -41,4 +59,4 @@ jobs:
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_notebooks_20231119
+          key: gcs_cache_notebooks_20240324

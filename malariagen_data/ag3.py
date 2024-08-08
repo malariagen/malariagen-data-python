@@ -1,7 +1,7 @@
 import sys
 
 import dask
-import pandas as pd
+import pandas as pd  # type: ignore
 import plotly.express as px  # type: ignore
 
 import malariagen_data
@@ -13,7 +13,10 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
 MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
-GCS_URL = "gs://vo_agam_release/"
+GCS_DEFAULT_URL = "gs://vo_agam_release/"
+GCS_REGION_URLS = {
+    "us-central1": "gs://vo_agam_release_master_us_central1",
+}
 XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v1"
 VIRTUAL_CONTIGS = {
@@ -77,10 +80,9 @@ class Ag3(AnophelesDataResource):
 
     Parameters
     ----------
-    url : str
-        Base path to data. Give "gs://vo_agam_release/" to use Google Cloud
-        Storage, or a local path on your file system if data have been
-        downloaded.
+    url : str, optional
+        Base path to data. Defaults to use Google Cloud Storage, or can
+        be a local path on your file system if data have been downloaded.
     cohorts_analysis : str, optional
         Cohort analysis version.
     aim_analysis : str, optional
@@ -133,7 +135,7 @@ class Ag3(AnophelesDataResource):
 
     def __init__(
         self,
-        url=GCS_URL,
+        url=None,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -175,7 +177,8 @@ class Ag3(AnophelesDataResource):
             show_progress=show_progress,
             check_location=check_location,
             pre=pre,
-            gcs_url=GCS_URL,
+            gcs_default_url=GCS_DEFAULT_URL,
+            gcs_region_urls=GCS_REGION_URLS,
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
             gff_gene_type="gene",
@@ -215,7 +218,7 @@ class Ag3(AnophelesDataResource):
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net. For API documentation see \n"
+            f"or contact support@malariagen.net. For API documentation see \n"
             f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html"
         )
         return text
@@ -230,7 +233,7 @@ class Ag3(AnophelesDataResource):
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
-                        the MalariaGEN website</a> or contact data@malariagen.net.
+                        the MalariaGEN website</a> or contact support@malariagen.net.
                         See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Ag3.html">Ag3 API docs</a>.
                     </td></tr>
                 </thead>

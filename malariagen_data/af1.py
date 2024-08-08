@@ -8,7 +8,10 @@ from .anopheles import AnophelesDataResource
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
-GCS_URL = "gs://vo_afun_release/"
+GCS_DEFAULT_URL = "gs://vo_afun_release/"
+GCS_REGION_URLS = {
+    "us-central1": "gs://vo_afun_release_master_us_central1",
+}
 XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
 IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
 
@@ -23,10 +26,9 @@ class Af1(AnophelesDataResource):
 
     Parameters
     ----------
-    url : str
-        Base path to data. Give "gs://vo_afun_release/" to use Google Cloud
-        Storage, or a local path on your file system if data have been
-        downloaded.
+    url : str, optional
+        Base path to data. Defaults to use Google Cloud Storage, or can
+        be a local path on your file system if data have been downloaded.
     site_filters_analysis : str, optional
         Site filters analysis version.
     bokeh_output_notebook : bool, optional
@@ -75,7 +77,7 @@ class Af1(AnophelesDataResource):
 
     def __init__(
         self,
-        url=GCS_URL,
+        url=None,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -109,7 +111,8 @@ class Af1(AnophelesDataResource):
             show_progress=show_progress,
             check_location=check_location,
             pre=pre,
-            gcs_url=GCS_URL,
+            gcs_default_url=GCS_DEFAULT_URL,
+            gcs_region_urls=GCS_REGION_URLS,
             major_version_number=MAJOR_VERSION_NUMBER,
             major_version_path=MAJOR_VERSION_PATH,
             gff_gene_type="protein_coding_gene",
@@ -135,7 +138,7 @@ class Af1(AnophelesDataResource):
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
-            f"or contact data@malariagen.net. For API documentation see \n"
+            f"or contact support@malariagen.net. For API documentation see \n"
             f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html"
         )
         return text
@@ -150,7 +153,7 @@ class Af1(AnophelesDataResource):
                     <tr><td colspan="2" style="text-align: left">
                         Please note that data are subject to terms of use,
                         for more information see <a href="https://www.malariagen.net/data">
-                        the MalariaGEN website</a> or contact data@malariagen.net.
+                        the MalariaGEN website</a> or contact support@malariagen.net.
                         See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Af1.html">Af1 API docs</a>.
                     </td></tr>
                 </thead>

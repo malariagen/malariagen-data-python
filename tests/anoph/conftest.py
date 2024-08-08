@@ -959,6 +959,7 @@ class AnophelesSimulator:
         releases: Tuple[str, ...],
         has_aims: bool,
         has_cohorts_by_quarter: bool,
+        has_sequence_qc: bool,
     ):
         self.fixture_dir = fixture_dir
         self.bucket = bucket
@@ -970,6 +971,7 @@ class AnophelesSimulator:
         self.releases = releases
         self.has_aims = has_aims
         self.has_cohorts_by_quarter = has_cohorts_by_quarter
+        self.has_sequence_qc = has_sequence_qc
 
         # Clear out the fixture directories.
         shutil.rmtree(self.bucket_path, ignore_errors=True)
@@ -1088,6 +1090,7 @@ class Ag3Simulator(AnophelesSimulator):
             releases=("3.0", "3.1"),
             has_aims=True,
             has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
         )
 
     def init_config(self):
@@ -1193,7 +1196,15 @@ class Ag3Simulator(AnophelesSimulator):
         simulator = Gff3Simulator(contig_sizes=self.contig_sizes)
         self.genome_features = simulator.simulate_gff(path=path)
 
-    def write_metadata(self, release, release_path, sample_set, aim=True, cohorts=True):
+    def write_metadata(
+        self,
+        release,
+        release_path,
+        sample_set,
+        aim=True,
+        cohorts=True,
+        sequence_qc=True,
+    ):
         # Here we take the approach of using some of the real metadata,
         # but truncating it to the number of samples included in the
         # simulated data resource.
@@ -1230,6 +1241,34 @@ class Ag3Simulator(AnophelesSimulator):
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_general_ds.to_csv(dst_path, index=False)
+
+        if sequence_qc:
+            # Create sequence QC metadata by sample from real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_agam_release"
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats_ds = (
+                df_sequence_qc_stats.set_index("sample_id")
+                .loc[samples_ds]
+                .reset_index()
+            )
+            dst_path = (
+                self.bucket_path
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            df_sequence_qc_stats_ds.to_csv(dst_path, index=False)
 
         if aim:
             # Create AIM metadata by sampling from some real metadata files.
@@ -1803,6 +1842,7 @@ class Af1Simulator(AnophelesSimulator):
             releases=("1.0",),
             has_aims=False,
             has_cohorts_by_quarter=False,
+            has_sequence_qc=True,
         )
 
     def init_config(self):
@@ -1899,7 +1939,7 @@ class Af1Simulator(AnophelesSimulator):
         )
         self.genome_features = simulator.simulate_gff(path=path)
 
-    def write_metadata(self, release, release_path, sample_set):
+    def write_metadata(self, release, release_path, sample_set, sequence_qc=True):
         # Here we take the approach of using some of the real metadata,
         # but truncating it to the number of samples included in the
         # simulated data resource.
@@ -1935,6 +1975,34 @@ class Af1Simulator(AnophelesSimulator):
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_general_ds.to_csv(dst_path, index=False)
+
+        if sequence_qc:
+            # Create sequence QC metadata by sample from real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_afun_release"
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats_ds = (
+                df_sequence_qc_stats.set_index("sample_id")
+                .loc[samples_ds]
+                .reset_index()
+            )
+            dst_path = (
+                self.bucket_path
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            df_sequence_qc_stats_ds.to_csv(dst_path, index=False)
 
         # Create cohorts metadata by sampling from some real metadata files.
         src_path = (

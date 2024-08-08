@@ -44,31 +44,31 @@ Fork and clone this repo:
 git clone git@github.com:[username]/malariagen-data-python.git
 ```
 
-Install Python 3.8 (current recommended version for local development), e.g.:
+Install Python, e.g.:
 
 ```bash
 sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt install python3.8 python3.8-venv
+sudo apt install python3.9 python3.9-venv
 ```
 
 Install pipx, e.g.:
 
 ```bash
-python3.8 -m pip install --user pipx
-python3.8 -m pipx ensurepath
+python3.9 -m pip install --user pipx
+python3.9 -m pipx ensurepath
 ```
 
 Install [poetry](https://python-poetry.org/docs/#installation), e.g.:
 
 ```bash
-pipx install poetry==1.4.1 --python=/usr/bin/python3.8
+pipx install poetry==1.8.2 --python=/usr/bin/python3.9
 ```
 
 Create development environment:
 
 ```bash
 cd malariagen-data-python
-poetry use 3.8
+poetry use 3.9
 poetry install
 ```
 
@@ -81,7 +81,7 @@ poetry shell
 Install pre-commit and pre-commit hooks:
 
 ```bash
-pipx install pre-commit --python=/usr/bin/python3.8
+pipx install pre-commit --python=/usr/bin/python3.9
 pre-commit install
 ```
 
@@ -91,10 +91,28 @@ Run pre-commit checks (isort, black, blackdoc, flake8, ...) manually:
 pre-commit run --all-files
 ```
 
-Run tests:
+Run fast unit tests using simulated data:
 
 ```bash
-poetry run pytest -v
+poetry run pytest -v tests/anoph
+```
+
+To run legacy tests which read data from GCS, you'll need to [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
+
+```bash
+./install_gcloud.sh
+```
+
+You'll then need to obtain application-default credentials, e.g.:
+
+```bash
+./google-cloud-sdk/bin/gcloud auth application-default login
+```
+
+Once this is done, you can run legacy tests:
+
+```bash
+poetry run pytest --ignore=tests/anoph -v tests
 ```
 
 Tests will run slowly the first time, as data required for testing

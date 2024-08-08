@@ -60,10 +60,14 @@ class AnophelesPca(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = pca_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = pca_params.max_missing_an_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -73,7 +77,7 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v2"
+        name = "pca_v3"
 
         # Normalize params for consistent hash value.
         (
@@ -204,8 +208,8 @@ class AnophelesPca(
     def plot_pca_variance(
         self,
         evr: pca_params.evr,
-        width: plotly_params.width = 900,
-        height: plotly_params.height = 400,
+        width: plotly_params.fig_width = 900,
+        height: plotly_params.fig_height = 400,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
@@ -257,8 +261,8 @@ class AnophelesPca(
         opacity: float = 0.9,
         jitter_frac: plotly_params.jitter_frac = 0.02,
         random_seed: base_params.random_seed = 42,
-        width: plotly_params.width = 900,
-        height: plotly_params.height = 600,
+        width: plotly_params.fig_width = 900,
+        height: plotly_params.fig_height = 600,
         marker_size: plotly_params.marker_size = 10,
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,
@@ -361,8 +365,8 @@ class AnophelesPca(
         symbol: plotly_params.symbol = None,
         jitter_frac: plotly_params.jitter_frac = 0.02,
         random_seed: base_params.random_seed = 42,
-        width: plotly_params.width = 900,
-        height: plotly_params.height = 600,
+        width: plotly_params.fig_width = 900,
+        height: plotly_params.fig_height = 600,
         marker_size: plotly_params.marker_size = 5,
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,

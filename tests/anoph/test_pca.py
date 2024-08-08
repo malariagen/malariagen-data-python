@@ -9,6 +9,7 @@ from pytest_cases import parametrize_with_cases
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.pca import AnophelesPca
+from malariagen_data.anoph import pca_params
 
 
 @pytest.fixture
@@ -16,7 +17,6 @@ def ag3_sim_api(ag3_sim_fixture):
     return AnophelesPca(
         url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
-        gcs_url=_ag3.GCS_URL,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
         pre=True,
@@ -43,7 +43,6 @@ def af1_sim_api(af1_sim_fixture):
     return AnophelesPca(
         url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
-        gcs_url=_af1.GCS_URL,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
@@ -85,13 +84,18 @@ def test_pca_plotting(fixture, api: AnophelesPca):
         sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
     )
-    ds = api.biallelic_snp_calls(**data_params)
+    ds = api.biallelic_snp_calls(
+        min_minor_ac=pca_params.min_minor_ac_default,
+        max_missing_an=pca_params.max_missing_an_default,
+        **data_params,
+    )
 
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(n_samples, n_snps_available)
-    n_components = random.randint(3, n_samples)
+    n_snps = random.randint(1, n_snps_available)
+    # PC3 required for plot_pca_coords_3d()
+    n_components = random.randint(3, min(n_samples, n_snps))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
