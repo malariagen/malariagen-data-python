@@ -1627,15 +1627,23 @@ class AnophelesSnpData(
             # Store alleles, transformed.
             variant_allele = ds_bi["variant_allele"].data
             variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
-            # variant_allele_out = da.map_blocks(
-            #    lambda block: apply_allele_mapping(block, allele_mapping, max_allele=1),
-            #    variant_allele,
-            #    dtype=variant_allele.dtype,
-            #    chunks=(variant_allele.chunks[0], [2]),
-            # )
-            variant_allele_out = apply_allele_mapping(
-                variant_allele.compute(), allele_mapping, max_allele=1
+
+            # Chunk allele mapping according to same variant_allele.
+            allele_mapping_chunked = da.from_array(
+                allele_mapping, chunks=variant_allele.chunks
             )
+
+            # Apply allele mapping blockwise to variant_allele.
+            variant_allele_out = da.map_blocks(
+                lambda allele, map: apply_allele_mapping(allele, map, max_allele=1),
+                variant_allele,
+                allele_mapping_chunked,
+                dtype=variant_allele.dtype,
+                chunks=(variant_allele.chunks[0], [2]),
+            )
+            # variant_allele_out = apply_allele_mapping(
+            #    variant_allele.compute(), allele_mapping, max_allele=1
+            # )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
             # Store allele counts, transformed, so we don't have to recompute.
