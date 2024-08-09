@@ -40,6 +40,7 @@ class AnophelesFstAnalysis(
         random_seed,
         inline_array,
         chunks,
+        clip_min,
     ):
         # Compute allele counts.
         ac1 = self.snp_allele_counts(
@@ -79,7 +80,7 @@ class AnophelesFstAnalysis(
         with self._spinner(desc="Compute Fst"):
             fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
             # Sometimes Fst can be very slightly below zero, clip for simplicity.
-            fst = np.clip(fst, a_min=0, a_max=1)
+            fst = np.clip(fst, a_min=clip_min, a_max=1)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, fst=fst)
@@ -115,6 +116,7 @@ class AnophelesFstAnalysis(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
+        clip_min: fst_params.clip_min = 0.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -131,6 +133,7 @@ class AnophelesFstAnalysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            clip_min=clip_min,
         )
 
         try:
@@ -175,6 +178,7 @@ class AnophelesFstAnalysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        clip_min: fst_params.clip_min = 0.0,
     ) -> gplt_params.figure:
         # compute Fst
         x, fst = self.fst_gwss(
@@ -188,6 +192,7 @@ class AnophelesFstAnalysis(
             sample_sets=sample_sets,
             site_mask=site_mask,
             random_seed=random_seed,
+            clip_min=clip_min,
         )
 
         # determine X axis range
@@ -277,6 +282,7 @@ class AnophelesFstAnalysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        clip_min: fst_params.clip_min = 0.0,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
@@ -296,6 +302,7 @@ class AnophelesFstAnalysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            clip_min=clip_min,
         )
 
         fig1.xaxis.visible = False
