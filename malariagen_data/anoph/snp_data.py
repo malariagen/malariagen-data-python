@@ -32,7 +32,6 @@ from ..util import (
     true_runs,
 )
 from . import base_params
-from .base_params import DEFAULT
 from .genome_features import AnophelesGenomeFeaturesData, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
 from .sample_metadata import AnophelesSampleMetadata
@@ -94,7 +93,7 @@ class AnophelesSnpData(
         *,
         site_mask: base_params.site_mask,
     ) -> base_params.site_mask:
-        if site_mask == DEFAULT:
+        if site_mask == base_params.DEFAULT:
             # Use whatever is the default site mask for this data resource.
             assert self._default_site_mask is not None
             return self._default_site_mask
@@ -166,7 +165,7 @@ class AnophelesSnpData(
     )
     def open_site_filters(
         self,
-        mask: base_params.site_mask = DEFAULT,
+        mask: base_params.site_mask = base_params.DEFAULT,
     ) -> zarr.hierarchy.Group:
         self._require_site_filters_analysis()
         mask_prepped = self._prep_site_mask_param(site_mask=mask)
@@ -261,7 +260,7 @@ class AnophelesSnpData(
     def site_filters(
         self,
         region: base_params.regions,
-        mask: base_params.site_mask = DEFAULT,
+        mask: base_params.site_mask = base_params.DEFAULT,
         field: base_params.field = "filter_pass",
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
@@ -1263,7 +1262,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: base_params.site_mask = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -1328,7 +1327,7 @@ class AnophelesSnpData(
         region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-        site_mask: Optional[base_params.site_mask] = DEFAULT,
+        site_mask: base_params.site_mask = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -1341,7 +1340,8 @@ class AnophelesSnpData(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # Normalise params.
-        site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+        site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
+        del site_mask
 
         # Resolve and check region.
         resolved_region: Region = parse_single_region(self, region)
@@ -1469,7 +1469,9 @@ class AnophelesSnpData(
         data["right"] = data["pos"] + 0.4
         data["bottom"] = np.where(data["is_seg"], 1.6, 0.6)
         data["top"] = data["bottom"] + 0.8
-        data["color"] = np.where(data[f"pass_{site_mask}"], color_pass, color_fail)
+        data["color"] = np.where(
+            data[f"pass_{site_mask_prepped}"], color_pass, color_fail
+        )
         fig.quad(
             top="top",
             bottom="bottom",
@@ -1507,7 +1509,7 @@ class AnophelesSnpData(
     def is_accessible(
         self,
         region: base_params.region,
-        site_mask: base_params.site_mask = DEFAULT,
+        site_mask: base_params.site_mask = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> np.ndarray:
@@ -1653,7 +1655,7 @@ class AnophelesSnpData(
             ds_out = xr.Dataset(coords=coords, data_vars=data_vars, attrs=ds.attrs)
 
             # Apply conditions.
-            if max_missing_an or min_minor_ac:
+            if max_missing_an is not None or min_minor_ac is not None:
                 loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
 
                 # Apply missingness condition.

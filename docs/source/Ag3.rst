@@ -190,6 +190,14 @@ Haplotype clustering and network analysis
     plot_haplotype_network
     haplotype_pairwise_distances
 
+Diplotype clustering
+--------------------
+.. autosummary::
+    :toctree: generated/
+
+    plot_diplotype_clustering
+    plot_diplotype_clustering_advanced
+
 Fst analysis
 ------------
 .. autosummary::
