@@ -83,11 +83,10 @@ class AnophelesCnvData(
 
             # If CNV HMM data exists for this sample set then return the zarr,
             # Otherwise return None.
-            marker = path + "/.zmetadata"
-            if self._fs.exists(marker):
-                store = init_zarr_store(fs=self._fs, path=path)
+            store = init_zarr_store(fs=self._fs, path=path)
+            try:
                 root = zarr.open_consolidated(store=store)
-            else:
+            except FileNotFoundError:
                 root = None
 
             self._cache_cnv_hmm[sample_set] = root
