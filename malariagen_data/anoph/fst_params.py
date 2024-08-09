@@ -16,6 +16,13 @@ cohort_size_default: Optional[base_params.cohort_size] = None
 min_cohort_size_default: base_params.min_cohort_size = 15
 max_cohort_size_default: base_params.max_cohort_size = 50
 
+clip_min: TypeAlias = Annotated[
+    Optional[float],
+    """
+    Minimum value for Fst. Values below this are clipped to this value.
+    """,
+]
+
 df_pairwise_fst: TypeAlias = Annotated[
     pd.DataFrame,
     """
