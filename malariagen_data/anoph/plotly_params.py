@@ -26,7 +26,12 @@ fig_width: TypeAlias = Annotated[
 
 fig_height: TypeAlias = Annotated[
     Optional[int],
-    "Figure weight in pixels (px).",
+    "Figure height in pixels (px).",
+]
+
+width: TypeAlias = Annotated[
+    int,
+    "Width in pixels (px).",
 ]
 
 height: TypeAlias = Annotated[
