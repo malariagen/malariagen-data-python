@@ -207,6 +207,12 @@ class AnophelesCnvData(
 
                     ly.append(y)
 
+                if len(ly) == 0:
+                    # Bail out, no data for given sample sets and analysis.
+                    raise ValueError(
+                        f"No data found for requested sample sets."
+                    )
+
                 debug("concatenate data from multiple sample sets")
                 x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
