@@ -80,6 +80,12 @@ class AnophelesCnvData(
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/hmm/zarr"
+            # Note: HMM does not exist for all sample sets or analyses.
+            marker = path + "/.zmetadata"
+            if not self._fs.exists(marker):
+                raise ValueError(
+                    f"CNV HMM not implemented for sample set {sample_set!r}"
+                )
             store = init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_hmm[sample_set] = root
