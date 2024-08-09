@@ -133,7 +133,7 @@ class AnophelesFstAnalysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
-            clip_min=clip_min
+            clip_min=clip_min,
         )
 
         try:
