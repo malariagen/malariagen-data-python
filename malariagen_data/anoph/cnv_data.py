@@ -71,7 +71,7 @@ class AnophelesCnvData(
     @check_types
     @doc(
         summary="Open CNV HMM zarr.",
-        returns="Zarr hierarchy.",
+        returns="Zarr hierarchy or None.",
     )
     def open_cnv_hmm(self, sample_set: base_params.sample_set) -> zarr.hierarchy.Group:
         try:
@@ -80,8 +80,15 @@ class AnophelesCnvData(
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/hmm/zarr"
+
+            # If CNV HMM data exists for this sample set then return the zarr,
+            # Otherwise return None.
             store = init_zarr_store(fs=self._fs, path=path)
-            root = zarr.open_consolidated(store=store)
+            try:
+                root = zarr.open_consolidated(store=store)
+            except FileNotFoundError:
+                root = None
+
             self._cache_cnv_hmm[sample_set] = root
         return root
 
@@ -93,6 +100,10 @@ class AnophelesCnvData(
 
         debug("open zarr")
         root = self.open_cnv_hmm(sample_set=sample_set)
+
+        # If CNV HMM data doesn't exist for this sample set then return None.
+        if root is None:
+            return None
 
         debug("variant arrays")
         pos = root[f"{contig}/variants/POS"]
@@ -189,7 +200,16 @@ class AnophelesCnvData(
                         inline_array=inline_array,
                         chunks=chunks,
                     )
+
+                    # If no CNV HMM dataset was found then skip
+                    if y is None:
+                        continue
+
                     ly.append(y)
+
+                if len(ly) == 0:
+                    # Bail out, no data for given sample sets and analysis.
+                    raise ValueError("No data found for requested sample sets.")
 
                 debug("concatenate data from multiple sample sets")
                 x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
