@@ -40,6 +40,7 @@ class AnophelesFstAnalysis(
         random_seed,
         inline_array,
         chunks,
+        clip_min,
     ):
         # Compute allele counts.
         ac1 = self.snp_allele_counts(
@@ -79,7 +80,7 @@ class AnophelesFstAnalysis(
         with self._spinner(desc="Compute Fst"):
             fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
             # Sometimes Fst can be very slightly below zero, clip for simplicity.
-            fst = np.clip(fst, a_min=0, a_max=1)
+            fst = np.clip(fst, a_min=clip_min, a_max=1)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, fst=fst)
@@ -115,6 +116,7 @@ class AnophelesFstAnalysis(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
+        clip_min: fst_params.clip_min = 0.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -131,6 +133,7 @@ class AnophelesFstAnalysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            clip_min=clip_min,
         )
 
         try:
@@ -175,6 +178,7 @@ class AnophelesFstAnalysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        clip_min: fst_params.clip_min = 0.0,
     ) -> gplt_params.figure:
         # compute Fst
         x, fst = self.fst_gwss(
@@ -188,6 +192,7 @@ class AnophelesFstAnalysis(
             sample_sets=sample_sets,
             site_mask=site_mask,
             random_seed=random_seed,
+            clip_min=clip_min,
         )
 
         # determine X axis range
@@ -277,6 +282,7 @@ class AnophelesFstAnalysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        clip_min: fst_params.clip_min = 0.0,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
@@ -296,6 +302,7 @@ class AnophelesFstAnalysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            clip_min=clip_min,
         )
 
         fig1.xaxis.visible = False
@@ -485,32 +492,49 @@ class AnophelesFstAnalysis(
         zmax: Optional[plotly_params.zmax] = None,
         text_auto: plotly_params.text_auto = ".3f",
         color_continuous_scale: plotly_params.color_continuous_scale = "gray_r",
-        width: plotly_params.fig_width = 700,
-        height: plotly_params.fig_height = 600,
+        width: plotly_params.fig_width = None,
+        height: plotly_params.fig_height = None,
+        row_height: plotly_params.height = 40,
+        col_width: plotly_params.width = 50,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
     ):
-        # setup df
-        cohort_list = np.unique(fst_df[["cohort1", "cohort2"]].values)
-        # df to fill
-        fig_df = pd.DataFrame(columns=cohort_list, index=cohort_list)
-        # fill df from fst_df
-        for index_key in range(len(fst_df)):
-            index = fst_df.iloc[index_key]["cohort1"]
-            col = fst_df.iloc[index_key]["cohort2"]
-            fst = fst_df.iloc[index_key]["fst"]
-            fig_df[index][col] = fst
-            if annotation == "standard error":
-                se = fst_df.iloc[index_key]["se"]
-                fig_df[col][index] = se
-            elif annotation == "Z score":
-                zs = fst_df.iloc[index_key]["fst"] / fst_df.iloc[index_key]["se"]
-                fig_df[col][index] = zs
-            else:
-                fig_df.loc[index, col] = fst
+        # Obtain a list of all cohorts analysed. N.B., preserve the order in
+        # which the cohorts are provided in the input dataframe.
+        cohorts = pd.unique(fst_df[["cohort1", "cohort2"]].values.flatten())
 
-        # create plot
+        # Create a dataframe to visualise as a heatmap.
+        fig_df = pd.DataFrame(columns=cohorts, index=cohorts)
+
+        # Set up plot title.
+        title = "<i>F</i><sub>ST</sub>"
+        if annotation is not None:
+            title += " ⧅ " + annotation
+
+        # Fill the figure dataframe from the Fst dataframe.
+        for cohort1, cohort2, fst, se in fst_df.itertuples(index=False):
+            fig_df.loc[cohort2, cohort1] = fst
+            if annotation == "standard error":
+                fig_df.loc[cohort1, cohort2] = se
+            elif annotation == "Z score":
+                zs = fst / se
+                fig_df.loc[cohort1, cohort2] = zs
+            else:
+                fig_df.loc[cohort1, cohort2] = fst
+
+        # Don't colour the plot if the upper triangle is SE or Z score,
+        # as the colouring doesn't really make sense.
+        if annotation is not None and zmax is None:
+            zmax = 1e9
+
+        # Dynamically size the figure based on number of cohorts.
+        if height is None:
+            height = 100 + len(cohorts) * row_height
+        if width is None:
+            width = 200 + len(cohorts) * col_width
+
+        # Create plot.
         with np.errstate(invalid="ignore"):
             fig = px.imshow(
                 img=fig_df,
@@ -523,7 +547,11 @@ class AnophelesFstAnalysis(
                 aspect="auto",
                 **kwargs,
             )
-        fig.update_layout(plot_bgcolor="rgba(0,0,0,0)")
+        fig.update_layout(
+            plot_bgcolor="rgba(0,0,0,0)",
+            coloraxis_showscale=False,
+            title=title,
+        )
         fig.update_yaxes(showgrid=False, linecolor="black")
         fig.update_xaxes(showgrid=False, linecolor="black")
 

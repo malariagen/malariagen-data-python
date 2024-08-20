@@ -94,6 +94,9 @@ def general_metadata_expected_columns():
         "quarter": "i",
         "study_id": "O",
         "study_url": "O",
+        "terms_of_use_expiry_date": "O",
+        "terms_of_use_url": "O",
+        "unrestricted_use": "b",
     }
 
 
