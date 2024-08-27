@@ -5,15 +5,12 @@ import numpy as np
 import os
 import bed_reader
 from dask.diagnostics import ProgressBar
-# import bokeh.plotting
 
 from .snp_data import AnophelesSnpData
 from . import base_params
 
 
-# So far all of this has been copied from Sanjay's g123 notebook as it loads snp data with some optional filters.
 class PlinkConverter(
-    # ADMIXTURE is the main reason I want to convert malaariagen SNP data to PLINK format, and it uses genotype data.
     AnophelesSnpData,
 ):
     def __init__(
@@ -38,8 +35,6 @@ class PlinkConverter(
         return f"{results_dir}/{region}.{n_snps}.{min_minor_ac}.{thin_offset}.{max_missing_an}"
 
     def _biallelic_snps_to_plink(
-        # _ means internal function
-        # loads biallelic diplotypes and selects segregating sites among them, converts to plink
         self,
         *,
         results_dir,
@@ -56,7 +51,7 @@ class PlinkConverter(
         inline_array,
         chunks,
     ):
-        # first define output file
+        # Define output file
         plink_file_path = self._create_plink_outfile(
             results_dir=results_dir,
             region=region,
@@ -70,22 +65,20 @@ class PlinkConverter(
         if os.path.exists(bed_file_path):
             return plink_file_path
 
-        # get snps
+        # Get snps
         ds_snps = self.biallelic_snp_calls(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_indices=sample_indices,
             site_mask=site_mask,
-            # min_minor_ac=min_minor_ac,
-            # max_missing_an=max_missing_an,
             random_seed=random_seed,
             inline_array=inline_array,
             chunks=chunks,
             n_snps=n_snps,
         )
 
-        # filter snps on segregating sites
+        # Filter SNPs for segregating sites only
         with self._spinner("Subsetting to segregating sites"):
             gt = ds_snps["call_genotype"].data.compute()
             print("count alleles")
@@ -97,53 +90,40 @@ class PlinkConverter(
                 an_missing = n_chroms - an_called
                 min_ref_ac = min_minor_ac
                 max_ref_ac = n_chroms - min_minor_ac
-                # here we choose segregating sites
-                loc_sites = (  # put in is_biallelic
+                loc_sites = (
                     (ac[:, 0] >= min_ref_ac)
                     & (ac[:, 0] <= max_ref_ac)
                     & (an_missing <= max_missing_an)
                 )
                 print(f"ascertained {np.count_nonzero(loc_sites):,} sites")
 
-        # print("thin sites")
-        # ix_sites = np.nonzero(loc_sites)[0]
-        # thin_step = max(ix_sites.shape[0] // n_snps, 1)
-        # ix_sites_thinned = ix_sites[thin_offset::thin_step]
-        # print(f"thinned to {np.count_nonzero(ix_sites_thinned):,} sites")
-
-        # set up dataset with required vars for plink conversion
+        # Set up dataset with required vars for plink conversion
         print("Set up dataset")
-        ds_snps_asc = (
-            ds_snps[
-                [
-                    "variant_contig",
-                    "variant_position",
-                    "variant_allele",
-                    "sample_id",
-                    "call_genotype",
-                ]
-            ].isel(alleles=slice(0, 2))
-            # .sel(variants=ix_sites_thinned)
-        )
+        ds_snps_asc = ds_snps[
+            [
+                "variant_contig",
+                "variant_position",
+                "variant_allele",
+                "sample_id",
+                "call_genotype",
+            ]
+        ].isel(alleles=slice(0, 2))
 
-        # compute gt ref counts
+        # Compute gt ref counts
         with self._spinner("Computing genotype ref counts"):
             gt_asc = ds_snps_asc["call_genotype"].data.compute()
             gn_ref = allel.GenotypeDaskArray(gt_asc).to_n_ref(fill=-127)
             with ProgressBar():
                 gn_ref = gn_ref.compute()
 
-        print("Ensure genotypes vary")
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
-        print(f"final no. variants {np.count_nonzero(loc_var)}")
 
-        print("Load final data")
         with ProgressBar():
             ds_snps_final = ds_snps_asc[
                 ["variant_contig", "variant_position", "variant_allele", "sample_id"]
             ].isel(variants=loc_var)
 
-        # init vars for input to bed reader
+        # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]
         val = gn_ref_final.T
         alleles = ds_snps_final["variant_allele"].values
@@ -155,13 +135,14 @@ class PlinkConverter(
             "allele_2": alleles[:, 1],
         }
 
-        print(f"write plink files to {plink_file_path}")
         bed_reader.to_bed(
             filepath=bed_file_path,
             val=val,
             properties=properties,
             count_A1=True,
         )
+
+        print(f"PLINK files written to to: {plink_file_path}")
 
         return plink_file_path
 
@@ -194,8 +175,6 @@ class PlinkConverter(
             max_missing_an=max_missing_an,
             random_seed=random_seed,
         )
-        # for the sake of getting this going
-        # and also because i expect sanjay and ali will rework most of this, i will forgo the type checks until later
 
         filepath = self._biallelic_snps_to_plink(
             inline_array=inline_array, chunks=chunks, **params
