@@ -19,26 +19,30 @@ license = "MIT"
 [tool.poetry.dependencies]
 # ensure compatibility with numba
 python = ">=3.9,<3.13"
-# ensure compatibility with numba
-numpy = "*"
-numba = "*"
+# ensure compatibility with modules compiled with numpy v1.x
+numpy = "<2.0.0"
+# ensure compatibility with modules compiled with numpy v1.x
+numba = ">0.22.0"
 # force llvmlite above broken version
 llvmlite = ">0.34"
 scipy = "*"
 pandas = "*"
 zarr = "*"
-dask = {version="*", extras=["array"]}
+# ensure compatibility with modules compiled with numpy v1.x
+dask = {version=">0.8.2", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
 google-auth = "*"
 BioPython = "*"
 scikit-allel = "1.3.8"
-xarray = "*"
+# ensure compatibility with modules compiled with numpy v1.x
+xarray = ">2023.4.0"
 plotly = "*"
 # https://github.com/bokeh/bokeh/issues/12614
 # bokeh 3.0 has a problem with stretch sizing modes
 bokeh = ">=3.1.0"
-statsmodels = "*"
+# ensure compatibility with modules compiled with numpy v1.x
+statsmodels = ">0.13.0"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
 # https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
@@ -63,6 +67,7 @@ orjson = "*"
 yaspin = "*"
 # provides efficient neighbour-joining tree implementation
 biotite = "*"
+ipykernel = "^6.29.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
