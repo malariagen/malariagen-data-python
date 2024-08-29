@@ -67,7 +67,6 @@ orjson = "*"
 yaspin = "*"
 # provides efficient neighbour-joining tree implementation
 biotite = "*"
-ipykernel = "^6.29.5"
 
 [tool.poetry.dev-dependencies]
 pytest = "*"
