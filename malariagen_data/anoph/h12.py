@@ -325,6 +325,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
+        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -377,15 +378,22 @@ class AnophelesH12Analysis(
             output_backend=output_backend,
         )
 
+        circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
+        circle_kwargs_mutable["size"] = circle_kwargs_mutable.get("size", 3)
+        circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get("line_width", 1)
+        circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
+            "line_color", "black"
+        )
+        circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
+            "fill_color", None
+        )
+
         # Plot H12.
         fig.scatter(
             x=x,
             y=h12,
             marker="circle",
-            size=3,
-            line_width=1,
-            line_color="black",
-            fill_color=None,
+            **circle_kwargs_mutable,
         )
 
         # Tidy up the plot.
@@ -422,6 +430,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
+        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -441,6 +450,7 @@ class AnophelesH12Analysis(
             sizing_mode=sizing_mode,
             width=width,
             height=track_height,
+            circle_kwargs=circle_kwargs,
             show=False,
             output_backend=output_backend,
         )
