@@ -25,7 +25,9 @@ jobs:
           grep -v colabtools pip-freeze.txt > pip-installable.txt
 
       - name: Install OS packages
-        run: sudo apt install $(cat apt-installable.txt)
+        run: |
+          sudo apt update
+          sudo apt install $(cat apt-installable.txt)
 
       - name: Setup python
         uses: actions/setup-python@v5
