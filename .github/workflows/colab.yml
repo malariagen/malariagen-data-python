@@ -19,8 +19,13 @@ jobs:
 
       - name: Get colab environment specification
         run: |
+          wget https://raw.githubusercontent.com/googlecolab/backend-info/main/apt-list.txt
+          cat apt-list.txt | cut -d'/' -f1 | grep -v "^#" | grep -v "^Listing" > apt-installable.txt
           wget https://github.com/googlecolab/backend-info/raw/main/pip-freeze.txt
-          grep -v colabtools pip-freeze.txt > pip-freeze-installable.txt
+          grep -v colabtools pip-freeze.txt > pip-installable.txt
+
+      - name: Install OS packages
+        run: sudo apt install $(cat apt-installable.txt)
 
       - name: Setup python
         uses: actions/setup-python@v5
@@ -29,7 +34,7 @@ jobs:
           cache: "pip"
 
       - name: Install colab environment
-        run: python -m pip install -r pip-freeze-installable.txt
+        run: python -m pip install -r pip-installable.txt
 
       - name: Install malariagen_data
         run: python -m pip install -e .[dev]
