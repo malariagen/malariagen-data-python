@@ -13,7 +13,7 @@ dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
 MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
-GCS_DEFAULT_URL = "gs://vo_agam_release/"
+GCS_DEFAULT_URL = "gs://vo_agam_release_master_us_central1/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_agam_release_master_us_central1",
 }
