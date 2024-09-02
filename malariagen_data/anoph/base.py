@@ -424,6 +424,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find which release a sample set was included in.",
+        returns="The release the sample set is part of.",
     )
     def lookup_release(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_release is None:
@@ -438,6 +439,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find which study a sample set belongs to.",
+        returns="The study the sample set belongs to.",
     )
     def lookup_study(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_study is None:
@@ -451,6 +453,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find the study info for a sample set.",
+        returns="The info for the study the sample set belongs to.",
     )
     def lookup_study_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_study_info is None:
@@ -466,6 +469,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find the terms-of-use info for a sample set.",
+        returns="The terms-of-use info for the sample set.",
     )
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
