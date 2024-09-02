@@ -12,7 +12,10 @@ jobs:
       fail-fast: true
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
-        numpy-version: ["<2", ">=2"]
+        numpy-version:
+          - "numpy==1.26.4"  # current colab version
+          - "numpy~=2.0"  # 2.0 series
+          - "numpy~=2.1"  # 2.1 series
     runs-on: ubuntu-latest
 
     steps:
@@ -26,7 +29,7 @@ jobs:
           cache: "pip"
 
       - name: Install package
-        run: pip install "numpy${{ matrix.numpy-version }}" .[dev]
+        run: pip install "${{ matrix.numpy-version }}" .[dev]
 
       - name: Run fast unit tests
         run: pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
