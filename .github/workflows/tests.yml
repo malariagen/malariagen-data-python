@@ -15,7 +15,8 @@ jobs:
         numpy-version:
           - "numpy==1.26.4"  # current colab version
           - "numpy~=2.0"  # 2.0 series
-          - "numpy~=2.1"  # 2.1 series
+          # numba (0.60.0) does not yet support numpy 2.1, disable this for now
+          # - "numpy~=2.1"  # 2.1 series
     runs-on: ubuntu-latest
 
     steps:
