@@ -11,24 +11,26 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.10", "3.11", "3.12"]
+        numpy-version:
+          - "numpy==1.26.4"  # current colab version
+          - "numpy~=2.0"  # 2.0 series
+          # numba (0.60.0) does not yet support numpy 2.1, disable this for now
+          # - "numpy~=2.1"  # 2.1 series
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install poetry
-        run: pipx install poetry==1.8.2
-
       - name: Setup python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "poetry"
+          cache: "pip"
 
-      - name: Install dependencies
-        run: poetry install
+      - name: Install package
+        run: pip install "${{ matrix.numpy-version }}" .[dev]
 
       - name: Run fast unit tests
-        run: poetry run pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
+        run: pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
