@@ -679,7 +679,7 @@ class AnophelesH12Analysis(
         assert len(sample_queries) > 0, "At least 1 sample query is required"
 
         if titles is None:
-            titles = [None] * len(sample_queries)
+            titles = [False] * len(sample_queries)
 
         assert len(titles) == len(sample_queries), "You need as many titles as queries"
 
