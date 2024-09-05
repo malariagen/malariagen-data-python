@@ -475,7 +475,7 @@ class AnophelesH12Analysis(
 
     @check_types
     @doc(
-        summary="Plot h12 GWSS data with multiple tracks.",
+        summary="Plot h12 GWSS data track with multiple traces.",
     )
     def plot_h12_gwss_track_multi(
         self,
@@ -580,6 +580,10 @@ class AnophelesH12Analysis(
         else:
             return fig
 
+    @check_types
+    @doc(
+        summary="Plot h12 GWSS data with multiple traces.",
+    )
     def plot_h12_gwss_multitraces(
         self,
         contig: base_params.contig,
@@ -658,7 +662,12 @@ class AnophelesH12Analysis(
                 return fig
         except AssertionError as msg:
             print(msg)
+            return None
 
+    @check_types
+    @doc(
+        summary="Plot h12 GWSS data with multiple tracks.",
+    )
     def plot_h12_gwss_multi(
         self,
         contig: base_params.contig,
@@ -690,7 +699,7 @@ class AnophelesH12Analysis(
         assert len(titles) == len(sample_queries), "You need as many titles as queries"
 
         # Plot GWSS track.
-        figs: list[gplt_params.figure] = []
+        figs: list[gplt_params.def_figure] = []
         for i, q in enumerate(sample_queries):
             if i > 0:
                 figs.append(
