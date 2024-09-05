@@ -481,7 +481,7 @@ class AnophelesH12Analysis(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
-        colors: Optional[gplt_params.colors] = bokeh.palettes.d3["Category10"][10],
+        colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = h12_params.min_cohort_size_default,
@@ -496,7 +496,7 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ):
+    ) -> gplt_params.figure:
         assert len(sample_queries) > 0, "At least 1 sample query is required"
 
         # Compute H12.
@@ -583,7 +583,7 @@ class AnophelesH12Analysis(
         sample_queries: base_params.sample_queries,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        colors: Optional[gplt_params.colors] = bokeh.palettes.d3["Category10"][10],
+        colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -599,7 +599,7 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ):
+    ) -> gplt_params.figure:
         assert len(sample_queries) > 0, "At least 1 sample query is required"
 
         # Plot GWSS track.
@@ -675,7 +675,7 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ):
+    ) -> gplt_params.figure:
         assert len(sample_queries) > 0, "At least 1 sample query is required"
 
         if titles is None:
@@ -684,7 +684,7 @@ class AnophelesH12Analysis(
         assert len(titles) == len(sample_queries), "You need as many titles as queries"
 
         # Plot GWSS track.
-        figs = []
+        figs: list[gplt_params.figure] = []
         for i, q in enumerate(sample_queries):
             if i > 0:
                 figs.append(
