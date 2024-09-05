@@ -481,7 +481,7 @@ class AnophelesH12Analysis(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
-        colors=bokeh.palettes.d3["Category10"][10],
+        colors: Optional[gplt_params.colors] = bokeh.palettes.d3["Category10"][10],
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = h12_params.min_cohort_size_default,
@@ -583,7 +583,7 @@ class AnophelesH12Analysis(
         sample_queries: base_params.sample_queries,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
-        colors=bokeh.palettes.d3["Category10"][10],
+        colors: Optional[gplt_params.colors] = bokeh.palettes.d3["Category10"][10],
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
