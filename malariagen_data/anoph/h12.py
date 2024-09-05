@@ -473,6 +473,10 @@ class AnophelesH12Analysis(
         else:
             return fig
 
+    @check_types
+    @doc(
+        summary="Plot h12 GWSS data with multiple tracks.",
+    )
     def plot_h12_gwss_track_multi(
         self,
         contig: base_params.contig,
@@ -603,55 +607,57 @@ class AnophelesH12Analysis(
         assert len(sample_queries) > 0, "At least 1 sample query is required"
 
         # Plot GWSS track.
+        try:
+            fig1 = self.plot_h12_gwss_track_multi(
+                contig=contig,
+                analysis=analysis,
+                window_size=window_size,
+                sample_sets=sample_sets,
+                sample_queries=sample_queries,
+                colors=colors,
+                cohort_size=cohort_size,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
+                random_seed=random_seed,
+                title=title,
+                sizing_mode=sizing_mode,
+                width=width,
+                height=track_height,
+                show=False,
+                output_backend=output_backend,
+            )
 
-        fig1 = self.plot_h12_gwss_track_multi(
-            contig=contig,
-            analysis=analysis,
-            window_size=window_size,
-            sample_sets=sample_sets,
-            sample_queries=sample_queries,
-            colors=colors,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            title=title,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=track_height,
-            show=False,
-            output_backend=output_backend,
-        )
+            fig1.xaxis.visible = False
+            fig1.legend.location = "top_right"
+            fig1.legend.click_policy = "hide"
 
-        fig1.xaxis.visible = False
-        fig1.legend.location = "top_right"
-        fig1.legend.click_policy = "hide"
+            # Plot genes.
+            fig2 = self.plot_genes(
+                region=contig,
+                sizing_mode=sizing_mode,
+                width=width,
+                height=genes_height,
+                x_range=fig1.x_range,
+                show=False,
+                output_backend=output_backend,
+            )
 
-        # Plot genes.
-        fig2 = self.plot_genes(
-            region=contig,
-            sizing_mode=sizing_mode,
-            width=width,
-            height=genes_height,
-            x_range=fig1.x_range,
-            show=False,
-            output_backend=output_backend,
-        )
+            # Combine plots into a single figure.
+            fig = bokeh.layouts.gridplot(
+                [fig1, fig2],
+                ncols=1,
+                toolbar_location="above",
+                merge_tools=True,
+                sizing_mode=sizing_mode,
+            )
 
-        # Combine plots into a single figure.
-        fig = bokeh.layouts.gridplot(
-            [fig1, fig2],
-            ncols=1,
-            toolbar_location="above",
-            merge_tools=True,
-            sizing_mode=sizing_mode,
-        )
-
-        if show:  # pragma: no cover
-            bokeh.plotting.show(fig)
-            return None
-        else:
-            return fig
+            if show:  # pragma: no cover
+                bokeh.plotting.show(fig)
+                return None
+            else:
+                return fig
+        except AssertionError as msg:
+            print(msg)
 
     def plot_h12_gwss_multi(
         self,
