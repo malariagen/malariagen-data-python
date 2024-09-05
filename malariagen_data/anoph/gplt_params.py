@@ -1,7 +1,7 @@
 """Parameters for genome plotting functions. N.B., genome plots are always
 plotted with bokeh."""
 
-from typing import Literal, Mapping, Optional, Union
+from typing import Literal, Mapping, Optional, Union, Sequence
 
 import bokeh.models
 from typing_extensions import Annotated, TypeAlias
@@ -75,6 +75,11 @@ title: TypeAlias = Annotated[
     "Plot title. If True, a title may be automatically generated.",
 ]
 
+titles: TypeAlias = Annotated[
+    Sequence[Union[str, bool]],
+    "Plot titles. If True, a title may be automatically generated.",
+]
+
 figure: TypeAlias = Annotated[
     # Use quite a broad type here to accommodate both single-panel figures
     # created via bokeh.plotting and multi-panel figures created via
@@ -103,3 +108,5 @@ line_kwargs: TypeAlias = Annotated[
     Mapping,
     "Passed through to bokeh line() function.",
 ]
+
+colors: TypeAlias = Annotated[Sequence[str], "List of colors."]

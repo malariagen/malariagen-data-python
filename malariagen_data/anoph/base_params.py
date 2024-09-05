@@ -72,6 +72,14 @@ sample_query: TypeAlias = Annotated[
     """,
 ]
 
+sample_queries: TypeAlias = Annotated[
+    Sequence[str],
+    """
+    A list of pandas query string to be evaluated against the sample metadata, to
+    select samples to be included in the returned data.
+    """,
+]
+
 sample_indices: TypeAlias = Annotated[
     List[int],
     """

@@ -473,6 +473,291 @@ class AnophelesH12Analysis(
         else:
             return fig
 
+    def plot_h12_gwss_track_multi(
+        self,
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        sample_queries: base_params.sample_queries,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        colors=bokeh.palettes.d3["Category10"][10],
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        height: gplt_params.height = 200,
+        show: gplt_params.show = True,
+        x_range: Optional[gplt_params.x_range] = None,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ):
+        assert len(sample_queries) > 0, "At least 1 sample query is required"
+
+        # Compute H12.
+        res = []
+        for q in sample_queries:
+            res.append(
+                self.h12_gwss(
+                    contig=contig,
+                    analysis=analysis,
+                    window_size=window_size,
+                    cohort_size=cohort_size,
+                    min_cohort_size=min_cohort_size,
+                    max_cohort_size=max_cohort_size,
+                    sample_query=q,
+                    sample_sets=sample_sets,
+                    random_seed=random_seed,
+                )
+            )
+
+        # Determine X axis range.
+        x, _ = res[0]
+        x_min = x[0]
+        x_max = x[-1]
+        if x_range is None:
+            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+
+        # Create a figure.
+        xwheel_zoom = bokeh.models.WheelZoomTool(
+            dimensions="width", maintain_focus=False
+        )
+        if title is None:
+            title = ", ".join(sample_queries)
+        fig = bokeh.plotting.figure(
+            title=title,
+            tools=[
+                "xpan",
+                "xzoom_in",
+                "xzoom_out",
+                xwheel_zoom,
+                "reset",
+                "save",
+                "crosshair",
+            ],
+            active_inspect=None,
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
+            sizing_mode=sizing_mode,
+            width=width,
+            height=height,
+            toolbar_location="above",
+            x_range=x_range,
+            y_range=(0, 1),
+            output_backend=output_backend,
+        )
+
+        # Plot H12.
+        for i, (x, h12) in enumerate(res):
+            fig.scatter(
+                x=x,
+                y=h12,
+                marker="circle",
+                size=3,
+                line_width=1,
+                line_color=colors[i % len(colors)],
+                fill_color=None,
+                legend_label=sample_queries[i],
+            )
+
+        # Tidy up the plot.
+        fig.yaxis.axis_label = "H12"
+        fig.yaxis.ticker = [0, 1]
+        self._bokeh_style_genome_xaxis(fig, contig)
+
+        if show:  # pragma: no cover
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
+
+    def plot_h12_gwss_multitraces(
+        self,
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        sample_queries: base_params.sample_queries,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        colors=bokeh.palettes.d3["Category10"][10],
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        title: Optional[gplt_params.title] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ):
+        assert len(sample_queries) > 0, "At least 1 sample query is required"
+
+        # Plot GWSS track.
+
+        fig1 = self.plot_h12_gwss_track_multi(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            sample_sets=sample_sets,
+            sample_queries=sample_queries,
+            colors=colors,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            title=title,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=track_height,
+            show=False,
+            output_backend=output_backend,
+        )
+
+        fig1.xaxis.visible = False
+        fig1.legend.location = "top_right"
+        fig1.legend.click_policy = "hide"
+
+        # Plot genes.
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+            output_backend=output_backend,
+        )
+
+        # Combine plots into a single figure.
+        fig = bokeh.layouts.gridplot(
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
+
+        if show:  # pragma: no cover
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
+
+    def plot_h12_gwss_multi(
+        self,
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        sample_queries: base_params.sample_queries,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        titles: Optional[gplt_params.titles] = None,
+        sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
+        width: gplt_params.width = gplt_params.width_default,
+        track_height: gplt_params.track_height = 170,
+        genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
+        show: gplt_params.show = True,
+        output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+    ):
+        assert len(sample_queries) > 0, "At least 1 sample query is required"
+
+        if titles is None:
+            titles = [None] * len(sample_queries)
+
+        assert len(titles) == len(sample_queries), "You need as many titles as queries"
+
+        # Plot GWSS track.
+        figs = []
+        for i, q in enumerate(sample_queries):
+            if i > 0:
+                figs.append(
+                    self.plot_h12_gwss_track(
+                        contig=contig,
+                        analysis=analysis,
+                        window_size=window_size,
+                        sample_sets=sample_sets,
+                        sample_query=q,
+                        cohort_size=cohort_size,
+                        min_cohort_size=min_cohort_size,
+                        max_cohort_size=max_cohort_size,
+                        random_seed=random_seed,
+                        title=titles[i],
+                        sizing_mode=sizing_mode,
+                        width=width,
+                        height=track_height,
+                        x_range=figs[0].x_range,
+                        show=False,
+                        output_backend=output_backend,
+                    )
+                )
+            else:
+                figs.append(
+                    self.plot_h12_gwss_track(
+                        contig=contig,
+                        analysis=analysis,
+                        window_size=window_size,
+                        sample_sets=sample_sets,
+                        sample_query=q,
+                        cohort_size=cohort_size,
+                        min_cohort_size=min_cohort_size,
+                        max_cohort_size=max_cohort_size,
+                        random_seed=random_seed,
+                        title=titles[i],
+                        sizing_mode=sizing_mode,
+                        width=width,
+                        height=track_height,
+                        show=False,
+                        output_backend=output_backend,
+                    )
+                )
+
+        figs[i].xaxis.visible = False
+
+        # Plot genes.
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=figs[0].x_range,
+            show=False,
+            output_backend=output_backend,
+        )
+
+        figs.append(fig2)
+
+        # Combine plots into a single figure.
+        fig = bokeh.layouts.gridplot(
+            figs,
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
+
+        if show:  # pragma: no cover
+            bokeh.plotting.show(fig)
+            return None
+        else:
+            return fig
+
 
 def haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
