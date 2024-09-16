@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.phasing\_analysis\_ids
+===============================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. autoproperty:: Af1.phasing_analysis_ids
