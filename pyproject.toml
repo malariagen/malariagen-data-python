@@ -17,18 +17,13 @@ authors = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-# ensure compatibility with numba
 python = ">=3.10,<3.13"
-# ensure compatibility with modules compiled with numpy v1.x
 numpy = "*"
-# ensure compatibility with modules compiled with numpy v1.x
-numba = "*"
-# force llvmlite above broken version
+numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
 pandas = "*"
 zarr = "*"
-# ensure compatibility with modules compiled with numpy v1.x
 dask = {version="*", extras=["array"]}
 fsspec = "*"
 gcsfs = "*"
@@ -37,10 +32,7 @@ BioPython = "*"
 scikit-allel = ">=1.3.12"
 xarray = "*"
 plotly = "*"
-# https://github.com/bokeh/bokeh/issues/12614
-# bokeh 3.0 has a problem with stretch sizing modes
-bokeh = ">=3.1.0"
-# ensure compatibility with modules compiled with numpy v1.x
+bokeh = "*"
 statsmodels = "*"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
