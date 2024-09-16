@@ -454,7 +454,11 @@ class AnophelesCnvData(
         data_vars = dict()
 
         debug("open zarr")
-        root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
+
+        try:
+            root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
+        except FileNotFoundError:
+            return None
 
         # not all contigs have CNVs, need to check
         # TODO consider returning dataset with zero length variants dimension, would
@@ -556,7 +560,16 @@ class AnophelesCnvData(
                     inline_array=inline_array,
                     chunks=chunks,
                 )
+
+                # If no CNV DRCs dataset was found then skip
+                if y is None:
+                    continue
+
                 ly.append(y)
+
+                if len(ly) == 0:
+                    # Bail out, no data for given sample sets and analysis.
+                    raise ValueError("No data found for requested sample sets.")
 
             x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
