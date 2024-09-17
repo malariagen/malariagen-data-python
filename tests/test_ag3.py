@@ -853,14 +853,10 @@ def test_xpehh_gwss():
     assert_allclose(xpehh[:, 2][100], 0.4817561326426265)
 
 
-
 def test_karyotyping():
     ag3 = setup_ag3(cohorts_analysis="20230516")
 
-    df = ag3.karyotype(
-        inversion='2La',
-        sample_sets="AG1000G-FR",
-        sample_query=None)
-    
+    df = ag3.karyotype(inversion="2La", sample_sets="AG1000G-FR", sample_query=None)
+
     assert isinstance(df, pd.DataFrame)
     assert len(df) > 0
