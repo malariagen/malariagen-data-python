@@ -2,6 +2,8 @@ import sys
 
 import dask
 import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
+import allel  # type: ignore
 import plotly.express as px  # type: ignore
 
 import malariagen_data
@@ -341,3 +343,49 @@ class Ag3(AnophelesDataResource):
         super()._results_cache_add_analysis_params(params)
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
+
+
+    def load_inversion_tags(self, inversion: str):
+            contig = inversion[0:2]
+            url = f"https://raw.githubusercontent.com/rrlove/compkaryo/master/compkaryo/targets/{inversion}_targets.txt"
+            df_tag_snps = pd.read_csv(url, sep="\t", header=None, names=['pos'])
+            return contig, df_tag_snps['pos'].to_numpy()
+
+    def karyotype(
+            self, 
+            inversion: str,  
+            sample_sets=None, 
+            sample_query=None
+            ) -> pd.DataFrame:
+
+        contig, tag_snps_pos = self.load_inversion_tags(self, inversion)
+        start, end = np.min(tag_snps_pos), np.max(tag_snps_pos)
+        region = f"{contig}:{start}-{end}"
+
+        # compkaryo targets do not specify specific alleles, they assume biallelism, so we need to use biallelic_snp_calls
+        ds_snps = self.biallelic_snp_calls(region=region, sample_sets=sample_sets, sample_query=sample_query)
+        geno = allel.GenotypeDaskArray(ds_snps['call_genotype'].data)
+        pos = ds_snps['variant_position'].values
+        samples = ds_snps['sample_id'].values
+        
+        # subset to positions inversion tags
+        pos = allel.SortedIndex(pos)
+        pos_bool = pos.locate_intersection(tag_snps_pos)[0]
+        pos = pos[pos_bool]
+        geno = allel.GenotypeArray(geno.compress(pos_bool, axis=0))
+
+        with self._spinner("Inferring karyotype from tag SNPs"):
+            gn_alt = geno.to_n_alt()
+            is_called = geno.is_called()
+            
+            # calculate mean genotype for each sample 
+            av_gts = np.mean(np.ma.MaskedArray(gn_alt,
+                                            mask=~is_called), axis=0).data
+            total_sites = np.sum(is_called, axis=0)
+            
+            df = pd.DataFrame({'sample_id': samples,
+                               'inversion':inversion,
+                               'mean_tag_snp_genotype': av_gts,
+                               'total_tag_snps':total_sites})
+
+        return df
