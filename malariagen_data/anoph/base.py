@@ -375,11 +375,11 @@ class AnophelesBase:
     @doc(
         summary="Access a dataframe of sample sets",
         returns="""A dataframe of sample sets, one row per sample set. It contains five columns:
-            'sample_set' is the name of the sample set,
-            'sample_count' is the number of samples the sample set contains,
-            'study_id' is the identifier for the study that generated the sample set,
-            'study_url' is the URL of the study on the MalariaGEN website,
-            and 'release' is the identifier of the release containg the sample set.
+                *sample_set* is the name of the sample set,
+                *sample_count* is the number of samples the sample set contains,
+                *study_id* is the identifier for the study that generated the sample set,
+                *study_url* is the URL of the study on the MalariaGEN website,
+                *release* is the identifier of the release containing the sample set.
             """,
     )
     def sample_sets(
