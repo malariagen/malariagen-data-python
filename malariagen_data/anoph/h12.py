@@ -586,7 +586,7 @@ class AnophelesH12Analysis(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
-        sample_queries: base_params.sample_queries,
+        sample_queries: h12_params.sample_queries,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
