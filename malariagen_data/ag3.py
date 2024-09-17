@@ -353,7 +353,7 @@ class Ag3(AnophelesDataResource):
     def karyotype(
         self, inversion, sample_sets=None, sample_query=None
     ) -> pd.DataFrame:
-        contig, tag_snps_pos = self.load_inversion_tags(self, inversion=inversion)
+        contig, tag_snps_pos = self.load_inversion_tags(inversion=inversion)
         start, end = np.min(tag_snps_pos), np.max(tag_snps_pos)
         region = f"{contig}:{start}-{end}"
 
