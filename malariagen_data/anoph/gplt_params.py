@@ -75,11 +75,6 @@ title: TypeAlias = Annotated[
     "Plot title. If True, a title may be automatically generated.",
 ]
 
-titles: TypeAlias = Annotated[
-    Sequence[Union[str, bool]],
-    "Plot titles. If True, a title may be automatically generated.",
-]
-
 figure: TypeAlias = Annotated[
     # Use quite a broad type here to accommodate both single-panel figures
     # created via bokeh.plotting and multi-panel figures created via

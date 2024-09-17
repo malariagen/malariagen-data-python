@@ -481,8 +481,7 @@ class AnophelesH12Analysis(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
-        sample_queries: base_params.sample_queries,
-        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_queries: h12_params.sample_queries,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
@@ -493,7 +492,6 @@ class AnophelesH12Analysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
-        title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
@@ -501,7 +499,8 @@ class AnophelesH12Analysis(
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        assert len(sample_queries) > 0, "At least 1 sample query is required"
+        if len(sample_queries) > 0:
+            raise ValueError("At least 1 sample query is required")
 
         # Compute H12.
         res = []
@@ -509,12 +508,12 @@ class AnophelesH12Analysis(
             res.append(
                 self.h12_gwss(
                     contig=contig,
-                    analysis=analysis,
+                    analysis=q.analysis,
                     window_size=window_size,
                     cohort_size=cohort_size,
                     min_cohort_size=min_cohort_size,
                     max_cohort_size=max_cohort_size,
-                    sample_query=q,
+                    sample_query=q.sample_query,
                     sample_sets=sample_sets,
                     random_seed=random_seed,
                 )
@@ -531,10 +530,9 @@ class AnophelesH12Analysis(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
-        if title is None:
-            title = ", ".join(sample_queries)
+
         fig = bokeh.plotting.figure(
-            title=title,
+            title=q.title,
             tools=[
                 "xpan",
                 "xzoom_in",
@@ -608,7 +606,8 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        assert len(sample_queries) > 0, "At least 1 sample query is required"
+        if len(sample_queries) > 0:
+            raise ValueError("At least 1 sample query is required")
 
         # Plot GWSS track.
         try:
@@ -672,8 +671,7 @@ class AnophelesH12Analysis(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
-        sample_queries: base_params.sample_queries,
-        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_queries: h12_params.sample_queries,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -683,7 +681,6 @@ class AnophelesH12Analysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
-        titles: Optional[gplt_params.titles] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
@@ -691,12 +688,8 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        assert len(sample_queries) > 0, "At least 1 sample query is required"
-
-        if titles is None:
-            titles = [False] * len(sample_queries)
-
-        assert len(titles) == len(sample_queries), "You need as many titles as queries"
+        if len(sample_queries) > 0:
+            raise ValueError("At least 1 sample query is required")
 
         # Plot GWSS track.
         figs: list[gplt_params.def_figure] = []
@@ -705,15 +698,15 @@ class AnophelesH12Analysis(
                 figs.append(
                     self.plot_h12_gwss_track(
                         contig=contig,
-                        analysis=analysis,
+                        analysis=q.analysis,
                         window_size=window_size,
                         sample_sets=sample_sets,
-                        sample_query=q,
+                        sample_query=q.sample_query,
                         cohort_size=cohort_size,
                         min_cohort_size=min_cohort_size,
                         max_cohort_size=max_cohort_size,
                         random_seed=random_seed,
-                        title=titles[i],
+                        title=q.title,
                         sizing_mode=sizing_mode,
                         width=width,
                         height=track_height,
@@ -726,15 +719,15 @@ class AnophelesH12Analysis(
                 figs.append(
                     self.plot_h12_gwss_track(
                         contig=contig,
-                        analysis=analysis,
+                        analysis=q.analysis,
                         window_size=window_size,
                         sample_sets=sample_sets,
-                        sample_query=q,
+                        sample_query=q.sample_query,
                         cohort_size=cohort_size,
                         min_cohort_size=min_cohort_size,
                         max_cohort_size=max_cohort_size,
                         random_seed=random_seed,
-                        title=titles[i],
+                        title=q.title,
                         sizing_mode=sizing_mode,
                         width=width,
                         height=track_height,
