@@ -34,17 +34,26 @@ class sample_query_params:
         self,
         sample_query: base_params.sample_query,
         title: Optional[gplt_params.title],
-        analysis: Optional[hap_params.analysis],
+        window_size: window_size,
+        analysis: Optional[hap_params.analysis] = base_params.DEFAULT,
+        cohort_size: Optional[base_params.cohort_size] = cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = max_cohort_size_default,
     ) -> None:
         self.sample_query = sample_query
         if title:
             self.title = title
         else:
             self.title = sample_query
-        if analysis:
-            self.analysis = analysis
-        else:
-            self.analysis = base_params.DEFAULT
+        window_size = window_size
+        analysis = analysis
+        cohort_size = cohort_size
+        min_cohort_size = min_cohort_size
+        max_cohort_size = max_cohort_size
 
 
 sample_queries: TypeAlias = Annotated[

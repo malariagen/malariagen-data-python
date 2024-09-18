@@ -480,17 +480,9 @@ class AnophelesH12Analysis(
     def plot_h12_gwss_track_multi(
         self,
         contig: base_params.contig,
-        window_size: h12_params.window_size,
         sample_queries: h12_params.sample_queries,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = h12_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -509,10 +501,10 @@ class AnophelesH12Analysis(
                 self.h12_gwss(
                     contig=contig,
                     analysis=q.analysis,
-                    window_size=window_size,
-                    cohort_size=cohort_size,
-                    min_cohort_size=min_cohort_size,
-                    max_cohort_size=max_cohort_size,
+                    window_size=q.window_size,
+                    cohort_size=q.cohort_size,
+                    min_cohort_size=q.min_cohort_size,
+                    max_cohort_size=q.max_cohort_size,
                     sample_query=q.sample_query,
                     sample_sets=sample_sets,
                     random_seed=random_seed,
@@ -585,18 +577,9 @@ class AnophelesH12Analysis(
     def plot_h12_gwss_multitraces(
         self,
         contig: base_params.contig,
-        window_size: h12_params.window_size,
         sample_queries: h12_params.sample_queries,
-        analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
-        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = h12_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         title: Optional[gplt_params.title] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -613,14 +596,9 @@ class AnophelesH12Analysis(
         try:
             fig1 = self.plot_h12_gwss_track_multi(
                 contig=contig,
-                analysis=analysis,
-                window_size=window_size,
                 sample_sets=sample_sets,
                 sample_queries=sample_queries,
                 colors=colors,
-                cohort_size=cohort_size,
-                min_cohort_size=min_cohort_size,
-                max_cohort_size=max_cohort_size,
                 random_seed=random_seed,
                 title=title,
                 sizing_mode=sizing_mode,
@@ -670,16 +648,8 @@ class AnophelesH12Analysis(
     def plot_h12_gwss_multi(
         self,
         contig: base_params.contig,
-        window_size: h12_params.window_size,
         sample_queries: h12_params.sample_queries,
         sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = h12_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -699,12 +669,12 @@ class AnophelesH12Analysis(
                     self.plot_h12_gwss_track(
                         contig=contig,
                         analysis=q.analysis,
-                        window_size=window_size,
+                        window_size=q.window_size,
                         sample_sets=sample_sets,
                         sample_query=q.sample_query,
-                        cohort_size=cohort_size,
-                        min_cohort_size=min_cohort_size,
-                        max_cohort_size=max_cohort_size,
+                        cohort_size=q.cohort_size,
+                        min_cohort_size=q.min_cohort_size,
+                        max_cohort_size=q.max_cohort_size,
                         random_seed=random_seed,
                         title=q.title,
                         sizing_mode=sizing_mode,
@@ -720,12 +690,12 @@ class AnophelesH12Analysis(
                     self.plot_h12_gwss_track(
                         contig=contig,
                         analysis=q.analysis,
-                        window_size=window_size,
+                        window_size=q.window_size,
                         sample_sets=sample_sets,
                         sample_query=q.sample_query,
-                        cohort_size=cohort_size,
-                        min_cohort_size=min_cohort_size,
-                        max_cohort_size=max_cohort_size,
+                        cohort_size=q.cohort_size,
+                        min_cohort_size=q.min_cohort_size,
+                        max_cohort_size=q.max_cohort_size,
                         random_seed=random_seed,
                         title=q.title,
                         sizing_mode=sizing_mode,
