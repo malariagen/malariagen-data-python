@@ -49,11 +49,11 @@ class sample_query_params:
             self.title = title
         else:
             self.title = sample_query
-        window_size = window_size
-        analysis = analysis
-        cohort_size = cohort_size
-        min_cohort_size = min_cohort_size
-        max_cohort_size = max_cohort_size
+        self.window_size = window_size
+        self.analysis = analysis
+        self.cohort_size = cohort_size
+        self.min_cohort_size = min_cohort_size
+        self.max_cohort_size = max_cohort_size
 
 
 sample_queries: TypeAlias = Annotated[
