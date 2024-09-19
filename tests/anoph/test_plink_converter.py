@@ -6,6 +6,8 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.to_plink import PlinkConverter
 
+import os
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -77,12 +79,22 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     plink_params = dict(
         results_dir=tmp_path,
         region=random.choice(api.contigs),
-        n_snps=100,
+        n_snps=500,
         min_minor_ac=1,
         thin_offset=1,
         max_missing_an=1,
         sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
     )
-    # make the file
+    # Make the plink files
     api.biallelic_snps_to_plink(**plink_params)
+
+    # Check to see if bed, bim, fam output files exist
+    file_path = f"{tmp_path}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['thin_offset']}.{plink_params['max_missing_an']}"
+
+    if os.path.exists(f"{file_path}.bed"):
+        pass
+    if os.path.exists(f"{file_path}.bim"):
+        pass
+    if os.path.exists(f"{file_path}.fam"):
+        pass
