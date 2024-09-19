@@ -88,7 +88,6 @@ def test_open_snp_sites(fixture, api: AnophelesSnpData):
         assert "variants" in contig_grp
         variants = contig_grp["variants"]
         assert "POS" in variants
-        assert False
         assert "REF" in variants
         assert "ALT" in variants
 

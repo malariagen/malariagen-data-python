@@ -72,33 +72,16 @@ class PlinkConverter(
             sample_query=sample_query,
             sample_indices=sample_indices,
             site_mask=site_mask,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            n_snps=n_snps,
+            thin_offset=thin_offset,
             random_seed=random_seed,
             inline_array=inline_array,
             chunks=chunks,
-            n_snps=n_snps,
         )
 
-        # Filter SNPs for segregating sites only
-        with self._spinner("Subsetting to segregating sites"):
-            gt = ds_snps["call_genotype"].data.compute()
-            print("count alleles")
-            with ProgressBar():
-                ac = allel.GenotypeArray(gt).count_alleles(max_allele=3)
-                print("ascertain segregating  sites")
-                n_chroms = ds_snps.dims["samples"] * 2
-                an_called = ac.sum(axis=1)
-                an_missing = n_chroms - an_called
-                min_ref_ac = min_minor_ac
-                max_ref_ac = n_chroms - min_minor_ac
-                loc_sites = (
-                    (ac[:, 0] >= min_ref_ac)
-                    & (ac[:, 0] <= max_ref_ac)
-                    & (an_missing <= max_missing_an)
-                )
-                print(f"ascertained {np.count_nonzero(loc_sites):,} sites")
-
         # Set up dataset with required vars for plink conversion
-        print("Set up dataset")
         ds_snps_asc = ds_snps[
             [
                 "variant_contig",
@@ -107,7 +90,7 @@ class PlinkConverter(
                 "sample_id",
                 "call_genotype",
             ]
-        ].isel(alleles=slice(0, 2))
+        ].isel(alleles=slice(0, 2))  # .sel(variants=ix_sites_thinned)
 
         # Compute gt ref counts
         with self._spinner("Computing genotype ref counts"):
@@ -116,8 +99,10 @@ class PlinkConverter(
             with ProgressBar():
                 gn_ref = gn_ref.compute()
 
+        # Ensure genotypes vary
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
 
+        # Load final data
         with ProgressBar():
             ds_snps_final = ds_snps_asc[
                 ["variant_contig", "variant_position", "variant_allele", "sample_id"]

@@ -1641,9 +1641,6 @@ class AnophelesSnpData(
                 dtype=variant_allele.dtype,
                 chunks=(variant_allele.chunks[0], [2]),
             )
-            # variant_allele_out = apply_allele_mapping(
-            #    variant_allele.compute(), allele_mapping, max_allele=1
-            # )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
             # Store allele counts, transformed, so we don't have to recompute.
