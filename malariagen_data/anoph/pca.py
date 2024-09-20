@@ -72,13 +72,14 @@ class AnophelesPca(
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         exclude_samples: Optional[base_params.samples] = None,
+        fit_exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v3"
+        name = "pca_v4"
 
         # Normalize params for consistent hash value.
         (
@@ -106,6 +107,7 @@ class AnophelesPca(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             exclude_samples=exclude_samples,
+            fit_exclude_samples=fit_exclude_samples,
             random_seed=random_seed,
         )
 
@@ -121,6 +123,7 @@ class AnophelesPca(
         coords = results["coords"]
         evr = results["evr"]
         samples = results["samples"]
+        loc_keep_fit = results["loc_keep_fit"]
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -135,6 +138,8 @@ class AnophelesPca(
             {f"PC{i + 1}": coords[:, i] for i in range(coords.shape[1])}
         )
         df_pca = df_samples.join(df_coords, how="inner")
+        # Add a column for which samples were included in fitting.
+        df_pca["pca_fit"] = loc_keep_fit
 
         return df_pca, evr
 
@@ -155,6 +160,7 @@ class AnophelesPca(
         min_cohort_size,
         max_cohort_size,
         exclude_samples,
+        fit_exclude_samples,
         random_seed,
         chunks,
         inline_array,
@@ -178,21 +184,40 @@ class AnophelesPca(
             inline_array=inline_array,
         )
 
-        # Exclude any samples prior to computing PCA.
-        if exclude_samples is not None:
-            with self._spinner(desc="Exclude samples"):
+        with self._spinner(desc="Compute PCA"):
+            # Exclude any samples prior to computing PCA.
+            if exclude_samples is not None:
                 x = np.array(exclude_samples, dtype="U")
                 loc_keep = ~np.isin(samples, x)
                 samples = samples[loc_keep]
                 gn = gn[:, loc_keep]
 
-        with self._spinner(desc="Compute PCA"):
+            # Exclude any samples from fitting only.
+            if fit_exclude_samples is not None:
+                xf = np.array(fit_exclude_samples, dtype="U")
+                loc_keep_fit = ~np.isin(samples, xf)
+                gn_fit = gn[:, loc_keep_fit]
+            else:
+                loc_keep_fit = np.ones(len(samples), dtype=bool)
+                gn_fit = gn
+
             # Remove any sites where all genotypes are identical.
-            loc_var = np.any(gn != gn[:, 0, np.newaxis], axis=1)
+            loc_var = np.any(gn_fit != gn_fit[:, 0, np.newaxis], axis=1)
+            gn_fit_var = np.compress(loc_var, gn_fit, axis=0)
             gn_var = np.compress(loc_var, gn, axis=0)
 
             # Run the PCA.
-            coords, model = allel.pca(gn_var, n_components=n_components)
+            if fit_exclude_samples is None:
+                # Simple fit and transform on the same data.
+                coords, model = allel.pca(gn_fit_var, n_components=n_components)
+
+            else:
+                # Fit and transform separately.
+                model = allel.stats.decomposition.GenotypePCA(
+                    n_components=n_components,
+                )
+                model.fit(gn_fit_var)
+                coords = model.transform(gn_var, copy=False)
 
             # Work around sign indeterminacy.
             for i in range(coords.shape[1]):
@@ -201,7 +226,10 @@ class AnophelesPca(
                     coords[:, i] = c * -1
 
         results = dict(
-            samples=samples, coords=coords, evr=model.explained_variance_ratio_
+            samples=samples,
+            coords=coords,
+            evr=model.explained_variance_ratio_,
+            loc_keep_fit=loc_keep_fit,
         )
         return results
 
