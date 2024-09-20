@@ -229,12 +229,19 @@ chunks: TypeAlias = Annotated[
     Union[str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]],
     """
     If 'auto' let dask decide chunk size. If 'native' use native zarr
-    chunks. Also, can be a target size, e.g., '200 MiB', or a tuple of
-    integers.
+    chunks. If 'ndauto' let dask decide chunk size but only for arrays with
+    more than one dimension. If 'ndauto0' as 'ndauto' but only vary the first
+    chunk dimension. If 'ndauto1' as 'ndauto' but only vary the second chunk
+    dimension. If 'ndauto01' as 'ndauto' but only vary the first and second
+    chunk dimensions. Also, can be a target size, e.g., '200 MiB', or a tuple of
+    integers, or a callable which accepts the native chunks as a single argument
+    and returns a valid dask chunks value.
     """,
 ]
 
-chunks_default: chunks = "native"
+# The "ndauto0" value means auto-size chunks for arrays with more than one dimension,
+# allowing the first chunk dimension to be varied.
+chunks_default: chunks = "ndauto0"
 
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],

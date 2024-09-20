@@ -184,8 +184,37 @@ def da_from_zarr(
     elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks
+
+    # Auto-size chunks but only for arrays with more than one dimension.
+    elif chunks == "ndauto":
+        if len(z.chunks) > 1:
+            # Auto-size all dimensions.
+            dask_chunks = "auto"
+        else:
+            dask_chunks = z.chunks
+    elif chunks == "ndauto0":
+        if len(z.chunks) > 1:
+            # Auto-size first dimension.
+            dask_chunks = ("auto",) + z.chunks[1:]
+        else:
+            dask_chunks = z.chunks
+    elif chunks == "ndauto1":
+        if len(z.chunks) > 1:
+            # Auto-size second dimension.
+            dask_chunks = (z.chunks[0], "auto") + z.chunks[2:]
+        else:
+            dask_chunks = z.chunks
+    elif chunks == "ndauto01":
+        if len(z.chunks) > 1:
+            # Auto-size first and second dimensions.
+            dask_chunks = ("auto", "auto") + z.chunks[2:]
+        else:
+            dask_chunks = z.chunks
+
     else:
+        # Pass through argument as-is.
         dask_chunks = chunks
+
     kwargs = dict(
         chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
     )
