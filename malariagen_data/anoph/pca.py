@@ -71,6 +71,7 @@ class AnophelesPca(
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.chunks_default,
@@ -104,6 +105,7 @@ class AnophelesPca(
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
+            exclude_samples=exclude_samples,
             random_seed=random_seed,
         )
 
@@ -123,7 +125,6 @@ class AnophelesPca(
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
-            sample_indices=sample_indices_prepped,
         )
 
         # Ensure aligned with genotype data.
@@ -153,6 +154,7 @@ class AnophelesPca(
         cohort_size,
         min_cohort_size,
         max_cohort_size,
+        exclude_samples,
         random_seed,
         chunks,
         inline_array,
@@ -175,6 +177,14 @@ class AnophelesPca(
             chunks=chunks,
             inline_array=inline_array,
         )
+
+        # Exclude any samples prior to computing PCA.
+        if exclude_samples is not None:
+            with self._spinner(desc="Exclude samples"):
+                x = np.array(exclude_samples, dtype="U")
+                loc_keep = ~np.isin(samples, x)
+                samples = samples[loc_keep]
+                gn = gn[:, loc_keep]
 
         with self._spinner(desc="Compute PCA"):
             # Remove any sites where all genotypes are identical.
