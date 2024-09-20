@@ -1423,3 +1423,13 @@ def hash_columns(x):
             v = x[i, j]
             out[j] = out[j] * 33 + v
     return out
+
+
+def distributed_client():
+    from distributed import get_client
+
+    try:
+        client = get_client()
+    except ValueError:
+        client = None
+    return client
