@@ -170,7 +170,10 @@ def da_from_zarr(
     z: zarr.core.Array,
     inline_array: bool,
     chunks: Union[
-        str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]
+        int,
+        str,
+        Tuple[Union[int, str], ...],
+        Callable[[Tuple[int, ...]], Tuple[int, ...]],
     ] = "auto",
 ) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
