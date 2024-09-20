@@ -1659,18 +1659,26 @@ class AnophelesSnpData(
             # Apply conditions.
             if max_missing_an is not None or min_minor_ac is not None:
                 loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
+                an = ac_out.sum(axis=1)
 
                 # Apply missingness condition.
                 if max_missing_an is not None:
-                    an = ac_out.sum(axis=1)
                     an_missing = (ds_out.sizes["samples"] * ds_out.sizes["ploidy"]) - an
-                    loc_missing = an_missing <= max_missing_an
+                    if isinstance(max_missing_an, float):
+                        an_missing_frac = an_missing / an
+                        loc_missing = an_missing_frac <= max_missing_an
+                    else:
+                        loc_missing = an_missing <= max_missing_an
                     loc_out &= loc_missing
 
                 # Apply minor allele count condition.
                 if min_minor_ac is not None:
                     ac_minor = ac_out.min(axis=1)
-                    loc_minor = ac_minor >= min_minor_ac
+                    if isinstance(min_minor_ac, float):
+                        ac_minor_frac = ac_minor / an
+                        loc_minor = ac_minor_frac >= min_minor_ac
+                    else:
+                        loc_minor = ac_minor >= min_minor_ac
                     loc_out &= loc_minor
 
                 ds_out = ds_out.isel(variants=loc_out)

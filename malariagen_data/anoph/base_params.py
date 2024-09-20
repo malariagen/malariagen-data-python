@@ -271,19 +271,21 @@ thin_offset: TypeAlias = Annotated[
 ]
 
 min_minor_ac: TypeAlias = Annotated[
-    int,
+    Union[int, float],
     """
     The minimum minor allele count. SNPs with a minor allele count
-    below this value will be excluded.
+    below this value will be excluded. Can also be a float, which will
+    be interpreted as a fraction.
     """,
 ]
 
 max_missing_an: TypeAlias = Annotated[
-    int,
+    Union[int, float],
     """
     The maximum number of missing allele calls to accept. SNPs with
     more than this value will be excluded. Set to 0 to require no
-    missing calls.
+    missing calls. Can also be a float, which will be interpreted as
+    a fraction.
     """,
 ]
 
