@@ -166,15 +166,24 @@ class SiteClass(Enum):
     INTRON_LAST = 10
 
 
+zarr_chunks_type: TypeAlias = Tuple[int, ...]
+
+dask_chunks_type: TypeAlias = Union[
+    int,
+    str,
+    Tuple[Union[int, str], ...],
+]
+
+chunks_param_type: TypeAlias = Union[
+    dask_chunks_type,
+    Callable[[zarr_chunks_type], dask_chunks_type],
+]
+
+
 def da_from_zarr(
     z: zarr.core.Array,
     inline_array: bool,
-    chunks: Union[
-        int,
-        str,
-        Tuple[Union[int, str], ...],
-        Callable[[Tuple[int, ...]], Tuple[int, ...]],
-    ] = "auto",
+    chunks: chunks_param_type,
 ) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 
@@ -183,7 +192,7 @@ def da_from_zarr(
 
     """
     if callable(chunks):
-        dask_chunks: Union[Tuple[int, ...], str] = chunks(z.chunks)
+        dask_chunks: dask_chunks_type = chunks(z.chunks)
     elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks

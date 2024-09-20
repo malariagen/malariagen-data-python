@@ -1,6 +1,6 @@
 """General parameters common to many functions in the public API."""
 
-from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union, Callable
+from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -9,6 +9,7 @@ from ..util import (
     region_param_type,
     single_contig_param_type,
     single_region_param_type,
+    chunks_param_type,
 )
 
 contig: TypeAlias = Annotated[
@@ -226,12 +227,7 @@ inline_array: TypeAlias = Annotated[
 inline_array_default: inline_array = True
 
 chunks: TypeAlias = Annotated[
-    Union[
-        int,
-        str,
-        Tuple[Union[int, str], ...],
-        Callable[[Tuple[int, ...]], Tuple[int, ...]],
-    ],
+    chunks_param_type,
     """
     If 'auto' let dask decide chunk size. If 'native' use native zarr
     chunks. If 'ndauto' let dask decide chunk size but only for arrays with
