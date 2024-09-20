@@ -1582,6 +1582,8 @@ class AnophelesSnpData(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
         )
 
         # Locate biallelic SNPs.
