@@ -184,7 +184,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     n_samples = ds.sizes["samples"] - n_samples_excluded
     n_snps_available = ds.sizes["variants"]
     n_snps = random.randint(1, n_snps_available)
-    n_components = random.randint(3, min(n_samples, n_snps))
+    n_components = random.randint(3, min(n_samples, n_snps, 10))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -211,6 +211,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
             "n_snps",
             n_snps,
         )
+    assert f"PC{n_components+1}" not in pca_df.columns
     assert "pca_fit" in pca_df.columns
     assert pca_df["pca_fit"].all()
     assert pca_evr.ndim == 1
@@ -244,7 +245,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
     n_snps = random.randint(1, n_snps_available)
-    n_components = random.randint(3, min(n_samples, n_snps))
+    n_components = random.randint(3, min(n_samples, n_snps, 10))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -271,6 +272,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
             "n_snps",
             n_snps,
         )
+    assert f"PC{n_components+1}" not in pca_df.columns
     assert "pca_fit" in pca_df.columns
     assert pca_evr.ndim == 1
     assert pca_evr.shape[0] == n_components
