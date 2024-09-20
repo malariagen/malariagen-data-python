@@ -59,6 +59,6 @@ class sample_query_params:
 sample_queries: TypeAlias = Annotated[
     Sequence[sample_query_params],
     """
-Work in progress!
+    A set of sample queries parameters. These include actual sample queries, the title associated to each one, the window size for the analysis, the site filter analysis that needs to be used, the cohort size, the minimum and the maximum cohort sizes.
     """,
 ]
