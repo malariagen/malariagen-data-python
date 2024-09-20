@@ -166,12 +166,24 @@ class SiteClass(Enum):
     INTRON_LAST = 10
 
 
+zarr_chunks_type: TypeAlias = Tuple[int, ...]
+
+dask_chunks_type: TypeAlias = Union[
+    int,
+    str,
+    Tuple[Union[int, str], ...],
+]
+
+chunks_param_type: TypeAlias = Union[
+    dask_chunks_type,
+    Callable[[zarr_chunks_type], dask_chunks_type],
+]
+
+
 def da_from_zarr(
     z: zarr.core.Array,
     inline_array: bool,
-    chunks: Union[
-        str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]
-    ] = "auto",
+    chunks: chunks_param_type,
 ) -> da.Array:
     """Utility function for turning a zarr array into a dask array.
 
@@ -180,12 +192,41 @@ def da_from_zarr(
 
     """
     if callable(chunks):
-        dask_chunks: Union[Tuple[int, ...], str] = chunks(z.chunks)
+        dask_chunks: dask_chunks_type = chunks(z.chunks)
     elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks
+
+    # Auto-size chunks but only for arrays with more than one dimension.
+    elif chunks == "ndauto":
+        if len(z.chunks) > 1:
+            # Auto-size all dimensions.
+            dask_chunks = "auto"
+        else:
+            dask_chunks = z.chunks
+    elif chunks == "ndauto0":
+        if len(z.chunks) > 1:
+            # Auto-size first dimension.
+            dask_chunks = ("auto",) + z.chunks[1:]
+        else:
+            dask_chunks = z.chunks
+    elif chunks == "ndauto1":
+        if len(z.chunks) > 1:
+            # Auto-size second dimension.
+            dask_chunks = (z.chunks[0], "auto") + z.chunks[2:]
+        else:
+            dask_chunks = z.chunks
+    elif chunks == "ndauto01":
+        if len(z.chunks) > 1:
+            # Auto-size first and second dimensions.
+            dask_chunks = ("auto", "auto") + z.chunks[2:]
+        else:
+            dask_chunks = z.chunks
+
     else:
+        # Pass through argument as-is.
         dask_chunks = chunks
+
     kwargs = dict(
         chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
     )
@@ -1423,3 +1464,13 @@ def hash_columns(x):
             v = x[i, j]
             out[j] = out[j] * 33 + v
     return out
+
+
+def distributed_client():
+    from distributed import get_client
+
+    try:
+        client = get_client()
+    except ValueError:
+        client = None
+    return client

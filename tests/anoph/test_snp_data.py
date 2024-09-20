@@ -1387,3 +1387,69 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
             max_missing_an=max_missing_an,
             n_snps=n_snps_available + 10,
         )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
+    fixture, api: AnophelesSnpData
+):
+    # Fixed parameters.
+    contig = random.choice(api.contigs)
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice((None,) + api.site_mask_ids)
+
+    # Parametrise conditions.
+    min_minor_ac = random.uniform(0, 0.05)
+    max_missing_an = random.uniform(0.05, 0.2)
+
+    # Run tests.
+    ds = check_biallelic_snp_calls_and_diplotypes(
+        api=api,
+        sample_sets=sample_sets,
+        region=contig,
+        site_mask=site_mask,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+    )
+
+    # Check conditions are met.
+    ac = ds["variant_allele_count"].values
+    an = ac.sum(axis=1)
+    ac_min = ac.min(axis=1)
+    assert np.all((ac_min / an) >= min_minor_ac)
+    an_missing = (ds.sizes["samples"] * ds.sizes["ploidy"]) - an
+    assert np.all((an_missing / an) <= max_missing_an)
+    gt = ds["call_genotype"].values
+    ac_check = allel.GenotypeArray(gt).count_alleles(max_allele=1)
+    assert np.all(ac == ac_check)
+
+    # Run tests with thinning.
+    n_snps_available = ds.sizes["variants"]
+    # This should always be true, although depends on min_minor_ac and max_missing_an,
+    # so the range of values for those parameters needs to be chosen with some care.
+    assert n_snps_available > 2
+    n_snps_requested = random.randint(1, n_snps_available // 2)
+    ds_thinned = check_biallelic_snp_calls_and_diplotypes(
+        api=api,
+        sample_sets=sample_sets,
+        region=contig,
+        site_mask=site_mask,
+        min_minor_ac=min_minor_ac,
+        max_missing_an=max_missing_an,
+        n_snps=n_snps_requested,
+    )
+    n_snps_thinned = ds_thinned.sizes["variants"]
+    assert n_snps_thinned >= n_snps_requested
+    assert n_snps_thinned <= 2 * n_snps_requested
+
+    # Ask for more SNPs than available.
+    with pytest.raises(ValueError):
+        api.biallelic_snp_calls(
+            sample_sets=sample_sets,
+            region=contig,
+            site_mask=site_mask,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            n_snps=n_snps_available + 10,
+        )

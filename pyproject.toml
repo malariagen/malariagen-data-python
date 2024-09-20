@@ -25,6 +25,7 @@ scipy = "*"
 pandas = "*"
 zarr = "*"
 dask = {version="*", extras=["array"]}
+distributed = "*"
 fsspec = "*"
 gcsfs = "*"
 google-auth = "*"

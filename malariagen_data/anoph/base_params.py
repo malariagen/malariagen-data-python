@@ -1,6 +1,6 @@
 """General parameters common to many functions in the public API."""
 
-from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union, Callable
+from typing import Final, List, Mapping, Optional, Sequence, Tuple, Union
 
 from typing_extensions import Annotated, TypeAlias
 
@@ -9,6 +9,7 @@ from ..util import (
     region_param_type,
     single_contig_param_type,
     single_region_param_type,
+    chunks_param_type,
 )
 
 contig: TypeAlias = Annotated[
@@ -226,15 +227,22 @@ inline_array: TypeAlias = Annotated[
 inline_array_default: inline_array = True
 
 chunks: TypeAlias = Annotated[
-    Union[str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]],
+    chunks_param_type,
     """
     If 'auto' let dask decide chunk size. If 'native' use native zarr
-    chunks. Also, can be a target size, e.g., '200 MiB', or a tuple of
-    integers.
+    chunks. If 'ndauto' let dask decide chunk size but only for arrays with
+    more than one dimension. If 'ndauto0' as 'ndauto' but only vary the first
+    chunk dimension. If 'ndauto1' as 'ndauto' but only vary the second chunk
+    dimension. If 'ndauto01' as 'ndauto' but only vary the first and second
+    chunk dimensions. Also, can be a target size, e.g., '200 MiB', or a tuple of
+    integers, or a callable which accepts the native chunks as a single argument
+    and returns a valid dask chunks value.
     """,
 ]
 
-chunks_default: chunks = "native"
+# The "ndauto0" value means auto-size chunks for arrays with more than one dimension,
+# allowing the first chunk dimension to be varied.
+chunks_default: chunks = "ndauto0"
 
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],
@@ -263,19 +271,21 @@ thin_offset: TypeAlias = Annotated[
 ]
 
 min_minor_ac: TypeAlias = Annotated[
-    int,
+    Union[int, float],
     """
     The minimum minor allele count. SNPs with a minor allele count
-    below this value will be excluded.
+    below this value will be excluded. Can also be a float, which will
+    be interpreted as a fraction.
     """,
 ]
 
 max_missing_an: TypeAlias = Annotated[
-    int,
+    Union[int, float],
     """
     The maximum number of missing allele calls to accept. SNPs with
     more than this value will be excluded. Set to 0 to require no
-    missing calls.
+    missing calls. Can also be a float, which will be interpreted as
+    a fraction.
     """,
 ]
 
