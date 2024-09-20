@@ -226,7 +226,12 @@ inline_array: TypeAlias = Annotated[
 inline_array_default: inline_array = True
 
 chunks: TypeAlias = Annotated[
-    Union[str, Tuple[int, ...], Callable[[Tuple[int, ...]], Tuple[int, ...]]],
+    Union[
+        int,
+        str,
+        Tuple[Union[int, str], ...],
+        Callable[[Tuple[int, ...]], Tuple[int, ...]],
+    ],
     """
     If 'auto' let dask decide chunk size. If 'native' use native zarr
     chunks. If 'ndauto' let dask decide chunk size but only for arrays with
