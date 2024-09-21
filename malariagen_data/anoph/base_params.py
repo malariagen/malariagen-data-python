@@ -240,9 +240,10 @@ chunks: TypeAlias = Annotated[
     """,
 ]
 
-# The "ndauto0" value means auto-size chunks for arrays with more than one dimension,
-# allowing the first chunk dimension to be varied.
-chunks_default: chunks = "ndauto0"
+# Generally the chunk sizes we use in the zarr data are
+# smaller than optimal for larger computations, so we 
+# use a larger size by default.
+chunks_default: chunks = "300MiB"
 
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],
