@@ -19,6 +19,7 @@ except ImportError:
 
 import allel  # type: ignore
 import dask.array as da
+from dask.utils import parse_bytes
 import numba  # type: ignore
 import numpy as np
 import pandas
@@ -193,9 +194,15 @@ def da_from_zarr(
     """
     if callable(chunks):
         dask_chunks: dask_chunks_type = chunks(z.chunks)
+
+    # Match the zarr chunk size.
     elif chunks == "native" or z.dtype == object:
         # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks
+
+    # Auto-size chunks.
+    elif chunks == "auto":
+        dask_chunks = chunks
 
     # Auto-size chunks but only for arrays with more than one dimension.
     elif chunks == "ndauto":
@@ -220,6 +227,20 @@ def da_from_zarr(
         if len(z.chunks) > 1:
             # Auto-size first and second dimensions.
             dask_chunks = ("auto", "auto") + z.chunks[2:]
+        else:
+            dask_chunks = z.chunks
+
+    # Resize chunks to a specific size in memory.
+    elif isinstance(chunks, str):
+        # Only resize chunks in arrays with more than one dimension.
+        if len(z.chunks) > 1:
+            chunk_nbytes = parse_bytes(chunks)
+            factor = chunk_nbytes // z.chunk_nbytes
+            if factor > 1:
+                # Increase chunk size along first dimension.
+                dask_chunks = ((chunks[0] * factor),) + z.chunks[1:]
+            else:
+                dask_chunks = z.chunks
         else:
             dask_chunks = z.chunks
 
