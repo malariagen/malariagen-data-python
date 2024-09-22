@@ -1,0 +1,321 @@
+sample_id,country_ISO,adm1_name,adm1_ISO,adm2_name,taxon,cohort_admin1_year,cohort_admin1_month,cohort_admin2_year,cohort_admin2_month
+VBS17190,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17191,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17192,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17193,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17195,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17196,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17197,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17198,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17199,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17200,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17202,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17203,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17204,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17205,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17206,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17207,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17208,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17209,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17210,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17212,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17213,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17214,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17215,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17216,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17217,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17218,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17219,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17220,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17221,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17222,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17224,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17225,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17226,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17227,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17228,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17229,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17230,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17231,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17233,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17234,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17235,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17236,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17237,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17238,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17239,CMR,Adamawa,CM-AD,Mayo-Banyo,funestus,CM-AD_fune_2014,CM-AD_fune_2014_08,CM-AD_Mayo-Banyo_fune_2014,CM-AD_Mayo-Banyo_fune_2014_08
+VBS17240,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17241,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17242,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17243,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17244,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17245,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17246,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17247,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17248,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17249,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17250,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17251,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17252,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17253,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17255,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17256,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17258,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17259,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17260,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17265,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17267,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17270,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17273,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17275,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17277,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17278,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17282,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17283,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17286,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17288,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17289,GHA,Ashanti,GH-AH,Adansi West,funestus,GH-AH_fune_2014,GH-AH_fune_2014_03,GH-AH_Adansi-West_fune_2014,GH-AH_Adansi-West_fune_2014_03
+VBS17290,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17316,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17317,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17318,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17319,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17320,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17323,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17326,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17327,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17328,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17329,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17330,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17331,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17332,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17333,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17334,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17335,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17339,MWI,Southern Region,MW-S,Chikwawa,funestus,MW-S_fune_2014,MW-S_fune_2014_01,MW-S_Chikwawa_fune_2014,MW-S_Chikwawa_fune_2014_01
+VBS17342,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17345,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17346,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17347,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17348,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17349,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17351,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17353,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17355,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17356,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17361,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17362,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17364,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17370,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17371,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17373,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17374,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17378,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17380,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17387,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17388,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17391,MOZ,Maputo,MZ-L,Manhica,funestus,MZ-L_fune_2016,MZ-L_fune_2016_04,MZ-L_Manhica_fune_2016,MZ-L_Manhica_fune_2016_04
+VBS17394,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17395,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17396,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17397,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17398,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17399,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17400,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17401,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17402,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17403,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17404,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17405,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17406,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17407,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17408,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17409,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17410,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17411,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17412,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17413,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17414,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17415,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17416,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17417,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17418,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17419,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17420,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17421,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17422,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17423,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17424,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17425,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17426,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17427,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17428,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17429,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17430,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17432,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17433,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17434,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17435,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17436,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17437,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17438,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17439,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17440,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17441,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17442,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17443,UGA,Eastern Region,UG-E,Tororo,funestus,UG-E_fune_2014,UG-E_fune_2014_04,UG-E_Tororo_fune_2014,UG-E_Tororo_fune_2014_04
+VBS17451,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17452,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17453,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17454,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17455,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17456,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17457,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17458,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17459,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17460,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17461,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17462,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17463,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17465,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17466,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17467,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17468,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17469,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17470,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17471,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17472,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17473,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17474,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17475,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17476,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17477,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17478,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17479,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17480,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17481,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17482,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17483,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17484,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17485,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17486,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17488,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17489,BEN,Atlantique,BJ-AQ,Ouidah,funestus,BJ-AQ_fune_2014,BJ-AQ_fune_2014_04,BJ-AQ_Ouidah_fune_2014,BJ-AQ_Ouidah_fune_2014_04
+VBS17490,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17491,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17492,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17494,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17495,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17496,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17497,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17498,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17499,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17502,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17503,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17504,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17505,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17506,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17508,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17509,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17511,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17512,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17514,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17515,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17516,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17517,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17518,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17520,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17522,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17523,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17524,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17526,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17527,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17528,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17529,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17532,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17534,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17539,COD,Kinshasa,CD-KN,Kinshasa,funestus,CD-KN_fune_2015,CD-KN_fune_2015_05,CD-KN_Kinshasa_fune_2015,CD-KN_Kinshasa_fune_2015_05
+VBS17540,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17541,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17543,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17544,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17545,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17546,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17547,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17548,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17549,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17550,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17551,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17552,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17553,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17554,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17555,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17556,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17557,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17558,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17559,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17560,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17561,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17562,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17563,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17564,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17565,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17566,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17567,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17568,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17570,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17571,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17572,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17573,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17574,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17575,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17576,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17577,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17578,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17579,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17580,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17581,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17582,NGA,Ogun,NG-OG,Remo North,funestus,NG-OG_fune_2015,NG-OG_fune_2015_01,NG-OG_Remo-North_fune_2015,NG-OG_Remo-North_fune_2015_01
+VBS17583,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17585,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17586,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17587,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17588,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17589,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17591,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17592,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17593,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17594,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17595,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17596,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17597,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17598,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17599,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17600,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17601,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17602,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17603,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17604,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17605,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17606,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17607,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17608,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17609,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17610,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17612,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17613,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17614,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17615,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17616,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17617,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17618,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17619,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17620,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17623,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17624,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17625,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17626,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17627,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17628,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17629,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
+VBS17630,ZMB,Eastern,ZW-03,Katete,funestus,ZW-03_fune_2016,ZW-03_fune_2016_08,ZW-03_Katete_fune_2016,ZW-03_Katete_fune_2016_08
