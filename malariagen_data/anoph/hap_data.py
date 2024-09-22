@@ -173,7 +173,7 @@ class AnophelesHapData(
         field: base_params.field,
         analysis: hap_params.analysis = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
         regions: List[Region] = parse_multi_region(self, region)
@@ -330,7 +330,7 @@ class AnophelesHapData(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,

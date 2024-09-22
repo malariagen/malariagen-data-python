@@ -179,7 +179,7 @@ class AnophelesCnvData(
         sample_query: Optional[base_params.sample_query] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -381,7 +381,7 @@ class AnophelesCnvData(
         sample_set: base_params.sample_set,
         analysis: cnv_params.coverage_calls_analysis,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -537,7 +537,7 @@ class AnophelesCnvData(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         debug = self._log.debug
 

@@ -119,7 +119,7 @@ class Ag3(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> ag3 = malariagen_data.Ag3(
-        ...     "simplecache::gs://vo_agam_release",
+        ...     "simplecache::gs://vo_agam_release_master_us_central1",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 

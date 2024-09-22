@@ -73,6 +73,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
         legend_sizing: plotly_params.legend_sizing = "constant",
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Optional[dict]:
         import sys
 
@@ -98,6 +100,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             cohort_size=cohort_size,
             distance_metric=distance_metric,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Align sample metadata with genotypes.
@@ -196,6 +200,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         cohort_size: Optional[base_params.cohort_size] = None,
         distance_metric: dipclust_params.distance_metric = dipclust_params.distance_metric_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray, int]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -220,7 +226,9 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._diplotype_pairwise_distances(**params)
+            results = self._diplotype_pairwise_distances(
+                chunks=chunks, inline_array=inline_array, **params
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results")
@@ -241,6 +249,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         cohort_size,
         distance_metric,
         random_seed,
+        chunks,
+        inline_array,
     ):
         if distance_metric == "cityblock":
             metric = multiallelic_diplotype_mean_cityblock
@@ -256,6 +266,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             site_class=site_class,
             cohort_size=cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         with self._dask_progress(desc="Load genotypes for distance calculation"):
@@ -302,6 +314,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         cohort_size: Optional[base_params.cohort_size],
         random_seed: base_params.random_seed,
         color_continuous_scale: Optional[plotly_params.color_continuous_scale],
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         ds_snps = self.snp_calls(
             region=region,
@@ -310,6 +324,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             cohort_size=cohort_size,
             site_mask=site_mask,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Strictly speaking we are loading the genotypes for the second time here,
@@ -361,6 +377,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         sample_query: Optional[base_params.sample_query],
         max_coverage_variance: Optional[cnv_params.max_coverage_variance],
         colorscale: Optional[plotly_params.color_continuous_scale],
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         try:
             # TODO The gene_cnv() method still needs to get migrated to the
@@ -372,6 +390,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 max_coverage_variance=max_coverage_variance,
+                chunks=chunks,
+                inline_array=inline_array,
             )
 
         except ValueError:
@@ -422,6 +442,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         dendro_sample_id_order: np.ndarray,
         snp_filter_min_maf: float,
         snp_colorscale: Optional[plotly_params.color_continuous_scale],
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         # load genotype allele counts at SNP variants for each sample
         df_snps = self.snp_genotype_allele_counts(
@@ -430,6 +452,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             sample_query=sample_query,
             sample_sets=sample_sets,
             site_mask=site_mask,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         df_snps = df_snps.set_index("label")
 
@@ -557,6 +581,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
         legend_sizing: plotly_params.legend_sizing = "constant",
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         if cohort_size and snp_transcript:
             cohort_size = None
@@ -592,6 +618,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             category_orders=category_orders,
             legend_sizing=legend_sizing,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig_dendro = res["figure"]
@@ -611,6 +639,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 site_mask=site_mask,
                 color_continuous_scale=heterozygosity_colorscale,
                 random_seed=random_seed,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             figures.append(het_trace)
             subplot_heights.append(heterozygosity_height)
@@ -623,6 +653,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 sample_query=sample_query,
                 max_coverage_variance=cnv_max_coverage_variance,
                 colorscale=cnv_colorscale,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             # N.B., sometimes no CNV data may be available, so check to
             # see if the trace is not None.
@@ -640,6 +672,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 dendro_sample_id_order=dendro_sample_id_order,
                 snp_filter_min_maf=snp_filter_min_maf,
                 snp_colorscale=snp_colorscale,
+                chunks=chunks,
+                inline_array=inline_array,
             )
 
             if snp_trace:

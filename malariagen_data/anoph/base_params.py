@@ -229,20 +229,28 @@ inline_array_default: inline_array = True
 chunks: TypeAlias = Annotated[
     chunks_param_type,
     """
-    If 'auto' let dask decide chunk size. If 'native' use native zarr
-    chunks. If 'ndauto' let dask decide chunk size but only for arrays with
-    more than one dimension. If 'ndauto0' as 'ndauto' but only vary the first
-    chunk dimension. If 'ndauto1' as 'ndauto' but only vary the second chunk
-    dimension. If 'ndauto01' as 'ndauto' but only vary the first and second
-    chunk dimensions. Also, can be a target size, e.g., '200 MiB', or a tuple of
-    integers, or a callable which accepts the native chunks as a single argument
-    and returns a valid dask chunks value.
+    Define how input data being read from zarr should be divided into chunks
+    for a dask computation. If 'native', use underlying zarr chunks. If a string
+    specifying a target memory size, e.g., '300 MiB', resize chunks in arrays
+    with more than one dimension to match this size. If 'auto', let dask decide
+    chunk size.  If 'ndauto', let dask decide chunk size but only for arrays with
+    more than one dimension. If 'ndauto0', as 'ndauto' but only vary the first
+    chunk dimension. If 'ndauto1', as 'ndauto' but only vary the second chunk
+    dimension. If 'ndauto01', as 'ndauto' but only vary the first and second
+    chunk dimensions. Also, can be a tuple of integers, or a callable which
+    accepts the native chunks as a single argument and returns a valid dask
+    chunks value.
     """,
 ]
 
-# The "ndauto0" value means auto-size chunks for arrays with more than one dimension,
-# allowing the first chunk dimension to be varied.
-chunks_default: chunks = "ndauto0"
+# Match the native zarr chunk sizes by default. N.B., some functions may
+# choose a different default, especially if they need to retrieve larger
+# amounts of data.
+native_chunks: chunks = "native"
+
+# Alternative default chunk size, suitable for functions which need to
+# scan a large amount of data.
+large_chunks: chunks = "300MiB"
 
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],
