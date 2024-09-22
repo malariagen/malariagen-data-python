@@ -1063,11 +1063,8 @@ def check_biallelic_snp_calls_and_diplotypes(
     for f in expected_coords | expected_data_vars:
         x = ds[f]
         assert isinstance(x, xr.DataArray)
-        if f == "variant_allele_count":
-            # This will have been computed.
-            assert isinstance(x.data, np.ndarray)
-        else:
-            assert isinstance(x.data, da.Array)
+        assert isinstance(x.data, da.Array)
+        assert isinstance(x.values, np.ndarray)
 
         if f.startswith("variant_allele"):
             assert x.ndim == 2

@@ -1624,21 +1624,42 @@ class AnophelesSnpData(
             coords["variant_contig"] = ("variants",), ds_bi["variant_contig"].data
 
             # Store position.
-            coords["variant_position"] = ("variants",), ds_bi["variant_position"].data
+            variant_position = ds_bi["variant_position"].data
+            coords["variant_position"] = ("variants",), variant_position
 
             # Store alleles, transformed.
             variant_allele = ds_bi["variant_allele"].data
-            variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
+            va_chunk_length = variant_allele.chunks[0][0]
+            variant_allele = variant_allele.rechunk(va_chunk_length, -1)
+
+            # Chunk allele mapping according to same as variant_allele.
+            allele_mapping_zarr = zarr.array(
+                allele_mapping, chunks=(va_chunk_length, -1)
+            )
+            allele_mapping_dask = da.from_array(
+                allele_mapping_zarr, chunks=allele_mapping_zarr.chunks
+            )
+
+            # Transform alleles.
             variant_allele_out = da.map_blocks(
-                lambda block: apply_allele_mapping(block, allele_mapping, max_allele=1),
+                lambda x, y: apply_allele_mapping(x, y, max_allele=1),
                 variant_allele,
+                allele_mapping_dask,
                 dtype=variant_allele.dtype,
-                chunks=(variant_allele.chunks[0], [2]),
+                chunks=(variant_allele.chunks[0], 2),
             )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
-            # Store allele counts, transformed, so we don't have to recompute.
-            ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
+            # Store allele counts, transformed.
+            ac_bi_zarr = zarr.array(ac_bi, chunks=(va_chunk_length, -1))
+            ac_bi_dask = da.from_array(ac_bi_zarr, chunks=ac_bi_zarr.chunks)
+            ac_out = da.map_blocks(
+                lambda x, y: apply_allele_mapping(x, y, max_allele=1),
+                ac_bi_dask,
+                allele_mapping_dask,
+                dtype=ac_bi_dask.dtype,
+                chunks=(ac_bi_dask.chunks[0], 2),
+            )
             data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
             # Store genotype calls, transformed.
