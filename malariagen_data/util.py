@@ -5,6 +5,7 @@ import re
 import sys
 import warnings
 from enum import Enum
+from math import prod
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
@@ -253,10 +254,11 @@ def da_from_zarr(
     # underlying zarr chunk sizes.
     elif isinstance(chunks, str):
         if len(z.chunks) > 1:
-            chunk_nbytes = parse_bytes(chunks)
-            factor = chunk_nbytes // z.chunk_nbytes
+            dask_chunk_nbytes = parse_bytes(chunks)
+            zarr_chunk_nbytes = prod(z.chunks) * z.dtype.itemsize
+            factor = dask_chunk_nbytes // zarr_chunk_nbytes
             if factor > 1:
-                dask_chunks = ((chunks[0] * factor),) + z.chunks[1:]
+                dask_chunks = ((z.chunks[0] * factor),) + z.chunks[1:]
             else:
                 dask_chunks = z.chunks
         else:
