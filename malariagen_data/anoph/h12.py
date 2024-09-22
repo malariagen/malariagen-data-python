@@ -35,6 +35,8 @@ class AnophelesH12Analysis(
         max_cohort_size,
         window_sizes,
         random_seed,
+        chunks,
+        inline_array,
     ) -> Mapping[str, np.ndarray]:
         ds_haps = self.haplotypes(
             region=contig,
@@ -45,6 +47,8 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
@@ -81,6 +85,8 @@ class AnophelesH12Analysis(
         ] = h12_params.max_cohort_size_default,
         window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.large_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Mapping[str, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -105,7 +111,9 @@ class AnophelesH12Analysis(
             calibration_runs = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            calibration_runs = self._h12_calibration(**params)
+            calibration_runs = self._h12_calibration(
+                inline_array=inline_array, chunks=chunks, **params
+            )
             self.results_cache_set(name=name, params=params, results=calibration_runs)
 
         return calibration_runs
@@ -135,6 +143,8 @@ class AnophelesH12Analysis(
         random_seed: base_params.random_seed = 42,
         title: Optional[str] = None,
         show: bool = True,
+        chunks: base_params.chunks = base_params.large_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Get H12 values.
         calibration_runs = self.h12_calibration(
@@ -147,6 +157,8 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Compute summaries.
@@ -219,6 +231,8 @@ class AnophelesH12Analysis(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        chunks,
+        inline_array,
     ):
         ds_haps = self.haplotypes(
             region=contig,
@@ -229,6 +243,8 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
@@ -270,6 +286,8 @@ class AnophelesH12Analysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.large_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -294,7 +312,7 @@ class AnophelesH12Analysis(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._h12_gwss(**params)
+            results = self._h12_gwss(chunks=chunks, inline_array=inline_array, **params)
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -328,6 +346,8 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.large_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H12.
         x, h12 = self.h12_gwss(
@@ -340,6 +360,8 @@ class AnophelesH12Analysis(
             sample_query=sample_query,
             sample_sets=sample_sets,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Determine X axis range.
@@ -425,6 +447,8 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.large_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_track(
@@ -443,6 +467,8 @@ class AnophelesH12Analysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig1.xaxis.visible = False

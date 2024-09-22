@@ -263,7 +263,7 @@ class AnophelesSnpData(
         mask: base_params.site_mask = base_params.DEFAULT,
         field: base_params.field = "filter_pass",
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         mask_prepped = self._prep_site_mask_param(site_mask=mask)
         del mask
@@ -368,7 +368,7 @@ class AnophelesSnpData(
         field: base_params.field,
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
         regions: List[Region] = parse_multi_region(self, region)
@@ -451,7 +451,7 @@ class AnophelesSnpData(
         field: base_params.field = "GT",
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Additional parameter checks.
         base_params.validate_sample_selection_params(
@@ -599,7 +599,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ):
         # Normalise parameters.
         regions: List[Region] = parse_multi_region(self, region)
@@ -641,7 +641,7 @@ class AnophelesSnpData(
         *,
         contig,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         # Open site annotations zarr.
         root = self.open_site_annotations()
@@ -676,7 +676,7 @@ class AnophelesSnpData(
         region: base_params.region,
         site_mask: Optional[base_params.site_mask] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         # Resolve region.
         resolved_region: Region = parse_single_region(self, region)
@@ -711,7 +711,7 @@ class AnophelesSnpData(
         site_mask: Optional[base_params.site_mask],
         site_class: base_params.site_class,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ):
         # Cache these data in memory to avoid repeated computation.
         cache_key = (region, site_mask, site_class)
@@ -942,7 +942,7 @@ class AnophelesSnpData(
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -1200,7 +1200,7 @@ class AnophelesSnpData(
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> np.ndarray:
         # Change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data.
@@ -1511,7 +1511,7 @@ class AnophelesSnpData(
         region: base_params.region,
         site_mask: base_params.site_mask = base_params.DEFAULT,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> np.ndarray:
         # Normalise params.
         resolved_region: Region = parse_single_region(self, region)
@@ -1560,7 +1560,7 @@ class AnophelesSnpData(
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -1724,7 +1724,7 @@ class AnophelesSnpData(
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
