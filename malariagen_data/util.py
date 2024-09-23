@@ -5,6 +5,7 @@ import re
 import sys
 import warnings
 from enum import Enum
+from math import prod
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
@@ -19,6 +20,7 @@ except ImportError:
 
 import allel  # type: ignore
 import dask.array as da
+from dask.utils import parse_bytes
 import numba  # type: ignore
 import numpy as np
 import pandas
@@ -191,13 +193,26 @@ def da_from_zarr(
     our own here to get a little more control.
 
     """
+
+    # Some function of the native chunk sizes.
     if callable(chunks):
         dask_chunks: dask_chunks_type = chunks(z.chunks)
+
+    # Match the zarr chunk size.
+    # N.B., dask does not support "auto" chunks for arrays with object dtype.
     elif chunks == "native" or z.dtype == object:
-        # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks
 
-    # Auto-size chunks but only for arrays with more than one dimension.
+    # Let dask auto-size chunks. This generally does not work well with
+    # our datasets, but support this option in case someone wants to try
+    # it.
+    elif chunks == "auto":
+        dask_chunks = chunks
+
+    # Auto-size chunks but only for arrays with more than one dimension. This
+    # seems to lead to unexpected memory usage in some scenarios, and so is not
+    # the recommended option, but we'll leave these options here for now in
+    # case further experiments are useful.
     elif chunks == "ndauto":
         if len(z.chunks) > 1:
             # Auto-size all dimensions.
@@ -223,8 +238,34 @@ def da_from_zarr(
         else:
             dask_chunks = z.chunks
 
+    # Resize chunks to a specific size in memory.
+    #
+    # N.B., only resize chunks in arrays with more than one dimension,
+    # because resizing the one-dimensional arrays according to the same
+    # size generally leads to poor performance with our datasets.
+    #
+    # Also, resize along the first dimension only. Again, this is something
+    # that generally works well for our datasets.
+    #
+    # Note that dask also supports this kind of argument, and so we could
+    # just pass this through. However, some experiments have found this
+    # leads to excessive memory usage. So we will control this behaviour
+    # ourselves here and make sure dask chunk sizes are always a multiple of the
+    # underlying zarr chunk sizes.
+    elif isinstance(chunks, str):
+        if len(z.chunks) > 1:
+            dask_chunk_nbytes = parse_bytes(chunks)
+            zarr_chunk_nbytes = prod(z.chunks) * z.dtype.itemsize
+            factor = dask_chunk_nbytes // zarr_chunk_nbytes
+            if factor > 1:
+                dask_chunks = ((z.chunks[0] * factor),) + z.chunks[1:]
+            else:
+                dask_chunks = z.chunks
+        else:
+            dask_chunks = z.chunks
+
+    # Pass through argument as-is to dask.
     else:
-        # Pass through argument as-is.
         dask_chunks = chunks
 
     kwargs = dict(

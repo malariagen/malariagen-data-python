@@ -109,7 +109,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         self,
         region: base_params.region,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Parse the region parameter into a Region object.
         resolved_region: Region = parse_single_region(self, region)
