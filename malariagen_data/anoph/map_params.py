@@ -7,13 +7,13 @@ import xyzservices  # type: ignore
 from typing_extensions import Annotated, TypeAlias
 
 center: TypeAlias = Annotated[
-    Tuple[float, float],
+    Tuple[Union[int, float], Union[int, float]],
     "Location to center the map.",
 ]
 
 center_default: center = (-2, 20)
 
-zoom: TypeAlias = Annotated[float, "Initial zoom level."]
+zoom: TypeAlias = Annotated[Union[int, float], "Initial zoom level."]
 
 zoom_default: zoom = 3
 
