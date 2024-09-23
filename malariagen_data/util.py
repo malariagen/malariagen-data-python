@@ -133,6 +133,10 @@ class SafeStore(BaseStore):
             raise FileNotFoundError(e)
 
     def __getattr__(self, attr):
+        if attr == "__setstate__":
+            # Special method called during unpickling, don't pass through.
+            raise AttributeError(attr)
+        # Pass through all other attribute access to the wrapped store.
         return getattr(self._store, attr)
 
     def __iter__(self):
