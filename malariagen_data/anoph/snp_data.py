@@ -23,6 +23,7 @@ from ..util import (
     da_from_zarr,
     dask_apply_allele_mapping,
     dask_compress_dataset,
+    dask_genotype_array_map_alleles,
     init_zarr_store,
     locate_region,
     parse_multi_region,
@@ -565,6 +566,7 @@ class AnophelesSnpData(
             ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
             alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
             variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+            variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
             data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
             # Set up variant_contig.
@@ -1629,8 +1631,8 @@ class AnophelesSnpData(
 
             # Prepare allele mapping for dask computations.
             allele_mapping_zarr = zarr.array(allele_mapping)
-            allele_mapping_dask = da.from_array(
-                allele_mapping_zarr, chunks=allele_mapping_zarr.chunks
+            allele_mapping_dask = da_from_zarr(
+                allele_mapping_zarr, chunks="native", inline_array=True
             )
 
             # Store alleles, transformed.
@@ -1642,43 +1644,15 @@ class AnophelesSnpData(
 
             # Store allele counts, transformed.
             ac_bi_zarr = zarr.array(ac_bi)
-            ac_bi_dask = da.from_array(ac_bi_zarr, chunks=ac_bi_zarr.chunks)
+            ac_bi_dask = da_from_zarr(ac_bi_zarr, chunks="native", inline_array=True)
             ac_out = dask_apply_allele_mapping(
                 ac_bi_dask, allele_mapping_dask, max_allele=1
             )
             data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
-            # Transform the genotype calls via the allele mapping. N.B.,
-            # scikit-allel does not handle empty blocks well, so we include
-            # some extra logic to handle that better.
-
-            def genotype_array_map_alleles(block, bmapping):
-                if block.size > 0:
-                    # Block is not empty, can pass through to GenotypeArray.
-                    assert block.shape[0] > 0
-                    assert block.shape[1] > 0
-                    assert block.shape[2] == 2
-                    g = allel.GenotypeArray(block)
-                    m = bmapping[:, 0, :]
-                    out = g.map_alleles(m).values
-                else:
-                    # Block is empty so no alleles need to be mapped.
-                    assert block.shape[0] == 0
-                    assert block.shape[1] > 0
-                    assert block.shape[2] == 2
-                    out = block
-                return out
-
             # Store genotype calls, transformed.
-            gt = ds_bi["call_genotype"].data
-            gt_allele_mapping = da.from_array(allele_mapping, chunks=(gt.chunks[0], -1))
-            gt_out = da.map_blocks(
-                genotype_array_map_alleles,
-                gt,
-                gt_allele_mapping[:, None, :],
-                chunks=gt.chunks,
-                dtype=gt.dtype,
-            )
+            gt_dask = ds_bi["call_genotype"].data
+            gt_out = dask_genotype_array_map_alleles(gt_dask, allele_mapping_dask)
             data_vars["call_genotype"] = (
                 (
                     "variants",

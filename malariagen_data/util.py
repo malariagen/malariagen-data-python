@@ -29,6 +29,9 @@ import plotly.express as px  # type: ignore
 import typeguard
 import xarray as xr
 import zarr  # type: ignore
+
+# zarr >= 2.11.0
+from zarr.storage import BaseStore  # type: ignore
 from fsspec.core import url_to_fs  # type: ignore
 from fsspec.mapping import FSMap  # type: ignore
 from numpydoc_decorator.impl import humanize_type  # type: ignore
@@ -113,46 +116,36 @@ def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     return df
 
 
-# zarr compatibility, version 2.11.0 introduced the BaseStore class
-# see also https://github.com/malariagen/malariagen-data-python/issues/129
+class SafeStore(BaseStore):
+    """This class wraps any zarr store and ensures that missing chunks
+    will not get automatically filled but will raise an exception. There
+    should be no missing chunks in any of the datasets we host."""
 
-try:
-    # zarr >= 2.11.0
-    from zarr.storage import KVStore  # type: ignore
+    def __init__(self, store):
+        self._store = store
 
-    class SafeStore(KVStore):
-        def __getitem__(self, key):
-            try:
-                return self._mutable_mapping[key]
-            except KeyError as e:
-                # raise a different error to ensure zarr propagates the exception, rather than filling
-                raise FileNotFoundError(e)
+    def __getitem__(self, key):
+        try:
+            return self._store[key]
+        except KeyError as e:
+            # Raise a different error to ensure zarr propagates the exception,
+            # rather than filling.
+            raise RuntimeError(e)
 
-        def __contains__(self, key):
-            return key in self._mutable_mapping
+    def __getattr__(self, attr):
+        return getattr(self._store, attr)
 
-except ImportError:
-    # zarr < 2.11.0
+    def __iter__(self):
+        return iter(self._store)
 
-    class SafeStore(Mapping):  # type: ignore
-        def __init__(self, store):
-            self.store = store
+    def __len__(self):
+        return len(self._store)
 
-        def __getitem__(self, key):
-            try:
-                return self.store[key]
-            except KeyError as e:
-                # raise a different error to ensure zarr propagates the exception, rather than filling
-                raise FileNotFoundError(e)
+    def __setitem__(self, item):
+        raise NotImplementedError
 
-        def __contains__(self, key):
-            return key in self.store
-
-        def __iter__(self):
-            return iter(self.store)
-
-        def __len__(self):
-            return len(self.store)
+    def __delitem__(self, item):
+        raise NotImplementedError
 
 
 class SiteClass(Enum):
@@ -269,7 +262,11 @@ def da_from_zarr(
         dask_chunks = chunks
 
     kwargs = dict(
-        chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
+        chunks=dask_chunks,
+        fancy=True,
+        lock=False,
+        inline_array=inline_array,
+        asarray=True,
     )
     try:
         d = da.from_array(z, **kwargs)
@@ -1503,6 +1500,46 @@ def dask_apply_allele_mapping(v, mapping, max_allele):
         chunks=(v.chunks[0], [max_allele + 1]),
     )
     return out
+
+
+def genotype_array_map_alleles(gt, mapping):
+    # Transform genotype calls via an allele mapping.
+    # N.B., scikit-allel does not handle empty blocks well, so we
+    # include some extra logic to handle that better.
+    assert isinstance(gt, np.ndarray)
+    assert isinstance(mapping, np.ndarray)
+    assert gt.ndim == 3
+    assert mapping.ndim == 3
+    assert gt.shape[0] == mapping.shape[0]
+    assert gt.shape[1] > 0
+    assert gt.shape[2] == 2
+    if gt.size > 0:
+        # Block is not empty, can pass through to GenotypeArray.
+        assert gt.shape[0] > 0
+        m = mapping[:, 0, :]
+        out = allel.GenotypeArray(gt).map_alleles(m).values
+    else:
+        # Block is empty so no alleles need to be mapped.
+        assert gt.shape[0] == 0
+        out = gt
+    return out
+
+
+def dask_genotype_array_map_alleles(gt, mapping):
+    assert isinstance(gt, da.Array)
+    assert isinstance(mapping, da.Array)
+    assert gt.ndim == 3
+    assert mapping.ndim == 2
+    assert gt.shape[0] == mapping.shape[0]
+    mapping = mapping.rechunk((gt.chunks[0], -1))
+    gt_out = da.map_blocks(
+        genotype_array_map_alleles,
+        gt,
+        mapping[:, None, :],
+        chunks=gt.chunks,
+        dtype=gt.dtype,
+    )
+    return gt_out
 
 
 def pandas_apply(f, df, columns):
