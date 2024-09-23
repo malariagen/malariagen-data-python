@@ -262,10 +262,10 @@ def da_from_zarr(
         dask_chunks = chunks
 
     kwargs = dict(
+        inline_array=inline_array,
         chunks=dask_chunks,
         fancy=True,
         lock=False,
-        inline_array=inline_array,
         asarray=True,
     )
     try:
@@ -310,7 +310,7 @@ def dask_compress_dataset(ds, indexer, dim):
         assert isinstance(indexer, np.ndarray)
         indexer_computed = indexer
         indexer_zarr = zarr.array(indexer_computed)
-        indexer = da.from_array(indexer_zarr, chunks=indexer_zarr.chunks)
+        indexer = da_from_zarr(indexer_zarr, chunks="native", inline_array=True)
 
     coords = dict()
     for k in ds.coords:
