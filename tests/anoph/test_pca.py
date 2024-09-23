@@ -185,7 +185,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     n_samples = ds.sizes["samples"] - n_samples_excluded
     n_snps_available = ds.sizes["variants"]
     n_snps = random.randint(1, n_snps_available)
-    n_components = random.randint(3, min(n_samples, n_snps, 10))
+    n_components = random.randint(2, min(n_samples, n_snps, 10))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
