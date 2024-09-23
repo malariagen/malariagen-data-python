@@ -301,14 +301,26 @@ def dask_compress_dataset(ds, indexer, dim):
         indexer = ds[indexer].data
 
     # sanity checks
-    assert isinstance(indexer, da.Array)
     assert indexer.ndim == 1
     assert indexer.dtype == bool
     assert indexer.shape[0] == ds.sizes[dim]
 
-    # temporarily compute the indexer once, to avoid multiple reads from
-    # the underlying data
-    indexer_computed = indexer.compute()
+    if isinstance(indexer, da.Array):
+        # temporarily compute the indexer once, to avoid multiple reads from
+        # the underlying data
+        indexer_computed = indexer.compute()
+    else:
+        assert isinstance(indexer, np.ndarray)
+        indexer_computed = indexer
+        # Store as zarr, determine chunk length.
+        chunk_lengths = []
+        for v in ds.variables.values():
+            if dim in v.dims:
+                axis = v.dims.index(dim)
+                chunk_length = v.data.chunks[axis][0]
+                chunk_lengths.append(chunk_length)
+        indexer_zarr = zarr.array(indexer_computed, chunks=min(chunk_lengths))
+        indexer = da.from_array(indexer_zarr, chunks=indexer_zarr.chunks)
 
     coords = dict()
     for k in ds.coords:
@@ -382,6 +394,8 @@ def da_compress(
         axis_new_chunks_list.append(new_chunk_size)
         slice_start = slice_stop
     axis_new_chunks = tuple(axis_new_chunks_list)
+    if any([c == 0 for c in axis_new_chunks]):
+        pass
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )

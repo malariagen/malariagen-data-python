@@ -1611,7 +1611,7 @@ class AnophelesSnpData(
 
         with self._spinner("Prepare biallelic SNP calls"):
             # Subset to biallelic sites.
-            ds_bi = ds.isel(variants=loc_bi)
+            ds_bi = dask_compress_dataset(ds, indexer=loc_bi, dim="variants")
 
             # Start building a new dataset.
             coords: Dict[str, Any] = dict()
@@ -1679,8 +1679,9 @@ class AnophelesSnpData(
 
             # Apply conditions.
             if max_missing_an is not None or min_minor_ac is not None:
+                ac_out_computed = ac_out.compute()
                 loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
-                an = ac_out.sum(axis=1)
+                an = ac_out_computed.sum(axis=1)
 
                 # Apply missingness condition.
                 if max_missing_an is not None:
@@ -1694,7 +1695,7 @@ class AnophelesSnpData(
 
                 # Apply minor allele count condition.
                 if min_minor_ac is not None:
-                    ac_minor = ac_out.min(axis=1)
+                    ac_minor = ac_out_computed.min(axis=1)
                     if isinstance(min_minor_ac, float):
                         ac_minor_frac = ac_minor / an
                         loc_minor = ac_minor_frac >= min_minor_ac
@@ -1702,12 +1703,13 @@ class AnophelesSnpData(
                         loc_minor = ac_minor >= min_minor_ac
                     loc_out &= loc_minor
 
-                ds_out = ds_out.isel(variants=loc_out)
+                # Apply selection from conditions.
+                ds_out = dask_compress_dataset(ds_out, indexer=loc_out, dim="variants")
 
             # Try to meet target number of SNPs.
             if n_snps is not None:
                 if ds_out.sizes["variants"] > (n_snps * 2):
-                    # Do some thinning.
+                    # Apply thinning.
                     thin_step = ds_out.sizes["variants"] // n_snps
                     loc_thin = slice(thin_offset, None, thin_step)
                     ds_out = ds_out.isel(variants=loc_thin)
