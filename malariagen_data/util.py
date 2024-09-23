@@ -358,21 +358,23 @@ def da_compress(
 ):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
-    # sanity checks
+    # Sanity checks.
+    assert indexer.ndim == 1
+    assert indexer.dtype == bool
     assert indexer.shape[0] == data.shape[axis]
 
-    # useful variables
+    # Useful variables.
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
 
-    # load the indexer temporarily for chunk size computations
+    # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
         indexer_computed = indexer.compute()
 
-    # ensure indexer and data are chunked in the same way
+    # Ensure indexer and data are chunked in the same way.
     indexer = indexer.rechunk((axis_old_chunks,))
 
-    # apply the indexing operation
+    # Apply the indexing operation.
     v = da.compress(indexer, data, axis=axis)
 
     # Need to compute chunks sizes in order to know dimension sizes;
@@ -395,7 +397,8 @@ def da_compress(
     v._chunks = new_chunks
 
     # Deal with empty chunks, they break reductions.
-    # Possibly related to https://github.com/dask/dask/issues/10327 and https://github.com/dask/dask/issues/2794
+    # Possibly related to https://github.com/dask/dask/issues/10327
+    # and https://github.com/dask/dask/issues/2794
     if need_rechunk:
         axis_new_chunks_nonzero = tuple([x for x in axis_new_chunks if x > 0])
         # Edge case, all chunks empty:
@@ -1481,6 +1484,24 @@ def apply_allele_mapping(x, mapping, max_allele):
             if new_allele_index >= 0 and new_allele_index <= max_allele:
                 out[i, new_allele_index] = x[i, allele_index]
 
+    return out
+
+
+def dask_apply_allele_mapping(v, mapping, max_allele):
+    assert isinstance(v, da.Array)
+    assert isinstance(mapping, da.Array)
+    assert v.ndim == 2
+    assert mapping.ndim == 2
+    assert v.shape[0] == mapping.shape[0]
+    v = v.rechunk((v.chunks[0], -1))
+    mapping = mapping.rechunk((v.chunks[0], -1))
+    out = da.map_blocks(
+        lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
+        v,
+        mapping,
+        dtype=v.dtype,
+        chunks=(v.chunks[0], [max_allele + 1]),
+    )
     return out
 
 

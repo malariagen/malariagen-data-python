@@ -17,11 +17,11 @@ from ..util import (
     DIM_VARIANT,
     CacheMiss,
     Region,
-    apply_allele_mapping,
     check_types,
     da_compress,
     da_concat,
     da_from_zarr,
+    dask_apply_allele_mapping,
     dask_compress_dataset,
     init_zarr_store,
     locate_region,
@@ -1627,31 +1627,24 @@ class AnophelesSnpData(
             variant_position = ds_bi["variant_position"].data
             coords["variant_position"] = ("variants",), variant_position
 
-            # Store alleles, transformed.
-            variant_allele = ds_bi["variant_allele"].data
-            variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
+            # Prepare allele mapping for dask computations.
+            allele_mapping_zarr = zarr.array(allele_mapping)
             allele_mapping_dask = da.from_array(
-                allele_mapping, chunks=variant_allele.chunks
+                allele_mapping_zarr, chunks=allele_mapping_zarr.chunks
             )
 
-            # Transform alleles.
-            variant_allele_out = da.map_blocks(
-                lambda x, y: apply_allele_mapping(x, y, max_allele=1),
-                variant_allele,
-                allele_mapping_dask,
-                dtype=variant_allele.dtype,
-                chunks=(variant_allele.chunks[0], [2]),
+            # Store alleles, transformed.
+            variant_allele_dask = ds_bi["variant_allele"].data
+            variant_allele_out = dask_apply_allele_mapping(
+                variant_allele_dask, allele_mapping_dask, max_allele=1
             )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
             # Store allele counts, transformed.
-            ac_bi_dask = da.from_array(ac_bi, chunks=(variant_allele.chunks[0], -1))
-            ac_out = da.map_blocks(
-                lambda x, y: apply_allele_mapping(x, y, max_allele=1),
-                ac_bi_dask,
-                allele_mapping_dask,
-                dtype=ac_bi_dask.dtype,
-                chunks=(variant_allele.chunks[0], [2]),
+            ac_bi_zarr = zarr.array(ac_bi)
+            ac_bi_dask = da.from_array(ac_bi_zarr, chunks=ac_bi_zarr.chunks)
+            ac_out = dask_apply_allele_mapping(
+                ac_bi_dask, allele_mapping_dask, max_allele=1
             )
             data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
