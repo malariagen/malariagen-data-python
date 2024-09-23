@@ -378,7 +378,6 @@ def da_compress(
     # Need to compute chunks sizes in order to know dimension sizes;
     # would normally do v.compute_chunk_sizes() but that is slow for
     # multidimensional arrays, so hack something more efficient.
-    # v.compute_chunk_sizes()
     axis_new_chunks_list = []
     slice_start = 0
     need_rechunk = False
