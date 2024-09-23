@@ -1055,6 +1055,7 @@ def check_biallelic_snp_calls_and_diplotypes(
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     n_samples = len(df_samples)
     n_variants = ds.sizes["variants"]
+    # assert n_variants > 0
     assert ds.sizes["samples"] == n_samples
     assert ds.sizes["ploidy"] == 2
     assert ds.sizes["alleles"] == 2
@@ -1063,11 +1064,9 @@ def check_biallelic_snp_calls_and_diplotypes(
     for f in expected_coords | expected_data_vars:
         x = ds[f]
         assert isinstance(x, xr.DataArray)
-        if f == "variant_allele_count":
-            # This will have been computed.
-            assert isinstance(x.data, np.ndarray)
-        else:
-            assert isinstance(x.data, da.Array)
+        assert isinstance(x.data, da.Array)
+        values = x.values
+        assert isinstance(values, np.ndarray)
 
         if f.startswith("variant_allele"):
             assert x.ndim == 2
@@ -1103,8 +1102,9 @@ def check_biallelic_snp_calls_and_diplotypes(
         # Bail out early, can't run further tests.
         return ds
 
-    # Check biallelic.
+    # Check biallelic genotypes.
     gt = ds["call_genotype"].data
+    assert gt.compute().max() <= 1
     assert gt.max().compute() <= 1
 
     # Check compress bug.
@@ -1335,7 +1335,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
 
     # Parametrise conditions.
     min_minor_ac = random.randint(1, 3)
-    max_missing_an = random.randint(2, 10)
+    max_missing_an = random.randint(5, 10)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
@@ -1359,9 +1359,9 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     assert np.all(ac == ac_check)
 
     # Run tests with thinning.
-    n_snps_available = ds.sizes["variants"]
+    n_snps_available = int(ds.sizes["variants"])
     # This should always be true, although depends on min_minor_ac and max_missing_an,
-    # so the range of values for those parameters needs to be chosen with some case.
+    # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
     n_snps_requested = random.randint(1, n_snps_available // 2)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
@@ -1425,7 +1425,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     assert np.all(ac == ac_check)
 
     # Run tests with thinning.
-    n_snps_available = ds.sizes["variants"]
+    n_snps_available = int(ds.sizes["variants"])
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2

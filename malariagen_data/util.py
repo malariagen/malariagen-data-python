@@ -29,6 +29,9 @@ import plotly.express as px  # type: ignore
 import typeguard
 import xarray as xr
 import zarr  # type: ignore
+
+# zarr >= 2.11.0
+from zarr.storage import BaseStore  # type: ignore
 from fsspec.core import url_to_fs  # type: ignore
 from fsspec.mapping import FSMap  # type: ignore
 from numpydoc_decorator.impl import humanize_type  # type: ignore
@@ -113,46 +116,40 @@ def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     return df
 
 
-# zarr compatibility, version 2.11.0 introduced the BaseStore class
-# see also https://github.com/malariagen/malariagen-data-python/issues/129
+class SafeStore(BaseStore):
+    """This class wraps any zarr store and ensures that missing chunks
+    will not get automatically filled but will raise an exception. There
+    should be no missing chunks in any of the datasets we host."""
 
-try:
-    # zarr >= 2.11.0
-    from zarr.storage import KVStore  # type: ignore
+    def __init__(self, store):
+        self._store = store
 
-    class SafeStore(KVStore):
-        def __getitem__(self, key):
-            try:
-                return self._mutable_mapping[key]
-            except KeyError as e:
-                # raise a different error to ensure zarr propagates the exception, rather than filling
-                raise FileNotFoundError(e)
+    def __getitem__(self, key):
+        try:
+            return self._store[key]
+        except KeyError as e:
+            # Raise a different error to ensure zarr propagates the exception,
+            # rather than filling.
+            raise FileNotFoundError(e)
 
-        def __contains__(self, key):
-            return key in self._mutable_mapping
+    def __getattr__(self, attr):
+        if attr == "__setstate__":
+            # Special method called during unpickling, don't pass through.
+            raise AttributeError(attr)
+        # Pass through all other attribute access to the wrapped store.
+        return getattr(self._store, attr)
 
-except ImportError:
-    # zarr < 2.11.0
+    def __iter__(self):
+        return iter(self._store)
 
-    class SafeStore(Mapping):  # type: ignore
-        def __init__(self, store):
-            self.store = store
+    def __len__(self):
+        return len(self._store)
 
-        def __getitem__(self, key):
-            try:
-                return self.store[key]
-            except KeyError as e:
-                # raise a different error to ensure zarr propagates the exception, rather than filling
-                raise FileNotFoundError(e)
+    def __setitem__(self, item):
+        raise NotImplementedError
 
-        def __contains__(self, key):
-            return key in self.store
-
-        def __iter__(self):
-            return iter(self.store)
-
-        def __len__(self):
-            return len(self.store)
+    def __delitem__(self, item):
+        raise NotImplementedError
 
 
 class SiteClass(Enum):
@@ -269,7 +266,11 @@ def da_from_zarr(
         dask_chunks = chunks
 
     kwargs = dict(
-        chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
+        inline_array=inline_array,
+        chunks=dask_chunks,
+        fancy=True,
+        lock=False,
+        asarray=True,
     )
     try:
         d = da.from_array(z, **kwargs)
@@ -301,14 +302,19 @@ def dask_compress_dataset(ds, indexer, dim):
         indexer = ds[indexer].data
 
     # sanity checks
-    assert isinstance(indexer, da.Array)
     assert indexer.ndim == 1
     assert indexer.dtype == bool
     assert indexer.shape[0] == ds.sizes[dim]
 
-    # temporarily compute the indexer once, to avoid multiple reads from
-    # the underlying data
-    indexer_computed = indexer.compute()
+    if isinstance(indexer, da.Array):
+        # temporarily compute the indexer once, to avoid multiple reads from
+        # the underlying data
+        indexer_computed = indexer.compute()
+    else:
+        assert isinstance(indexer, np.ndarray)
+        indexer_computed = indexer
+        indexer_zarr = zarr.array(indexer_computed)
+        indexer = da_from_zarr(indexer_zarr, chunks="native", inline_array=True)
 
     coords = dict()
     for k in ds.coords:
@@ -353,32 +359,36 @@ def da_compress(
 ):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
-    # sanity checks
+    # Sanity checks.
+    assert indexer.ndim == 1
+    assert indexer.dtype == bool
     assert indexer.shape[0] == data.shape[axis]
 
-    # useful variables
+    # Useful variables.
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
 
-    # load the indexer temporarily for chunk size computations
+    # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
         indexer_computed = indexer.compute()
 
-    # ensure indexer and data are chunked in the same way
+    # Ensure indexer and data are chunked in the same way.
     indexer = indexer.rechunk((axis_old_chunks,))
 
-    # apply the indexing operation
+    # Apply the indexing operation.
     v = da.compress(indexer, data, axis=axis)
 
-    # need to compute chunks sizes in order to know dimension sizes;
+    # Need to compute chunks sizes in order to know dimension sizes;
     # would normally do v.compute_chunk_sizes() but that is slow for
-    # multidimensional arrays, so hack something more efficient
-
+    # multidimensional arrays, so hack something more efficient.
     axis_new_chunks_list = []
     slice_start = 0
+    need_rechunk = False
     for old_chunk_size in axis_old_chunks:
         slice_stop = slice_start + old_chunk_size
-        new_chunk_size = np.sum(indexer_computed[slice_start:slice_stop])
+        new_chunk_size = int(np.sum(indexer_computed[slice_start:slice_stop]))
+        if new_chunk_size == 0:
+            need_rechunk = True
         axis_new_chunks_list.append(new_chunk_size)
         slice_start = slice_stop
     axis_new_chunks = tuple(axis_new_chunks_list)
@@ -386,6 +396,23 @@ def da_compress(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )
     v._chunks = new_chunks
+
+    # Deal with empty chunks, they break reductions.
+    # Possibly related to https://github.com/dask/dask/issues/10327
+    # and https://github.com/dask/dask/issues/2794
+    if need_rechunk:
+        axis_new_chunks_nonzero = tuple([x for x in axis_new_chunks if x > 0])
+        # Edge case, all chunks empty:
+        if len(axis_new_chunks_nonzero) == 0:
+            # Not much we can do about this, no data.
+            axis_new_chunks_nonzero = (0,)
+        new_chunks_nonzero = tuple(
+            [
+                axis_new_chunks_nonzero if i == axis else c
+                for i, c in enumerate(new_chunks)
+            ]
+        )
+        v = v.rechunk(new_chunks_nonzero)
 
     return v
 
@@ -1459,6 +1486,64 @@ def apply_allele_mapping(x, mapping, max_allele):
                 out[i, new_allele_index] = x[i, allele_index]
 
     return out
+
+
+def dask_apply_allele_mapping(v, mapping, max_allele):
+    assert isinstance(v, da.Array)
+    assert isinstance(mapping, da.Array)
+    assert v.ndim == 2
+    assert mapping.ndim == 2
+    assert v.shape[0] == mapping.shape[0]
+    v = v.rechunk((v.chunks[0], -1))
+    mapping = mapping.rechunk((v.chunks[0], -1))
+    out = da.map_blocks(
+        lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
+        v,
+        mapping,
+        dtype=v.dtype,
+        chunks=(v.chunks[0], [max_allele + 1]),
+    )
+    return out
+
+
+def genotype_array_map_alleles(gt, mapping):
+    # Transform genotype calls via an allele mapping.
+    # N.B., scikit-allel does not handle empty blocks well, so we
+    # include some extra logic to handle that better.
+    assert isinstance(gt, np.ndarray)
+    assert isinstance(mapping, np.ndarray)
+    assert gt.ndim == 3
+    assert mapping.ndim == 3
+    assert gt.shape[0] == mapping.shape[0]
+    assert gt.shape[1] > 0
+    assert gt.shape[2] == 2
+    if gt.size > 0:
+        # Block is not empty, can pass through to GenotypeArray.
+        assert gt.shape[0] > 0
+        m = mapping[:, 0, :]
+        out = allel.GenotypeArray(gt).map_alleles(m).values
+    else:
+        # Block is empty so no alleles need to be mapped.
+        assert gt.shape[0] == 0
+        out = gt
+    return out
+
+
+def dask_genotype_array_map_alleles(gt, mapping):
+    assert isinstance(gt, da.Array)
+    assert isinstance(mapping, da.Array)
+    assert gt.ndim == 3
+    assert mapping.ndim == 2
+    assert gt.shape[0] == mapping.shape[0]
+    mapping = mapping.rechunk((gt.chunks[0], -1))
+    gt_out = da.map_blocks(
+        genotype_array_map_alleles,
+        gt,
+        mapping[:, None, :],
+        chunks=gt.chunks,
+        dtype=gt.dtype,
+    )
+    return gt_out
 
 
 def pandas_apply(f, df, columns):
