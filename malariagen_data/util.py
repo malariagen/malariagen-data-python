@@ -312,14 +312,7 @@ def dask_compress_dataset(ds, indexer, dim):
     else:
         assert isinstance(indexer, np.ndarray)
         indexer_computed = indexer
-        # Store as zarr, determine chunk length.
-        chunk_lengths = []
-        for v in ds.variables.values():
-            if dim in v.dims:
-                axis = v.dims.index(dim)
-                chunk_length = v.data.chunks[axis][0]
-                chunk_lengths.append(chunk_length)
-        indexer_zarr = zarr.array(indexer_computed, chunks=min(chunk_lengths))
+        indexer_zarr = zarr.array(indexer_computed)
         indexer = da.from_array(indexer_zarr, chunks=indexer_zarr.chunks)
 
     coords = dict()
@@ -382,24 +375,41 @@ def da_compress(
     # apply the indexing operation
     v = da.compress(indexer, data, axis=axis)
 
-    # need to compute chunks sizes in order to know dimension sizes;
+    # Need to compute chunks sizes in order to know dimension sizes;
     # would normally do v.compute_chunk_sizes() but that is slow for
-    # multidimensional arrays, so hack something more efficient
-
+    # multidimensional arrays, so hack something more efficient.
+    # v.compute_chunk_sizes()
     axis_new_chunks_list = []
     slice_start = 0
+    need_rechunk = False
     for old_chunk_size in axis_old_chunks:
         slice_stop = slice_start + old_chunk_size
-        new_chunk_size = np.sum(indexer_computed[slice_start:slice_stop])
+        new_chunk_size = int(np.sum(indexer_computed[slice_start:slice_stop]))
+        if new_chunk_size == 0:
+            need_rechunk = True
         axis_new_chunks_list.append(new_chunk_size)
         slice_start = slice_stop
     axis_new_chunks = tuple(axis_new_chunks_list)
-    if any([c == 0 for c in axis_new_chunks]):
-        pass
     new_chunks = tuple(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )
     v._chunks = new_chunks
+
+    # Deal with empty chunks, they break reductions.
+    # Possibly related to https://github.com/dask/dask/issues/10327 and https://github.com/dask/dask/issues/2794
+    if need_rechunk:
+        axis_new_chunks_nonzero = tuple([x for x in axis_new_chunks if x > 0])
+        # Edge case, all chunks empty:
+        if len(axis_new_chunks_nonzero) == 0:
+            # Not much we can do about this, no data.
+            axis_new_chunks_nonzero = (0,)
+        new_chunks_nonzero = tuple(
+            [
+                axis_new_chunks_nonzero if i == axis else c
+                for i, c in enumerate(new_chunks)
+            ]
+        )
+        v = v.rechunk(new_chunks_nonzero)
 
     return v
 
