@@ -130,7 +130,7 @@ class SafeStore(BaseStore):
         except KeyError as e:
             # Raise a different error to ensure zarr propagates the exception,
             # rather than filling.
-            raise RuntimeError(e)
+            raise FileNotFoundError(e)
 
     def __getattr__(self, attr):
         return getattr(self._store, attr)
