@@ -239,10 +239,10 @@ def da_from_zarr(
     #
     # N.B., only resize chunks in arrays with more than one dimension,
     # because resizing the one-dimensional arrays according to the same
-    # size generally leads to poor performance with our datasets.
+    # size may lead to poor performance with our datasets.
     #
     # Also, resize along the first dimension only. Again, this is something
-    # that generally works well for our datasets.
+    # that may work well for our datasets.
     #
     # Note that dask also supports this kind of argument, and so we could
     # just pass this through. However, some experiments have found this
