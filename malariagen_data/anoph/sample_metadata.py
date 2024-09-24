@@ -640,7 +640,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             index="Sample metadata columns to use for the pivot table index.",
             columns="Sample metadata columns to use for the pivot table columns.",
         ),
-        returns="Pivot table of sample counts.",
+        returns="Pivot table of sample counts. One raw per admin2_year cohort. Unless otherwise specified using the `columns` parameters, the samples are grouped according to their taxon and then counted.",
     )
     def count_samples(
         self,
@@ -809,7 +809,11 @@ class AnophelesSampleMetadata(AnophelesBase):
             Load a data catalog providing URLs for downloading BAM, VCF and Zarr
             files for samples in a given sample set.
         """,
-        returns="One row per sample, columns provide URLs.",
+        returns="""One row per sample, the columns are
+        **sample_id**, the identifier of the sample,
+        **alignments_bam**, the URL of the alignments BAM file,
+        **snp_genotypes_vcf**, the URL of the SNP genotypes VCF file,
+        **snp_genotypes_zarr**, the URL of the SNP genotypes Zarr file.""",
     )
     def wgs_data_catalog(self, sample_set: base_params.sample_set):
         # Look up release for sample set.
@@ -890,6 +894,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     @check_types
     @doc(
         summary="Get the metadata for a specific sample and sample set.",
+        returns="The metadata for the specified sample.",
     )
     def lookup_sample(
         self,
@@ -1205,7 +1210,27 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "admin2_month", "admin2_quarter", "admin2_year".
             """
         ),
-        returns="A dataframe of cohort data, one row per cohort.",
+        returns="""A dataframe of cohort data, one row per cohort. There are up to 18 columns:
+        **cohort_id** is the identifier of the cohort,
+        **cohort_size** is the number of samples in the cohort,
+        **country** is the country the cohort is from,
+        **country_alpha2** is the ISO alpha-2 code for the country the cohort is from,
+        **country_alpha3** is the ISO alpha-3 code for the country the cohort is from,
+        **taxon** is the taxon of the samples in the cohort,
+        **year** is the year the samples in the cohort were collected in,
+        **quarter** is the quarter the samples in the cohort were collected in (this column is only present if the temporal dimension is *quarter* or *month*),
+        **month** is the month the samples in the cohort were collected in (this column is only present if the temporal dimension is *month*),
+        **admin1_name** is the name of the first administrative level the samples in the cohort were collected in,
+        **admin1_iso** is the ISO code of the first administrative level the samples in the cohort were collected in,
+        **admin1_geoboundaries_shape_id** is the identifier of the geoboundary shape corresponding to the first administrative level the samples in the cohort were collected in,
+        **admin1_representative_longitude** is the representative longitude for the first administrative level the samples in the cohort were collected in,
+        **admin1_representative_latitude** is the representative latitude for the first administrative level the samples in the cohort were collected in,
+        **admin2_name** is the name of the second administrative level the samples in the cohort were collected in (this column is only present if the spatial dimension is *admin2*),
+        **admin2_iso** is the ISO code of the second administrative level the samples in the cohort were collected in (this column is only present if the spatial dimension is *admin2*),
+        **admin2_geoboundaries_shape_id** is the identifier of the geoboundary shape corresponding to the second administrative level the samples in the cohort were collected in (this column is only present if the spatial dimension is *admin2*),
+        **admin2_representative_longitude** is the representative longitude for the second administrative level the samples in the cohort were collected in (this column is only present if the spatial dimension is *admin2*),
+        **admin2_representative_latitude** is the representative latitude for the second administrative level the samples in the cohort were collected in (this column is only present if the spatial dimension is *admin2*).
+        """,
     )
     def cohorts(
         self,
