@@ -1622,7 +1622,7 @@ class AnophelesDataResource(
         random_seed: base_params.random_seed = 42,
         n_jack: base_params.n_jack = 200,
         confidence_level: base_params.confidence_level = 0.95,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.Series:
         debug = self._log.debug
@@ -1728,7 +1728,7 @@ class AnophelesDataResource(
         random_seed: base_params.random_seed = 42,
         n_jack: base_params.n_jack = 200,
         confidence_level: base_params.confidence_level = 0.95,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
         # Normalise cohorts parameter.
@@ -1933,7 +1933,7 @@ class AnophelesDataResource(
             base_params.max_cohort_size
         ] = ihs_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
@@ -2110,7 +2110,7 @@ class AnophelesDataResource(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # compute ihs
@@ -2251,7 +2251,7 @@ class AnophelesDataResource(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # gwss track
@@ -2350,7 +2350,7 @@ class AnophelesDataResource(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # gwss track
@@ -2445,7 +2445,7 @@ class AnophelesDataResource(
             base_params.max_cohort_size
         ] = xpehh_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
@@ -2624,7 +2624,7 @@ class AnophelesDataResource(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # compute xpehh
@@ -3269,7 +3269,7 @@ class AnophelesDataResource(
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> plotly_params.figure:
         from biotite.sequence.phylo import neighbor_joining  # type: ignore
         from scipy.spatial.distance import squareform  # type: ignore

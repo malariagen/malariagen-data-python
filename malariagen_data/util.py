@@ -239,10 +239,10 @@ def da_from_zarr(
     #
     # N.B., only resize chunks in arrays with more than one dimension,
     # because resizing the one-dimensional arrays according to the same
-    # size generally leads to poor performance with our datasets.
+    # size may lead to poor performance with our datasets.
     #
     # Also, resize along the first dimension only. Again, this is something
-    # that generally works well for our datasets.
+    # that may work well for our datasets.
     #
     # Note that dask also supports this kind of argument, and so we could
     # just pass this through. However, some experiments have found this
@@ -313,8 +313,6 @@ def dask_compress_dataset(ds, indexer, dim):
     else:
         assert isinstance(indexer, np.ndarray)
         indexer_computed = indexer
-        indexer_zarr = zarr.array(indexer_computed)
-        indexer = da_from_zarr(indexer_zarr, chunks="native", inline_array=True)
 
     coords = dict()
     for k in ds.coords:
@@ -344,15 +342,22 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
 
     else:
         # apply the indexing operation
-        v = da_compress(
-            indexer=indexer, data=a.data, axis=axis, indexer_computed=indexer_computed
-        )
+        data = a.data
+        if isinstance(data, da.Array):
+            v = da_compress(
+                indexer=indexer,
+                data=a.data,
+                axis=axis,
+                indexer_computed=indexer_computed,
+            )
+        else:
+            v = np.compress(indexer_computed, data, axis=axis)
 
     return v
 
 
 def da_compress(
-    indexer: da.Array,
+    indexer: da.Array | np.ndarray,
     data: da.Array,
     axis: int,
     indexer_computed: Optional[np.ndarray] = None,
@@ -373,7 +378,10 @@ def da_compress(
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
-    indexer = indexer.rechunk((axis_old_chunks,))
+    if isinstance(indexer, da.Array):
+        indexer = indexer.rechunk((axis_old_chunks,))
+    else:
+        indexer = da.from_array(indexer, chunks=(axis_old_chunks,))
 
     # Apply the indexing operation.
     v = da.compress(indexer, data, axis=axis)
@@ -1490,12 +1498,12 @@ def apply_allele_mapping(x, mapping, max_allele):
 
 def dask_apply_allele_mapping(v, mapping, max_allele):
     assert isinstance(v, da.Array)
-    assert isinstance(mapping, da.Array)
+    assert isinstance(mapping, np.ndarray)
     assert v.ndim == 2
     assert mapping.ndim == 2
     assert v.shape[0] == mapping.shape[0]
     v = v.rechunk((v.chunks[0], -1))
-    mapping = mapping.rechunk((v.chunks[0], -1))
+    mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
     out = da.map_blocks(
         lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
         v,
@@ -1531,11 +1539,11 @@ def genotype_array_map_alleles(gt, mapping):
 
 def dask_genotype_array_map_alleles(gt, mapping):
     assert isinstance(gt, da.Array)
-    assert isinstance(mapping, da.Array)
+    assert isinstance(mapping, np.ndarray)
     assert gt.ndim == 3
     assert mapping.ndim == 2
     assert gt.shape[0] == mapping.shape[0]
-    mapping = mapping.rechunk((gt.chunks[0], -1))
+    mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
     gt_out = da.map_blocks(
         genotype_array_map_alleles,
         gt,
