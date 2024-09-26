@@ -73,6 +73,14 @@ sample_query: TypeAlias = Annotated[
     """,
 ]
 
+sample_query_options: TypeAlias = Annotated[
+    dict,
+    """
+    A dictionary of arguments that will be passed through to pandas query() or
+    eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
+    """,
+]
+
 sample_indices: TypeAlias = Annotated[
     List[int],
     """
