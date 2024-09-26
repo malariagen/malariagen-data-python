@@ -708,6 +708,46 @@ def test_snp_calls_with_sample_query_param(ag3_sim_api: AnophelesSnpData, sample
         assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
 
 
+@pytest.mark.parametrize(
+    "sample_query,sample_query_options",
+    [
+        pytest.param(
+            "sex_call in @sex_call_list", {"local_dict": {"sex_call_list": ["F", "M"]}}
+        ),
+        pytest.param(
+            "taxon in @taxon_list",
+            {"local_dict": {"taxon_list": ["coluzzii", "arabiensis"]}},
+        ),
+        pytest.param(
+            "taxon in @taxon_list", {"local_dict": {"taxon_list": ["robot", "cyborg"]}}
+        ),
+    ],
+)
+def test_snp_calls_with_sample_query_options_param(
+    ag3_sim_api: AnophelesSnpData, sample_query, sample_query_options
+):
+    df_samples = ag3_sim_api.sample_metadata().query(
+        sample_query, **sample_query_options
+    )
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3_sim_api.snp_calls(
+                region="3L",
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+    else:
+        ds = ag3_sim_api.snp_calls(
+            region="3L",
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+        assert ds.sizes["samples"] == len(df_samples)
+        assert_array_equal(ds["sample_id"].values, df_samples["sample_id"].values)
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_snp_calls_with_min_cohort_size_param(fixture, api: AnophelesSnpData):
     # Randomly fix some input parameters.
