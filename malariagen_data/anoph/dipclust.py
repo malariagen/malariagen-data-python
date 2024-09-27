@@ -683,6 +683,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 transcript=snp_transcript,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
+                sample_query_options=sample_query_options,
                 snp_query=snp_query,
                 site_mask=site_mask,
                 dendro_sample_id_order=dendro_sample_id_order,
