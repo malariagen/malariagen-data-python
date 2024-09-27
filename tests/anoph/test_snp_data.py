@@ -338,12 +338,21 @@ def test_site_annotations(fixture, api):
         )
 
 
-def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
-    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+def check_snp_genotypes(
+    api, region, sample_sets=None, sample_query=None, sample_query_options={}
+):
+    df_samples = api.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+    )
 
     # Check default field (GT).
     default = api.snp_genotypes(
-        region=region, sample_sets=sample_sets, sample_query=sample_query
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
     )
     assert isinstance(default, da.Array)
     assert default.ndim == 3
@@ -355,6 +364,7 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         field="GT",
     )
     assert isinstance(gt, da.Array)
@@ -367,6 +377,7 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         field="GQ",
     )
     assert isinstance(gq, da.Array)
@@ -379,6 +390,7 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         field="MQ",
     )
     assert isinstance(mq, da.Array)
@@ -391,6 +403,7 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         field="AD",
     )
     assert isinstance(ad, da.Array)
@@ -406,6 +419,7 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         site_mask=mask,
     )
     assert isinstance(gt_pass, da.Array)
@@ -420,10 +434,15 @@ def check_snp_genotypes(api, region, sample_sets=None, sample_query=None):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         chunks="native",
     )
     gt_auto = api.snp_genotypes(
-        region=region, sample_sets=sample_sets, sample_query=sample_query, chunks="auto"
+        region=region,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+        chunks="auto",
     )
     assert gt_native.chunks != gt_auto.chunks
 
@@ -485,6 +504,46 @@ def test_snp_genotypes_with_sample_query_param(
 
     else:
         check_snp_genotypes(api=ag3_sim_api, region=contig, sample_query=sample_query)
+
+
+@pytest.mark.parametrize(
+    "sample_query,sample_query_options",
+    [
+        pytest.param(
+            "sex_call in @sex_call_list", {"local_dict": {"sex_call_list": ["F", "M"]}}
+        ),
+        pytest.param(
+            "taxon in @taxon_list",
+            {"local_dict": {"taxon_list": ["coluzzii", "arabiensis"]}},
+        ),
+        pytest.param(
+            "taxon in @taxon_list", {"local_dict": {"taxon_list": ["robot", "cyborg"]}}
+        ),
+    ],
+)
+def test_snp_genotypes_with_sample_query_options_param(
+    ag3_sim_api: AnophelesSnpData, sample_query, sample_query_options
+):
+    contig = random.choice(ag3_sim_api.contigs)
+    df_samples = ag3_sim_api.sample_metadata().query(
+        sample_query, **sample_query_options
+    )
+
+    if len(df_samples) == 0:
+        with pytest.raises(ValueError):
+            ag3_sim_api.snp_genotypes(
+                region=contig,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+    else:
+        check_snp_genotypes(
+            api=ag3_sim_api,
+            region=contig,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
 
 
 @pytest.mark.parametrize("chrom", ["2RL", "3RL"])
