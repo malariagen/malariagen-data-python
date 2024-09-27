@@ -448,6 +448,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         field: base_params.field = "GT",
         site_mask: Optional[base_params.site_mask] = None,
@@ -514,7 +515,8 @@ class AnophelesSnpData(
         # Apply sample selection if requested.
         if sample_query is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
-            loc_samples = df_samples.eval(sample_query).values
+            sample_query_options = sample_query_options or {}
+            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
             d = da.compress(loc_samples, d, axis=1)
@@ -1220,6 +1222,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
@@ -1241,10 +1244,12 @@ class AnophelesSnpData(
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
         del sample_sets
         del sample_query
+        del sample_query_options
         del sample_indices
         region_prepped = self._prep_region_cache_param(region=region)
         del region
@@ -1290,6 +1295,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         site_mask: base_params.site_mask = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -1304,6 +1310,7 @@ class AnophelesSnpData(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             site_mask=site_mask,
             cohort_size=cohort_size,
             sizing_mode=sizing_mode,
@@ -1355,6 +1362,7 @@ class AnophelesSnpData(
         region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         site_mask: base_params.site_mask = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
@@ -1388,6 +1396,7 @@ class AnophelesSnpData(
                 region=resolved_region,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
+                sample_query_options=sample_query_options,
                 site_mask=None,
                 cohort_size=cohort_size,
                 min_cohort_size=min_cohort_size,
@@ -1584,6 +1593,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
@@ -1603,6 +1613,7 @@ class AnophelesSnpData(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
             site_mask=site_mask,
             site_class=site_class,
@@ -1626,6 +1637,7 @@ class AnophelesSnpData(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
             site_mask=site_mask,
             site_class=site_class,
@@ -1749,6 +1761,7 @@ class AnophelesSnpData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = None,
         site_class: Optional[base_params.site_class] = None,
@@ -1774,12 +1787,14 @@ class AnophelesSnpData(
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
         region_prepped = self._prep_region_cache_param(region=region)
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del sample_sets
         del sample_query
+        del sample_query_options
         del sample_indices
         del region
         del site_mask

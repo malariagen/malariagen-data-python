@@ -825,6 +825,7 @@ class AnophelesDataResource(
         region: base_params.regions,
         sample_sets=None,
         sample_query=None,
+        sample_query_options=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -846,6 +847,9 @@ class AnophelesDataResource(
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_query_options : dict, optional
+            A dictionary of arguments that will be passed through to pandas query() or
+            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
         max_coverage_variance : float, optional
             Remove samples if coverage variance exceeds this value.
 
@@ -865,6 +869,7 @@ class AnophelesDataResource(
                     region=r,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
+                    sample_query_options=sample_query_options,
                     max_coverage_variance=max_coverage_variance,
                     chunks=chunks,
                     inline_array=inline_array,
@@ -882,6 +887,7 @@ class AnophelesDataResource(
         region,
         sample_sets,
         sample_query,
+        sample_query_options,
         max_coverage_variance,
         chunks,
         inline_array,
@@ -896,6 +902,7 @@ class AnophelesDataResource(
             region=region.contig,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
             chunks=chunks,
             inline_array=inline_array,
@@ -908,7 +915,10 @@ class AnophelesDataResource(
 
         debug("access genes")
         df_genome_features = self.genome_features(region=region)
-        df_genes = df_genome_features.query(f"type == '{self._gff_gene_type}'")
+        sample_query_options = sample_query_options or {}
+        df_genes = df_genome_features.query(
+            f"type == '{self._gff_gene_type}'", **sample_query_options
+        )
 
         debug("setup intermediates")
         windows = []
@@ -978,6 +988,7 @@ class AnophelesDataResource(
         region: base_params.regions,
         cohorts,
         sample_query=None,
+        sample_query_options=None,
         min_cohort_size=10,
         sample_sets=None,
         drop_invariant=True,
@@ -1005,6 +1016,9 @@ class AnophelesDataResource(
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_query_options : dict, optional
+            A dictionary of arguments that will be passed through to pandas query() or
+            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
         min_cohort_size : int
             Minimum cohort size, below which cohorts are dropped.
         sample_sets : str or list of str, optional
@@ -1037,6 +1051,7 @@ class AnophelesDataResource(
                     region=r,
                     cohorts=cohorts,
                     sample_query=sample_query,
+                    sample_query_options=sample_query_options,
                     min_cohort_size=min_cohort_size,
                     sample_sets=sample_sets,
                     drop_invariant=drop_invariant,
@@ -1061,6 +1076,7 @@ class AnophelesDataResource(
         region,
         cohorts,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         sample_sets,
         drop_invariant,
@@ -1078,6 +1094,7 @@ class AnophelesDataResource(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
             chunks=chunks,
             inline_array=inline_array,
@@ -1209,6 +1226,7 @@ class AnophelesDataResource(
         period_by,
         sample_sets=None,
         sample_query=None,
+        sample_query_options=None,
         min_cohort_size=10,
         variant_query=None,
         drop_invariant=True,
@@ -1242,6 +1260,9 @@ class AnophelesDataResource(
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_query_options : dict, optional
+            A dictionary of arguments that will be passed through to pandas query() or
+            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
@@ -1279,6 +1300,7 @@ class AnophelesDataResource(
                     period_by=period_by,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
+                    sample_query_options=sample_query_options,
                     min_cohort_size=min_cohort_size,
                     variant_query=variant_query,
                     drop_invariant=drop_invariant,
@@ -1305,6 +1327,7 @@ class AnophelesDataResource(
         period_by,
         sample_sets,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         variant_query,
         drop_invariant,
@@ -1323,6 +1346,7 @@ class AnophelesDataResource(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
             chunks=chunks,
             inline_array=inline_array,
@@ -1724,6 +1748,7 @@ class AnophelesDataResource(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         random_seed: base_params.random_seed = 42,
         n_jack: base_params.n_jack = 200,
@@ -1736,6 +1761,7 @@ class AnophelesDataResource(
             cohorts=cohorts,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=None,
         )
@@ -1913,6 +1939,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
         percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
         standardize: ihs_params.standardize = True,
@@ -1961,6 +1988,7 @@ class AnophelesDataResource(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -1985,6 +2013,7 @@ class AnophelesDataResource(
         analysis,
         sample_sets,
         sample_query,
+        sample_query_options,
         window_size,
         percentiles,
         standardize,
@@ -2008,6 +2037,7 @@ class AnophelesDataResource(
             region=contig,
             analysis=analysis,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -2082,6 +2112,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
         percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
         standardize: ihs_params.standardize = True,
@@ -2133,6 +2164,7 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
             chunks=chunks,
@@ -2322,6 +2354,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
         percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
         standardize: ihs_params.standardize = True,
@@ -2359,6 +2392,7 @@ class AnophelesDataResource(
             analysis=analysis,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             window_size=window_size,
             percentiles=percentiles,
             palette=palette,
@@ -2750,6 +2784,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,
         color: plotly_params.color = None,
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
@@ -2788,6 +2823,7 @@ class AnophelesDataResource(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             analysis=analysis,
             chunks=chunks,
             inline_array=inline_array,
@@ -2795,7 +2831,9 @@ class AnophelesDataResource(
 
         debug("access sample metadata")
         df_samples = self.sample_metadata(
-            sample_query=sample_query, sample_sets=sample_sets
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_sets=sample_sets,
         )
 
         debug("setup haplotype metadata")
@@ -3075,6 +3113,7 @@ class AnophelesDataResource(
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
@@ -3098,12 +3137,14 @@ class AnophelesDataResource(
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
         region_prepped = self._prep_region_cache_param(region=region)
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del sample_sets
         del sample_query
+        del sample_query_options
         del sample_indices
         del region
         del site_mask
@@ -3255,6 +3296,7 @@ class AnophelesDataResource(
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
@@ -3287,6 +3329,7 @@ class AnophelesDataResource(
             thin_offset=thin_offset,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
             site_mask=site_mask,
             site_class=site_class,
@@ -3309,6 +3352,7 @@ class AnophelesDataResource(
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
         # Ensure alignment with pairwise distances.
