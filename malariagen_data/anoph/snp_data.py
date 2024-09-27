@@ -931,7 +931,25 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Access SNP sites, site filters and genotype calls.",
-        returns="A dataset containing SNP sites, site filters and genotype calls.",
+        returns="""A dataset with 4 dimensions:
+        **variants** the number of sites in the selected region,
+        **allele** the number of alleles (4),
+        **samples** the number of samples,
+        and **ploidy** the ploidy (2). There are 3 coordinates:
+        **variant_position** has **variants** values and contains the position of each site,
+        **variant_contig** has **variants** values and contains the contig of each site,
+        **sample_id** has **samples** values and contains the identifier of each sample. The data variables are:
+        **variant_allele**, it has (**variants**, **alleles**) values and contains the reference followed by the 3 alternate alleles for each site,
+        **variant_filter_pass_gamb_colu_arab**, it has (**variants**) values and contains whether the site passes the site filters for all of gambiae, coluzzii and arabiensis (only available for *Ag3*),
+        **variant_filter_pass_gamb_colu**, it has (**variants**) values and contains whether the site passes the site filters for gambiae and coluzzii (only available for *Ag3*),
+        **variant_filter_pass_arab**, it has (**variants**) values and contains whether the site passes the site filters for arabiensis (only available for *Ag3*),
+        **variant_filter_pass_funestus**, it has (**variants**) values and contains whether the site passes the site filters for funestus (only available for *Af1*),
+        **call_genotype**, it has (**variants**, **samples**, **ploidy**) values and contains both calls for each site and each sample,
+        **call_GQ**, it has (**variants**, **samples**) values and contains the genotype quality for each site and each sample,
+        **call_MQ**, it has (**variants**, **samples**) values and contains the mapping quality for each site and each sample,
+        **call_AD**, it has (**variants*, **samples**, *alleles**) values and contains the allele depth for each site, each sample and each allele,
+        **call_genotypes_mask**, it has (**variants**,**samples**, **ploidy**) values and contains whether the allele is absent for each site, each sample and each ploidy.
+        """,
     )
     def snp_calls(
         self,
