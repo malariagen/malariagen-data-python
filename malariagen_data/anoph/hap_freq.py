@@ -8,7 +8,7 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import check_types
 from .hap_data import AnophelesHapData
 from .sample_metadata import locate_cohorts
-from . import base_params, frq_params  # , map_params, plotly_params
+from . import base_params  # , map_params, plotly_params
 
 
 class AnophelesHapFrequencyAnalysis(
@@ -47,9 +47,6 @@ class AnophelesHapFrequencyAnalysis(
         min_cohort_size: base_params.min_cohort_size = 10,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
-        drop_invariant: frq_params.drop_invariant = True,
-        effects: frq_params.effects = True,
-        include_counts: frq_params.include_counts = False,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
@@ -94,7 +91,7 @@ class AnophelesHapFrequencyAnalysis(
             gt = gt.compute()
 
         # Count haplotypes.
-        count_rows = dict()
+        count_rows: dict[str, int] = dict()
         freq_rows = dict()
         freq_cols = dict()
         cohorts_iterator = self._progress(
