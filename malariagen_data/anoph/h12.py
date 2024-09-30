@@ -349,9 +349,7 @@ class AnophelesH12Analysis(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._h12_gwss_contig(
-                chunks=chunks, inline_array=inline_array, **params
-            )
+            results = self._h12_gwss_contig(**params)
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
