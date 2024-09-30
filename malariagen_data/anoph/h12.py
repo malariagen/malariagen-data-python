@@ -321,6 +321,8 @@ class AnophelesH12Analysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -339,14 +341,18 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
-        #        try:
-        #            results = self.results_cache_get(name=name, params=params)
+        try:
+            results = self.results_cache_get(name=name, params=params)
 
-        #        except CacheMiss:
-        results = self._h12_gwss_contig(**params)
-        self.results_cache_set(name=name, params=params, results=results)
+        except CacheMiss:
+            results = self._h12_gwss_contig(
+                chunks=chunks, inline_array=inline_array, **params
+            )
+            self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
         h12 = results["h12"]
