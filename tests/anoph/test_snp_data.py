@@ -933,8 +933,20 @@ def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
     assert_array_equal(pos, ds_region["variant_position"].values)
 
 
-def check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
-    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+def check_snp_allele_counts(
+    *,
+    api,
+    region,
+    sample_sets,
+    sample_query,
+    sample_query_options=None,
+    site_mask,
+):
+    df_samples = api.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+    )
     n_samples = len(df_samples)
 
     # Run once to compute results.
@@ -942,6 +954,7 @@ def check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         site_mask=site_mask,
     )
     assert isinstance(ac, np.ndarray)
@@ -956,6 +969,7 @@ def check_snp_allele_counts(api, region, sample_sets, sample_query, site_mask):
         region=region,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         site_mask=site_mask,
     )
     assert_array_equal(ac, ac2)
@@ -1056,6 +1070,36 @@ def test_snp_allele_counts_with_sample_query_param(fixture, api: AnophelesSnpDat
             region=region,
             site_mask=site_mask,
             sample_query=sample_query,
+        )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_snp_allele_counts_with_sample_query_options_param(
+    fixture, api: AnophelesSnpData
+):
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    site_mask = random.choice((None,) + api.site_mask_ids)
+    sample_query_options = {
+        "local_dict": {
+            "sex_call_list": ["F", "M"],
+        }
+    }
+
+    # Parametrize sample_query.
+    parametrize_sample_query = (None, "sex_call in @sex_call_list")
+
+    # Run tests.
+    for sample_query in parametrize_sample_query:
+        check_snp_allele_counts(
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            site_mask=site_mask,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
 
