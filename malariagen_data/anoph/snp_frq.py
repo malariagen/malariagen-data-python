@@ -137,6 +137,8 @@ class AnophelesSnpFrequencyAnalysis(
         drop_invariant: frq_params.drop_invariant = True,
         effects: frq_params.effects = True,
         include_counts: frq_params.include_counts = False,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
         # Access sample metadata.
         df_samples = self.sample_metadata(
@@ -165,6 +167,8 @@ class AnophelesSnpFrequencyAnalysis(
             site_mask=site_mask,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Early check for no SNPs.
@@ -300,6 +304,8 @@ class AnophelesSnpFrequencyAnalysis(
         sample_sets: Optional[base_params.sample_sets] = None,
         drop_invariant: frq_params.drop_invariant = True,
         include_counts: frq_params.include_counts = False,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
         df_snps = self.snp_allele_frequencies(
             transcript=transcript,
@@ -311,6 +317,8 @@ class AnophelesSnpFrequencyAnalysis(
             drop_invariant=drop_invariant,
             effects=True,
             include_counts=include_counts,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         df_snps.reset_index(inplace=True)
 
@@ -418,6 +426,8 @@ class AnophelesSnpFrequencyAnalysis(
         site_mask: Optional[base_params.site_mask] = None,
         nobs_mode: frq_params.nobs_mode = frq_params.nobs_mode_default,
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -452,6 +462,8 @@ class AnophelesSnpFrequencyAnalysis(
             sample_sets=sample_sets,
             sample_query=sample_query,
             site_mask=site_mask,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Early check for no SNPs.
@@ -631,6 +643,8 @@ class AnophelesSnpFrequencyAnalysis(
         site_mask: Optional[base_params.site_mask] = None,
         nobs_mode: frq_params.nobs_mode = "called",
         ci_method: Optional[frq_params.ci_method] = "wilson",
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> xr.Dataset:
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
@@ -645,6 +659,8 @@ class AnophelesSnpFrequencyAnalysis(
             site_mask=site_mask,
             nobs_mode=nobs_mode,
             ci_method=None,  # we will recompute confidence intervals later
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # N.B., we need to worry about the possibility of the
@@ -1091,6 +1107,7 @@ class AnophelesSnpFrequencyAnalysis(
             """
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
+                auto_pan=False,
             )
             m.add(marker)
 
@@ -1169,12 +1186,16 @@ class AnophelesSnpFrequencyAnalysis(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         site_mask: Optional[base_params.site_mask] = None,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
         ds_snp = self.snp_calls(
             region=transcript,
             sample_query=sample_query,
             sample_sets=sample_sets,
             site_mask=None,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Early check for no SNPs.

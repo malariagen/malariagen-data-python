@@ -93,8 +93,9 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = random.randint(4, n_snps_available)
     # PC3 required for plot_pca_coords_3d()
+    assert min(n_samples, n_snps) > 3
     n_components = random.randint(3, min(n_samples, n_snps))
 
     # Run the PCA.
@@ -158,3 +159,130 @@ def test_pca_plotting(fixture, api: AnophelesPca):
             symbol=symbol,
         )
         assert isinstance(fig_3d, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pca_exclude_samples(fixture, api: AnophelesPca):
+    # Parameters for selecting input data.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    data_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=random.sample(all_sample_sets, 2),
+        site_mask=random.choice((None,) + api.site_mask_ids),
+    )
+    ds = api.biallelic_snp_calls(
+        min_minor_ac=pca_params.min_minor_ac_default,
+        max_missing_an=pca_params.max_missing_an_default,
+        **data_params,
+    )
+
+    # Exclusion parameters.
+    n_samples_excluded = random.randint(1, 5)
+    samples = ds["sample_id"].values.tolist()
+    exclude_samples = random.sample(samples, n_samples_excluded)
+
+    # PCA parameters.
+    n_samples = ds.sizes["samples"] - n_samples_excluded
+    n_snps_available = ds.sizes["variants"]
+    n_snps = random.randint(1, n_snps_available)
+    n_components = random.randint(2, min(n_samples, n_snps, 10))
+
+    # Run the PCA.
+    pca_df, pca_evr = api.pca(
+        n_snps=n_snps,
+        n_components=n_components,
+        exclude_samples=exclude_samples,
+        **data_params,
+    )
+
+    # Check types.
+    assert isinstance(pca_df, pd.DataFrame)
+    assert isinstance(pca_evr, np.ndarray)
+
+    # Check sizes.
+    assert len(pca_df) == n_samples
+    for i in range(n_components):
+        assert f"PC{i+1}" in pca_df.columns, (
+            "n_components",
+            n_components,
+            "n_samples",
+            n_samples,
+            "n_snps_available",
+            n_snps_available,
+            "n_snps",
+            n_snps,
+        )
+    assert f"PC{n_components+1}" not in pca_df.columns
+    assert "pca_fit" in pca_df.columns
+    assert pca_df["pca_fit"].all()
+    assert pca_evr.ndim == 1
+    assert pca_evr.shape[0] == n_components
+
+    # Check exclusions.
+    assert len(pca_df.query(f"sample_id in {exclude_samples}")) == 0
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
+    # Parameters for selecting input data.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    data_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=random.sample(all_sample_sets, 2),
+        site_mask=random.choice((None,) + api.site_mask_ids),
+    )
+    ds = api.biallelic_snp_calls(
+        min_minor_ac=pca_params.min_minor_ac_default,
+        max_missing_an=pca_params.max_missing_an_default,
+        **data_params,
+    )
+
+    # Exclusion parameters.
+    n_samples_excluded = random.randint(1, 5)
+    samples = ds["sample_id"].values.tolist()
+    exclude_samples = random.sample(samples, n_samples_excluded)
+
+    # PCA parameters.
+    n_samples = ds.sizes["samples"]
+    n_snps_available = ds.sizes["variants"]
+    n_snps = random.randint(1, n_snps_available)
+    n_components = random.randint(2, min(n_samples, n_snps, 10))
+
+    # Run the PCA.
+    pca_df, pca_evr = api.pca(
+        n_snps=n_snps,
+        n_components=n_components,
+        fit_exclude_samples=exclude_samples,
+        **data_params,
+    )
+
+    # Check types.
+    assert isinstance(pca_df, pd.DataFrame)
+    assert isinstance(pca_evr, np.ndarray)
+
+    # Check sizes.
+    assert len(pca_df) == n_samples
+    for i in range(n_components):
+        assert f"PC{i+1}" in pca_df.columns, (
+            "n_components",
+            n_components,
+            "n_samples",
+            n_samples,
+            "n_snps_available",
+            n_snps_available,
+            "n_snps",
+            n_snps,
+        )
+    assert f"PC{n_components+1}" not in pca_df.columns
+    assert "pca_fit" in pca_df.columns
+    assert pca_evr.ndim == 1
+    assert pca_evr.shape[0] == n_components
+
+    # Check exclusions.
+    assert not pca_df["pca_fit"].all()
+    assert pca_df["pca_fit"].sum() == n_samples - n_samples_excluded
+    assert len(pca_df.query(f"sample_id in {exclude_samples}")) == n_samples_excluded
+    assert (
+        len(pca_df.query(f"sample_id in {exclude_samples} and not pca_fit"))
+        == n_samples_excluded
+    )

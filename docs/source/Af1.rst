@@ -14,7 +14,7 @@ All the functions below can then be accessed as methods on the ``af1`` object. E
 
     df_samples = af1.sample_metadata()
 
-For more information about the data and terns of use, please see the
+For more information about the data and terms of use, please see the
 `MalariaGEN Anopheles funestus genomic surveillance project <https://www.malariagen.net/projects/anopheles-funestus-genomic-surveillance-project>`_
 home page.
 
