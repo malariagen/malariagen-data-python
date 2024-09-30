@@ -283,6 +283,7 @@ class AnophelesH12Analysis(
         returns=dict(
             x="An array containing the window centre point genomic positions.",
             h12="An array with h12 statistic values for each window.",
+            contigs="An array with the contig for each window. The median is chosen for windows overlapping a change of contig.",
         ),
     )
     def h12_gwss_contig(
