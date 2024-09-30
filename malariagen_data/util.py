@@ -1062,11 +1062,18 @@ def get_gcp_region(details):
                     return "us-west4"
                 elif region == "Texas":
                     return "us-south1"
+                else:
+                    return "us-other"
             elif country == "ZA":
                 if region == "Gauteng":
                     return "africa-south1"
             # Add other regions later if needed.
+            return "other"
     return None
+
+
+class ColabLocationError(RuntimeError):
+    pass
 
 
 def check_colab_location(gcp_region: Optional[str]):
@@ -1074,20 +1081,19 @@ def check_colab_location(gcp_region: Optional[str]):
     Sometimes, colab will allocate a VM outside the US, e.g., in
     Europe or Asia. Because the MalariaGEN GCS buckets are located
     in the US, this is usually bad for performance, because of
-    increased latency and lower bandwidth. Add a check for this and
-    issue a warning if not in the US.
+    increased latency and lower bandwidth, and costs money. Add a
+    check for this and raise an error if not in the US.
     """
 
     if colab and gcp_region:
         if not gcp_region.startswith("us-"):
-            warnings.warn(
+            raise ColabLocationError(
                 fill(
                     dedent(
                         """
-                Your currently allocated Google Colab VM is not located in the US.
-                This usually means that data access will be substantially slower.
-                If possible, select "Runtime > Disconnect and delete runtime" from
-                the menu to request a new VM and try again.
+                Your Google Colab VM is not located in the US.
+                Please select "Runtime > Disconnect and delete runtime" from
+                the menu to request a new VM, then rerun your notebook.
             """
                     )
                 )
