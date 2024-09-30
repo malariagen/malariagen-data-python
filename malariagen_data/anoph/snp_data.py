@@ -17,6 +17,7 @@ from ..util import (
     DIM_VARIANT,
     CacheMiss,
     Region,
+    apply_allele_mapping,
     check_types,
     da_compress,
     da_concat,
@@ -1667,30 +1668,20 @@ class AnophelesSnpData(
             variant_position = ds_bi["variant_position"].data
             coords["variant_position"] = ("variants",), variant_position
 
-            # Prepare allele mapping for dask computations.
-            allele_mapping_zarr = zarr.array(allele_mapping)
-            allele_mapping_dask = da_from_zarr(
-                allele_mapping_zarr, chunks="native", inline_array=True
-            )
-
             # Store alleles, transformed.
             variant_allele_dask = ds_bi["variant_allele"].data
             variant_allele_out = dask_apply_allele_mapping(
-                variant_allele_dask, allele_mapping_dask, max_allele=1
+                variant_allele_dask, allele_mapping, max_allele=1
             )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
             # Store allele counts, transformed.
-            ac_bi_zarr = zarr.array(ac_bi)
-            ac_bi_dask = da_from_zarr(ac_bi_zarr, chunks="native", inline_array=True)
-            ac_out = dask_apply_allele_mapping(
-                ac_bi_dask, allele_mapping_dask, max_allele=1
-            )
+            ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
             data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
             # Store genotype calls, transformed.
             gt_dask = ds_bi["call_genotype"].data
-            gt_out = dask_genotype_array_map_alleles(gt_dask, allele_mapping_dask)
+            gt_out = dask_genotype_array_map_alleles(gt_dask, allele_mapping)
             data_vars["call_genotype"] = (
                 (
                     "variants",
@@ -1705,9 +1696,8 @@ class AnophelesSnpData(
 
             # Apply conditions.
             if max_missing_an is not None or min_minor_ac is not None:
-                ac_out_computed = ac_out.compute()
                 loc_out = np.ones(ds_out.sizes["variants"], dtype=bool)
-                an = ac_out_computed.sum(axis=1)
+                an = ac_out.sum(axis=1)
 
                 # Apply missingness condition.
                 if max_missing_an is not None:
@@ -1721,7 +1711,7 @@ class AnophelesSnpData(
 
                 # Apply minor allele count condition.
                 if min_minor_ac is not None:
-                    ac_minor = ac_out_computed.min(axis=1)
+                    ac_minor = ac_out.min(axis=1)
                     if isinstance(min_minor_ac, float):
                         ac_minor_frac = ac_minor / an
                         loc_minor = ac_minor_frac >= min_minor_ac

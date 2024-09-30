@@ -166,7 +166,7 @@ class AnophelesG123Analysis(
         ] = g123_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -273,7 +273,7 @@ class AnophelesG123Analysis(
         window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> Mapping[str, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -334,7 +334,7 @@ class AnophelesG123Analysis(
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> gplt_params.figure:
         # compute G123
         x, g123 = self.g123_gwss(
@@ -437,7 +437,7 @@ class AnophelesG123Analysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
@@ -512,7 +512,7 @@ class AnophelesG123Analysis(
         title: Optional[gplt_params.title] = None,
         show: gplt_params.show = True,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> gplt_params.figure:
         # get g123 values
         calibration_runs = self.g123_calibration(
