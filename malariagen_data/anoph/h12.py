@@ -341,15 +341,15 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
-            chunks=chunks,
-            inline_array=inline_array,
         )
 
         try:
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._h12_gwss_contig(**params)
+            results = self._h12_gwss_contig(
+                chunks=chunks, inline_array=inline_array, **params
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
