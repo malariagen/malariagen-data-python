@@ -208,7 +208,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    def _h12_gwss(
+    def _h12_gwss_contig(
         self,
         contig,
         analysis,
@@ -242,10 +242,96 @@ class AnophelesH12Analysis(
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            contigs = allel.moving_statistic(
+                ds_haps["variant_contig"].values, statistic=np.median, size=window_size
+            )
 
-        results = dict(x=x, h12=h12)
+        results = dict(x=x, h12=h12, contigs=contigs)
 
         return results
+
+    def _h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+    ):
+        results_tmp = self._h12_gwss_contig(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+        results = dict(x=results_tmp["x"], h12=results_tmp["h12"])
+
+        return results
+
+    @check_types
+    @doc(
+        summary="Run h12 genome-wide selection scan.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            h12="An array with h12 statistic values for each window.",
+        ),
+    )
+    def h12_gwss_contig(
+        self,
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+    ) -> Tuple[np.ndarray, np.ndarray]:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
+        name = "h12_gwss_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
+            window_size=window_size,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
+            sample_query=sample_query,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        #        try:
+        #            results = self.results_cache_get(name=name, params=params)
+
+        #        except CacheMiss:
+        results = self._h12_gwss_contig(**params)
+        self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        h12 = results["h12"]
+        contigs = results["contigs"]
+
+        return x, h12, contigs
 
     @check_types
     @doc(
@@ -331,7 +417,7 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
         # Compute H12.
-        x, h12 = self.h12_gwss(
+        x, h12, contigs = self.h12_gwss_contig(
             contig=contig,
             analysis=analysis,
             window_size=window_size,
@@ -342,6 +428,9 @@ class AnophelesH12Analysis(
             sample_sets=sample_sets,
             random_seed=random_seed,
         )
+
+        # Hard coded contig colors: not good
+        color_dict = {0: "red", 1: "blue", 2: "orange", 3: "green", 4: "purple"}
 
         # Determine X axis range.
         x_min = x[0]
@@ -381,9 +470,9 @@ class AnophelesH12Analysis(
         circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
         circle_kwargs_mutable["size"] = circle_kwargs_mutable.get("size", 3)
         circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get("line_width", 1)
-        circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
-            "line_color", "black"
-        )
+        # circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
+        #    "line_color", "black"
+        # )
         circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
             "fill_color", None
         )
@@ -395,6 +484,18 @@ class AnophelesH12Analysis(
             marker="circle",
             **circle_kwargs_mutable,
         )
+
+        # Plot H12.
+        for s in set(contigs):
+            color = color_dict[s]
+            idxs = contigs == s
+            fig.scatter(
+                x=x[idxs],
+                y=h12[idxs],
+                marker="circle",
+                line_color=color,
+                **circle_kwargs_mutable,
+            )
 
         # Tidy up the plot.
         fig.yaxis.axis_label = "H12"
