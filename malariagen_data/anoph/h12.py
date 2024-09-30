@@ -277,6 +277,8 @@ class AnophelesH12Analysis(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        chunks,
+        inline_array,
     ):
         results_tmp = self._h12_gwss_contig(
             contig=contig,
@@ -288,6 +290,8 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         results = dict(x=results_tmp["x"], h12=results_tmp["h12"])
 
