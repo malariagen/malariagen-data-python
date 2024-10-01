@@ -495,16 +495,6 @@ class AnophelesH12Analysis(
             output_backend=output_backend,
         )
 
-        # circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
-        # circle_kwargs_mutable["size"] = circle_kwargs_mutable.get("size", 3)
-        # circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get("line_width", 1)
-        # circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
-        #    "line_color", "black"
-        # )
-        # circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
-        #    "fill_color", None
-        # )
-
         # Plot H12.
         for s in set(contigs):
             idxs = contigs == s
