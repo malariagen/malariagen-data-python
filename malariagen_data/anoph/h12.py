@@ -460,9 +460,6 @@ class AnophelesH12Analysis(
             inline_array=inline_array,
         )
 
-        # Hard coded contig colors: not good
-        color_dict = {0: "red", 1: "blue", 2: "orange", 3: "green", 4: "purple"}
-
         # Determine X axis range.
         x_min = x[0]
         x_max = x[-1]
@@ -498,34 +495,24 @@ class AnophelesH12Analysis(
             output_backend=output_backend,
         )
 
-        circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
-        circle_kwargs_mutable["size"] = circle_kwargs_mutable.get("size", 3)
-        circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get("line_width", 1)
+        # circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
+        # circle_kwargs_mutable["size"] = circle_kwargs_mutable.get("size", 3)
+        # circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get("line_width", 1)
         # circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
         #    "line_color", "black"
         # )
-        circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
-            "fill_color", None
-        )
-
-        # Plot H12.
-        fig.scatter(
-            x=x,
-            y=h12,
-            marker="circle",
-            **circle_kwargs_mutable,
-        )
+        # circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
+        #    "fill_color", None
+        # )
 
         # Plot H12.
         for s in set(contigs):
-            color = color_dict[s]
             idxs = contigs == s
             fig.scatter(
                 x=x[idxs],
                 y=h12[idxs],
                 marker="circle",
-                line_color=color,
-                **circle_kwargs_mutable,
+                **gplt_params.circle_kwargs_dict[s],
             )
 
         # Tidy up the plot.
