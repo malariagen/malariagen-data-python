@@ -104,7 +104,12 @@ line_kwargs: TypeAlias = Annotated[
     "Passed through to bokeh line() function.",
 ]
 
-circle_kwargs_dict: Final[dict[int, circle_kwargs]] = {
+circle_kwargs_dict: TypeAlias = Annotated[
+    dict[int, circle_kwargs],
+    "A dictionary of arguments passed through to bokeh scatter() function with marker = 'circle' with a value per contig.",
+]
+
+default_circle_kwargs_dict: Final[dict[int, circle_kwargs]] = {
     0: {"line_color": "red", "size": 3, "line_width": 1, "fill_color": None},
     1: {"line_color": "blue", "size": 3, "line_width": 1, "fill_color": None},
     2: {"line_color": "orange", "size": 3, "line_width": 1, "fill_color": None},
