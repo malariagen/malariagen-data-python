@@ -438,7 +438,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
-        circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
+        circle_kwargs_dict: Optional[gplt_params.circle_kwargs_dict] = None,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -498,18 +498,20 @@ class AnophelesH12Analysis(
         # Plot H12.
         for s in set(contigs):
             idxs = contigs == s
-            circle_kwargs_mutable = dict(circle_kwargs[s]) if circle_kwargs else {}
+            circle_kwargs_mutable = (
+                dict(circle_kwargs_dict[s]) if circle_kwargs_dict else {}
+            )
             circle_kwargs_mutable["size"] = circle_kwargs_mutable.get(
-                "size", gplt_params.circle_kwargs_dict[s]["size"]
+                "size", gplt_params.default_circle_kwargs_dict[s]["size"]
             )
             circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get(
-                "line_width", gplt_params.circle_kwargs_dict[s]["line_width"]
+                "line_width", gplt_params.default_circle_kwargs_dict[s]["line_width"]
             )
             circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
-                "line_color", gplt_params.circle_kwargs_dict[s]["line_color"]
+                "line_color", gplt_params.default_circle_kwargs_dict[s]["line_color"]
             )
             circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
-                "fill_color", gplt_params.circle_kwargs_dict[s]["fill_color"]
+                "fill_color", gplt_params.default_circle_kwargs_dict[s]["fill_color"]
             )
             fig.scatter(
                 x=x[idxs],
