@@ -508,11 +508,24 @@ class AnophelesH12Analysis(
         # Plot H12.
         for s in set(contigs):
             idxs = contigs == s
+            circle_kwargs_mutable = dict(circle_kwargs[s]) if circle_kwargs else {}
+            circle_kwargs_mutable["size"] = circle_kwargs_mutable.get(
+                "size", gplt_params.circle_kwargs_dict[s]["size"]
+            )
+            circle_kwargs_mutable["line_width"] = circle_kwargs_mutable.get(
+                "line_width", gplt_params.circle_kwargs_dict[s]["line_width"]
+            )
+            circle_kwargs_mutable["line_color"] = circle_kwargs_mutable.get(
+                "line_color", gplt_params.circle_kwargs_dict[s]["line_color"]
+            )
+            circle_kwargs_mutable["fill_color"] = circle_kwargs_mutable.get(
+                "fill_color", gplt_params.circle_kwargs_dict[s]["fill_color"]
+            )
             fig.scatter(
                 x=x[idxs],
                 y=h12[idxs],
                 marker="circle",
-                **gplt_params.circle_kwargs_dict[s],
+                **circle_kwargs_mutable,
             )
 
         # Tidy up the plot.
