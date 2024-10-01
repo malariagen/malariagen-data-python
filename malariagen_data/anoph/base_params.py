@@ -248,10 +248,6 @@ chunks: TypeAlias = Annotated[
 # amounts of data.
 native_chunks: chunks = "native"
 
-# Alternative default chunk size, suitable for functions which need to
-# scan a large amount of data.
-large_chunks: chunks = "300MiB"
-
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],
     """

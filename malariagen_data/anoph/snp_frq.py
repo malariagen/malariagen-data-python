@@ -1107,6 +1107,7 @@ class AnophelesSnpFrequencyAnalysis(
             """
             marker.popup = ipyleaflet.Popup(
                 child=ipywidgets.HTML(popup_html),
+                auto_pan=False,
             )
             m.add(marker)
 

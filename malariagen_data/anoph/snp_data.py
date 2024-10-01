@@ -22,7 +22,9 @@ from ..util import (
     da_compress,
     da_concat,
     da_from_zarr,
+    dask_apply_allele_mapping,
     dask_compress_dataset,
+    dask_genotype_array_map_alleles,
     init_zarr_store,
     locate_region,
     parse_multi_region,
@@ -565,6 +567,7 @@ class AnophelesSnpData(
             ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
             alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
             variant_allele = da.concatenate([ref[:, None], alt], axis=1)
+            variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
             data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
             # Set up variant_contig.
@@ -1611,7 +1614,7 @@ class AnophelesSnpData(
 
         with self._spinner("Prepare biallelic SNP calls"):
             # Subset to biallelic sites.
-            ds_bi = ds.isel(variants=loc_bi)
+            ds_bi = dask_compress_dataset(ds, indexer=loc_bi, dim="variants")
 
             # Start building a new dataset.
             coords: Dict[str, Any] = dict()
@@ -1624,33 +1627,30 @@ class AnophelesSnpData(
             coords["variant_contig"] = ("variants",), ds_bi["variant_contig"].data
 
             # Store position.
-            coords["variant_position"] = ("variants",), ds_bi["variant_position"].data
+            variant_position = ds_bi["variant_position"].data
+            coords["variant_position"] = ("variants",), variant_position
 
             # Store alleles, transformed.
-            variant_allele = ds_bi["variant_allele"].data
-            variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
-            variant_allele_out = da.map_blocks(
-                lambda block: apply_allele_mapping(block, allele_mapping, max_allele=1),
-                variant_allele,
-                dtype=variant_allele.dtype,
-                chunks=(variant_allele.chunks[0], [2]),
+            variant_allele_dask = ds_bi["variant_allele"].data
+            variant_allele_out = dask_apply_allele_mapping(
+                variant_allele_dask, allele_mapping, max_allele=1
             )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
-            # Store allele counts, transformed, so we don't have to recompute.
+            # Store allele counts, transformed.
             ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
             data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
             # Store genotype calls, transformed.
-            gt = ds_bi["call_genotype"].data
-            gt_out = allel.GenotypeDaskArray(gt).map_alleles(allele_mapping)
+            gt_dask = ds_bi["call_genotype"].data
+            gt_out = dask_genotype_array_map_alleles(gt_dask, allele_mapping)
             data_vars["call_genotype"] = (
                 (
                     "variants",
                     "samples",
                     "ploidy",
                 ),
-                gt_out.values,
+                gt_out,
             )
 
             # Build dataset.
@@ -1681,12 +1681,13 @@ class AnophelesSnpData(
                         loc_minor = ac_minor >= min_minor_ac
                     loc_out &= loc_minor
 
-                ds_out = ds_out.isel(variants=loc_out)
+                # Apply selection from conditions.
+                ds_out = dask_compress_dataset(ds_out, indexer=loc_out, dim="variants")
 
             # Try to meet target number of SNPs.
             if n_snps is not None:
                 if ds_out.sizes["variants"] > (n_snps * 2):
-                    # Do some thinning.
+                    # Apply thinning.
                     thin_step = ds_out.sizes["variants"] // n_snps
                     loc_thin = slice(thin_offset, None, thin_step)
                     ds_out = ds_out.isel(variants=loc_thin)
