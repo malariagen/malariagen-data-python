@@ -152,11 +152,11 @@ def check_h12_gwss(*, api, h12_params):
 
     # Check plotting functions.
     fig = api.plot_h12_gwss_track(
-        **h12_params, circle_kwargs_dict=circle_kwargs_dict, show=False
+        **h12_params, circle_kwargs_param=circle_kwargs_dict, show=False
     )
     assert isinstance(fig, bokeh.models.Plot)
     fig = api.plot_h12_gwss(
-        **h12_params, circle_kwargs_dict=circle_kwargs_dict, show=False
+        **h12_params, circle_kwargs_param=circle_kwargs_dict[0], show=False
     )
     assert isinstance(fig, bokeh.models.GridPlot)
 

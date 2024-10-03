@@ -116,3 +116,13 @@ default_circle_kwargs_dict: Final[dict[int, circle_kwargs]] = {
     3: {"line_color": "green", "size": 3, "line_width": 1, "fill_color": None},
     4: {"line_color": "purple", "size": 3, "line_width": 1, "fill_color": None},
 }
+
+circle_kwargs_list: TypeAlias = Annotated[
+    list[circle_kwargs],
+    "A list of arguments passed through to bokeh scatter() function with marker = 'circle' with a value per contig.",
+]
+
+circle_kwargs_param: TypeAlias = Annotated[
+    Union[circle_kwargs, circle_kwargs_dict, circle_kwargs_list],
+    "A set of arguments passed through to bokeh scatter() function with marker = 'circle'.",
+]

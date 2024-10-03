@@ -135,7 +135,7 @@ def check_h1x_gwss(*, api, h1x_params):
     fig = api.plot_h1x_gwss_track(**h1x_params, show=False)
     assert isinstance(fig, bokeh.models.Plot)
     fig = api.plot_h1x_gwss(
-        **h1x_params, circle_kwargs_dict=circle_kwargs_dict, show=False
+        **h1x_params, circle_kwargs_param=circle_kwargs_dict, show=False
     )
     assert isinstance(fig, bokeh.models.GridPlot)
 
