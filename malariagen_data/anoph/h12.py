@@ -479,83 +479,78 @@ class AnophelesH12Analysis(
                         for i in range(len(circle_kwargs_param), 5)
                     }
                 )
-        elif isinstance(circle_kwargs_param, dict):
-            if isinstance(list(circle_kwargs_param.keys())[0], str):
-                if list(circle_kwargs_param.keys())[0] in [
-                    "2L",
-                    "2R",
-                    "3L",
-                    "3R",
-                    "X",
-                    "2RL",
-                    "3RL",
-                ]:
-                    for i in range(0, 5):
-                        if i == 0:
-                            if "2L" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[
-                                    i
-                                ]  # circle_kwargs_param["2L"]
-                            elif "2RL" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[
-                                    i
-                                ]  # circle_kwargs_param["2RL"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 1:
-                            if "2R" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["2R"]
-                            elif "3RL" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["3RL"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 2:
-                            if "3L" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["3L"]
-                            elif "X" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["X"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 3:
-                            if "3R" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["3R"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 4:
-                            if (
-                                "X" in circle_kwargs_param.keys()
-                            ):  # Ag3. Will also get a value for Af1 but it will be ignored.
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["X"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                else:
-                    print("circle_kwargs")
-                    circle_kwargs_param_dict = {
-                        i: circle_kwargs_param for i in range(0, 5)
-                    }
-            elif isinstance(list(circle_kwargs_param.keys())[0], int):
-                circle_kwargs_param_dict = {}
+        elif isinstance(circle_kwargs_param, dict[str, dict]):
+            if list(circle_kwargs_param.keys())[0] in [
+                "2L",
+                "2R",
+                "3L",
+                "3R",
+                "X",
+                "2RL",
+                "3RL",
+            ]:
                 for i in range(0, 5):
-                    if i in list(circle_kwargs_param.keys()):
-                        circle_kwargs_param_dict[i] = circle_kwargs_param[i]
-                    else:
-                        circle_kwargs_param_dict[
-                            i
-                        ] = gplt_params.default_circle_kwargs_dict[i]
+                    if i == 0:
+                        if "2L" in circle_kwargs_param.keys():  # Ag3
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[
+                                i
+                            ]  # circle_kwargs_param["2L"]
+                        elif "2RL" in circle_kwargs_param.keys():  # Af1
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[
+                                i
+                            ]  # circle_kwargs_param["2RL"]
+                        else:
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[i]
+                    elif i == 1:
+                        if "2R" in circle_kwargs_param.keys():  # Ag3
+                            circle_kwargs_param_dict[i] = circle_kwargs_param["2R"]
+                        elif "3RL" in circle_kwargs_param.keys():  # Af1
+                            circle_kwargs_param_dict[i] = circle_kwargs_param["3RL"]
+                        else:
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[i]
+                    elif i == 2:
+                        if "3L" in circle_kwargs_param.keys():  # Ag3
+                            circle_kwargs_param_dict[i] = circle_kwargs_param["3L"]
+                        elif "X" in circle_kwargs_param.keys():  # Af1
+                            circle_kwargs_param_dict[i] = circle_kwargs_param["X"]
+                        else:
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[i]
+                    elif i == 3:
+                        if "3R" in circle_kwargs_param.keys():  # Ag3
+                            circle_kwargs_param_dict[i] = circle_kwargs_param["3R"]
+                        else:
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[i]
+                    elif i == 4:
+                        if (
+                            "X" in circle_kwargs_param.keys()
+                        ):  # Ag3. Will also get a value for Af1 but it will be ignored.
+                            circle_kwargs_param_dict[i] = circle_kwargs_param["X"]
+                        else:
+                            circle_kwargs_param_dict[
+                                i
+                            ] = gplt_params.default_circle_kwargs_dict[i]
+            else:
+                circle_kwargs_param_dict = {i: circle_kwargs_param for i in range(0, 5)}
+        elif isinstance(circle_kwargs_param, dict[int, dict]):
+            for i in range(0, 5):
+                if i in list(circle_kwargs_param.keys()):
+                    circle_kwargs_param_dict[i] = circle_kwargs_param[i]
+                else:
+                    circle_kwargs_param_dict[
+                        i
+                    ] = gplt_params.default_circle_kwargs_dict[i]
         else:
             circle_kwargs_param_dict = gplt_params.default_circle_kwargs_dict
 
