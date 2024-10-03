@@ -4,7 +4,7 @@ from typing import Optional, Sequence
 
 from typing_extensions import Annotated, TypeAlias
 
-from . import base_params
+from . import base_params, gplt_params, hap_params
 
 window_sizes: TypeAlias = Annotated[
     Sequence[int],
@@ -27,3 +27,38 @@ cohort_size_default: Optional[base_params.cohort_size] = None
 min_cohort_size_default: base_params.min_cohort_size = 15
 
 max_cohort_size_default: base_params.max_cohort_size = 50
+
+
+class sample_query_params:
+    def __init__(
+        self,
+        sample_query: base_params.sample_query,
+        title: Optional[gplt_params.title],
+        window_size: window_size,
+        analysis: Optional[hap_params.analysis] = base_params.DEFAULT,
+        cohort_size: Optional[base_params.cohort_size] = cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = max_cohort_size_default,
+    ) -> None:
+        self.sample_query = sample_query
+        if title:
+            self.title = title
+        else:
+            self.title = sample_query
+        self.window_size = window_size
+        self.analysis = analysis
+        self.cohort_size = cohort_size
+        self.min_cohort_size = min_cohort_size
+        self.max_cohort_size = max_cohort_size
+
+
+sample_queries: TypeAlias = Annotated[
+    Sequence[sample_query_params],
+    """
+    A set of sample queries parameters. These include actual sample queries, the title associated to each one, the window size for the analysis, the site filter analysis that needs to be used, the cohort size, the minimum and the maximum cohort sizes.
+    """,
+]
