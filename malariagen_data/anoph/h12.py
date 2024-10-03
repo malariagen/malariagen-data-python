@@ -493,9 +493,17 @@ class AnophelesH12Analysis(
                     for i in range(0, 5):
                         if i == 0:
                             if "2L" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["2L"]
+                                circle_kwargs_param_dict[
+                                    i
+                                ] = gplt_params.default_circle_kwargs_dict[
+                                    i
+                                ]  # circle_kwargs_param["2L"]
                             elif "2RL" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["2RL"]
+                                circle_kwargs_param_dict[
+                                    i
+                                ] = gplt_params.default_circle_kwargs_dict[
+                                    i
+                                ]  # circle_kwargs_param["2RL"]
                             else:
                                 circle_kwargs_param_dict[
                                     i
