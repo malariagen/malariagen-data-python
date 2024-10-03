@@ -105,7 +105,7 @@ line_kwargs: TypeAlias = Annotated[
 ]
 
 circle_kwargs_dict: TypeAlias = Annotated[
-    dict[int, circle_kwargs],
+    Union[dict[int, circle_kwargs], dict[str, circle_kwargs]],
     "A dictionary of arguments passed through to bokeh scatter() function with marker = 'circle' with a value per contig.",
 ]
 
