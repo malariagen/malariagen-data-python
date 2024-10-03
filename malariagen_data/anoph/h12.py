@@ -489,7 +489,7 @@ class AnophelesH12Analysis(
                     "2RL",
                     "3RL",
                 ]:
-                    circle_kwargs_param_dict = {}
+                    circle_kwargs_param_dict: dict[int, gplt_params.circle_kwargs] = {}
                     for i in range(0, 5):
                         if i == 0:
                             if "2L" in circle_kwargs_param.keys():  # Ag3
