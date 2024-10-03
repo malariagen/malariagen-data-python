@@ -124,11 +124,21 @@ def check_h1x_gwss(*, api, h1x_params):
     assert np.all(h1x <= 1)
 
     circle_kwargs_dict = {
-        0: {"line_color": "black", "size": 5, "line_width": 1, "fill_color": None},
-        1: {"line_color": "green", "size": 4, "line_width": 2, "fill_color": "black"},
-        2: {"line_color": "orange", "size": 3, "line_width": 1, "fill_color": None},
-        3: {"line_color": "green", "size": 2, "line_width": 2, "fill_color": "black"},
-        4: {"line_color": "purple", "size": 1, "line_width": 1, "fill_color": None},
+        "2L": {"line_color": "black", "size": 5, "line_width": 1, "fill_color": None},
+        "2R": {
+            "line_color": "green",
+            "size": 4,
+            "line_width": 2,
+            "fill_color": "black",
+        },
+        "3L": {"line_color": "orange", "size": 3, "line_width": 1, "fill_color": None},
+        "3R": {
+            "line_color": "green",
+            "size": 2,
+            "line_width": 2,
+            "fill_color": "black",
+        },
+        "X": {"line_color": "purple", "size": 1, "line_width": 1, "fill_color": None},
     }
 
     # Check plotting functions.
