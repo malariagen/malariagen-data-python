@@ -300,6 +300,7 @@ class AnophelesH1XAnalysis(
             inline_array=inline_array,
         )
 
+        circle_kwargs_param_dict: dict[int, gplt_params.circle_kwargs] = {}
         if circle_kwargs_param is None:
             circle_kwargs_param_dict = gplt_params.default_circle_kwargs_dict
         elif isinstance(circle_kwargs_param, list):
@@ -329,7 +330,6 @@ class AnophelesH1XAnalysis(
                     "2RL",
                     "3RL",
                 ]:
-                    circle_kwargs_param_dict: dict[int, gplt_params.circle_kwargs] = {}
                     for i in range(0, 5):
                         if i == 0:
                             if "2L" in circle_kwargs_param.keys():  # Ag3
