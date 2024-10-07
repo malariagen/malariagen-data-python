@@ -131,6 +131,7 @@ class AnophelesSnpFrequencyAnalysis(
         transcript: base_params.transcript,
         cohorts: base_params.cohorts,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -142,7 +143,9 @@ class AnophelesSnpFrequencyAnalysis(
     ) -> pd.DataFrame:
         # Access sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
@@ -167,6 +170,7 @@ class AnophelesSnpFrequencyAnalysis(
             site_mask=site_mask,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             chunks=chunks,
             inline_array=inline_array,
         )
@@ -299,6 +303,7 @@ class AnophelesSnpFrequencyAnalysis(
         transcript: base_params.transcript,
         cohorts: base_params.cohorts,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = 10,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -311,6 +316,7 @@ class AnophelesSnpFrequencyAnalysis(
             transcript=transcript,
             cohorts=cohorts,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             site_mask=site_mask,
             sample_sets=sample_sets,
@@ -420,6 +426,7 @@ class AnophelesSnpFrequencyAnalysis(
         period_by: frq_params.period_by,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
         drop_invariant: frq_params.drop_invariant = True,
         variant_query: Optional[frq_params.variant_query] = None,
@@ -431,7 +438,9 @@ class AnophelesSnpFrequencyAnalysis(
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Prepare sample metadata for cohort grouping.
@@ -461,6 +470,7 @@ class AnophelesSnpFrequencyAnalysis(
             region=transcript,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             site_mask=site_mask,
             chunks=chunks,
             inline_array=inline_array,
@@ -638,6 +648,7 @@ class AnophelesSnpFrequencyAnalysis(
         period_by: frq_params.period_by,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
         variant_query: Optional[frq_params.variant_query] = None,
         site_mask: Optional[base_params.site_mask] = None,
@@ -653,6 +664,7 @@ class AnophelesSnpFrequencyAnalysis(
             period_by=period_by,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             drop_invariant=True,  # always drop invariant for aa frequencies
             variant_query=AA_CHANGE_QUERY,  # we'll also apply a variant query later
@@ -1185,6 +1197,7 @@ class AnophelesSnpFrequencyAnalysis(
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         site_mask: Optional[base_params.site_mask] = None,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -1192,6 +1205,7 @@ class AnophelesSnpFrequencyAnalysis(
         ds_snp = self.snp_calls(
             region=transcript,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=None,
             chunks=chunks,

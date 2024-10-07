@@ -325,6 +325,7 @@ class AnophelesFstAnalysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover
@@ -414,6 +415,7 @@ class AnophelesFstAnalysis(
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -431,6 +433,7 @@ class AnophelesFstAnalysis(
             cohorts,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
         )

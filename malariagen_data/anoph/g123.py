@@ -42,6 +42,7 @@ class AnophelesG123Analysis(
         site_mask,
         sample_sets,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         max_cohort_size,
         random_seed,
@@ -51,6 +52,7 @@ class AnophelesG123Analysis(
         ds_snps = self.snp_calls(
             region=contig,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             min_cohort_size=min_cohort_size,
@@ -110,6 +112,7 @@ class AnophelesG123Analysis(
         window_size,
         sample_sets,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         max_cohort_size,
         random_seed,
@@ -122,6 +125,7 @@ class AnophelesG123Analysis(
             site_mask=site_mask,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -153,6 +157,7 @@ class AnophelesG123Analysis(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = g123_params.min_cohort_size_default,
@@ -186,6 +191,7 @@ class AnophelesG123Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -212,6 +218,7 @@ class AnophelesG123Analysis(
         sites,
         site_mask,
         sample_query,
+        sample_query_options,
         sample_sets,
         min_cohort_size,
         max_cohort_size,
@@ -225,6 +232,7 @@ class AnophelesG123Analysis(
             sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -254,6 +262,7 @@ class AnophelesG123Analysis(
         sites: g123_params.sites = base_params.DEFAULT,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -280,6 +289,7 @@ class AnophelesG123Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -308,6 +318,7 @@ class AnophelesG123Analysis(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = g123_params.min_cohort_size_default,
@@ -335,6 +346,7 @@ class AnophelesG123Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
             inline_array=inline_array,
@@ -417,6 +429,7 @@ class AnophelesG123Analysis(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = g123_params.min_cohort_size_default,
@@ -443,6 +456,7 @@ class AnophelesG123Analysis(
             window_size=window_size,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -477,6 +491,7 @@ class AnophelesG123Analysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover
@@ -495,6 +510,7 @@ class AnophelesG123Analysis(
         sites: g123_params.sites,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -515,6 +531,7 @@ class AnophelesG123Analysis(
             sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             window_sizes=window_sizes,
             min_cohort_size=min_cohort_size,
