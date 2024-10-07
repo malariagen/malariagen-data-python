@@ -90,7 +90,7 @@ class PlinkConverter(
                 "sample_id",
                 "call_genotype",
             ]
-        ].isel(alleles=slice(0, 2))  # .sel(variants=ix_sites_thinned)
+        ]
 
         # Compute gt ref counts
         with self._spinner("Computing genotype ref counts"):

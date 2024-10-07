@@ -7,6 +7,7 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.to_plink import PlinkConverter
 
 import os
+import bed_reader
 
 
 @pytest.fixture
@@ -76,25 +77,60 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     # Parameters for selecting input data, filtering, and converting.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    plink_params = dict(
-        results_dir=tmp_path,
+
+    data_params = dict(
         region=random.choice(api.contigs),
-        n_snps=500,
-        min_minor_ac=1,
-        thin_offset=1,
-        max_missing_an=1,
         sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
+        min_minor_ac=1,
+        max_missing_an=1,
+        thin_offset=1,
+        random_seed=random.randint(1, 2000),
     )
-    # Make the plink files
+
+    # Load a ds containing the randomly generated samples and regions to get the number of available snps to subset from.
+    ds = api.biallelic_snp_calls(
+        **data_params,
+    )
+
+    n_snps_available = ds.sizes["variants"]
+    n_snps = random.randint(1, n_snps_available)
+
+    # Define plink params.
+    plink_params = dict(results_dir=tmp_path, n_snps=n_snps, **data_params)
+
+    # Make the plink files.
     api.biallelic_snps_to_plink(**plink_params)
 
-    # Check to see if bed, bim, fam output files exist
+    # Test to see if bed, bim, fam output files exist.
     file_path = f"{tmp_path}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['thin_offset']}.{plink_params['max_missing_an']}"
 
-    if os.path.exists(f"{file_path}.bed"):
-        pass
-    if os.path.exists(f"{file_path}.bim"):
-        pass
-    if os.path.exists(f"{file_path}.fam"):
-        pass
+    assert os.path.exists(f"{file_path}.bed")
+    assert os.path.exists(f"{file_path}.bim")
+    assert os.path.exists(f"{file_path}.fam")
+
+    # Read bed, bim, and fam files (bed_reader searches for the .bim and.fam files matching the prefix of the .bed file).
+    bed = bed_reader.open_bed(f"{file_path}.bed")
+
+    # Load a ds containing the same data exported to PLINK to test against.
+    ds_test = api.biallelic_snp_calls(
+        **data_params,
+        n_snps=n_snps,
+    )
+
+    # Test to make sure that the rows and columns (no. variants and no. samples) of the .bed file match.
+    assert bed.shape[1] == ds_test.variant_position.shape[0]
+    assert bed.shape[0] == ds_test.samples.shape[0]
+
+    # Test to see if sample_id is exported correctly (stored in the .fam file).
+    assert set(bed.iid) == set(ds_test.sample_id.values)
+
+    # Test to see if variant position is exported to the.bim correctly.
+    assert set(bed.bp_position) == set(ds_test.variant_position.values)
+
+    # Test to make sure chromosome ID is exported to the .bim file correctly (coerce to str to match types).
+    assert set(bed.chromosome) == set(ds_test.variant_contig.values.astype(str))
+
+    # Test to make sure that the major and minor allele are exported to the .bim file as expected (coerce to str to match types).
+    assert set(bed.allele_1) == set(ds_test.variant_allele.values[:, 0].astype(str))
+    assert set(bed.allele_2) == set(ds_test.variant_allele.values[:, 1].astype(str))
