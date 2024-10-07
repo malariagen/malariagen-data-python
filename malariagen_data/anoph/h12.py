@@ -286,6 +286,7 @@ class AnophelesH12Analysis(
         window_size,
         sample_sets,
         sample_query,
+        sample_query_options,
         cohort_size,
         min_cohort_size,
         max_cohort_size,
@@ -299,6 +300,7 @@ class AnophelesH12Analysis(
             window_size=window_size,
             sample_query=sample_query,
             sample_sets=sample_sets,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -325,6 +327,7 @@ class AnophelesH12Analysis(
         window_size: h12_params.window_size,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -350,6 +353,7 @@ class AnophelesH12Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
