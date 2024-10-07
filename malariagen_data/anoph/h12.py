@@ -226,7 +226,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    def _h12_gwss(
+    def _h12_gwss_contig(
         self,
         contig,
         analysis,
@@ -266,10 +266,114 @@ class AnophelesH12Analysis(
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            contigs = np.asarray(
+                allel.moving_statistic(
+                    ds_haps["variant_contig"].values,
+                    statistic=np.median,
+                    size=window_size,
+                ),
+                dtype=int,
+            )
 
-        results = dict(x=x, h12=h12)
+        results = dict(x=x, h12=h12, contigs=contigs)
 
         return results
+
+    def _h12_gwss(
+        self,
+        contig,
+        analysis,
+        window_size,
+        sample_sets,
+        sample_query,
+        sample_query_options,
+        cohort_size,
+        min_cohort_size,
+        max_cohort_size,
+        random_seed,
+        chunks,
+        inline_array,
+    ):
+        results_tmp = self._h12_gwss_contig(
+            contig=contig,
+            analysis=analysis,
+            window_size=window_size,
+            sample_query=sample_query,
+            sample_sets=sample_sets,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+        results = dict(x=results_tmp["x"], h12=results_tmp["h12"])
+
+        return results
+
+    @check_types
+    @doc(
+        summary="Run h12 genome-wide selection scan.",
+        returns=dict(
+            x="An array containing the window centre point genomic positions.",
+            h12="An array with h12 statistic values for each window.",
+            contigs="An array with the contig for each window. The median is chosen for windows overlapping a change of contig.",
+        ),
+    )
+    def h12_gwss_contig(
+        self,
+        contig: base_params.contig,
+        window_size: h12_params.window_size,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        # Change this name if you ever change the behaviour of this function, to
+        # invalidate any previously cached data.
+        name = "h12_gwss_contig_v1"
+
+        params = dict(
+            contig=contig,
+            analysis=self._prep_phasing_analysis_param(analysis=analysis),
+            window_size=window_size,
+            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
+            # N.B., do not be tempted to convert this sample query into integer
+            # indices using _prep_sample_selection_params, because the indices
+            # are different in the haplotype data.
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+        )
+
+        try:
+            results = self.results_cache_get(name=name, params=params)
+
+        except CacheMiss:
+            results = self._h12_gwss_contig(
+                chunks=chunks, inline_array=inline_array, **params
+            )
+            self.results_cache_set(name=name, params=params, results=results)
+
+        x = results["x"]
+        h12 = results["h12"]
+        contigs = results["contigs"]
+
+        return x, h12, contigs
 
     @check_types
     @doc(
@@ -354,6 +458,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -361,7 +466,7 @@ class AnophelesH12Analysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H12.
-        x, h12 = self.h12_gwss(
+        x, h12, contigs = self.h12_gwss_contig(
             contig=contig,
             analysis=analysis,
             window_size=window_size,
@@ -412,15 +517,14 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        fig.scatter(
-            x=x,
-            y=h12,
-            marker="circle",
-            size=3,
-            line_width=1,
-            line_color="black",
-            fill_color=None,
-        )
+        for s in set(contigs):
+            idxs = contigs == s
+            fig.scatter(
+                x=x[idxs],
+                y=h12[idxs],
+                marker="circle",
+                color=contig_colors[s % len(contig_colors)],
+            )
 
         # Tidy up the plot.
         fig.yaxis.axis_label = "H12"
@@ -457,6 +561,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -479,6 +584,7 @@ class AnophelesH12Analysis(
             sizing_mode=sizing_mode,
             width=width,
             height=track_height,
+            contig_colors=contig_colors,
             show=False,
             output_backend=output_backend,
             chunks=chunks,
