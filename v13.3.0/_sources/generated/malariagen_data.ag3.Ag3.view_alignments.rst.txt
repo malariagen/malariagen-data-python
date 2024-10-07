@@ -1,0 +1,6 @@
+﻿malariagen\_data.ag3.Ag3.view\_alignments
+=========================================
+
+.. currentmodule:: malariagen_data.ag3
+
+.. automethod:: Ag3.view_alignments
