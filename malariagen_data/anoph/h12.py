@@ -443,9 +443,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
-        contig_colors: Optional[
-            gplt_params.contig_colors
-        ] = gplt_params.contig_colors_default,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -546,9 +544,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
-        contig_colors: Optional[
-            gplt_params.contig_colors
-        ] = gplt_params.contig_colors_default,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
