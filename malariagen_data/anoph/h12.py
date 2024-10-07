@@ -258,8 +258,13 @@ class AnophelesH12Analysis(
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
-            contigs = allel.moving_statistic(
-                ds_haps["variant_contig"].values, statistic=np.median, size=window_size
+            contigs = np.asarray(
+                allel.moving_statistic(
+                    ds_haps["variant_contig"].values,
+                    statistic=np.median,
+                    size=window_size,
+                ),
+                dtype=int,
             )
 
         results = dict(x=x, h12=h12, contigs=contigs)
@@ -438,7 +443,9 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
-        circle_kwargs_param: Optional[gplt_params.circle_kwargs_param] = None,
+        contig_colors: Optional[
+            gplt_params.contig_colors
+        ] = gplt_params.contig_colors_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -459,100 +466,6 @@ class AnophelesH12Analysis(
             chunks=chunks,
             inline_array=inline_array,
         )
-
-        circle_kwargs_param_dict: dict[int, gplt_params.circle_kwargs] = {}
-        if circle_kwargs_param is None:
-            circle_kwargs_param_dict = gplt_params.default_circle_kwargs_dict
-        elif isinstance(circle_kwargs_param, list):
-            if len(circle_kwargs_param) >= 5:
-                circle_kwargs_param_dict = {
-                    i: circle_kwargs_param[i] for i in range(0, 5)
-                }
-            else:
-                circle_kwargs_param_dict = {
-                    i: circle_kwargs_param[i]
-                    for i in range(0, len(circle_kwargs_param))
-                }
-                circle_kwargs_param_dict.update(
-                    {
-                        i: gplt_params.default_circle_kwargs_dict[i]
-                        for i in range(len(circle_kwargs_param), 5)
-                    }
-                )
-        elif isinstance(circle_kwargs_param, dict):
-            if isinstance(list(circle_kwargs_param.keys())[0], str):
-                if list(circle_kwargs_param.keys())[0] in [
-                    "2L",
-                    "2R",
-                    "3L",
-                    "3R",
-                    "X",
-                    "2RL",
-                    "3RL",
-                ]:
-                    for i in range(0, 5):
-                        if i == 0:
-                            ck = circle_kwargs_param["2L"]
-                            if "2L" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = ck
-                            elif "2RL" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[
-                                    i
-                                ]  # circle_kwargs_param["2RL"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 1:
-                            if "2R" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["2R"]
-                            elif "3RL" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["3RL"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 2:
-                            if "3L" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["3L"]
-                            elif "X" in circle_kwargs_param.keys():  # Af1
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["X"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 3:
-                            if "3R" in circle_kwargs_param.keys():  # Ag3
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["3R"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                        elif i == 4:
-                            if (
-                                "X" in circle_kwargs_param.keys()
-                            ):  # Ag3. Will also get a value for Af1 but it will be ignored.
-                                circle_kwargs_param_dict[i] = circle_kwargs_param["X"]
-                            else:
-                                circle_kwargs_param_dict[
-                                    i
-                                ] = gplt_params.default_circle_kwargs_dict[i]
-                else:
-                    circle_kwargs_param_dict = {
-                        i: circle_kwargs_param for i in range(0, 5)
-                    }
-            elif isinstance(list(circle_kwargs_param.keys())[0], int):
-                for i in range(0, 5):
-                    if i in list(circle_kwargs_param.keys()):
-                        circle_kwargs_param_dict[i] = circle_kwargs_param[i]
-                    else:
-                        circle_kwargs_param_dict[
-                            i
-                        ] = gplt_params.default_circle_kwargs_dict[i]
-        else:
-            circle_kwargs_param_dict = gplt_params.default_circle_kwargs_dict
 
         # Determine X axis range.
         x_min = x[0]
@@ -592,12 +505,11 @@ class AnophelesH12Analysis(
         # Plot H12.
         for s in set(contigs):
             idxs = contigs == s
-            circle_kwargs_mutable = circle_kwargs_param_dict[s]
             fig.scatter(
                 x=x[idxs],
                 y=h12[idxs],
                 marker="circle",
-                **circle_kwargs_mutable,
+                color=contig_colors[s % len(contig_colors)],
             )
 
         # Tidy up the plot.
@@ -634,7 +546,9 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
-        circle_kwargs_param: Optional[gplt_params.circle_kwargs_param] = None,
+        contig_colors: Optional[
+            gplt_params.contig_colors
+        ] = gplt_params.contig_colors_default,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -656,7 +570,7 @@ class AnophelesH12Analysis(
             sizing_mode=sizing_mode,
             width=width,
             height=track_height,
-            circle_kwargs_param=circle_kwargs_param,
+            contig_colors=contig_colors,
             show=False,
             output_backend=output_backend,
             chunks=chunks,

@@ -1,7 +1,7 @@
 """Parameters for genome plotting functions. N.B., genome plots are always
 plotted with bokeh."""
 
-from typing import Literal, Mapping, Optional, Union, Final
+from typing import Literal, Mapping, Optional, Union, Final, Sequence
 
 import bokeh.models
 from typing_extensions import Annotated, TypeAlias
@@ -109,20 +109,9 @@ circle_kwargs_dict: TypeAlias = Annotated[
     "A dictionary of arguments passed through to bokeh scatter() function with marker = 'circle' with a value per contig.",
 ]
 
-default_circle_kwargs_dict: Final[dict[int, circle_kwargs]] = {
-    0: {"line_color": "red", "size": 3, "line_width": 1, "fill_color": None},
-    1: {"line_color": "blue", "size": 3, "line_width": 1, "fill_color": None},
-    2: {"line_color": "orange", "size": 3, "line_width": 1, "fill_color": None},
-    3: {"line_color": "green", "size": 3, "line_width": 1, "fill_color": None},
-    4: {"line_color": "purple", "size": 3, "line_width": 1, "fill_color": None},
-}
-
-circle_kwargs_list: TypeAlias = Annotated[
-    list[circle_kwargs],
-    "A list of arguments passed through to bokeh scatter() function with marker = 'circle' with a value per contig.",
+contig_colors: TypeAlias = Annotated[
+    Sequence[str],
+    "A sequence of colors.",
 ]
 
-circle_kwargs_param: TypeAlias = Annotated[
-    Union[circle_kwargs, circle_kwargs_dict, circle_kwargs_list],
-    "A set of arguments passed through to bokeh scatter() function with marker = 'circle'.",
-]
+contig_colors_default: Final[contig_colors] = bokeh.palettes.d3["Category20b"][5]

@@ -142,22 +142,27 @@ def check_h12_gwss(*, api, h12_params):
     assert np.all(h12 >= 0)
     assert np.all(h12 <= 1)
 
-    circle_kwargs_dict = {
-        0: {"line_color": "black", "size": 5, "line_width": 1, "fill_color": None},
-        1: {"line_color": "green", "size": 4, "line_width": 2, "fill_color": "black"},
-        2: {"line_color": "orange", "size": 3, "line_width": 1, "fill_color": None},
-        3: {"line_color": "green", "size": 2, "line_width": 2, "fill_color": "black"},
-        4: {"line_color": "purple", "size": 1, "line_width": 1, "fill_color": None},
-    }
+    x, h12, contigs = api.h12_gwss_contig(**h12_params)
+
+    # Check results.
+    assert isinstance(x, np.ndarray)
+    assert isinstance(h12, np.ndarray)
+    assert isinstance(contigs, np.ndarray)
+    assert x.ndim == 1
+    assert h12.ndim == 1
+    assert contigs.ndim == 1
+    assert x.shape == h12.shape
+    assert x.shape == contigs.shape
+    assert x.dtype.kind == "f"
+    assert h12.dtype.kind == "f"
+    assert contigs.dtype.kind == "i"
+    assert np.all(h12 >= 0)
+    assert np.all(h12 <= 1)
 
     # Check plotting functions.
-    fig = api.plot_h12_gwss_track(
-        **h12_params, circle_kwargs_param=circle_kwargs_dict, show=False
-    )
+    fig = api.plot_h12_gwss_track(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.Plot)
-    fig = api.plot_h12_gwss(
-        **h12_params, circle_kwargs_param=circle_kwargs_dict[0], show=False
-    )
+    fig = api.plot_h12_gwss(**h12_params, contig_colors=["black", "red"], show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
 
 
