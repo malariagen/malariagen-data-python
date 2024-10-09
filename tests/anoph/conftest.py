@@ -1086,7 +1086,7 @@ class Ag3Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):
         super().__init__(
             fixture_dir=fixture_dir,
-            bucket="vo_agam_release",
+            bucket="vo_agam_release_master_us_central1",
             releases=("3.0", "3.1"),
             has_aims=True,
             has_cohorts_by_quarter=True,
@@ -1132,6 +1132,14 @@ class Ag3Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/AG1000G-AO",
                     "https://www.malariagen.net/network/where-we-work/AG1000G-BF-1",
                 ],
+                "terms_of_use_expiry_date": [
+                    "2025-01-01",
+                    "2025-01-01",
+                ],
+                "terms_of_use_url": [
+                    "https://www.malariagen.net/data/our-approach-sharing-data/ag1000g-terms-of-use/",
+                    "https://www.malariagen.net/data/our-approach-sharing-data/ag1000g-terms-of-use/",
+                ],
             }
         )
         manifest.to_csv(manifest_path, index=False, sep="\t")
@@ -1154,6 +1162,12 @@ class Ag3Simulator(AnophelesSimulator):
                 "study_id": ["1177-VO-ML-LEHMANN"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1177-VO-ML-LEHMANN"
+                ],
+                "terms_of_use_expiry_date": [
+                    "2025-11-17",
+                ],
+                "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/ag3/ag3.1.html#terms-of-use",
                 ],
             }
         )
@@ -1220,7 +1234,7 @@ class Ag3Simulator(AnophelesSimulator):
         # Create general metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_agam_release"
+            / "vo_agam_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -1246,7 +1260,7 @@ class Ag3Simulator(AnophelesSimulator):
             # Create sequence QC metadata by sample from real metadata files.
             src_path = (
                 self.fixture_dir
-                / "vo_agam_release"
+                / "vo_agam_release_master_us_central1"
                 / release_path
                 / "metadata"
                 / "curation"
@@ -1274,7 +1288,7 @@ class Ag3Simulator(AnophelesSimulator):
             # Create AIM metadata by sampling from some real metadata files.
             src_path = (
                 self.fixture_dir
-                / "vo_agam_release"
+                / "vo_agam_release_master_us_central1"
                 / release_path
                 / "metadata"
                 / "species_calls_aim_20220528"
@@ -1298,7 +1312,7 @@ class Ag3Simulator(AnophelesSimulator):
             # Create cohorts metadata by sampling from some real metadata files.
             src_path = (
                 self.fixture_dir
-                / "vo_agam_release"
+                / "vo_agam_release_master_us_central1"
                 / release_path
                 / "metadata"
                 / "cohorts_20230516"
@@ -1321,7 +1335,7 @@ class Ag3Simulator(AnophelesSimulator):
             # Create cohorts data by sampling from some real files.
             src_path = (
                 self.fixture_dir
-                / "vo_agam_release"
+                / "vo_agam_release_master_us_central1"
                 / "v3_cohorts"
                 / "cohorts_20230516"
                 / "cohorts_admin1_month.csv"
@@ -1340,7 +1354,7 @@ class Ag3Simulator(AnophelesSimulator):
         # Create data catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_agam_release"
+            / "vo_agam_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -1363,7 +1377,7 @@ class Ag3Simulator(AnophelesSimulator):
         # Create accessions catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_agam_release"
+            / "vo_agam_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -1838,7 +1852,7 @@ class Af1Simulator(AnophelesSimulator):
     def __init__(self, fixture_dir):
         super().__init__(
             fixture_dir=fixture_dir,
-            bucket="vo_afun_release",
+            bucket="vo_afun_release_master_us_central1",
             releases=("1.0",),
             has_aims=False,
             has_cohorts_by_quarter=False,
@@ -1891,6 +1905,16 @@ class Af1Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/1229-VO-GH-DADZIE",
                     "https://www.malariagen.net/network/where-we-work/1230-VO-MULTI-AYALA",
                     "https://www.malariagen.net/network/where-we-work/1231-VO-MULTI-WONDJI",
+                ],
+                "terms_of_use_expiry_date": [
+                    "2025-06-01",
+                    "2025-06-01",
+                    "2025-06-01",
+                ],
+                "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                 ],
             }
         )
@@ -1955,7 +1979,7 @@ class Af1Simulator(AnophelesSimulator):
         # Create general metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_afun_release"
+            / "vo_afun_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -1980,7 +2004,7 @@ class Af1Simulator(AnophelesSimulator):
             # Create sequence QC metadata by sample from real metadata files.
             src_path = (
                 self.fixture_dir
-                / "vo_afun_release"
+                / "vo_afun_release_master_us_central1"
                 / release_path
                 / "metadata"
                 / "curation"
@@ -2007,7 +2031,7 @@ class Af1Simulator(AnophelesSimulator):
         # Create cohorts metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_afun_release"
+            / "vo_afun_release_master_us_central1"
             / release_path
             / "metadata"
             / "cohorts_20221129"
@@ -2030,7 +2054,7 @@ class Af1Simulator(AnophelesSimulator):
         # Create data catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_afun_release"
+            / "vo_afun_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -2053,7 +2077,7 @@ class Af1Simulator(AnophelesSimulator):
         # Create accessions catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_afun_release"
+            / "vo_afun_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"

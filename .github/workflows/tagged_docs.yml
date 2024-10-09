@@ -30,7 +30,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install poetry
-        run: pipx install poetry==1.8.2
+        run: pipx install poetry==1.8.3
 
       - name: Eyeball native environment 👀
         run: python --version ; pip --version ; poetry --version ; pwd ; ls -la

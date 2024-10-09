@@ -41,6 +41,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
         color: plotly_params.color = None,
@@ -63,6 +64,8 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
         legend_sizing: plotly_params.legend_sizing = "constant",
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> plotly_params.figure:
         import sys
 
@@ -77,7 +80,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Compute pairwise distances.
@@ -86,8 +91,11 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             analysis=analysis,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Align sample metadata with haplotypes.
@@ -192,8 +200,11 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray, int]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -207,6 +218,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             analysis=analysis,
             sample_sets=sample_sets_prepped,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
@@ -216,7 +228,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._haplotype_pairwise_distances(**params)
+            results = self._haplotype_pairwise_distances(
+                chunks=chunks, inline_array=inline_array, **params
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results")
@@ -233,8 +247,11 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis,
         sample_sets,
         sample_query,
+        sample_query_options,
         cohort_size,
         random_seed,
+        chunks,
+        inline_array,
     ):
         from scipy.spatial.distance import squareform  # type: ignore
 
@@ -243,9 +260,12 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             region=region,
             analysis=analysis,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Load haplotypes"):

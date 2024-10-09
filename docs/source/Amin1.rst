@@ -14,7 +14,7 @@ All the functions below can then be accessed as methods on the ``amin1`` object.
 
     df_samples = amin1.sample_metadata()
 
-For more information about the data and terns of use, please see the
+For more information about the data and terms of use, please see the
 `MalariaGEN Vector Observatory Asia <https://www.malariagen.net/mosquito/vector-observatory-asia>`_
 home page.
 

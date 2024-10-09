@@ -8,7 +8,7 @@ from .anopheles import AnophelesDataResource
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
-GCS_DEFAULT_URL = "gs://vo_afun_release/"
+GCS_DEFAULT_URL = "gs://vo_afun_release_master_us_central1/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_afun_release_master_us_central1",
 }
@@ -61,7 +61,7 @@ class Af1(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> af1 = malariagen_data.Af1(
-        ...     "simplecache::gs://vo_afun_release",
+        ...     "simplecache::gs://vo_afun_release_master_us_central1",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 
