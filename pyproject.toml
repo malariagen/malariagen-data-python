@@ -60,6 +60,8 @@ orjson = "*"
 yaspin = "*"
 # provides efficient neighbour-joining tree implementation
 biotite = "*"
+bed_reader = "*"
+
 
 # dev extras
 pytest = "*"
