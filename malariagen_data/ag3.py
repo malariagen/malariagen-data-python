@@ -8,12 +8,12 @@ import malariagen_data
 from .anopheles import AnophelesDataResource
 
 # silence dask performance warnings
-dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
+dask.config.set(**{"array.slicing.split_native_chunks": False})  # type: ignore
 
 MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
-GCS_DEFAULT_URL = "gs://vo_agam_release/"
+GCS_DEFAULT_URL = "gs://vo_agam_release_master_us_central1/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_agam_release_master_us_central1",
 }
@@ -119,7 +119,7 @@ class Ag3(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> ag3 = malariagen_data.Ag3(
-        ...     "simplecache::gs://vo_agam_release",
+        ...     "simplecache::gs://vo_agam_release_master_us_central1",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 

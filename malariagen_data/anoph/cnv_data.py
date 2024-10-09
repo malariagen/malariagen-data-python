@@ -177,9 +177,10 @@ class AnophelesCnvData(
         region: base_params.regions,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -241,7 +242,10 @@ class AnophelesCnvData(
                 )
 
                 debug("apply the query")
-                loc_query_samples = df_samples_cnv.eval(sample_query).values
+                sample_query_options = sample_query_options or {}
+                loc_query_samples = df_samples_cnv.eval(
+                    sample_query, **sample_query_options
+                ).values
                 if np.count_nonzero(loc_query_samples) == 0:
                     raise ValueError(f"No samples found for query {sample_query!r}")
 
@@ -381,7 +385,7 @@ class AnophelesCnvData(
         sample_set: base_params.sample_set,
         analysis: cnv_params.coverage_calls_analysis,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -454,7 +458,11 @@ class AnophelesCnvData(
         data_vars = dict()
 
         debug("open zarr")
-        root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
+
+        try:
+            root = self.open_cnv_discordant_read_calls(sample_set=sample_set)
+        except FileNotFoundError:
+            return None
 
         # not all contigs have CNVs, need to check
         # TODO consider returning dataset with zero length variants dimension, would
@@ -532,8 +540,9 @@ class AnophelesCnvData(
         contig: base_params.contigs,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         debug = self._log.debug
 
@@ -556,7 +565,16 @@ class AnophelesCnvData(
                     inline_array=inline_array,
                     chunks=chunks,
                 )
+
+                # If no CNV DRCs dataset was found then skip
+                if y is None:
+                    continue
+
                 ly.append(y)
+
+                if len(ly) == 0:
+                    # Bail out, no data for given sample sets and analysis.
+                    raise ValueError("No data found for requested sample sets.")
 
             x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
@@ -575,7 +593,10 @@ class AnophelesCnvData(
             )
 
             debug("apply the query")
-            loc_query_samples = df_samples_cnv.eval(sample_query).values
+            sample_query_options = sample_query_options or {}
+            loc_query_samples = df_samples_cnv.eval(
+                sample_query, **sample_query_options
+            ).values
             if np.count_nonzero(loc_query_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
 
@@ -788,6 +809,7 @@ class AnophelesCnvData(
         region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -810,6 +832,7 @@ class AnophelesCnvData(
             region=region_prepped,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
         )
 
@@ -929,6 +952,7 @@ class AnophelesCnvData(
         region: base_params.region,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
@@ -947,6 +971,7 @@ class AnophelesCnvData(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
             sizing_mode=sizing_mode,
             width=width,
