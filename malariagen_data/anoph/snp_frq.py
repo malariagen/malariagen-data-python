@@ -3,18 +3,21 @@ import warnings
 from textwrap import dedent
 
 import allel  # type: ignore
-import numpy as np
-import pandas as pd
-from numpydoc_decorator import doc  # type: ignore
-import xarray as xr
+from functools import reduce
 import numba  # type: ignore
+import numpy as np
+from numpydoc_decorator import doc  # type: ignore
+import pandas as pd
+from pandas.io.formats.style import Styler
 import plotly.express as px  # type: ignore
+import re
+import xarray as xr
 
 from .. import veff
 from ..util import check_types, pandas_apply
 from .snp_data import AnophelesSnpData
 from .sample_metadata import locate_cohorts
-from . import base_params, frq_params, map_params, plotly_params
+from . import base_params, frq_params, gplt_params, map_params, plotly_params
 
 
 AA_CHANGE_QUERY = (
@@ -1251,6 +1254,398 @@ class AnophelesSnpFrequencyAnalysis(
             df_snps = df_snps.loc[loc_sites]
 
         return df_snps.query(snp_query)
+
+    @check_types
+    @doc(
+        summary="""
+            DataFrame of SNP frequencies.
+        """,
+        parameters=dict(
+            list_of_snps="List of SNP positions.",
+        ),
+    )
+    def snp_freqs(
+        self,
+        *,
+        list_of_snps: List[int],
+        contig: base_params.contig,
+    ) -> pd.DataFrame:
+        # Compose the region using the min and max SNP positions.
+        region = f"{contig}:{min(list_of_snps)}-{max(list_of_snps)}"
+
+        # Convert the list of SNP positions into a Numpy array.
+        array_of_snps = np.array(list_of_snps)
+
+        # Get the SNP frequencies as a DataFrame.
+        snp_freqs = self._any_snp_allele_freq(region, array_of_snps)
+
+        # Return a copy of the DataFrame to insulate against changes.
+        return snp_freqs.copy()
+
+    @check_types
+    @doc(
+        summary="""
+            Styled DataFrame of SNP frequencies.
+        """,
+        parameters=dict(
+            list_of_snps="List of SNP positions.",
+        ),
+    )
+    def snp_freqs_styled(
+        self,
+        *,
+        list_of_snps: List[int],
+        contig: base_params.contig,
+    ) -> Styler:
+        # Get the SNP frequencies as a DataFrame.
+        snp_freqs = self.snp_freqs(list_of_snps=list_of_snps, contig=contig)
+
+        # Style a copy of the DataFrame.
+        snp_freqs_styled = snp_freqs.copy().style.apply(
+            lambda x: x.apply(self._snp_freqs_gradient_color), axis=1
+        )
+
+        # Return the styled DataFrame.
+        return snp_freqs_styled
+
+    @check_types
+    @doc(
+        summary="""
+            Plot of SNP genes.
+        """,
+        parameters=dict(
+            list_of_snps="List of SNP positions.",
+            plot_buffer="Number of SNP positions to plot either side of the given positions.",
+        ),
+    )
+    def snp_browser(
+        self,
+        *,
+        list_of_snps: List[int],
+        contig: base_params.contig,
+        plot_buffer: int = 100000,
+        show: gplt_params.show = True,
+    ):
+        # Get the SNP frequencies DataFrame.
+        snp_freqs = self.snp_freqs(list_of_snps=list_of_snps, contig=contig)
+
+        # Get the SNP effect colours.
+        snp_effect_colours = []
+        for snp_pos in list_of_snps:
+            snp_effects = snp_freqs.xs(snp_pos, level="position").effect
+            snp_effect_colour = "blue"
+            if snp_effects.str.contains("NON_SYNONYMOUS").any():
+                snp_effect_colour = "red"
+            elif snp_effects.str.contains("SYNONYMOUS").any():
+                snp_effect_colour = "yellow"
+            snp_effect_colours += [snp_effect_colour]
+
+        # Compose the plot region using the min and max SNP positions and the plot buffer size.
+        start_pos = min(list_of_snps) - plot_buffer
+        end_pos = max(list_of_snps) + plot_buffer
+        plot_region = f"{contig}:{start_pos}-{end_pos}"
+
+        # Get the genes track for the plot region.
+        gene_plot = self.plot_genes(plot_region, show=False)
+
+        # Add a scatter plot of the SNP positions with the SNP effect colours.
+        # FIXME: scatter plot inherits tooltips from gene_plot, missing Id, Name, Description, Location.
+        gene_plot.scatter(
+            list_of_snps,
+            np.ones(len(list_of_snps)),
+            size=15,
+            color=snp_effect_colours,
+            alpha=0.5,
+        )
+
+        if show:
+            # Only import Bokeh plotting when needed.
+            import bokeh.plotting as bkplt
+
+            bkplt.show(gene_plot)
+            return None
+        else:
+            return gene_plot
+
+    def _snp_freqs_gradient_color(self, val):
+        """
+        Takes a scalar and returns a string with
+        the css property 'background-color: red' for
+        values less than 70, green for values greater
+        than 90, and a gradient in between for the
+        values in between.
+        """
+        if isinstance(val, str):
+            if re.search("NON_SYNONYMOUS", val):
+                return "background-color: red"
+            elif re.search("SYNONYMOUS", val):
+                return "background-color: yellow"
+            else:
+                return ""
+        elif isinstance(val, float):
+            if np.isnan(val):
+                return ""
+            else:
+                r = int(255 * (1 - val))
+                g = 255
+                b = 255
+                return f"background-color: rgb({r},{g},{b})"
+        else:
+            return ""
+
+    def _move_transcript_to_column_names(self, t1, impact_columns):
+        t1_transcript = np.unique(t1["transcript"])[0]
+        t1 = t1.rename(
+            columns={x: f"{x}_{t1_transcript}" for x in impact_columns}
+        ).drop(columns="transcript")
+        return t1
+
+    # Function to merge two transcript tables
+    def _merge_transcript_tables(self, t1, t2, impact_columns):
+        if "transcript" in t1.columns:
+            t1 = self._move_transcript_to_column_names(t1, impact_columns)
+        if "transcript" in t2.columns:
+            t2 = self._move_transcript_to_column_names(t2, impact_columns)
+
+        # FIXME: this needs to be made agnostic to species groups, e.g. funestus.
+        merged_df = pd.merge(
+            t1,
+            t2,
+            on=[
+                "contig",
+                "position",
+                "ref_allele",
+                "alt_allele",
+                "pass_gamb_colu_arab",
+                "pass_gamb_colu",
+                "pass_arab",
+            ],
+            how="outer",
+        )
+        return merged_df
+
+    def _any_snp_allele_freq(
+        self,
+        region,
+        array_of_snps,
+        cohorts=None,
+        min_cohort_size=1,
+        sample_query=None,
+        sample_query_options=None,
+        site_mask=None,
+        sample_sets=None,
+        drop_invariant=False,
+        include_counts=False,
+    ):
+        # Access sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+        num_samples = df_samples.shape[0]
+
+        # Build cohort dictionary, maps cohort labels to boolean indexers.
+        if cohorts is None:
+            # Create cohorts full all samples, then each species, then each country x species combo
+            # FIXME: this needs to be made agnostic to species groups, e.g. funestus.
+            coh_dict1 = {
+                "all": np.full(num_samples, True),
+                "gambiae": df_samples.taxon == "gambiae",
+                "coluzzii": df_samples.taxon == "coluzzii",
+                "arabiensis": df_samples.taxon == "arabiensis",
+            }
+            coh_dict2 = {
+                c: df_samples.country == c for c in np.unique(df_samples.country)
+            }
+            coh_dict = {**coh_dict1, **coh_dict2}
+        elif isinstance(cohorts, dict):
+            coh_dict = cohorts
+        else:
+            coh_dict = self.sample_metadata.locate_cohorts(
+                cohorts=cohorts, data=df_samples
+            )
+
+        # Remove cohorts below minimum cohort size.
+        coh_dict = {
+            coh: loc_coh
+            for coh, loc_coh in coh_dict.items()
+            if np.count_nonzero(loc_coh) >= min_cohort_size
+        }
+
+        # Early check for no cohorts.
+        if len(coh_dict) == 0:
+            raise ValueError(
+                "No cohorts available for the given sample selection parameters and minimum cohort size."
+            )
+
+        # Access SNP data.
+        ds_snp = (
+            self.snp_calls(
+                region=region,
+                site_mask=site_mask,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+            .set_index(variants="variant_position")
+            .sel(variants=array_of_snps)
+        )
+
+        # EL:
+        # I'm sure there is a better way of doing this, but setting the index to "variant_position" means
+        # that this coordinate disappears from the dataset, which causes problems later. So I manually
+        # recreate it here
+        ds_snp = ds_snp.assign_coords(coords={"variant_position": ds_snp.variants})
+
+        # Early check for no SNPs.
+        if ds_snp.sizes["variants"] == 0:  # pragma: no cover
+            raise ValueError("No SNPs available for the given region and site mask.")
+
+        # Access genotypes.
+        gt = ds_snp["call_genotype"].data
+        with self._dask_progress(desc="Load SNP genotypes"):
+            gt = gt.compute()
+
+        # Set up initial dataframe of SNPs.
+        df_snps = self._snp_df_melt(ds_snp=ds_snp)
+
+        # Count alleles.
+        count_cols = dict()
+        nobs_cols = dict()
+        freq_cols = dict()
+        cohorts_iterator = self._progress(
+            coh_dict.items(), desc="Compute allele frequencies"
+        )
+        for coh, loc_coh in cohorts_iterator:
+            n_samples = np.count_nonzero(loc_coh)
+            assert n_samples >= min_cohort_size
+            gt_coh = np.compress(loc_coh, gt, axis=1)
+            ac_coh = np.asarray(allel.GenotypeArray(gt_coh).count_alleles(max_allele=3))
+            an_coh = np.sum(ac_coh, axis=1)[:, None]
+            with np.errstate(divide="ignore", invalid="ignore"):
+                af_coh = np.where(an_coh > 0, ac_coh / an_coh, np.nan)
+            # Melt the frequencies so we get one row per alternate allele.
+            frq = af_coh[:, 1:].flatten()
+            freq_cols["frq_" + coh] = frq
+            count = ac_coh[:, 1:].flatten()
+            count_cols["count_" + coh] = count
+            nobs = np.repeat(an_coh[:, 0], 3)
+            nobs_cols["nobs_" + coh] = nobs
+
+        # Build a dataframe with the frequency columns.
+        df_freqs = pd.DataFrame(freq_cols)
+        df_counts = pd.DataFrame(count_cols)
+        df_nobs = pd.DataFrame(nobs_cols)
+
+        # Compute max_af.
+        df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
+
+        # Build the final dataframe.
+        df_snps.reset_index(drop=True, inplace=True)
+        if include_counts:
+            df_snps = pd.concat(
+                [df_snps, df_freqs, df_max_af, df_counts, df_nobs], axis=1
+            )
+        else:
+            df_snps = pd.concat([df_snps, df_freqs, df_max_af], axis=1)
+
+        # Drop invariants.
+        if drop_invariant:
+            loc_variant = df_snps["max_af"] > 0
+
+            # Check for no SNPs remaining after dropping invariants.
+            if np.count_nonzero(loc_variant) == 0:  # pragma: no cover
+                raise ValueError("No SNPs remaining after dropping invariant SNPs.")
+
+            df_snps = df_snps.loc[loc_variant]
+
+        # Reset index after filtering.
+        df_snps.reset_index(inplace=True, drop=True)
+
+        # Add label.
+        def _make_snp_label(contig, position, ref_allele, alt_allele):
+            return f"{contig}:{position:,} {ref_allele}>{alt_allele}"
+
+        df_snps["label"] = pandas_apply(
+            _make_snp_label,
+            df_snps,
+            columns=["contig", "position", "ref_allele", "alt_allele"],
+        )
+
+        # Set index.
+        df_snps.set_index(
+            ["contig", "position", "ref_allele", "alt_allele"],
+            inplace=True,
+        )
+
+        # Identify all the transcripts that overlap the region:
+        transcripts = np.unique(self.genome_features(region).query("type == 'mRNA'").ID)
+
+        # Get the SNP effects for those transcripts
+        impact_columns = [
+            "effect",
+            "impact",
+            "ref_codon",
+            "alt_codon",
+            "aa_pos",
+            "ref_aa",
+            "alt_aa",
+            "aa_change",
+        ]
+        if len(transcripts) == 0:
+            for imp in impact_columns + ["transcript"]:
+                df_snps[imp] = "NON-CODING"
+        else:
+            all_transcript_tables = [self.snp_effects(t) for t in transcripts]
+            if len(transcripts) == 1:
+                merged_transcript_tables = self._move_transcript_to_column_names(
+                    all_transcript_tables[0], impact_columns
+                )
+            else:
+                merged_transcript_tables = reduce(
+                    lambda t1, t2: self._merge_transcript_tables(
+                        t1, t2, impact_columns
+                    ),
+                    all_transcript_tables,
+                )
+            merged_transcript_tables.set_index(
+                ["contig", "position", "ref_allele", "alt_allele"], inplace=True
+            )
+
+            # Now, for each SNP, produce a single value of the different effect columns
+            impacts = {imp: [] for imp in impact_columns + ["transcript"]}
+            for snp in df_snps.index:
+                if snp not in merged_transcript_tables.index:
+                    for imp in impact_columns:
+                        impacts[imp] += ["NON-CODING"]
+                    impacts["transcript"] += ["NON-CODING"]
+                else:
+                    all_effect_values = merged_transcript_tables.loc[snp, :].filter(
+                        regex=impact_columns[0]
+                    )
+                    non_null_effects = all_effect_values.notnull().values
+                    effect_string = ";".join(
+                        all_effect_values[non_null_effects].astype(str)
+                    )
+                    impacts[impact_columns[0]] += [effect_string]
+                    all_transcripts = np.array(
+                        [re.findall("AGAP.+", x)[0] for x in all_effect_values.index]
+                    )
+                    impact_string = ";".join(all_transcripts[non_null_effects])
+                    impacts["transcript"] += [impact_string]
+                    for imp in impact_columns[1:]:
+                        all_impact_values = merged_transcript_tables.loc[snp, :].filter(
+                            regex=imp
+                        )
+                        impact_string = ";".join(
+                            all_impact_values[non_null_effects].astype(str)
+                        )
+                        impacts[imp] += [impact_string]
+            for k, v in impacts.items():
+                df_snps[k] = v
+
+        return df_snps
 
 
 @numba.jit(nopython=True)
