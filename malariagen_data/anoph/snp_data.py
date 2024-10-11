@@ -669,7 +669,32 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Load site annotations.",
-        returns="A dataset of site annotations.",
+        returns="""
+        A dataset of site annotations with 1 dimension: **variants** the number of sites in the selected region. It has 7 variables:
+        **seq_cls**: The feature class. There are 11 possible values:
+                *1*: Upstream,
+                *2*: Downstream,
+                *3*: 5' UTR,
+                *4*: 3' UTR,
+                *5*: CDS (first),
+                *6*: CDS (mid),
+                *7*: CDS (last),
+                *8*: Intron (first),
+                *9*: Intron (mid),
+                *10*: Intron (last),
+                *0*: Unknown,
+        **seq_flen**: The length of the feature,
+        **seq_relpos_start**: Relative position to the start of the feature. 0 if not in a feature,
+        **seq_relpos_stop**: Relative position to the end of the feature. 0 if not in a feature,
+        **codon_position**: Position within a triplet codon. -1 if not in a CDS,
+        **codon_nonsyn**: Number of possible nucleotide changes at this position that would result in an amino acid change from the reference, 0 if not in a CDS,
+        **codon_degeneracy**: The redundancy of the codon. Can take 5 different values:
+                *1*: 0-fold degenerate, i.e., all nucleotides encode different amino acids,
+                *2*: simple 2-fold degenerate, i.e., 2 different amino acids can be encoded depending on which nucleotide is present; each amino acid is encoded by two different nucleotides,
+                *3*: complex 2-fold degenerate, i.e., 2 different amino acids can be encoded depending on which nucleotide is present but they are not paired,
+                *4*: 4-fold degenerate, i.e., all nucleotides encode the same amino acid,
+                *-1*: not in a CDS
+        """,
     )
     def site_annotations(
         self,
