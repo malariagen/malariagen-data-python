@@ -61,7 +61,7 @@ class Af1(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> af1 = malariagen_data.Af1(
-        ...     "simplecache::gs://vo_afun_release",
+        ...     "simplecache::gs://vo_afun_release_master_us_central1",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 

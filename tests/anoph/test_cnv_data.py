@@ -249,6 +249,91 @@ def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
             assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
 
 
+def test_cnv_hmm__sample_query_options(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    sample_sets = "AG1000G-BF-A"
+    region = fixture.random_region_str()
+
+    # Query options.
+    taxon_list = ["coluzzii", "gambiae"]
+    location_list = ["Bana Village", "Pala"]
+    non_taxon_list = ["robot", "cyborg"]
+    sample_query_options = {
+        "local_dict": {
+            "taxon_list": taxon_list,
+            "location_list": location_list,
+            "non_taxon_list": non_taxon_list,
+        }
+    }
+
+    # Parametrize query.
+    parametrize_query = [
+        "taxon in @taxon_list and location in @location_list",
+        "taxon in @non_taxon_list",
+    ]
+
+    # Run tests.
+    for sample_query in parametrize_query:
+        # Get the number of samples for this query
+        df_samples = ag3_sim_api.sample_metadata().query(
+            sample_query, **sample_query_options
+        )
+
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                ds = api.cnv_hmm(
+                    region=region,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    sample_query_options=sample_query_options,
+                    max_coverage_variance=None,
+                )
+        else:
+            ds = api.cnv_hmm(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+                max_coverage_variance=None,
+            )
+            assert isinstance(ds, xr.Dataset)
+
+            # check fields
+            expected_data_vars = {
+                "call_CN",
+                "call_NormCov",
+                "call_RawCov",
+                "sample_coverage_variance",
+                "sample_is_high_variance",
+            }
+            assert set(ds.data_vars) == expected_data_vars
+
+            expected_coords = {
+                "variant_contig",
+                "variant_position",
+                "variant_end",
+                "sample_id",
+            }
+            assert set(ds.coords) == expected_coords
+
+            # check dimensions
+            assert set(ds.dims) == {"samples", "variants"}
+
+            # check expected samples
+            df_samples = api.sample_metadata(sample_sets=sample_sets).query(
+                sample_query, **sample_query_options
+            )
+            expected_samples = df_samples["sample_id"].tolist()
+            n_samples_expected = len(expected_samples)
+            assert ds.sizes["samples"] == n_samples_expected
+
+            # check sample IDs
+            assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_cnv_hmm(fixture, api: AnophelesCnvData):
     # Parametrize sample_sets.
@@ -555,7 +640,7 @@ def test_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
         api.cnv_discordant_read_calls(contig="foobar", sample_sets="bazqux")
 
 
-def test_cnv_dicordant_read_calls__sample_query(
+def test_cnv_discordant_read_calls__sample_query(
     ag3_sim_fixture, ag3_sim_api: AnophelesCnvData
 ):
     api = ag3_sim_api
@@ -618,6 +703,94 @@ def test_cnv_dicordant_read_calls__sample_query(
             # check expected samples
             df_samples = api.sample_metadata(sample_sets=sample_sets).query(
                 sample_query
+            )
+            expected_samples = df_samples["sample_id"].tolist()
+            n_samples_expected = len(expected_samples)
+            assert ds.sizes["samples"] == n_samples_expected
+
+            # check sample IDs
+            assert ds["sample_id"].values.tolist() == df_samples["sample_id"].tolist()
+
+
+def test_cnv_discordant_read_calls__sample_query_options(
+    ag3_sim_fixture, ag3_sim_api: AnophelesCnvData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    sample_sets = "AG1000G-BF-A"
+    contig = fixture.random_contig()
+
+    # Query options.
+    taxon_list = ["coluzzii", "gambiae"]
+    location_list = ["Bana Village", "Pala"]
+    non_taxon_list = ["robot", "cyborg"]
+    sample_query_options = {
+        "local_dict": {
+            "taxon_list": taxon_list,
+            "location_list": location_list,
+            "non_taxon_list": non_taxon_list,
+        }
+    }
+
+    # Parametrize query.
+    parametrize_query = [
+        "taxon in @taxon_list and location in @location_list",
+        "taxon in @non_taxon_list",
+    ]
+
+    # Run tests.
+    for sample_query in parametrize_query:
+        # Get the number of samples for this query
+        df_samples = ag3_sim_api.sample_metadata().query(
+            sample_query, **sample_query_options
+        )
+
+        if len(df_samples) == 0:
+            with pytest.raises(ValueError):
+                ds = api.cnv_discordant_read_calls(
+                    contig=contig,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    sample_query_options=sample_query_options,
+                )
+        else:
+            ds = api.cnv_discordant_read_calls(
+                contig=contig,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+            assert isinstance(ds, xr.Dataset)
+
+            # check fields
+            expected_data_vars = {
+                "variant_Region",
+                "variant_StartBreakpointMethod",
+                "variant_EndBreakpointMethod",
+                "call_genotype",
+                "sample_coverage_variance",
+                "sample_is_high_variance",
+            }
+            assert set(ds.data_vars) == expected_data_vars
+
+            expected_coords = {
+                "variant_position",
+                "variant_end",
+                "variant_id",
+                "variant_contig",
+                "sample_id",
+            }
+            assert set(ds.coords) == expected_coords
+
+            # check dimensions
+            assert set(ds.dims) == {"variants", "samples"}
+
+            # check expected samples
+            df_samples = api.sample_metadata(sample_sets=sample_sets).query(
+                sample_query,
+                **sample_query_options,
             )
             expected_samples = df_samples["sample_id"].tolist()
             n_samples_expected = len(expected_samples)

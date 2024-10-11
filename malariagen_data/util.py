@@ -5,6 +5,7 @@ import re
 import sys
 import warnings
 from enum import Enum
+from math import prod
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
@@ -19,6 +20,7 @@ except ImportError:
 
 import allel  # type: ignore
 import dask.array as da
+from dask.utils import parse_bytes
 import numba  # type: ignore
 import numpy as np
 import pandas
@@ -27,6 +29,9 @@ import plotly.express as px  # type: ignore
 import typeguard
 import xarray as xr
 import zarr  # type: ignore
+
+# zarr >= 2.11.0
+from zarr.storage import BaseStore  # type: ignore
 from fsspec.core import url_to_fs  # type: ignore
 from fsspec.mapping import FSMap  # type: ignore
 from numpydoc_decorator.impl import humanize_type  # type: ignore
@@ -111,46 +116,40 @@ def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     return df
 
 
-# zarr compatibility, version 2.11.0 introduced the BaseStore class
-# see also https://github.com/malariagen/malariagen-data-python/issues/129
+class SafeStore(BaseStore):
+    """This class wraps any zarr store and ensures that missing chunks
+    will not get automatically filled but will raise an exception. There
+    should be no missing chunks in any of the datasets we host."""
 
-try:
-    # zarr >= 2.11.0
-    from zarr.storage import KVStore  # type: ignore
+    def __init__(self, store):
+        self._store = store
 
-    class SafeStore(KVStore):
-        def __getitem__(self, key):
-            try:
-                return self._mutable_mapping[key]
-            except KeyError as e:
-                # raise a different error to ensure zarr propagates the exception, rather than filling
-                raise FileNotFoundError(e)
+    def __getitem__(self, key):
+        try:
+            return self._store[key]
+        except KeyError as e:
+            # Raise a different error to ensure zarr propagates the exception,
+            # rather than filling.
+            raise FileNotFoundError(e)
 
-        def __contains__(self, key):
-            return key in self._mutable_mapping
+    def __getattr__(self, attr):
+        if attr == "__setstate__":
+            # Special method called during unpickling, don't pass through.
+            raise AttributeError(attr)
+        # Pass through all other attribute access to the wrapped store.
+        return getattr(self._store, attr)
 
-except ImportError:
-    # zarr < 2.11.0
+    def __iter__(self):
+        return iter(self._store)
 
-    class SafeStore(Mapping):  # type: ignore
-        def __init__(self, store):
-            self.store = store
+    def __len__(self):
+        return len(self._store)
 
-        def __getitem__(self, key):
-            try:
-                return self.store[key]
-            except KeyError as e:
-                # raise a different error to ensure zarr propagates the exception, rather than filling
-                raise FileNotFoundError(e)
+    def __setitem__(self, item):
+        raise NotImplementedError
 
-        def __contains__(self, key):
-            return key in self.store
-
-        def __iter__(self):
-            return iter(self.store)
-
-        def __len__(self):
-            return len(self.store)
+    def __delitem__(self, item):
+        raise NotImplementedError
 
 
 class SiteClass(Enum):
@@ -191,13 +190,26 @@ def da_from_zarr(
     our own here to get a little more control.
 
     """
+
+    # Some function of the native chunk sizes.
     if callable(chunks):
         dask_chunks: dask_chunks_type = chunks(z.chunks)
+
+    # Match the zarr chunk size.
+    # N.B., dask does not support "auto" chunks for arrays with object dtype.
     elif chunks == "native" or z.dtype == object:
-        # N.B., dask does not support "auto" chunks for arrays with object dtype
         dask_chunks = z.chunks
 
-    # Auto-size chunks but only for arrays with more than one dimension.
+    # Let dask auto-size chunks. This generally does not work well with
+    # our datasets, but support this option in case someone wants to try
+    # it.
+    elif chunks == "auto":
+        dask_chunks = chunks
+
+    # Auto-size chunks but only for arrays with more than one dimension. This
+    # seems to lead to unexpected memory usage in some scenarios, and so is not
+    # the recommended option, but we'll leave these options here for now in
+    # case further experiments are useful.
     elif chunks == "ndauto":
         if len(z.chunks) > 1:
             # Auto-size all dimensions.
@@ -223,12 +235,42 @@ def da_from_zarr(
         else:
             dask_chunks = z.chunks
 
+    # Resize chunks to a specific size in memory.
+    #
+    # N.B., only resize chunks in arrays with more than one dimension,
+    # because resizing the one-dimensional arrays according to the same
+    # size may lead to poor performance with our datasets.
+    #
+    # Also, resize along the first dimension only. Again, this is something
+    # that may work well for our datasets.
+    #
+    # Note that dask also supports this kind of argument, and so we could
+    # just pass this through. However, some experiments have found this
+    # leads to excessive memory usage. So we will control this behaviour
+    # ourselves here and make sure dask chunk sizes are always a multiple of the
+    # underlying zarr chunk sizes.
+    elif isinstance(chunks, str):
+        if len(z.chunks) > 1:
+            dask_chunk_nbytes = parse_bytes(chunks)
+            zarr_chunk_nbytes = prod(z.chunks) * z.dtype.itemsize
+            factor = dask_chunk_nbytes // zarr_chunk_nbytes
+            if factor > 1:
+                dask_chunks = ((z.chunks[0] * factor),) + z.chunks[1:]
+            else:
+                dask_chunks = z.chunks
+        else:
+            dask_chunks = z.chunks
+
+    # Pass through argument as-is to dask.
     else:
-        # Pass through argument as-is.
         dask_chunks = chunks
 
     kwargs = dict(
-        chunks=dask_chunks, fancy=False, lock=False, inline_array=inline_array
+        inline_array=inline_array,
+        chunks=dask_chunks,
+        fancy=True,
+        lock=False,
+        asarray=True,
     )
     try:
         d = da.from_array(z, **kwargs)
@@ -260,14 +302,17 @@ def dask_compress_dataset(ds, indexer, dim):
         indexer = ds[indexer].data
 
     # sanity checks
-    assert isinstance(indexer, da.Array)
     assert indexer.ndim == 1
     assert indexer.dtype == bool
     assert indexer.shape[0] == ds.sizes[dim]
 
-    # temporarily compute the indexer once, to avoid multiple reads from
-    # the underlying data
-    indexer_computed = indexer.compute()
+    if isinstance(indexer, da.Array):
+        # temporarily compute the indexer once, to avoid multiple reads from
+        # the underlying data
+        indexer_computed = indexer.compute()
+    else:
+        assert isinstance(indexer, np.ndarray)
+        indexer_computed = indexer
 
     coords = dict()
     for k in ds.coords:
@@ -297,47 +342,61 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
 
     else:
         # apply the indexing operation
-        v = da_compress(
-            indexer=indexer, data=a.data, axis=axis, indexer_computed=indexer_computed
-        )
+        data = a.data
+        if isinstance(data, da.Array):
+            v = da_compress(
+                indexer=indexer,
+                data=a.data,
+                axis=axis,
+                indexer_computed=indexer_computed,
+            )
+        else:
+            v = np.compress(indexer_computed, data, axis=axis)
 
     return v
 
 
 def da_compress(
-    indexer: da.Array,
+    indexer: da.Array | np.ndarray,
     data: da.Array,
     axis: int,
     indexer_computed: Optional[np.ndarray] = None,
 ):
     """Wrapper for dask.array.compress() which computes chunk sizes faster."""
 
-    # sanity checks
+    # Sanity checks.
+    assert indexer.ndim == 1
+    assert indexer.dtype == bool
     assert indexer.shape[0] == data.shape[axis]
 
-    # useful variables
+    # Useful variables.
     old_chunks = data.chunks
     axis_old_chunks = old_chunks[axis]
 
-    # load the indexer temporarily for chunk size computations
+    # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
         indexer_computed = indexer.compute()
 
-    # ensure indexer and data are chunked in the same way
-    indexer = indexer.rechunk((axis_old_chunks,))
+    # Ensure indexer and data are chunked in the same way.
+    if isinstance(indexer, da.Array):
+        indexer = indexer.rechunk((axis_old_chunks,))
+    else:
+        indexer = da.from_array(indexer, chunks=(axis_old_chunks,))
 
-    # apply the indexing operation
+    # Apply the indexing operation.
     v = da.compress(indexer, data, axis=axis)
 
-    # need to compute chunks sizes in order to know dimension sizes;
+    # Need to compute chunks sizes in order to know dimension sizes;
     # would normally do v.compute_chunk_sizes() but that is slow for
-    # multidimensional arrays, so hack something more efficient
-
+    # multidimensional arrays, so hack something more efficient.
     axis_new_chunks_list = []
     slice_start = 0
+    need_rechunk = False
     for old_chunk_size in axis_old_chunks:
         slice_stop = slice_start + old_chunk_size
-        new_chunk_size = np.sum(indexer_computed[slice_start:slice_stop])
+        new_chunk_size = int(np.sum(indexer_computed[slice_start:slice_stop]))
+        if new_chunk_size == 0:
+            need_rechunk = True
         axis_new_chunks_list.append(new_chunk_size)
         slice_start = slice_stop
     axis_new_chunks = tuple(axis_new_chunks_list)
@@ -345,6 +404,23 @@ def da_compress(
         [axis_new_chunks if i == axis else c for i, c in enumerate(old_chunks)]
     )
     v._chunks = new_chunks
+
+    # Deal with empty chunks, they break reductions.
+    # Possibly related to https://github.com/dask/dask/issues/10327
+    # and https://github.com/dask/dask/issues/2794
+    if need_rechunk:
+        axis_new_chunks_nonzero = tuple([x for x in axis_new_chunks if x > 0])
+        # Edge case, all chunks empty:
+        if len(axis_new_chunks_nonzero) == 0:
+            # Not much we can do about this, no data.
+            axis_new_chunks_nonzero = (0,)
+        new_chunks_nonzero = tuple(
+            [
+                axis_new_chunks_nonzero if i == axis else c
+                for i, c in enumerate(new_chunks)
+            ]
+        )
+        v = v.rechunk(new_chunks_nonzero)
 
     return v
 
@@ -986,11 +1062,18 @@ def get_gcp_region(details):
                     return "us-west4"
                 elif region == "Texas":
                     return "us-south1"
+                else:
+                    return "us-other"
             elif country == "ZA":
                 if region == "Gauteng":
                     return "africa-south1"
             # Add other regions later if needed.
+            return "other"
     return None
+
+
+class ColabLocationError(RuntimeError):
+    pass
 
 
 def check_colab_location(gcp_region: Optional[str]):
@@ -998,20 +1081,19 @@ def check_colab_location(gcp_region: Optional[str]):
     Sometimes, colab will allocate a VM outside the US, e.g., in
     Europe or Asia. Because the MalariaGEN GCS buckets are located
     in the US, this is usually bad for performance, because of
-    increased latency and lower bandwidth. Add a check for this and
-    issue a warning if not in the US.
+    increased latency and lower bandwidth, and costs money. Add a
+    check for this and raise an error if not in the US.
     """
 
     if colab and gcp_region:
         if not gcp_region.startswith("us-"):
-            warnings.warn(
+            raise ColabLocationError(
                 fill(
                     dedent(
                         """
-                Your currently allocated Google Colab VM is not located in the US.
-                This usually means that data access will be substantially slower.
-                If possible, select "Runtime > Disconnect and delete runtime" from
-                the menu to request a new VM and try again.
+                Your Google Colab VM is not located in the US.
+                Please select "Runtime > Disconnect and delete runtime" from
+                the menu to request a new VM, then rerun your notebook.
             """
                     )
                 )
@@ -1418,6 +1500,64 @@ def apply_allele_mapping(x, mapping, max_allele):
                 out[i, new_allele_index] = x[i, allele_index]
 
     return out
+
+
+def dask_apply_allele_mapping(v, mapping, max_allele):
+    assert isinstance(v, da.Array)
+    assert isinstance(mapping, np.ndarray)
+    assert v.ndim == 2
+    assert mapping.ndim == 2
+    assert v.shape[0] == mapping.shape[0]
+    v = v.rechunk((v.chunks[0], -1))
+    mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
+    out = da.map_blocks(
+        lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
+        v,
+        mapping,
+        dtype=v.dtype,
+        chunks=(v.chunks[0], [max_allele + 1]),
+    )
+    return out
+
+
+def genotype_array_map_alleles(gt, mapping):
+    # Transform genotype calls via an allele mapping.
+    # N.B., scikit-allel does not handle empty blocks well, so we
+    # include some extra logic to handle that better.
+    assert isinstance(gt, np.ndarray)
+    assert isinstance(mapping, np.ndarray)
+    assert gt.ndim == 3
+    assert mapping.ndim == 3
+    assert gt.shape[0] == mapping.shape[0]
+    assert gt.shape[1] > 0
+    assert gt.shape[2] == 2
+    if gt.size > 0:
+        # Block is not empty, can pass through to GenotypeArray.
+        assert gt.shape[0] > 0
+        m = mapping[:, 0, :]
+        out = allel.GenotypeArray(gt).map_alleles(m).values
+    else:
+        # Block is empty so no alleles need to be mapped.
+        assert gt.shape[0] == 0
+        out = gt
+    return out
+
+
+def dask_genotype_array_map_alleles(gt, mapping):
+    assert isinstance(gt, da.Array)
+    assert isinstance(mapping, np.ndarray)
+    assert gt.ndim == 3
+    assert mapping.ndim == 2
+    assert gt.shape[0] == mapping.shape[0]
+    mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
+    gt_out = da.map_blocks(
+        genotype_array_map_alleles,
+        gt,
+        mapping[:, None, :],
+        chunks=gt.chunks,
+        dtype=gt.dtype,
+    )
+    return gt_out
 
 
 def pandas_apply(f, df, columns):

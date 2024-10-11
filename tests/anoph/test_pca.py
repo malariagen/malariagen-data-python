@@ -93,9 +93,10 @@ def test_pca_plotting(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = random.randint(4, n_snps_available)
     # PC3 required for plot_pca_coords_3d()
-    n_components = random.randint(3, min(n_samples, n_snps))
+    assert min(n_samples, n_snps) > 3
+    n_components = random.randint(3, min(n_samples, n_snps, 10))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -183,8 +184,8 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"] - n_samples_excluded
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
-    n_components = random.randint(3, min(n_samples, n_snps, 10))
+    n_snps = random.randint(4, n_snps_available)
+    n_components = random.randint(2, min(n_samples, n_snps, 10))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
@@ -244,8 +245,8 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     # PCA parameters.
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
-    n_components = random.randint(3, min(n_samples, n_snps, 10))
+    n_snps = random.randint(4, n_snps_available)
+    n_components = random.randint(2, min(n_samples, n_snps, 10))
 
     # Run the PCA.
     pca_df, pca_evr = api.pca(
