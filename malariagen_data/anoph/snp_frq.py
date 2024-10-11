@@ -1449,12 +1449,8 @@ class AnophelesSnpFrequencyAnalysis(
         if cohorts is None:
             # Create cohorts full all samples, then each species, then each country x species combo
             # FIXME: this needs to be made agnostic to species groups, e.g. funestus.
-            coh_dict1 = {
-                "all": np.full(num_samples, True),
-                "gambiae": df_samples.taxon == "gambiae",
-                "coluzzii": df_samples.taxon == "coluzzii",
-                "arabiensis": df_samples.taxon == "arabiensis",
-            }
+            coh_dict1 = {t : df_samples.taxon == t for t in np.unique(df_samples.taxon)}
+            coh_dict1['all'] = np.full(num_samples, True)
             coh_dict2 = {
                 c: df_samples.country == c for c in np.unique(df_samples.country)
             }
