@@ -1183,15 +1183,25 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_cohorts
 
+    @check_types
+    @doc(
+        summary="""
+            Plot markers on a map showing sample locations
+            as a Mapbox scatter plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to px.scatter_mapbox().",
+        ),
+    )
     def sample_location_mapbox(
         self,
         *,
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
-        marker_size: plotly_params.marker_size = 12,
+        marker_size: plotly_params.marker_size = 10,
         color: plotly_params.color = "admin1_name",
-        category_orders: plotly_params.category_order = None,  # TODO: rename to plotly_params.category_orders
+        category_orders: plotly_params.category_order = None,
         hover_name: plotly_params.color = "location",
         zoom: plotly_params.zoom = 4,
         width: plotly_params.fig_width = 800,
@@ -1199,7 +1209,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         **kwargs,
-    ):
+    ) -> plotly_params.figure:
         # Get the sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -1233,6 +1243,79 @@ class AnophelesSampleMetadata(AnophelesBase):
             hover_name=hover_name,
             width=width,
             height=height,
+            **kwargs,
+        )
+
+        # Set the size of the markers.
+        fig.update_traces(marker=dict(size=marker_size))
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
+
+    @check_types
+    @doc(
+        summary="""
+            Plot markers on a map showing sample locations
+            as a geographic scatter plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to px.scatter_mapbox().",
+        ),
+    )
+    def sample_location_geo(
+        self,
+        *,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        marker_size: plotly_params.marker_size = 10,
+        color: plotly_params.color = "admin1_name",
+        category_orders: plotly_params.category_order = None,
+        hover_name: plotly_params.color = "location",
+        fitbounds: plotly_params.fitbounds = "locations",
+        scope: plotly_params.scope = "world",
+        width: plotly_params.fig_width = 500,
+        height: plotly_params.fig_height = 500,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        **kwargs,
+    ) -> plotly_params.figure:
+        # Get the sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+
+        # Set the location columns to use from the sample metadata.
+        location_columns = [
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "latitude",
+            "longitude",
+        ]
+
+        # Trim and dedupe the sample locations.
+        df_locations = df_samples[location_columns].drop_duplicates()
+
+        fig = px.scatter_geo(
+            df_locations,
+            lat="latitude",
+            lon="longitude",
+            scope=scope,
+            height=height,
+            width=width,
+            color=color,
+            hover_name=hover_name,
+            category_orders=category_orders,
+            color_discrete_sequence=px.colors.qualitative.Prism,
+            fitbounds=fitbounds,
             **kwargs,
         )
 
