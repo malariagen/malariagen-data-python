@@ -185,3 +185,13 @@ legend_sizing: TypeAlias = Annotated[
     on the graph.
     """,
 ]
+
+zoom: TypeAlias = Annotated[
+    Optional[Union[int, float]],
+    "Initial zoom level.",
+]
+
+hover_name: TypeAlias = Annotated[
+    Optional[Union[str, Mapping]],
+    "Name of variable to appear in bold in the hover tooltip.",
+]
