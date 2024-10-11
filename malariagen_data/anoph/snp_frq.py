@@ -1277,7 +1277,7 @@ class AnophelesSnpFrequencyAnalysis(
         array_of_snps = np.array(list_of_snps)
 
         # Get the SNP frequencies as a DataFrame.
-        snp_freqs = self._any_snp_allele_freq(region, array_of_snps)
+        snp_freqs = self._any_snp_allele_freq(region, array_of_snps, sample_sets=sample_sets, sample_query=sample_query, site_mask=site_mask)
 
         # Return a copy of the DataFrame to insulate against changes.
         return snp_freqs.copy()
