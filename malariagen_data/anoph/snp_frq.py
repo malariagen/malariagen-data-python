@@ -1269,6 +1269,9 @@ class AnophelesSnpFrequencyAnalysis(
         *,
         list_of_snps: List[int],
         contig: base_params.contig,
+        sample_sets=None,
+        sample_query=None,
+        site_mask=None
     ) -> pd.DataFrame:
         # Compose the region using the min and max SNP positions.
         region = f"{contig}:{min(list_of_snps)}-{max(list_of_snps)}"
