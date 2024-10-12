@@ -1592,7 +1592,15 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Access SNP calls at sites which are biallelic within the selected samples.",
-        returns="A dataset containing SNP sites, site filters and genotype calls.",
+        returns="""
+        A dataset with 4 dimensions: **variants**: the number of sites, **alleles** the number of alleles (2), **samples**: the number of samples, **ploidy**: the ploidy (2). There are 3 coordinates:
+        **sample_id** has **samples** values and contains the identifier of each sample,
+        **variant_position** has **variants** values and contains the position of each site,
+        **variant_contig** has **variants** values and contains the contig of each site. There are 3 data variables:
+        **variant_allele**, it (**variants**, **alleles**) values and contains the nucleotide represented as a character for each site, each allele,
+        **variant_allele_count**, it (**variants**, **alleles**) values and contains the number of occurences of each allele at each site,
+        **call_genotype**, it (**variants**, **samples**, **ploidy**) values and contains and contains both calls for each site and each sample.
+          """,
     )
     def biallelic_snp_calls(
         self,
