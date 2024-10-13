@@ -355,8 +355,7 @@ class Ag3(AnophelesDataResource):
         start, end = np.min(tag_snps_pos), np.max(tag_snps_pos)
         region = f"{contig}:{start}-{end}"
 
-        # compkaryo targets do not specify specific alleles, they assume biallelism, so we need to use biallelic_snp_calls
-        ds_snps = self.biallelic_snp_calls(
+        ds_snps = self.snp_calls(
             region=region, sample_sets=sample_sets, sample_query=sample_query
         )
         geno = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
