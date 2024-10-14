@@ -1201,9 +1201,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query_options: Optional[base_params.sample_query_options] = None,
         marker_size: plotly_params.marker_size = 10,
         color: plotly_params.color = "admin1_name",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = px.colors.qualitative.Prism,
         category_orders: plotly_params.category_order = None,
-        hover_name: plotly_params.color = "location",
-        zoom: plotly_params.zoom = 4,
+        hover_name: plotly_params.hover_name = "location",
+        zoom: plotly_params.zoom = None,
         width: plotly_params.fig_width = 800,
         height: plotly_params.fig_height = 600,
         show: plotly_params.show = True,
@@ -1229,7 +1230,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         ]
 
         # Trim and dedupe the sample locations.
-        df_locations = df_samples[location_columns].drop_duplicates()
+        # Sort by `color` column by default, which can be overridden via category_orders.
+        df_locations = df_samples[location_columns].drop_duplicates().sort_values(color)
 
         fig = px.scatter_mapbox(
             df_locations,
@@ -1239,7 +1241,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             zoom=zoom,
             color=color,
             category_orders=category_orders,
-            color_discrete_sequence=px.colors.qualitative.Prism,
+            color_discrete_sequence=color_discrete_sequence,
             hover_name=hover_name,
             width=width,
             height=height,
@@ -1273,8 +1275,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query_options: Optional[base_params.sample_query_options] = None,
         marker_size: plotly_params.marker_size = 10,
         color: plotly_params.color = "admin1_name",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = px.colors.qualitative.Prism,
         category_orders: plotly_params.category_order = None,
-        hover_name: plotly_params.color = "location",
+        hover_name: plotly_params.hover_name = "location",
         fitbounds: plotly_params.fitbounds = "locations",
         scope: plotly_params.scope = "world",
         width: plotly_params.fig_width = 500,
@@ -1302,7 +1305,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         ]
 
         # Trim and dedupe the sample locations.
-        df_locations = df_samples[location_columns].drop_duplicates()
+        # Sort by `color` column by default, which can be overridden via category_orders.
+        df_locations = df_samples[location_columns].drop_duplicates().sort_values(color)
 
         fig = px.scatter_geo(
             df_locations,
@@ -1314,7 +1318,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             color=color,
             hover_name=hover_name,
             category_orders=category_orders,
-            color_discrete_sequence=px.colors.qualitative.Prism,
+            color_discrete_sequence=color_discrete_sequence,
             fitbounds=fitbounds,
             **kwargs,
         )
