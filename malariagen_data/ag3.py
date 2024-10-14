@@ -12,7 +12,6 @@ from .anopheles import AnophelesDataResource
 from .util import check_types
 from .anoph import base_params
 from typing import Optional
-from numpydoc_decorator import doc  # type: ignore
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
@@ -349,41 +348,39 @@ class Ag3(AnophelesDataResource):
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
 
-    
     def load_inversion_tags(self, inversion: str):
-        # needs to be modified depending on where we are hosting 
+        # needs to be modified depending on where we are hosting
         path = "../karyotype_tag_snps.csv"
         df_tag_snps = pd.read_csv(path, sep=",")
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
-    
 
     def karyotype_tags_n_alt(self, gt, alts, inversion_alts):
         # could be Numba'd for speed but was already quick (not many inversion tag snps)
         n_sites = gt.shape[0]
         n_samples = gt.shape[1]
 
-        # create empty array 
-        inv_n_alt =  np.empty((n_sites, n_samples), dtype=np.int8)
+        # create empty array
+        inv_n_alt = np.empty((n_sites, n_samples), dtype=np.int8)
 
         # for every site
         for i in range(n_sites):
-            # find the index of the correct tag snp allele 
+            # find the index of the correct tag snp allele
             tagsnp_index = np.where(alts[i] == inversion_alts[i])[0]
-    
+
             for j in range(n_samples):
                 # count alleles which == tag snp allele and store
-                n_tag_alleles = np.sum(gt[i,j] == tagsnp_index[0]) 
-                inv_n_alt[i,j] = n_tag_alleles
-        
+                n_tag_alleles = np.sum(gt[i, j] == tagsnp_index[0])
+                inv_n_alt[i, j] = n_tag_alleles
+
         return inv_n_alt
-        
+
     @check_types
     def karyotype(
-        self, 
-        inversion, 
+        self,
+        inversion,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
-                  ) -> pd.DataFrame:
+    ) -> pd.DataFrame:
         """
         Infer karyotype from tag SNPs for a given inversion.
 
@@ -398,15 +395,17 @@ class Ag3(AnophelesDataResource):
         """
 
         inversion_list = ["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"]
-        assert inversion in inversion_list, f"Inversion {inversion} not found - please select one of {inversion_list}"
+        assert (
+            inversion in inversion_list
+        ), f"Inversion {inversion} not found - please select one of {inversion_list}"
 
         # load tag snp data
         df_tagsnps = self.load_inversion_tags(self, inversion=inversion)
-        inversion_pos = df_tagsnps['position']
-        inversion_alts = df_tagsnps['alt_allele']
+        inversion_pos = df_tagsnps["position"]
+        inversion_alts = df_tagsnps["alt_allele"]
         contig = inversion[0:2]
-        
-        # get snp calls for inversion region 
+
+        # get snp calls for inversion region
         start, end = np.min(inversion_pos), np.max(inversion_pos)
         region = f"{contig}:{start}-{end}"
 
@@ -416,7 +415,7 @@ class Ag3(AnophelesDataResource):
         geno = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
         pos = allel.SortedIndex(ds_snps["variant_position"].values)
         samples = ds_snps["sample_id"].values
-        alts = ds_snps['variant_allele'].values.astype(str)
+        alts = ds_snps["variant_allele"].values.astype(str)
 
         # subset to position of inversion tags
         mask = pos.locate_intersection(inversion_pos)[0]
@@ -424,7 +423,9 @@ class Ag3(AnophelesDataResource):
         geno = geno.compress(mask, axis=0)
 
         with self._spinner("Inferring karyotype from tag SNPs"):
-            gn_alt = self.karyotype_tags_n_alt(gt=geno.values, alts=alts, inversion_alts=inversion_alts)
+            gn_alt = self.karyotype_tags_n_alt(
+                gt=geno.values, alts=alts, inversion_alts=inversion_alts
+            )
             is_called = geno.is_called()
 
             # calculate mean genotype for each sample whilst masking missing calls
@@ -435,7 +436,9 @@ class Ag3(AnophelesDataResource):
                 {
                     "sample_id": samples,
                     "inversion": inversion,
-                    "mean_tag_snp_genotype": av_gts.round().astype(int), # round the genotypes then convert to int
+                    "mean_tag_snp_genotype": av_gts.round().astype(
+                        int
+                    ),  # round the genotypes then convert to int
                     "total_tag_snps": total_sites,
                 }
             )
