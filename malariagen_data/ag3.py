@@ -400,7 +400,7 @@ class Ag3(AnophelesDataResource):
         ), f"Inversion {inversion} not found - please select one of {inversion_list}"
 
         # load tag snp data
-        df_tagsnps = self.load_inversion_tags(self, inversion=inversion)
+        df_tagsnps = self.load_inversion_tags(inversion=inversion)
         inversion_pos = df_tagsnps["position"]
         inversion_alts = df_tagsnps["alt_allele"]
         contig = inversion[0:2]
