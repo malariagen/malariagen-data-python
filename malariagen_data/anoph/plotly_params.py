@@ -215,8 +215,3 @@ scope: TypeAlias = Annotated[
     ],
     "Scope of the map.",
 ]
-
-color_discrete_sequence: TypeAlias = Annotated[
-    Optional[List[str]],
-    "List of colors to use.",
-]
