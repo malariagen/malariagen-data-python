@@ -378,9 +378,6 @@ class Ag3(AnophelesDataResource):
         return inv_n_alt
         
     @check_types
-    @doc(
-        summary="Infer karyotype from tag SNPs for a given inversion",
-    )
     def karyotype(
         self, 
         inversion, 
