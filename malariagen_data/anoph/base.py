@@ -62,8 +62,6 @@ class AnophelesBase:
         results_cache: Optional[str] = None,
         tqdm_class=None,
     ):
-        print("base before:", show_progress)
-
         # If show_progress has not been specified, then determine the default.
         if show_progress is None:
             # Get the env var, if it exists.
@@ -75,8 +73,6 @@ class AnophelesBase:
                 show_progress = True
             else:
                 show_progress = show_progress_env.lower() in ("true", "1", "yes", "on")
-
-        print("base after:", show_progress)
 
         self._config_path = config_path
         self._pre = pre
