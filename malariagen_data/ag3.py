@@ -150,8 +150,6 @@ class Ag3(AnophelesDataResource):
         tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
-        print("Ag3 show_progress", show_progress)
-
         super().__init__(
             url=url,
             config_path=CONFIG_PATH,
