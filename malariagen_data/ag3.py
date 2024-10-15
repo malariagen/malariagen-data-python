@@ -1,3 +1,4 @@
+import os
 import sys
 
 import dask
@@ -98,7 +99,7 @@ class Ag3(AnophelesDataResource):
     debug : bool, optional
         Set to True to enable debug level logging.
     show_progress : bool, optional
-        If True, show a progress bar during longer-running computations.
+        If True, show a progress bar during longer-running computations. The default can be overridden using an environmental variable named MGEN_SHOW_PROGRESS.
     check_location : bool, optional
         If True, use ipinfo to check the location of the client system.
     **kwargs
@@ -140,7 +141,7 @@ class Ag3(AnophelesDataResource):
         results_cache=None,
         log=sys.stdout,
         debug=False,
-        show_progress=True,
+        show_progress=None,
         check_location=True,
         cohorts_analysis=None,
         aim_analysis=None,
@@ -150,6 +151,18 @@ class Ag3(AnophelesDataResource):
         tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
+        # If show_progress has not been specified, then determine the default.
+        if show_progress is None:
+            # Get the env var, if it exists.
+            show_progress_env = os.getenv("MGEN_SHOW_PROGRESS")
+
+            # If the env var does not exist, then use the class default.
+            # Otherwise, convert the env var value to a boolean and use that.
+            if show_progress_env is None:
+                show_progress = True
+            else:
+                show_progress = show_progress_env.lower() in ("true", "1", "yes", "on")
+
         super().__init__(
             url=url,
             config_path=CONFIG_PATH,
