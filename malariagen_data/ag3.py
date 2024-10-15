@@ -1,4 +1,3 @@
-import os
 import sys
 
 import dask
@@ -151,17 +150,7 @@ class Ag3(AnophelesDataResource):
         tqdm_class=None,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
-        # If show_progress has not been specified, then determine the default.
-        if show_progress is None:
-            # Get the env var, if it exists.
-            show_progress_env = os.getenv("MGEN_SHOW_PROGRESS")
-
-            # If the env var does not exist, then use the class default.
-            # Otherwise, convert the env var value to a boolean and use that.
-            if show_progress_env is None:
-                show_progress = True
-            else:
-                show_progress = show_progress_env.lower() in ("true", "1", "yes", "on")
+        print("Ag3 show_progress", show_progress)
 
         super().__init__(
             url=url,
