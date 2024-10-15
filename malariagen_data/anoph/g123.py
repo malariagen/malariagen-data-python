@@ -80,7 +80,7 @@ class AnophelesG123Analysis(
                     inline_array=True,
                     chunks="native",
                 ).compute()
-                hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
+                hap_site_mask = np.isin(pos, haplotype_pos, assume_unique=True)
                 pos = pos[hap_site_mask]
                 gt = gt.compress(hap_site_mask, axis=0)
 
