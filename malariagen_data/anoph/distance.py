@@ -370,7 +370,9 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # neighbour-joining iterations.
         if show_progress:
             progress = self._tqdm_class
-            progress_options = dict(desc="Compute neighbour-joining", leave=False)
+            progress_options = dict(
+                desc="Construct neighbour-joining tree", leave=False
+            )
         else:
             progress = None
             progress_options = dict()
