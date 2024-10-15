@@ -518,10 +518,22 @@ class AnophelesH12Analysis(
     @doc(
         summary="Plot h12 GWSS data track with multiple traces.",
     )
-    def plot_h12_gwss_track_multi(
+    def plot_h12_gwss_multi_overlay_track(
         self,
         contig: base_params.contig,
-        sample_queries: h12_params.sample_queries,
+        sample_query: base_params.sample_query,
+        cohorts: base_params.cohorts,
+        cohort_size: base_params.cohort_size,
+        window_sizes: h12_params.window_size,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        title: Optional[gplt_params.title] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
         random_seed: base_params.random_seed = 42,
@@ -532,28 +544,38 @@ class AnophelesH12Analysis(
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        if len(sample_queries) > 0:
-            raise ValueError("At least 1 sample query is required")
+        cohort_queries = self._setup_cohort_queries(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            min_cohort_size=None,
+        )
+
+        if isinstance(window_sizes, int):
+            window_sizes = {k: window_sizes for k in cohort_queries.keys()}
+        elif isinstance(window_sizes, dict):
+            if np.sort(window_sizes.keys()) != np.sort(cohort_queries.keys()):
+                raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Compute H12.
-        res = []
-        for q in sample_queries:
-            res.append(
-                self.h12_gwss(
-                    contig=contig,
-                    analysis=q.analysis,
-                    window_size=q.window_size,
-                    cohort_size=q.cohort_size,
-                    min_cohort_size=q.min_cohort_size,
-                    max_cohort_size=q.max_cohort_size,
-                    sample_query=q.sample_query,
-                    sample_sets=sample_sets,
-                    random_seed=random_seed,
-                )
+        res = {}
+        for cohort_label, cohort_query in cohort_queries.items():
+            res[cohort_label] = self.h12_gwss(
+                contig=contig,
+                analysis=analysis,
+                window_size=window_sizes[cohort_label],
+                cohort_size=cohort_size,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
+                sample_query=cohort_query,
+                sample_sets=sample_sets,
+                random_seed=random_seed,
             )
 
         # Determine X axis range.
-        x, _ = res[0]
+        x, _ = res[cohort_queries.keys()[0]]
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
@@ -565,7 +587,7 @@ class AnophelesH12Analysis(
         )
 
         fig = bokeh.plotting.figure(
-            title=q.title,
+            title=title,
             tools=[
                 "xpan",
                 "xzoom_in",
@@ -588,7 +610,7 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        for i, (x, h12) in enumerate(res):
+        for i, (cohort_label, (x, h12)) in enumerate(res.items()):
             fig.scatter(
                 x=x,
                 y=h12,
@@ -597,7 +619,7 @@ class AnophelesH12Analysis(
                 line_width=1,
                 line_color=colors[i % len(colors)],
                 fill_color=None,
-                legend_label=sample_queries[i],
+                legend_label=cohort_label,
             )
 
         # Tidy up the plot.
@@ -615,10 +637,21 @@ class AnophelesH12Analysis(
     @doc(
         summary="Plot h12 GWSS data with multiple traces.",
     )
-    def plot_h12_gwss_multitraces(
+    def plot_h12_gwss_multi_overlay(
         self,
         contig: base_params.contig,
-        sample_queries: h12_params.sample_queries,
+        sample_query: base_params.sample_query,
+        cohorts: base_params.cohorts,
+        cohort_size: base_params.cohort_size,
+        window_sizes: h12_params.window_size,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         colors: gplt_params.colors = bokeh.palettes.d3["Category10"][10],
         random_seed: base_params.random_seed = 42,
@@ -630,66 +663,77 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        if len(sample_queries) > 0:
-            raise ValueError("At least 1 sample query is required")
-
         # Plot GWSS track.
-        try:
-            fig1 = self.plot_h12_gwss_track_multi(
-                contig=contig,
-                sample_sets=sample_sets,
-                sample_queries=sample_queries,
-                colors=colors,
-                random_seed=random_seed,
-                title=title,
-                sizing_mode=sizing_mode,
-                width=width,
-                height=track_height,
-                show=False,
-                output_backend=output_backend,
-            )
+        fig1 = self.plot_h12_gwss_multi_overlay_track(
+            contig=contig,
+            sample_query=sample_query,
+            cohorts=cohorts,
+            cohort_size=cohort_size,
+            window_size=window_sizes,
+            analysis=analysis,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            sample_query_options=sample_query_options,
+            sample_sets=sample_sets,
+            colors=colors,
+            random_seed=random_seed,
+            title=title,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=track_height,
+            show=False,
+            output_backend=output_backend,
+        )
 
-            fig1.xaxis.visible = False
-            fig1.legend.location = "top_right"
-            fig1.legend.click_policy = "hide"
+        fig1.xaxis.visible = False
+        fig1.legend.location = "top_right"
+        fig1.legend.click_policy = "hide"
 
-            # Plot genes.
-            fig2 = self.plot_genes(
-                region=contig,
-                sizing_mode=sizing_mode,
-                width=width,
-                height=genes_height,
-                x_range=fig1.x_range,
-                show=False,
-                output_backend=output_backend,
-            )
+        # Plot genes.
+        fig2 = self.plot_genes(
+            region=contig,
+            sizing_mode=sizing_mode,
+            width=width,
+            height=genes_height,
+            x_range=fig1.x_range,
+            show=False,
+            output_backend=output_backend,
+        )
 
-            # Combine plots into a single figure.
-            fig = bokeh.layouts.gridplot(
-                [fig1, fig2],
-                ncols=1,
-                toolbar_location="above",
-                merge_tools=True,
-                sizing_mode=sizing_mode,
-            )
+        # Combine plots into a single figure.
+        fig = bokeh.layouts.gridplot(
+            [fig1, fig2],
+            ncols=1,
+            toolbar_location="above",
+            merge_tools=True,
+            sizing_mode=sizing_mode,
+        )
 
-            if show:  # pragma: no cover
-                bokeh.plotting.show(fig)
-                return None
-            else:
-                return fig
-        except AssertionError as msg:
-            print(msg)
+        if show:  # pragma: no cover
+            bokeh.plotting.show(fig)
             return None
+        else:
+            return fig
 
     @check_types
     @doc(
         summary="Plot h12 GWSS data with multiple tracks.",
     )
-    def plot_h12_gwss_multi(
+    def plot_h12_gwss_multi_panel(
         self,
         contig: base_params.contig,
-        sample_queries: h12_params.sample_queries,
+        sample_query: base_params.sample_query,
+        cohorts: base_params.cohorts,
+        cohort_size: base_params.cohort_size,
+        window_sizes: h12_params.window_size,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        min_cohort_size: Optional[
+            base_params.min_cohort_size
+        ] = h12_params.min_cohort_size_default,
+        max_cohort_size: Optional[
+            base_params.max_cohort_size
+        ] = h12_params.max_cohort_size_default,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         random_seed: base_params.random_seed = 42,
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
@@ -699,25 +743,37 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.figure:
-        if len(sample_queries) > 0:
-            raise ValueError("At least 1 sample query is required")
+        cohort_queries = self._setup_cohort_queries(
+            cohorts=cohorts,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            min_cohort_size=None,
+        )
+
+        if isinstance(window_sizes, int):
+            window_sizes = {k: window_sizes for k in cohort_queries.keys()}
+        elif isinstance(window_sizes, dict):
+            if np.sort(window_sizes.keys()) != np.sort(cohort_queries.keys()):
+                raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
         figs: list[gplt_params.def_figure] = []
-        for i, q in enumerate(sample_queries):
+        for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
             if i > 0:
                 figs.append(
                     self.plot_h12_gwss_track(
                         contig=contig,
-                        analysis=q.analysis,
-                        window_size=q.window_size,
+                        analysis=analysis,
+                        window_size=window_sizes[cohort_label],
                         sample_sets=sample_sets,
-                        sample_query=q.sample_query,
-                        cohort_size=q.cohort_size,
-                        min_cohort_size=q.min_cohort_size,
-                        max_cohort_size=q.max_cohort_size,
+                        sample_query=cohort_query,
+                        cohort_size=cohort_size,
+                        min_cohort_size=min_cohort_size,
+                        max_cohort_size=max_cohort_size,
                         random_seed=random_seed,
-                        title=q.title,
+                        title=cohort_label,  # Deal with a choice of titles later
                         sizing_mode=sizing_mode,
                         width=width,
                         height=track_height,
@@ -730,15 +786,15 @@ class AnophelesH12Analysis(
                 figs.append(
                     self.plot_h12_gwss_track(
                         contig=contig,
-                        analysis=q.analysis,
-                        window_size=q.window_size,
+                        analysis=analysis,
+                        window_size=window_sizes[cohort_label],
                         sample_sets=sample_sets,
-                        sample_query=q.sample_query,
-                        cohort_size=q.cohort_size,
-                        min_cohort_size=q.min_cohort_size,
-                        max_cohort_size=q.max_cohort_size,
+                        sample_query=cohort_query,
+                        cohort_size=cohort_size,
+                        min_cohort_size=min_cohort_size,
+                        max_cohort_size=max_cohort_size,
                         random_seed=random_seed,
-                        title=q.title,
+                        title=cohort_label,  # Same as previously
                         sizing_mode=sizing_mode,
                         width=width,
                         height=track_height,
