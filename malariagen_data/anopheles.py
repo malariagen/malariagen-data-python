@@ -1705,7 +1705,7 @@ class AnophelesDataResource(
         ]
         for field, agg in extra_fields:
             if agg == "unique":
-                vals = df_samples[field].sort_values().unique()
+                vals = df_samples[field].dropna().sort_values().unique()
                 if len(vals) == 0:
                     val = np.nan
                 elif len(vals) == 1:
@@ -1713,7 +1713,7 @@ class AnophelesDataResource(
                 else:
                     val = vals.tolist()
             elif agg == "mean":
-                vals = df_samples[field]
+                vals = df_samples[field].dropna()
                 if len(vals) == 0:
                     val = np.nan
                 else:
@@ -2880,7 +2880,7 @@ class AnophelesDataResource(
             df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
 
             # extract all unique values of the color column
-            color_values = df_haps["partition"].unique()
+            color_values = df_haps["partition"].dropna().unique()
             color_values_mapping = dict(zip(df_haps["partition"], df_haps[color]))
             color_values_display = [color_values_mapping[c] for c in color_values]
 

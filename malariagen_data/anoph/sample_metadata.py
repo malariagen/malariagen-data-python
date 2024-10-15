@@ -1017,7 +1017,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         del color
 
         # Obtain the values that we will be mapping to colors.
-        color_data_values = data[color_prepped]
+        color_data_values = data[color_prepped].dropna()
         color_data_unique_values = color_data_values.unique()
 
         # Now set up color choices.
@@ -1207,7 +1207,7 @@ def locate_cohorts(*, cohorts, data):
         # Check the given cohort set exists.
         if cohorts not in data.columns:
             raise ValueError(f"{cohorts!r} is not a known column in the data.")
-        cohort_labels = data[cohorts].unique()
+        cohort_labels = data[cohorts].dropna().unique()
 
         # Remove the nans and sort.
         cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])
