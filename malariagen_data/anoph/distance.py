@@ -87,9 +87,6 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         summary="""
             Compute pairwise distances between samples using biallelic SNP genotypes.
         """,
-        parameters=dict(
-            metric="Distance metric, one of 'cityblock', 'euclidean' or 'sqeuclidean'.",
-        ),
     )
     def biallelic_diplotype_pairwise_distances(
         self,
@@ -236,11 +233,8 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
     @check_types
     @doc(
         summary="""
-            Compute pairwise distances between samples using biallelic SNP genotypes.
+            Construct a neighbour-joining tree between samples using biallelic SNP genotypes.
         """,
-        parameters=dict(
-            metric="Distance metric, one of 'cityblock', 'euclidean' or 'sqeuclidean'.",
-        ),
     )
     def njt(
         self,
