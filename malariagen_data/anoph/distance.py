@@ -1,9 +1,16 @@
+# Standard library imports.
 from typing import Optional, Tuple
+import math
+
+# Third-party library imports.
 import numba  # type: ignore
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
+import anjl.params  # type: ignore
+
+# Internal imports.
 from .snp_data import AnophelesSnpData
-from . import base_params, distance_params
+from . import base_params, distance_params, plotly_params, pca_params, tree_params
 from ..util import square_to_condensed, check_types, CacheMiss
 
 
@@ -239,8 +246,8 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         self,
         region: base_params.regions,
         n_snps: base_params.n_snps,
-        algorithm: distance_params.nj_algorithm = "rapid",
-        metric: distance_params.distance_metric = "cityblock",
+        algorithm: distance_params.nj_algorithm = distance_params.default_nj_algorithm,
+        metric: distance_params.distance_metric = distance_params.default_distance_metric,
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -248,8 +255,12 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = pca_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = pca_params.max_missing_an_default,
         cohort_size: Optional[base_params.cohort_size] = None,
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
@@ -259,7 +270,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
     ) -> Tuple[np.ndarray, np.ndarray, int]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "njt"
+        name = "njt_v1"
 
         # Normalize params for consistent hash value.
         (
@@ -334,10 +345,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
     ):
         # Only import anjl if needed, as it requires a couple of seconds to compile
         # functions.
-        import anjl
-        from scipy.spatial.distance import squareform
+        import anjl  # type: ignore
+        from scipy.spatial.distance import squareform  # type: ignore
 
-        # Compute diplotypes.
+        # Compute pairwise distances.
         dist, samples, n_snps = self.biallelic_diplotype_pairwise_distances(
             region=region,
             n_snps=n_snps,
@@ -360,6 +371,9 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
 
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
+
+        # anjl supports passing in a progress bar function to get progress on the
+        # neighbour-joining iterations.
         if show_progress:
             progress = self._tqdm_class
             progress_options = dict(desc="Compute neighbour-joining", leave=False)
@@ -367,6 +381,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             progress = None
             progress_options = dict()
 
+        # Decide which algorithm to use and run the neighbour-joining.
         if algorithm == "rapid":
             Z = anjl.rapid_nj(D=D, progress=progress, progress_options=progress_options)
         else:
@@ -381,3 +396,181 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
                 n_snps
             ),  # ensure consistent behaviour to/from results cache
         )
+
+    @check_types
+    @doc(
+        summary="""
+            Plot an unrooted neighbour-joining tree, computed from pairwise distances
+            between samples using biallelic SNP genotypes.
+        """,
+        extended_summary="""
+            The tree is displayed as an unrooted tree using the equal angles layout.
+        """,
+    )
+    def plot_njt(
+        self,
+        region: base_params.regions,
+        n_snps: base_params.n_snps,
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        algorithm: distance_params.nj_algorithm = distance_params.default_nj_algorithm,
+        metric: distance_params.distance_metric = distance_params.default_distance_metric,
+        distance_sort: Optional[tree_params.distance_sort] = None,
+        count_sort: Optional[tree_params.count_sort] = None,
+        center_x: anjl.params.center_x = 0,
+        center_y: anjl.params.center_y = 0,
+        arc_start: anjl.params.arc_start = 0,
+        arc_stop: anjl.params.arc_stop = 2 * math.pi,
+        width: plotly_params.fig_width = 800,
+        height: plotly_params.fig_height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        render_mode: plotly_params.render_mode = "auto",
+        title: plotly_params.title = True,
+        title_font_size: plotly_params.title_font_size = 14,
+        line_width: plotly_params.line_width = 0.5,
+        marker_size: plotly_params.marker_size = 5,
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
+        edge_legend: anjl.params.edge_legend = False,
+        leaf_legend: anjl.params.leaf_legend = True,
+        legend_sizing: plotly_params.legend_sizing = "constant",
+        thin_offset: base_params.thin_offset = 0,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
+        site_class: Optional[base_params.site_class] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = pca_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = pca_params.max_missing_an_default,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+        random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+    ) -> plotly_params.figure:
+        # Normalise params.
+        if count_sort is None and distance_sort is None:
+            count_sort = True
+            distance_sort = False
+
+        # Compute neighbour-joining tree.
+        Z, samples, n_snps_used = self.njt(
+            region=region,
+            n_snps=n_snps,
+            algorithm=algorithm,
+            metric=metric,
+            thin_offset=thin_offset,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+            site_mask=site_mask,
+            site_class=site_class,
+            min_minor_ac=min_minor_ac,
+            max_missing_an=max_missing_an,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            inline_array=inline_array,
+            chunks=chunks,
+        )
+
+        # Load sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_indices=sample_indices,
+        )
+        # Ensure alignment with the tree.
+        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+
+        # Normalise color and symbol parameters.
+        symbol_prepped = self._setup_sample_symbol(
+            data=df_samples,
+            symbol=symbol,
+        )
+        del symbol
+        (
+            color_prepped,
+            color_discrete_map_prepped,
+            category_orders_prepped,
+        ) = self._setup_sample_colors_plotly(
+            data=df_samples,
+            color=color,
+            color_discrete_map=color_discrete_map,
+            color_discrete_sequence=color_discrete_sequence,
+            category_orders=category_orders,
+        )
+        del color
+        del color_discrete_map
+        del color_discrete_sequence
+
+        # Construct plot title.
+        if title is True:
+            title_lines = []
+            if sample_sets is not None:
+                title_lines.append(f"Sample sets: {sample_sets}")
+            if sample_query is not None:
+                title_lines.append(f"Sample query: {sample_query}")
+            title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
+            title = "<br>".join(title_lines)
+
+        # Configure hover data.
+        hover_data = self._setup_sample_hover_data_plotly(
+            color=color_prepped, symbol=symbol_prepped
+        )
+
+        # Create the figure.
+        fig = anjl.plot(
+            Z=Z,
+            leaf_data=df_samples,
+            color=color_prepped,
+            symbol=symbol_prepped,
+            hover_name="sample_id",
+            hover_data=hover_data,
+            center_x=center_x,
+            center_y=center_y,
+            arc_start=arc_start,
+            arc_stop=arc_stop,
+            count_sort=count_sort,
+            distance_sort=distance_sort,
+            line_width=line_width,
+            marker_size=marker_size,
+            color_discrete_map=color_discrete_map_prepped,
+            category_orders=category_orders_prepped,
+            leaf_legend=leaf_legend,
+            edge_legend=edge_legend,
+            render_mode=render_mode,
+            width=width,
+            height=height,
+            legend_sizing=legend_sizing,
+            default_line_color="gray",
+        )
+
+        # Tidy up.
+        fig.update_layout(
+            title=title,
+            width=width,
+            height=height,
+            template="simple_white",
+            title_font=dict(
+                size=title_font_size,
+            ),
+            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
+        )
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
