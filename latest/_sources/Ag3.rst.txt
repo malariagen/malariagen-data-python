@@ -49,6 +49,7 @@ Sample metadata access
     sample_metadata
     add_extra_metadata
     clear_extra_metadata
+    cross_metadata
     count_samples
     lookup_sample
     plot_samples_bar

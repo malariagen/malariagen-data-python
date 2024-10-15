@@ -462,22 +462,25 @@ home page.</p>
 <tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.clear_extra_metadata.html#malariagen_data.ag3.Ag3.clear_extra_metadata" title="malariagen_data.ag3.Ag3.clear_extra_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">clear_extra_metadata</span></code></a>()</p></td>
 <td><p>Clear any extra metadata previously added.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.count_samples.html#malariagen_data.ag3.Ag3.count_samples" title="malariagen_data.ag3.Ag3.count_samples"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count_samples</span></code></a>([sample_sets, sample_query, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cross_metadata.html#malariagen_data.ag3.Ag3.cross_metadata" title="malariagen_data.ag3.Ag3.cross_metadata"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cross_metadata</span></code></a>()</p></td>
+<td><p>Load a dataframe containing metadata about samples in colony crosses, including which samples are parents or progeny in which crosses.</p></td>
+</tr>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.count_samples.html#malariagen_data.ag3.Ag3.count_samples" title="malariagen_data.ag3.Ag3.count_samples"><code class="xref py py-obj docutils literal notranslate"><span class="pre">count_samples</span></code></a>([sample_sets, sample_query, ...])</p></td>
 <td><p>Create a pivot table showing numbers of samples available by space, time and taxon.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.lookup_sample.html#malariagen_data.ag3.Ag3.lookup_sample" title="malariagen_data.ag3.Ag3.lookup_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup_sample</span></code></a>(sample[, sample_set])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.lookup_sample.html#malariagen_data.ag3.Ag3.lookup_sample" title="malariagen_data.ag3.Ag3.lookup_sample"><code class="xref py py-obj docutils literal notranslate"><span class="pre">lookup_sample</span></code></a>(sample[, sample_set])</p></td>
 <td><p>Get the metadata for a specific sample and sample set.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_bar.html#malariagen_data.ag3.Ag3.plot_samples_bar" title="malariagen_data.ag3.Ag3.plot_samples_bar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_samples_bar</span></code></a>(x[, color, sort, ...])</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_bar.html#malariagen_data.ag3.Ag3.plot_samples_bar" title="malariagen_data.ag3.Ag3.plot_samples_bar"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_samples_bar</span></code></a>(x[, color, sort, ...])</p></td>
 <td><p>Plot a bar chart showing the number of samples available, grouped by some variable such as country or year.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_interactive_map.html#malariagen_data.ag3.Ag3.plot_samples_interactive_map" title="malariagen_data.ag3.Ag3.plot_samples_interactive_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_samples_interactive_map</span></code></a>([sample_sets, ...])</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.plot_samples_interactive_map.html#malariagen_data.ag3.Ag3.plot_samples_interactive_map" title="malariagen_data.ag3.Ag3.plot_samples_interactive_map"><code class="xref py py-obj docutils literal notranslate"><span class="pre">plot_samples_interactive_map</span></code></a>([sample_sets, ...])</p></td>
 <td><p>Plot an interactive map showing sampling locations using ipyleaflet.</p></td>
 </tr>
-<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.wgs_data_catalog.html#malariagen_data.ag3.Ag3.wgs_data_catalog" title="malariagen_data.ag3.Ag3.wgs_data_catalog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wgs_data_catalog</span></code></a>(sample_set)</p></td>
+<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.wgs_data_catalog.html#malariagen_data.ag3.Ag3.wgs_data_catalog" title="malariagen_data.ag3.Ag3.wgs_data_catalog"><code class="xref py py-obj docutils literal notranslate"><span class="pre">wgs_data_catalog</span></code></a>(sample_set)</p></td>
 <td><p>Load a data catalog providing URLs for downloading BAM, VCF and Zarr files for samples in a given sample set.</p></td>
 </tr>
-<tr class="row-odd"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cohorts.html#malariagen_data.ag3.Ag3.cohorts" title="malariagen_data.ag3.Ag3.cohorts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cohorts</span></code></a>(cohort_set)</p></td>
+<tr class="row-even"><td><p><a class="reference internal" href="generated/malariagen_data.ag3.Ag3.cohorts.html#malariagen_data.ag3.Ag3.cohorts" title="malariagen_data.ag3.Ag3.cohorts"><code class="xref py py-obj docutils literal notranslate"><span class="pre">cohorts</span></code></a>(cohort_set)</p></td>
 <td><p>Read data for a specific cohort set, including cohort size, country code, taxon, administrative units name, ISO code, geoBoundaries shape ID and representative latitude and longitude points.</p></td>
 </tr>
 </tbody>
@@ -887,7 +890,7 @@ home page.</p>
 
   <p class="copyright">
     
-      © Copyright 2023, MalariaGEN.
+      © Copyright 2024, MalariaGEN.
       <br/>
     
   </p>

@@ -8,7 +8,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
 
-    <title>malariagen_data.ag3.Ag3.diversity_stats &#8212; malariagen_data API  documentation</title>
+    <title>malariagen_data.ag3.Ag3.cross_metadata &#8212; malariagen_data API  documentation</title>
   
   
   
@@ -40,7 +40,7 @@
     <script src="../_static/doctools.js?v=9a2dae69"></script>
     <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
     <script src="../_static/design-tabs.js?v=f930bc37"></script>
-    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.ag3.Ag3.diversity_stats';</script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.ag3.Ag3.cross_metadata';</script>
     <script>
         DOCUMENTATION_OPTIONS.theme_version = '0.15.4';
         DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://malariagen.github.io/malariagen-data-python/latest/_static/switcher.json';
@@ -396,82 +396,17 @@ document.write(`
 <div id="searchbox"></div>
                 <article class="bd-article">
                   
-  <section id="malariagen-data-ag3-ag3-diversity-stats">
-<h1>malariagen_data.ag3.Ag3.diversity_stats<a class="headerlink" href="#malariagen-data-ag3-ag3-diversity-stats" title="Link to this heading">#</a></h1>
+  <section id="malariagen-data-ag3-ag3-cross-metadata">
+<h1>malariagen_data.ag3.Ag3.cross_metadata<a class="headerlink" href="#malariagen-data-ag3-ag3-cross-metadata" title="Link to this heading">#</a></h1>
 <dl class="py method">
-<dt class="sig sig-object py" id="malariagen_data.ag3.Ag3.diversity_stats">
-<span class="sig-prename descclassname"><span class="pre">Ag3.</span></span><span class="sig-name descname"><span class="pre">diversity_stats</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">cohorts</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">n_jack</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">200</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">confidence_level</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.95</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'native'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.ag3.Ag3.diversity_stats" title="Link to this definition">#</a></dt>
-<dd><p>Compute genetic diversity summary statistics for multiple cohorts.</p>
-<section id="parameters">
-<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
-<dl class="simple">
-<dt>cohorts<span class="classifier">str or Mapping[str, str]</span></dt><dd><p>Either a string giving the name of a predefined cohort set (e.g.,
-“admin1_month”) or a dict mapping custom cohort labels to sample
-queries.</p>
-</dd>
-<dt>cohort_size<span class="classifier">int</span></dt><dd><p>Randomly down-sample to this value if the number of samples in the
-cohort is greater. Raise an error if the number of samples is less
-than this value.</p>
-</dd>
-<dt>region<span class="classifier">str or Region or Mapping or list of str or Region or Mapping or tuple of str or Region or Mapping</span></dt><dd><p>Region of the reference genome. Can be a contig name, region string
-(formatted like “{contig}:{start}-{end}”), or identifier of a genome
-feature such as a gene or transcript. Can also be a sequence (e.g.,
-list) of regions.</p>
-</dd>
-<dt>site_mask<span class="classifier">str or None, optional, default: ‘default’</span></dt><dd><p>Which site filters mask to apply. See the <cite>site_mask_ids</cite> property for
-available values.</p>
-</dd>
-<dt>site_class<span class="classifier">str or None, optional</span></dt><dd><p>Select sites belonging to one of the following classes: CDS_DEG_4,
-(4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
-degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
-INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
-longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of 5’
-splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3’ splice
-site), UTR_5PRIME (5’ untranslated region), UTR_3PRIME (3’
-untranslated region), INTERGENIC (intergenic, more than 10 kbp from a
-gene).</p>
-</dd>
-<dt>sample_query<span class="classifier">str or None, optional</span></dt><dd><p>A pandas query string to be evaluated against the sample metadata, to
-select samples to be included in the returned data.</p>
-</dd>
-<dt>sample_query_options<span class="classifier">dict or None, optional</span></dt><dd><p>A dictionary of arguments that will be passed through to pandas
-query() or eval(), e.g. parser, engine, local_dict, global_dict,
-resolvers.</p>
-</dd>
-<dt>sample_sets<span class="classifier">sequence of str or str or None, optional</span></dt><dd><p>List of sample sets and/or releases. Can also be a single sample set
-or release.</p>
-</dd>
-<dt>random_seed<span class="classifier">int, optional, default: 42</span></dt><dd><p>Random seed used for reproducible down-sampling.</p>
-</dd>
-<dt>n_jack<span class="classifier">int, optional, default: 200</span></dt><dd><p>Number of blocks to divide the data into for the block jackknife
-estimation of confidence intervals. N.B., larger is not necessarily
-better.</p>
-</dd>
-<dt>confidence_level<span class="classifier">float, optional, default: 0.95</span></dt><dd><p>Confidence level to use for confidence interval calculation. E.g.,
-0.95 means 95% confidence interval.</p>
-</dd>
-<dt>chunks<span class="classifier">int or str or tuple of int or str or Callable[[typing.Tuple[int, …]], int or str or tuple of int or str], optional, default: ‘native’</span></dt><dd><p>Define how input data being read from zarr should be divided into
-chunks for a dask computation. If ‘native’, use underlying zarr
-chunks. If a string specifying a target memory size, e.g., ‘300 MiB’,
-resize chunks in arrays with more than one dimension to match this
-size. If ‘auto’, let dask decide chunk size.  If ‘ndauto’, let dask
-decide chunk size but only for arrays with more than one dimension. If
-‘ndauto0’, as ‘ndauto’ but only vary the first chunk dimension. If
-‘ndauto1’, as ‘ndauto’ but only vary the second chunk dimension. If
-‘ndauto01’, as ‘ndauto’ but only vary the first and second chunk
-dimensions. Also, can be a tuple of integers, or a callable which
-accepts the native chunks as a single argument and returns a valid
-dask chunks value.</p>
-</dd>
-<dt>inline_array<span class="classifier">bool, optional, default: True</span></dt><dd><p>Passed through to dask <cite>from_array()</cite>.</p>
-</dd>
-</dl>
-</section>
+<dt class="sig sig-object py" id="malariagen_data.ag3.Ag3.cross_metadata">
+<span class="sig-prename descclassname"><span class="pre">Ag3.</span></span><span class="sig-name descname"><span class="pre">cross_metadata</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span><a class="headerlink" href="#malariagen_data.ag3.Ag3.cross_metadata" title="Link to this definition">#</a></dt>
+<dd><p>Load a dataframe containing metadata about samples in colony crosses,
+including which samples are parents or progeny in which crosses.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>DataFrame</dt><dd><p>A DataFrame where each row provides summary statistics and their
-confidence intervals for a single cohort.</p>
+<dt>df<span class="classifier">pandas.DataFrame</span></dt><dd><p>A dataframe of sample metadata for colony crosses.</p>
 </dd>
 </dl>
 </section>
@@ -507,14 +442,14 @@ confidence intervals for a single cohort.</p>
   </div>
   <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
     <ul class="visible nav section-nav flex-column">
-<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#malariagen_data.ag3.Ag3.diversity_stats"><code class="docutils literal notranslate"><span class="pre">Ag3.diversity_stats()</span></code></a></li>
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#malariagen_data.ag3.Ag3.cross_metadata"><code class="docutils literal notranslate"><span class="pre">Ag3.cross_metadata()</span></code></a></li>
 </ul>
   </nav></div>
 
   <div class="sidebar-secondary-item">
 
   <div class="tocsection sourcelink">
-    <a href="../_sources/generated/malariagen_data.ag3.Ag3.diversity_stats.rst.txt">
+    <a href="../_sources/generated/malariagen_data.ag3.Ag3.cross_metadata.rst.txt">
       <i class="fa-solid fa-file-lines"></i> Show Source
     </a>
   </div>
