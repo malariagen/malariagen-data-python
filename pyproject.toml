@@ -59,7 +59,7 @@ orjson = "*"
 # providers spinners
 yaspin = "*"
 # provides efficient neighbour-joining tree implementation
-biotite = "*"
+anjl = "*"
 
 # dev extras
 pytest = "*"

@@ -10,3 +10,8 @@ distance_metric: TypeAlias = Annotated[
     ],
     "The metric to compute distance between genotypes in two samples.",
 ]
+
+nj_algorithm: TypeAlias = Annotated[
+    Literal["rapid", "canonical"],
+    "Neighbour-joining algorithm to use.",
+]

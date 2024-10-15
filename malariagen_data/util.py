@@ -1187,69 +1187,6 @@ def square_to_condensed(i, j, n):
 
 
 @numba.njit(parallel=True)
-def biallelic_diplotype_pdist(X, distfun):
-    n_samples = X.shape[0]
-    n_pairs = (n_samples * (n_samples - 1)) // 2
-    out = np.zeros(n_pairs, dtype=np.float32)
-
-    # Loop over samples, first in pair.
-    for i in range(n_samples):
-        x = X[i, :]
-
-        # Loop over observations again, second in pair.
-        for j in numba.prange(i + 1, n_samples):
-            y = X[j, :]
-
-            # Compute distance for the current pair.
-            d = distfun(x, y)
-
-            # Store result for the current pair.
-            k = square_to_condensed(i, j, n_samples)
-            out[k] = d
-
-    return out
-
-
-@numba.njit
-def biallelic_diplotype_cityblock(x, y):
-    n_sites = x.shape[0]
-    distance = np.float32(0)
-
-    # Loop over sites.
-    for i in range(n_sites):
-        # Compute cityblock distance (absolute difference).
-        d = np.fabs(x[i] - y[i])
-
-        # Accumulate distance for the current pair, but only if both samples
-        # have a called genotype.
-        distance += d
-
-    return distance
-
-
-@numba.njit
-def biallelic_diplotype_sqeuclidean(x, y):
-    n_sites = x.shape[0]
-    distance = np.float32(0)
-
-    # Loop over sites.
-    for i in range(n_sites):
-        # Compute squared euclidean distance.
-        d = (x[i] - y[i]) ** 2
-
-        # Accumulate distance for the current pair, but only if both samples
-        # have a called genotype.
-        distance += d
-
-    return distance
-
-
-@numba.njit
-def biallelic_diplotype_euclidean(x, y):
-    return np.sqrt(biallelic_diplotype_sqeuclidean(x, y))
-
-
-@numba.njit(parallel=True)
 def multiallelic_diplotype_pdist(X, metric):
     """Optimised implementation of pairwise distance between diplotypes.
 

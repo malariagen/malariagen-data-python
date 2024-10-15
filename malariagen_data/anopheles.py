@@ -30,7 +30,7 @@ from .anoph import (
     aim_params,
     base_params,
     dash_params,
-    diplotype_distance_params,
+    distance_params,
     gplt_params,
     hapnet_params,
     het_params,
@@ -47,6 +47,7 @@ from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
+from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata, locate_cohorts
 from .anoph.snp_data import AnophelesSnpData
 from .anoph.g123 import AnophelesG123Analysis
@@ -59,10 +60,6 @@ from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
     CacheMiss,
     Region,
-    biallelic_diplotype_cityblock,
-    biallelic_diplotype_euclidean,
-    biallelic_diplotype_pdist,
-    biallelic_diplotype_sqeuclidean,
     check_types,
     jackknife_ci,
     parse_multi_region,
@@ -105,6 +102,7 @@ class AnophelesDataResource(
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
     AnophelesSnpFrequencyAnalysis,
+    AnophelesDistanceAnalysis,
     AnophelesPca,
     AnophelesIgv,
     AnophelesAimData,
@@ -3099,156 +3097,6 @@ class AnophelesDataResource(
 
     @doc(
         summary="""
-            Compute pairwise distances between samples using biallelic SNP genotypes.
-        """,
-        parameters=dict(
-            metric="Distance metric, one of 'cityblock', 'euclidean' or 'sqeuclidean'.",
-        ),
-    )
-    def biallelic_diplotype_pairwise_distances(
-        self,
-        region: base_params.regions,
-        n_snps: base_params.n_snps,
-        metric: diplotype_distance_params.distance_metric = "cityblock",
-        thin_offset: base_params.thin_offset = 0,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        sample_query_options: Optional[base_params.sample_query_options] = None,
-        sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
-        site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.native_chunks,
-    ) -> Tuple[np.ndarray, np.ndarray, int]:
-        # Change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data.
-        name = "biallelic_diplotype_pairwise_distances"
-
-        # Normalize params for consistent hash value.
-        (
-            sample_sets_prepped,
-            sample_indices_prepped,
-        ) = self._prep_sample_selection_cache_params(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-            sample_indices=sample_indices,
-        )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
-        del sample_sets
-        del sample_query
-        del sample_query_options
-        del sample_indices
-        del region
-        del site_mask
-        params = dict(
-            region=region_prepped,
-            n_snps=n_snps,
-            metric=metric,
-            thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-        )
-
-        # Try to retrieve results from the cache.
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._biallelic_diplotype_pairwise_distances(
-                inline_array=inline_array, chunks=chunks, **params
-            )
-            self.results_cache_set(name=name, params=params, results=results)
-
-        # Unpack results.
-        dist: np.ndarray = results["dist"]
-        samples: np.ndarray = results["samples"]
-        n_snps_used: int = int(results["n_snps"][()])  # ensure scalar
-
-        return dist, samples, n_snps_used
-
-    def _biallelic_diplotype_pairwise_distances(
-        self,
-        region,
-        n_snps,
-        metric,
-        thin_offset,
-        sample_sets,
-        sample_indices,
-        site_mask,
-        site_class,
-        inline_array,
-        chunks,
-        cohort_size,
-        min_cohort_size,
-        max_cohort_size,
-        random_seed,
-        min_minor_ac,
-        max_missing_an,
-    ):
-        # Compute diplotypes.
-        gn, samples = self.biallelic_diplotypes(
-            region=region,
-            sample_sets=sample_sets,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            site_class=site_class,
-            inline_array=inline_array,
-            chunks=chunks,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            max_missing_an=max_missing_an,
-            min_minor_ac=min_minor_ac,
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-        )
-
-        # Record number of SNPs used.
-        n_snps = gn.shape[0]
-
-        # Prepare data for pairwise distance calculation.
-        X = np.ascontiguousarray(gn.T)
-
-        # Look up distance function.
-        if metric == "cityblock":
-            distfun = biallelic_diplotype_cityblock
-        elif metric == "sqeuclidean":
-            distfun = biallelic_diplotype_sqeuclidean
-        elif metric == "euclidean":
-            distfun = biallelic_diplotype_euclidean
-        else:
-            raise ValueError("Unsupported metric.")
-
-        with self._spinner("Compute pairwise distances"):
-            dist = biallelic_diplotype_pdist(X, distfun=distfun)
-
-        return dict(
-            dist=dist,
-            samples=samples,
-            n_snps=np.array(
-                n_snps
-            ),  # ensure consistent behaviour to/from results cache
-        )
-
-    @doc(
-        summary="""
             Plot an unrooted neighbour-joining tree, computed from pairwise distances
             between samples using biallelic SNP genotypes.
         """,
@@ -3271,7 +3119,7 @@ class AnophelesDataResource(
         n_snps: base_params.n_snps,
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
-        metric: diplotype_distance_params.distance_metric = "cityblock",
+        metric: distance_params.distance_metric = "cityblock",
         distance_sort: Optional[tree_params.distance_sort] = None,
         count_sort: Optional[tree_params.count_sort] = None,
         center_x=0,
