@@ -1193,7 +1193,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             kwargs="Passed through to px.scatter_mapbox().",
         ),
     )
-    def sample_location_mapbox(
+    def plot_sample_location_mapbox(
         self,
         *,
         sample_sets: Optional[base_params.sample_sets],
@@ -1243,6 +1243,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             category_orders=category_orders,
             color_discrete_sequence=color_discrete_sequence,
             hover_name=hover_name,
+            hover_data=location_columns,
             width=width,
             height=height,
             **kwargs,
@@ -1267,7 +1268,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             kwargs="Passed through to px.scatter_mapbox().",
         ),
     )
-    def sample_location_geo(
+    def plot_sample_location_geo(
         self,
         *,
         sample_sets: Optional[base_params.sample_sets],
@@ -1317,6 +1318,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             width=width,
             color=color,
             hover_name=hover_name,
+            hover_data=location_columns,
             category_orders=category_orders,
             color_discrete_sequence=color_discrete_sequence,
             fitbounds=fitbounds,
