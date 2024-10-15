@@ -56,7 +56,7 @@ class AnophelesBase:
         bokeh_output_notebook: bool = False,
         log: Optional[Union[str, IO]] = None,
         debug: bool = False,
-        show_progress: bool = None,
+        show_progress: Optional[bool] = None,
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
