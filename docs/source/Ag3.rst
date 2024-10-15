@@ -53,6 +53,8 @@ Sample metadata access
     lookup_sample
     plot_samples_bar
     plot_samples_interactive_map
+    plot_sample_location_mapbox
+    plot_sample_location_geo
     wgs_data_catalog
     cohorts
 
