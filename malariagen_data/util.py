@@ -1615,6 +1615,7 @@ def distributed_client():
         client = None
     return client
 
+
 def _karyotype_tags_n_alt(gt, alts, inversion_alts):
     # could be Numba'd for speed but was already quick (not many inversion tag snps)
     n_sites = gt.shape[0]

@@ -352,6 +352,7 @@ class Ag3(AnophelesDataResource):
         # needs to be modified depending on where we are hosting
         import importlib.resources
         from . import resources
+
         with importlib.resources.path(resources, "karyotype_tag_snps.csv") as path:
             df_tag_snps = pd.read_csv(path, sep=",")
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
@@ -414,8 +415,8 @@ class Ag3(AnophelesDataResource):
                     "sample_id": samples,
                     "inversion": inversion,
                     "mean_tag_snp_genotype": av_gts,
-                     # round the genotypes then convert to int
-                    "karyotype": av_gts.round().astype(int), 
+                    # round the genotypes then convert to int
+                    "karyotype": av_gts.round().astype(int),
                     "total_tag_snps": total_sites,
                 }
             )
