@@ -16,7 +16,14 @@ window_sizes: TypeAlias = Annotated[
 window_sizes_default: window_sizes = (100, 200, 500, 1000, 2000, 5000, 10000, 20000)
 
 window_size: TypeAlias = Annotated[
-    Union[int, dict[str, int]],
+    int,
+    """
+    The size of windows (number of SNPs) used to calculate statistics within.
+    """,
+]
+
+multi_window_size: TypeAlias = Annotated[
+    Union[window_size, dict[str, int]],
     """
     The size of windows (number of SNPs) used to calculate statistics within.
     """,
