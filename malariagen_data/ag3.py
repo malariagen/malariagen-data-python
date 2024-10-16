@@ -9,9 +9,10 @@ import plotly.express as px  # type: ignore
 import malariagen_data
 from .anopheles import AnophelesDataResource
 
+from numpydoc_decorator import doc
 from .util import check_types, _karyotype_tags_n_alt
 from .anoph import base_params
-from typing import Optional, Literal, TypeAlias
+from typing import Optional, Literal, Annotated, TypeAlias
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_native_chunks": False})  # type: ignore
@@ -81,7 +82,10 @@ TAXON_COLORS = {
 }
 
 
-inversion_param: TypeAlias = Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"]
+inversion_param: TypeAlias = Annotated[
+    Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"],
+    "Name of inversion to infer karyotype for.",
+]
 
 
 class Ag3(AnophelesDataResource):
@@ -351,7 +355,11 @@ class Ag3(AnophelesDataResource):
         # override parent class to add AIM analysis
         params["aim_analysis"] = self._aim_analysis
 
-    def load_inversion_tags(self, inversion: str):
+    @check_types
+    @doc(
+        summary="Load tag SNPs for a given inversion in Ag.",
+    )
+    def load_inversion_tags(self, inversion: inversion_param) -> pd.DataFrame:
         # needs to be modified depending on where we are hosting
         import importlib.resources
         from . import resources
@@ -361,25 +369,15 @@ class Ag3(AnophelesDataResource):
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
     @check_types
+    @doc(
+        summary="Infer karyotype from tag SNPs for a given inversion in Ag.",
+    )
     def karyotype(
         self,
         inversion: inversion_param,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
-        """
-        Infer karyotype from tag SNPs for a given inversion.
-
-        Parameters
-        ----------
-        inversion : str
-            Name of inversion to infer karyotype for. One of ["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"].
-        sample_sets : list of str, optional
-            Sample sets to include in the analysis. If None (default), use all sample sets.
-        sample_query : str, optional
-            Query to filter samples. If None (default), use all samples.
-        """
-
         # load tag snp data
         df_tagsnps = self.load_inversion_tags(inversion=inversion)
         inversion_pos = df_tagsnps["position"]
@@ -417,9 +415,9 @@ class Ag3(AnophelesDataResource):
                 {
                     "sample_id": samples,
                     "inversion": inversion,
-                    "mean_tag_snp_genotype": av_gts,
+                    f"karyotype_{inversion}_mean": av_gts,
                     # round the genotypes then convert to int
-                    "karyotype": av_gts.round().astype(int),
+                    f"karyotype_{inversion}": av_gts.round().astype(int),
                     "total_tag_snps": total_sites,
                 }
             )

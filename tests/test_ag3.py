@@ -888,10 +888,10 @@ def test_karyotyping():
     expected_cols = [
         "sample_id",
         "inversion",
-        "mean_tag_snp_genotype",
-        "karyotype",
+        "karyotype_2La_mean",
+        "karyotype_2La",
         "total_tag_snps",
     ]
     assert set(df.columns) == set(expected_cols)
-    assert all(df["karyotype"].isin([0, 1, 2]))
-    assert all(df["mean_tag_snp_genotype"].between(0, 2))
+    assert all(df["karyotype_2La"].isin([0, 1, 2]))
+    assert all(df["karyotype_2La_mean"].between(0, 2))
