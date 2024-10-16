@@ -11,7 +11,7 @@ from .anopheles import AnophelesDataResource
 
 from .util import check_types, _karyotype_tags_n_alt
 from .anoph import base_params
-from typing import Optional
+from typing import Optional, Literal, TypeAlias
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_native_chunks": False})  # type: ignore
@@ -80,8 +80,9 @@ TAXON_COLORS = {
     "unassigned": "black",
 }
 
-from typing import Literal, TypeAlias
+
 inversion_param: TypeAlias = Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"]
+
 
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
