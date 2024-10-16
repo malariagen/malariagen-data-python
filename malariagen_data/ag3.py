@@ -419,7 +419,8 @@ class Ag3(AnophelesDataResource):
                     # round the genotypes then convert to int
                     f"karyotype_{inversion}": av_gts.round().astype(int),
                     "total_tag_snps": total_sites,
-                }
+                },
+                dtype={f"karyotype_{inversion}": "category"},
             )
 
         return df
