@@ -72,14 +72,13 @@ class AnophelesHapFrequencyAnalysis(
             )
 
         # Access haplotypes.
-        with self._dask_progress(desc="Load haplotypes"):
-            ds_hap = self.haplotypes(
-                region=region,
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                chunks=chunks,
-                inline_array=inline_array,
-            )
+        ds_hap = self.haplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
 
         # Early check for no SNPs.
         if ds_hap.sizes["variants"] == 0:  # pragma: no cover
@@ -190,14 +189,13 @@ class AnophelesHapFrequencyAnalysis(
             )
 
         # Access haplotypes.
-        with self._dask_progress(desc="Load haplotypes"):
-            ds_haps = self.haplotypes(
-                region=region,
-                sample_sets=sample_sets,
-                sample_query=sample_query,
-                chunks=chunks,
-                inline_array=inline_array,
-            )
+        ds_haps = self.haplotypes(
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
 
         # Early check for no SNPs.
         if ds_haps.sizes["variants"] == 0:  # pragma: no cover
