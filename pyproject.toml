@@ -23,7 +23,7 @@ numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
 pandas = "*"
-zarr = "*"
+zarr = ">=2.11"
 dask = {version="*", extras=["array"]}
 distributed = "*"
 fsspec = "*"

@@ -329,6 +329,7 @@ class AnophelesHapData(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         cohort_size: Optional[base_params.cohort_size] = None,
@@ -392,7 +393,10 @@ class AnophelesHapData(
             )
 
             # Apply the query.
-            loc_samples = df_samples_phased.eval(sample_query).values
+            sample_query_options = sample_query_options or {}
+            loc_samples = df_samples_phased.eval(
+                sample_query, **sample_query_options
+            ).values
             if np.count_nonzero(loc_samples) == 0:
                 # Bail out, no samples matching the query.
                 raise ValueError(

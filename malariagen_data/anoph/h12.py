@@ -29,6 +29,7 @@ class AnophelesH12Analysis(
         contig,
         analysis,
         sample_query,
+        sample_query_options,
         sample_sets,
         cohort_size,
         min_cohort_size,
@@ -42,6 +43,7 @@ class AnophelesH12Analysis(
             region=contig,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             analysis=analysis,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -75,6 +77,7 @@ class AnophelesH12Analysis(
         contig: base_params.contig,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -85,7 +88,7 @@ class AnophelesH12Analysis(
         ] = h12_params.max_cohort_size_default,
         window_sizes: h12_params.window_sizes = h12_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Mapping[str, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
@@ -101,6 +104,7 @@ class AnophelesH12Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -131,6 +135,7 @@ class AnophelesH12Analysis(
         contig: base_params.contig,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -143,7 +148,7 @@ class AnophelesH12Analysis(
         random_seed: base_params.random_seed = 42,
         title: Optional[str] = None,
         show: bool = True,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Get H12 values.
@@ -151,6 +156,7 @@ class AnophelesH12Analysis(
             contig=contig,
             analysis=analysis,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             window_sizes=window_sizes,
             cohort_size=cohort_size,
@@ -227,6 +233,7 @@ class AnophelesH12Analysis(
         window_size,
         sample_sets,
         sample_query,
+        sample_query_options,
         cohort_size,
         min_cohort_size,
         max_cohort_size,
@@ -238,6 +245,7 @@ class AnophelesH12Analysis(
             region=contig,
             analysis=analysis,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -277,6 +285,7 @@ class AnophelesH12Analysis(
         window_size: h12_params.window_size,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -286,7 +295,7 @@ class AnophelesH12Analysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
@@ -302,6 +311,7 @@ class AnophelesH12Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -331,6 +341,7 @@ class AnophelesH12Analysis(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -346,7 +357,7 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H12.
@@ -358,6 +369,7 @@ class AnophelesH12Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
             chunks=chunks,
@@ -432,6 +444,7 @@ class AnophelesH12Analysis(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -447,7 +460,7 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Plot GWSS track.
@@ -457,6 +470,7 @@ class AnophelesH12Analysis(
             window_size=window_size,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -491,6 +505,7 @@ class AnophelesH12Analysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover
