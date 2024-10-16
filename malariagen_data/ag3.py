@@ -2,6 +2,7 @@ import sys
 
 import dask
 import pandas as pd  # type: ignore
+from pandas import CategoricalDtype
 import numpy as np  # type: ignore
 import allel  # type: ignore
 import plotly.express as px  # type: ignore
@@ -420,7 +421,8 @@ class Ag3(AnophelesDataResource):
                     f"karyotype_{inversion}": av_gts.round().astype(int),
                     "total_tag_snps": total_sites,
                 },
-                dtype={f"karyotype_{inversion}": "category"},
             )
-
+            kt_dtype = CategoricalDtype(categories=[0, 1, 2], ordered=True)
+            df[f"karyotype_{inversion}"] = df[f"karyotype_{inversion}"].astype(kt_dtype)
+ 
         return df
