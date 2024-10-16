@@ -521,10 +521,10 @@ class AnophelesH12Analysis(
     def plot_h12_gwss_multi_overlay_track(
         self,
         contig: base_params.contig,
-        sample_query: base_params.sample_query,
         cohorts: base_params.cohorts,
-        cohort_size: base_params.cohort_size,
-        window_sizes: h12_params.window_size,
+        window_size: h12_params.window_size,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        sample_query: Optional[base_params.sample_query] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -553,10 +553,10 @@ class AnophelesH12Analysis(
             min_cohort_size=None,
         )
 
-        if isinstance(window_sizes, int):
-            window_sizes = {k: window_sizes for k in cohort_queries.keys()}
-        elif isinstance(window_sizes, dict):
-            if np.sort(window_sizes.keys()) != np.sort(cohort_queries.keys()):
+        if isinstance(window_size, int):
+            window_size = {k: window_size for k in cohort_queries.keys()}
+        elif isinstance(window_size, dict):
+            if np.sort(window_size.keys()) != np.sort(cohort_queries.keys()):
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Compute H12.
@@ -565,7 +565,7 @@ class AnophelesH12Analysis(
             res[cohort_label] = self.h12_gwss(
                 contig=contig,
                 analysis=analysis,
-                window_size=window_sizes[cohort_label],
+                window_size=window_size[cohort_label],
                 cohort_size=cohort_size,
                 min_cohort_size=min_cohort_size,
                 max_cohort_size=max_cohort_size,
@@ -575,7 +575,7 @@ class AnophelesH12Analysis(
             )
 
         # Determine X axis range.
-        x, _ = res[cohort_queries.keys()[0]]
+        x, _ = res[list(cohort_queries.keys())[0]]
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
@@ -640,10 +640,10 @@ class AnophelesH12Analysis(
     def plot_h12_gwss_multi_overlay(
         self,
         contig: base_params.contig,
-        sample_query: base_params.sample_query,
         cohorts: base_params.cohorts,
-        cohort_size: base_params.cohort_size,
-        window_sizes: h12_params.window_size,
+        window_size: h12_params.window_size,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        sample_query: Optional[base_params.sample_query] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -669,7 +669,7 @@ class AnophelesH12Analysis(
             sample_query=sample_query,
             cohorts=cohorts,
             cohort_size=cohort_size,
-            window_size=window_sizes,
+            window_size=window_size,
             analysis=analysis,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -722,10 +722,10 @@ class AnophelesH12Analysis(
     def plot_h12_gwss_multi_panel(
         self,
         contig: base_params.contig,
-        sample_query: base_params.sample_query,
         cohorts: base_params.cohorts,
-        cohort_size: base_params.cohort_size,
-        window_sizes: h12_params.window_size,
+        window_size: h12_params.window_size,
+        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
+        sample_query: Optional[base_params.sample_query] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -752,10 +752,10 @@ class AnophelesH12Analysis(
             min_cohort_size=None,
         )
 
-        if isinstance(window_sizes, int):
-            window_sizes = {k: window_sizes for k in cohort_queries.keys()}
-        elif isinstance(window_sizes, dict):
-            if np.sort(window_sizes.keys()) != np.sort(cohort_queries.keys()):
+        if isinstance(window_size, int):
+            window_size = {k: window_size for k in cohort_queries.keys()}
+        elif isinstance(window_size, dict):
+            if np.sort(window_size.keys()) != np.sort(cohort_queries.keys()):
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
@@ -766,7 +766,7 @@ class AnophelesH12Analysis(
                     self.plot_h12_gwss_track(
                         contig=contig,
                         analysis=analysis,
-                        window_size=window_sizes[cohort_label],
+                        window_size=window_size[cohort_label],
                         sample_sets=sample_sets,
                         sample_query=cohort_query,
                         cohort_size=cohort_size,
@@ -787,7 +787,7 @@ class AnophelesH12Analysis(
                     self.plot_h12_gwss_track(
                         contig=contig,
                         analysis=analysis,
-                        window_size=window_sizes[cohort_label],
+                        window_size=window_size[cohort_label],
                         sample_sets=sample_sets,
                         sample_query=cohort_query,
                         cohort_size=cohort_size,
