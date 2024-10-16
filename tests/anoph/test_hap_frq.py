@@ -148,11 +148,11 @@ def test_hap_frequencies_with_str_cohorts(
     # Test behaviour with bad cohorts param.
     if cohorts == "foobar":
         with pytest.raises(ValueError):
-            api.haplotype_frequencies(**params)
+            api.haplotypes_frequencies(**params)
         return
 
     # Run the function under test.
-    df_hap = api.haplotype_frequencies(**params)
+    df_hap = api.haplotypes_frequencies(**params)
 
     # Standard checks.
     check_hap_frequencies(
@@ -187,7 +187,7 @@ def test_hap_frequencies_advanced(
     )
 
     # Run the other function under test.
-    ds_hap = api.haplotype_frequencies_advanced(**params_advanced)
+    ds_hap = api.haplotypes_frequencies_advanced(**params_advanced)
 
     # Standard checks.
     check_hap_frequencies_advanced(api=api, ds=ds_hap)
