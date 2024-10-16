@@ -10,7 +10,7 @@ import malariagen_data
 from .anopheles import AnophelesDataResource
 
 from .util import check_types, _karyotype_tags_n_alt
-from .anoph import base_params
+from .anoph import base_params, karyo_params
 from typing import Optional
 
 # silence dask performance warnings
@@ -359,7 +359,7 @@ class Ag3(AnophelesDataResource):
     @check_types
     def karyotype(
         self,
-        inversion,
+        inversion: karyo_params.inversion_param,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
@@ -375,11 +375,6 @@ class Ag3(AnophelesDataResource):
         sample_query : str, optional
             Query to filter samples. If None (default), use all samples.
         """
-
-        inversion_list = ["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"]
-        assert (
-            inversion in inversion_list
-        ), f"Inversion {inversion} not found - please select one of {inversion_list}"
 
         # load tag snp data
         df_tagsnps = self.load_inversion_tags(inversion=inversion)
@@ -406,7 +401,7 @@ class Ag3(AnophelesDataResource):
 
         with self._spinner("Inferring karyotype from tag SNPs"):
             gn_alt = _karyotype_tags_n_alt(
-                gt=geno.values, alts=alts, inversion_alts=inversion_alts
+                gt=geno, alts=alts, inversion_alts=inversion_alts
             )
             is_called = geno.is_called()
 
