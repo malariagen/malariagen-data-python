@@ -888,7 +888,7 @@ def test_karyotyping():
     expected_cols = [
         "sample_id",
         "inversion",
-        "mean_tag_snp_genotype",
+        "karyotype_mean",
         "karyotype",
         "total_tag_snps",
     ]
