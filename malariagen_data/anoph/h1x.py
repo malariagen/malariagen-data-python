@@ -6,10 +6,9 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss
+from ..util import check_types, CacheMiss, haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
-from .h12 import haplotype_frequencies
 
 
 class AnophelesH1XAnalysis(
@@ -342,8 +341,8 @@ def haplotype_joint_frequencies(ha, hb):
     """Compute the joint frequency of haplotypes in two difference
     cohorts. Returns a dictionary mapping haplotype hash values to
     the product of frequencies in each cohort."""
-    frqa = haplotype_frequencies(ha)
-    frqb = haplotype_frequencies(hb)
+    frqa, _, _ = haplotype_frequencies(ha)
+    frqb, _, _ = haplotype_frequencies(hb)
     keys = set(frqa.keys()) | set(frqb.keys())
     joint_freqs = {key: frqa.get(key, 0) * frqb.get(key, 0) for key in keys}
     return joint_freqs
