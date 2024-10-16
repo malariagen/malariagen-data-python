@@ -40,13 +40,12 @@ class AnophelesHapFrequencyAnalysis(
             output data frame.
         """,
     )
-    def hap_frequencies(
+    def haplotype_frequencies(
         self,
         region: base_params.region,
         cohorts: base_params.cohorts,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
-        site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -75,7 +74,6 @@ class AnophelesHapFrequencyAnalysis(
         # Access SNP data.
         ds_hap = self.haplotypes(
             region=region,
-            site_mask=site_mask,
             sample_sets=sample_sets,
             sample_query=sample_query,
             chunks=chunks,
@@ -84,28 +82,26 @@ class AnophelesHapFrequencyAnalysis(
 
         # Early check for no SNPs.
         if ds_hap.sizes["variants"] == 0:  # pragma: no cover
-            raise ValueError("No SNPs available for the given region and site mask.")
+            raise ValueError("No SNPs available for the given region.")
 
         # Access genotypes.
         gt = ds_hap["call_genotype"].data
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gt = gt.compute()
+        gt = gt.compute()
 
         # Count haplotypes.
         count_rows: dict[str, int] = dict()
         freq_rows = dict()
         freq_cols = dict()
-        cohorts_iterator = self._progress(
-            coh_dict.items(), desc="Compute allele frequencies"
-        )
+        cohorts_iterator = coh_dict.items()
         for coh, loc_coh in cohorts_iterator:
             count_rows = {k: 0 for k in count_rows.keys()}
             n_samples = np.count_nonzero(loc_coh)
             assert n_samples >= min_cohort_size
-            gt_coh = np.compress(loc_coh, gt, axis=1)
+            gt_coh = np.compress(loc_coh, gt, axis=1).copy(order="C")
             for i in range(0, n_samples):
                 for j in range(0, 2):
-                    hap_hash = str(sha1(gt_coh[:, i, j].compute()).digest())
+                    gt_cont = np.ascontiguousarray(gt_coh[:, i, j])
+                    hap_hash = str(sha1(gt_cont).digest())
                     if hap_hash not in count_rows.keys():
                         count_rows[hap_hash] = 1
                     else:
@@ -158,8 +154,6 @@ class AnophelesHapFrequencyAnalysis(
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
-        variant_query: Optional[frq_params.variant_query] = None,
-        site_mask: Optional[base_params.site_mask] = None,
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -196,23 +190,17 @@ class AnophelesHapFrequencyAnalysis(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
-            site_mask=site_mask,
             chunks=chunks,
             inline_array=inline_array,
         )
 
         # Early check for no SNPs.
         if ds_haps.sizes["variants"] == 0:  # pragma: no cover
-            raise ValueError("No SNPs available for the given region and site mask.")
+            raise ValueError("No SNPs available for the given region.")
 
         # Access genotypes.
         gt = ds_haps["call_genotype"].data
-        with self._dask_progress(desc="Load SNP genotypes"):
-            gt = gt.compute()
-
-        # Set up variant variables.
-        contigs = ds_haps.attrs["contigs"]
-        # alleles = ds_haps["variant_allele"].values
+        gt = gt.compute()
 
         # Count haplotypes.
         count_rows: dict[str, int] = dict()
@@ -220,27 +208,28 @@ class AnophelesHapFrequencyAnalysis(
         freq_cols = dict()
         count_cols = dict()
         nobs_cols = dict()
-        cohorts_iterator = self._progress(
-            enumerate(df_cohorts.itertuples()),
-            total=len(df_cohorts),
-            desc="Compute SNP allele frequencies",
-        )
-        for coh, loc_coh in cohorts_iterator:
+        cohorts_iterator = enumerate(df_cohorts.itertuples())
+        for coh, cohort in cohorts_iterator:
             count_rows = {k: 0 for k in count_rows.keys()}
-            n_samples = np.count_nonzero(loc_coh)
-            assert n_samples >= min_cohort_size
+            n_samples = cohort.size
+            assert n_samples >= 10
+            cohort_key = cohort.taxon, cohort.area, cohort.period
+            cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + cohort.period
+            sample_indices = group_samples_by_cohort.indices[cohort_key]
+            loc_coh = [i in sample_indices for i in range(0, gt.shape[1])]
             gt_coh = np.compress(loc_coh, gt, axis=1)
             for i in range(0, n_samples):
                 for j in range(0, 2):
-                    hap_hash = str(sha1(gt_coh[:, i, j].compute()).digest())
+                    gt_cont = np.ascontiguousarray(gt_coh[:, i, j])
+                    hap_hash = str(sha1(gt_cont).digest())
                     if hap_hash not in count_rows.keys():
                         count_rows[hap_hash] = 1
                     else:
                         count_rows[hap_hash] += 1
             freq_rows = {k: i / (2 * n_samples) for k, i in count_rows.items()}
-            count_cols["count_" + coh] = list(count_rows.values())
-            freq_cols["frq_" + coh] = list(freq_rows.values())
-            nobs_cols["nobs_" + coh] = [2 * n_samples] * len(freq_rows)
+            count_cols["count_" + cohort_key_str] = list(count_rows.values())
+            freq_cols["frq_" + cohort_key_str] = list(freq_rows.values())
+            nobs_cols["nobs_" + cohort_key_str] = [2 * n_samples] * len(freq_rows)
 
         n_haps = np.max([len(i) for i in freq_cols.values()])
         freq_cols = {
@@ -251,8 +240,14 @@ class AnophelesHapFrequencyAnalysis(
         # Compute max_af.
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
 
+        count_cols = {
+            k: v + [0 for i in range(0, n_haps - len(v))] for k, v in count_cols.items()
+        }
         df_counts = pd.DataFrame(count_cols, index=freq_rows.keys())
 
+        nobs_cols = {
+            k: v + [0 for i in range(0, n_haps - len(v))] for k, v in nobs_cols.items()
+        }
         df_nobs = pd.DataFrame(nobs_cols, index=freq_rows.keys())
 
         # Build the final dataframe.
@@ -271,23 +266,20 @@ class AnophelesHapFrequencyAnalysis(
         for coh_col in df_cohorts.columns:
             ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
-        ds_out["contigs"] = "variants", contigs
-        # ds_out["alleles"] = "variants", alleles
-
         # Label the haplotypes
-        ds_out["label"] = "haplotypes", df_haps_sorted["label"]
+        ds_out["variant_label"] = "variants", df_haps_sorted["label"]
         # Event variables.
         ds_out["event_frequency"] = (
             ("variants", "cohorts"),
             df_haps_sorted.to_numpy()[:, : len(df_cohorts)],
         )
-        ds_out["event_counts"] = (
+        ds_out["event_count"] = (
             ("variants", "cohorts"),
             df_haps_sorted.to_numpy()[:, len(df_cohorts) : 2 * len(df_cohorts)],
         )
         ds_out["event_nobs"] = (
             ("variants", "cohorts"),
-            df_haps_sorted.to_numpy()[:, 2 * len(df_cohorts) : -1],
+            df_haps_sorted.to_numpy()[:, 2 * len(df_cohorts) : -2],
         )
 
         # Add confidence intervals.
