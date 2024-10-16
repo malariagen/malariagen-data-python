@@ -41,6 +41,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
         color: plotly_params.color = None,
@@ -79,7 +80,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Compute pairwise distances.
@@ -88,6 +91,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             analysis=analysis,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             random_seed=random_seed,
             chunks=chunks,
@@ -196,6 +200,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = None,
         random_seed: base_params.random_seed = 42,
         chunks: base_params.chunks = base_params.native_chunks,
@@ -213,6 +218,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             analysis=analysis,
             sample_sets=sample_sets_prepped,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             random_seed=random_seed,
         )
@@ -241,6 +247,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis,
         sample_sets,
         sample_query,
+        sample_query_options,
         cohort_size,
         random_seed,
         chunks,
@@ -253,6 +260,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             region=region,
             analysis=analysis,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             random_seed=random_seed,

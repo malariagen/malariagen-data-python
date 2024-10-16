@@ -112,7 +112,7 @@ class AnophelesH1XAnalysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
@@ -177,7 +177,7 @@ class AnophelesH1XAnalysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H1X.
@@ -283,7 +283,7 @@ class AnophelesH1XAnalysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-        chunks: base_params.chunks = base_params.large_chunks,
+        chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Plot GWSS track.
@@ -328,6 +328,7 @@ class AnophelesH1XAnalysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover

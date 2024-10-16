@@ -73,6 +73,14 @@ sample_query: TypeAlias = Annotated[
     """,
 ]
 
+sample_query_options: TypeAlias = Annotated[
+    dict,
+    """
+    A dictionary of arguments that will be passed through to pandas query() or
+    eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
+    """,
+]
+
 sample_indices: TypeAlias = Annotated[
     List[int],
     """
@@ -247,10 +255,6 @@ chunks: TypeAlias = Annotated[
 # choose a different default, especially if they need to retrieve larger
 # amounts of data.
 native_chunks: chunks = "native"
-
-# Alternative default chunk size, suitable for functions which need to
-# scan a large amount of data.
-large_chunks: chunks = "300MiB"
 
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],

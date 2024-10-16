@@ -8,7 +8,7 @@ import malariagen_data
 from .anopheles import AnophelesDataResource
 
 # silence dask performance warnings
-dask.config.set(**{"array.slicing.split_large_chunks": False})  # type: ignore
+dask.config.set(**{"array.slicing.split_native_chunks": False})  # type: ignore
 
 MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
