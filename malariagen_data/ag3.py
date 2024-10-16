@@ -350,8 +350,10 @@ class Ag3(AnophelesDataResource):
 
     def load_inversion_tags(self, inversion: str):
         # needs to be modified depending on where we are hosting
-        path = "malariagen_data/resources/karyotype_tag_snps.csv"
-        df_tag_snps = pd.read_csv(path, sep=",")
+        import importlib.resources
+        from . import resources
+        with importlib.resources.path(resources, "karyotype_tag_snps.csv") as path:
+            df_tag_snps = pd.read_csv(path, sep=",")
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
     def karyotype_tags_n_alt(self, gt, alts, inversion_alts):
