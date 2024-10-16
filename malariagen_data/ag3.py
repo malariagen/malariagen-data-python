@@ -10,7 +10,7 @@ import malariagen_data
 from .anopheles import AnophelesDataResource
 
 from .util import check_types, _karyotype_tags_n_alt
-from .anoph import base_params, karyo_params
+from .anoph import base_params
 from typing import Optional
 
 # silence dask performance warnings
@@ -80,6 +80,8 @@ TAXON_COLORS = {
     "unassigned": "black",
 }
 
+from typing import Literal, TypeAlias
+inversion_param: TypeAlias = Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"]
 
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
@@ -360,7 +362,7 @@ class Ag3(AnophelesDataResource):
     @check_types
     def karyotype(
         self,
-        inversion: karyo_params.inversion_param,
+        inversion: inversion_param,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
