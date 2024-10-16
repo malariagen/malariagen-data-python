@@ -71,14 +71,15 @@ class AnophelesHapFrequencyAnalysis(
                 "No cohorts available for the given sample selection parameters and minimum cohort size."
             )
 
-        # Access SNP data.
-        ds_hap = self.haplotypes(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
+        # Access haplotypes.
+        with self._dask_progress(desc="Load haplotypes"):
+            ds_hap = self.haplotypes(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
 
         # Early check for no SNPs.
         if ds_hap.sizes["variants"] == 0:  # pragma: no cover
@@ -86,13 +87,16 @@ class AnophelesHapFrequencyAnalysis(
 
         # Access genotypes.
         gt = ds_hap["call_genotype"].data
-        gt = gt.compute()
+        with self._dask_progress(desc="Compute haplotypes"):
+            gt = gt.compute()
 
         # Count haplotypes.
         count_rows: dict[str, int] = dict()
         freq_rows = dict()
         freq_cols = dict()
-        cohorts_iterator = coh_dict.items()
+        cohorts_iterator = self._progress(
+            coh_dict.items(), desc="Compute allele frequencies"
+        )
         for coh, loc_coh in cohorts_iterator:
             count_rows = {k: 0 for k in count_rows.keys()}
             n_samples = np.count_nonzero(loc_coh)
@@ -185,14 +189,15 @@ class AnophelesHapFrequencyAnalysis(
                 "No cohorts available for the given sample selection parameters and minimum cohort size."
             )
 
-        # Access SNP calls.
-        ds_haps = self.haplotypes(
-            region=region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
+        # Access haplotypes.
+        with self._dask_progress(desc="Load haplotypes"):
+            ds_haps = self.haplotypes(
+                region=region,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
 
         # Early check for no SNPs.
         if ds_haps.sizes["variants"] == 0:  # pragma: no cover
@@ -200,7 +205,8 @@ class AnophelesHapFrequencyAnalysis(
 
         # Access genotypes.
         gt = ds_haps["call_genotype"].data
-        gt = gt.compute()
+        with self._dask_progress(desc="Compute haplotypes"):
+            gt = gt.compute()
 
         # Count haplotypes.
         count_rows: dict[str, int] = dict()
@@ -208,8 +214,10 @@ class AnophelesHapFrequencyAnalysis(
         freq_cols = dict()
         count_cols = dict()
         nobs_cols = dict()
-        cohorts_iterator = enumerate(df_cohorts.itertuples())
-        for coh, cohort in cohorts_iterator:
+        cohorts_iterator = self._progress(
+            df_cohorts.itertuples(), desc="Compute allele frequencies"
+        )
+        for cohort in cohorts_iterator:
             cohort_key = cohort.taxon, cohort.area, cohort.period
             cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
             count_rows = {k: 0 for k in count_rows.keys()}
