@@ -420,7 +420,7 @@ class Ag3(AnophelesDataResource):
                 {
                     "sample_id": samples,
                     "inversion": inversion,
-                    "mean_tag_snp_genotype": av_gts,
+                    "karyotype_mean": av_gts,
                     # round the genotypes then convert to int
                     "karyotype": av_gts.round().astype(int),
                     "total_tag_snps": total_sites,
