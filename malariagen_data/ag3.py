@@ -9,7 +9,7 @@ import plotly.express as px  # type: ignore
 import malariagen_data
 from .anopheles import AnophelesDataResource
 
-from .util import check_types
+from .util import check_types, _karyotype_tags_n_alt
 from .anoph import base_params
 from typing import Optional
 
@@ -356,26 +356,6 @@ class Ag3(AnophelesDataResource):
             df_tag_snps = pd.read_csv(path, sep=",")
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
-    def karyotype_tags_n_alt(self, gt, alts, inversion_alts):
-        # could be Numba'd for speed but was already quick (not many inversion tag snps)
-        n_sites = gt.shape[0]
-        n_samples = gt.shape[1]
-
-        # create empty array
-        inv_n_alt = np.empty((n_sites, n_samples), dtype=np.int8)
-
-        # for every site
-        for i in range(n_sites):
-            # find the index of the correct tag snp allele
-            tagsnp_index = np.where(alts[i] == inversion_alts[i])[0]
-
-            for j in range(n_samples):
-                # count alleles which == tag snp allele and store
-                n_tag_alleles = np.sum(gt[i, j] == tagsnp_index[0])
-                inv_n_alt[i, j] = n_tag_alleles
-
-        return inv_n_alt
-
     @check_types
     def karyotype(
         self,
@@ -422,25 +402,25 @@ class Ag3(AnophelesDataResource):
         # subset to position of inversion tags
         mask = pos.locate_intersection(inversion_pos)[0]
         alts = alts[mask]
-        geno = geno.compress(mask, axis=0)
+        geno = geno.compress(mask, axis=0).compute()
 
         with self._spinner("Inferring karyotype from tag SNPs"):
-            gn_alt = self.karyotype_tags_n_alt(
+            gn_alt = _karyotype_tags_n_alt(
                 gt=geno.values, alts=alts, inversion_alts=inversion_alts
             )
             is_called = geno.is_called()
 
             # calculate mean genotype for each sample whilst masking missing calls
-            av_gts = np.mean(np.ma.MaskedArray(gn_alt, mask=~is_called), axis=0).data
+            av_gts = np.mean(np.ma.MaskedArray(gn_alt, mask=~is_called), axis=0)
             total_sites = np.sum(is_called, axis=0)
 
             df = pd.DataFrame(
                 {
                     "sample_id": samples,
                     "inversion": inversion,
-                    "mean_tag_snp_genotype": av_gts.round().astype(
-                        int
-                    ),  # round the genotypes then convert to int
+                    "mean_tag_snp_genotype": av_gts,
+                     # round the genotypes then convert to int
+                    "karyotype": av_gts.round().astype(int), 
                     "total_tag_snps": total_sites,
                 }
             )
