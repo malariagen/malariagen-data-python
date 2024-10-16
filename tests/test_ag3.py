@@ -894,4 +894,4 @@ def test_karyotyping():
     ]
     assert set(df.columns) == set(expected_cols)
     assert all(df["karyotype"].isin([0, 1, 2]))
-    assert all(df["mean_tag_snp_genotype"].between(0, 2))
+    assert all(df["karyotype_mean"].between(0, 2))
