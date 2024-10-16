@@ -424,5 +424,5 @@ class Ag3(AnophelesDataResource):
             )
             kt_dtype = CategoricalDtype(categories=[0, 1, 2], ordered=True)
             df[f"karyotype_{inversion}"] = df[f"karyotype_{inversion}"].astype(kt_dtype)
- 
+
         return df
