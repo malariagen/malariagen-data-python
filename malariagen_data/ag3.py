@@ -81,7 +81,10 @@ TAXON_COLORS = {
 }
 
 
-inversion_param: TypeAlias = Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"]
+inversion_param: TypeAlias = Annotated[
+    Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"],
+    "Name of inversion to infer karyotype for.",
+]
 
 
 class Ag3(AnophelesDataResource):
