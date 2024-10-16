@@ -210,11 +210,11 @@ class AnophelesHapFrequencyAnalysis(
         nobs_cols = dict()
         cohorts_iterator = enumerate(df_cohorts.itertuples())
         for coh, cohort in cohorts_iterator:
+            cohort_key = cohort.taxon, cohort.area, cohort.period
+            cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
             count_rows = {k: 0 for k in count_rows.keys()}
             n_samples = cohort.size
-            assert n_samples >= 10
-            cohort_key = cohort.taxon, cohort.area, cohort.period
-            cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + cohort.period
+            assert n_samples >= min_cohort_size
             sample_indices = group_samples_by_cohort.indices[cohort_key]
             loc_coh = [i in sample_indices for i in range(0, gt.shape[1])]
             gt_coh = np.compress(loc_coh, gt, axis=1)

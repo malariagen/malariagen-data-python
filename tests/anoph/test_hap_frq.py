@@ -1,6 +1,8 @@
 import random
 
 import pandas as pd
+import numpy as np
+import xarray as xr
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -50,19 +52,81 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
-def check_hap_frequencies(
+def check_frequency(x):
+    loc_nan = np.isnan(x)
+    assert np.all(x[~loc_nan] >= 0)
+    assert np.all(x[~loc_nan] <= 1)
+
+
+def check_hap_frequencies(*, api, df, sample_sets, cohorts, min_cohort_size):
+    assert isinstance(df, pd.DataFrame)
+    assert len(df) > 0
+
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    if "cohort_" + cohorts in df_samples:
+        cohort_column = "cohort_" + cohorts
+    else:
+        cohort_column = cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    universal_fields = ["label"]
+    frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
+    expected_fields = universal_fields + frq_fields
+    assert sorted(df.columns.tolist()) == sorted(expected_fields)
+
+
+def check_hap_frequencies_advanced(
     *,
     api,
-    df,
+    ds,
 ):
-    assert isinstance(df, pd.DataFrame)
+    assert isinstance(ds, xr.Dataset)
+    assert set(ds.dims) == {"cohorts", "variants"}
+
+    expected_cohort_vars = [
+        "cohort_label",
+        "cohort_size",
+        "cohort_taxon",
+        "cohort_area",
+        "cohort_period",
+        "cohort_period_start",
+        "cohort_period_end",
+        "cohort_lat_mean",
+        "cohort_lat_min",
+        "cohort_lat_max",
+        "cohort_lon_mean",
+        "cohort_lon_min",
+        "cohort_lon_max",
+    ]
+    for v in expected_cohort_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("cohorts",)
+
+    # Check event variables.
+    expected_event_vars = [
+        "event_count",
+        "event_nobs",
+        "event_frequency",
+        "event_frequency_ci_low",
+        "event_frequency_ci_upp",
+    ]
+    for v in expected_event_vars:
+        a = ds[v]
+        assert isinstance(a, xr.DataArray)
+        assert a.dims == ("variants", "cohorts")
+
+    # Sanity check for frequency values.
+    x = ds["event_frequency"].values.astype(float)
+    check_frequency(x)
 
 
 @pytest.mark.parametrize(
     "cohorts", ["admin1_year", "admin2_month", "country", "foobar"]
 )
 @parametrize_with_cases("fixture,api", cases=".")
-def test_allele_frequencies_with_str_cohorts(
+def test_hap_frequencies_with_str_cohorts(
     fixture,
     api: AnophelesHapFrequencyAnalysis,
     cohorts,
@@ -88,7 +152,42 @@ def test_allele_frequencies_with_str_cohorts(
         return
 
     # Run the function under test.
-    df_snp = api.haplotype_frequencies(**params)
+    df_hap = api.haplotype_frequencies(**params)
 
     # Standard checks.
-    check_hap_frequencies(api=api, df=df_snp)
+    check_hap_frequencies(
+        api=api,
+        df=df_hap,
+        sample_sets=sample_sets,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+    )
+
+
+@pytest.mark.parametrize(
+    "area_by, period_by",
+    [("admin1_iso", "year"), ("admin2_name", "year")],
+)
+@parametrize_with_cases("fixture,api", cases=".")
+def test_hap_frequencies_advanced(
+    fixture, api: AnophelesHapFrequencyAnalysis, area_by, period_by
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    min_cohort_size = random.randint(0, 2)
+    region = fixture.random_region_str()
+
+    # Set up call params.
+    params_advanced = dict(
+        region=region,
+        area_by=area_by,
+        period_by=period_by,
+        min_cohort_size=min_cohort_size,
+        sample_sets=sample_sets,
+    )
+
+    # Run the other function under test.
+    ds_hap = api.haplotype_frequencies_advanced(**params_advanced)
+
+    # Standard checks.
+    check_hap_frequencies_advanced(api=api, ds=ds_hap)
