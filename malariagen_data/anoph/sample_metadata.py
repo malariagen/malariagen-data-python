@@ -505,6 +505,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
         # Extra parameter checks.
@@ -563,7 +564,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         # For convenience, apply a sample selection.
         if sample_query is not None:
             # Assume a pandas query string.
-            df_samples = df_samples.query(sample_query)
+            sample_query_options = sample_query_options or {}
+            df_samples = df_samples.query(sample_query, **sample_query_options)
             df_samples = df_samples.reset_index(drop=True)
         elif sample_indices is not None:
             # Assume it is an indexer.
@@ -588,6 +590,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         index: Union[str, Sequence[str]] = (
             "country",
             "admin1_iso",
@@ -599,7 +602,9 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Create pivot table.
@@ -633,6 +638,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         basemap: Optional[map_params.basemap] = map_params.basemap_default,
         center: map_params.center = map_params.center_default,
         zoom: map_params.zoom = map_params.zoom_default,
@@ -649,7 +655,9 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Pivot taxa by locations.
@@ -808,6 +816,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         *,
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query],
+        sample_query_options: Optional[base_params.sample_query_options],
         sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Normalise sample sets.
@@ -819,7 +828,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             # query, and so it's better to evaluate the query and use a list of
             # integer indices instead.
             df_samples = self.sample_metadata(sample_sets=sample_sets)
-            loc_samples = df_samples.eval(sample_query).values
+            sample_query_options = sample_query_options or {}
+            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
             sample_indices = np.nonzero(loc_samples)[0].tolist()
 
         return sample_sets, sample_indices
@@ -867,6 +877,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sort: bool = True,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         template: plotly_params.template = "plotly_white",
         width: plotly_params.fig_width = 800,
         height: plotly_params.fig_height = 600,
@@ -876,7 +887,9 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> plotly_params.figure:
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Special handling for plotting by year.
@@ -1078,6 +1091,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query],
+        sample_query_options: Optional[base_params.sample_query_options],
         cohort_size: Optional[base_params.cohort_size],
         min_cohort_size: Optional[base_params.min_cohort_size],
     ):
@@ -1093,7 +1107,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             assert isinstance(cohorts, str)
             # User has supplied a column in the sample metadata.
             df_samples = self.sample_metadata(
-                sample_sets=sample_sets, sample_query=sample_query
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
             )
 
             # Determine column in dataframe - allow abbreviation.

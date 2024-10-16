@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.abspath("../.."))
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
 project = "malariagen_data API"
-copyright = "2023, MalariaGEN"
+copyright = "2024, MalariaGEN"
 author = "MalariaGEN"
 version = os.environ.get("VERSION_TAG", "dev")
 

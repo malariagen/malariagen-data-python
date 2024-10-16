@@ -42,6 +42,7 @@ class AnophelesG123Analysis(
         site_mask,
         sample_sets,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         max_cohort_size,
         random_seed,
@@ -51,6 +52,7 @@ class AnophelesG123Analysis(
         ds_snps = self.snp_calls(
             region=contig,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             min_cohort_size=min_cohort_size,
@@ -78,7 +80,7 @@ class AnophelesG123Analysis(
                     inline_array=True,
                     chunks="native",
                 ).compute()
-                hap_site_mask = np.in1d(pos, haplotype_pos, assume_unique=True)
+                hap_site_mask = np.isin(pos, haplotype_pos, assume_unique=True)
                 pos = pos[hap_site_mask]
                 gt = gt.compress(hap_site_mask, axis=0)
 
@@ -110,6 +112,7 @@ class AnophelesG123Analysis(
         window_size,
         sample_sets,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         max_cohort_size,
         random_seed,
@@ -122,6 +125,7 @@ class AnophelesG123Analysis(
             site_mask=site_mask,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -153,6 +157,7 @@ class AnophelesG123Analysis(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = g123_params.min_cohort_size_default,
@@ -161,7 +166,7 @@ class AnophelesG123Analysis(
         ] = g123_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -186,6 +191,7 @@ class AnophelesG123Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -212,6 +218,7 @@ class AnophelesG123Analysis(
         sites,
         site_mask,
         sample_query,
+        sample_query_options,
         sample_sets,
         min_cohort_size,
         max_cohort_size,
@@ -225,6 +232,7 @@ class AnophelesG123Analysis(
             sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -254,6 +262,7 @@ class AnophelesG123Analysis(
         sites: g123_params.sites = base_params.DEFAULT,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -264,7 +273,7 @@ class AnophelesG123Analysis(
         window_sizes: g123_params.window_sizes = g123_params.window_sizes_default,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> Mapping[str, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -280,6 +289,7 @@ class AnophelesG123Analysis(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -308,6 +318,7 @@ class AnophelesG123Analysis(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = g123_params.min_cohort_size_default,
@@ -323,7 +334,7 @@ class AnophelesG123Analysis(
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> gplt_params.figure:
         # compute G123
         x, g123 = self.g123_gwss(
@@ -334,6 +345,7 @@ class AnophelesG123Analysis(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
             inline_array=inline_array,
@@ -409,6 +421,7 @@ class AnophelesG123Analysis(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
         ] = g123_params.min_cohort_size_default,
@@ -424,7 +437,7 @@ class AnophelesG123Analysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
@@ -434,6 +447,7 @@ class AnophelesG123Analysis(
             window_size=window_size,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -467,6 +481,7 @@ class AnophelesG123Analysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover
@@ -485,6 +500,7 @@ class AnophelesG123Analysis(
         sites: g123_params.sites,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -497,7 +513,7 @@ class AnophelesG123Analysis(
         title: Optional[gplt_params.title] = None,
         show: gplt_params.show = True,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ) -> gplt_params.figure:
         # get g123 values
         calibration_runs = self.g123_calibration(
@@ -505,6 +521,7 @@ class AnophelesG123Analysis(
             sites=sites,
             site_mask=site_mask,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             window_sizes=window_sizes,
             min_cohort_size=min_cohort_size,

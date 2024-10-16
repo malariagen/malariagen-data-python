@@ -146,6 +146,7 @@ def check_haplotypes(
     region,
     analysis,
     sample_query=None,
+    sample_query_options=None,
     cohort_size=None,
     min_cohort_size=None,
     max_cohort_size=None,
@@ -168,6 +169,7 @@ def check_haplotypes(
                 sample_sets=sample_sets,
                 analysis=analysis,
                 sample_query=sample_query,
+                sample_query_options=sample_query_options,
             )
         return
 
@@ -176,7 +178,10 @@ def check_haplotypes(
         df_samples = api.sample_metadata(sample_sets=sample_sets)
         df_samples = df_samples.set_index("sample_id")
         df_samples_phased = df_samples.loc[samples_phased].reset_index()
-        df_samples_queried = df_samples_phased.query(sample_query)
+        sample_query_options = sample_query_options or {}
+        df_samples_queried = df_samples_phased.query(
+            sample_query, **sample_query_options
+        )
         samples_selected = df_samples_queried["sample_id"].values
     else:
         samples_selected = samples_phased
@@ -190,6 +195,7 @@ def check_haplotypes(
                 sample_sets=sample_sets,
                 analysis=analysis,
                 sample_query=sample_query,
+                sample_query_options=sample_query_options,
             )
         return
 
@@ -201,6 +207,7 @@ def check_haplotypes(
                 sample_sets=sample_sets,
                 analysis=analysis,
                 sample_query=sample_query,
+                sample_query_options=sample_query_options,
                 cohort_size=cohort_size,
             )
         return
@@ -213,6 +220,7 @@ def check_haplotypes(
                 sample_sets=sample_sets,
                 analysis=analysis,
                 sample_query=sample_query,
+                sample_query_options=sample_query_options,
                 min_cohort_size=min_cohort_size,
             )
         return
@@ -223,6 +231,7 @@ def check_haplotypes(
         sample_sets=sample_sets,
         analysis=analysis,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         cohort_size=cohort_size,
         min_cohort_size=min_cohort_size,
         max_cohort_size=max_cohort_size,
@@ -400,6 +409,45 @@ def test_haplotypes_with_sample_query_param(
             region=region,
             analysis=analysis,
             sample_query=sample_query,
+        )
+
+
+def test_haplotypes_with_sample_query_options_param(
+    ag3_sim_fixture, ag3_sim_api: AnophelesHapData
+):
+    api = ag3_sim_api
+    fixture = ag3_sim_fixture
+
+    # Fixed parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    region = fixture.random_region_str()
+    analysis = api.phasing_analysis_ids[0]
+    sample_query_options = {
+        "local_dict": {
+            "sex_call_list": ["F", "M"],
+            "taxon_list": ["coluzzii", "arabiensis"],
+            "non_taxon_list": ["robot", "cyborg"],
+        }
+    }
+
+    # Parametrize analysis.
+    parametrize_query = [
+        "sex_call in @sex_call_list",
+        "taxon in @taxon_list",
+        "taxon in @non_taxon_list",
+    ]
+
+    # Run tests.
+    for sample_query in parametrize_query:
+        check_haplotypes(
+            fixture=fixture,
+            api=api,
+            sample_sets=sample_sets,
+            region=region,
+            analysis=analysis,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
 

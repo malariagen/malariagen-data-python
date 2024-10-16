@@ -32,6 +32,7 @@ from ..util import (
     LoggingHelper,
     check_colab_location,
     check_types,
+    distributed_client,
     get_gcp_region,
     hash_params,
     init_filesystem,
@@ -174,9 +175,13 @@ class AnophelesBase:
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
         if show_progress:
-            return TqdmCallback(
-                desc=desc, leave=leave, tqdm_class=self._tqdm_class, **kwargs
-            )
+            if distributed_client():
+                # Cannot easily show progress, fall back to spinner.
+                return self._spinner(desc=desc)
+            else:
+                return TqdmCallback(
+                    desc=desc, leave=leave, tqdm_class=self._tqdm_class, **kwargs
+                )
         else:
             return nullcontext()
 
