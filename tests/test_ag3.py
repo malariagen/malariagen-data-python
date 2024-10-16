@@ -888,8 +888,8 @@ def test_karyotyping():
     expected_cols = [
         "sample_id",
         "inversion",
-        "karyotype_mean",
-        "karyotype",
+        "karyotype_2La_mean",
+        "karyotype_2La",
         "total_tag_snps",
     ]
     assert set(df.columns) == set(expected_cols)
