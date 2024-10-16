@@ -84,7 +84,7 @@ TAXON_COLORS = {
 
 inversion_param: TypeAlias = Annotated[
     Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"],
-    "Name of inversion to infer karyotype for."
+    "Name of inversion to infer karyotype for.",
 ]
 
 
@@ -378,7 +378,6 @@ class Ag3(AnophelesDataResource):
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
     ) -> pd.DataFrame:
-
         # load tag snp data
         df_tagsnps = self.load_inversion_tags(inversion=inversion)
         inversion_pos = df_tagsnps["position"]
