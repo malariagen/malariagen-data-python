@@ -2880,8 +2880,9 @@ class AnophelesDataResource(
             df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
 
             # extract all unique values of the color column
-            color_values = df_haps["partition"].dropna().unique()
+            color_values = df_haps["partition"].fillna("<NA>").unique()
             color_values_mapping = dict(zip(df_haps["partition"], df_haps[color]))
+            color_values_mapping["<NA>"] = "black"
             color_values_display = [color_values_mapping[c] for c in color_values]
 
             # count color values for each distinct haplotype
