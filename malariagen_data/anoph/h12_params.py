@@ -25,7 +25,10 @@ window_size: TypeAlias = Annotated[
 multi_window_size: TypeAlias = Annotated[
     Union[window_size, dict[str, int]],
     """
-    The size of windows (number of SNPs) used to calculate statistics within.
+    The size of windows (number of SNPs) used to calculate statistics within. Can
+    be a single value, in which case the same window size will be used for all
+    cohorts. Can also be a mapping from cohort identifiers to values, in case
+    you need to provide different window sizes for different cohorts.
     """,
 ]
 
