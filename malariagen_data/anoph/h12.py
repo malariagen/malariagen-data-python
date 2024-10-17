@@ -790,7 +790,7 @@ class AnophelesH12Analysis(
                     self.plot_h12_gwss_track(**params)
                 )
 
-        figs[i].xaxis.visible = False
+        figs[-1].xaxis.visible = False
 
         # Plot genes.
         fig2 = self.plot_genes(
