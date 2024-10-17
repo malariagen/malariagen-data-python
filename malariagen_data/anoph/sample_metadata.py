@@ -973,7 +973,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             symbol_prepped = "symbol"
 
         # Handle missing data in a consistent way.
-        data[symbol_prepped].fillna("<NA>", inplace=True)
+        data[symbol_prepped] = data[symbol_prepped].fillna("<NA>")
 
         return symbol_prepped
 
@@ -1020,7 +1020,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         del color
 
         # Handle missing data in a consistent way.
-        data[color_prepped].fillna("<NA>", inplace=True)
+        data[color_prepped] = data[color_prepped].fillna("<NA>")
 
         # Obtain the values that we will be mapping to colors.
         color_data_unique_values = data[color_prepped].unique()
