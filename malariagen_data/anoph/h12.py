@@ -516,7 +516,7 @@ class AnophelesH12Analysis(
 
     @check_types
     @doc(
-        summary="Plot h12 GWSS data track with multiple traces.",
+        summary="Plot h12 GWSS data track with multiple traces overlaid.",
     )
     def plot_h12_gwss_multi_overlay_track(
         self,
