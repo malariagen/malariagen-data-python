@@ -1551,3 +1551,24 @@ def distributed_client():
     except ValueError:
         client = None
     return client
+
+
+def _karyotype_tags_n_alt(gt, alts, inversion_alts):
+    # could be Numba'd for speed but was already quick (not many inversion tag snps)
+    n_sites = gt.shape[0]
+    n_samples = gt.shape[1]
+
+    # create empty array
+    inv_n_alt = np.empty((n_sites, n_samples), dtype=np.int8)
+
+    # for every site
+    for i in range(n_sites):
+        # find the index of the correct tag snp allele
+        tagsnp_index = np.where(alts[i] == inversion_alts[i])[0]
+
+        for j in range(n_samples):
+            # count alleles which == tag snp allele and store
+            n_tag_alleles = np.sum(gt[i, j] == tagsnp_index[0])
+            inv_n_alt[i, j] = n_tag_alleles
+
+    return inv_n_alt
