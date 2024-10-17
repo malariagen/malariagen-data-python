@@ -59,7 +59,7 @@ orjson = "*"
 # providers spinners
 yaspin = "*"
 # provides efficient neighbour-joining tree implementation
-anjl = "*"
+anjl = ">=1.1.3"
 
 # dev extras
 pytest = "*"
