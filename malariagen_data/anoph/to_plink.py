@@ -145,7 +145,7 @@ class PlinkConverter(
         max_missing_an: Optional[base_params.max_missing_an] = 0,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ):
         params = dict(
             results_dir=results_dir,
