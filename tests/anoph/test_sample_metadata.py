@@ -938,6 +938,36 @@ def test_plot_samples_bar(fixture, api):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_plot_sample_location_mapbox(fixture, api):
+    # Get test sample_sets.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+
+    fig = api.plot_sample_location_mapbox(
+        sample_sets=sample_sets,
+        show=False,
+    )
+
+    assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_sample_location_geo(fixture, api):
+    # Get test sample_sets.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    all_sample_sets = df_sample_sets.index.to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+
+    fig = api.plot_sample_location_geo(
+        sample_sets=sample_sets,
+        show=False,
+    )
+
+    assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_lookup_sample(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()

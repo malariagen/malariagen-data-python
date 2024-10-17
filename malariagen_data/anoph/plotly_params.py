@@ -185,3 +185,33 @@ legend_sizing: TypeAlias = Annotated[
     on the graph.
     """,
 ]
+
+zoom: TypeAlias = Annotated[
+    Optional[Union[int, float]],
+    "Initial zoom level.",
+]
+
+hover_name: TypeAlias = Annotated[
+    Optional[Union[str, Mapping]],
+    "Name of variable to appear in bold in the hover tooltip.",
+]
+
+fitbounds: TypeAlias = Annotated[
+    Optional[Union[bool, str]],
+    "If False, does not auto-compute view settings to fit trace data. If 'locations', only visible locations are considered in the auto-compute. If 'geojson', the provided geojson is used.",
+]
+
+scope: TypeAlias = Annotated[
+    Optional[
+        Literal[
+            "africa",
+            "asia",
+            "europe",
+            "north america",
+            "south america",
+            "usa",
+            "world",
+        ]
+    ],
+    "Scope of the map.",
+]
