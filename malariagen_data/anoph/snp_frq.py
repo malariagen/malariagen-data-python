@@ -1161,8 +1161,8 @@ class AnophelesSnpFrequencyAnalysis(
 
         # Set up interactive controls.
         variants = ds["variant_label"].values
-        taxa = np.unique(ds["cohort_taxon"].values)
-        periods = np.unique(ds["cohort_period"].values)
+        taxa = ds["cohort_taxon"].to_pandas().dropna().unique()
+        periods = ds["cohort_period"].to_pandas().dropna().unique()
         controls = ipywidgets.interactive(
             self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
