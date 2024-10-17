@@ -144,6 +144,7 @@ Genetic distance and neighbour-joining trees (NJT)
     :toctree: generated/
 
     plot_njt
+    njt
     biallelic_diplotype_pairwise_distances
 
 Heterozygosity analysis
