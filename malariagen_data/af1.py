@@ -40,7 +40,7 @@ class Af1(AnophelesDataResource):
     debug : bool, optional
         Set to True to enable debug level logging.
     show_progress : bool, optional
-        If True, show a progress bar during longer-running computations.
+        If True, show a progress bar during longer-running computations. The default can be overridden using an environmental variable named MGEN_SHOW_PROGRESS.
     check_location : bool, optional
         If True, use ipinfo to check the location of the client system.
     **kwargs
@@ -82,7 +82,7 @@ class Af1(AnophelesDataResource):
         results_cache=None,
         log=sys.stdout,
         debug=False,
-        show_progress=True,
+        show_progress=None,
         check_location=True,
         cohorts_analysis=None,
         site_filters_analysis=None,
