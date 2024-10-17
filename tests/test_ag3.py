@@ -877,3 +877,21 @@ def test_xpehh_gwss():
     # check some values
     assert_allclose(x[0], 467448.348)
     assert_allclose(xpehh[:, 2][100], 0.4817561326426265)
+
+
+def test_karyotyping():
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    df = ag3.karyotype(inversion="2La", sample_sets="AG1000G-GH", sample_query=None)
+
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "sample_id",
+        "inversion",
+        "karyotype_2La_mean",
+        "karyotype_2La",
+        "total_tag_snps",
+    ]
+    assert set(df.columns) == set(expected_cols)
+    assert all(df["karyotype_2La"].isin([0, 1, 2]))
+    assert all(df["karyotype_2La_mean"].between(0, 2))
