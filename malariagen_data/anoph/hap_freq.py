@@ -95,7 +95,7 @@ class AnophelesHapFrequencyAnalysis(
         cohorts_iterator = self._progress(
             coh_dict.items(), desc="Compute allele frequencies"
         )
-        hap_track: dict[np.int64, int] = {}
+        hap_track: dict[np.int64, float] = {}
         for coh, loc_coh in cohorts_iterator:
             hap_track = {k: 0 for k in hap_track.keys()}
             n_samples = np.count_nonzero(loc_coh)
@@ -201,7 +201,7 @@ class AnophelesHapFrequencyAnalysis(
             gt = gt.compute()
 
         # Count haplotypes.
-        hap_freq: dict[np.int64, int] = dict()
+        hap_freq: dict[np.int64, float] = dict()
         hap_count: dict[np.int64, int] = dict()
         hap_nob: dict[np.int64, int] = dict()
         freq_cols = dict()
