@@ -761,46 +761,33 @@ class AnophelesH12Analysis(
         # Plot GWSS track.
         figs: list[gplt_params.def_figure] = []
         for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
+            params = dict(
+                contig=contig,
+                analysis=analysis,
+                window_size=window_size[cohort_label],
+                sample_sets=sample_sets,
+                sample_query=cohort_query,
+                cohort_size=cohort_size,
+                min_cohort_size=min_cohort_size,
+                max_cohort_size=max_cohort_size,
+                random_seed=random_seed,
+                title=cohort_label,  # Deal with a choice of titles later
+                sizing_mode=sizing_mode,
+                width=width,
+                height=track_height,
+                show=False,
+                output_backend=output_backend,
+            )
             if i > 0:
                 figs.append(
                     self.plot_h12_gwss_track(
-                        contig=contig,
-                        analysis=analysis,
-                        window_size=window_size[cohort_label],
-                        sample_sets=sample_sets,
-                        sample_query=cohort_query,
-                        cohort_size=cohort_size,
-                        min_cohort_size=min_cohort_size,
-                        max_cohort_size=max_cohort_size,
-                        random_seed=random_seed,
-                        title=cohort_label,  # Deal with a choice of titles later
-                        sizing_mode=sizing_mode,
-                        width=width,
-                        height=track_height,
                         x_range=figs[0].x_range,
-                        show=False,
-                        output_backend=output_backend,
+                        **params
                     )
                 )
             else:
                 figs.append(
-                    self.plot_h12_gwss_track(
-                        contig=contig,
-                        analysis=analysis,
-                        window_size=window_size[cohort_label],
-                        sample_sets=sample_sets,
-                        sample_query=cohort_query,
-                        cohort_size=cohort_size,
-                        min_cohort_size=min_cohort_size,
-                        max_cohort_size=max_cohort_size,
-                        random_seed=random_seed,
-                        title=cohort_label,  # Same as previously
-                        sizing_mode=sizing_mode,
-                        width=width,
-                        height=track_height,
-                        show=False,
-                        output_backend=output_backend,
-                    )
+                    self.plot_h12_gwss_track(**params)
                 )
 
         figs[i].xaxis.visible = False
