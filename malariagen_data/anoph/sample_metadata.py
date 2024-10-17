@@ -972,6 +972,9 @@ class AnophelesSampleMetadata(AnophelesBase):
                 data.loc[data.query(value).index, "symbol"] = key
             symbol_prepped = "symbol"
 
+        # Handle missing data in a consistent way.
+        data[symbol_prepped].fillna("<NA>", inplace=True)
+
         return symbol_prepped
 
     def _setup_sample_colors_plotly(
@@ -1016,9 +1019,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Finish handling of color parameter.
         del color
 
+        # Handle missing data in a consistent way.
+        data[color_prepped].fillna("<NA>", inplace=True)
+
         # Obtain the values that we will be mapping to colors.
-        color_data_values = data[color_prepped].dropna()
-        color_data_unique_values = color_data_values.unique()
+        color_data_unique_values = data[color_prepped].unique()
 
         # Now set up color choices.
         if color_discrete_map is None:
@@ -1039,6 +1044,9 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             color_discrete_map_prepped = color_discrete_map
+
+        # Consistent color for missing data.
+        color_discrete_map_prepped["<NA>"] = "black"
 
         # Finished handling of color map params.
         del color_discrete_map
