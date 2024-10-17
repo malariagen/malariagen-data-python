@@ -4,6 +4,7 @@ import logging
 import re
 import sys
 import warnings
+from collections import Counter
 from enum import Enum
 from math import prod
 from functools import wraps
@@ -1604,6 +1605,18 @@ def hash_columns(x):
             v = x[i, j]
             out[j] = out[j] * 33 + v
     return out
+
+
+def haplotype_frequencies(h):
+    """Compute haplotype frequencies, returning a dictionary that maps
+    haplotype hash values to frequencies."""
+    n = h.shape[1]
+    hashes = hash_columns(np.asarray(h))
+    count = Counter(hashes)
+    freqs = {key: count / n for key, count in count.items()}
+    counts = {key: count for key, count in count.items()}
+    nobs = {key: n for key, count in count.items()}
+    return freqs, counts, nobs
 
 
 def distributed_client():
