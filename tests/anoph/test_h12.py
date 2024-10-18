@@ -148,6 +148,13 @@ def check_h12_gwss(*, api, h12_params):
     fig = api.plot_h12_gwss(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
 
+    h12_params.update({"cohorts": {"all": "year > 0"}})
+
+    fig = api.plot_h12_gwss_multi_overlay(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+    fig = api.plot_h12_gwss_multi_panel(**h12_params, show=False)
+    assert isinstance(fig, bokeh.models.GridPlot)
+
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
