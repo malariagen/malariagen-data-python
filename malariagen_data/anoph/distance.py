@@ -363,26 +363,18 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         )
         D = squareform(dist)
 
-        # Progress doesn't mix well with debug logging.
-        show_progress = self._show_progress and not self._debug
-
         # anjl supports passing in a progress bar function to get progress on the
         # neighbour-joining iterations.
-        if show_progress:
-            progress = self._tqdm_class
-            progress_options = dict(
-                desc="Construct neighbour-joining tree", leave=False
-            )
-        else:
-            progress = None
-            progress_options = dict()
+        progress_options = dict(desc="Construct neighbour-joining tree", leave=False)
 
         # Decide which algorithm to use and run the neighbour-joining.
         if algorithm == "rapid":
-            Z = anjl.rapid_nj(D=D, progress=progress, progress_options=progress_options)
+            Z = anjl.rapid_nj(
+                D=D, progress=self._progress, progress_options=progress_options
+            )
         else:
             Z = anjl.canonical_nj(
-                D=D, progress=progress, progress_options=progress_options
+                D=D, progress=self._progress, progress_options=progress_options
             )
 
         return dict(
