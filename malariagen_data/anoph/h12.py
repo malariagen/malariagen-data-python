@@ -755,8 +755,8 @@ class AnophelesH12Analysis(
 
         if isinstance(window_size, int):
             window_size = {k: window_size for k in cohort_queries.keys()}
-        elif isinstance(window_size, dict):
-            if np.sort(window_size.keys()) != np.sort(cohort_queries.keys()):
+        elif isinstance(window_size, Mapping):
+            if set(window_size.keys()) != set(cohort_queries.keys()):
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
