@@ -87,8 +87,10 @@ def test_haplotype_frequencies():
         dtype="i1",
     )
 
-    f = haplotype_frequencies(h1)
+    f, c, o = haplotype_frequencies(h1)
     assert isinstance(f, dict)
+    assert isinstance(c, dict)
+    assert isinstance(o, dict)
     vals = np.array(list(f.values()))
     vals.sort()
     assert np.all(vals >= 0)
