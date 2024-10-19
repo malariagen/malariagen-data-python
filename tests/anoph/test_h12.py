@@ -148,7 +148,21 @@ def check_h12_gwss(*, api, h12_params):
     fig = api.plot_h12_gwss(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
 
-    h12_params.update({"cohorts": {"all": "year > 0"}})
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].unique().tolist()
+    country1, country2 = random.sample(all_countries, 2)
+    cohort1_query = f"country == '{country1}'"
+    cohort2_query = f"country == '{country2}'"
+    h12_params.update(
+        {
+            "cohorts": {
+                "cohort1": cohort1_query,
+                "cohort2": cohort2_query,
+            },
+            "sample_sets": all_sample_sets,
+            "min_cohort_size": 1,
+        }
+    )
 
     fig = api.plot_h12_gwss_multi_overlay(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
