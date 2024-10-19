@@ -24,7 +24,7 @@ class AnophelesH1XAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    def _h1x_gwss_contig(
+    def _h1x_gwss(
         self,
         contig,
         analysis,
@@ -93,40 +93,6 @@ class AnophelesH1XAnalysis(
 
         return results
 
-    def _h1x_gwss(
-        self,
-        contig,
-        analysis,
-        window_size,
-        sample_sets,
-        cohort1_query,
-        cohort2_query,
-        cohort_size,
-        min_cohort_size,
-        max_cohort_size,
-        random_seed,
-        chunks,
-        inline_array,
-    ):
-        results_tmp = self._h1x_gwss_contig(
-            contig=contig,
-            analysis=analysis,
-            window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=sample_sets,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
-
-        results = dict(x=results_tmp["x"], h1x=results_tmp["h1x"])
-
-        return results
-
     @check_types
     @doc(
         summary="""
@@ -139,7 +105,7 @@ class AnophelesH1XAnalysis(
             contigs="An array with the contig for each window. The median is chosen for windows overlapping a change of contig.",
         ),
     )
-    def h1x_gwss_contig(
+    def h1x_gwss(
         self,
         contig: base_params.contig,
         window_size: h12_params.window_size,
@@ -182,9 +148,7 @@ class AnophelesH1XAnalysis(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._h1x_gwss_contig(
-                chunks=chunks, inline_array=inline_array, **params
-            )
+            results = self._h1x_gwss(chunks=chunks, inline_array=inline_array, **params)
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -192,68 +156,6 @@ class AnophelesH1XAnalysis(
         contigs = results["contigs"]
 
         return x, h1x, contigs
-
-    @check_types
-    @doc(
-        summary="""
-            Run a H1X genome-wide scan to detect genome regions with
-            shared selective sweeps between two cohorts.
-        """,
-        returns=dict(
-            x="An array containing the window centre point genomic positions.",
-            h1x="An array with H1X statistic values for each window.",
-        ),
-    )
-    def h1x_gwss(
-        self,
-        contig: base_params.contig,
-        window_size: h12_params.window_size,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
-        analysis: hap_params.analysis = base_params.DEFAULT,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
-        min_cohort_size: Optional[
-            base_params.min_cohort_size
-        ] = h12_params.min_cohort_size_default,
-        max_cohort_size: Optional[
-            base_params.max_cohort_size
-        ] = h12_params.max_cohort_size_default,
-        random_seed: base_params.random_seed = 42,
-        chunks: base_params.chunks = base_params.native_chunks,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> Tuple[np.ndarray, np.ndarray]:
-        # Change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data.
-        name = "h1x_gwss_v1"
-
-        params = dict(
-            contig=contig,
-            analysis=self._prep_phasing_analysis_param(analysis=analysis),
-            window_size=window_size,
-            # N.B., do not be tempted to convert these sample queries into integer
-            # indices using _prep_sample_selection_params, because the indices
-            # are different in the haplotype data.
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
-            sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-        )
-
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._h1x_gwss(chunks=chunks, inline_array=inline_array, **params)
-            self.results_cache_set(name=name, params=params, results=results)
-
-        x = results["x"]
-        h1x = results["h1x"]
-
-        return x, h1x
 
     @check_types
     @doc(
@@ -290,7 +192,7 @@ class AnophelesH1XAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H1X.
-        x, h1x, contigs = self.h1x_gwss_contig(
+        x, h1x, contigs = self.h1x_gwss(
             contig=contig,
             analysis=analysis,
             window_size=window_size,

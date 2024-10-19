@@ -110,20 +110,7 @@ def test_haplotype_joint_frequencies():
 
 def check_h1x_gwss(*, api, h1x_params):
     # Run main gwss function under test.
-    x, h1x = api.h1x_gwss(**h1x_params)
-
-    # Check results.
-    assert isinstance(x, np.ndarray)
-    assert isinstance(h1x, np.ndarray)
-    assert x.ndim == 1
-    assert h1x.ndim == 1
-    assert x.shape == h1x.shape
-    assert x.dtype.kind == "f"
-    assert h1x.dtype.kind == "f"
-    assert np.all(h1x >= 0)
-    assert np.all(h1x <= 1)
-
-    x, h1x, contigs = api.h1x_gwss_contig(**h1x_params)
+    x, h1x, contigs = api.h1x_gwss(**h1x_params)
 
     # Check results.
     assert isinstance(x, np.ndarray)

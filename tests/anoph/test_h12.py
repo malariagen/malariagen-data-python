@@ -129,20 +129,8 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
 
 def check_h12_gwss(*, api, h12_params):
     # Run main gwss function under test.
-    x, h12 = api.h12_gwss(**h12_params)
 
-    # Check results.
-    assert isinstance(x, np.ndarray)
-    assert isinstance(h12, np.ndarray)
-    assert x.ndim == 1
-    assert h12.ndim == 1
-    assert x.shape == h12.shape
-    assert x.dtype.kind == "f"
-    assert h12.dtype.kind == "f"
-    assert np.all(h12 >= 0)
-    assert np.all(h12 <= 1)
-
-    x, h12, contigs = api.h12_gwss_contig(**h12_params)
+    x, h12, contigs = api.h12_gwss(**h12_params)
 
     # Check results.
     assert isinstance(x, np.ndarray)
