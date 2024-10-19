@@ -148,22 +148,8 @@ def check_h12_gwss(*, api, h12_params):
     fig = api.plot_h12_gwss(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
 
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
-    cohort1_query = f"country == '{country1}'"
-    cohort2_query = f"country == '{country2}'"
-    h12_params.update(
-        {
-            "cohorts": {
-                "cohort1": cohort1_query,
-                "cohort2": cohort2_query,
-            },
-            "sample_sets": all_sample_sets,
-            "min_cohort_size": 1,
-        }
-    )
 
+def check_h12_gwss_multi(*, api, h12_params):
     fig = api.plot_h12_gwss_multi_overlay(**h12_params, show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
     fig = api.plot_h12_gwss_multi_panel(**h12_params, show=False)
@@ -232,3 +218,81 @@ def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
                     window_size=window_size,
                     min_cohort_size=n_samples + 1,
                 )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].unique().tolist()
+    country1, country2 = random.sample(all_countries, 2)
+    cohort1_query = f"country == '{country1}'"
+    cohort2_query = f"country == '{country2}'"
+    h12_params = dict(
+        contig=random.choice(api.contigs),
+        sample_sets=all_sample_sets,
+        window_size=random.randint(100, 500),
+        min_cohort_size=1,
+        cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
+    )
+
+    # Run checks.
+    check_h12_gwss_multi(api=api, h12_params=h12_params)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
+    # Set up test parameters.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    all_countries = api.sample_metadata()["country"].unique().tolist()
+    country1, country2 = random.sample(all_countries, 2)
+    cohort1_query = f"country == '{country1}'"
+    cohort2_query = f"country == '{country2}'"
+    contig = random.choice(api.contigs)
+
+    for analysis in api.phasing_analysis_ids:
+        # Check if any samples available for the given phasing analysis.
+        try:
+            ds_hap1 = api.haplotypes(
+                sample_sets=all_sample_sets,
+                sample_query=cohort1_query,
+                analysis=analysis,
+                region=contig,
+            )
+        except ValueError:
+            n1 = 0
+        else:
+            n1 = ds_hap1.sizes["samples"]
+        try:
+            ds_hap2 = api.haplotypes(
+                sample_sets=all_sample_sets,
+                sample_query=cohort2_query,
+                analysis=analysis,
+                region=contig,
+            )
+        except ValueError:
+            n2 = 0
+        else:
+            n2 = ds_hap2.sizes["samples"]
+
+        if n1 > 0 and n2 > 0:
+            # Samples are available, run full checks.
+            h12_params = dict(
+                analysis=analysis,
+                contig=contig,
+                sample_sets=all_sample_sets,
+                window_size=random.randint(100, 500),
+                min_cohort_size=min(n1, n2),
+                cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
+            )
+            check_h12_gwss_multi(api=api, h12_params=h12_params)
+
+            # Check min_cohort_size behaviour.
+            params = h12_params.copy()
+            params["min_cohort_size"] = n1 + 1
+            with pytest.raises(ValueError):
+                api.plot_h12_gwss_multi_overlay(**params)
+            params = h12_params.copy()
+            params["min_cohort_size"] = n2 + 1
+            with pytest.raises(ValueError):
+                api.plot_h12_gwss_multi_panel(**params)
