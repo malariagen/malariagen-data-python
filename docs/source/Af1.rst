@@ -53,6 +53,8 @@ Sample metadata access
     count_samples
     plot_samples_bar
     plot_samples_interactive_map
+    plot_sample_location_mapbox
+    plot_sample_location_geo
     wgs_data_catalog
     cohorts
 
@@ -132,6 +134,7 @@ Genetic distance and neighbour-joining trees (NJT)
     :toctree: generated/
 
     plot_njt
+    njt
     biallelic_diplotype_pairwise_distances
 
 Heterozygosity analysis
