@@ -110,23 +110,27 @@ def test_haplotype_joint_frequencies():
 
 def check_h1x_gwss(*, api, h1x_params):
     # Run main gwss function under test.
-    x, h1x = api.h1x_gwss(**h1x_params)
+    x, h1x, contigs = api.h1x_gwss(**h1x_params)
 
     # Check results.
     assert isinstance(x, np.ndarray)
     assert isinstance(h1x, np.ndarray)
+    assert isinstance(contigs, np.ndarray)
     assert x.ndim == 1
     assert h1x.ndim == 1
+    assert contigs.ndim == 1
     assert x.shape == h1x.shape
+    assert x.shape == contigs.shape
     assert x.dtype.kind == "f"
     assert h1x.dtype.kind == "f"
+    assert contigs.dtype.kind == "i"
     assert np.all(h1x >= 0)
     assert np.all(h1x <= 1)
 
     # Check plotting functions.
     fig = api.plot_h1x_gwss_track(**h1x_params, show=False)
     assert isinstance(fig, bokeh.models.Plot)
-    fig = api.plot_h1x_gwss(**h1x_params, show=False)
+    fig = api.plot_h1x_gwss(**h1x_params, contig_colors=["black", "red"], show=False)
     assert isinstance(fig, bokeh.models.GridPlot)
 
 
