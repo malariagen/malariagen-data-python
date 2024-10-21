@@ -28,11 +28,13 @@ class AnophelesFstAnalysis(
 
     def _fst_gwss(
         self,
+        *,
         contig,
         window_size,
         sample_sets,
         cohort1_query,
         cohort2_query,
+        sample_query_options,
         site_mask,
         cohort_size,
         min_cohort_size,
@@ -46,6 +48,7 @@ class AnophelesFstAnalysis(
         ac1 = self.snp_allele_counts(
             region=contig,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
@@ -58,6 +61,7 @@ class AnophelesFstAnalysis(
         ac2 = self.snp_allele_counts(
             region=contig,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
@@ -100,10 +104,12 @@ class AnophelesFstAnalysis(
     )
     def fst_gwss(
         self,
+        *,
         contig: base_params.contig,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
@@ -120,13 +126,14 @@ class AnophelesFstAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "fst_gwss_v2"
+        name = "fst_gwss_v3"
 
         params = dict(
             contig=contig,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             cohort_size=cohort_size,
@@ -157,10 +164,12 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss_track(
         self,
+        *,
         contig: base_params.contig,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options],
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
@@ -189,6 +198,7 @@ class AnophelesFstAnalysis(
             max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             random_seed=random_seed,
@@ -261,10 +271,12 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss(
         self,
+        *,
         contig: base_params.contig,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options],
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
@@ -290,6 +302,7 @@ class AnophelesFstAnalysis(
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
@@ -345,9 +358,11 @@ class AnophelesFstAnalysis(
     )
     def average_fst(
         self,
+        *,
         region: base_params.region,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query],
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -366,6 +381,7 @@ class AnophelesFstAnalysis(
             region=region,
             sample_sets=sample_sets,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             site_mask=site_mask,
             site_class=site_class,
@@ -377,6 +393,7 @@ class AnophelesFstAnalysis(
             region=region,
             sample_sets=sample_sets,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             site_mask=site_mask,
             site_class=site_class,
@@ -411,6 +428,7 @@ class AnophelesFstAnalysis(
     )
     def pairwise_average_fst(
         self,
+        *,
         region: base_params.region,
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,
