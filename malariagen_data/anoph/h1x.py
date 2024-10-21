@@ -26,6 +26,7 @@ class AnophelesH1XAnalysis(
 
     def _h1x_gwss(
         self,
+        *,
         contig,
         analysis,
         window_size,
@@ -101,11 +102,12 @@ class AnophelesH1XAnalysis(
     )
     def h1x_gwss(
         self,
+        *,
         contig: base_params.contig,
         window_size: h12_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
-        sample_query_options: base_params.sample_query_options,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -121,7 +123,7 @@ class AnophelesH1XAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h1x_gwss_v1"
+        name = "h1x_gwss_v2"
 
         params = dict(
             contig=contig,
@@ -161,10 +163,12 @@ class AnophelesH1XAnalysis(
     )
     def plot_h1x_gwss_track(
         self,
+        *,
         contig: base_params.contig,
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -195,6 +199,7 @@ class AnophelesH1XAnalysis(
             max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
             chunks=chunks,
@@ -267,10 +272,12 @@ class AnophelesH1XAnalysis(
     )
     def plot_h1x_gwss(
         self,
+        *,
         contig: base_params.contig,
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -298,6 +305,7 @@ class AnophelesH1XAnalysis(
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
