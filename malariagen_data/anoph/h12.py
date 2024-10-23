@@ -780,11 +780,11 @@ class AnophelesH12Analysis(
                 output_backend=output_backend,
             )
             if i > 0:
-                figs.append(self.plot_h12_gwss_track(x_range=figs[0].x_range, **params))
+                track = self.plot_h12_gwss_track(x_range=figs[0].x_range, **params)
             else:
-                figs.append(self.plot_h12_gwss_track(**params))
-
-            figs[-1].xaxis.visible = False
+                track = self.plot_h12_gwss_track(**params)
+            track.xaxis.visible = False
+            figs.append(track)
 
         # Plot genes.
         fig2 = self.plot_genes(
