@@ -164,6 +164,8 @@ Genome-wide selection scans
     plot_h12_calibration
     h12_gwss
     plot_h12_gwss
+    plot_h12_gwss_multi_panel
+    plot_h12_gwss_multi_overlay
     h1x_gwss
     plot_h1x_gwss
     g123_calibration
