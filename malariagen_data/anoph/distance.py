@@ -367,8 +367,13 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # neighbour-joining iterations.
         progress_options = dict(desc="Construct neighbour-joining tree", leave=False)
 
-        # Decide which algorithm to use and run the neighbour-joining.
-        if algorithm == "rapid":
+        # Decide which algorithm to use and run the neighbour-joining. The "dynamic"
+        # algorithm is fastest.
+        if algorithm == "dynamic":
+            Z = anjl.dynamic_nj(
+                D=D, progress=self._progress, progress_options=progress_options
+            )
+        elif algorithm == "rapid":
             Z = anjl.rapid_nj(
                 D=D, progress=self._progress, progress_options=progress_options
             )
