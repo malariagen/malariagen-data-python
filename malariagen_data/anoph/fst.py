@@ -104,7 +104,6 @@ class AnophelesFstAnalysis(
     )
     def fst_gwss(
         self,
-        *,
         contig: base_params.contig,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
@@ -126,7 +125,7 @@ class AnophelesFstAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "fst_gwss_v3"
+        name = "fst_gwss_v2"
 
         params = dict(
             contig=contig,
@@ -164,7 +163,6 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss_track(
         self,
-        *,
         contig: base_params.contig,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
@@ -271,7 +269,6 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss(
         self,
-        *,
         contig: base_params.contig,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
@@ -358,7 +355,6 @@ class AnophelesFstAnalysis(
     )
     def average_fst(
         self,
-        *,
         region: base_params.region,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -428,7 +424,6 @@ class AnophelesFstAnalysis(
     )
     def pairwise_average_fst(
         self,
-        *,
         region: base_params.region,
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,

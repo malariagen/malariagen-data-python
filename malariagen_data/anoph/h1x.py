@@ -102,7 +102,6 @@ class AnophelesH1XAnalysis(
     )
     def h1x_gwss(
         self,
-        *,
         contig: base_params.contig,
         window_size: h12_params.window_size,
         cohort1_query: base_params.sample_query,
@@ -123,7 +122,7 @@ class AnophelesH1XAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h1x_gwss_v2"
+        name = "h1x_gwss_v1"
 
         params = dict(
             contig=contig,
@@ -163,7 +162,6 @@ class AnophelesH1XAnalysis(
     )
     def plot_h1x_gwss_track(
         self,
-        *,
         contig: base_params.contig,
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
@@ -272,7 +270,6 @@ class AnophelesH1XAnalysis(
     )
     def plot_h1x_gwss(
         self,
-        *,
         contig: base_params.contig,
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
