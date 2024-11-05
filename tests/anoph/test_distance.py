@@ -177,7 +177,7 @@ def test_njt_with_metric(fixture, api: AnophelesDistanceAnalysis):
         max_missing_an=pca_params.max_missing_an_default,
     )
     parametrize_metric = "cityblock", "euclidean", "sqeuclidean"
-    algorithm = random.choice(["rapid", "canonical"])
+    algorithm = random.choice(["dynamic", "rapid", "canonical"])
     for metric in parametrize_metric:
         check_njt(
             api=api,
@@ -198,7 +198,7 @@ def test_njt_with_algorithm(fixture, api: AnophelesDistanceAnalysis):
         max_missing_an=pca_params.max_missing_an_default,
     )
     metric = random.choice(["cityblock", "euclidean", "sqeuclidean"])
-    parametrize_algorithm = "rapid", "canonical"
+    parametrize_algorithm = "dynamic", "rapid", "canonical"
     for algorithm in parametrize_algorithm:
         check_njt(
             api=api,
@@ -219,7 +219,7 @@ def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
         max_missing_an=pca_params.max_missing_an_default,
     )
     metric = random.choice(["cityblock", "euclidean", "sqeuclidean"])
-    algorithm = random.choice(["rapid", "canonical"])
+    algorithm = random.choice(["dynamic", "rapid", "canonical"])
     custom_cohorts = {
         "male": "sex_call == 'M'",
         "female": "sex_call == 'F'",
