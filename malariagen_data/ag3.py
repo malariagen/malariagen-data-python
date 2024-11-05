@@ -378,6 +378,7 @@ class Ag3(AnophelesDataResource):
         inversion: inversion_param,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
     ) -> pd.DataFrame:
         # load tag snp data
         df_tagsnps = self.load_inversion_tags(inversion=inversion)
@@ -390,7 +391,10 @@ class Ag3(AnophelesDataResource):
         region = f"{contig}:{start}-{end}"
 
         ds_snps = self.snp_calls(
-            region=region, sample_sets=sample_sets, sample_query=sample_query
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         with self._spinner("Inferring karyotype from tag SNPs"):
