@@ -587,7 +587,7 @@ class AnophelesH12Analysis(
             )
 
         # Determine X axis range.
-        x, _ = res[list(cohort_queries.keys())[0]]
+        x, _, _ = res[list(cohort_queries.keys())[0]]
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
@@ -622,7 +622,7 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        for i, (cohort_label, (x, h12)) in enumerate(res.items()):
+        for i, (cohort_label, (x, h12, contig)) in enumerate(res.items()):
             fig.scatter(
                 x=x,
                 y=h12,
