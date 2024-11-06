@@ -73,7 +73,7 @@ class AnophelesHapFrequencyAnalysis(
             )
 
         # Access haplotypes.
-        ds_hap = self.haplotypes(
+        ds_haps = self.haplotypes(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -82,35 +82,37 @@ class AnophelesHapFrequencyAnalysis(
         )
 
         # Early check for no SNPs.
-        if ds_hap.sizes["variants"] == 0:  # pragma: no cover
+        if ds_haps.sizes["variants"] == 0:  # pragma: no cover
             raise ValueError("No SNPs available for the given region.")
 
         # Access genotypes.
-        gt = allel.GenotypeDaskArray(ds_hap["call_genotype"].data)
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Compute haplotypes"):
             gt = gt.compute()
+
+        # List all haplotypes
+        gt_hap = gt.to_haplotypes()
+        f_all, _, _ = haplotype_frequencies(gt_hap)
 
         # Count haplotypes.
         freq_cols = dict()
         cohorts_iterator = self._progress(
             coh_dict.items(), desc="Compute allele frequencies"
         )
-        hap_track: dict[np.int64, float] = {}
         for coh, loc_coh in cohorts_iterator:
-            hap_track = {k: 0 for k in hap_track.keys()}
+            # We reset all frequencies to 0 for each cohort
+            hap_dict = {k: 0 for k in f_all.keys()}
+
             n_samples = np.count_nonzero(loc_coh)
             assert n_samples >= min_cohort_size
             gt_coh = allel.GenotypeDaskArray(da.compress(loc_coh, gt, axis=1))
             gt_hap = gt_coh.to_haplotypes().compute()
             f, _, _ = haplotype_frequencies(gt_hap)
-            hap_track.update(f)
-            freq_cols["frq_" + coh] = list(hap_track.values())
+            # The frequencies of the observed haplotypes are then updated
+            hap_dict.update(f)
+            freq_cols["frq_" + coh] = list(hap_dict.values())
 
-        n_haps = np.max([len(i) for i in freq_cols.values()])
-        freq_cols = {
-            k: v + [0 for i in range(0, n_haps - len(v))] for k, v in freq_cols.items()
-        }
-        df_freqs = pd.DataFrame(freq_cols, index=hap_track.keys())
+        df_freqs = pd.DataFrame(freq_cols, index=hap_dict.keys())
 
         # Compute max_af.
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
@@ -196,9 +198,13 @@ class AnophelesHapFrequencyAnalysis(
             raise ValueError("No SNPs available for the given region.")
 
         # Access genotypes.
-        gt = ds_haps["call_genotype"].data
+        gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
         with self._dask_progress(desc="Compute haplotypes"):
             gt = gt.compute()
+
+        # List all haplotypes
+        gt_hap = gt.to_haplotypes()
+        f_all, _, _ = haplotype_frequencies(gt_hap)
 
         # Count haplotypes.
         hap_freq: dict[np.int64, float] = dict()
@@ -213,16 +219,18 @@ class AnophelesHapFrequencyAnalysis(
         for cohort in cohorts_iterator:
             cohort_key = cohort.taxon, cohort.area, cohort.period
             cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
-            hap_freq = {k: 0 for k in hap_freq.keys()}
-            hap_count = {k: 0 for k in hap_count.keys()}
-            hap_nob = {k: 0 for k in hap_nob.keys()}
+            # We reset all frequencies, counts to 0 for each cohort, nobs is set to the number of haplotypes
             n_samples = cohort.size
+            hap_freq = {k: 0 for k in f_all.keys()}
+            hap_count = {k: 0 for k in f_all.keys()}
+            hap_nob = {k: 2 * n_samples for k in f_all.keys()}
             assert n_samples >= min_cohort_size
             sample_indices = group_samples_by_cohort.indices[cohort_key]
             loc_coh = [i in sample_indices for i in range(0, gt.shape[1])]
             gt_coh = allel.GenotypeDaskArray(da.compress(loc_coh, gt, axis=1))
             gt_hap = gt_coh.to_haplotypes().compute()
             f, c, o = haplotype_frequencies(gt_hap)
+            # The frequencies and counts of the observed haplotypes are then updated, so are the nobs but the values should actually stay the same
             hap_freq.update(f)
             hap_count.update(c)
             hap_nob.update(o)
@@ -230,23 +238,13 @@ class AnophelesHapFrequencyAnalysis(
             freq_cols["frq_" + cohort_key_str] = list(hap_freq.values())
             nobs_cols["nobs_" + cohort_key_str] = list(hap_nob.values())
 
-        n_haps = np.max([len(i) for i in freq_cols.values()])
-        freq_cols = {
-            k: v + [0 for i in range(0, n_haps - len(v))] for k, v in freq_cols.items()
-        }
         df_freqs = pd.DataFrame(freq_cols, index=hap_freq.keys())
 
         # Compute max_af.
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
 
-        count_cols = {
-            k: v + [0 for i in range(0, n_haps - len(v))] for k, v in count_cols.items()
-        }
         df_counts = pd.DataFrame(count_cols, index=hap_count.keys())
 
-        nobs_cols = {
-            k: v + [0 for i in range(0, n_haps - len(v))] for k, v in nobs_cols.items()
-        }
         df_nobs = pd.DataFrame(nobs_cols, index=hap_nob.keys())
 
         # Build the final dataframe.
