@@ -972,6 +972,9 @@ class AnophelesSampleMetadata(AnophelesBase):
                 data.loc[data.query(value).index, "symbol"] = key
             symbol_prepped = "symbol"
 
+        # Handle missing data in a consistent way.
+        data[symbol_prepped] = data[symbol_prepped].fillna("<NA>")
+
         return symbol_prepped
 
     def _setup_sample_colors_plotly(
@@ -1016,9 +1019,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Finish handling of color parameter.
         del color
 
+        # Handle missing data in a consistent way.
+        data[color_prepped] = data[color_prepped].fillna("<NA>")
+
         # Obtain the values that we will be mapping to colors.
-        color_data_values = data[color_prepped]
-        color_data_unique_values = color_data_values.unique()
+        color_data_unique_values = data[color_prepped].unique()
 
         # Now set up color choices.
         if color_discrete_map is None:
@@ -1039,6 +1044,9 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         else:
             color_discrete_map_prepped = color_discrete_map
+
+        # Consistent color for missing data.
+        color_discrete_map_prepped["<NA>"] = "black"
 
         # Finished handling of color map params.
         del color_discrete_map
@@ -1183,6 +1191,157 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_cohorts
 
+    @check_types
+    @doc(
+        summary="""
+            Plot markers on a map showing sample locations
+            as a Mapbox scatter plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to px.scatter_mapbox().",
+        ),
+    )
+    def plot_sample_location_mapbox(
+        self,
+        *,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        marker_size: plotly_params.marker_size = 10,
+        color: plotly_params.color = "admin1_name",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = px.colors.qualitative.Prism,
+        category_orders: plotly_params.category_order = None,
+        hover_name: plotly_params.hover_name = "location",
+        zoom: plotly_params.zoom = None,
+        width: plotly_params.fig_width = 800,
+        height: plotly_params.fig_height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        **kwargs,
+    ) -> plotly_params.figure:
+        # Get the sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+
+        # Set the location columns to use from the sample metadata.
+        location_columns = [
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "latitude",
+            "longitude",
+        ]
+
+        # Trim and dedupe the sample locations.
+        # Sort by `color` column by default, which can be overridden via category_orders.
+        df_locations = df_samples[location_columns].drop_duplicates().sort_values(color)
+
+        fig = px.scatter_mapbox(
+            df_locations,
+            lat="latitude",
+            lon="longitude",
+            mapbox_style="open-street-map",
+            zoom=zoom,
+            color=color,
+            category_orders=category_orders,
+            color_discrete_sequence=color_discrete_sequence,
+            hover_name=hover_name,
+            hover_data=location_columns,
+            width=width,
+            height=height,
+            **kwargs,
+        )
+
+        # Set the size of the markers.
+        fig.update_traces(marker=dict(size=marker_size))
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
+
+    @check_types
+    @doc(
+        summary="""
+            Plot markers on a map showing sample locations
+            as a geographic scatter plot.
+        """,
+        parameters=dict(
+            kwargs="Passed through to px.scatter_mapbox().",
+        ),
+    )
+    def plot_sample_location_geo(
+        self,
+        *,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        marker_size: plotly_params.marker_size = 10,
+        color: plotly_params.color = "admin1_name",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = px.colors.qualitative.Prism,
+        category_orders: plotly_params.category_order = None,
+        hover_name: plotly_params.hover_name = "location",
+        fitbounds: plotly_params.fitbounds = "locations",
+        scope: plotly_params.scope = "world",
+        width: plotly_params.fig_width = 800,
+        height: plotly_params.fig_height = 600,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        **kwargs,
+    ) -> plotly_params.figure:
+        # Get the sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+        )
+
+        # Set the location columns to use from the sample metadata.
+        location_columns = [
+            "country",
+            "admin1_iso",
+            "admin1_name",
+            "admin2_name",
+            "location",
+            "latitude",
+            "longitude",
+        ]
+
+        # Trim and dedupe the sample locations.
+        # Sort by `color` column by default, which can be overridden via category_orders.
+        df_locations = df_samples[location_columns].drop_duplicates().sort_values(color)
+
+        fig = px.scatter_geo(
+            df_locations,
+            lat="latitude",
+            lon="longitude",
+            scope=scope,
+            height=height,
+            width=width,
+            color=color,
+            hover_name=hover_name,
+            hover_data=location_columns,
+            category_orders=category_orders,
+            color_discrete_sequence=color_discrete_sequence,
+            fitbounds=fitbounds,
+            **kwargs,
+        )
+
+        # Set the size of the markers.
+        fig.update_traces(marker=dict(size=marker_size))
+
+        if show:  # pragma: no cover
+            fig.show(renderer=renderer)
+            return None
+        else:
+            return fig
+
 
 def locate_cohorts(*, cohorts, data):
     # Build cohort dictionary where key=cohort_id, value=loc_coh.
@@ -1207,7 +1366,7 @@ def locate_cohorts(*, cohorts, data):
         # Check the given cohort set exists.
         if cohorts not in data.columns:
             raise ValueError(f"{cohorts!r} is not a known column in the data.")
-        cohort_labels = data[cohorts].unique()
+        cohort_labels = data[cohorts].dropna().unique()
 
         # Remove the nans and sort.
         cohort_labels = sorted([c for c in cohort_labels if isinstance(c, str)])

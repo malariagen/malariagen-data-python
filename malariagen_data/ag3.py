@@ -112,7 +112,7 @@ class Ag3(AnophelesDataResource):
     debug : bool, optional
         Set to True to enable debug level logging.
     show_progress : bool, optional
-        If True, show a progress bar during longer-running computations.
+        If True, show a progress bar during longer-running computations. The default can be overridden using an environmental variable named MGEN_SHOW_PROGRESS.
     check_location : bool, optional
         If True, use ipinfo to check the location of the client system.
     **kwargs
@@ -154,7 +154,7 @@ class Ag3(AnophelesDataResource):
         results_cache=None,
         log=sys.stdout,
         debug=False,
-        show_progress=True,
+        show_progress=None,
         check_location=True,
         cohorts_analysis=None,
         aim_analysis=None,
@@ -378,6 +378,7 @@ class Ag3(AnophelesDataResource):
         inversion: inversion_param,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
     ) -> pd.DataFrame:
         # load tag snp data
         df_tagsnps = self.load_inversion_tags(inversion=inversion)
@@ -390,19 +391,25 @@ class Ag3(AnophelesDataResource):
         region = f"{contig}:{start}-{end}"
 
         ds_snps = self.snp_calls(
-            region=region, sample_sets=sample_sets, sample_query=sample_query
+            region=region,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
-        geno = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
-        pos = allel.SortedIndex(ds_snps["variant_position"].values)
-        samples = ds_snps["sample_id"].values
-        alts = ds_snps["variant_allele"].values.astype(str)
-
-        # subset to position of inversion tags
-        mask = pos.locate_intersection(inversion_pos)[0]
-        alts = alts[mask]
-        geno = geno.compress(mask, axis=0).compute()
 
         with self._spinner("Inferring karyotype from tag SNPs"):
+            # access variables we need
+            geno = allel.GenotypeDaskArray(ds_snps["call_genotype"].data)
+            pos = allel.SortedIndex(ds_snps["variant_position"].values)
+            samples = ds_snps["sample_id"].values
+            alts = ds_snps["variant_allele"].values.astype(str)
+
+            # subset to position of inversion tags
+            mask = pos.locate_intersection(inversion_pos)[0]
+            alts = alts[mask]
+            geno = geno.compress(mask, axis=0).compute()
+
+            # infer karyotype
             gn_alt = _karyotype_tags_n_alt(
                 gt=geno, alts=alts, inversion_alts=inversion_alts
             )
@@ -422,7 +429,8 @@ class Ag3(AnophelesDataResource):
                     "total_tag_snps": total_sites,
                 },
             )
-            kt_dtype = CategoricalDtype(categories=[0, 1, 2], ordered=True)
+            # Allow filling missing values with "<NA>" visible placeholder.
+            kt_dtype = CategoricalDtype(categories=[0, 1, 2, "<NA>"], ordered=True)
             df[f"karyotype_{inversion}"] = df[f"karyotype_{inversion}"].astype(kt_dtype)
 
         return df
