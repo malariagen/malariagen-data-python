@@ -40,7 +40,8 @@ from .anoph.base import AnophelesBase
 from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
-from .anoph.hap_data import AnophelesHapData, hap_params
+from .anoph.hap_data import hap_params
+from .anoph.hap_freq import AnophelesHapFrequencyAnalysis
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
 from .anoph.distance import AnophelesDistanceAnalysis
@@ -102,7 +103,7 @@ class AnophelesDataResource(
     AnophelesPca,
     AnophelesIgv,
     AnophelesAimData,
-    AnophelesHapData,
+    AnophelesHapFrequencyAnalysis,
     AnophelesSnpData,
     AnophelesCnvData,
     AnophelesSampleMetadata,
