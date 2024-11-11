@@ -491,6 +491,7 @@ def _check_gene_cnv_frequencies_advanced(
     period_by="year",
     sample_sets=["AG1000G-BF-A", "AG1000G-ML-A", "AG1000G-UG"],
     sample_query=None,
+    sample_query_options=None,
     min_cohort_size=10,
     variant_query="max_af > 0.02",
     drop_invariant=True,
@@ -504,6 +505,7 @@ def _check_gene_cnv_frequencies_advanced(
         period_by=period_by,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         min_cohort_size=min_cohort_size,
         variant_query=variant_query,
         drop_invariant=drop_invariant,
@@ -567,7 +569,8 @@ def _check_gene_cnv_frequencies_advanced(
     # sanity checks for area values
     df_samples = ag3.sample_metadata(sample_sets=sample_sets)
     if sample_query is not None:
-        df_samples = df_samples.query(sample_query)
+        sample_query_options = sample_query_options or {}
+        df_samples = df_samples.query(sample_query, **sample_query_options)
     expected_area = np.unique(df_samples[area_by].dropna().values)
     area = ds["cohort_area"].values
     # N.B., some areas may not end up in final dataset if cohort
@@ -606,6 +609,7 @@ def _check_gene_cnv_frequencies_advanced(
             cohorts="admin1_year",
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             drop_invariant=drop_invariant,
             max_coverage_variance=max_coverage_variance,
@@ -676,6 +680,28 @@ def test_gene_cnv_frequencies_advanced__sample_sets(sample_sets):
 def test_gene_cnv_frequencies_advanced__sample_query(sample_query):
     _check_gene_cnv_frequencies_advanced(
         sample_query=sample_query,
+    )
+
+
+@pytest.mark.parametrize(
+    "sample_query,sample_query_options",
+    [
+        pytest.param(
+            "taxon in @taxon_list and country == 'Mali'",
+            {"local_dict": {"taxon_list": ["gambiae", "coluzzii"]}},
+        ),
+        pytest.param(
+            "taxon == 'arabiensis' and country in @country_list",
+            {"local_dict": {"country_list": ["Uganda", "Tanzania"]}},
+        ),
+    ],
+)
+def test_gene_cnv_frequencies_advanced__sample_query_options(
+    sample_query, sample_query_options
+):
+    _check_gene_cnv_frequencies_advanced(
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
     )
 
 
@@ -851,3 +877,21 @@ def test_xpehh_gwss():
     # check some values
     assert_allclose(x[0], 467448.348)
     assert_allclose(xpehh[:, 2][100], 0.4817561326426265)
+
+
+def test_karyotyping():
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    df = ag3.karyotype(inversion="2La", sample_sets="AG1000G-GH", sample_query=None)
+
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "sample_id",
+        "inversion",
+        "karyotype_2La_mean",
+        "karyotype_2La",
+        "total_tag_snps",
+    ]
+    assert set(df.columns) == set(expected_cols)
+    assert all(df["karyotype_2La"].isin([0, 1, 2]))
+    assert all(df["karyotype_2La_mean"].between(0, 2))

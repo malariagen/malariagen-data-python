@@ -464,6 +464,73 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    sample_sets = None
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = 0
+    transcript = random_transcript(api=api)
+    cohorts = random.choice(
+        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
+    )
+    df_samples = api.sample_metadata(sample_sets=sample_sets)
+    countries = df_samples["country"].unique().tolist()
+    countries_list = random.sample(countries, 2)
+    sample_query_options = {
+        "local_dict": {
+            "countries_list": countries_list,
+        }
+    }
+    sample_query = "country in @countries_list"
+
+    # Figure out expected cohort labels.
+    df_samples = api.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+    )
+    cohort_column = "cohort_" + cohorts
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    # Set up call params.
+    params = dict(
+        transcript=transcript.name,
+        cohorts=cohorts,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+        drop_invariant=True,
+    )
+
+    # Run the function under test.
+    df_snp = api.snp_allele_frequencies(**params)
+
+    # Standard checks.
+    check_snp_allele_frequencies(
+        api=api,
+        df=df_snp,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+    # Run the function under test.
+    df_aa = api.aa_allele_frequencies(**params)
+
+    # Standard checks.
+    check_aa_allele_frequencies(
+        df=df_aa,
+        cohort_labels=cohort_labels,
+        transcript=transcript,
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_allele_frequencies_with_dict_cohorts(
     fixture, api: AnophelesSnpFrequencyAnalysis
 ):
@@ -772,6 +839,7 @@ def check_snp_allele_frequencies_advanced(
     period_by="year",
     sample_sets=None,
     sample_query=None,
+    sample_query_options=None,
     min_cohort_size=None,
     nobs_mode="called",
     variant_query=None,
@@ -799,6 +867,7 @@ def check_snp_allele_frequencies_advanced(
         period_by=period_by,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         min_cohort_size=min_cohort_size,
         nobs_mode=nobs_mode,
         variant_query=variant_query,
@@ -872,7 +941,11 @@ def check_snp_allele_frequencies_advanced(
     check_frequency(x)
 
     # Sanity check area values.
-    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    df_samples = api.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+    )
     expected_area_values = np.unique(df_samples[area_by].dropna().values)
     area_values = ds["cohort_area"].values
     # N.B., some areas may not end up in final dataset if cohort
@@ -911,6 +984,7 @@ def check_snp_allele_frequencies_advanced(
             cohorts="admin1_year",
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             site_mask=site_mask,
             include_counts=True,
@@ -956,6 +1030,7 @@ def check_aa_allele_frequencies_advanced(
     period_by="year",
     sample_sets=None,
     sample_query=None,
+    sample_query_options=None,
     min_cohort_size=None,
     nobs_mode="called",
     variant_query=None,
@@ -980,6 +1055,7 @@ def check_aa_allele_frequencies_advanced(
         period_by=period_by,
         sample_sets=sample_sets,
         sample_query=sample_query,
+        sample_query_options=sample_query_options,
         min_cohort_size=min_cohort_size,
         nobs_mode=nobs_mode,
         variant_query=variant_query,
@@ -1044,7 +1120,11 @@ def check_aa_allele_frequencies_advanced(
     check_frequency(x)
 
     # Sanity checks for area values.
-    df_samples = api.sample_metadata(sample_sets=sample_sets, sample_query=sample_query)
+    df_samples = api.sample_metadata(
+        sample_sets=sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+    )
     expected_area_values = np.unique(df_samples[area_by].dropna().values)
     area_values = ds["cohort_area"].values
     # N.B., some areas may not end up in final dataset if cohort
@@ -1083,6 +1163,7 @@ def check_aa_allele_frequencies_advanced(
             cohorts="admin1_year",
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             include_counts=True,
         )
@@ -1178,6 +1259,38 @@ def test_allele_frequencies_advanced_with_sample_query(
         api=api,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
+        min_cohort_size=0,
+    )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_allele_frequencies_advanced_with_sample_query_options(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    df_samples = api.sample_metadata(sample_sets=all_sample_sets)
+    countries = df_samples["country"].unique().tolist()
+    countries_list = random.sample(countries, 2)
+    sample_query_options = {
+        "local_dict": {
+            "countries_list": countries_list,
+        }
+    }
+    sample_query = "country in @countries_list"
+
+    check_snp_allele_frequencies_advanced(
+        api=api,
+        sample_sets=all_sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
+        min_cohort_size=0,
+    )
+    check_aa_allele_frequencies_advanced(
+        api=api,
+        sample_sets=all_sample_sets,
+        sample_query=sample_query,
+        sample_query_options=sample_query_options,
         min_cohort_size=0,
     )
 

@@ -14,7 +14,7 @@ All the functions below can then be accessed as methods on the ``af1`` object. E
 
     df_samples = af1.sample_metadata()
 
-For more information about the data and terns of use, please see the
+For more information about the data and terms of use, please see the
 `MalariaGEN Anopheles funestus genomic surveillance project <https://www.malariagen.net/projects/anopheles-funestus-genomic-surveillance-project>`_
 home page.
 
@@ -53,6 +53,8 @@ Sample metadata access
     count_samples
     plot_samples_bar
     plot_samples_interactive_map
+    plot_sample_location_mapbox
+    plot_sample_location_geo
     wgs_data_catalog
     cohorts
 
@@ -132,6 +134,7 @@ Genetic distance and neighbour-joining trees (NJT)
     :toctree: generated/
 
     plot_njt
+    njt
     biallelic_diplotype_pairwise_distances
 
 Heterozygosity analysis
@@ -161,6 +164,8 @@ Genome-wide selection scans
     plot_h12_calibration
     h12_gwss
     plot_h12_gwss
+    plot_h12_gwss_multi_panel
+    plot_h12_gwss_multi_overlay
     h1x_gwss
     plot_h1x_gwss
     g123_calibration

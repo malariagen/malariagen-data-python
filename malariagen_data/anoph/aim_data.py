@@ -134,6 +134,7 @@ class AnophelesAimData(
         aims: aim_params.aims,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
     ) -> xr.Dataset:
         self._require_aim_analysis()
 
@@ -157,7 +158,8 @@ class AnophelesAimData(
         # Handle sample query.
         if sample_query is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
-            loc_samples = df_samples.eval(sample_query).values
+            sample_query_options = sample_query_options or {}
+            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
             if np.count_nonzero(loc_samples) == 0:
                 raise ValueError(f"No samples found for query {sample_query!r}")
             ds = ds.isel(samples=loc_samples)
@@ -183,6 +185,7 @@ class AnophelesAimData(
         aims: aim_params.aims,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sort: bool = True,
         row_height: int = 4,
         xgap: float = 0,
@@ -196,6 +199,7 @@ class AnophelesAimData(
             aims=aims,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
         ).compute()
         samples = ds["sample_id"].values
         variant_contig = ds["variant_contig"].values

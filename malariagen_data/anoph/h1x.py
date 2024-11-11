@@ -26,37 +26,47 @@ class AnophelesH1XAnalysis(
 
     def _h1x_gwss(
         self,
+        *,
         contig,
         analysis,
         window_size,
         sample_sets,
         cohort1_query,
         cohort2_query,
+        sample_query_options,
         cohort_size,
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        chunks,
+        inline_array,
     ):
         # Access haplotype datasets for each cohort.
         ds1 = self.haplotypes(
             region=contig,
             analysis=analysis,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         ds2 = self.haplotypes(
             region=contig,
             analysis=analysis,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Load data into memory.
@@ -96,6 +106,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -106,6 +117,8 @@ class AnophelesH1XAnalysis(
             base_params.max_cohort_size
         ] = h12_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -120,6 +133,7 @@ class AnophelesH1XAnalysis(
             # are different in the haplotype data.
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -131,7 +145,7 @@ class AnophelesH1XAnalysis(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._h1x_gwss(**params)
+            results = self._h1x_gwss(chunks=chunks, inline_array=inline_array, **params)
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -152,6 +166,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -169,6 +184,8 @@ class AnophelesH1XAnalysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H1X.
         x, h1x = self.h1x_gwss(
@@ -180,8 +197,11 @@ class AnophelesH1XAnalysis(
             max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # Determine X axis range.
@@ -254,6 +274,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -271,6 +292,8 @@ class AnophelesH1XAnalysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Plot GWSS track.
         fig1 = self.plot_h1x_gwss_track(
@@ -279,6 +302,7 @@ class AnophelesH1XAnalysis(
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -290,6 +314,8 @@ class AnophelesH1XAnalysis(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig1.xaxis.visible = False
@@ -312,6 +338,7 @@ class AnophelesH1XAnalysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover

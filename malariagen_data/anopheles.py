@@ -1,4 +1,3 @@
-import math
 import warnings
 from abc import abstractmethod
 from bisect import bisect_left, bisect_right
@@ -18,7 +17,6 @@ import plotly.graph_objects as go  # type: ignore
 import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
-from malariagen_data.anoph import tree_params
 from malariagen_data.anoph.snp_frq import (
     AnophelesSnpFrequencyAnalysis,
     _add_frequency_ci,
@@ -30,12 +28,10 @@ from .anoph import (
     aim_params,
     base_params,
     dash_params,
-    diplotype_distance_params,
     gplt_params,
     hapnet_params,
     het_params,
     ihs_params,
-    pca_params,
     plotly_params,
     xpehh_params,
 )
@@ -47,6 +43,7 @@ from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
+from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata, locate_cohorts
 from .anoph.snp_data import AnophelesSnpData
 from .anoph.g123 import AnophelesG123Analysis
@@ -59,10 +56,6 @@ from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
     CacheMiss,
     Region,
-    biallelic_diplotype_cityblock,
-    biallelic_diplotype_euclidean,
-    biallelic_diplotype_pdist,
-    biallelic_diplotype_sqeuclidean,
     check_types,
     jackknife_ci,
     parse_multi_region,
@@ -105,6 +98,7 @@ class AnophelesDataResource(
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
     AnophelesSnpFrequencyAnalysis,
+    AnophelesDistanceAnalysis,
     AnophelesPca,
     AnophelesIgv,
     AnophelesAimData,
@@ -370,6 +364,8 @@ class AnophelesDataResource(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -384,6 +380,8 @@ class AnophelesDataResource(
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("plot heterozygosity")
@@ -429,6 +427,8 @@ class AnophelesDataResource(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -452,6 +452,8 @@ class AnophelesDataResource(
             circle_kwargs=circle_kwargs,
             show=False,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         fig1.xaxis.visible = False
         figs = [fig1]
@@ -472,6 +474,8 @@ class AnophelesDataResource(
                 show=False,
                 x_range=fig1.x_range,
                 output_backend=output_backend,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             fig_het.xaxis.visible = False
             figs.append(fig_het)
@@ -509,7 +513,9 @@ class AnophelesDataResource(
         region: Region,
         site_mask: Optional[base_params.site_mask],
         window_size: het_params.window_size,
-        sample_set: Optional[base_params.sample_set] = None,
+        sample_set: Optional[base_params.sample_set],
+        chunks: base_params.chunks,
+        inline_array: base_params.inline_array,
     ):
         debug = self._log.debug
 
@@ -520,7 +526,11 @@ class AnophelesDataResource(
 
         debug("access SNPs, select data for sample")
         ds_snps = self.snp_calls(
-            region=region, sample_sets=sample_set, site_mask=site_mask
+            region=region,
+            sample_sets=sample_set,
+            site_mask=site_mask,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         ds_snps_sample = ds_snps.set_index(samples="sample_id").sel(samples=sample_id)
 
@@ -564,6 +574,8 @@ class AnophelesDataResource(
         phet_roh: het_params.phet_roh = het_params.phet_roh_default,
         phet_nonroh: het_params.phet_nonroh = het_params.phet_nonroh_default,
         transition: het_params.transition = het_params.transition_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> het_params.df_roh:
         debug = self._log.debug
 
@@ -577,6 +589,8 @@ class AnophelesDataResource(
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("compute runs of homozygosity")
@@ -708,6 +722,8 @@ class AnophelesDataResource(
         circle_kwargs: Optional[gplt_params.circle_kwargs] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -721,6 +737,8 @@ class AnophelesDataResource(
             site_mask=site_mask,
             window_size=window_size,
             sample_set=sample_set,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("plot_heterozygosity track")
@@ -801,7 +819,10 @@ class AnophelesDataResource(
         region: base_params.regions,
         sample_sets=None,
         sample_query=None,
+        sample_query_options=None,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         """Compute modal copy number by gene, from HMM data.
 
@@ -820,6 +841,9 @@ class AnophelesDataResource(
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_query_options : dict, optional
+            A dictionary of arguments that will be passed through to pandas query() or
+            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
         max_coverage_variance : float, optional
             Remove samples if coverage variance exceeds this value.
 
@@ -839,7 +863,10 @@ class AnophelesDataResource(
                     region=r,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
+                    sample_query_options=sample_query_options,
                     max_coverage_variance=max_coverage_variance,
+                    chunks=chunks,
+                    inline_array=inline_array,
                 )
                 for r in regions
             ],
@@ -848,7 +875,17 @@ class AnophelesDataResource(
 
         return ds
 
-    def _gene_cnv(self, *, region, sample_sets, sample_query, max_coverage_variance):
+    def _gene_cnv(
+        self,
+        *,
+        region,
+        sample_sets,
+        sample_query,
+        sample_query_options,
+        max_coverage_variance,
+        chunks,
+        inline_array,
+    ):
         debug = self._log.debug
 
         debug("sanity check")
@@ -859,7 +896,10 @@ class AnophelesDataResource(
             region=region.contig,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
+            chunks=chunks,
+            inline_array=inline_array,
         )
         pos = ds_hmm["variant_position"].data
         end = ds_hmm["variant_end"].data
@@ -869,7 +909,10 @@ class AnophelesDataResource(
 
         debug("access genes")
         df_genome_features = self.genome_features(region=region)
-        df_genes = df_genome_features.query(f"type == '{self._gff_gene_type}'")
+        sample_query_options = sample_query_options or {}
+        df_genes = df_genome_features.query(
+            f"type == '{self._gff_gene_type}'", **sample_query_options
+        )
 
         debug("setup intermediates")
         windows = []
@@ -939,10 +982,13 @@ class AnophelesDataResource(
         region: base_params.regions,
         cohorts,
         sample_query=None,
+        sample_query_options=None,
         min_cohort_size=10,
         sample_sets=None,
         drop_invariant=True,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         """Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
@@ -964,6 +1010,9 @@ class AnophelesDataResource(
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_query_options : dict, optional
+            A dictionary of arguments that will be passed through to pandas query() or
+            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
         min_cohort_size : int
             Minimum cohort size, below which cohorts are dropped.
         sample_sets : str or list of str, optional
@@ -996,10 +1045,13 @@ class AnophelesDataResource(
                     region=r,
                     cohorts=cohorts,
                     sample_query=sample_query,
+                    sample_query_options=sample_query_options,
                     min_cohort_size=min_cohort_size,
                     sample_sets=sample_sets,
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
+                    chunks=chunks,
+                    inline_array=inline_array,
                 )
                 for r in regions
             ],
@@ -1018,10 +1070,13 @@ class AnophelesDataResource(
         region,
         cohorts,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         sample_sets,
         drop_invariant,
         max_coverage_variance,
+        chunks,
+        inline_array,
     ):
         debug = self._log.debug
 
@@ -1033,7 +1088,10 @@ class AnophelesDataResource(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("load sample metadata")
@@ -1162,11 +1220,14 @@ class AnophelesDataResource(
         period_by,
         sample_sets=None,
         sample_query=None,
+        sample_query_options=None,
         min_cohort_size=10,
         variant_query=None,
         drop_invariant=True,
         max_coverage_variance=DEFAULT_MAX_COVERAGE_VARIANCE,
         ci_method="wilson",
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         """Group samples by taxon, area (space) and period (time), then compute
         gene CNV counts and frequencies.
@@ -1193,6 +1254,9 @@ class AnophelesDataResource(
         sample_query : str, optional
             A pandas query string which will be evaluated against the sample
             metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
+        sample_query_options : dict, optional
+            A dictionary of arguments that will be passed through to pandas query() or
+            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
         min_cohort_size : int, optional
             Minimum cohort size. Any cohorts below this size are omitted.
         variant_query : str, optional
@@ -1230,11 +1294,14 @@ class AnophelesDataResource(
                     period_by=period_by,
                     sample_sets=sample_sets,
                     sample_query=sample_query,
+                    sample_query_options=sample_query_options,
                     min_cohort_size=min_cohort_size,
                     variant_query=variant_query,
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
                     ci_method=ci_method,
+                    chunks=chunks,
+                    inline_array=inline_array,
                 )
                 for r in regions
             ],
@@ -1254,11 +1321,14 @@ class AnophelesDataResource(
         period_by,
         sample_sets,
         sample_query,
+        sample_query_options,
         min_cohort_size,
         variant_query,
         drop_invariant,
         max_coverage_variance,
         ci_method,
+        chunks,
+        inline_array,
     ):
         debug = self._log.debug
 
@@ -1270,7 +1340,10 @@ class AnophelesDataResource(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             max_coverage_variance=max_coverage_variance,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("load sample metadata")
@@ -1567,6 +1640,8 @@ class AnophelesDataResource(
         random_seed: base_params.random_seed = 42,
         n_jack: base_params.n_jack = 200,
         confidence_level: base_params.confidence_level = 0.95,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.Series:
         debug = self._log.debug
 
@@ -1601,6 +1676,8 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("compute diversity stats")
@@ -1628,7 +1705,7 @@ class AnophelesDataResource(
         ]
         for field, agg in extra_fields:
             if agg == "unique":
-                vals = df_samples[field].sort_values().unique()
+                vals = df_samples[field].dropna().sort_values().unique()
                 if len(vals) == 0:
                     val = np.nan
                 elif len(vals) == 1:
@@ -1636,7 +1713,7 @@ class AnophelesDataResource(
                 else:
                     val = vals.tolist()
             elif agg == "mean":
-                vals = df_samples[field]
+                vals = df_samples[field].dropna()
                 if len(vals) == 0:
                     val = np.nan
                 else:
@@ -1665,16 +1742,20 @@ class AnophelesDataResource(
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         random_seed: base_params.random_seed = 42,
         n_jack: base_params.n_jack = 200,
         confidence_level: base_params.confidence_level = 0.95,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> pd.DataFrame:
         # Normalise cohorts parameter.
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=None,
         )
@@ -1692,6 +1773,8 @@ class AnophelesDataResource(
                 random_seed=random_seed,
                 n_jack=n_jack,
                 confidence_level=confidence_level,
+                chunks=chunks,
+                inline_array=inline_array,
             )
             all_stats.append(stats)
         df_stats = pd.DataFrame(all_stats)
@@ -1850,6 +1933,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
         percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
         standardize: ihs_params.standardize = True,
@@ -1870,6 +1954,8 @@ class AnophelesDataResource(
             base_params.max_cohort_size
         ] = ihs_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -1896,6 +1982,7 @@ class AnophelesDataResource(
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -1905,7 +1992,7 @@ class AnophelesDataResource(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._ihs_gwss(**params)
+            results = self._ihs_gwss(chunks=chunks, inline_array=inline_array, **params)
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -1920,6 +2007,7 @@ class AnophelesDataResource(
         analysis,
         sample_sets,
         sample_query,
+        sample_query_options,
         window_size,
         percentiles,
         standardize,
@@ -1936,15 +2024,20 @@ class AnophelesDataResource(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        chunks,
+        inline_array,
     ):
         ds_haps = self.haplotypes(
             region=contig,
             analysis=analysis,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         gt = allel.GenotypeDaskArray(ds_haps["call_genotype"].data)
@@ -2013,6 +2106,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
         percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
         standardize: ihs_params.standardize = True,
@@ -2041,6 +2135,8 @@ class AnophelesDataResource(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # compute ihs
         x, ihs = self.ihs_gwss(
@@ -2062,8 +2158,11 @@ class AnophelesDataResource(
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # determine X axis range
@@ -2154,6 +2253,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
         filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
@@ -2178,6 +2278,8 @@ class AnophelesDataResource(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_xpehh_gwss_track(
@@ -2186,6 +2288,7 @@ class AnophelesDataResource(
             sample_sets=sample_sets,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             window_size=window_size,
             percentiles=percentiles,
             palette=palette,
@@ -2206,6 +2309,8 @@ class AnophelesDataResource(
             show=False,
             x_range=None,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig1.xaxis.visible = False
@@ -2245,6 +2350,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: ihs_params.window_size = ihs_params.window_size_default,
         percentiles: ihs_params.percentiles = ihs_params.percentiles_default,
         standardize: ihs_params.standardize = True,
@@ -2273,6 +2379,8 @@ class AnophelesDataResource(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
@@ -2280,6 +2388,7 @@ class AnophelesDataResource(
             analysis=analysis,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             window_size=window_size,
             percentiles=percentiles,
             palette=palette,
@@ -2303,6 +2412,8 @@ class AnophelesDataResource(
             height=track_height,
             show=False,
             output_backend=output_backend,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         fig1.xaxis.visible = False
@@ -2348,6 +2459,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
         filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
@@ -2364,6 +2476,8 @@ class AnophelesDataResource(
             base_params.max_cohort_size
         ] = xpehh_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
@@ -2387,6 +2501,7 @@ class AnophelesDataResource(
             # are different in the haplotype data.
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
@@ -2396,7 +2511,9 @@ class AnophelesDataResource(
             results = self.results_cache_get(name=name, params=params)
 
         except CacheMiss:
-            results = self._xpehh_gwss(**params)  # self.
+            results = self._xpehh_gwss(
+                chunks=chunks, inline_array=inline_array, **params
+            )
             self.results_cache_set(name=name, params=params, results=results)
 
         x = results["x"]
@@ -2412,6 +2529,7 @@ class AnophelesDataResource(
         sample_sets,
         cohort1_query,
         cohort2_query,
+        sample_query_options,
         window_size,
         percentiles,
         filter_min_maf,
@@ -2424,25 +2542,33 @@ class AnophelesDataResource(
         min_cohort_size,
         max_cohort_size,
         random_seed,
+        chunks,
+        inline_array,
     ):
         ds_haps1 = self.haplotypes(
             region=contig,
             analysis=analysis,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         ds_haps2 = self.haplotypes(
             region=contig,
             analysis=analysis,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         gt1 = allel.GenotypeDaskArray(ds_haps1["call_genotype"].data)
@@ -2509,6 +2635,7 @@ class AnophelesDataResource(
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort1_query: Optional[base_params.sample_query] = None,
         cohort2_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         window_size: xpehh_params.window_size = xpehh_params.window_size_default,
         percentiles: xpehh_params.percentiles = xpehh_params.percentiles_default,
         filter_min_maf: xpehh_params.filter_min_maf = xpehh_params.filter_min_maf_default,
@@ -2533,6 +2660,8 @@ class AnophelesDataResource(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # compute xpehh
         x, xpehh = self.xpehh_gwss(
@@ -2551,8 +2680,11 @@ class AnophelesDataResource(
             max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         # determine X axis range
@@ -2655,6 +2787,7 @@ class AnophelesDataResource(
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         max_dist: hapnet_params.max_dist = hapnet_params.max_dist_default,
         color: plotly_params.color = None,
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
@@ -2670,6 +2803,8 @@ class AnophelesDataResource(
         height: dash_params.height = 600,
         width: Optional[dash_params.width] = "100%",
         serve_scripts_locally: dash_params.serve_scripts_locally = dash_params.serve_scripts_locally_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         import dash_cytoscape as cyto  # type: ignore
         from dash import Dash, dcc, html  # type: ignore
@@ -2691,12 +2826,17 @@ class AnophelesDataResource(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             analysis=analysis,
+            chunks=chunks,
+            inline_array=inline_array,
         )
 
         debug("access sample metadata")
         df_samples = self.sample_metadata(
-            sample_query=sample_query, sample_sets=sample_sets
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            sample_sets=sample_sets,
         )
 
         debug("setup haplotype metadata")
@@ -2749,8 +2889,9 @@ class AnophelesDataResource(
             df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
 
             # extract all unique values of the color column
-            color_values = df_haps["partition"].unique()
+            color_values = df_haps["partition"].fillna("<NA>").unique()
             color_values_mapping = dict(zip(df_haps["partition"], df_haps[color]))
+            color_values_mapping["<NA>"] = "black"
             color_values_display = [color_values_mapping[c] for c in color_values]
 
             # count color values for each distinct haplotype
@@ -2959,536 +3100,6 @@ class AnophelesDataResource(
 
         debug("launch the dash app")
         app.run(**run_params)
-
-    @doc(
-        summary="""
-            Compute pairwise distances between samples using biallelic SNP genotypes.
-        """,
-        parameters=dict(
-            metric="Distance metric, one of 'cityblock', 'euclidean' or 'sqeuclidean'.",
-        ),
-    )
-    def biallelic_diplotype_pairwise_distances(
-        self,
-        region: base_params.regions,
-        n_snps: base_params.n_snps,
-        metric: diplotype_distance_params.distance_metric = "cityblock",
-        thin_offset: base_params.thin_offset = 0,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
-        site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[base_params.min_minor_ac] = None,
-        max_missing_an: Optional[base_params.max_missing_an] = None,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> Tuple[np.ndarray, np.ndarray, int]:
-        # Change this name if you ever change the behaviour of this function, to
-        # invalidate any previously cached data.
-        name = "biallelic_diplotype_pairwise_distances"
-
-        # Normalize params for consistent hash value.
-        (
-            sample_sets_prepped,
-            sample_indices_prepped,
-        ) = self._prep_sample_selection_cache_params(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_indices=sample_indices,
-        )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
-        del sample_sets
-        del sample_query
-        del sample_indices
-        del region
-        del site_mask
-        params = dict(
-            region=region_prepped,
-            n_snps=n_snps,
-            metric=metric,
-            thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
-            site_class=site_class,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-        )
-
-        # Try to retrieve results from the cache.
-        try:
-            results = self.results_cache_get(name=name, params=params)
-
-        except CacheMiss:
-            results = self._biallelic_diplotype_pairwise_distances(
-                inline_array=inline_array, chunks=chunks, **params
-            )
-            self.results_cache_set(name=name, params=params, results=results)
-
-        # Unpack results.
-        dist: np.ndarray = results["dist"]
-        samples: np.ndarray = results["samples"]
-        n_snps_used: int = int(results["n_snps"][()])  # ensure scalar
-
-        return dist, samples, n_snps_used
-
-    def _biallelic_diplotype_pairwise_distances(
-        self,
-        region,
-        n_snps,
-        metric,
-        thin_offset,
-        sample_sets,
-        sample_indices,
-        site_mask,
-        site_class,
-        inline_array,
-        chunks,
-        cohort_size,
-        min_cohort_size,
-        max_cohort_size,
-        random_seed,
-        min_minor_ac,
-        max_missing_an,
-    ):
-        # Compute diplotypes.
-        gn, samples = self.biallelic_diplotypes(
-            region=region,
-            sample_sets=sample_sets,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            site_class=site_class,
-            inline_array=inline_array,
-            chunks=chunks,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            max_missing_an=max_missing_an,
-            min_minor_ac=min_minor_ac,
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-        )
-
-        # Record number of SNPs used.
-        n_snps = gn.shape[0]
-
-        # Prepare data for pairwise distance calculation.
-        X = np.ascontiguousarray(gn.T)
-
-        # Look up distance function.
-        if metric == "cityblock":
-            distfun = biallelic_diplotype_cityblock
-        elif metric == "sqeuclidean":
-            distfun = biallelic_diplotype_sqeuclidean
-        elif metric == "euclidean":
-            distfun = biallelic_diplotype_euclidean
-        else:
-            raise ValueError("Unsupported metric.")
-
-        with self._spinner("Compute pairwise distances"):
-            dist = biallelic_diplotype_pdist(X, distfun=distfun)
-
-        return dict(
-            dist=dist,
-            samples=samples,
-            n_snps=np.array(
-                n_snps
-            ),  # ensure consistent behaviour to/from results cache
-        )
-
-    @doc(
-        summary="""
-            Plot an unrooted neighbour-joining tree, computed from pairwise distances
-            between samples using biallelic SNP genotypes.
-        """,
-        extended_summary="""
-            The tree is displayed as an unrooted tree using the equal angles layout.
-        """,
-        parameters=dict(
-            center_x="X coordinate where plotting is centered.",
-            center_y="Y coordinate where plotting is centered.",
-            arc_start="Angle where tree layout begins.",
-            arc_stop="Angle where tree layout ends.",
-            edge_legend="Show legend entries for the different edge (line) colors.",
-            leaf_legend="Show legend entries for the different leaf node (scatter) colors and symbols.",
-            legend_sizing="Controls sizing of items in legends, either 'trace' or 'constant'.",
-        ),
-    )
-    def plot_njt(
-        self,
-        region: base_params.regions,
-        n_snps: base_params.n_snps,
-        color: plotly_params.color = None,
-        symbol: plotly_params.symbol = None,
-        metric: diplotype_distance_params.distance_metric = "cityblock",
-        distance_sort: Optional[tree_params.distance_sort] = None,
-        count_sort: Optional[tree_params.count_sort] = None,
-        center_x=0,
-        center_y=0,
-        arc_start=0,
-        arc_stop=2 * math.pi,
-        width: plotly_params.fig_width = 800,
-        height: plotly_params.fig_height = 600,
-        show: plotly_params.show = True,
-        renderer: plotly_params.renderer = None,
-        render_mode: plotly_params.render_mode = "svg",
-        title: plotly_params.title = True,
-        title_font_size: plotly_params.title_font_size = 14,
-        line_width: plotly_params.line_width = 0.5,
-        marker_size: plotly_params.marker_size = 5,
-        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
-        color_discrete_map: plotly_params.color_discrete_map = None,
-        category_orders: plotly_params.category_order = None,
-        edge_legend: bool = False,
-        leaf_legend: bool = True,
-        legend_sizing: plotly_params.legend_sizing = "constant",
-        thin_offset: base_params.thin_offset = 0,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
-        site_class: Optional[base_params.site_class] = None,
-        min_minor_ac: Optional[
-            base_params.min_minor_ac
-        ] = pca_params.min_minor_ac_default,
-        max_missing_an: Optional[
-            base_params.max_missing_an
-        ] = pca_params.max_missing_an_default,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
-        random_seed: base_params.random_seed = 42,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
-    ) -> plotly_params.figure:
-        from biotite.sequence.phylo import neighbor_joining  # type: ignore
-        from scipy.spatial.distance import squareform  # type: ignore
-
-        # Normalise params.
-        if count_sort is None and distance_sort is None:
-            count_sort = True
-            distance_sort = False
-
-        # Compute pairwise distances.
-        dist, samples, n_snps_used = self.biallelic_diplotype_pairwise_distances(
-            region=region,
-            n_snps=n_snps,
-            metric=metric,
-            thin_offset=thin_offset,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            site_class=site_class,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-            cohort_size=cohort_size,
-            min_cohort_size=min_cohort_size,
-            max_cohort_size=max_cohort_size,
-            random_seed=random_seed,
-            inline_array=inline_array,
-            chunks=chunks,
-        )
-
-        # Construct tree.
-        with self._spinner("Construct neighbour-joining tree"):
-            dist_sq = squareform(dist)
-            tree = neighbor_joining(dist_sq)
-
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_indices=sample_indices,
-        )
-        # Ensure alignment with pairwise distances.
-        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
-
-        # Normalise color and symbol parameters.
-        symbol_prepped = self._setup_sample_symbol(
-            data=df_samples,
-            symbol=symbol,
-        )
-        del symbol
-        (
-            color_prepped,
-            color_discrete_map_prepped,
-            category_orders_prepped,
-        ) = self._setup_sample_colors_plotly(
-            data=df_samples,
-            color=color,
-            color_discrete_map=color_discrete_map,
-            color_discrete_sequence=color_discrete_sequence,
-            category_orders=category_orders,
-        )
-        del color
-        del color_discrete_map
-        del color_discrete_sequence
-
-        # Extract data for leaf colors.
-        if color_prepped is not None:
-            leaf_colors = df_samples[color_prepped]
-        else:
-            leaf_colors = None
-
-        # Lay out the tree.
-        _, df_leaf_nodes, df_edges = unrooted_tree_layout_equal_angle(
-            tree=tree,
-            color=color_prepped,
-            leaf_colors=leaf_colors,
-            center_x=center_x,
-            center_y=center_y,
-            arc_start=arc_start,
-            arc_stop=arc_stop,
-            count_sort=count_sort,
-            distance_sort=distance_sort,
-        )
-
-        # Join leaf data with sample metadata.
-        df_leaf_data = df_leaf_nodes[["x", "y"]].join(df_samples, how="inner")
-        df_leaf_data.sort_index(inplace=True)
-
-        # Force default color for lines.
-        if color_discrete_map_prepped is not None:
-            color_discrete_map_prepped[""] = "gray"
-
-        # Construct plot title.
-        if title is True:
-            title_lines = []
-            if sample_sets is not None:
-                title_lines.append(f"Sample sets: {sample_sets}")
-            if sample_query is not None:
-                title_lines.append(f"Sample query: {sample_query}")
-            title_lines.append(f"Genomic region: {region} ({n_snps_used:,} SNPs)")
-            title = "<br>".join(title_lines)
-
-        # Start building the figure.
-        fig1 = px.line(
-            data_frame=df_edges,
-            x="x",
-            y="y",
-            color=color_prepped,
-            hover_name=color_prepped,
-            hover_data=None,
-            color_discrete_map=color_discrete_map_prepped,
-            category_orders=category_orders_prepped,
-            render_mode=render_mode,
-        )
-        fig1.update_traces(
-            showlegend=edge_legend,
-        )
-
-        # Configure hover data.
-        hover_data = self._setup_sample_hover_data_plotly(
-            color=color_prepped, symbol=symbol_prepped
-        )
-
-        # Add scatter plot to draw the leaves.
-        fig2 = px.scatter(
-            data_frame=df_leaf_data,
-            x="x",
-            y="y",
-            color=color_prepped,
-            symbol=symbol_prepped,
-            color_discrete_map=color_discrete_map_prepped,
-            category_orders=category_orders_prepped,
-            render_mode=render_mode,
-            hover_name="sample_id",
-            hover_data=hover_data,
-        )
-        fig2.update_traces(
-            showlegend=leaf_legend,
-        )
-
-        fig = go.Figure()
-        fig.add_traces(list(fig1.select_traces()))
-        fig.add_traces(list(fig2.select_traces()))
-
-        # Style lines and markers.
-        line_props = dict(width=line_width)
-        marker_props = dict(size=marker_size)
-        fig.update_traces(line=line_props, marker=marker_props)
-
-        # Tidy up.
-        fig.update_layout(
-            title=title,
-            width=width,
-            height=height,
-            template="simple_white",
-            title_font=dict(
-                size=title_font_size,
-            ),
-            legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
-        )
-
-        # Style axes.
-        fig.update_xaxes(
-            title=None,
-            mirror=False,
-            showgrid=False,
-            showline=False,
-            showticklabels=False,
-            ticks="",
-        )
-        fig.update_yaxes(
-            title=None,
-            mirror=False,
-            showgrid=False,
-            showline=False,
-            showticklabels=False,
-            ticks="",
-            # N.B., this is important, as it prevents distortion of the tree.
-            # See also https://plotly.com/python/axes/#fixed-ratio-axes
-            scaleanchor="x",
-            scaleratio=1,
-        )
-
-        if show:  # pragma: no cover
-            fig.show(renderer=renderer)
-            return None
-        else:
-            return fig
-
-
-def unrooted_tree_layout_equal_angle(
-    *,
-    tree,
-    color,
-    leaf_colors,
-    center_x,
-    center_y,
-    arc_start,
-    arc_stop,
-    distance_sort,
-    count_sort,
-):
-    # Set up outputs.
-    internal_nodes = []
-    leaf_nodes = []
-    edges = []
-
-    # Begin recursion.
-    _unrooted_tree_layout_equal_angle(
-        tree_node=tree.root,
-        leaf_colors=leaf_colors,
-        x=center_x,
-        y=center_y,
-        arc_start=arc_start,
-        arc_stop=arc_stop,
-        distance_sort=distance_sort,
-        count_sort=count_sort,
-        internal_nodes=internal_nodes,
-        leaf_nodes=leaf_nodes,
-        edges=edges,
-    )
-
-    # Load results into dataframes.
-    df_internal_nodes = pd.DataFrame.from_records(internal_nodes, columns=["x", "y"])
-    df_leaf_nodes = pd.DataFrame.from_records(
-        leaf_nodes, columns=["x", "y", "index", color]
-    ).set_index("index")
-    df_edges = pd.DataFrame.from_records(edges, columns=["x", "y", color])
-
-    return df_internal_nodes, df_leaf_nodes, df_edges
-
-
-def _unrooted_tree_layout_equal_angle(
-    tree_node,
-    leaf_colors,
-    x,
-    y,
-    arc_start,
-    arc_stop,
-    distance_sort,
-    count_sort,
-    internal_nodes,
-    leaf_nodes,
-    edges,
-):
-    if tree_node.children:
-        # Store internal node coordinates.
-        internal_nodes.append([x, y])
-
-        # Count leaves (descendants).
-        leaf_count = tree_node.get_leaf_count()
-
-        # Sort the subtrees.
-        if distance_sort:
-            children = sorted(tree_node.children, key=lambda c: c.distance)
-        elif count_sort:
-            children = sorted(tree_node.children, key=lambda c: c.get_leaf_count())
-        else:
-            children = tree_node.children
-
-        # Iterate over children, dividing up the current arc into
-        # segments of size proportional to the number of leaves in
-        # the subtree.
-        arc_size = arc_stop - arc_start
-        child_arc_start = arc_start
-        for child in children:
-            # Define a segment of the arc for this child.
-            child_arc_size = arc_size * child.get_leaf_count() / leaf_count
-            child_arc_stop = child_arc_start + child_arc_size
-
-            # Define the angle at which this child will be drawn.
-            child_angle = child_arc_start + child_arc_size / 2
-
-            # Access the distance at which to draw this child.
-            distance = child.distance
-
-            # Now use trigonometry to calculate coordinates for this child.
-            child_x = x + distance * math.sin(child_angle)
-            child_y = y + distance * math.cos(child_angle)
-
-            # Figure out edge colors.
-            edge_color = ""
-            if leaf_colors is not None:
-                edge_colors = set(
-                    leaf_colors.iloc[[leaf.index for leaf in child.get_leaves()]]
-                )
-                if len(edge_colors) == 1:
-                    edge_color = edge_colors.pop()
-
-            # Add edge.
-            # edges.append([x, child_x, y, child_y, edge_color])
-            edges.append([x, y, edge_color])
-            edges.append([child_x, child_y, edge_color])
-            edges.append([None, None, edge_color])
-
-            # Recurse to draw the child.
-            _unrooted_tree_layout_equal_angle(
-                tree_node=child,
-                leaf_colors=leaf_colors,
-                x=child_x,
-                y=child_y,
-                internal_nodes=internal_nodes,
-                leaf_nodes=leaf_nodes,
-                edges=edges,
-                arc_start=child_arc_start,
-                arc_stop=child_arc_stop,
-                count_sort=count_sort,
-                distance_sort=distance_sort,
-            )
-
-            # Update loop variables ready for the next iteration.
-            child_arc_start = child_arc_stop
-
-    else:
-        leaf_color = ""
-        if leaf_colors is not None:
-            leaf_color = leaf_colors.iloc[tree_node.index]
-        leaf_nodes.append([x, y, tree_node.index, leaf_color])
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")

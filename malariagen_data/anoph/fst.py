@@ -28,11 +28,13 @@ class AnophelesFstAnalysis(
 
     def _fst_gwss(
         self,
+        *,
         contig,
         window_size,
         sample_sets,
         cohort1_query,
         cohort2_query,
+        sample_query_options,
         site_mask,
         cohort_size,
         min_cohort_size,
@@ -46,6 +48,7 @@ class AnophelesFstAnalysis(
         ac1 = self.snp_allele_counts(
             region=contig,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
@@ -58,6 +61,7 @@ class AnophelesFstAnalysis(
         ac2 = self.snp_allele_counts(
             region=contig,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
@@ -78,10 +82,11 @@ class AnophelesFstAnalysis(
             ).compute()
 
         with self._spinner(desc="Compute Fst"):
-            fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
-            # Sometimes Fst can be very slightly below zero, clip for simplicity.
-            fst = np.clip(fst, a_min=clip_min, a_max=1)
-            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
+                # Sometimes Fst can be very slightly below zero, clip for simplicity.
+                fst = np.clip(fst, a_min=clip_min, a_max=1)
+                x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, fst=fst)
 
@@ -104,6 +109,7 @@ class AnophelesFstAnalysis(
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
@@ -115,7 +121,7 @@ class AnophelesFstAnalysis(
         ] = fst_params.max_cohort_size_default,
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.chunks_default,
+        chunks: base_params.chunks = base_params.native_chunks,
         clip_min: fst_params.clip_min = 0.0,
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
@@ -127,6 +133,7 @@ class AnophelesFstAnalysis(
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
             cohort_size=cohort_size,
@@ -161,6 +168,7 @@ class AnophelesFstAnalysis(
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
@@ -189,6 +197,7 @@ class AnophelesFstAnalysis(
             max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             random_seed=random_seed,
@@ -265,6 +274,7 @@ class AnophelesFstAnalysis(
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
@@ -290,6 +300,7 @@ class AnophelesFstAnalysis(
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             site_mask=site_mask,
             cohort_size=cohort_size,
@@ -325,6 +336,7 @@ class AnophelesFstAnalysis(
             toolbar_location="above",
             merge_tools=True,
             sizing_mode=sizing_mode,
+            toolbar_options=dict(active_inspect=None),
         )
 
         if show:  # pragma: no cover
@@ -347,6 +359,7 @@ class AnophelesFstAnalysis(
         region: base_params.region,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
@@ -365,6 +378,7 @@ class AnophelesFstAnalysis(
             region=region,
             sample_sets=sample_sets,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             site_mask=site_mask,
             site_class=site_class,
@@ -376,6 +390,7 @@ class AnophelesFstAnalysis(
             region=region,
             sample_sets=sample_sets,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             site_mask=site_mask,
             site_class=site_class,
@@ -414,6 +429,7 @@ class AnophelesFstAnalysis(
         cohorts: base_params.cohorts,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         cohort_size: Optional[base_params.cohort_size] = fst_params.cohort_size_default,
         min_cohort_size: Optional[
             base_params.min_cohort_size
@@ -431,6 +447,7 @@ class AnophelesFstAnalysis(
             cohorts,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
         )
