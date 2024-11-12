@@ -131,7 +131,7 @@ class AnophelesH1XAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h1x_gwss_contig_v1"
+        name = "h1x_gwss_v2"
 
         params = dict(
             contig=contig,
