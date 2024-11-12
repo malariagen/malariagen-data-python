@@ -266,8 +266,16 @@ class AnophelesH12Analysis(
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            contigs = np.asarray(
+                allel.moving_statistic(
+                    ds_haps["variant_contig"].values,
+                    statistic=np.median,
+                    size=window_size,
+                ),
+                dtype=int,
+            )
 
-        results = dict(x=x, h12=h12)
+        results = dict(x=x, h12=h12, contigs=contigs)
 
         return results
 
@@ -277,6 +285,7 @@ class AnophelesH12Analysis(
         returns=dict(
             x="An array containing the window centre point genomic positions.",
             h12="An array with h12 statistic values for each window.",
+            contigs="An array with the contig for each window. The median is chosen for windows overlapping a change of contig.",
         ),
     )
     def h12_gwss(
@@ -297,10 +306,10 @@ class AnophelesH12Analysis(
         random_seed: base_params.random_seed = 42,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h12_gwss_v1"
+        name = "h12_gwss_contig_v1"
 
         params = dict(
             contig=contig,
@@ -327,8 +336,9 @@ class AnophelesH12Analysis(
 
         x = results["x"]
         h12 = results["h12"]
+        contigs = results["contigs"]
 
-        return x, h12
+        return x, h12, contigs
 
     @check_types
     @doc(
@@ -354,6 +364,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -361,7 +372,7 @@ class AnophelesH12Analysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H12.
-        x, h12 = self.h12_gwss(
+        x, h12, contigs = self.h12_gwss(
             contig=contig,
             analysis=analysis,
             window_size=window_size,
@@ -412,15 +423,14 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        fig.scatter(
-            x=x,
-            y=h12,
-            marker="circle",
-            size=3,
-            line_width=1,
-            line_color="black",
-            fill_color=None,
-        )
+        for s in set(contigs):
+            idxs = contigs == s
+            fig.scatter(
+                x=x[idxs],
+                y=h12[idxs],
+                marker="circle",
+                color=contig_colors[s % len(contig_colors)],
+            )
 
         # Tidy up the plot.
         fig.yaxis.axis_label = "H12"
@@ -457,6 +467,7 @@ class AnophelesH12Analysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 170,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -479,6 +490,7 @@ class AnophelesH12Analysis(
             sizing_mode=sizing_mode,
             width=width,
             height=track_height,
+            contig_colors=contig_colors,
             show=False,
             output_backend=output_backend,
             chunks=chunks,
@@ -575,7 +587,7 @@ class AnophelesH12Analysis(
             )
 
         # Determine X axis range.
-        x, _ = res[list(cohort_queries.keys())[0]]
+        x, _, _ = res[list(cohort_queries.keys())[0]]
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
@@ -610,7 +622,7 @@ class AnophelesH12Analysis(
         )
 
         # Plot H12.
-        for i, (cohort_label, (x, h12)) in enumerate(res.items()):
+        for i, (cohort_label, (x, h12, contig)) in enumerate(res.items()):
             fig.scatter(
                 x=x,
                 y=h12,
