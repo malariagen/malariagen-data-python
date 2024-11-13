@@ -93,11 +93,10 @@ class PlinkConverter(
         ]
 
         # Compute gt ref counts
-        with self._spinner("Computing genotype ref counts"):
-            gt_asc = ds_snps_asc["call_genotype"].data.compute()
+        with self._dask_progress("Computing genotype ref counts"):
+            gt_asc = ds_snps_asc["call_genotype"].data  # dask array
             gn_ref = allel.GenotypeDaskArray(gt_asc).to_n_ref(fill=-127)
-            with ProgressBar():
-                gn_ref = gn_ref.compute()
+            gn_ref = gn_ref.compute()
 
         # Ensure genotypes vary
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
