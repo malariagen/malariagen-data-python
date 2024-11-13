@@ -123,7 +123,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     assert bed.shape[0] == ds_test.samples.shape[0]
 
     # Test to see if sample_id is exported correctly (stored in the .fam file).
-    assert set(bed.iid) == set(ds_test.sample_id.values)
+    assert_array_equal(bed.iid, ds_test.sample_id.values)
 
     # Test to see if variant position is exported to the.bim correctly.
     assert set(bed.bp_position) == set(ds_test.variant_position.values)
