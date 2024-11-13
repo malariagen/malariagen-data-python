@@ -170,7 +170,19 @@ class AnophelesCnvData(
     @check_types
     @doc(
         summary="Access CNV HMM data from CNV calling.",
-        returns="An xarray dataset of CNV HMM calls and associated data.",
+        returns="""A dataset with 2 dimensions:
+        **variants** the number of CNV regions in the selected region,
+        **samples** the number of samples. There are 3 coordinates:
+        **variant_position** has **variants** values and contains the initial position of each CNV region,
+        **variant_end** has **variants** values and contains the final position of each CNV region,
+        **variant_contig** has **variants** values and contains the contig of each CNV region,
+        **sample_id** has **samples** values and contains the identifier of each sample. It contains 5 data variables:
+        **call_CN**, it has (**variants**, **samples**) values and contains the number of copies for each sample and each CNV region,
+        **call_RawCov**, it has (**variants**, **samples**) values and contains the raw coverage for each sample and each CNV region,
+        **call_NormCov**, it has (**variants**, **samples**) values and contains the normalized coverage for each sample and each CNV region,
+        **sample_coverage_variance**, it has **samples** values and contains the variance of the coverage for each sample,
+        **sample_id_high_variance**, it has **samples** values and contains whether each sample has a high variance.
+        """,
     )
     def cnv_hmm(
         self,
