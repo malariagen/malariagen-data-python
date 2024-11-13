@@ -4,8 +4,8 @@ import allel  # type: ignore
 import numpy as np
 import os
 import bed_reader
-from dask.diagnostics import ProgressBar
 
+from util import dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
 
@@ -84,30 +84,29 @@ class PlinkConverter(
         # Set up dataset with required vars for plink conversion
 
         # Compute gt ref counts
-        with self._spinner("Computing genotype ref counts"):
-            gt_asc = ds_snps["call_genotype"].data.compute()
+        with self._dask_progress("Computing genotype ref counts"):
+            gt_asc = ds_snps["call_genotype"].data  # dask array
             gn_ref = allel.GenotypeDaskArray(gt_asc).to_n_ref(fill=-127)
-            with ProgressBar():
-                gn_ref = gn_ref.compute()
+            gn_ref = gn_ref.compute()
 
         # Ensure genotypes vary
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
 
         # Load final data
-        with ProgressBar():
-            ds_snps_final = ds_snps.isel(variants=loc_var)
+        ds_snps_final = dask_compress_dataset(ds_snps, loc_var, dim="variants")
 
         # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]
         val = gn_ref_final.T
-        alleles = ds_snps_final["variant_allele"].values
-        properties = {
-            "iid": ds_snps_final["sample_id"].values,
-            "chromosome": ds_snps_final["variant_contig"].values,
-            "bp_position": ds_snps_final["variant_position"].values,
-            "allele_1": alleles[:, 0],
-            "allele_2": alleles[:, 1],
-        }
+        with self._spinner("Prepare output data"):
+            alleles = ds_snps_final["variant_allele"].values
+            properties = {
+                "iid": ds_snps_final["sample_id"].values,
+                "chromosome": ds_snps_final["variant_contig"].values,
+                "bp_position": ds_snps_final["variant_position"].values,
+                "allele_1": alleles[:, 0],
+                "allele_2": alleles[:, 1],
+            }
 
         bed_reader.to_bed(
             filepath=bed_file_path,
