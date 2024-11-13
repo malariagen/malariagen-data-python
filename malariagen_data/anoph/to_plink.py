@@ -102,10 +102,7 @@ class PlinkConverter(
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
 
         # Load final data
-        with ProgressBar():
-            ds_snps_final = ds_snps_asc[
-                ["variant_contig", "variant_position", "variant_allele", "sample_id"]
-            ].isel(variants=loc_var)
+        ds_snps_final = dask_compress_dataset(ds_snps_asc, loc_var, dim="variants")
 
         # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]
