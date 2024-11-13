@@ -82,19 +82,10 @@ class PlinkConverter(
         )
 
         # Set up dataset with required vars for plink conversion
-        ds_snps_asc = ds_snps[
-            [
-                "variant_contig",
-                "variant_position",
-                "variant_allele",
-                "sample_id",
-                "call_genotype",
-            ]
-        ]
 
         # Compute gt ref counts
         with self._spinner("Computing genotype ref counts"):
-            gt_asc = ds_snps_asc["call_genotype"].data.compute()
+            gt_asc = ds_snps["call_genotype"].data.compute()
             gn_ref = allel.GenotypeDaskArray(gt_asc).to_n_ref(fill=-127)
             with ProgressBar():
                 gn_ref = gn_ref.compute()
@@ -104,9 +95,7 @@ class PlinkConverter(
 
         # Load final data
         with ProgressBar():
-            ds_snps_final = ds_snps_asc[
-                ["variant_contig", "variant_position", "variant_allele", "sample_id"]
-            ].isel(variants=loc_var)
+            ds_snps_final = ds_snps.isel(variants=loc_var)
 
         # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]
