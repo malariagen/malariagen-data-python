@@ -107,14 +107,15 @@ class PlinkConverter(
         # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]
         val = gn_ref_final.T
-        alleles = ds_snps_final["variant_allele"].values
-        properties = {
-            "iid": ds_snps_final["sample_id"].values,
-            "chromosome": ds_snps_final["variant_contig"].values,
-            "bp_position": ds_snps_final["variant_position"].values,
-            "allele_1": alleles[:, 0],
-            "allele_2": alleles[:, 1],
-        }
+        with self._spinner("Prepare output data"):
+            alleles = ds_snps_final["variant_allele"].values
+            properties = {
+                "iid": ds_snps_final["sample_id"].values,
+                "chromosome": ds_snps_final["variant_contig"].values,
+                "bp_position": ds_snps_final["variant_position"].values,
+                "allele_1": alleles[:, 0],
+                "allele_2": alleles[:, 1],
+            }
 
         bed_reader.to_bed(
             filepath=bed_file_path,
