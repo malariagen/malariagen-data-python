@@ -113,3 +113,13 @@ line_kwargs: TypeAlias = Annotated[
 ]
 
 colors: TypeAlias = Annotated[Sequence[str], "List of colors."]
+
+gene_labels: TypeAlias = Annotated[
+    Mapping[str, str],
+    "A mapping of gene identifiers to custom labels, which will appear in the plot.",
+]
+
+labels: TypeAlias = Annotated[
+    bokeh.models.LabelSet,
+    "A LabelSet to use in the plot.",
+]
