@@ -42,6 +42,7 @@ class PlinkConverter(
         region,
         n_snps,
         thin_offset,
+        overwrite,
         sample_sets,
         sample_query,
         sample_indices,
@@ -63,8 +64,11 @@ class PlinkConverter(
         )
 
         bed_file_path = f"{plink_file_path}.bed"
+
+        # Check to see if file exists and if overwrite is set to false, return existing file
         if os.path.exists(bed_file_path):
-            return plink_file_path
+            if not overwrite:
+                return plink_file_path
 
         # Get snps
         ds_snps = self.biallelic_snp_calls(
@@ -124,6 +128,7 @@ class PlinkConverter(
         region: base_params.regions,
         n_snps: base_params.n_snps,
         thin_offset: base_params.thin_offset = 0,
+        overwrite=False,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
@@ -143,6 +148,7 @@ class PlinkConverter(
             region=region,
             n_snps=n_snps,
             thin_offset=thin_offset,
+            overwrite=overwrite,
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_indices=sample_indices,
