@@ -849,8 +849,22 @@ class AnophelesDataResource(
 
         Returns
         -------
-        ds : xarray.Dataset
-            A dataset of modal copy number per gene and associated data.
+        A dataset with 2 dimensions:
+        **genes** the number of genes in the selected region,
+        **samples** the number of samples. There are 2 coordinates:
+        **gene_id** has **genes** values and contains the identifier of each gene,
+        **sample_id** has **samples** values and contains the identifier of each sample. It contains 11 data variables:
+        **gene_contig**, it has **genes** values and contains the contig of each gene,
+        **gene_start**, it has **genes** values and contains the position of the start of each gene,
+        **gene_end**, it has **genes** values and contains the position of the end of each gene,
+        **gene_windows**, it has **genes** values and contains the number of windows of each gene,
+        **gene_name**, it has **genes** values and contains the name of each gene,
+        **gene_strand**, it has **genes** values and contains on which strand each gene is found,
+        **gene_description**, it has **genes** values and contains the description of each gene,
+        **CN_mode**, it has (**genes**, **samples**) values and contains ? for each gene and each sample,
+        **CN_mode_count**, it has (**genes**, **samples**) values and contains the mode count for each gene and each sample,
+        **sample_coverage_variance**, it has **samples** values and contains the variance of the coverage for each sample,
+        **sample_id_high_variance**, it has **samples** values and contains whether each sample has a high variance.
 
         """
 
