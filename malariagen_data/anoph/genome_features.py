@@ -149,10 +149,11 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
                         df_part = df_part.query(f"end >= {r.start}")
                     parts.append(df_part)
                 df = pd.concat(parts, axis=0)
-                return df.reset_index(drop=True).copy()
+                return df.sort_values(["contig", "start"]).reset_index(drop=True).copy()
 
             return (
                 self._genome_features(attributes=attributes_normed)
+                .sort_values(["contig", "start"])
                 .reset_index(drop=True)
                 .copy()
             )
