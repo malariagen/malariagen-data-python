@@ -557,7 +557,21 @@ class AnophelesCnvData(
     @check_types
     @doc(
         summary="Access CNV discordant read calls data.",
-        returns="An xarray dataset of CNV alleles and genotypes.",
+        returns="""A dataset with 2 dimensions:
+        **variants** the number of discordant read calls in the selected region,
+        **samples** the number of samples. There are 5 coordinates:
+        **variant_position** has **variants** values and contains the initial position of each discordant read call,
+        **variant_end** has **variants** values and contains the final position of each discordant read call,
+        **variant_id** has **variants** values and contains the identifier of each discordant read call,
+        **variant_contig** has **variants** values and contains the contig of each discordant read call,
+        **sample_id** has **samples** values and contains the identifier of each sample. It contains 6 data variables:
+        **variant_Region**, it has **variants** values and contains the identifier of the region covered by each discordant read call,
+        **variant_StartBreakpointMethod**, it has **variants** values and contains ? for each discordant read call,
+        **variant_EndBreakpointMethod**, it has **variants** values and contains ? for each discordant read call,
+        **call_genotype**, it has (**variants**, **samples**) values and contains the number of copies of each discordant read call for each sample,
+        **sample_coverage_variance**, it has **samples** values and contains the variance of the coverage for each sample,
+        **sample_id_high_variance**, it has **samples** values and contains whether each sample has a high variance.
+        """,
     )
     def cnv_discordant_read_calls(
         self,
