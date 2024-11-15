@@ -172,7 +172,7 @@ class AnophelesCnvData(
         summary="Access CNV HMM data from CNV calling.",
         returns="""A dataset with 2 dimensions:
         **variants** the number of CNV regions in the selected region,
-        **samples** the number of samples. There are 3 coordinates:
+        **samples** the number of samples. There are 4 coordinates:
         **variant_position** has **variants** values and contains the initial position of each CNV region,
         **variant_end** has **variants** values and contains the final position of each CNV region,
         **variant_contig** has **variants** values and contains the contig of each CNV region,
@@ -391,7 +391,7 @@ class AnophelesCnvData(
         summary="Access CNV HMM data from genome-wide CNV discovery and filtering.",
         returns="""A dataset with 2 dimensions:
         **variants** the number of CNV regions in the selected region,
-        **samples** the number of samples. There are 3 coordinates:
+        **samples** the number of samples. There are 5 coordinates:
         **variant_position** has **variants** values and contains the initial position of each CNV region,
         **variant_end** has **variants** values and contains the final position of each CNV region,
         **variant_contig** has **variants** values and contains the contig of each CNV region,
