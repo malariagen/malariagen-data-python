@@ -936,6 +936,8 @@ class AnophelesSnpFrequencyAnalysis(
         legend_sizing: plotly_params.legend_sizing = "constant",
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
+        taxon: plotly_params.taxon = None,
+        area: plotly_params.area = None,
         **kwargs,
     ) -> plotly_params.figure:
         # Handle title.
@@ -946,6 +948,14 @@ class AnophelesSnpFrequencyAnalysis(
         cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]  # type: ignore
+
+        # If specified, restrict the dataframe by taxon.
+        if taxon:
+            df_cohorts = df_cohorts[df_cohorts["taxon"] == taxon]
+
+        # If specified, restrict the dataframe by area.
+        if area:
+            df_cohorts = df_cohorts[df_cohorts["area"] == area]
 
         # Extract variant labels.
         variant_labels = ds["variant_label"].values

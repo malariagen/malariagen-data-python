@@ -215,3 +215,13 @@ scope: TypeAlias = Annotated[
     ],
     "Scope of the map.",
 ]
+
+taxon: TypeAlias = Annotated[
+    Optional[str],
+    "The taxon to restrict the dataset to.",
+]
+
+area: TypeAlias = Annotated[
+    Optional[str],
+    "The area to restrict the dataset to.",
+]
