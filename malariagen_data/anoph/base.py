@@ -1,3 +1,5 @@
+import os
+
 import json
 from contextlib import nullcontext
 from datetime import date
@@ -54,12 +56,24 @@ class AnophelesBase:
         bokeh_output_notebook: bool = False,
         log: Optional[Union[str, IO]] = None,
         debug: bool = False,
-        show_progress: bool = False,
+        show_progress: Optional[bool] = None,
         check_location: bool = False,
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
         tqdm_class=None,
     ):
+        # If show_progress has not been specified, then determine the default.
+        if show_progress is None:
+            # Get the env var, if it exists.
+            show_progress_env = os.getenv("MGEN_SHOW_PROGRESS")
+
+            # If the env var does not exist, then use the class default.
+            # Otherwise, convert the env var value to a boolean and use that.
+            if show_progress_env is None:
+                show_progress = True
+            else:
+                show_progress = show_progress_env.lower() in ("true", "1", "yes", "on")
+
         self._config_path = config_path
         self._pre = pre
         self._gcs_default_url = gcs_default_url
