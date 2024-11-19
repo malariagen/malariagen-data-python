@@ -5,7 +5,7 @@ import numpy as np
 import os
 import bed_reader
 
-from util import dask_compress_dataset
+from ..util import dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import pca_params
