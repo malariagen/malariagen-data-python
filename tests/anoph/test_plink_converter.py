@@ -99,7 +99,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     n_snps = random.randint(1, n_snps_available)
 
     # Define plink params.
-    plink_params = dict(results_dir=tmp_path, n_snps=n_snps, **data_params)
+    plink_params = dict(output_dir=tmp_path, n_snps=n_snps, **data_params)
 
     # Make the plink files.
     api.biallelic_snps_to_plink(**plink_params)
