@@ -14,8 +14,8 @@ distance_metric: TypeAlias = Annotated[
 default_distance_metric: distance_metric = "cityblock"
 
 nj_algorithm: TypeAlias = Annotated[
-    Literal["rapid", "canonical"],
-    "Neighbour-joining algorithm to use.",
+    Literal["dynamic", "rapid", "canonical"],
+    "Neighbour-joining algorithm to use. The 'dynamic' algorithm is fastest.",
 ]
 
-default_nj_algorithm: nj_algorithm = "rapid"
+default_nj_algorithm: nj_algorithm = "dynamic"

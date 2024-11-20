@@ -26,12 +26,14 @@ class AnophelesH1XAnalysis(
 
     def _h1x_gwss(
         self,
+        *,
         contig,
         analysis,
         window_size,
         sample_sets,
         cohort1_query,
         cohort2_query,
+        sample_query_options,
         cohort_size,
         min_cohort_size,
         max_cohort_size,
@@ -44,6 +46,7 @@ class AnophelesH1XAnalysis(
             region=contig,
             analysis=analysis,
             sample_query=cohort1_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -56,6 +59,7 @@ class AnophelesH1XAnalysis(
             region=contig,
             analysis=analysis,
             sample_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -80,8 +84,16 @@ class AnophelesH1XAnalysis(
             # Compute window midpoints.
             pos = ds1["variant_position"].values
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            contigs = np.asarray(
+                allel.moving_statistic(
+                    ds1["variant_contig"].values,
+                    statistic=np.median,
+                    size=window_size,
+                ),
+                dtype=int,
+            )
 
-        results = dict(x=x, h1x=h1x)
+        results = dict(x=x, h1x=h1x, contigs=contigs)
 
         return results
 
@@ -94,6 +106,7 @@ class AnophelesH1XAnalysis(
         returns=dict(
             x="An array containing the window centre point genomic positions.",
             h1x="An array with H1X statistic values for each window.",
+            contigs="An array with the contig for each window. The median is chosen for windows overlapping a change of contig.",
         ),
     )
     def h1x_gwss(
@@ -102,6 +115,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -114,10 +128,10 @@ class AnophelesH1XAnalysis(
         random_seed: base_params.random_seed = 42,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> Tuple[np.ndarray, np.ndarray]:
+    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h1x_gwss_v1"
+        name = "h1x_gwss_v2"
 
         params = dict(
             contig=contig,
@@ -128,6 +142,7 @@ class AnophelesH1XAnalysis(
             # are different in the haplotype data.
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -144,8 +159,9 @@ class AnophelesH1XAnalysis(
 
         x = results["x"]
         h1x = results["h1x"]
+        contigs = results["contigs"]
 
-        return x, h1x
+        return x, h1x, contigs
 
     @check_types
     @doc(
@@ -160,6 +176,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -174,6 +191,7 @@ class AnophelesH1XAnalysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         height: gplt_params.height = 200,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -181,7 +199,7 @@ class AnophelesH1XAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> gplt_params.figure:
         # Compute H1X.
-        x, h1x = self.h1x_gwss(
+        x, h1x, contigs = self.h1x_gwss(
             contig=contig,
             analysis=analysis,
             window_size=window_size,
@@ -190,6 +208,7 @@ class AnophelesH1XAnalysis(
             max_cohort_size=max_cohort_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             random_seed=random_seed,
             chunks=chunks,
@@ -232,15 +251,14 @@ class AnophelesH1XAnalysis(
         )
 
         # Plot H1X.
-        fig.scatter(
-            x=x,
-            y=h1x,
-            marker="circle",
-            size=3,
-            line_width=1,
-            line_color="black",
-            fill_color=None,
-        )
+        for s in set(contigs):
+            idxs = contigs == s
+            fig.scatter(
+                x=x[idxs],
+                y=h1x[idxs],
+                marker="circle",
+                color=contig_colors[s % len(contig_colors)],
+            )
 
         # Tidy up the plot.
         fig.yaxis.axis_label = "H1X"
@@ -266,6 +284,7 @@ class AnophelesH1XAnalysis(
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -280,6 +299,7 @@ class AnophelesH1XAnalysis(
         sizing_mode: gplt_params.sizing_mode = gplt_params.sizing_mode_default,
         width: gplt_params.width = gplt_params.width_default,
         track_height: gplt_params.track_height = 190,
+        contig_colors: gplt_params.contig_colors = gplt_params.contig_colors_default,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
@@ -293,6 +313,7 @@ class AnophelesH1XAnalysis(
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
+            sample_query_options=sample_query_options,
             sample_sets=sample_sets,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -302,6 +323,7 @@ class AnophelesH1XAnalysis(
             sizing_mode=sizing_mode,
             width=width,
             height=track_height,
+            contig_colors=contig_colors,
             show=False,
             output_backend=output_backend,
             chunks=chunks,
