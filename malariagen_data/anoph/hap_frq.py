@@ -4,7 +4,6 @@ import pandas as pd
 import numpy as np
 import xarray as xr
 import allel
-import dask.array as da
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import check_types, haplotype_frequencies
@@ -95,8 +94,8 @@ class AnophelesHapFrequencyAnalysis(
 
             n_samples = np.count_nonzero(loc_coh)
             assert n_samples >= min_cohort_size
-            gt_coh = allel.GenotypeDaskArray(da.compress(loc_coh, gt, axis=1))
-            gt_hap = gt_coh.to_haplotypes().compute()
+            gt_coh = gt.compress(loc_coh, axis=1)
+            gt_hap = gt_coh.to_haplotypes()
             f, _, _ = haplotype_frequencies(gt_hap)
             # The frequencies of the observed haplotypes are then updated
             hap_dict.update(f)
@@ -171,12 +170,6 @@ class AnophelesHapFrequencyAnalysis(
             min_cohort_size=min_cohort_size,
         )
 
-        # Early check for no cohorts.
-        if len(df_cohorts) == 0:
-            raise ValueError(
-                "No cohorts available for the given sample selection parameters and minimum cohort size."
-            )
-
         # Access haplotypes.
         ds_haps = self.haplotypes(
             region=region,
@@ -220,9 +213,8 @@ class AnophelesHapFrequencyAnalysis(
             hap_nob = {k: 2 * n_samples for k in f_all.keys()}
             assert n_samples >= min_cohort_size
             sample_indices = group_samples_by_cohort.indices[cohort_key]
-            loc_coh = [i in sample_indices for i in range(0, gt.shape[1])]
-            gt_coh = allel.GenotypeDaskArray(da.compress(loc_coh, gt, axis=1))
-            gt_hap = gt_coh.to_haplotypes().compute()
+            gt_coh = gt.take(sample_indices, axis=1)
+            gt_hap = gt_coh.to_haplotypes()
             f, c, o = haplotype_frequencies(gt_hap)
             # The frequencies and counts of the observed haplotypes are then updated, so are the nobs but the values should actually stay the same
             hap_freq.update(f)
@@ -341,6 +333,12 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
 
     # Apply minimum cohort size.
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
+
+    # Early check for no cohorts.
+    if len(df_cohorts) == 0:
+        raise ValueError(
+            "No cohorts available for the given sample selection parameters and minimum cohort size."
+        )
 
     return df_cohorts
 
