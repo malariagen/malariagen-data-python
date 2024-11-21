@@ -40,7 +40,7 @@ from .anoph.base import AnophelesBase
 from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
-from .anoph.hap_data import AnophelesHapData, hap_params
+from .anoph.hap_data import hap_params
 from .anoph.hap_frq import AnophelesHapFrequencyAnalysis
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
@@ -106,7 +106,7 @@ class AnophelesDataResource(
     AnophelesAimData,
     AnophelesSnpData,
     AnophelesCnvData,
-    AnophelesHapData,
+    # AnophelesHapData,
     AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
@@ -1152,7 +1152,9 @@ class AnophelesDataResource(
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
+        coh_dict = locate_cohorts(
+            cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+        )
 
         debug("compute cohort frequencies")
         freq_cols = dict()

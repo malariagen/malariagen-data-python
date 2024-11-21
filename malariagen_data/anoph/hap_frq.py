@@ -25,9 +25,6 @@ class AnophelesHapFrequencyAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # Set up cache variables.
-        self._cache_annotator = None
-
     @check_types
     @doc(
         summary="""
@@ -46,6 +43,7 @@ class AnophelesHapFrequencyAnalysis(
         region: base_params.region,
         cohorts: base_params.cohorts,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
         sample_sets: Optional[base_params.sample_sets] = None,
         chunks: base_params.chunks = base_params.native_chunks,
@@ -53,30 +51,22 @@ class AnophelesHapFrequencyAnalysis(
     ) -> pd.DataFrame:
         # Access sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
-        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
-
-        # Remove cohorts below minimum cohort size.
-        coh_dict = {
-            coh: loc_coh
-            for coh, loc_coh in coh_dict.items()
-            if np.count_nonzero(loc_coh) >= min_cohort_size
-        }
-
-        # Early check for no cohorts.
-        if len(coh_dict) == 0:
-            raise ValueError(
-                "No cohorts available for the given sample selection parameters and minimum cohort size."
-            )
+        coh_dict = locate_cohorts(
+            cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+        )
 
         # Access haplotypes.
         ds_haps = self.haplotypes(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             chunks=chunks,
             inline_array=inline_array,
         )
@@ -152,6 +142,7 @@ class AnophelesHapFrequencyAnalysis(
         period_by: frq_params.period_by,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         min_cohort_size: base_params.min_cohort_size = 10,
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
@@ -159,7 +150,9 @@ class AnophelesHapFrequencyAnalysis(
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
-            sample_sets=sample_sets, sample_query=sample_query
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
         )
 
         # Prepare sample metadata for cohort grouping.
@@ -189,6 +182,7 @@ class AnophelesHapFrequencyAnalysis(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             chunks=chunks,
             inline_array=inline_array,
         )

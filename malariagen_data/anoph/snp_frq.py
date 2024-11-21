@@ -149,20 +149,9 @@ class AnophelesSnpFrequencyAnalysis(
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
-        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
-
-        # Remove cohorts below minimum cohort size.
-        coh_dict = {
-            coh: loc_coh
-            for coh, loc_coh in coh_dict.items()
-            if np.count_nonzero(loc_coh) >= min_cohort_size
-        }
-
-        # Early check for no cohorts.
-        if len(coh_dict) == 0:
-            raise ValueError(
-                "No cohorts available for the given sample selection parameters and minimum cohort size."
-            )
+        coh_dict = locate_cohorts(
+            cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+        )
 
         # Access SNP data.
         ds_snp = self.snp_calls(
