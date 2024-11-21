@@ -460,12 +460,34 @@ def init_filesystem(url, **kwargs):
             # Chained URL.
             kwargs["gcs"] = dict(token=credentials)
 
-    # Process the URL using fsspec.
-    fs, path = url_to_fs(url, **kwargs)
+        # Process the URL using fsspec.
+        fs, path = url_to_fs(url, **kwargs)
 
-    # Path compatibility, fsspec/gcsfs behaviour varies between versions.
-    while path.endswith("/"):
-        path = path[:-1]
+        # Path compatibility, fsspec/gcsfs behaviour varies between versions.
+        while path.endswith("/"):
+            path = path[:-1]
+
+    # S3 access: set up the filesystem.
+    if "s3://" in url:
+        try:
+            import s3fs
+        except ImportError:
+            raise ImportError("Amazon S3 support requires the 's3fs' package.")
+
+        # Configuration for S3 access, customize as needed.
+        config = {
+            "signature_version": "s3",
+            "s3": {"addressing_style": "virtual"},
+        }
+
+        # Create an S3FileSystem with custom endpoint if specified.
+        kwargs["anon"] = kwargs.get("anon", True)  # Default to anonymous access.
+        kwargs["endpoint_url"] = "https://cog.sanger.ac.uk"
+        kwargs["config_kwargs"] = kwargs.get("config_kwargs", config)
+
+        # Use s3fs to create the filesystem.
+        fs = s3fs.S3FileSystem(**kwargs)
+        path = url.split("s3://")[1]
 
     return fs, path
 
