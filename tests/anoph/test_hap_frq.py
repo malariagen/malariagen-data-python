@@ -7,7 +7,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.hap_freq import AnophelesHapFrequencyAnalysis
+from malariagen_data.anoph.hap_frq import AnophelesHapFrequencyAnalysis
 
 
 @pytest.fixture
