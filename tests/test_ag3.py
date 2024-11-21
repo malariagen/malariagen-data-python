@@ -15,7 +15,7 @@ from malariagen_data.util import locate_region, resolve_region, compare_series_l
 contigs = "2R", "2L", "3R", "3L", "X"
 
 
-def setup_ag3(url="simplecache::gs://vo_agam_release/", **kwargs):
+def setup_ag3(url="simplecache::gs://vo_agam_release_master_us_central1/", **kwargs):
     kwargs.setdefault("check_location", False)
     kwargs.setdefault("show_progress", False)
     if url is None:
