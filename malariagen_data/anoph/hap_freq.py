@@ -10,7 +10,7 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import check_types, haplotype_frequencies
 from .hap_data import AnophelesHapData
 from .sample_metadata import locate_cohorts
-from . import base_params, frq_params  # , map_params, plotly_params
+from . import base_params, frq_params
 
 
 class AnophelesHapFrequencyAnalysis(
