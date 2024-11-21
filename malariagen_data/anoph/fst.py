@@ -82,10 +82,11 @@ class AnophelesFstAnalysis(
             ).compute()
 
         with self._spinner(desc="Compute Fst"):
-            fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
-            # Sometimes Fst can be very slightly below zero, clip for simplicity.
-            fst = np.clip(fst, a_min=clip_min, a_max=1)
-            x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
+            with np.errstate(divide="ignore", invalid="ignore"):
+                fst = allel.moving_hudson_fst(ac1, ac2, size=window_size)
+                # Sometimes Fst can be very slightly below zero, clip for simplicity.
+                fst = np.clip(fst, a_min=clip_min, a_max=1)
+                x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, fst=fst)
 

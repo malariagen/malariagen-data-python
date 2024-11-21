@@ -6,7 +6,7 @@ from malariagen_data import Af1, Region
 from malariagen_data.util import locate_region, resolve_region
 
 
-def setup_af1(url="simplecache::gs://vo_afun_release/", **kwargs):
+def setup_af1(url="simplecache::gs://vo_afun_release_master_us_central1/", **kwargs):
     kwargs.setdefault("check_location", False)
     kwargs.setdefault("show_progress", False)
     if url is None:
