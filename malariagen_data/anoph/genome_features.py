@@ -414,7 +414,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             debug("determine new figure height and range to accommodate gene labels")
 
             # Increase the figure height by a certain factor, to accommodate labels.
-            height_increase_factor = 1.2
+            height_increase_factor = 1.3
             fig.height = int(fig.height * height_increase_factor)
 
             # Get the original y_range.
@@ -453,8 +453,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             )
 
             # Put the pointer above or below the gene rectangle, depending on + or - strand.
-            neg_strand_pointer_y = orig_mid_y_range - 1.2
-            pos_strand_pointer_y = orig_mid_y_range + 1.2
+            neg_strand_pointer_y = orig_mid_y_range - 1.1
+            pos_strand_pointer_y = orig_mid_y_range + 1.1
             data["pointer_y"] = data["strand"].apply(
                 lambda strand: pos_strand_pointer_y
                 if strand == "+"
@@ -462,8 +462,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             )
 
             # Put the label above or below the gene rectangle, depending on + or - strand.
-            neg_strand_label_y = orig_mid_y_range - 1.15
-            pos_strand_label_y = orig_mid_y_range + 1.25
+            neg_strand_label_y = orig_mid_y_range - 1.25
+            pos_strand_label_y = orig_mid_y_range + 1.3
             data["label_y"] = data["strand"].apply(
                 lambda strand: pos_strand_label_y
                 if strand == "+"
