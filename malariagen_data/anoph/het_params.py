@@ -47,7 +47,13 @@ df_roh: TypeAlias = Annotated[
     pd.DataFrame,
     """
     A DataFrame where each row provides data about a single run of
-    homozygosity.
+    homozygosity. The columns are:
+    **sample_id** containing the identifier of the sample,
+    **contig** containing the contig,
+    **roh_start** containing the start of the run of homozygosity,
+    **roh_stop** containing the end of the run of homozygosity,
+    **roh_length** containing the length of the run of homozygosity,
+    **roh_is_marginal** containing whether the run of homozygosity is marginal.
     """,
 ]
 
