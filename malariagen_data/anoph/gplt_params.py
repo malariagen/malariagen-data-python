@@ -1,7 +1,7 @@
 """Parameters for genome plotting functions. N.B., genome plots are always
 plotted with bokeh."""
 
-from typing import Literal, Mapping, Optional, Union, Sequence
+from typing import Literal, Mapping, Optional, Union, Final, Sequence
 
 import bokeh.models
 from typing_extensions import Annotated, TypeAlias
@@ -111,5 +111,12 @@ line_kwargs: TypeAlias = Annotated[
     Mapping,
     "Passed through to bokeh line() function.",
 ]
+
+contig_colors: TypeAlias = Annotated[
+    list[str],
+    "A sequence of colors.",
+]
+
+contig_colors_default: Final[contig_colors] = list(bokeh.palettes.d3["Category20b"][5])
 
 colors: TypeAlias = Annotated[Sequence[str], "List of colors."]
