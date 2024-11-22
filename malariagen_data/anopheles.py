@@ -17,12 +17,7 @@ import plotly.graph_objects as go  # type: ignore
 import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
-from malariagen_data.anoph.snp_frq import (
-    AnophelesSnpFrequencyAnalysis,
-    _add_frequency_ci,
-    _build_cohorts_from_sample_grouping,
-    _prep_samples_for_cohort_grouping,
-)
+from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 
 from .anoph import (
     aim_params,
@@ -65,6 +60,9 @@ from .util import (
     region_str,
     simple_xarray_concat,
     pandas_apply,
+    _add_frequency_ci,
+    _build_cohorts_from_sample_grouping,
+    _prep_samples_for_cohort_grouping,
 )
 
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
