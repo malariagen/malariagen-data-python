@@ -1040,10 +1040,16 @@ class AnophelesDataResource(
 
         Returns
         -------
-        df : pandas.DataFrame
-            A dataframe of CNV amplification (amp) and deletion (del)
-            frequencies in the specified cohorts, one row per gene and CNV type
-            (amp/del).
+            A dataframe of CNV frequencies, one row per CNV. The CNVs are indexed by
+            their gene identifier, their gene name, their type (amplification or deletion).
+            The columns are split into two categories: there is 1 column for each cohort containing the frequency of the CNV within the cohort, additionally there is a column `max_af` containing the maximum frequency of the CNV accross all cohorts;
+            finally, there are 7 columns describing the variant allele: `gene_strand` contains the strand on which the gene is found (either - or +),
+            `gene_description` is the description of the gene,
+            `contig`is the contig of the gene,
+            `start` is the initial position of the gene,
+            `end` is the final position of the gene,
+            `windows` is the number of windows covering the gene,
+            and `label` is the label of the CNV.
 
         """
         debug = self._log.debug
