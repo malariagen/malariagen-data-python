@@ -87,6 +87,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         summary="""
             Compute pairwise distances between samples using biallelic SNP genotypes.
         """,
+        returns=("dist", "samples", "n_snps_used"),
     )
     def biallelic_diplotype_pairwise_distances(
         self,
@@ -108,7 +109,9 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-    ) -> Tuple[np.ndarray, np.ndarray, int]:
+    ) -> Tuple[
+        distance_params.dist, distance_params.samples, distance_params.n_snps_used
+    ]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "biallelic_diplotype_pairwise_distances"
@@ -235,6 +238,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         summary="""
             Construct a neighbour-joining tree between samples using biallelic SNP genotypes.
         """,
+        returns=("Z", "samples", "n_snps_used"),
     )
     def njt(
         self,
@@ -261,7 +265,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
-    ) -> Tuple[np.ndarray, np.ndarray, int]:
+    ) -> Tuple[distance_params.Z, distance_params.samples, distance_params.n_snps_used]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "njt_v1"
