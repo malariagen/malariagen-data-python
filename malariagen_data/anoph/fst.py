@@ -293,6 +293,8 @@ class AnophelesFstAnalysis(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         clip_min: fst_params.clip_min = 0.0,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        labels: Optional[gplt_params.labels] = None,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
@@ -327,6 +329,8 @@ class AnophelesFstAnalysis(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            labels=labels,
         )
 
         # combine plots into a single figure
