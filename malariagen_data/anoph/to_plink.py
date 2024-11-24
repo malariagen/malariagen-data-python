@@ -33,7 +33,7 @@ class PlinkConverter(
         thin_offset,
         max_missing_an,
     ):
-        return f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{thin_offset}.{max_missing_an}"
+        return f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
     def _biallelic_snps_to_plink(
         self,
