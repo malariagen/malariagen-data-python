@@ -6,7 +6,13 @@ import pandas as pd
 import xarray as xr
 
 from . import base_params, cnv_params
-from ..util import pandas_apply
+from ..util import (
+    pandas_apply,
+    Region,
+    parse_multi_region,
+    region_str,
+    simple_xarray_concat,
+)
 from .cnv_data import AnophelesCnvData
 from .snp_frq import (
     _prep_samples_for_cohort_grouping,
@@ -14,12 +20,6 @@ from .snp_frq import (
     _add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
-from .util import (
-    Region,
-    parse_multi_region,
-    region_str,
-    simple_xarray_concat,
-)
 
 
 class AnophelesCnvFrequencyAnalysis(

@@ -20,6 +20,8 @@ from malariagen_data.anoph.snp_frq import (
     AnophelesSnpFrequencyAnalysis,
 )
 
+from .anoph.cnv_frq import AnophelesCnvFrequencyAnalysis
+
 from .anoph import (
     aim_params,
     base_params,
@@ -90,6 +92,7 @@ class AnophelesDataResource(
     AnophelesH12Analysis,
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
+    AnophelesCnvFrequencyAnalysis,
     AnophelesSnpFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
