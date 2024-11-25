@@ -9,6 +9,7 @@ from ..util import dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import pca_params
+from numpydoc_decorator import doc  # type: ignore
 
 
 class PlinkConverter(
@@ -23,6 +24,26 @@ class PlinkConverter(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+    @doc(
+        summary="""
+            Write Anopheles biallelic SNP data to the Plink binary file format.
+        """,
+        extended_summary="""
+            This function writes biallelic SNPs to the Plink binary file format. It enables
+            subsetting to specific regions (`region`), selecting specific sample sets, or lists of
+            samples, randomly downsampling sites, and specifying filters based on missing data and
+            minimum minor allele count (see the docs for `biallelic_snp_calls` for more information).
+            The `overwrite` parameter, set to true, will enable overwrite of data with the same
+            hash values (e.g. with a different randomly selected number of sites).
+        """,
+        returns=("Binary Plink output files: .bed, .bim, .fam"),
+        notes="""
+            This computation may take some time to run, depending on your computing
+            environment. Unless the `overwrite` parameter is set to `True`, results will be loaded
+            from a previous computation, if performed, and if the `results_cache` parameter was
+            set when instantiating the API client.
+        """,
+    )
     def _create_plink_outfile(
         self,
         *,

@@ -105,7 +105,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     api.biallelic_snps_to_plink(**plink_params)
 
     # Test to see if bed, bim, fam output files exist.
-    file_path = f"{tmp_path}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['thin_offset']}.{plink_params['max_missing_an']}"
+    file_path = f"{tmp_path}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['max_missing_an']}.{plink_params['thin_offset']}"
 
     assert os.path.exists(f"{file_path}.bed")
     assert os.path.exists(f"{file_path}.bim")
