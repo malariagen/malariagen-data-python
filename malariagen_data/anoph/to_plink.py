@@ -56,23 +56,26 @@ class PlinkConverter(
     ):
         return f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
-    def _biallelic_snps_to_plink(
+    def biallelic_snps_to_plink(
         self,
-        *,
         output_dir,
-        region,
-        n_snps,
-        thin_offset,
-        overwrite,
-        sample_sets,
-        sample_query,
-        sample_indices,
-        site_mask,
-        min_minor_ac,
-        max_missing_an,
-        random_seed,
-        inline_array,
-        chunks,
+        region: base_params.regions,
+        n_snps: base_params.n_snps,
+        thin_offset: base_params.thin_offset = 0,
+        overwrite: bool = False,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_indices: Optional[base_params.sample_indices] = None,
+        site_mask: Optional[base_params.site_mask] = None,
+        min_minor_ac: Optional[
+            base_params.min_minor_ac
+        ] = pca_params.min_minor_ac_default,
+        max_missing_an: Optional[
+            base_params.max_missing_an
+        ] = pca_params.max_missing_an_default,
+        random_seed: base_params.random_seed = 42,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+        chunks: base_params.chunks = base_params.native_chunks,
     ):
         # Define output file
         plink_file_path = self._create_plink_outfile(
@@ -142,44 +145,3 @@ class PlinkConverter(
         )
 
         return plink_file_path
-
-    def biallelic_snps_to_plink(
-        self,
-        output_dir,
-        region: base_params.regions,
-        n_snps: base_params.n_snps,
-        thin_offset: base_params.thin_offset = 0,
-        overwrite: bool = False,
-        sample_sets: Optional[base_params.sample_sets] = None,
-        sample_query: Optional[base_params.sample_query] = None,
-        sample_indices: Optional[base_params.sample_indices] = None,
-        site_mask: Optional[base_params.site_mask] = None,
-        min_minor_ac: Optional[
-            base_params.min_minor_ac
-        ] = pca_params.min_minor_ac_default,
-        max_missing_an: Optional[
-            base_params.max_missing_an
-        ] = pca_params.max_missing_an_default,
-        random_seed: base_params.random_seed = 42,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-        chunks: base_params.chunks = base_params.native_chunks,
-    ):
-        params = dict(
-            output_dir=output_dir,
-            region=region,
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-            overwrite=overwrite,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_indices=sample_indices,
-            site_mask=site_mask,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-            random_seed=random_seed,
-        )
-
-        filepath = self._biallelic_snps_to_plink(
-            inline_array=inline_array, chunks=chunks, **params
-        )
-        return filepath
