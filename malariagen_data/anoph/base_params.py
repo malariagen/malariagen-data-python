@@ -308,18 +308,3 @@ snp_query: TypeAlias = Annotated[
     to select SNPs to be included
     """,
 ]
-
-overwrite: TypeAlias = Annotated[
-    bool,
-    """
-    A boolean indicating whether a previously written file with the same name ought
-    to be overwritten. Default is False.
-    """,
-]
-
-output_dir: TypeAlias = Annotated[
-    str,
-    """
-    A string indicating the desired output file location
-    """,
-]

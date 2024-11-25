@@ -8,6 +8,7 @@ import bed_reader
 from ..util import dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
+from . import plink_params
 from . import pca_params
 from numpydoc_decorator import doc  # type: ignore
 
@@ -44,25 +45,13 @@ class PlinkConverter(
             set when instantiating the API client.
         """,
     )
-    def _create_plink_outfile(
-        self,
-        *,
-        output_dir,
-        region,
-        n_snps,
-        min_minor_ac,
-        thin_offset,
-        max_missing_an,
-    ):
-        return f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
-
     def biallelic_snps_to_plink(
         self,
-        output_dir: base_params.output_dir,
+        output_dir: plink_params.output_dir,
         region: base_params.regions,
         n_snps: base_params.n_snps,
+        overwrite: plink_params.overwrite = False,
         thin_offset: base_params.thin_offset = 0,
-        overwrite: base_params.overwrite = False,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
@@ -77,15 +66,8 @@ class PlinkConverter(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ):
-        # Define output file
-        plink_file_path = self._create_plink_outfile(
-            output_dir=output_dir,
-            region=region,
-            n_snps=n_snps,
-            thin_offset=thin_offset,
-            min_minor_ac=min_minor_ac,
-            max_missing_an=max_missing_an,
-        )
+        # Define output files
+        plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
         bed_file_path = f"{plink_file_path}.bed"
 
