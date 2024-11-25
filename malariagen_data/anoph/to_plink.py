@@ -62,7 +62,7 @@ class PlinkConverter(
         region: base_params.regions,
         n_snps: base_params.n_snps,
         thin_offset: base_params.thin_offset = 0,
-        overwrite: bool = False,
+        overwrite: base_params.overwrite = False,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
