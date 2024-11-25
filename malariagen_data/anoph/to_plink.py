@@ -58,7 +58,7 @@ class PlinkConverter(
 
     def biallelic_snps_to_plink(
         self,
-        output_dir,
+        output_dir: base_params.output_dir,
         region: base_params.regions,
         n_snps: base_params.n_snps,
         thin_offset: base_params.thin_offset = 0,

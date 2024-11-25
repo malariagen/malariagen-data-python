@@ -316,3 +316,10 @@ overwrite: TypeAlias = Annotated[
     to be overwritten. Default is False.
     """,
 ]
+
+output_dir: TypeAlias = Annotated[
+    str,
+    """
+    A string indicating the desired output file location
+    """,
+]
