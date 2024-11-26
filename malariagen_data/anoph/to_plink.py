@@ -35,7 +35,7 @@ class PlinkConverter(
             samples, randomly downsampling sites, and specifying filters based on missing data and
             minimum minor allele count (see the docs for `biallelic_snp_calls` for more information).
             The `overwrite` parameter, set to true, will enable overwrite of data with the same
-            hash values (e.g. with a different randomly selected number of sites).
+            SNP selection parameter values.
         """,
         returns=("Binary Plink output files: .bed, .bim, .fam"),
         notes="""
