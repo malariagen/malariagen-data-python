@@ -152,7 +152,7 @@ def test_variant_calls(extended):
             "variant_RegionType",
             "variant_SOR",
             "variant_VQSLOD",
-            "variant_altlen",
+            #    "variant_altlen", # altlen is incomplete in Pf8 zarr.
             "variant_culprit",
             "variant_set",
         }
