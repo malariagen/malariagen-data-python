@@ -196,7 +196,7 @@ def test_variant_calls(extended):
             "variant_AS_SOR",
             "variant_MLEAC",
             "variant_MLEAF",
-            "variant_altlen",
+            #   "variant_altlen", # altlen is incomplete in Pf8 zarr.
         ]
     else:
         expected_data_vars = {
