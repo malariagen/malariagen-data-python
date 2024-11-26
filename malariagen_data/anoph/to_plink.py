@@ -37,7 +37,11 @@ class PlinkConverter(
             The `overwrite` parameter, set to true, will enable overwrite of data with the same
             SNP selection parameter values.
         """,
-        returns=("Binary Plink output files: .bed, .bim, .fam"),
+        returns="""
+        Base path to files containing binary Plink output files. Append .bed, 
+        .bim or .fam to obtain paths for the binary genotype table file, variant
+        information file and sample information file respectively.
+        """,
         notes="""
             This computation may take some time to run, depending on your computing
             environment. Unless the `overwrite` parameter is set to `True`, results will be returned
