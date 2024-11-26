@@ -13,6 +13,6 @@ overwrite: TypeAlias = Annotated[
 output_dir: TypeAlias = Annotated[
     str,
     """
-    A string indicating the desired output file location
+    A string indicating the desired output file location.
     """,
 ]
