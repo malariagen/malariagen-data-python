@@ -40,9 +40,8 @@ class PlinkConverter(
         returns=("Binary Plink output files: .bed, .bim, .fam"),
         notes="""
             This computation may take some time to run, depending on your computing
-            environment. Unless the `overwrite` parameter is set to `True`, results will be loaded
-            from a previous computation, if performed, and if the `results_cache` parameter was
-            set when instantiating the API client.
+            environment. Unless the `overwrite` parameter is set to `True`, results will be returned
+            from a previous computation, if available.
         """,
     )
     def biallelic_snps_to_plink(
