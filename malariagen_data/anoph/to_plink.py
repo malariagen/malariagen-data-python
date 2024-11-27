@@ -38,7 +38,7 @@ class PlinkConverter(
             SNP selection parameter values.
         """,
         returns="""
-        Base path to files containing binary Plink output files. Append .bed, 
+        Base path to files containing binary Plink output files. Append .bed,
         .bim or .fam to obtain paths for the binary genotype table file, variant
         information file and sample information file respectively.
         """,
