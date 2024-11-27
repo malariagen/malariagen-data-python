@@ -381,6 +381,11 @@ class AnophelesCnvFrequencyAnalysis(
         debug("set up cohort dict")
         coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
 
+        if len(coh_dict) == 0:
+            raise ValueError(
+                "No cohorts available for the given sample selection parameters and minimum cohort size."
+            )
+
         debug("compute cohort frequencies")
         freq_cols = dict()
         for coh, loc_coh in coh_dict.items():
