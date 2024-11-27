@@ -93,7 +93,7 @@ def test_variant_calls(extended):
             "variant_CDS",
             "variant_QUAL",
             "variant_DP",
-            #   "variant_altlen",  # altlen is incomplete in Pf8 zarr.
+            "variant_altlen",
             "variant_AC",
             "call_PL",
             "variant_SNPEFF_GENE_NAME",

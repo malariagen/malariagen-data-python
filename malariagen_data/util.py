@@ -460,15 +460,16 @@ def init_filesystem(url, **kwargs):
             # Chained URL.
             kwargs["gcs"] = dict(token=credentials)
     elif "s3://" in url:
+        # N.B., we currently assume any S3 URLs refer to buckets hosted at Sanger.
         config = {
             "signature_version": "s3",
             "s3": {"addressing_style": "virtual"},
         }
 
         # Create an S3FileSystem with custom endpoint if specified.
-        kwargs["anon"] = kwargs.get("anon", True)  # Default to anonymous access.
-        kwargs["endpoint_url"] = "https://cog.sanger.ac.uk"
-        kwargs["config_kwargs"] = kwargs.get("config_kwargs", config)
+        kwargs.setdefault("anon", True)  # Default to anonymous access.
+        kwargs.setdwfault("endpoint_url", "https://cog.sanger.ac.uk")
+        kwargs.setdefault("config_kwargs", config)
 
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **kwargs)

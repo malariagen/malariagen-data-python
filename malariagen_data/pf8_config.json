@@ -112,7 +112,6 @@
       "RegionType": ["variants"],
       "SOR": ["variants"],
       "VQSLOD": ["variants"],
-      "altlen": ["variants", "alt_alleles"],
       "culprit": ["variants"],
       "set": ["variants"]
     }
