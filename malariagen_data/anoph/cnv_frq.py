@@ -10,6 +10,7 @@ import warnings
 
 from . import base_params, cnv_params
 from ..util import (
+    check_types,
     pandas_apply,
     Region,
     parse_multi_region,
@@ -206,6 +207,7 @@ class AnophelesCnvFrequencyAnalysis(
 
         return ds_out
 
+    @check_types
     def gene_cnv_frequencies(
         self,
         region: base_params.regions,
@@ -447,6 +449,7 @@ class AnophelesCnvFrequencyAnalysis(
 
         return df
 
+    @check_types
     def gene_cnv_frequencies_advanced(
         self,
         region: base_params.regions,
