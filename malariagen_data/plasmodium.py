@@ -189,9 +189,6 @@ class PlasmodiumDataResource:
         # Add extended data
         if extended:
             data_vars = self._add_extended_data(root, inline_array, chunks, data_vars)
-            data_vars.pop(
-                "variant_altlen", None
-            )  # variant_altlen is under investigation in Pf8.zarr
 
         # create a dataset
         ds = xarray.Dataset(data_vars=data_vars, coords=coords)
