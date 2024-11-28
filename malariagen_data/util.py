@@ -1587,7 +1587,7 @@ def _karyotype_tags_n_alt(gt, alts, inversion_alts):
     return inv_n_alt
 
 
-def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
+def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
@@ -1622,7 +1622,7 @@ def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
     return df_samples
 
 
-def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_size):
+def build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_size):
     # Build cohorts dataframe.
     df_cohorts = group_samples_by_cohort.agg(
         size=("sample_id", len),
@@ -1659,7 +1659,7 @@ def _build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_s
     return df_cohorts
 
 
-def _add_frequency_ci(*, ds, ci_method):
+def add_frequency_ci(*, ds, ci_method):
     from statsmodels.stats.proportion import proportion_confint  # type: ignore
 
     if ci_method is not None:

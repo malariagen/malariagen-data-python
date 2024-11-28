@@ -9,9 +9,9 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import (
     check_types,
     haplotype_frequencies,
-    _prep_samples_for_cohort_grouping,
-    _build_cohorts_from_sample_grouping,
-    _add_frequency_ci,
+    prep_samples_for_cohort_grouping,
+    build_cohorts_from_sample_grouping,
+    add_frequency_ci,
 )
 from .hap_data import AnophelesHapData
 from .sample_metadata import locate_cohorts
@@ -161,7 +161,7 @@ class AnophelesHapFrequencyAnalysis(
         )
 
         # Prepare sample metadata for cohort grouping.
-        df_samples = _prep_samples_for_cohort_grouping(
+        df_samples = prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
@@ -171,7 +171,7 @@ class AnophelesHapFrequencyAnalysis(
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         # Build cohorts dataframe.
-        df_cohorts = _build_cohorts_from_sample_grouping(
+        df_cohorts = build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
         )
@@ -272,6 +272,6 @@ class AnophelesHapFrequencyAnalysis(
         )
 
         # Add confidence intervals.
-        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         return ds_out

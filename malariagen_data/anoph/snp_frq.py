@@ -14,9 +14,9 @@ from .. import veff
 from ..util import (
     check_types,
     pandas_apply,
-    _prep_samples_for_cohort_grouping,
-    _build_cohorts_from_sample_grouping,
-    _add_frequency_ci,
+    prep_samples_for_cohort_grouping,
+    build_cohorts_from_sample_grouping,
+    add_frequency_ci,
 )
 from .snp_data import AnophelesSnpData
 from .sample_metadata import locate_cohorts
@@ -439,7 +439,7 @@ class AnophelesSnpFrequencyAnalysis(
         )
 
         # Prepare sample metadata for cohort grouping.
-        df_samples = _prep_samples_for_cohort_grouping(
+        df_samples = prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
@@ -449,7 +449,7 @@ class AnophelesSnpFrequencyAnalysis(
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         # Build cohorts dataframe.
-        df_cohorts = _build_cohorts_from_sample_grouping(
+        df_cohorts = build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
         )
@@ -603,7 +603,7 @@ class AnophelesSnpFrequencyAnalysis(
             ds_out = ds_out.isel(variants=loc_variants)
 
         # Add confidence intervals.
-        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         # Tidy up display by sorting variables.
         sorted_vars: List[str] = sorted([str(k) for k in ds_out.keys()])
@@ -739,7 +739,7 @@ class AnophelesSnpFrequencyAnalysis(
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
 
         # Compute new confidence intervals.
-        _add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
+        add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
 
         # Tidy up display by sorting variables.
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
