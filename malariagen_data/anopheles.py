@@ -1191,6 +1191,11 @@ class AnophelesDataResource(
 
                 freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
 
+        if len(coh_dict) == 0:
+            raise ValueError(
+                "No cohorts available for the given sample selection parameters and minimum cohort size."
+            )
+
         debug("build a dataframe with the frequency columns")
         df_freqs = pd.DataFrame(freq_cols)
 
