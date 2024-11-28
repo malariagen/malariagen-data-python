@@ -1306,7 +1306,7 @@ class AnophelesSnpData(
         max_snps: int = 200_000,
         show: gplt_params.show = True,
         gene_labels: Optional[gplt_params.gene_labels] = None,
-        labels: Optional[gplt_params.labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         # Plot SNPs track.
         fig1 = self.plot_snps_track(
@@ -1333,7 +1333,7 @@ class AnophelesSnpData(
             x_range=fig1.x_range,
             show=False,
             gene_labels=gene_labels,
-            labels=labels,
+            gene_labelset=gene_labelset,
         )
 
         # Layout tracks in a grid.

@@ -439,7 +439,7 @@ class AnophelesG123Analysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         gene_labels: Optional[gplt_params.gene_labels] = None,
-        labels: Optional[gplt_params.labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_g123_gwss_track(
@@ -475,7 +475,7 @@ class AnophelesG123Analysis(
             show=False,
             output_backend=output_backend,
             gene_labels=gene_labels,
-            labels=labels,
+            gene_labelset=gene_labelset,
         )
 
         # combine plots into a single figure

@@ -334,7 +334,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         title: Optional[gplt_params.title] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
-        labels: Optional[gplt_params.labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -502,8 +502,8 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             fig.add_layout(gene_pointers_ls)
             fig.add_layout(gene_labels_ls)
 
-        if labels:
-            fig.add_layout(labels)
+        if gene_labelset:
+            fig.add_layout(gene_labelset)
 
         debug("tidy up the plot")
         fig.ygrid.visible = False

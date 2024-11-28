@@ -752,7 +752,7 @@ class AnophelesCnvData(
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
-        labels: Optional[gplt_params.labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -785,7 +785,7 @@ class AnophelesCnvData(
             show=False,
             output_backend=output_backend,
             gene_labels=gene_labels,
-            labels=labels,
+            gene_labelset=gene_labelset,
         )
 
         debug("combine plots into a single figure")
@@ -965,7 +965,7 @@ class AnophelesCnvData(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         gene_labels: Optional[gplt_params.gene_labels] = None,
-        labels: Optional[gplt_params.labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -996,7 +996,7 @@ class AnophelesCnvData(
             x_range=fig1.x_range,
             show=False,
             gene_labels=gene_labels,
-            labels=labels,
+            gene_labelset=gene_labelset,
         )
 
         debug("combine plots into a single figure")
