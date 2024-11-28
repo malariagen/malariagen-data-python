@@ -468,7 +468,7 @@ def init_filesystem(url, **kwargs):
 
         # Create an S3FileSystem with custom endpoint if specified.
         kwargs.setdefault("anon", True)  # Default to anonymous access.
-        kwargs.setdwfault("endpoint_url", "https://cog.sanger.ac.uk")
+        kwargs.setdefault("endpoint_url", "https://cog.sanger.ac.uk")
         kwargs.setdefault("config_kwargs", config)
 
     # Process the URL using fsspec.
