@@ -1529,6 +1529,102 @@ def test_plot_frequencies_time_series(
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_plot_frequencies_time_series_with_taxa(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 2)
+    transcript = random_transcript(api=api).name
+    area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+    period_by = random.choice(["year", "quarter", "month"])
+
+    # Pick a random taxon and taxa from valid taxa.
+    sample_sets_taxa = (
+        api.sample_metadata(sample_sets=sample_sets)["taxon"].dropna().unique().tolist()
+    )
+    taxon = random.choice(sample_sets_taxa)
+    taxa = random.sample(sample_sets_taxa, random.randint(1, len(sample_sets_taxa)))
+
+    # Compute SNP frequencies.
+    ds = api.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+    )
+
+    # Trim things down a bit for speed.
+    ds = ds.isel(variants=slice(0, 100))
+
+    # Plot with taxon.
+    fig = api.plot_frequencies_time_series(ds, show=False, taxa=taxon)
+
+    # Test taxon plot.
+    assert isinstance(fig, go.Figure)
+
+    # Plot with taxa.
+    fig = api.plot_frequencies_time_series(ds, show=False, taxa=taxa)
+
+    # Test taxa plot.
+    assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_plot_frequencies_time_series_with_areas(
+    fixture,
+    api: AnophelesSnpFrequencyAnalysis,
+):
+    # Pick test parameters at random.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    site_mask = random.choice(api.site_mask_ids + (None,))
+    min_cohort_size = random.randint(0, 2)
+    transcript = random_transcript(api=api).name
+    area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+    period_by = random.choice(["year", "quarter", "month"])
+
+    # Compute SNP frequencies.
+    ds = api.snp_allele_frequencies_advanced(
+        transcript=transcript,
+        area_by=area_by,
+        period_by=period_by,
+        sample_sets=sample_sets,
+        min_cohort_size=min_cohort_size,
+        site_mask=site_mask,
+    )
+
+    # Trim things down a bit for speed.
+    ds = ds.isel(variants=slice(0, 100))
+
+    # Extract cohorts into a DataFrame.
+    cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
+    df_cohorts = ds[cohort_vars].to_dataframe()
+
+    # Pick a random area and areas from valid areas.
+    cohorts_areas = df_cohorts["cohort_area"].dropna().unique().tolist()
+    area = random.choice(cohorts_areas)
+    areas = random.sample(cohorts_areas, random.randint(1, len(cohorts_areas)))
+
+    # Plot with area.
+    fig = api.plot_frequencies_time_series(ds, show=False, areas=area)
+
+    # Test areas plot.
+    assert isinstance(fig, go.Figure)
+
+    # Plot with areas.
+    fig = api.plot_frequencies_time_series(ds, show=False, areas=areas)
+
+    # Test area plot.
+    assert isinstance(fig, go.Figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_frequencies_interactive_map(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,

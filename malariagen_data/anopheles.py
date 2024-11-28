@@ -888,14 +888,24 @@ class AnophelesDataResource(
         chunks,
         inline_array,
     ):
-        debug = self._log.debug
-
-        debug("sanity check")
+        # Sanity check.
         assert isinstance(region, Region)
 
-        debug("access HMM data")
+        # Access genes within the region of interest.
+        df_genome_features = self.genome_features(region=region)
+        sample_query_options = sample_query_options or {}
+        df_genes = df_genome_features.query(
+            f"type == '{self._gff_gene_type}'", **sample_query_options
+        )
+
+        # Refine the region for CNV data to ensure coverage of all requested genes.
+        cnv_region = Region(
+            region.contig, df_genes["start"].min(), df_genes["end"].max()
+        )
+
+        # Access HMM data.
         ds_hmm = self.cnv_hmm(
-            region=region.contig,
+            region=cnv_region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
@@ -909,45 +919,38 @@ class AnophelesDataResource(
         with self._dask_progress(desc="Load CNV HMM data"):
             pos, end, cn = dask.compute(pos, end, cn)
 
-        debug("access genes")
-        df_genome_features = self.genome_features(region=region)
-        sample_query_options = sample_query_options or {}
-        df_genes = df_genome_features.query(
-            f"type == '{self._gff_gene_type}'", **sample_query_options
-        )
-
-        debug("setup intermediates")
+        # Set up intermediates.
         windows = []
         modes = []
         counts = []
 
-        debug("iterate over genes")
+        # Iterate over genes.
         genes_iterator = self._progress(
             df_genes.itertuples(),
             desc="Compute modal gene copy number",
             total=len(df_genes),
         )
         for gene in genes_iterator:
-            # locate windows overlapping the gene
+            # Locate windows overlapping the gene.
             loc_gene_start = bisect_left(end, gene.start)
             loc_gene_stop = bisect_right(pos, gene.end)
             w = loc_gene_stop - loc_gene_start
             windows.append(w)
 
-            # slice out copy number data for the given gene
+            # Slice out copy number data for the given gene.
             cn_gene = cn[loc_gene_start:loc_gene_stop]
 
-            # compute the modes
+            # Compute the modes.
             m, c = _cn_mode(cn_gene, vmax=12)
             modes.append(m)
             counts.append(c)
 
-        debug("combine results")
+        # Combine results.
         windows = np.array(windows)
         modes = np.vstack(modes)
         counts = np.vstack(counts)
 
-        debug("build dataset")
+        # Build dataset.
         ds_out = xr.Dataset(
             coords={
                 "gene_id": (["genes"], df_genes["ID"].values),
@@ -1181,6 +1184,11 @@ class AnophelesDataResource(
                     )
 
                 freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
+
+        if len(coh_dict) == 0:
+            raise ValueError(
+                "No cohorts available for the given sample selection parameters and minimum cohort size."
+            )
 
         debug("build a dataframe with the frequency columns")
         df_freqs = pd.DataFrame(freq_cols)
