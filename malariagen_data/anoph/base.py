@@ -327,6 +327,9 @@ class AnophelesBase:
         )
         # Note: this matches v3, v3. and v3.1, but not v3001.1
         version_pattern = re.compile(f"^v{self._major_version_number}(\\..*)?$")
+        # To sort the versions numerically, we use a lambda function for the "key" parameter of sorted().
+        # The lambda function splits each version string into a list of its integer parts, using split('.') and int(), e.g. [3, 1],
+        # which sorted() then uses to determine the order, as opposed to the default lexicographic order.
         discovered_releases = tuple(
             sorted(
                 [
@@ -334,7 +337,8 @@ class AnophelesBase:
                     for d in sub_dirs
                     if version_pattern.match(d)
                     and self._fs.exists(f"{self._base_path}/{d}/manifest.tsv")
-                ]
+                ],
+                key=lambda v: [int(part) for part in v.split(".")],
             )
         )
         return discovered_releases

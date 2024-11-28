@@ -931,6 +931,8 @@ class AnophelesSnpFrequencyAnalysis(
         legend_sizing: plotly_params.legend_sizing = "constant",
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
+        taxa: frq_params.taxa = None,
+        areas: frq_params.areas = None,
         **kwargs,
     ) -> plotly_params.figure:
         # Handle title.
@@ -941,6 +943,18 @@ class AnophelesSnpFrequencyAnalysis(
         cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
         df_cohorts = ds[cohort_vars].to_dataframe()
         df_cohorts.columns = [c.split("cohort_")[1] for c in df_cohorts.columns]  # type: ignore
+
+        # If specified, restrict the dataframe by taxa.
+        if isinstance(taxa, str):
+            df_cohorts = df_cohorts[df_cohorts["taxon"] == taxa]
+        elif isinstance(taxa, (list, tuple)):
+            df_cohorts = df_cohorts[df_cohorts["taxon"].isin(taxa)]
+
+        # If specified, restrict the dataframe by areas.
+        if isinstance(areas, str):
+            df_cohorts = df_cohorts[df_cohorts["area"] == areas]
+        elif isinstance(areas, (list, tuple)):
+            df_cohorts = df_cohorts[df_cohorts["area"].isin(areas)]
 
         # Extract variant labels.
         variant_labels = ds["variant_label"].values
