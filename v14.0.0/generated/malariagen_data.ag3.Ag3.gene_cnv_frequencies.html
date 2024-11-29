@@ -1,0 +1,517 @@
+
+<!DOCTYPE html>
+
+
+<html lang="en" data-content_root="../" >
+
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <title>malariagen_data.ag3.Ag3.gene_cnv_frequencies &#8212; malariagen_data API  documentation</title>
+  
+  
+  
+  <script data-cfasync="false">
+    document.documentElement.dataset.mode = localStorage.getItem("mode") || "";
+    document.documentElement.dataset.theme = localStorage.getItem("theme") || "";
+  </script>
+  <!-- 
+    this give us a css class that will be invisible only if js is disabled 
+  -->
+  <noscript>
+    <style>
+      .pst-js-only { display: none !important; }
+
+    </style>
+  </noscript>
+  
+  <!-- Loaded before other Sphinx assets -->
+  <link href="../_static/styles/theme.css?digest=26a4bc78f4c0ddb94549" rel="stylesheet" />
+<link href="../_static/styles/pydata-sphinx-theme.css?digest=26a4bc78f4c0ddb94549" rel="stylesheet" />
+
+    <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/sphinx-design.min.css?v=95c83b7e" />
+  
+  <!-- So that users can add custom icons -->
+  <script src="../_static/scripts/fontawesome.js?digest=26a4bc78f4c0ddb94549"></script>
+  <!-- Pre-loaded scripts that we'll load fully later -->
+  <link rel="preload" as="script" href="../_static/scripts/bootstrap.js?digest=26a4bc78f4c0ddb94549" />
+<link rel="preload" as="script" href="../_static/scripts/pydata-sphinx-theme.js?digest=26a4bc78f4c0ddb94549" />
+
+    <script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9bcbadda"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/design-tabs.js?v=f930bc37"></script>
+    <script>DOCUMENTATION_OPTIONS.pagename = 'generated/malariagen_data.ag3.Ag3.gene_cnv_frequencies';</script>
+    <script>
+        DOCUMENTATION_OPTIONS.theme_version = '0.16.0';
+        DOCUMENTATION_OPTIONS.theme_switcher_json_url = 'https://malariagen.github.io/malariagen-data-python/latest/_static/switcher.json';
+        DOCUMENTATION_OPTIONS.theme_switcher_version_match = 'v14.0.0';
+        DOCUMENTATION_OPTIONS.show_version_warning_banner = false;
+        </script>
+    <link rel="icon" href="../_static/favicon.ico"/>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" />
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <meta name="docsearch:language" content="en"/>
+  <meta name="docsearch:version" content="v14.0.0" />
+  </head>
+  
+  
+  <body data-bs-spy="scroll" data-bs-target=".bd-toc-nav" data-offset="180" data-bs-root-margin="0px 0px -60%" data-default-mode="">
+
+  
+  
+  <div id="pst-skip-link" class="skip-link d-print-none"><a href="#main-content">Skip to main content</a></div>
+  
+  <div id="pst-scroll-pixel-helper"></div>
+  
+  <button type="button" class="btn rounded-pill" id="pst-back-to-top">
+    <i class="fa-solid fa-arrow-up"></i>Back to top</button>
+
+  
+  <dialog id="pst-search-dialog">
+    
+<form class="bd-search d-flex align-items-center"
+      action="../search.html"
+      method="get">
+  <i class="fa-solid fa-magnifying-glass"></i>
+  <input type="search"
+         class="form-control"
+         name="q"
+         placeholder="Search the docs ..."
+         aria-label="Search the docs ..."
+         autocomplete="off"
+         autocorrect="off"
+         autocapitalize="off"
+         spellcheck="false"/>
+  <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd>K</kbd></span>
+</form>
+  </dialog>
+
+  <div class="pst-async-banner-revealer d-none">
+  <aside id="bd-header-version-warning" class="d-none d-print-none" aria-label="Version warning"></aside>
+</div>
+
+  
+    <header class="bd-header navbar navbar-expand-lg bd-navbar d-print-none">
+<div class="bd-header__inner bd-page-width">
+  <button class="pst-navbar-icon sidebar-toggle primary-toggle" aria-label="Site navigation">
+    <span class="fa-solid fa-bars"></span>
+  </button>
+  
+  
+  <div class="col-lg-3 navbar-header-items__start">
+    
+      <div class="navbar-item">
+
+  
+    
+  
+
+<a class="navbar-brand logo" href="../index.html">
+  
+  
+  
+  
+  
+    
+    
+      
+    
+    
+    <img src="../_static/logo.svg" class="logo__image only-light" alt="malariagen_data API  documentation - Home"/>
+    <img src="../_static/logo.svg" class="logo__image only-dark pst-js-only" alt="malariagen_data API  documentation - Home"/>
+  
+  
+</a></div>
+    
+  </div>
+  
+  <div class="col-lg-9 navbar-header-items">
+    
+    <div class="me-auto navbar-header-items__center">
+      
+        <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-2"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-2"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-2"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-2">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+      
+        <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+  </ul>
+</nav></div>
+      
+    </div>
+    
+    
+    <div class="navbar-header-items__end">
+      
+        <div class="navbar-item navbar-persistent--container">
+          
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+        </div>
+      
+      
+        <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+      
+        <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+      
+    </div>
+    
+  </div>
+  
+  
+    <div class="navbar-persistent--mobile">
+
+<button class="btn search-button-field search-button__button pst-js-only" title="Search" aria-label="Search" data-bs-placement="bottom" data-bs-toggle="tooltip">
+ <i class="fa-solid fa-magnifying-glass"></i>
+ <span class="search-button__default-text">Search</span>
+ <span class="search-button__kbd-shortcut"><kbd class="kbd-shortcut__modifier">Ctrl</kbd>+<kbd class="kbd-shortcut__modifier">K</kbd></span>
+</button>
+    </div>
+  
+
+  
+    <button class="pst-navbar-icon sidebar-toggle secondary-toggle" aria-label="On this page">
+      <span class="fa-solid fa-outdent"></span>
+    </button>
+  
+</div>
+
+    </header>
+  
+
+  <div class="bd-container">
+    <div class="bd-container__inner bd-page-width">
+      
+      
+      
+      <dialog id="pst-primary-sidebar-modal"></dialog>
+      <div id="pst-primary-sidebar" class="bd-sidebar-primary bd-sidebar">
+        
+
+  
+  <div class="sidebar-header-items sidebar-primary__section">
+    
+    
+      <div class="sidebar-header-items__center">
+        
+          
+          
+            <div class="navbar-item">
+<div class="version-switcher__container dropdown pst-js-only">
+  <button id="pst-version-switcher-button-3"
+    type="button"
+    class="version-switcher__button btn btn-sm dropdown-toggle"
+    data-bs-toggle="dropdown"
+    aria-haspopup="listbox"
+    aria-controls="pst-version-switcher-list-3"
+    aria-label="Version switcher list"
+  >
+    Choose version  <!-- this text may get changed later by javascript -->
+    <span class="caret"></span>
+  </button>
+  <div id="pst-version-switcher-list-3"
+    class="version-switcher__menu dropdown-menu list-group-flush py-0"
+    role="listbox" aria-labelledby="pst-version-switcher-button-3">
+    <!-- dropdown will be populated by javascript on page load -->
+  </div>
+</div></div>
+          
+        
+          
+          
+            <div class="navbar-item">
+<nav>
+  <ul class="bd-navbar-elements navbar-nav">
+    
+  </ul>
+</nav></div>
+          
+        
+      </div>
+    
+    
+    
+      <div class="sidebar-header-items__end">
+        
+          <div class="navbar-item">
+
+<button class="btn btn-sm nav-link pst-navbar-icon theme-switch-button pst-js-only" aria-label="Color mode" data-bs-title="Color mode"  data-bs-placement="bottom" data-bs-toggle="tooltip">
+  <i class="theme-switch fa-solid fa-sun                fa-lg" data-mode="light" title="Light"></i>
+  <i class="theme-switch fa-solid fa-moon               fa-lg" data-mode="dark"  title="Dark"></i>
+  <i class="theme-switch fa-solid fa-circle-half-stroke fa-lg" data-mode="auto"  title="System Settings"></i>
+</button></div>
+        
+          <div class="navbar-item"><ul class="navbar-icon-links"
+    aria-label="Icon Links">
+        <li class="nav-item">
+          
+          
+          
+          
+          
+          
+          
+          
+          <a href="https://github.com/malariagen/malariagen-data-python" title="GitHub" class="nav-link pst-navbar-icon" rel="noopener" target="_blank" data-bs-toggle="tooltip" data-bs-placement="bottom"><i class="fa-brands fa-github fa-lg" aria-hidden="true"></i>
+            <span class="sr-only">GitHub</span></a>
+        </li>
+</ul></div>
+        
+      </div>
+    
+  </div>
+  
+    <div class="sidebar-primary-items__start sidebar-primary__section">
+        <div class="sidebar-primary-item">
+<nav class="bd-docs-nav bd-links"
+     aria-label="Section Navigation">
+  <p class="bd-links__title" role="heading" aria-level="1">Section Navigation</p>
+  <div class="bd-toc-item navbar-nav"></div>
+</nav></div>
+    </div>
+  
+  
+  <div class="sidebar-primary-items__end sidebar-primary__section">
+  </div>
+  
+  <div id="rtd-footer-container"></div>
+
+
+      </div>
+      
+      <main id="main-content" class="bd-main" role="main">
+        
+        
+          <div class="bd-content">
+            <div class="bd-article-container">
+              
+              <div class="bd-header-article d-print-none">
+<div class="header-article-items header-article__inner">
+  
+    <div class="header-article-items__start">
+      
+        <div class="header-article-item">
+
+<nav aria-label="Breadcrumb" class="d-print-none">
+  <ul class="bd-breadcrumbs">
+    
+    <li class="breadcrumb-item breadcrumb-home">
+      <a href="../index.html" class="nav-link" aria-label="Home">
+        <i class="fa-solid fa-home"></i>
+      </a>
+    </li>
+    <li class="breadcrumb-item active" aria-current="page"><span class="ellipsis">malariagen_data.ag3.Ag3.gene_cnv_frequencies</span></li>
+  </ul>
+</nav>
+</div>
+      
+    </div>
+  
+  
+</div>
+</div>
+              
+              
+              
+                
+<div id="searchbox"></div>
+                <article class="bd-article">
+                  
+  <section id="malariagen-data-ag3-ag3-gene-cnv-frequencies">
+<h1>malariagen_data.ag3.Ag3.gene_cnv_frequencies<a class="headerlink" href="#malariagen-data-ag3-ag3-gene-cnv-frequencies" title="Link to this heading">#</a></h1>
+<dl class="py method">
+<dt class="sig sig-object py" id="malariagen_data.ag3.Ag3.gene_cnv_frequencies">
+<span class="sig-prename descclassname"><span class="pre">Ag3.</span></span><span class="sig-name descname"><span class="pre">gene_cnv_frequencies</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'\n</span>&#160;&#160;&#160; <span class="pre">Region</span> <span class="pre">of</span> <span class="pre">the</span> <span class="pre">reference</span> <span class="pre">genome.</span> <span class="pre">Can</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">contig</span> <span class="pre">name,</span> <span class="pre">region</span> <span class="pre">string\n</span>&#160;&#160;&#160; <span class="pre">(formatted</span> <span class="pre">like</span> <span class="pre">&quot;{contig}:{start}-{end}&quot;),</span> <span class="pre">or</span> <span class="pre">identifier</span> <span class="pre">of</span> <span class="pre">a</span> <span class="pre">genome\n</span>&#160;&#160;&#160; <span class="pre">feature</span> <span class="pre">such</span> <span class="pre">as</span> <span class="pre">a</span> <span class="pre">gene</span> <span class="pre">or</span> <span class="pre">transcript.</span> <span class="pre">Can</span> <span class="pre">also</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">sequence</span> <span class="pre">(e.g.,</span> <span class="pre">list)\n</span>&#160;&#160;&#160; <span class="pre">of</span> <span class="pre">regions.\n</span>&#160;&#160;&#160; <span class="pre">'</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cohorts</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query_options</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_cohort_size</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">drop_invariant</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_coverage_variance</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">0.2</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">&quot;\n</span>&#160;&#160;&#160; <span class="pre">Define</span> <span class="pre">how</span> <span class="pre">input</span> <span class="pre">data</span> <span class="pre">being</span> <span class="pre">read</span> <span class="pre">from</span> <span class="pre">zarr</span> <span class="pre">should</span> <span class="pre">be</span> <span class="pre">divided</span> <span class="pre">into</span> <span class="pre">chunks\n</span>&#160;&#160;&#160; <span class="pre">for</span> <span class="pre">a</span> <span class="pre">dask</span> <span class="pre">computation.</span> <span class="pre">If</span> <span class="pre">'native',</span> <span class="pre">use</span> <span class="pre">underlying</span> <span class="pre">zarr</span> <span class="pre">chunks.</span> <span class="pre">If</span> <span class="pre">a</span> <span class="pre">string\n</span>&#160;&#160;&#160; <span class="pre">specifying</span> <span class="pre">a</span> <span class="pre">target</span> <span class="pre">memory</span> <span class="pre">size,</span> <span class="pre">e.g.,</span> <span class="pre">'300</span> <span class="pre">MiB',</span> <span class="pre">resize</span> <span class="pre">chunks</span> <span class="pre">in</span> <span class="pre">arrays\n</span>&#160;&#160;&#160; <span class="pre">with</span> <span class="pre">more</span> <span class="pre">than</span> <span class="pre">one</span> <span class="pre">dimension</span> <span class="pre">to</span> <span class="pre">match</span> <span class="pre">this</span> <span class="pre">size.</span> <span class="pre">If</span> <span class="pre">'auto',</span> <span class="pre">let</span> <span class="pre">dask</span> <span class="pre">decide\n</span>&#160;&#160;&#160; <span class="pre">chunk</span> <span class="pre">size.</span>&#160; <span class="pre">If</span> <span class="pre">'ndauto',</span> <span class="pre">let</span> <span class="pre">dask</span> <span class="pre">decide</span> <span class="pre">chunk</span> <span class="pre">size</span> <span class="pre">but</span> <span class="pre">only</span> <span class="pre">for</span> <span class="pre">arrays</span> <span class="pre">with\n</span>&#160;&#160;&#160; <span class="pre">more</span> <span class="pre">than</span> <span class="pre">one</span> <span class="pre">dimension.</span> <span class="pre">If</span> <span class="pre">'ndauto0',</span> <span class="pre">as</span> <span class="pre">'ndauto'</span> <span class="pre">but</span> <span class="pre">only</span> <span class="pre">vary</span> <span class="pre">the</span> <span class="pre">first\n</span>&#160;&#160;&#160; <span class="pre">chunk</span> <span class="pre">dimension.</span> <span class="pre">If</span> <span class="pre">'ndauto1',</span> <span class="pre">as</span> <span class="pre">'ndauto'</span> <span class="pre">but</span> <span class="pre">only</span> <span class="pre">vary</span> <span class="pre">the</span> <span class="pre">second</span> <span class="pre">chunk\n</span>&#160;&#160;&#160; <span class="pre">dimension.</span> <span class="pre">If</span> <span class="pre">'ndauto01',</span> <span class="pre">as</span> <span class="pre">'ndauto'</span> <span class="pre">but</span> <span class="pre">only</span> <span class="pre">vary</span> <span class="pre">the</span> <span class="pre">first</span> <span class="pre">and</span> <span class="pre">second\n</span>&#160;&#160;&#160; <span class="pre">chunk</span> <span class="pre">dimensions.</span> <span class="pre">Also,</span> <span class="pre">can</span> <span class="pre">be</span> <span class="pre">a</span> <span class="pre">tuple</span> <span class="pre">of</span> <span class="pre">integers,</span> <span class="pre">or</span> <span class="pre">a</span> <span class="pre">callable</span> <span class="pre">which\n</span>&#160;&#160;&#160; <span class="pre">accepts</span> <span class="pre">the</span> <span class="pre">native</span> <span class="pre">chunks</span> <span class="pre">as</span> <span class="pre">a</span> <span class="pre">single</span> <span class="pre">argument</span> <span class="pre">and</span> <span class="pre">returns</span> <span class="pre">a</span> <span class="pre">valid</span> <span class="pre">dask\n</span>&#160;&#160;&#160; <span class="pre">chunks</span> <span class="pre">value.\n</span>&#160;&#160;&#160; <span class="pre">&quot;</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'native'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Annotated</span><span class="p"><span class="pre">[</span></span><span class="pre">bool</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="s"><span class="pre">'Passed</span> <span class="pre">through</span> <span class="pre">to</span> <span class="pre">dask</span> <span class="pre">`from_array()`.'</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#malariagen_data.ag3.Ag3.gene_cnv_frequencies" title="Link to this definition">#</a></dt>
+<dd><p>Compute modal copy number by gene, then compute the frequency of
+amplifications and deletions in one or more cohorts, from HMM data.</p>
+<section id="parameters">
+<h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt>region: str or list of str or Region or list of Region</dt><dd><p>Chromosome arm (e.g., “2L”), gene name (e.g., “AGAP007280”), genomic
+region defined with coordinates (e.g., “2L:44989425-44998059”) or a
+named tuple with genomic location <cite>Region(contig, start, end)</cite>.
+Multiple values can be provided as a list, in which case data will
+be concatenated, e.g., [“3R”, “3L”].</p>
+</dd>
+<dt>cohorts<span class="classifier">str or dict</span></dt><dd><p>If a string, gives the name of a predefined cohort set, e.g., one of
+{“admin1_month”, “admin1_year”, “admin2_month”, “admin2_year”}.
+If a dict, should map cohort labels to sample queries, e.g.,
+<code class="docutils literal notranslate"><span class="pre">{&quot;bf_2012_col&quot;:</span> <span class="pre">&quot;country</span> <span class="pre">==</span> <span class="pre">'Burkina</span> <span class="pre">Faso'</span> <span class="pre">and</span> <span class="pre">year</span> <span class="pre">==</span> <span class="pre">2012</span> <span class="pre">and</span>
+<span class="pre">taxon</span> <span class="pre">==</span> <span class="pre">'coluzzii'&quot;}</span></code>.</p>
+</dd>
+<dt>sample_query<span class="classifier">str, optional</span></dt><dd><p>A pandas query string which will be evaluated against the sample
+metadata e.g., “taxon == ‘coluzzii’ and country == ‘Burkina Faso’”.</p>
+</dd>
+<dt>sample_query_options<span class="classifier">dict, optional</span></dt><dd><p>A dictionary of arguments that will be passed through to pandas query() or
+eval(), e.g. parser, engine, local_dict, global_dict, resolvers.</p>
+</dd>
+<dt>min_cohort_size<span class="classifier">int</span></dt><dd><p>Minimum cohort size, below which cohorts are dropped.</p>
+</dd>
+<dt>sample_sets<span class="classifier">str or list of str, optional</span></dt><dd><p>Can be a sample set identifier (e.g., “AG1000G-AO”) or a list of
+sample set identifiers (e.g., [“AG1000G-BF-A”, “AG1000G-BF-B”]) or a
+release identifier (e.g., “3.0”) or a list of release identifiers.</p>
+</dd>
+<dt>drop_invariant<span class="classifier">bool, optional</span></dt><dd><p>If True, drop any rows where there is no evidence of variation.</p>
+</dd>
+<dt>max_coverage_variance<span class="classifier">float, optional</span></dt><dd><p>Remove samples if coverage variance exceeds this value.</p>
+</dd>
+</dl>
+</section>
+<section id="returns">
+<h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
+<dl class="simple">
+<dt>df<span class="classifier">pandas.DataFrame</span></dt><dd><p>A dataframe of CNV amplification (amp) and deletion (del)
+frequencies in the specified cohorts, one row per gene and CNV type
+(amp/del).</p>
+</dd>
+</dl>
+</section>
+</dd></dl>
+
+</section>
+
+
+                </article>
+              
+              
+              
+              
+              
+                <footer class="prev-next-footer d-print-none">
+                  
+<div class="prev-next-area">
+</div>
+                </footer>
+              
+            </div>
+            
+            
+              
+                <dialog id="pst-secondary-sidebar-modal"></dialog>
+                <div id="pst-secondary-sidebar" class="bd-sidebar-secondary bd-toc"><div class="sidebar-secondary-items sidebar-secondary__inner">
+
+
+  <div class="sidebar-secondary-item">
+<div
+    id="pst-page-navigation-heading-2"
+    class="page-toc tocsection onthispage">
+    <i class="fa-solid fa-list"></i> On this page
+  </div>
+  <nav class="bd-toc-nav page-toc" aria-labelledby="pst-page-navigation-heading-2">
+    <ul class="visible nav section-nav flex-column">
+<li class="toc-h2 nav-item toc-entry"><a class="reference internal nav-link" href="#malariagen_data.ag3.Ag3.gene_cnv_frequencies"><code class="docutils literal notranslate"><span class="pre">Ag3.gene_cnv_frequencies()</span></code></a></li>
+</ul>
+  </nav></div>
+
+  <div class="sidebar-secondary-item">
+
+  <div class="tocsection sourcelink">
+    <a href="../_sources/generated/malariagen_data.ag3.Ag3.gene_cnv_frequencies.rst.txt">
+      <i class="fa-solid fa-file-lines"></i> Show Source
+    </a>
+  </div>
+</div>
+
+</div></div>
+              
+            
+          </div>
+          <footer class="bd-footer-content">
+            
+          </footer>
+        
+      </main>
+    </div>
+  </div>
+  
+  <!-- Scripts loaded after <body> so the DOM is not blocked -->
+  <script defer src="../_static/scripts/bootstrap.js?digest=26a4bc78f4c0ddb94549"></script>
+<script defer src="../_static/scripts/pydata-sphinx-theme.js?digest=26a4bc78f4c0ddb94549"></script>
+
+  <footer class="bd-footer">
+<div class="bd-footer__inner bd-page-width">
+  
+    <div class="footer-items__start">
+      
+        <div class="footer-item">
+
+  <p class="copyright">
+    
+      © Copyright 2024, MalariaGEN.
+      <br/>
+    
+  </p>
+</div>
+      
+        <div class="footer-item">
+
+  <p class="sphinx-version">
+    Created using <a href="https://www.sphinx-doc.org/">Sphinx</a> 8.1.3.
+    <br/>
+  </p>
+</div>
+      
+    </div>
+  
+  
+  
+    <div class="footer-items__end">
+      
+        <div class="footer-item">
+<p class="theme-version">
+  Built with the <a href="https://pydata-sphinx-theme.readthedocs.io/en/stable/index.html">PyData Sphinx Theme</a> 0.16.0.
+</p></div>
+      
+    </div>
+  
+</div>
+
+  </footer>
+  </body>
+</html>
