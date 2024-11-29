@@ -1537,7 +1537,6 @@ def test_plot_frequencies_time_series_with_taxa(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api).name
     area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     period_by = random.choice(["year", "quarter", "month"])
@@ -1555,7 +1554,7 @@ def test_plot_frequencies_time_series_with_taxa(
         area_by=area_by,
         period_by=period_by,
         sample_sets=sample_sets,
-        min_cohort_size=min_cohort_size,
+        min_cohort_size=1,  # Don't exclude any samples.
         site_mask=site_mask,
     )
 
@@ -1584,7 +1583,6 @@ def test_plot_frequencies_time_series_with_areas(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
     transcript = random_transcript(api=api).name
     area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     period_by = random.choice(["year", "quarter", "month"])
@@ -1595,7 +1593,7 @@ def test_plot_frequencies_time_series_with_areas(
         area_by=area_by,
         period_by=period_by,
         sample_sets=sample_sets,
-        min_cohort_size=min_cohort_size,
+        min_cohort_size=1,  # Don't exclude any samples.
         site_mask=site_mask,
     )
 
