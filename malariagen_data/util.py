@@ -471,6 +471,9 @@ def init_filesystem(url, **kwargs):
         kwargs.setdefault("endpoint_url", "https://cog.sanger.ac.uk")
         kwargs.setdefault("config_kwargs", config)
 
+        if not url.startswith("s3://"):
+            # Chained URL.
+            kwargs.setdefault("cache_storage", "gcs_cache")
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **kwargs)
 
