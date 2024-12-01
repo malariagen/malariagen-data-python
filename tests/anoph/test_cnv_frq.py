@@ -393,6 +393,57 @@ def test_gene_cnv_frequencies_with_bad_region(
         api.gene_cnv_frequencies(**params)
 
 
+@pytest.mark.parametrize("max_coverage_variance", [0, 0.4, 1])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_gene_cnv_frequencies_with_max_coverage_variance(
+    fixture,
+    api: AnophelesCnvFrequencyAnalysis,
+    max_coverage_variance,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.choice(all_sample_sets)
+    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    region = random.choice(api.contigs)
+
+    params = dict(
+        region=region,
+        cohorts=cohorts,
+        min_cohort_size=0,
+        sample_sets=sample_sets,
+        max_coverage_variance=None,
+    )
+
+    if max_coverage_variance >= 0.4:
+        # Expect this to find at least one sample per cohort, so go ahead with full
+        # checks.
+        df_cnv = api.gene_cnv_frequencies(**params)
+
+        # Figure out expected cohort labels.
+        df_samples = api.sample_metadata(sample_sets=sample_sets)
+        if "cohort_" + cohorts in df_samples:
+            cohort_column = "cohort_" + cohorts
+        else:
+            cohort_column = cohorts
+        cohort_counts = df_samples[cohort_column].value_counts()
+        cohort_labels = cohort_counts[cohort_counts >= 0].index.to_list()
+
+        check_gene_cnv_frequencies(
+            api=api,
+            df=df_cnv,
+            cohort_labels=cohort_labels,
+            region=region,
+        )
+    else:
+        # Expect this to find no cohorts.
+        with pytest.raises(ValueError):
+            api.gene_cnv_frequencies(
+                region=region,
+                cohorts=cohorts,
+                sample_sets=all_sample_sets,
+                max_coverage_variance=max_coverage_variance,
+            )
+
+
 @pytest.mark.parametrize("area_by", ["country", "admin1_iso", "admin2_name"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_area_by(
