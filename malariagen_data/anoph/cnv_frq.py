@@ -8,7 +8,7 @@ import dask
 import numba
 import warnings
 
-from . import base_params, cnv_params
+from . import base_params, cnv_params, frq_params
 from ..util import (
     check_types,
     pandas_apply,
@@ -140,7 +140,7 @@ class AnophelesCnvFrequencyAnalysis(
         )
         pos = ds_hmm["variant_position"].data
         end = ds_hmm["variant_end"].data
-        cn = ds_hmm["call_CN"].data
+        cn = ds_hmm["call_CN"].data.astype("int8", casting="same_kind")
         with self._dask_progress(desc="Load CNV HMM data"):
             pos, end, cn = dask.compute(pos, end, cn)
 
@@ -218,6 +218,7 @@ class AnophelesCnvFrequencyAnalysis(
         sample_sets=None,
         drop_invariant=True,
         max_coverage_variance=cnv_params.max_coverage_variance_default,
+        include_counts: frq_params.include_counts = False,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
@@ -252,6 +253,8 @@ class AnophelesCnvFrequencyAnalysis(
             release identifier (e.g., "3.0") or a list of release identifiers.
         drop_invariant : bool, optional
             If True, drop any rows where there is no evidence of variation.
+        include_counts: bool, optional
+            Include columns with CNV counts and number of non-missing CNV calls (nobs).
         max_coverage_variance : float, optional
             Remove samples if coverage variance exceeds this value.
 
@@ -281,6 +284,7 @@ class AnophelesCnvFrequencyAnalysis(
                     sample_sets=sample_sets,
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
+                    include_counts=include_counts,
                     chunks=chunks,
                     inline_array=inline_array,
                 )
@@ -306,6 +310,7 @@ class AnophelesCnvFrequencyAnalysis(
         sample_sets,
         drop_invariant,
         max_coverage_variance,
+        include_counts,
         chunks,
         inline_array,
     ):
@@ -390,6 +395,8 @@ class AnophelesCnvFrequencyAnalysis(
 
         debug("compute cohort frequencies")
         freq_cols = dict()
+        count_cols = dict()
+        nobs_cols = dict()
         for coh, loc_coh in coh_dict.items():
             n_samples = np.count_nonzero(loc_coh)
             debug(f"{coh}, {n_samples} samples")
@@ -413,10 +420,17 @@ class AnophelesCnvFrequencyAnalysis(
                     del_freq_coh = np.where(
                         called_count_coh > 0, del_count_coh / called_count_coh, np.nan
                     )
-
+                nobs_cols[f"nobs_{coh}"] = np.concatenate(
+                    [called_count_coh, called_count_coh]
+                )
+                count_cols[f"count_{coh}"] = np.concatenate(
+                    [amp_count_coh, del_count_coh]
+                )
                 freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
 
         debug("build a dataframe with the frequency columns")
+        df_nobs = pd.DataFrame(nobs_cols)
+        df_counts = pd.DataFrame(count_cols)
         df_freqs = pd.DataFrame(freq_cols)
 
         debug("compute max_af and additional columns")
@@ -429,9 +443,13 @@ class AnophelesCnvFrequencyAnalysis(
             }
         )
 
+        # Build the final dataframe.
         debug("build the final dataframe")
         df.reset_index(drop=True, inplace=True)
-        df = pd.concat([df, df_freqs, df_extras], axis=1)
+        if include_counts:
+            df = pd.concat([df, df_freqs, df_extras, df_counts, df_nobs], axis=1)
+        else:
+            df = pd.concat([df, df_freqs, df_extras], axis=1)
         df.sort_values(["contig", "start", "cnv_type"], inplace=True)
         df.reset_index(drop=True, inplace=True)
 
@@ -722,7 +740,7 @@ class AnophelesCnvFrequencyAnalysis(
         return label
 
 
-@numba.njit("Tuple((int8, int64))(int64[:], int8)")
+@numba.njit("Tuple((int8, int64))(int8[:], int8)")
 def _cn_mode_1d(a, vmax):
     # setup intermediates
     m = a.shape[0]
@@ -749,7 +767,7 @@ def _cn_mode_1d(a, vmax):
     return mode, mode_count
 
 
-@numba.njit("Tuple((int8[:], int64[:]))(int64[:, :], int8)")
+@numba.njit("Tuple((int8[:], int64[:]))(int8[:, :], int8)")
 def _cn_mode(a, vmax):
     # setup intermediates
     n = a.shape[1]
