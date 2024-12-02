@@ -99,13 +99,13 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     n_snps = random.randint(1, n_snps_available)
 
     # Define plink params.
-    plink_params = dict(output_dir=tmp_path, n_snps=n_snps, **data_params)
+    plink_params = dict(output_dir=str(tmp_path), n_snps=n_snps, **data_params)
 
     # Make the plink files.
     api.biallelic_snps_to_plink(**plink_params)
 
     # Test to see if bed, bim, fam output files exist.
-    file_path = f"{tmp_path}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['max_missing_an']}.{plink_params['thin_offset']}"
+    file_path = f"{str(tmp_path)}/{plink_params['region']}.{plink_params['n_snps']}.{plink_params['min_minor_ac']}.{plink_params['max_missing_an']}.{plink_params['thin_offset']}"
 
     assert os.path.exists(f"{file_path}.bed")
     assert os.path.exists(f"{file_path}.bim")
