@@ -368,7 +368,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         # Normalise parameters.
@@ -431,7 +431,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         # normalise to support multiple samples
@@ -624,7 +624,7 @@ class AnophelesDataResource(
         x_range: Optional[gplt_params.x_range] = None,
         title: Optional[gplt_params.title] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
@@ -726,7 +726,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         resolved_region: Region = parse_single_region(self, region)
@@ -2147,7 +2147,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # compute ihs
         x, ihs = self.ihs_gwss(
             contig=contig,
@@ -2290,7 +2290,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_xpehh_gwss_track(
             contig=contig,
@@ -2391,7 +2391,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
             contig=contig,
@@ -2672,7 +2672,7 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # compute xpehh
         x, xpehh = self.xpehh_gwss(
             contig=contig,

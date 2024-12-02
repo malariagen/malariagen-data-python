@@ -626,7 +626,7 @@ class AnophelesCnvData(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -751,7 +751,7 @@ class AnophelesCnvData(
         line_kwargs: Optional[gplt_params.line_kwargs] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.layouts as bklay
@@ -817,7 +817,7 @@ class AnophelesCnvData(
         height: Optional[gplt_params.height] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -960,7 +960,7 @@ class AnophelesCnvData(
         track_height: Optional[gplt_params.track_height] = None,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.layouts as bklay
