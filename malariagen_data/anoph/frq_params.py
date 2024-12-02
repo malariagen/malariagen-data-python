@@ -1,6 +1,6 @@
 """Parameter definitions for functions computing and plotting allele frequencies."""
 
-from typing import Literal
+from typing import Literal, List, Optional, Tuple, Union
 
 import xarray as xr
 from typing_extensions import Annotated, TypeAlias
@@ -69,4 +69,14 @@ ds_frequencies_advanced: TypeAlias = Annotated[
 include_counts: TypeAlias = Annotated[
     bool,
     "Include columns with allele counts and number of non-missing allele calls (nobs).",
+]
+
+taxa: TypeAlias = Annotated[
+    Optional[Union[str, List[str], Tuple[str, ...]]],
+    "The taxon or taxa to restrict the dataset to.",
+]
+
+areas: TypeAlias = Annotated[
+    Optional[Union[str, List[str], Tuple[str, ...]]],
+    "The area or areas to restrict the dataset to.",
 ]
