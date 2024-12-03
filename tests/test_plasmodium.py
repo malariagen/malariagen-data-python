@@ -121,7 +121,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             "ID",
             "Parent",
             "Name",
-            "alias",
         ]
         self.non_default_columns = [
             "comment",
@@ -147,7 +146,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                     "ID": "id1",
                     "Name": "name1",
                     "Parent": "parent1",
-                    "alias": "alias1",
                     "comment": "comment1",
                     "literature": "lit1",
                 },
@@ -155,7 +153,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                     "ID": "id2",
                     "Name": "name2",
                     "Parent": "parent2",
-                    "alias": "alias2",
                     "comment": "comment2",
                     "literature": "lit2",
                 },
@@ -163,7 +160,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                     "ID": "id3",
                     "Name": "name3",
                     "Parent": "parent3",
-                    "alias": "alias3",
                     "comment": "comment3",
                     "literature": "lit3",
                 },
@@ -171,7 +167,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                     "ID": "id4",
                     "Name": "name4",
                     "Parent": "parent4",
-                    "alias": "alias4",
                     "comment": "comment4",
                     "literature": "lit4",
                 },
@@ -179,7 +174,6 @@ class TestPlasmodiumDataResource(unittest.TestCase):
                     "ID": "id5",
                     "Name": "name5",
                     "Parent": "parent5",
-                    "alias": "alias5",
                     "comment": "comment5",
                     "literature": "lit5",
                 },
@@ -446,7 +440,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         # )
         mock_unpack.assert_called_once_with(
             self.test_annotations_df,
-            attributes=tuple(["ID", "Parent", "Name", "alias"]),
+            attributes=tuple(["ID", "Parent", "Name"]),
         )
 
     @patch("malariagen_data.plasmodium.read_gff3")
