@@ -1,4 +1,4 @@
-from typing import List
+from typing import Optional, List
 from bisect import bisect_left, bisect_right
 
 import numpy as np
@@ -7,6 +7,7 @@ import xarray as xr
 import dask
 import numba
 import warnings
+from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, cnv_params, frq_params
 from ..util import (
@@ -38,46 +39,25 @@ class AnophelesCnvFrequencyAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
+    @check_types
+    @doc(
+        summary="""
+        Compute modal copy number by gene, from HMM data.
+        """,
+        returns="""
+        A dataset of modal copy number per gene and associated data.
+        """,
+    )
     def gene_cnv(
         self,
         region: base_params.regions,
-        sample_sets=None,
-        sample_query=None,
-        sample_query_options=None,
-        max_coverage_variance=cnv_params.max_coverage_variance_default,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ):
-        """Compute modal copy number by gene, from HMM data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or
-            a release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_query_options : dict, optional
-            A dictionary of arguments that will be passed through to pandas query() or
-            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of modal copy number per gene and associated data.
-
-        """
-
+    ) -> xr.Dataset:
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
@@ -205,64 +185,31 @@ class AnophelesCnvFrequencyAnalysis(
         return ds_out
 
     @check_types
-    def gene_cnv_frequencies(
-        self,
-        region: base_params.regions,
-        cohorts,
-        sample_query=None,
-        sample_query_options=None,
-        min_cohort_size=10,
-        sample_sets=None,
-        drop_invariant=True,
-        max_coverage_variance=cnv_params.max_coverage_variance_default,
-        include_counts: frq_params.include_counts = False,
-        chunks: base_params.chunks = base_params.native_chunks,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-    ):
-        """Compute modal copy number by gene, then compute the frequency of
+    @doc(
+        summary="""
+        Compute modal copy number by gene, then compute the frequency of
         amplifications and deletions in one or more cohorts, from HMM data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        cohorts : str or dict
-            If a string, gives the name of a predefined cohort set, e.g., one of
-            {"admin1_month", "admin1_year", "admin2_month", "admin2_year"}.
-            If a dict, should map cohort labels to sample queries, e.g.,
-            ``{"bf_2012_col": "country == 'Burkina Faso' and year == 2012 and
-            taxon == 'coluzzii'"}``.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_query_options : dict, optional
-            A dictionary of arguments that will be passed through to pandas query() or
-            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
-        min_cohort_size : int
-            Minimum cohort size, below which cohorts are dropped.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        drop_invariant : bool, optional
-            If True, drop any rows where there is no evidence of variation.
-        include_counts: bool, optional
-            Include columns with CNV counts and number of non-missing CNV calls (nobs).
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-
-        Returns
-        -------
-        df : pandas.DataFrame
+        """,
+        returns="""
             A dataframe of CNV amplification (amp) and deletion (del)
             frequencies in the specified cohorts, one row per gene and CNV type
             (amp/del).
-
-        """
+        """,
+    )
+    def gene_cnv_frequencies(
+        self,
+        region: base_params.regions,
+        cohorts: base_params.cohorts,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        min_cohort_size: base_params.min_cohort_size = 10,
+        max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        drop_invariant: frq_params.drop_invariant = True,
+        include_counts: frq_params.include_counts = False,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> pd.DataFrame:
         debug = self._log.debug
 
         debug("check and normalise parameters")
@@ -465,65 +412,12 @@ class AnophelesCnvFrequencyAnalysis(
         return df
 
     @check_types
-    def gene_cnv_frequencies_advanced(
-        self,
-        region: base_params.regions,
-        area_by,
-        period_by,
-        sample_sets=None,
-        sample_query=None,
-        sample_query_options=None,
-        min_cohort_size=10,
-        variant_query=None,
-        drop_invariant=True,
-        max_coverage_variance=cnv_params.max_coverage_variance_default,
-        ci_method="wilson",
-        chunks: base_params.chunks = base_params.native_chunks,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-    ):
-        """Group samples by taxon, area (space) and period (time), then compute
+    @doc(
+        summary="""
+        Group samples by taxon, area (space) and period (time), then compute
         gene CNV counts and frequencies.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        area_by : str
-            Column name in the sample metadata to use to group samples spatially.
-            E.g., use "admin1_iso" or "admin1_name" to group by level 1
-            administrative divisions, or use "admin2_name" to group by level 2
-            administrative divisions.
-        period_by : {"year", "quarter", "month"}
-            Length of time to group samples temporally.
-        sample_sets : str or list of str, optional
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or a
-            release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_query_options : dict, optional
-            A dictionary of arguments that will be passed through to pandas query() or
-            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
-        min_cohort_size : int, optional
-            Minimum cohort size. Any cohorts below this size are omitted.
-        variant_query : str, optional
-            A pandas query string which will be evaluated against variants.
-        drop_invariant : bool, optional
-            If True, drop any rows where there is no evidence of variation.
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-        ci_method : {"normal", "agresti_coull", "beta", "wilson", "binom_test"}, optional
-            Method to use for computing confidence intervals, passed through to
-            `statsmodels.stats.proportion.proportion_confint`.
-
-        Returns
-        -------
-        ds : xarray.Dataset
+        """,
+        returns="""
             The resulting dataset contains data has dimensions "cohorts" and
             "variants". Variables prefixed with "cohort" are 1-dimensional
             arrays with data about the cohorts, such as the area, period, taxon
@@ -532,9 +426,24 @@ class AnophelesCnvFrequencyAnalysis(
             reference and alternate alleles. Variables prefixed with "event" are
             2-dimensional arrays with the allele counts and frequency
             calculations.
-
-        """
-
+        """,
+    )
+    def gene_cnv_frequencies_advanced(
+        self,
+        region: base_params.regions,
+        area_by: frq_params.area_by,
+        period_by: frq_params.period_by,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        min_cohort_size: base_params.min_cohort_size = 10,
+        drop_invariant: frq_params.drop_invariant = True,
+        variant_query: Optional[frq_params.variant_query] = None,
+        max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
+        ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ) -> xr.Dataset:
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
