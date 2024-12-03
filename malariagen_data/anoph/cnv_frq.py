@@ -38,7 +38,6 @@ class AnophelesCnvFrequencyAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-
     def gene_cnv(
         self,
         region: base_params.regions,
