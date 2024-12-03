@@ -17,13 +17,11 @@ from ..util import (
     parse_multi_region,
     region_str,
     simple_xarray_concat,
+    prep_samples_for_cohort_grouping,
+    build_cohorts_from_sample_grouping,
+    add_frequency_ci,
 )
 from .cnv_data import AnophelesCnvData
-from .snp_frq import (
-    _prep_samples_for_cohort_grouping,
-    _build_cohorts_from_sample_grouping,
-    _add_frequency_ci,
-)
 from .sample_metadata import locate_cohorts
 
 
@@ -330,7 +328,9 @@ class AnophelesCnvFrequencyAnalysis(
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
+        coh_dict = locate_cohorts(
+            cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+        )
 
         if len(coh_dict) == 0:
             raise ValueError(
@@ -518,7 +518,7 @@ class AnophelesCnvFrequencyAnalysis(
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
         debug("prepare sample metadata for cohort grouping")
-        df_samples = _prep_samples_for_cohort_grouping(
+        df_samples = prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
@@ -528,7 +528,7 @@ class AnophelesCnvFrequencyAnalysis(
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         debug("build cohorts dataframe")
-        df_cohorts = _build_cohorts_from_sample_grouping(
+        df_cohorts = build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
         )
@@ -637,7 +637,7 @@ class AnophelesCnvFrequencyAnalysis(
             ds_out = ds_out.isel(variants=loc_variants)
 
         debug("add confidence intervals")
-        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]
