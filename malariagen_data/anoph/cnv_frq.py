@@ -38,8 +38,6 @@ class AnophelesCnvFrequencyAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # Set up cache variables.
-        self._cache_annotator = None
 
     def gene_cnv(
         self,
