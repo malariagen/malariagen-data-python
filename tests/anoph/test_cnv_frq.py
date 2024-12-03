@@ -585,6 +585,51 @@ def test_gene_cnv_frequencies_advanced_with_max_coverage_variance(
             )
 
 
+@pytest.mark.parametrize("nobs_mode", ["called", "fixed"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_gene_cnv_frequencies_advanced_with_nobs_mode(
+    fixture,
+    api: AnophelesCnvFrequencyAnalysis,
+    nobs_mode,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    area_by = "admin1_iso"
+    period_by = "year"
+    region = random.choice(api.contigs)
+
+    check_gene_cnv_frequencies_advanced(
+        api=api,
+        region=region,
+        sample_sets=all_sample_sets,
+        nobs_mode=nobs_mode,
+        area_by=area_by,
+        period_by=period_by,
+    )
+
+
+@pytest.mark.parametrize("variant_query_option", ["amp", "del"])
+@parametrize_with_cases("fixture,api", cases=".")
+def test_gene_cnv_frequencies_advanced_with_variant_query(
+    fixture,
+    api: AnophelesCnvFrequencyAnalysis,
+    variant_query_option,
+):
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    area_by = "admin1_iso"
+    period_by = "year"
+    region = random.choice(api.contigs)
+    variant_query = "cnv_type == '{variant_query_option}'"
+
+    check_gene_cnv_frequencies_advanced(
+        api=api,
+        region=region,
+        sample_sets=all_sample_sets,
+        variant_query=variant_query,
+        area_by=area_by,
+        period_by=period_by,
+    )
+
+
 def check_frequency(x):
     loc_nan = np.isnan(x)
     assert np.all(x[~loc_nan] >= 0)
@@ -634,6 +679,7 @@ def check_gene_cnv_frequencies_advanced(
     sample_query=None,
     sample_query_options=None,
     min_cohort_size=None,
+    nobs_mode="called",
     variant_query=None,
     max_coverage_variance=None,
 ):

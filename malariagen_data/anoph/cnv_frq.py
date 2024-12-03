@@ -440,6 +440,7 @@ class AnophelesCnvFrequencyAnalysis(
         drop_invariant: frq_params.drop_invariant = True,
         variant_query: Optional[frq_params.variant_query] = None,
         max_coverage_variance: cnv_params.max_coverage_variance = cnv_params.max_coverage_variance_default,
+        nobs_mode: frq_params.nobs_mode = frq_params.nobs_mode_default,
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
@@ -460,6 +461,7 @@ class AnophelesCnvFrequencyAnalysis(
                     variant_query=variant_query,
                     drop_invariant=drop_invariant,
                     max_coverage_variance=max_coverage_variance,
+                    nobs_mode=nobs_mode,
                     ci_method=ci_method,
                     chunks=chunks,
                     inline_array=inline_array,
@@ -487,6 +489,7 @@ class AnophelesCnvFrequencyAnalysis(
         variant_query,
         drop_invariant,
         max_coverage_variance,
+        nobs_mode,
         ci_method,
         chunks,
         inline_array,
@@ -568,7 +571,11 @@ class AnophelesCnvFrequencyAnalysis(
 
             # compute cohort allele numbers
             cohort_n_called = np.sum(cohort_is_called, axis=1)
-            nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
+            if nobs_mode == "called":
+                nobs[:, cohort_index] = np.repeat(cohort_n_called, 2)
+            else:
+                assert nobs_mode == "fixed"
+                nobs[:, cohort_index] = cohort.size * 2
 
         debug("compute frequency")
         with np.errstate(divide="ignore", invalid="ignore"):
