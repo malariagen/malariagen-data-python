@@ -120,3 +120,13 @@ contig_colors: TypeAlias = Annotated[
 contig_colors_default: Final[contig_colors] = list(bokeh.palettes.d3["Category20b"][5])
 
 colors: TypeAlias = Annotated[Sequence[str], "List of colors."]
+
+gene_labels: TypeAlias = Annotated[
+    Mapping[str, str],
+    "A mapping of gene identifiers to custom labels, which will appear in the plot.",
+]
+
+gene_labelset: TypeAlias = Annotated[
+    bokeh.models.LabelSet,
+    "A LabelSet to use in the plot.",
+]
