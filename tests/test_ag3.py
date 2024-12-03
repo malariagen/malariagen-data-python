@@ -9,7 +9,7 @@ from numpy.testing import assert_allclose, assert_array_equal
 from pandas.testing import assert_frame_equal
 
 from malariagen_data import Ag3, Region
-from malariagen_data.anopheles import _cn_mode
+from malariagen_data.anoph.cnv_frq import _cn_mode
 from malariagen_data.util import locate_region, resolve_region, compare_series_like
 
 contigs = "2R", "2L", "3R", "3L", "X"
