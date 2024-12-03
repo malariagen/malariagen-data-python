@@ -125,6 +125,8 @@ SNP and CNV frequency analysis
     aa_allele_frequencies_advanced
     gene_cnv_frequencies
     gene_cnv_frequencies_advanced
+    haplotypes_frequencies
+    haplotypes_frequencies_advanced
     plot_frequencies_heatmap
     plot_frequencies_time_series
     plot_frequencies_interactive_map

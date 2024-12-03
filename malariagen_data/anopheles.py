@@ -17,12 +17,7 @@ import plotly.graph_objects as go  # type: ignore
 import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
-from malariagen_data.anoph.snp_frq import (
-    AnophelesSnpFrequencyAnalysis,
-    _add_frequency_ci,
-    _build_cohorts_from_sample_grouping,
-    _prep_samples_for_cohort_grouping,
-)
+from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 
 from .anoph import (
     aim_params,
@@ -41,6 +36,7 @@ from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
+from .anoph.hap_frq import AnophelesHapFrequencyAnalysis
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
 from .anoph.distance import AnophelesDistanceAnalysis
@@ -65,6 +61,9 @@ from .util import (
     region_str,
     simple_xarray_concat,
     pandas_apply,
+    prep_samples_for_cohort_grouping,
+    build_cohorts_from_sample_grouping,
+    add_frequency_ci,
 )
 
 DEFAULT_MAX_COVERAGE_VARIANCE = 0.2
@@ -99,6 +98,7 @@ class AnophelesDataResource(
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
     AnophelesSnpFrequencyAnalysis,
+    AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
     PlinkConverter,
@@ -1163,7 +1163,9 @@ class AnophelesDataResource(
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = locate_cohorts(cohorts=cohorts, data=df_samples)
+        coh_dict = locate_cohorts(
+            cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+        )
 
         debug("compute cohort frequencies")
         freq_cols = dict()
@@ -1372,7 +1374,7 @@ class AnophelesDataResource(
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
         debug("prepare sample metadata for cohort grouping")
-        df_samples = _prep_samples_for_cohort_grouping(
+        df_samples = prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
@@ -1382,7 +1384,7 @@ class AnophelesDataResource(
         group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
         debug("build cohorts dataframe")
-        df_cohorts = _build_cohorts_from_sample_grouping(
+        df_cohorts = build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
         )
@@ -1487,7 +1489,7 @@ class AnophelesDataResource(
             ds_out = ds_out.isel(variants=loc_variants)
 
         debug("add confidence intervals")
-        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]

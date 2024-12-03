@@ -1,4 +1,3 @@
-from collections import Counter
 from typing import Optional, Tuple, Dict, Mapping
 
 import allel  # type: ignore
@@ -7,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import hash_columns, check_types, CacheMiss
+from ..util import check_types, CacheMiss, haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -840,21 +839,11 @@ class AnophelesH12Analysis(
             return fig
 
 
-def haplotype_frequencies(h):
-    """Compute haplotype frequencies, returning a dictionary that maps
-    haplotype hash values to frequencies."""
-    n = h.shape[1]
-    hashes = hash_columns(np.asarray(h))
-    counts = Counter(hashes)
-    freqs = {key: count / n for key, count in counts.items()}
-    return freqs
-
-
 def garud_h12(ht):
     """Compute Garud's H12."""
 
     # Compute haplotype frequencies.
-    frq_counter = haplotype_frequencies(ht)
+    frq_counter, _, _ = haplotype_frequencies(ht)
 
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
