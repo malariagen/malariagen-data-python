@@ -1,19 +1,15 @@
 from abc import abstractmethod
-from bisect import bisect_left, bisect_right
-from typing import Any, Dict, List, Mapping, Optional, Tuple, Sequence
+from typing import Any, Dict, Mapping, Optional, Tuple, Sequence
 
 import allel  # type: ignore
 import bokeh.layouts
 import bokeh.models
 import bokeh.palettes
 import bokeh.plotting
-import dask
-import numba  # type: ignore
 import numpy as np
 import pandas as pd
 import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
-import xarray as xr
 from numpydoc_decorator import doc  # type: ignore
 
 from malariagen_data.anoph.snp_frq import (
@@ -25,7 +21,6 @@ from .anoph.cnv_frq import AnophelesCnvFrequencyAnalysis
 from .anoph import (
     aim_params,
     base_params,
-    cnv_params,
     dash_params,
     gplt_params,
     hapnet_params,
@@ -58,10 +53,8 @@ from .util import (
     Region,
     check_types,
     jackknife_ci,
-    parse_multi_region,
     parse_single_region,
     plotly_discrete_legend,
-    simple_xarray_concat,
 )
 
 
@@ -811,172 +804,6 @@ class AnophelesDataResource(
             return None
         else:
             return fig_all
-
-    def gene_cnv(
-        self,
-        region: base_params.regions,
-        sample_sets=None,
-        sample_query=None,
-        sample_query_options=None,
-        max_coverage_variance=cnv_params.max_coverage_variance_default,
-        chunks: base_params.chunks = base_params.native_chunks,
-        inline_array: base_params.inline_array = base_params.inline_array_default,
-    ):
-        """Compute modal copy number by gene, from HMM data.
-
-        Parameters
-        ----------
-        region: str or list of str or Region or list of Region
-            Chromosome arm (e.g., "2L"), gene name (e.g., "AGAP007280"), genomic
-            region defined with coordinates (e.g., "2L:44989425-44998059") or a
-            named tuple with genomic location `Region(contig, start, end)`.
-            Multiple values can be provided as a list, in which case data will
-            be concatenated, e.g., ["3R", "3L"].
-        sample_sets : str or list of str
-            Can be a sample set identifier (e.g., "AG1000G-AO") or a list of
-            sample set identifiers (e.g., ["AG1000G-BF-A", "AG1000G-BF-B"]) or
-            a release identifier (e.g., "3.0") or a list of release identifiers.
-        sample_query : str, optional
-            A pandas query string which will be evaluated against the sample
-            metadata e.g., "taxon == 'coluzzii' and country == 'Burkina Faso'".
-        sample_query_options : dict, optional
-            A dictionary of arguments that will be passed through to pandas query() or
-            eval(), e.g. parser, engine, local_dict, global_dict, resolvers.
-        max_coverage_variance : float, optional
-            Remove samples if coverage variance exceeds this value.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-            A dataset of modal copy number per gene and associated data.
-
-        """
-
-        regions: List[Region] = parse_multi_region(self, region)
-        del region
-
-        ds = simple_xarray_concat(
-            [
-                self._gene_cnv(
-                    region=r,
-                    sample_sets=sample_sets,
-                    sample_query=sample_query,
-                    sample_query_options=sample_query_options,
-                    max_coverage_variance=max_coverage_variance,
-                    chunks=chunks,
-                    inline_array=inline_array,
-                )
-                for r in regions
-            ],
-            dim="genes",
-        )
-
-        return ds
-
-    def _gene_cnv(
-        self,
-        *,
-        region,
-        sample_sets,
-        sample_query,
-        sample_query_options,
-        max_coverage_variance,
-        chunks,
-        inline_array,
-    ):
-        # Sanity check.
-        assert isinstance(region, Region)
-
-        # Access genes within the region of interest.
-        df_genome_features = self.genome_features(region=region)
-        sample_query_options = sample_query_options or {}
-        df_genes = df_genome_features.query(
-            f"type == '{self._gff_gene_type}'", **sample_query_options
-        )
-
-        # Refine the region for CNV data to ensure coverage of all requested genes.
-        cnv_region = Region(
-            region.contig, df_genes["start"].min(), df_genes["end"].max()
-        )
-
-        # Access HMM data.
-        ds_hmm = self.cnv_hmm(
-            region=cnv_region,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-            max_coverage_variance=max_coverage_variance,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
-        pos = ds_hmm["variant_position"].data
-        end = ds_hmm["variant_end"].data
-        cn = ds_hmm["call_CN"].data
-        with self._dask_progress(desc="Load CNV HMM data"):
-            pos, end, cn = dask.compute(pos, end, cn)
-
-        # Set up intermediates.
-        windows = []
-        modes = []
-        counts = []
-
-        # Iterate over genes.
-        genes_iterator = self._progress(
-            df_genes.itertuples(),
-            desc="Compute modal gene copy number",
-            total=len(df_genes),
-        )
-        for gene in genes_iterator:
-            # Locate windows overlapping the gene.
-            loc_gene_start = bisect_left(end, gene.start)
-            loc_gene_stop = bisect_right(pos, gene.end)
-            w = loc_gene_stop - loc_gene_start
-            windows.append(w)
-
-            # Slice out copy number data for the given gene.
-            cn_gene = cn[loc_gene_start:loc_gene_stop]
-
-            # Compute the modes.
-            m, c = _cn_mode(cn_gene, vmax=12)
-            modes.append(m)
-            counts.append(c)
-
-        # Combine results.
-        windows = np.array(windows)
-        modes = np.vstack(modes)
-        counts = np.vstack(counts)
-
-        # Build dataset.
-        ds_out = xr.Dataset(
-            coords={
-                "gene_id": (["genes"], df_genes["ID"].values),
-                "sample_id": (["samples"], ds_hmm["sample_id"].values),
-            },
-            data_vars={
-                "gene_contig": (["genes"], df_genes["contig"].values),
-                "gene_start": (["genes"], df_genes["start"].values),
-                "gene_end": (["genes"], df_genes["end"].values),
-                "gene_windows": (["genes"], windows),
-                "gene_name": (
-                    ["genes"],
-                    df_genes[self._gff_gene_name_attribute].values,
-                ),
-                "gene_strand": (["genes"], df_genes["strand"].values),
-                "gene_description": (["genes"], df_genes["description"].values),
-                "CN_mode": (["genes", "samples"], modes),
-                "CN_mode_count": (["genes", "samples"], counts),
-                "sample_coverage_variance": (
-                    ["samples"],
-                    ds_hmm["sample_coverage_variance"].values,
-                ),
-                "sample_is_high_variance": (
-                    ["samples"],
-                    ds_hmm["sample_is_high_variance"].values,
-                ),
-            },
-        )
-
-        return ds_out
 
     def _block_jackknife_cohort_diversity_stats(
         self, *, cohort_label, ac, n_jack, confidence_level
@@ -2602,48 +2429,3 @@ class AnophelesDataResource(
 
         debug("launch the dash app")
         app.run(**run_params)
-
-
-@numba.njit("Tuple((int8, int64))(int8[:], int8)")
-def _cn_mode_1d(a, vmax):
-    # setup intermediates
-    m = a.shape[0]
-    counts = np.zeros(vmax + 1, dtype=numba.int64)
-
-    # initialise return values
-    mode = numba.int8(-1)
-    mode_count = numba.int64(0)
-
-    # iterate over array values, keeping track of counts
-    for i in range(m):
-        v = a[i]
-        if 0 <= v <= vmax:
-            c = counts[v]
-            c += 1
-            counts[v] = c
-            if c > mode_count:
-                mode = v
-                mode_count = c
-            elif c == mode_count and v < mode:
-                # consistency with scipy.stats, break ties by taking lower value
-                mode = v
-
-    return mode, mode_count
-
-
-@numba.njit("Tuple((int8[:], int64[:]))(int8[:, :], int8)")
-def _cn_mode(a, vmax):
-    # setup intermediates
-    n = a.shape[1]
-
-    # setup outputs
-    modes = np.zeros(n, dtype=numba.int8)
-    counts = np.zeros(n, dtype=numba.int64)
-
-    # iterate over columns, computing modes
-    for j in range(a.shape[1]):
-        mode, count = _cn_mode_1d(a[:, j], vmax)
-        modes[j] = mode
-        counts[j] = count
-
-    return modes, counts
