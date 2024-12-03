@@ -425,6 +425,8 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
             n if not pd.isna(n) else gene_ids[i] for i, n in enumerate(gene_names)
         ]
 
+        cn_mode_no_nan = np.nan_to_num(cn_mode, nan=-1)
+
         # Plot the copy number data.
         # N.B., here we have to use go.Heatmap directly rather than
         # px.imshow because the latter fails to incorporate zmin,
@@ -432,9 +434,9 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         # then get lost later when we try to combined into a single
         # figure.
         trace = go.Heatmap(
-            z=cn_mode,
+            z=cn_mode_no_nan,
             y=gene_labels,
-            zmin=0,
+            zmin=-1,
             zmax=4,
             colorscale=colorscale,
             showlegend=False,
@@ -564,7 +566,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
         cnv_region: Optional[base_params.regions] = None,
-        cnv_colorscale: plotly_params.color_continuous_scale = "PuOr_r",
+        cnv_colorscale: plotly_params.color_continuous_scale = cnv_params.colorscale_default,
         cnv_max_coverage_variance: cnv_params.max_coverage_variance = 0.2,
         site_mask: Optional[base_params.site_mask] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
