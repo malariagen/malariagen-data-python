@@ -399,7 +399,7 @@ class AnophelesCnvFrequencyAnalysis(
 
         debug("add label")
         df["label"] = pandas_apply(
-            self._make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
+            _make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
         )
 
         debug("deal with invariants")
@@ -604,7 +604,7 @@ class AnophelesCnvFrequencyAnalysis(
 
         debug("add variant label")
         df_variants["label"] = pandas_apply(
-            self._make_gene_cnv_label,
+            _make_gene_cnv_label,
             df_variants,
             columns=["gene_id", "gene_name", "cnv_type"],
         )
@@ -644,13 +644,13 @@ class AnophelesCnvFrequencyAnalysis(
 
         return ds_out
 
-    @staticmethod
-    def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
-        label = gene_id
-        if isinstance(gene_name, str):
-            label += f" ({gene_name})"
-        label += f" {cnv_type}"
-        return label
+
+def _make_gene_cnv_label(gene_id, gene_name, cnv_type):
+    label = gene_id
+    if isinstance(gene_name, str):
+        label += f" ({gene_name})"
+    label += f" {cnv_type}"
+    return label
 
 
 @numba.njit("Tuple((int8, int64))(int8[:], int8)")
