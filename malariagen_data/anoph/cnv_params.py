@@ -20,3 +20,6 @@ coverage_calls_analysis: TypeAlias = Annotated[
     `coverage_calls_analysis_ids` property for available values.
     """,
 ]
+
+# This is grey followed by PuOr5
+colorscale_default = ["#cccccc", "#5e3c99", "#b2abd2", "#f7f7f7", "#fdb863", "#e66101"]
