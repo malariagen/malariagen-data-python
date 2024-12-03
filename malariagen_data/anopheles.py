@@ -46,6 +46,7 @@ from .anoph.pca import AnophelesPca
 from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata, locate_cohorts
 from .anoph.snp_data import AnophelesSnpData
+from .anoph.to_plink import PlinkConverter
 from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
@@ -100,6 +101,7 @@ class AnophelesDataResource(
     AnophelesSnpFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
+    PlinkConverter,
     AnophelesIgv,
     AnophelesAimData,
     AnophelesHapData,
@@ -1182,6 +1184,11 @@ class AnophelesDataResource(
                     )
 
                 freq_cols[f"frq_{coh}"] = np.concatenate([amp_freq_coh, del_freq_coh])
+
+        if len(coh_dict) == 0:
+            raise ValueError(
+                "No cohorts available for the given sample selection parameters and minimum cohort size."
+            )
 
         debug("build a dataframe with the frequency columns")
         df_freqs = pd.DataFrame(freq_cols)
