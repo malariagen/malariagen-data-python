@@ -35,6 +35,7 @@ from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
+from .anoph.hap_frq import AnophelesHapFrequencyAnalysis
 from .anoph.igv import AnophelesIgv
 from .anoph.pca import AnophelesPca
 from .anoph.distance import AnophelesDistanceAnalysis
@@ -55,6 +56,12 @@ from .util import (
     jackknife_ci,
     parse_single_region,
     plotly_discrete_legend,
+    region_str,
+    simple_xarray_concat,
+    pandas_apply,
+    prep_samples_for_cohort_grouping,
+    build_cohorts_from_sample_grouping,
+    add_frequency_ci,
 )
 
 
@@ -88,6 +95,7 @@ class AnophelesDataResource(
     AnophelesFstAnalysis,
     AnophelesCnvFrequencyAnalysis,
     AnophelesSnpFrequencyAnalysis,
+    AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
     PlinkConverter,
