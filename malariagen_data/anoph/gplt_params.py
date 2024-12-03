@@ -75,20 +75,20 @@ title: TypeAlias = Annotated[
     "Plot title. If True, a title may be automatically generated.",
 ]
 
-optional_figure: TypeAlias = Annotated[
-    # Use quite a broad type here to accommodate both single-panel figures
-    # created via bokeh.plotting and multi-panel figures created via
-    # bokeh.layouts.
-    Optional[bokeh.model.Model],
-    "A bokeh figure (only returned if show=False).",
-]
-
 figure: TypeAlias = Annotated[
     # Use quite a broad type here to accommodate both single-panel figures
     # created via bokeh.plotting and multi-panel figures created via
     # bokeh.layouts.
     bokeh.model.Model,
     "A bokeh figure.",
+]
+
+optional_figure: TypeAlias = Annotated[
+    # Use quite a broad type here to accommodate both single-panel figures
+    # created via bokeh.plotting and multi-panel figures created via
+    # bokeh.layouts.
+    Optional[figure],
+    "A bokeh figure (only returned if show=False).",
 ]
 
 output_backend: TypeAlias = Annotated[
