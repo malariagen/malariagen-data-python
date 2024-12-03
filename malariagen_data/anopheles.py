@@ -42,6 +42,7 @@ from .anoph.pca import AnophelesPca
 from .anoph.distance import AnophelesDistanceAnalysis
 from .anoph.sample_metadata import AnophelesSampleMetadata, locate_cohorts
 from .anoph.snp_data import AnophelesSnpData
+from .anoph.to_plink import PlinkConverter
 from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
@@ -100,6 +101,7 @@ class AnophelesDataResource(
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
+    PlinkConverter,
     AnophelesIgv,
     AnophelesAimData,
     AnophelesHapData,
@@ -429,6 +431,8 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -489,6 +493,8 @@ class AnophelesDataResource(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
         figs.append(fig_genes)
 
@@ -724,6 +730,8 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         debug = self._log.debug
 
@@ -796,6 +804,8 @@ class AnophelesDataResource(
             x_range=fig_het.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
         figs.append(fig_genes)
 
@@ -2290,6 +2300,8 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_xpehh_gwss_track(
@@ -2334,6 +2346,8 @@ class AnophelesDataResource(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # combine plots into a single figure
@@ -2391,6 +2405,8 @@ class AnophelesDataResource(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         # gwss track
         fig1 = self.plot_ihs_gwss_track(
@@ -2437,6 +2453,8 @@ class AnophelesDataResource(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # combine plots into a single figure

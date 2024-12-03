@@ -72,6 +72,7 @@ SNP data access
     is_accessible
     biallelic_snp_calls
     biallelic_diplotypes
+    biallelic_snps_to_plink
 
 Haplotype data access
 ---------------------

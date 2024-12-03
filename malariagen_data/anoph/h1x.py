@@ -304,6 +304,8 @@ class AnophelesH1XAnalysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
     ) -> gplt_params.figure:
         # Plot GWSS track.
         fig1 = self.plot_h1x_gwss_track(
@@ -340,6 +342,8 @@ class AnophelesH1XAnalysis(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # Combine plots into a single figure.
