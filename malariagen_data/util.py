@@ -450,18 +450,42 @@ def init_filesystem(url, **kwargs):
                 scopes=["https://www.googleapis.com/auth/cloud-platform"]
             )
 
-        # Ensure credentials are passed through to gcsfs.
+        kwargs.setdefault("token", credentials)
+
+        # Ensure options are passed through to gcsfs, even if URL is chained.
         if url.startswith("gs://") or url.startswith("gcs://"):
-            kwargs["token"] = credentials
+            storage_options = kwargs
         elif "gs://" in url:
             # Chained URL.
-            kwargs["gs"] = dict(token=credentials)
+            storage_options = {"gs": kwargs}
         elif "gcs://" in url:
             # Chained URL.
-            kwargs["gcs"] = dict(token=credentials)
+            storage_options = {"gcs": kwargs}
+
+    elif "s3://" in url:
+        # N.B., we currently assume any S3 URLs refer to buckets hosted at Sanger.
+        config = {
+            "signature_version": "s3",
+            "s3": {"addressing_style": "virtual"},
+        }
+
+        # Create an S3FileSystem with custom endpoint if specified.
+        kwargs.setdefault("anon", True)  # Default to anonymous access.
+        kwargs.setdefault("endpoint_url", "https://cog.sanger.ac.uk")
+        kwargs.setdefault("config_kwargs", config)
+
+        if url.startswith("s3://"):
+            storage_options = kwargs
+        else:
+            # Chained URL.
+            storage_options = {"s3": kwargs}
+
+    else:
+        # Some other kind of URL, pass through kwargs as-is.
+        storage_options = kwargs
 
     # Process the URL using fsspec.
-    fs, path = url_to_fs(url, **kwargs)
+    fs, path = url_to_fs(url, **storage_options)
 
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):

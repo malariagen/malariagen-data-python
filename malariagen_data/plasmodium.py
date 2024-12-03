@@ -298,7 +298,7 @@ class PlasmodiumDataResource:
             )
         return d
 
-    def genome_features(self, attributes=("ID", "Parent", "Name", "alias")):
+    def genome_features(self, attributes=("ID", "Parent", "Name")):
         """Access genome feature annotations.
 
         Parameters

@@ -134,6 +134,33 @@ def test_plot_genes(fixture, api: AnophelesGenomeFeaturesData):
 
 
 @parametrize_with_cases("fixture,api", cases=".")
+def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
+    # For each contig in the fixture...
+    for contig in fixture.contigs:
+        # Get the genes for this contig.
+        genes_df = api.genome_features(region=contig).query("type == 'gene'")
+
+        # If there are no genes, we cannot label them.
+        if not genes_df.empty:
+            # Get a random number of genes to sample.
+            random_genes_n = np.random.randint(low=1, high=len(genes_df) + 1)
+
+            # Get a random sample of genes.
+            random_sample_genes_df = genes_df.sample(n=random_genes_n)
+
+            # Put the random gene "ID" and its "Name" in a dictionary.
+            random_gene_labels = dict(
+                zip(random_sample_genes_df["ID"], random_sample_genes_df["Name"])
+            )
+
+            # Check that we get a Bokeh figure from plot_genes() with these gene_labels.
+            fig = api.plot_genes(
+                region=contig, show=False, gene_labels=random_gene_labels
+            )
+            assert isinstance(fig, bokeh.plotting.figure)
+
+
+@parametrize_with_cases("fixture,api", cases=".")
 def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
     for contig in fixture.contigs:
         df_transcripts = api.genome_features(region=contig).query("type == 'mRNA'")
