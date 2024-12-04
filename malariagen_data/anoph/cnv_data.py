@@ -397,9 +397,9 @@ class AnophelesCnvData(
         **variant_contig** has **variants** values and contains the contig of each CNV region,
         **variant_id** has **variants** values and contains the identifier for each CNV region,
         **sample_id** has **samples** values and contains the identifier of each sample. It contains 4 data variables:
-        **variant_CIPOS**, it has **variants** values and contains ??? for each CNV region,
-        **variant_CIEND**, it has **variants** values and contains ??? for each CNV region,
-        **variant_filter_pass**, it has **variants** values and contains ??? for each CNV region,
+        **variant_CIPOS**, it has **variants** values and contains the confidence interval for the start position for each CNV region,
+        **variant_CIEND**, it has **variants** values and contains the confidence interval for the end position for each CNV region,
+        **variant_filter_pass**, it has **variants** values and is True for each CNV region that passes quality filters,
         **call_genotype**, it has (**variants**, **samples**) values and contains the coverage call for each sample and each CNV region,
         """,
     )
