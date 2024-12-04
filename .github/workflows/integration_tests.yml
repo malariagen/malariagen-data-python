@@ -7,7 +7,7 @@ on:
     branches:
       - master
 jobs:
-  legacy_tests:
+  integration_tests:
     strategy:
       fail-fast: true
       matrix:
