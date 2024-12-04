@@ -48,12 +48,6 @@ def test_cross_metadata():
     assert df_crosses["sex"].unique().tolist() == expected_sex_values
 
 
-def _check_frequency(x):
-    loc_nan = np.isnan(x)
-    assert np.all(x[~loc_nan] >= 0)
-    assert np.all(x[~loc_nan] <= 1)
-
-
 @pytest.mark.parametrize(
     "region_raw",
     [
