@@ -397,7 +397,16 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Access a dataframe of sample sets",
-        returns="A dataframe of sample sets, one row per sample set.",
+        returns="""A dataframe of sample sets, one row per sample set. It contains five columns:
+         `sample_set` is the name of the sample set,
+         `sample_count` is the number of samples the sample set contains,
+         `study_id` is the identifier for the study that generated the sample set,
+         `study_url` is the URL of the study on the MalariaGEN website,
+         `term_of_use_expiry` is the date when the terms of use expire,
+         `terms_of_use_url` is the URL of the terms of use,
+         `release` is the identifier of the release containing the sample set,
+         `unrestricted_use` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+            """,
     )
     def sample_sets(
         self,
@@ -441,6 +450,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find which release a sample set was included in.",
+        returns="The release the sample set is part of.",
     )
     def lookup_release(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_release is None:
@@ -455,6 +465,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find which study a sample set belongs to.",
+        returns="The study the sample set belongs to.",
     )
     def lookup_study(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_study is None:
@@ -468,6 +479,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find the study info for a sample set.",
+        returns="The info for the study the sample set belongs to.",
     )
     def lookup_study_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_study_info is None:
@@ -483,6 +495,7 @@ class AnophelesBase:
     @check_types
     @doc(
         summary="Find the terms-of-use info for a sample set.",
+        returns="The terms-of-use info for the sample set.",
     )
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
