@@ -3,9 +3,10 @@ on:
   push:
     branches:
       - master
-  pull_request:
-    branches:
-      - master
+  # Temporarily disable notebooks check on PR.
+  # pull_request:
+  #   branches:
+  #     - master
 jobs:
   notebooks:
     strategy:
