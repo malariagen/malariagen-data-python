@@ -322,15 +322,15 @@ class AnophelesHapData(
     @doc(
         summary="Access haplotype data.",
         returns="""A dataset with 4 dimensions:
-        **variants** the number of sites in the selected region,
-        **allele** the number of alleles (2),
-        **samples** the number of samples,
-        and **ploidy** the ploidy (2). There are 3 coordinates:
-        **variant_position** has **variants** values and contains the position of each site,
-        **variant_contig** has **variants** values and contains the contig of each site,
-        **sample_id** has **samples** values and contains the identifier of each sample. The data variables are:
-        **variant_allele**, it has (**variants**, **alleles**) values and contains the reference followed by the alternate allele for each site,
-        **call_genotype**, it has (**variants**, **samples**, **ploidy**) values and contains both calls for each site and each sample.
+        `variants` the number of sites in the selected region,
+        `allele` the number of alleles (2),
+        `samples` the number of samples,
+        and `ploidy` the ploidy (2). There are 3 coordinates:
+        `variant_position` has `variants` values and contains the position of each site,
+        `variant_contig` has `variants` values and contains the contig of each site,
+        `sample_id` has `samples` values and contains the identifier of each sample. The data variables are:
+        `variant_allele`, it has (`variants`, `alleles`) values and contains the reference followed by the alternate allele for each site,
+        `call_genotype`, it has (`variants`, `samples`, `ploidy`) values and contains both calls for each site and each sample.
         """,
     )
     def haplotypes(

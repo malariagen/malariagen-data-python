@@ -28,9 +28,9 @@ df_pairwise_fst: TypeAlias = Annotated[
     """
     A dataframe of pairwise Fst and standard error values. It has
     4 columns:
-    **cohort1** and **cohort2** are the two cohorts,
-    **fst** is the value of the Fst between the two cohorts,
-    **se** is the standard error.
+    `cohort1` and `cohort2` are the two cohorts,
+    `fst` is the value of the Fst between the two cohorts,
+    `se` is the standard error.
     """,
 ]
 
