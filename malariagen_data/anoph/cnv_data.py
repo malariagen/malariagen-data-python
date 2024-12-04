@@ -664,7 +664,7 @@ class AnophelesCnvData(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.models as bkmod
@@ -789,7 +789,9 @@ class AnophelesCnvData(
         line_kwargs: Optional[gplt_params.line_kwargs] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.layouts as bklay
@@ -820,6 +822,8 @@ class AnophelesCnvData(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         debug("combine plots into a single figure")
@@ -855,11 +859,10 @@ class AnophelesCnvData(
         height: Optional[gplt_params.height] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.models as bkmod
-        import bokeh.palettes as bkpal
         import bokeh.plotting as bkplt
 
         region_prepped: Region = parse_single_region(self, region)
@@ -926,7 +929,7 @@ class AnophelesCnvData(
         )
 
         debug("set up palette and color mapping")
-        palette = ("#cccccc",) + bkpal.PuOr5
+        palette = cnv_params.colorscale_default
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
 
         debug("plot the HMM copy number data as an image")
@@ -998,7 +1001,9 @@ class AnophelesCnvData(
         track_height: Optional[gplt_params.track_height] = None,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         import bokeh.layouts as bklay
@@ -1027,6 +1032,8 @@ class AnophelesCnvData(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         debug("combine plots into a single figure")

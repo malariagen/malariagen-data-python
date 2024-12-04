@@ -127,3 +127,14 @@ the documentation via GitHub Actions.
 
 The version switcher for the documentation can then be updated by
 modifying the `docs/source/_static/switcher.json` file accordingly.
+
+## Sponsorship
+
+This project is currently supported by the following grants:
+
+* [BMGF INV-068808](https://www.gatesfoundation.org/about/committed-grants/2024/04/inv-068808)
+* [BMGF INV-062921](https://www.gatesfoundation.org/about/committed-grants/2024/07/inv-062921)
+
+This project was previously supported by the following grants:
+
+* [BMGF INV-001927](https://www.gatesfoundation.org/about/committed-grants/2019/11/inv001927)

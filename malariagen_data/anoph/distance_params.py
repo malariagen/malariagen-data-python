@@ -47,3 +47,20 @@ Z: TypeAlias = Annotated[
 samples: TypeAlias = Annotated[np.ndarray, "The list of the sample identifiers"]
 
 n_snps_used: TypeAlias = Annotated[int, "The number of SNPs used"]
+
+center_x: TypeAlias = Annotated[int | float, "X coordinate where plotting is centered."]
+
+center_y: TypeAlias = Annotated[int | float, "Y coordinate where plotting is centered."]
+
+arc_start: TypeAlias = Annotated[int | float, "Angle where tree layout begins."]
+
+arc_stop: TypeAlias = Annotated[int | float, "Angle where tree layout ends."]
+
+edge_legend: TypeAlias = Annotated[
+    bool, "Show legend entries for the different edge (line) colors."
+]
+
+leaf_legend: TypeAlias = Annotated[
+    bool,
+    "Show legend entries for the different leaf node (scatter) colors and symbols.",
+]

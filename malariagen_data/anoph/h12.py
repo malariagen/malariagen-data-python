@@ -1,4 +1,3 @@
-from collections import Counter
 from typing import Optional, Tuple, Dict, Mapping
 
 import allel  # type: ignore
@@ -7,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import hash_columns, check_types, CacheMiss
+from ..util import check_types, CacheMiss, haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -150,7 +149,7 @@ class AnophelesH12Analysis(
         show: bool = True,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Get H12 values.
         calibration_runs = self.h12_calibration(
             contig=contig,
@@ -370,7 +369,7 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Compute H12.
         x, h12, contigs = self.h12_gwss(
             contig=contig,
@@ -473,7 +472,9 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_track(
             contig=contig,
@@ -508,6 +509,8 @@ class AnophelesH12Analysis(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # Combine plots into a single figure.
@@ -555,7 +558,7 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
@@ -674,7 +677,9 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_multi_overlay_track(
             contig=contig,
@@ -710,6 +715,8 @@ class AnophelesH12Analysis(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # Combine plots into a single figure.
@@ -755,7 +762,9 @@ class AnophelesH12Analysis(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
@@ -772,7 +781,7 @@ class AnophelesH12Analysis(
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
-        figs: list[gplt_params.def_figure] = []
+        figs: list[gplt_params.figure] = []
         for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
             params = dict(
                 contig=contig,
@@ -807,6 +816,8 @@ class AnophelesH12Analysis(
             x_range=figs[0].x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         figs.append(fig2)
@@ -828,21 +839,11 @@ class AnophelesH12Analysis(
             return fig
 
 
-def haplotype_frequencies(h):
-    """Compute haplotype frequencies, returning a dictionary that maps
-    haplotype hash values to frequencies."""
-    n = h.shape[1]
-    hashes = hash_columns(np.asarray(h))
-    counts = Counter(hashes)
-    freqs = {key: count / n for key, count in counts.items()}
-    return freqs
-
-
 def garud_h12(ht):
     """Compute Garud's H12."""
 
     # Compute haplotype frequencies.
-    frq_counter = haplotype_frequencies(ht)
+    frq_counter, _, _ = haplotype_frequencies(ht)
 
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]

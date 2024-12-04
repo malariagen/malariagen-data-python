@@ -79,16 +79,16 @@ figure: TypeAlias = Annotated[
     # Use quite a broad type here to accommodate both single-panel figures
     # created via bokeh.plotting and multi-panel figures created via
     # bokeh.layouts.
-    Optional[bokeh.model.Model],
-    "A bokeh figure (only returned if show=False).",
+    bokeh.model.Model,
+    "A bokeh figure.",
 ]
 
-def_figure: TypeAlias = Annotated[
+optional_figure: TypeAlias = Annotated[
     # Use quite a broad type here to accommodate both single-panel figures
     # created via bokeh.plotting and multi-panel figures created via
     # bokeh.layouts.
-    bokeh.model.Model,
-    "A bokeh figure.",
+    Optional[figure],
+    "A bokeh figure (only returned if show=False).",
 ]
 
 output_backend: TypeAlias = Annotated[
@@ -120,3 +120,13 @@ contig_colors: TypeAlias = Annotated[
 contig_colors_default: Final[contig_colors] = list(bokeh.palettes.d3["Category20b"][5])
 
 colors: TypeAlias = Annotated[Sequence[str], "List of colors."]
+
+gene_labels: TypeAlias = Annotated[
+    Mapping[str, str],
+    "A mapping of gene identifiers to custom labels, which will appear in the plot.",
+]
+
+gene_labelset: TypeAlias = Annotated[
+    bokeh.models.LabelSet,
+    "A LabelSet to use in the plot.",
+]

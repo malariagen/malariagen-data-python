@@ -6,10 +6,9 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss
+from ..util import check_types, CacheMiss, haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
-from .h12 import haplotype_frequencies
 
 
 class AnophelesH1XAnalysis(
@@ -197,7 +196,7 @@ class AnophelesH1XAnalysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Compute H1X.
         x, h1x, contigs = self.h1x_gwss(
             contig=contig,
@@ -305,7 +304,9 @@ class AnophelesH1XAnalysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h1x_gwss_track(
             contig=contig,
@@ -341,6 +342,8 @@ class AnophelesH1XAnalysis(
             x_range=fig1.x_range,
             show=False,
             output_backend=output_backend,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # Combine plots into a single figure.
@@ -364,8 +367,8 @@ def haplotype_joint_frequencies(ha, hb):
     """Compute the joint frequency of haplotypes in two difference
     cohorts. Returns a dictionary mapping haplotype hash values to
     the product of frequencies in each cohort."""
-    frqa = haplotype_frequencies(ha)
-    frqb = haplotype_frequencies(hb)
+    frqa, _, _ = haplotype_frequencies(ha)
+    frqb, _, _ = haplotype_frequencies(hb)
     keys = set(frqa.keys()) | set(frqb.keys())
     joint_freqs = {key: frqa.get(key, 0) * frqb.get(key, 0) for key in keys}
     return joint_freqs

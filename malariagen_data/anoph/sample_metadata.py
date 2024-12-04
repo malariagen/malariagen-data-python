@@ -1426,7 +1426,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             return fig
 
 
-def locate_cohorts(*, cohorts, data):
+def locate_cohorts(*, cohorts, data, min_cohort_size):
     # Build cohort dictionary where key=cohort_id, value=loc_coh.
     coh_dict = {}
 
@@ -1456,5 +1456,18 @@ def locate_cohorts(*, cohorts, data):
         for coh in cohort_labels:
             loc_coh = data[cohorts] == coh
             coh_dict[coh] = loc_coh.values
+
+    # Remove cohorts below minimum cohort size.
+    coh_dict = {
+        coh: loc_coh
+        for coh, loc_coh in coh_dict.items()
+        if np.count_nonzero(loc_coh) >= min_cohort_size
+    }
+
+    # Early check for no cohorts.
+    if len(coh_dict) == 0:
+        raise ValueError(
+            "No cohorts available for the given sample selection parameters and minimum cohort size."
+        )
 
     return coh_dict

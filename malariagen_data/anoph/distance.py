@@ -6,7 +6,6 @@ import math
 import numba  # type: ignore
 import numpy as np
 from numpydoc_decorator import doc  # type: ignore
-import anjl.params  # type: ignore
 
 # Internal imports.
 from .snp_data import AnophelesSnpData
@@ -414,10 +413,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         metric: distance_params.distance_metric = distance_params.default_distance_metric,
         distance_sort: Optional[tree_params.distance_sort] = None,
         count_sort: Optional[tree_params.count_sort] = None,
-        center_x: anjl.params.center_x = 0,
-        center_y: anjl.params.center_y = 0,
-        arc_start: anjl.params.arc_start = 0,
-        arc_stop: anjl.params.arc_stop = 2 * math.pi,
+        center_x: distance_params.center_x = 0,
+        center_y: distance_params.center_y = 0,
+        arc_start: distance_params.arc_start = 0,
+        arc_stop: distance_params.arc_stop = 2 * math.pi,
         width: plotly_params.fig_width = 800,
         height: plotly_params.fig_height = 600,
         show: plotly_params.show = True,
@@ -430,8 +429,8 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         color_discrete_sequence: plotly_params.color_discrete_sequence = None,
         color_discrete_map: plotly_params.color_discrete_map = None,
         category_orders: plotly_params.category_order = None,
-        edge_legend: anjl.params.edge_legend = False,
-        leaf_legend: anjl.params.leaf_legend = True,
+        edge_legend: distance_params.edge_legend = False,
+        leaf_legend: distance_params.leaf_legend = True,
         legend_sizing: plotly_params.legend_sizing = "constant",
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -453,6 +452,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> plotly_params.figure:
+        # Only import anjl if needed, as it requires a couple of seconds to compile
+        # functions.
+        import anjl  # type: ignore
+
         # Normalise params.
         if count_sort is None and distance_sort is None:
             count_sort = True

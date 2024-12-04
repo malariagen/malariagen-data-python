@@ -193,7 +193,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             gplt_params.toolbar_location
         ] = gplt_params.toolbar_location_default,
         title: gplt_params.title = True,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         debug("Find the transcript annotation.")
@@ -333,7 +333,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         x_range: Optional[gplt_params.x_range] = None,
         title: Optional[gplt_params.title] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
@@ -407,6 +409,101 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             source=data,
             line_width=0,
         )
+
+        if gene_labels:
+            debug("determine new figure height and range to accommodate gene labels")
+
+            # Increase the figure height by a certain factor, to accommodate labels.
+            height_increase_factor = 1.3
+            fig.height = int(fig.height * height_increase_factor)
+
+            # Get the original y_range.
+            # Note: fig.y_range is not subscriptable.
+            orig_y_range = fig.y_range.start, fig.y_range.end
+
+            # Determine the midpoint of the original range, to rescale outward from there.
+            orig_mid_y_range = (orig_y_range[0] + orig_y_range[1]) / 2
+            orig_y_range_extent = orig_y_range[1] - orig_y_range[0]
+
+            # Determine the new start and end points of the extended range.
+            new_y_range_extent = orig_y_range_extent * height_increase_factor
+            new_y_range_extent_half = new_y_range_extent / 2
+            new_y_start = orig_mid_y_range - new_y_range_extent_half
+            new_y_end = orig_mid_y_range + new_y_range_extent_half
+
+            # Set the new y_range.
+            fig.y_range = bokeh.models.Range1d(new_y_start, new_y_end)
+
+            debug("determine midpoint of each gene rectangle")
+            data["mid_x"] = (data["start"] + data["end"]) / 2
+
+            debug("make gene labels and pointers")
+
+            # Put gene_labels into a new column, where the gene_id matches.
+            # Fill unmapped genes with empty strings, otherwise "NaN" would be displayed.
+            data["gene_label"] = data["ID"].map(gene_labels).fillna("")
+
+            # Put gene pointers (▲ or ▼) in a new column, depending on the strand.
+            # Except if the gene_label is null or an empty string, which should not be shown.
+            data["gene_pointer"] = data.apply(
+                lambda row: ("▼" if row["strand"] == "+" else "▲")
+                if row["gene_label"]
+                else "",
+                axis=1,
+            )
+
+            # Put the pointer above or below the gene rectangle, depending on + or - strand.
+            neg_strand_pointer_y = orig_mid_y_range - 1.1
+            pos_strand_pointer_y = orig_mid_y_range + 1.1
+            data["pointer_y"] = data["strand"].apply(
+                lambda strand: pos_strand_pointer_y
+                if strand == "+"
+                else neg_strand_pointer_y
+            )
+
+            # Put the label above or below the gene rectangle, depending on + or - strand.
+            neg_strand_label_y = orig_mid_y_range - 1.25
+            pos_strand_label_y = orig_mid_y_range + 1.3
+            data["label_y"] = data["strand"].apply(
+                lambda strand: pos_strand_label_y
+                if strand == "+"
+                else neg_strand_label_y
+            )
+
+            # Get the data as a ColumnDataSource.
+            data_as_cds = bokeh.models.ColumnDataSource(data)
+
+            # Create a LabelSet for the gene pointers.
+            gene_pointers_ls = bokeh.models.LabelSet(
+                source=data_as_cds,
+                x="mid_x",
+                y="pointer_y",
+                text="gene_pointer",
+                text_align="center",
+                text_baseline="middle",
+                text_font_size="9pt",
+                text_color="#444444",
+            )
+
+            # Create a LabelSet for the gene labels.
+            gene_labels_ls = bokeh.models.LabelSet(
+                source=data_as_cds,
+                x="mid_x",
+                y="label_y",
+                text="gene_label",
+                text_align="left",
+                text_baseline="middle",
+                text_font_size="9pt",
+                text_color="#444444",
+                x_offset=8,
+            )
+
+            # Add the markers and labels to the figure.
+            fig.add_layout(gene_pointers_ls)
+            fig.add_layout(gene_labels_ls)
+
+        if gene_labelset:
+            fig.add_layout(gene_labelset)
 
         debug("tidy up the plot")
         fig.ygrid.visible = False

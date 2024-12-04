@@ -1348,7 +1348,9 @@ class AnophelesSnpData(
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         max_snps: int = 200_000,
         show: gplt_params.show = True,
-    ) -> gplt_params.figure:
+        gene_labels: Optional[gplt_params.gene_labels] = None,
+        gene_labelset: Optional[gplt_params.gene_labelset] = None,
+    ) -> gplt_params.optional_figure:
         # Plot SNPs track.
         fig1 = self.plot_snps_track(
             region=region,
@@ -1373,6 +1375,8 @@ class AnophelesSnpData(
             height=genes_height,
             x_range=fig1.x_range,
             show=False,
+            gene_labels=gene_labels,
+            gene_labelset=gene_labelset,
         )
 
         # Layout tracks in a grid.
@@ -1418,7 +1422,7 @@ class AnophelesSnpData(
         x_range: Optional[gplt_params.x_range] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Normalise params.
         site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
         del site_mask
