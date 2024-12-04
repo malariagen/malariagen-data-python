@@ -22,7 +22,7 @@ jobs:
                   cache: 'pip'
 
             - name: Install package
-              run: pip install "${{ matrix.numpy-version }}" .[dev]
+              run: pip install .[dev]
 
             - name: Run unit tests with coverage
               run: pytest -v tests --ignore tests/integration --cov malariagen_data/anoph --cov-report=xml
