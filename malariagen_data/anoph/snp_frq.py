@@ -125,7 +125,19 @@ class AnophelesSnpFrequencyAnalysis(
             Compute SNP allele frequencies for a gene transcript.
         """,
         returns="""
-            A dataframe of SNP allele frequencies, one row per variant allele.
+            A dataframe of SNP allele frequencies, one row per variant allele. The variant alleles are indexed by
+            their contig, their position, the reference allele, the alternate allele and the associated amino acid change.
+            The columns are split into three categories: there is one column for each taxon filter (e.g., pass_funestus, pass_gamb_colu, ...) containing whether the site of the variant allele passes the filter;
+            there is then 1 column for each cohort containing the frequency of the variant allele within the cohort, additionally there is a column `max_af` containing the maximum allele frequency of the variant allele accross all cohorts;
+            finally, there are 9 columns describing the variant allele: `transcript` contains the gene transcript used for this analysis,
+            `effect` is the effect of the allele change,
+            `impact`is the impact of the allele change,
+            `ref_codon` is the reference codon,
+            `alt_codon` is the altered codon with the variant allele,
+            `aa_pos` is the position of the amino acid,
+            `ref_aa` is the reference amino acid,
+            `alt_aa` is the altered amino acid with the varaint allele,
+            and `label` is the label of the variant allele.
         """,
         notes="""
             Cohorts with fewer samples than `min_cohort_size` will be excluded from
@@ -285,8 +297,18 @@ class AnophelesSnpFrequencyAnalysis(
             Compute amino acid substitution frequencies for a gene transcript.
         """,
         returns="""
-            A dataframe of amino acid allele frequencies, one row per
-            substitution.
+            A dataframe of amino acid allele frequencies, one row per variant. The variants are indexed by
+            their amino acid change, their contig, their position.
+            The columns are split into two categories: there is 1 column for each cohort containing the frequency of the amino acid change within the cohort, additionally there is a column `max_af` containing the maximum frequency of the amino acide change accross all cohorts;
+            finally, there are 9 columns describing the variant allele: `transcript` contains the gene transcript used for this analysis,
+            `effect` is the effect of the allele change,
+            `impact`is the impact of the allele change,
+            `ref_allele` is the reference allel,
+            `alt_allele` is the alternate allele,
+            `aa_pos` is the position of the amino acid,
+            `ref_aa` is the reference amino acid,
+            `alt_aa` is the altered amino acid with the varaint allele,
+            and `label` is the label of the variant allele.
         """,
         notes="""
             Cohorts with fewer samples than `min_cohort_size` will be excluded from

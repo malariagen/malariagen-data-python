@@ -962,8 +962,12 @@ class AnophelesDataResource(
             individuals.
         """,
         returns="""
-            A pandas series with summary statistics and their confidence
-            intervals.
+            A pandas series with summary statistics (theta pi, Watterson's theta and Tajima's D)
+            and their estimate, bias, standard error, confidence interval error, confidence interval lower value,
+            and confidence interval upper value. The series also contains the cohort under study, its taxon, its year
+            of collection, its month of collection, its country of collection, the ISO code of its first administrative
+            level of collection, the name of its first administrative level of collection, the name of its second administrative
+            level of collection, the longitude of its location of collection, and the latitude of its location of collection.
         """,
     )
     def cohort_diversity_stats(
@@ -1070,7 +1074,14 @@ class AnophelesDataResource(
         """,
         returns="""
             A DataFrame where each row provides summary statistics and their
-            confidence intervals for a single cohort.
+            confidence intervals for a single cohort. The columns are
+            the value, the estimate, the bias, the standard error,
+            the confidence interval error, the confidence interval lower value,
+            the confidence interval upper value for each summary statistics (theta pi, Watterson's theta and Tajima's D),
+            the taxon of the cohort, its year
+            of collection, its month of collection, its country of collection, the ISO code of its first administrative
+            level of collection, the name of its first administrative level of collection, the name of its second administrative
+            level of collection, the longitude of its location of collection, and the latitude of its location of collection.
         """,
     )
     def diversity_stats(

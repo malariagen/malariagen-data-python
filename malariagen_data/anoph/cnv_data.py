@@ -170,7 +170,19 @@ class AnophelesCnvData(
     @check_types
     @doc(
         summary="Access CNV HMM data from CNV calling.",
-        returns="An xarray dataset of CNV HMM calls and associated data.",
+        returns="""A dataset with 2 dimensions:
+        `variants` the number of CNV regions in the selected region,
+        `samples` the number of samples. There are 4 coordinates:
+        `variant_position` has `variants` values and contains the initial position of each CNV region,
+        `variant_end` has `variants` values and contains the final position of each CNV region,
+        `variant_contig` has `variants` values and contains the contig of each CNV region,
+        `sample_id` has `samples` values and contains the identifier of each sample. It contains 5 data variables:
+        `call_CN`, it has (`variants`, `samples`) values and contains the number of copies for each sample and each CNV region,
+        `call_RawCov`, it has (`variants`, `samples`) values and contains the raw coverage for each sample and each CNV region,
+        `call_NormCov`, it has (`variants`, `samples`) values and contains the normalized coverage for each sample and each CNV region,
+        `sample_coverage_variance`, it has `samples` values and contains the variance of the coverage for each sample,
+        `sample_id_high_variance`, it has `samples` values and contains whether each sample has a high variance.
+        """,
     )
     def cnv_hmm(
         self,
@@ -377,7 +389,19 @@ class AnophelesCnvData(
     @check_types
     @doc(
         summary="Access CNV HMM data from genome-wide CNV discovery and filtering.",
-        returns="An xarray dataset of CNV alleles and genotypes.",
+        returns="""A dataset with 2 dimensions:
+        `variants` the number of CNV regions in the selected region,
+        `samples` the number of samples. There are 5 coordinates:
+        `variant_position` has `variants` values and contains the initial position of each CNV region,
+        `variant_end` has `variants` values and contains the final position of each CNV region,
+        `variant_contig` has `variants` values and contains the contig of each CNV region,
+        `variant_id` has `variants` values and contains the identifier for each CNV region,
+        `sample_id` has `samples` values and contains the identifier of each sample. It contains 4 data variables:
+        `variant_CIPOS`, it has `variants` values and contains the confidence interval for the start position for each CNV region,
+        `variant_CIEND`, it has `variants` values and contains the confidence interval for the end position for each CNV region,
+        `variant_filter_pass`, it has `variants` values and is True for each CNV region that passes quality filters,
+        `call_genotype`, it has (`variants`, `samples`) values and contains the coverage call for each sample and each CNV region,
+        """,
     )
     def cnv_coverage_calls(
         self,
@@ -533,7 +557,21 @@ class AnophelesCnvData(
     @check_types
     @doc(
         summary="Access CNV discordant read calls data.",
-        returns="An xarray dataset of CNV alleles and genotypes.",
+        returns="""A dataset with 2 dimensions:
+        `variants` the number of discordant read calls in the selected region,
+        `samples` the number of samples. There are 5 coordinates:
+        `variant_position` has `variants` values and contains the initial position of each discordant read call,
+        `variant_end` has `variants` values and contains the final position of each discordant read call,
+        `variant_id` has `variants` values and contains the identifier of each discordant read call,
+        `variant_contig` has `variants` values and contains the contig of each discordant read call,
+        `sample_id` has `samples` values and contains the identifier of each sample. It contains 6 data variables:
+        `variant_Region`, it has `variants` values and contains the identifier of the region covered by each discordant read call,
+        `variant_StartBreakpointMethod`, it has `variants` values and specifies how the start breakpoint was determined for each discordant read call,
+        `variant_EndBreakpointMethod`, it has `variants` values and specifies how the end breakpoint was determined for each discordant read call,
+        `call_genotype`, it has (`variants`, `samples`) values and contains the number of copies of each discordant read call for each sample,
+        `sample_coverage_variance`, it has `samples` values and contains the variance of the coverage for each sample,
+        `sample_id_high_variance`, it has `samples` values and contains whether each sample has a high variance.
+        """,
     )
     def cnv_discordant_read_calls(
         self,

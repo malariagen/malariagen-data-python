@@ -674,7 +674,32 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Load site annotations.",
-        returns="A dataset of site annotations.",
+        returns="""
+        A dataset of site annotations with 1 dimension: `variants` the number of sites in the selected region. It has 7 variables:
+        `seq_cls`: The feature class. There are 11 possible values:
+                *1*: Upstream,
+                *2*: Downstream,
+                *3*: 5' UTR,
+                *4*: 3' UTR,
+                *5*: CDS (first),
+                *6*: CDS (mid),
+                *7*: CDS (last),
+                *8*: Intron (first),
+                *9*: Intron (mid),
+                *10*: Intron (last),
+                *0*: Unknown,
+        `seq_flen`: The length of the feature,
+        `seq_relpos_start`: Relative position to the start of the feature. 0 if not in a feature,
+        `seq_relpos_stop`: Relative position to the end of the feature. 0 if not in a feature,
+        `codon_position`: Position within a triplet codon. -1 if not in a CDS,
+        `codon_nonsyn`: Number of possible nucleotide changes at this position that would result in an amino acid change from the reference, 0 if not in a CDS,
+        `codon_degeneracy`: The redundancy of the codon. Can take 5 different values:
+                *1*: 0-fold degenerate, i.e., all nucleotides encode different amino acids,
+                *2*: simple 2-fold degenerate, i.e., 2 different amino acids can be encoded depending on which nucleotide is present; each amino acid is encoded by two different nucleotides,
+                *3*: complex 2-fold degenerate, i.e., 2 different amino acids can be encoded depending on which nucleotide is present but they are not paired,
+                *4*: 4-fold degenerate, i.e., all nucleotides encode the same amino acid,
+                *-1*: not in a CDS
+        """,
     )
     def site_annotations(
         self,
@@ -936,7 +961,25 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Access SNP sites, site filters and genotype calls.",
-        returns="A dataset containing SNP sites, site filters and genotype calls.",
+        returns="""A dataset with 4 dimensions:
+        `variants` the number of sites in the selected region,
+        `allele` the number of alleles (4),
+        `samples` the number of samples,
+        and `ploidy` the ploidy (2). There are 3 coordinates:
+        `variant_position` has `variants` values and contains the position of each site,
+        `variant_contig` has `variants` values and contains the contig of each site,
+        `sample_id` has `samples` values and contains the identifier of each sample. The data variables are:
+        `variant_allele`, it has (`variants`, `alleles`) values and contains the reference followed by the 3 alternate alleles for each site,
+        `variant_filter_pass_gamb_colu_arab`, it has (`variants`) values and contains whether the site passes the site filters for all of gambiae, coluzzii and arabiensis (only available for *Ag3*),
+        `variant_filter_pass_gamb_colu`, it has (`variants`) values and contains whether the site passes the site filters for gambiae and coluzzii (only available for *Ag3*),
+        `variant_filter_pass_arab`, it has (`variants`) values and contains whether the site passes the site filters for arabiensis (only available for *Ag3*),
+        `variant_filter_pass_funestus`, it has (`variants`) values and contains whether the site passes the site filters for funestus (only available for *Af1*),
+        `call_genotype`, it has (`variants`, `samples`, `ploidy`) values and contains both calls for each site and each sample,
+        `call_GQ`, it has (`variants`, `samples`) values and contains the genotype quality for each site and each sample,
+        `call_MQ`, it has (`variants`, `samples`) values and contains the mapping quality for each site and each sample,
+        `call_AD`, it has (`variants*, `samples`, *alleles`) values and contains the allele depth for each site, each sample and each allele,
+        `call_genotypes_mask`, it has (`variants`,`samples`, `ploidy`) values and contains whether the allele is absent for each site, each sample and each ploidy.
+        """,
     )
     def snp_calls(
         self,
@@ -1591,7 +1634,15 @@ class AnophelesSnpData(
     @check_types
     @doc(
         summary="Access SNP calls at sites which are biallelic within the selected samples.",
-        returns="A dataset containing SNP sites, site filters and genotype calls.",
+        returns="""
+        A dataset with 4 dimensions: `variants`: the number of sites, `alleles` the number of alleles (2), `samples`: the number of samples, `ploidy`: the ploidy (2). There are 3 coordinates:
+        `sample_id` has `samples` values and contains the identifier of each sample,
+        `variant_position` has `variants` values and contains the position of each site,
+        `variant_contig` has `variants` values and contains the contig of each site. There are 3 data variables:
+        `variant_allele`, it (`variants`, `alleles`) values and contains the nucleotide represented as a character for each site, each allele,
+        `variant_allele_count`, it (`variants`, `alleles`) values and contains the number of occurences of each allele at each site,
+        `call_genotype`, it (`variants`, `samples`, `ploidy`) values and contains and contains both calls for each site and each sample.
+          """,
     )
     def biallelic_snp_calls(
         self,
