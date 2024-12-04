@@ -642,7 +642,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             index="Sample metadata columns to use for the pivot table index.",
             columns="Sample metadata columns to use for the pivot table columns.",
         ),
-        returns="Pivot table of sample counts. One raw per admin2_year cohort. Unless otherwise specified using the `columns` parameters, the samples are grouped according to their taxon and then counted.",
+        returns="Pivot table of sample counts. One row per admin2_year cohort. Unless otherwise specified using the `columns` parameters, the samples are grouped according to their taxon and then counted.",
     )
     def count_samples(
         self,
