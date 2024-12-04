@@ -452,7 +452,19 @@ using a different set of SNPs.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>Dataset</dt><dd><p>A dataset containing SNP sites, site filters and genotype calls.</p>
+<dt>Dataset</dt><dd><p>A dataset with 4 dimensions: <cite>variants</cite>: the number of sites,
+<cite>alleles</cite> the number of alleles (2), <cite>samples</cite>: the number of
+samples, <cite>ploidy</cite>: the ploidy (2). There are 3 coordinates:
+<cite>sample_id</cite> has <cite>samples</cite> values and contains the identifier of each
+sample, <cite>variant_position</cite> has <cite>variants</cite> values and contains the
+position of each site, <cite>variant_contig</cite> has <cite>variants</cite> values and
+contains the contig of each site. There are 3 data variables:
+<cite>variant_allele</cite>, it (<cite>variants</cite>, <cite>alleles</cite>) values and contains the
+nucleotide represented as a character for each site, each allele,
+<cite>variant_allele_count</cite>, it (<cite>variants</cite>, <cite>alleles</cite>) values and
+contains the number of occurences of each allele at each site,
+<cite>call_genotype</cite>, it (<cite>variants</cite>, <cite>samples</cite>, <cite>ploidy</cite>) values and
+contains and contains both calls for each site and each sample.</p>
 </dd>
 </dl>
 </section>

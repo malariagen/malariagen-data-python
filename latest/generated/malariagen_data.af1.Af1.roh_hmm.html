@@ -413,7 +413,12 @@ dask chunks value.</p>
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
 <dt>DataFrame</dt><dd><p>A DataFrame where each row provides data about a single run of
-homozygosity.</p>
+homozygosity. The columns are: <cite>sample_id</cite> containing the identifier
+of the sample, <cite>contig</cite> containing the contig, <cite>roh_start</cite>
+containing the start of the run of homozygosity, <cite>roh_stop</cite>
+containing the end of the run of homozygosity, <cite>roh_length</cite>
+containing the length of the run of homozygosity, <cite>roh_is_marginal</cite>
+containing whether the run of homozygosity is marginal.</p>
 </dd>
 </dl>
 </section>

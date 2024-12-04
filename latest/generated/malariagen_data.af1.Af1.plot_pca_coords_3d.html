@@ -373,8 +373,81 @@ plotly 3D scatter plot.</p>
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>data<span class="classifier">DataFrame</span></dt><dd><p>A dataframe of sample metadata, with columns “PC1”, “PC2”, “PC3”,
-etc., added.</p>
+<dt>data<span class="classifier">DataFrame</span></dt><dd><p>A dataframe of projections along principal components, one row per
+sample. The columns are:     <cite>sample_id</cite> is the identifier of the
+sample,     <cite>partner_sample_id</cite> is the identifier of the sample used
+by the partners who contributed it,     <cite>contributor</cite> is the partner
+who contributed the sample,     <cite>country</cite> is the country the sample
+was collected in,     <cite>location</cite> is the location the sample was
+collected in,     <cite>year</cite> is the year the sample was collected,
+<cite>month</cite> is the month the sample was collected,     <cite>latitude</cite> is the
+latitude of the location the sample was collected in,     <cite>longitude</cite>
+is the longitude of the location the sample was collected in,
+<cite>sex_call</cite> is the sex of the sample,     <cite>sample_set</cite> is the sample
+set containing the sample,     <cite>release</cite> is the release containing the
+sample,     <cite>quarter</cite> is the quarter of the year the sample was
+collected,     <cite>study_id* is the identifier of the study the sample
+set containing the sample came from,     `study_url</cite> is the URL of the
+study the sample set containing the sample came from,
+<cite>terms_of_use_expiry_date</cite> is the date the terms of use for the sample
+expire,     <cite>terms_of_use_url</cite> is the URL of the terms of use for the
+sample,     <cite>unrestricted_use</cite> indicates whether the sample can be
+used without restrictions (e.g., if the terms of use of expired),
+<cite>mean_cov</cite> is mean value of the coverage,     <cite>median_cov</cite> is the
+median value of the coverage,     <cite>modal_cov</cite> is the mode of the
+coverage,     <cite>mean_cov_2L</cite> is mean value of the coverage on 2L,
+<cite>median_cov_2L</cite> is the median value of the coverage on 2L,
+<cite>mode_cov_2L</cite> is the mode of the coverage on 2L,     <cite>mean_cov_2R</cite> is
+mean value of the coverage on 2R,     <cite>median_cov_2R</cite> is the median
+value of the coverage on 2R,     <cite>mode_cov_2R</cite> is the mode of the
+coverage on 2R,     <cite>mean_cov_3L</cite> is mean value of the coverage on 3L,
+<cite>median_cov_3L</cite> is the median value of the coverage on 3L,
+<cite>mode_cov_3L</cite> is the mode of the coverage on 3L,     <cite>mean_cov_3R</cite> is
+mean value of the coverage on 3R,     <cite>median_cov_3R</cite> is the median
+value of the coverage on 3R,     <cite>mode_cov_3R</cite> is the mode of the
+coverage on 3R,     <cite>mean_cov_X</cite> is mean value of the coverage on X,
+<cite>median_cov_X</cite> is the median value of the coverage on X,
+<cite>mode_cov_X</cite> is the mode of the coverage on X,     <cite>frac_gen_cov</cite> is
+the faction of the genome covered,     <cite>divergence</cite> is the divergence,
+<cite>contam_pct</cite> is the percentage of contamination,     <cite>contam_LLR</cite> is
+the log-likelihood ratio of contamination,
+<cite>aim_species_fraction_arab</cite> is the fraction of the gambcolu vs.
+arabiensis AIMs that indicated arabiensis (this column is only present
+for <em>Ag3</em>),     <cite>aim_species_fraction_colu</cite> is the fraction of the
+gambiae vs. coluzzii AIMs that indicated coluzzii (this column is only
+present for <em>Ag3</em>),     <cite>aim_species_fraction_colu_no2l</cite> is the
+fraction of the gambiae vs. coluzzii AIMs that indicated coluzzii, not
+including the chromosome arm 2L which contains an introgression (this
+column is only present for <em>Ag3</em>),
+<cite>aim_species_gambcolu_arabiensis</cite> is the taxonomic group assigned by
+the gambcolu vs. arabiensis AIMs (this column is only present for
+<em>Ag3</em>),     <cite>aim_species_gambiae_coluzzi</cite> is the taxonomic group
+assigned by the gambiae vs. coluzzii AIMs (this column is only present
+for <em>Ag3</em>),     <cite>aim_species_gambcolu_arabiensis</cite> is the taxonomic
+group assigned by the combination of both AIMs analyses (this column
+is only present for <em>Ag3</em>),     <cite>country_iso</cite> is the ISO code of the
+country the sample was collected in,     <cite>admin1_name</cite> is the name of
+the first administrative level the sample was collected in,
+<cite>admin1_iso</cite> is the ISO code of the first administrative level the
+sample was collected in,     <cite>admin2_name</cite> is the name of the second
+administrative level the sample was collected in,     <cite>taxon</cite> is the
+taxon assigned to the sample by the combination of the AIMs analysis
+and the cohort analysis,     <cite>cohort_admin1_year</cite> is the cohort the
+sample belongs to when samples are grouped by first administrative
+level and year,     <cite>cohort_admin1_month</cite> is the cohort the sample
+belongs to when samples are grouped by first administrative level and
+month,     <cite>cohort_admin1_quarter</cite> is the cohort the sample belongs to
+when samples are grouped by first administrative level and quarter,
+<cite>cohort_admin2_year</cite> is the cohort the sample belongs to when samples
+are grouped by second administrative level and year,
+<cite>cohort_admin2_month</cite> is the cohort the sample belongs to when samples
+are grouped by second administrative level and month,
+<cite>cohort_admin2_quarter</cite> is the cohort the sample belong to when
+samples are grouped by second administrative level and quarter.
+<cite>PC?</cite> is the projection along principal component ? (? being an
+integer between 1 and the number of components). There are as many
+such columns as components,     <cite>pca_fit</cite> is whether this sample was
+used for fitting.</p>
 </dd>
 <dt>x<span class="classifier">str, optional, default: ‘PC1’</span></dt><dd><p>Name of variable to plot on the X axis.</p>
 </dd>

@@ -436,8 +436,16 @@ dask chunks value.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>Series</dt><dd><p>A pandas series with summary statistics and their confidence
-intervals.</p>
+<dt>Series</dt><dd><p>A pandas series with summary statistics (theta pi, Watterson’s theta
+and Tajima’s D) and their estimate, bias, standard error, confidence
+interval error, confidence interval lower value, and confidence
+interval upper value. The series also contains the cohort under
+study, its taxon, its year of collection, its month of collection,
+its country of collection, the ISO code of its first administrative
+level of collection, the name of its first administrative level of
+collection, the name of its second administrative level of
+collection, the longitude of its location of collection, and the
+latitude of its location of collection.</p>
 </dd>
 </dl>
 </section>

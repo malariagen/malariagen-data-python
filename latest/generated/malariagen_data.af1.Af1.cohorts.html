@@ -383,7 +383,46 @@ and representative latitude and longitude points.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>DataFrame</dt><dd><p>A dataframe of cohort data, one row per cohort.</p>
+<dt>DataFrame</dt><dd><p>A dataframe of cohort data, one row per cohort. There are up to 18
+columns:         <cite>cohort_id</cite> is the identifier of the cohort,
+<cite>cohort_size</cite> is the number of samples in the cohort,
+<cite>country</cite> is the country the cohort is from,
+<cite>country_alpha2</cite> is the ISO alpha-2 code for the country the cohort
+is from,         <cite>country_alpha3</cite> is the ISO alpha-3 code for the
+country the cohort is from,         <cite>taxon</cite> is the taxon of the
+samples in the cohort,         <cite>year</cite> is the year the samples in the
+cohort were collected in,         <cite>quarter</cite> is the quarter the
+samples in the cohort were collected in (this column is only present
+if the temporal dimension is <em>quarter</em> or <em>month</em>),         <cite>month</cite>
+is the month the samples in the cohort were collected in (this
+column is only present if the temporal dimension is <em>month</em>),
+<cite>admin1_name</cite> is the name of the first administrative level the
+samples in the cohort were collected in,         <cite>admin1_iso</cite> is the
+ISO code of the first administrative level the samples in the cohort
+were collected in,         <cite>admin1_geoboundaries_shape_id</cite> is the
+identifier of the geoboundary shape corresponding to the first
+administrative level the samples in the cohort were collected in,
+<cite>admin1_representative_longitude</cite> is the representative longitude
+for the first administrative level the samples in the cohort were
+collected in,         <cite>admin1_representative_latitude</cite> is the
+representative latitude for the first administrative level the
+samples in the cohort were collected in,         <cite>admin2_name</cite> is
+the name of the second administrative level the samples in the
+cohort were collected in (this column is only present if the spatial
+dimension is <em>admin2</em>),         <cite>admin2_iso</cite> is the ISO code of the
+second administrative level the samples in the cohort were collected
+in (this column is only present if the spatial dimension is
+<em>admin2</em>),         <cite>admin2_geoboundaries_shape_id</cite> is the identifier
+of the geoboundary shape corresponding to the second administrative
+level the samples in the cohort were collected in (this column is
+only present if the spatial dimension is <em>admin2</em>),
+<cite>admin2_representative_longitude</cite> is the representative longitude
+for the second administrative level the samples in the cohort were
+collected in (this column is only present if the spatial dimension
+is <em>admin2</em>),         <cite>admin2_representative_latitude</cite> is the
+representative latitude for the second administrative level the
+samples in the cohort were collected in (this column is only present
+if the spatial dimension is <em>admin2</em>).</p>
 </dd>
 </dl>
 </section>

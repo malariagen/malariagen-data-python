@@ -422,7 +422,18 @@ cohort is greater.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>Dataset</dt><dd><p>A dataset of haplotypes and associated data.</p>
+<dt>Dataset</dt><dd><p>A dataset with 4 dimensions:         <cite>variants</cite> the number of sites
+in the selected region,         <cite>allele</cite> the number of alleles (2),
+<cite>samples</cite> the number of samples,         and <cite>ploidy</cite> the ploidy
+(2). There are 3 coordinates:         <cite>variant_position</cite> has
+<cite>variants</cite> values and contains the position of each site,
+<cite>variant_contig</cite> has <cite>variants</cite> values and contains the contig of
+each site,         <cite>sample_id</cite> has <cite>samples</cite> values and contains the
+identifier of each sample. The data variables are:
+<cite>variant_allele</cite>, it has (<cite>variants</cite>, <cite>alleles</cite>) values and contains
+the reference followed by the alternate allele for each site,
+<cite>call_genotype</cite>, it has (<cite>variants</cite>, <cite>samples</cite>, <cite>ploidy</cite>) values and
+contains both calls for each site and each sample.</p>
 </dd>
 </dl>
 </section>

@@ -372,7 +372,9 @@
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>fst_df<span class="classifier">DataFrame</span></dt><dd><p>A dataframe of pairwise Fst and standard error values.</p>
+<dt>fst_df<span class="classifier">DataFrame</span></dt><dd><p>A dataframe of pairwise Fst and standard error values. It has 4
+columns: <cite>cohort1</cite> and <cite>cohort2</cite> are the two cohorts, <cite>fst</cite> is the
+value of the Fst between the two cohorts, <cite>se</cite> is the standard error.</p>
 </dd>
 <dt>annotation<span class="classifier">{‘standard error’, ‘Z score’} or None, optional</span></dt><dd><p>How to annotate the upper-right corner of the plot. Default behaviour
 (None) is using Fst, other options are using the standard error (if

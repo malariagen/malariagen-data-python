@@ -379,7 +379,16 @@
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>DataFrame</dt><dd><p>A dataframe of sample sets, one row per sample set.</p>
+<dt>DataFrame</dt><dd><p>A dataframe of sample sets, one row per sample set. It contains five
+columns:          <cite>sample_set</cite> is the name of the sample set,
+<cite>sample_count</cite> is the number of samples the sample set contains,
+<cite>study_id</cite> is the identifier for the study that generated the sample
+set,          <cite>study_url</cite> is the URL of the study on the MalariaGEN
+website,          <cite>term_of_use_expiry</cite> is the date when the terms of
+use expire,          <cite>terms_of_use_url</cite> is the URL of the terms of
+use,          <cite>release</cite> is the identifier of the release containing
+the sample set,          <cite>unrestricted_use</cite> whether the sample set
+can be without restriction (e.g., if the terms of use have expired).</p>
 </dd>
 </dl>
 </section>

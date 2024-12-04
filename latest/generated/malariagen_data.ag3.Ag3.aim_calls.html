@@ -391,7 +391,18 @@ resolvers.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>Dataset</dt><dd><p>A dataset containing AIM SNP sites, alleles and genotype calls.</p>
+<dt>Dataset</dt><dd><p>A dataset with 4 dimensions: <cite>variants</cite> the number of AIMs sites,
+<cite>samples</cite> the number of samples, <cite>ploidy</cite> the ploidy (2), and
+<cite>alleles</cite> which will always be 2, each representing one of the
+species. It contains 3 coordinates: <cite>sample_id</cite> has <cite>samples</cite> values
+and contains the identifier of each sample, <cite>variant_contig</cite> has
+<cite>variants</cite> values and contains the chromosome arm of each AIM, and
+<cite>variant_position</cite> has <cite>variants</cite> values and contains the position
+of each AIM. It contains 2 data variables: <cite>call_genotype</cite> has
+(<cite>variants</cite>, <cite>samples</cite>, <cite>ploidy</cite>) values and contains both calls for
+each sample and each AIM, <cite>variant_allele</cite> has (<cite>variants</cite>,
+<cite>allele</cite>) values and contains the discriminating alleles for each
+AIM.</p>
 </dd>
 </dl>
 </section>

@@ -419,8 +419,20 @@ dask chunks value.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>DataFrame</dt><dd><p>A dataframe of amino acid allele frequencies, one row per
-substitution.</p>
+<dt>DataFrame</dt><dd><p>A dataframe of amino acid allele frequencies, one row per variant.
+The variants are indexed by their amino acid change, their contig,
+their position. The columns are split into two categories: there is
+1 column for each cohort containing the frequency of the amino acid
+change within the cohort, additionally there is a column <cite>max_af</cite>
+containing the maximum frequency of the amino acide change accross
+all cohorts; finally, there are 9 columns describing the variant
+allele: <cite>transcript</cite> contains the gene transcript used for this
+analysis, <cite>effect</cite> is the effect of the allele change, <cite>impact`is
+the impact of the allele change, `ref_allele</cite> is the reference
+allel, <cite>alt_allele</cite> is the alternate allele, <cite>aa_pos</cite> is the
+position of the amino acid, <cite>ref_aa</cite> is the reference amino acid,
+<cite>alt_aa</cite> is the altered amino acid with the varaint allele, and
+<cite>label</cite> is the label of the variant allele.</p>
 </dd>
 </dl>
 </section>

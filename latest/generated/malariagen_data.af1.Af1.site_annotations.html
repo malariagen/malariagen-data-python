@@ -399,7 +399,29 @@ dask chunks value.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>Dataset</dt><dd><p>A dataset of site annotations.</p>
+<dt>Dataset</dt><dd><p>A dataset of site annotations with 1 dimension: <cite>variants</cite> the
+number of sites in the selected region. It has 7 variables:
+<cite>seq_cls</cite>: The feature class. There are 11 possible values:
+<em>1</em>: Upstream,         <em>2</em>: Downstream,         <em>3</em>: 5’ UTR,
+<em>4</em>: 3’ UTR,         <em>5</em>: CDS (first),         <em>6</em>: CDS (mid),
+<em>7</em>: CDS (last),         <em>8</em>: Intron (first),         <em>9</em>: Intron
+(mid),         <em>10</em>: Intron (last),         <em>0</em>: Unknown,
+<cite>seq_flen</cite>: The length of the feature, <cite>seq_relpos_start</cite>: Relative
+position to the start of the feature. 0 if not in a feature,
+<cite>seq_relpos_stop</cite>: Relative position to the end of the feature. 0 if
+not in a feature, <cite>codon_position</cite>: Position within a triplet codon.
+-1 if not in a CDS, <cite>codon_nonsyn</cite>: Number of possible nucleotide
+changes at this position that would result in an amino acid change
+from the reference, 0 if not in a CDS, <cite>codon_degeneracy</cite>: The
+redundancy of the codon. Can take 5 different values:         <em>1</em>:
+0-fold degenerate, i.e., all nucleotides encode different amino
+acids,         <em>2</em>: simple 2-fold degenerate, i.e., 2 different
+amino acids can be encoded depending on which nucleotide is present;
+each amino acid is encoded by two different nucleotides,
+<em>3</em>: complex 2-fold degenerate, i.e., 2 different amino acids can be
+encoded depending on which nucleotide is present but they are not
+paired,         <em>4</em>: 4-fold degenerate, i.e., all nucleotides encode
+the same amino acid,         <em>-1</em>: not in a CDS.</p>
 </dd>
 </dl>
 </section>

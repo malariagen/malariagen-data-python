@@ -385,7 +385,11 @@ unpack all attributes.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>DataFrame</dt><dd><p>A dataframe of genome annotations, one row per feature.</p>
+<dt>DataFrame</dt><dd><p>A dataframe of genome annotations, one row per feature. The
+dataframe follows the GFF3 format (<a class="github reference external" href="https://github.com/The-Sequence">The-Sequence</a>-
+Ontology/Specifications/blob/master/gff3.md), including extra
+attributes <cite>ID</cite>, <cite>Parent</cite>, <cite>Name</cite> and <cite>description</cite> depending on the
+dataset.</p>
 </dd>
 </dl>
 </section>

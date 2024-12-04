@@ -437,7 +437,38 @@ cohort is greater.</p>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>Dataset</dt><dd><p>A dataset containing SNP sites, site filters and genotype calls.</p>
+<dt>Dataset</dt><dd><p>A dataset with 4 dimensions:         <cite>variants</cite> the number of sites
+in the selected region,         <cite>allele</cite> the number of alleles (4),
+<cite>samples</cite> the number of samples,         and <cite>ploidy</cite> the ploidy
+(2). There are 3 coordinates:         <cite>variant_position</cite> has
+<cite>variants</cite> values and contains the position of each site,
+<cite>variant_contig</cite> has <cite>variants</cite> values and contains the contig of
+each site,         <cite>sample_id</cite> has <cite>samples</cite> values and contains the
+identifier of each sample. The data variables are:
+<cite>variant_allele</cite>, it has (<cite>variants</cite>, <cite>alleles</cite>) values and contains
+the reference followed by the 3 alternate alleles for each site,
+<cite>variant_filter_pass_gamb_colu_arab</cite>, it has (<cite>variants</cite>) values and
+contains whether the site passes the site filters for all of
+gambiae, coluzzii and arabiensis (only available for <em>Ag3</em>),
+<cite>variant_filter_pass_gamb_colu</cite>, it has (<cite>variants</cite>) values and
+contains whether the site passes the site filters for gambiae and
+coluzzii (only available for <em>Ag3</em>),
+<cite>variant_filter_pass_arab</cite>, it has (<cite>variants</cite>) values and contains
+whether the site passes the site filters for arabiensis (only
+available for <em>Ag3</em>),         <cite>variant_filter_pass_funestus</cite>, it has
+(<cite>variants</cite>) values and contains whether the site passes the site
+filters for funestus (only available for <em>Af1</em>),
+<cite>call_genotype</cite>, it has (<cite>variants</cite>, <cite>samples</cite>, <cite>ploidy</cite>) values and
+contains both calls for each site and each sample,
+<cite>call_GQ</cite>, it has (<cite>variants</cite>, <cite>samples</cite>) values and contains the
+genotype quality for each site and each sample,         <cite>call_MQ</cite>,
+it has (<cite>variants</cite>, <cite>samples</cite>) values and contains the mapping
+quality for each site and each sample,         <cite>call_AD</cite>, it has
+(<cite>variants*, `samples</cite>, <a href="#id1"><span class="problematic" id="id2">*</span></a>alleles`) values and contains the allele
+depth for each site, each sample and each allele,
+<cite>call_genotypes_mask</cite>, it has (<cite>variants</cite>,`samples`, <cite>ploidy</cite>)
+values and contains whether the allele is absent for each site, each
+sample and each ploidy.</p>
 </dd>
 </dl>
 </section>
