@@ -66,9 +66,9 @@ class AnophelesAimData(
     @doc(
         summary="Access ancestry informative marker variants.",
         returns="""
-        A dataset with 2 dimensions: **variants** the number of AIMs sites, and **alleles** which will always be 2, each representing one of the species. It contains 2 coordinates:
-        **variant_contig** has **variants** values and contains the chromosome arm of each AIM, and **variant_position** has **variants** values and contains the position of each AIM. It contains 1 data variable:
-        **variant_allele** has (**variants**, **allele**) values and contains the discriminating alleles for each AIM.
+        A dataset with 2 dimensions: `variants` the number of AIMs sites, and `alleles` which will always be 2, each representing one of the species. It contains 2 coordinates:
+        `variant_contig` has `variants` values and contains the chromosome arm of each AIM, and `variant_position` has `variants` values and contains the position of each AIM. It contains 1 data variable:
+        `variant_allele` has (`variants`, `allele`) values and contains the discriminating alleles for each AIM.
         """,
     )
     def aim_variants(self, aims: aim_params.aims) -> xr.Dataset:
@@ -118,15 +118,15 @@ class AnophelesAimData(
         """,
         returns="""
         A dataset with 4 dimensions:
-        **variants** the number of AIMs sites,
-        **samples** the number of samples,
-        **ploidy** the ploidy (2),
-        and **alleles** which will always be 2, each representing one of the species. It contains 3 coordinates:
-        **sample_id** has **samples** values and contains the identifier of each sample,
-        **variant_contig** has **variants** values and contains the chromosome arm of each AIM,
-        and **variant_position** has **variants** values and contains the position of each AIM. It contains 2 data variables:
-        **call_genotype** has (**variants**, **samples**, **ploidy**) values and contains both calls for each sample and each AIM,
-        **variant_allele** has (**variants**, **allele**) values and contains the discriminating alleles for each AIM.
+        `variants` the number of AIMs sites,
+        `samples` the number of samples,
+        `ploidy` the ploidy (2),
+        and `alleles` which will always be 2, each representing one of the species. It contains 3 coordinates:
+        `sample_id` has `samples` values and contains the identifier of each sample,
+        `variant_contig` has `variants` values and contains the chromosome arm of each AIM,
+        and `variant_position` has `variants` values and contains the position of each AIM. It contains 2 data variables:
+        `call_genotype` has (`variants`, `samples`, `ploidy`) values and contains both calls for each sample and each AIM,
+        `variant_allele` has (`variants`, `allele`) values and contains the discriminating alleles for each AIM.
         """,
     )
     def aim_calls(

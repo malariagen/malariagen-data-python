@@ -398,14 +398,14 @@ class AnophelesBase:
     @doc(
         summary="Access a dataframe of sample sets",
         returns="""A dataframe of sample sets, one row per sample set. It contains five columns:
-         **sample_set** is the name of the sample set,
-         **sample_count** is the number of samples the sample set contains,
-         **study_id** is the identifier for the study that generated the sample set,
-         **study_url** is the URL of the study on the MalariaGEN website,
-         **term_of_use_expiry** is the date when the terms of use expire,
-         **terms_of_use_url** is the URL of the terms of use,
-         **release** is the identifier of the release containing the sample set,
-         **unrestricted_use** whether the sample set can be without restriction (e.g., if the terms of use have expired).
+         `sample_set` is the name of the sample set,
+         `sample_count` is the number of samples the sample set contains,
+         `study_id` is the identifier for the study that generated the sample set,
+         `study_url` is the URL of the study on the MalariaGEN website,
+         `term_of_use_expiry` is the date when the terms of use expire,
+         `terms_of_use_url` is the URL of the terms of use,
+         `release` is the identifier of the release containing the sample set,
+         `unrestricted_use` whether the sample set can be without restriction (e.g., if the terms of use have expired).
             """,
     )
     def sample_sets(
