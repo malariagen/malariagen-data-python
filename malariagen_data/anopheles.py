@@ -861,7 +861,7 @@ class AnophelesDataResource(
         **gene_name**, it has **genes** values and contains the name of each gene,
         **gene_strand**, it has **genes** values and contains on which strand each gene is found,
         **gene_description**, it has **genes** values and contains the description of each gene,
-        **CN_mode**, it has (**genes**, **samples**) values and contains ? for each gene and each sample,
+        **CN_mode**, it has (**genes**, **samples**) values and contains the modal copy number for each gene and each sample,
         **CN_mode_count**, it has (**genes**, **samples**) values and contains the mode count for each gene and each sample,
         **sample_coverage_variance**, it has **samples** values and contains the variance of the coverage for each sample,
         **sample_id_high_variance**, it has **samples** values and contains whether each sample has a high variance.
