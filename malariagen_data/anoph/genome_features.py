@@ -119,7 +119,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     @check_types
     @doc(
         summary="Access genome feature annotations.",
-        returns="A dataframe of genome annotations, one row per feature. The dataframe follows the GFF3 format (https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md), including **ID**, **Parent**, **Name** (only for *Ag3*, replaced by **Note** which gives the Enzyme Commission (EC) number and associated nomenclature when relevant), and **description** (replacing Note) as extra attributes.",
+        returns="A dataframe of genome annotations, one row per feature. The dataframe follows the GFF3 format (https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md), including extra attributes **ID**, **Parent**, **Name** and **description** depending on the dataset.",
     )
     def genome_features(
         self,
