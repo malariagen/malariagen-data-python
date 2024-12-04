@@ -566,8 +566,8 @@ class AnophelesCnvData(
         **variant_contig** has **variants** values and contains the contig of each discordant read call,
         **sample_id** has **samples** values and contains the identifier of each sample. It contains 6 data variables:
         **variant_Region**, it has **variants** values and contains the identifier of the region covered by each discordant read call,
-        **variant_StartBreakpointMethod**, it has **variants** values and contains ? for each discordant read call,
-        **variant_EndBreakpointMethod**, it has **variants** values and contains ? for each discordant read call,
+        **variant_StartBreakpointMethod**, it has **variants** values and specifies how the start breakpoint was determined for each discordant read call,
+        **variant_EndBreakpointMethod**, it has **variants** values and specifies how the end breakpoint was determined for each discordant read call,
         **call_genotype**, it has (**variants**, **samples**) values and contains the number of copies of each discordant read call for each sample,
         **sample_coverage_variance**, it has **samples** values and contains the variance of the coverage for each sample,
         **sample_id_high_variance**, it has **samples** values and contains whether each sample has a high variance.
