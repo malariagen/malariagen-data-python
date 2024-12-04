@@ -103,7 +103,7 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
-    window_sizes = sorted([int(x) for x in window_sizes])
+    window_sizes = sorted(set([int(x) for x in window_sizes]))
     h12_params = dict(
         contig=random.choice(api.contigs),
         sample_sets=[random.choice(all_sample_sets)],

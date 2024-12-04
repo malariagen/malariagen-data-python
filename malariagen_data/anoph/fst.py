@@ -187,7 +187,7 @@ class AnophelesFstAnalysis(
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         clip_min: fst_params.clip_min = 0.0,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # compute Fst
         x, fst = self.fst_gwss(
             contig=contig,
@@ -295,7 +295,7 @@ class AnophelesFstAnalysis(
         clip_min: fst_params.clip_min = 0.0,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
             contig=contig,

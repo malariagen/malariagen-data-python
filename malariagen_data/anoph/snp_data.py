@@ -1307,7 +1307,7 @@ class AnophelesSnpData(
         show: gplt_params.show = True,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Plot SNPs track.
         fig1 = self.plot_snps_track(
             region=region,
@@ -1379,7 +1379,7 @@ class AnophelesSnpData(
         x_range: Optional[gplt_params.x_range] = None,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Normalise params.
         site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
         del site_mask

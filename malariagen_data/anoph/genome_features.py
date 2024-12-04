@@ -193,7 +193,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             gplt_params.toolbar_location
         ] = gplt_params.toolbar_location_default,
         title: gplt_params.title = True,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         debug("Find the transcript annotation.")
@@ -335,7 +335,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")

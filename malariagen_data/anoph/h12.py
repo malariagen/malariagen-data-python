@@ -149,7 +149,7 @@ class AnophelesH12Analysis(
         show: bool = True,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Get H12 values.
         calibration_runs = self.h12_calibration(
             contig=contig,
@@ -369,7 +369,7 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Compute H12.
         x, h12, contigs = self.h12_gwss(
             contig=contig,
@@ -474,7 +474,7 @@ class AnophelesH12Analysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_track(
             contig=contig,
@@ -558,7 +558,7 @@ class AnophelesH12Analysis(
         show: gplt_params.show = True,
         x_range: Optional[gplt_params.x_range] = None,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
@@ -679,7 +679,7 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_multi_overlay_track(
             contig=contig,
@@ -764,7 +764,7 @@ class AnophelesH12Analysis(
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
         gene_labels: Optional[gplt_params.gene_labels] = None,
         gene_labelset: Optional[gplt_params.gene_labelset] = None,
-    ) -> gplt_params.figure:
+    ) -> gplt_params.optional_figure:
         cohort_queries = self._setup_cohort_queries(
             cohorts=cohorts,
             sample_sets=sample_sets,
@@ -781,7 +781,7 @@ class AnophelesH12Analysis(
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
-        figs: list[gplt_params.def_figure] = []
+        figs: list[gplt_params.figure] = []
         for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
             params = dict(
                 contig=contig,
