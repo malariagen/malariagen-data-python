@@ -9,11 +9,13 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import (
     check_types,
     haplotype_frequencies,
+)
+from .hap_data import AnophelesHapData
+from .frq_funcs import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
     add_frequency_ci,
 )
-from .hap_data import AnophelesHapData
 from .sample_metadata import locate_cohorts
 from . import base_params, frq_params
 

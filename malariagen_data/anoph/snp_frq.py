@@ -14,11 +14,13 @@ from .. import veff
 from ..util import (
     check_types,
     pandas_apply,
+)
+from .snp_data import AnophelesSnpData
+from .frq_funcs import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
     add_frequency_ci,
 )
-from .snp_data import AnophelesSnpData
 from .sample_metadata import locate_cohorts
 from . import base_params, frq_params, map_params, plotly_params
 

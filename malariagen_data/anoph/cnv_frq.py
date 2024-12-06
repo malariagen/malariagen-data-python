@@ -10,6 +10,11 @@ import warnings
 from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, cnv_params, frq_params
+from .frq_funcs import (
+    prep_samples_for_cohort_grouping,
+    build_cohorts_from_sample_grouping,
+    add_frequency_ci,
+)
 from ..util import (
     check_types,
     pandas_apply,
@@ -17,9 +22,6 @@ from ..util import (
     parse_multi_region,
     region_str,
     simple_xarray_concat,
-    prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
-    add_frequency_ci,
 )
 from .cnv_data import AnophelesCnvData
 from .sample_metadata import locate_cohorts
