@@ -13,7 +13,7 @@ GCS_REGION_URLS = {
     "us-central1": "gs://vo_afun_release_master_us_central1",
 }
 XPEHH_GWSS_CACHE_NAME = "af1_xpehh_gwss_v1"
-IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v1"
+IHS_GWSS_CACHE_NAME = "af1_ihs_gwss_v2"
 
 TAXON_PALETTE = px.colors.qualitative.Plotly
 TAXON_COLORS = {
