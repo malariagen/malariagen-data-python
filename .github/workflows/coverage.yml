@@ -15,20 +15,17 @@ jobs:
             - name: Checkout source
               uses: actions/checkout@v4
 
-            - name: Install poetry
-              run: pipx install poetry==1.8.3
-
             - name: Setup python
               uses: actions/setup-python@v5
               with:
                   python-version: '3.12'
-                  cache: 'poetry'
+                  cache: 'pip'
 
-            - name: Install dependencies
-              run: poetry install
+            - name: Install package
+              run: pip install .[dev]
 
-            - name: Run tests with coverage
-              run: poetry run pytest --durations=20 -v --cov malariagen_data/anoph --cov-report=xml tests/anoph
+            - name: Run unit tests with coverage
+              run: pytest -v tests --ignore tests/integration --cov malariagen_data/anoph --cov-report=xml
 
             - name: Upload coverage report
               uses: codecov/codecov-action@v3

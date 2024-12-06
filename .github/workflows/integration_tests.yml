@@ -1,4 +1,4 @@
-name: legacy_tests
+name: integration_tests
 on:
   push:
     branches:
@@ -7,7 +7,7 @@ on:
     branches:
       - master
 jobs:
-  legacy_tests:
+  integration_tests:
     strategy:
       fail-fast: true
       matrix:
@@ -23,17 +23,14 @@ jobs:
       - name: Checkout source
         uses: actions/checkout@v4
 
-      - name: Install poetry
-        run: pipx install poetry==1.8.3
-
       - name: Setup python
         uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: "poetry"
+          cache: "pip"
 
-      - name: Install dependencies
-        run: poetry install
+      - name: Install package
+        run: pip install .[dev]
 
       - id: 'auth'
         name: 'Set up Google Cloud authentication'
@@ -53,14 +50,14 @@ jobs:
         uses: actions/cache/restore@v3
         with:
           path: gcs_cache
-          key: gcs_cache_tests_20240922
+          key: gcs_cache_integration_tests_20240922
 
-      - name: Run full test suite
-        run: poetry run pytest --durations=20 --ignore=tests/anoph -v tests
+      - name: Run integration tests
+        run: pytest --durations=20 -v tests/integration
 
       - name: Save GCS cache
         uses: actions/cache/save@v3
         if: always()
         with:
           path: gcs_cache
-          key: gcs_cache_tests_20240922
+          key: gcs_cache_integration_tests_20240922

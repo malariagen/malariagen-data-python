@@ -127,6 +127,6 @@ gene_labels: TypeAlias = Annotated[
 ]
 
 gene_labelset: TypeAlias = Annotated[
-    bokeh.models.LabelSet,
+    bokeh.models.LabelSet,  # type: ignore
     "A LabelSet to use in the plot.",
 ]

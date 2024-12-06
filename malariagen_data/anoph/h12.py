@@ -823,7 +823,7 @@ class AnophelesH12Analysis(
         figs.append(fig2)
 
         # Combine plots into a single figure.
-        fig = bokeh.layouts.gridplot(
+        fig = bokeh.layouts.gridplot(  # type: ignore
             figs,
             ncols=1,
             toolbar_location="above",

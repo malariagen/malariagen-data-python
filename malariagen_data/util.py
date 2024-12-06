@@ -376,6 +376,7 @@ def da_compress(
 
     # Load the indexer temporarily for chunk size computations.
     if indexer_computed is None:
+        assert isinstance(indexer, da.Array)
         indexer_computed = indexer.compute()
 
     # Ensure indexer and data are chunked in the same way.
