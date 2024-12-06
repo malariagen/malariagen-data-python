@@ -24,12 +24,11 @@ from ..util import (
     simple_xarray_concat,
 )
 from .cnv_data import AnophelesCnvData
+from .frq_funcs import AnophelesFrequency
 from .sample_metadata import locate_cohorts
 
 
-class AnophelesCnvFrequencyAnalysis(
-    AnophelesCnvData,
-):
+class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequency):
     def __init__(
         self,
         **kwargs,

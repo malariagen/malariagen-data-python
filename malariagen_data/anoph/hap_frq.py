@@ -17,12 +17,11 @@ from .frq_funcs import (
     add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
+from .frq_funcs import AnophelesFrequency
 from . import base_params, frq_params
 
 
-class AnophelesHapFrequencyAnalysis(
-    AnophelesHapData,
-):
+class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequency):
     def __init__(
         self,
         **kwargs,
