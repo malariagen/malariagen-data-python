@@ -1,5 +1,5 @@
 {
-  "default_url": "gs://test_plasmodium_release/",
+  "default_url": "s3://test_plasmodium_release/",
   "metadata_path": "metadata/test_metadata.txt",
   "reference_path": "reference/plasmodium.genome.zarr",
   "reference_contigs": ["contig1", "contig2", "contig3"],

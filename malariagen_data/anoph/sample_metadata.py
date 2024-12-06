@@ -1270,7 +1270,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_cohorts = pd.read_csv(f, sep=",", na_values="")
 
         # Ensure all column names are lower case.
-        df_cohorts.columns = [c.lower() for c in df_cohorts.columns]
+        df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore
 
         return df_cohorts
 

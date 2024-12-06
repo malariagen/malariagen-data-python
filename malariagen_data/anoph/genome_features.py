@@ -415,11 +415,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
             # Increase the figure height by a certain factor, to accommodate labels.
             height_increase_factor = 1.3
+            assert fig.height is not None
             fig.height = int(fig.height * height_increase_factor)
 
             # Get the original y_range.
             # Note: fig.y_range is not subscriptable.
-            orig_y_range = fig.y_range.start, fig.y_range.end
+            orig_y_range = fig.y_range.start, fig.y_range.end  # type: ignore
 
             # Determine the midpoint of the original range, to rescale outward from there.
             orig_mid_y_range = (orig_y_range[0] + orig_y_range[1]) / 2
@@ -432,7 +433,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             new_y_end = orig_mid_y_range + new_y_range_extent_half
 
             # Set the new y_range.
-            fig.y_range = bokeh.models.Range1d(new_y_start, new_y_end)
+            fig.y_range = bokeh.models.Range1d(new_y_start, new_y_end)  # type: ignore
 
             debug("determine midpoint of each gene rectangle")
             data["mid_x"] = (data["start"] + data["end"]) / 2
@@ -474,7 +475,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             data_as_cds = bokeh.models.ColumnDataSource(data)
 
             # Create a LabelSet for the gene pointers.
-            gene_pointers_ls = bokeh.models.LabelSet(
+            gene_pointers_ls = bokeh.models.LabelSet(  # type: ignore
                 source=data_as_cds,
                 x="mid_x",
                 y="pointer_y",
@@ -486,7 +487,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             )
 
             # Create a LabelSet for the gene labels.
-            gene_labels_ls = bokeh.models.LabelSet(
+            gene_labels_ls = bokeh.models.LabelSet(  # type: ignore
                 source=data_as_cds,
                 x="mid_x",
                 y="label_y",

@@ -32,5 +32,5 @@ jobs:
       - name: Install package
         run: pip install "${{ matrix.numpy-version }}" .[dev]
 
-      - name: Run fast unit tests
-        run: pytest -v tests/anoph --typeguard-packages=malariagen_data,malariagen_data.anoph
+      - name: Run unit tests
+        run: pytest -v tests --ignore tests/integration --typeguard-packages=malariagen_data,malariagen_data.anoph
