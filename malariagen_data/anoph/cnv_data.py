@@ -857,6 +857,7 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         row_height: gplt_params.row_height = 7,
         height: Optional[gplt_params.height] = None,
+        palette: Optional[gplt_params.colors] = cnv_params.colorscale_default,
         show: gplt_params.show = True,
         output_backend: gplt_params.output_backend = gplt_params.output_backend_default,
     ) -> gplt_params.optional_figure:
@@ -929,7 +930,6 @@ class AnophelesCnvData(
         )
 
         debug("set up palette and color mapping")
-        palette = cnv_params.colorscale_default
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
 
         debug("plot the HMM copy number data as an image")
@@ -999,6 +999,7 @@ class AnophelesCnvData(
         width: gplt_params.width = gplt_params.width_default,
         row_height: gplt_params.row_height = 7,
         track_height: Optional[gplt_params.track_height] = None,
+        palette: Optional[gplt_params.colors] = cnv_params.colorscale_default,
         genes_height: gplt_params.genes_height = gplt_params.genes_height_default,
         show: gplt_params.show = True,
         gene_labels: Optional[gplt_params.gene_labels] = None,
@@ -1020,6 +1021,7 @@ class AnophelesCnvData(
             width=width,
             row_height=row_height,
             height=track_height,
+            palette=palette,
             show=False,
         )
         fig1.xaxis.visible = False
