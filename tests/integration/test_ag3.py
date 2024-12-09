@@ -138,7 +138,7 @@ def test_xpehh_gwss():
     window_size = 1000
 
     x, xpehh = ag3.xpehh_gwss(
-        contig=contig,
+        region=contig,
         analysis=analysis,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,

@@ -25,7 +25,7 @@ GCS_DEFAULT_URL = "gs://vo_agam_release_master_us_central1/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_agam_release_master_us_central1",
 }
-XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v1"
+XPEHH_GWSS_CACHE_NAME = "ag3_xpehh_gwss_v2"
 IHS_GWSS_CACHE_NAME = "ag3_ihs_gwss_v2"
 VIRTUAL_CONTIGS = {
     "2RL": ("2R", "2L"),
