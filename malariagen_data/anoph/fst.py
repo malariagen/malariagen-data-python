@@ -29,7 +29,7 @@ class AnophelesFstAnalysis(
     def _fst_gwss(
         self,
         *,
-        contig,
+        region,
         window_size,
         sample_sets,
         cohort1_query,
@@ -46,7 +46,7 @@ class AnophelesFstAnalysis(
     ):
         # Compute allele counts.
         ac1 = self.snp_allele_counts(
-            region=contig,
+            region=region,
             sample_query=cohort1_query,
             sample_query_options=sample_query_options,
             sample_sets=sample_sets,
@@ -59,7 +59,7 @@ class AnophelesFstAnalysis(
             chunks=chunks,
         )
         ac2 = self.snp_allele_counts(
-            region=contig,
+            region=region,
             sample_query=cohort2_query,
             sample_query_options=sample_query_options,
             sample_sets=sample_sets,
@@ -74,7 +74,7 @@ class AnophelesFstAnalysis(
 
         with self._spinner(desc="Load SNP positions"):
             pos = self.snp_sites(
-                region=contig,
+                region=region,
                 field="POS",
                 site_mask=site_mask,
                 inline_array=inline_array,
@@ -105,7 +105,7 @@ class AnophelesFstAnalysis(
     )
     def fst_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -129,7 +129,7 @@ class AnophelesFstAnalysis(
         name = "fst_gwss_v2"
 
         params = dict(
-            contig=contig,
+            region=region,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
@@ -164,7 +164,7 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -190,7 +190,7 @@ class AnophelesFstAnalysis(
     ) -> gplt_params.optional_figure:
         # compute Fst
         x, fst = self.fst_gwss(
-            contig=contig,
+            region=region,
             window_size=window_size,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -253,7 +253,7 @@ class AnophelesFstAnalysis(
         # tidy up the plot
         fig.yaxis.axis_label = "Fst"
         fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, region)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
@@ -270,7 +270,7 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -298,7 +298,7 @@ class AnophelesFstAnalysis(
     ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
-            contig=contig,
+            region=region,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
@@ -322,7 +322,7 @@ class AnophelesFstAnalysis(
 
         # plot genes
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
