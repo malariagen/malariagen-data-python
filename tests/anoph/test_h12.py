@@ -105,7 +105,7 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
     window_sizes = sorted(set([int(x) for x in window_sizes]))
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        region=random.choice(api.contigs),
         sample_sets=[random.choice(all_sample_sets)],
         window_sizes=window_sizes,
         min_cohort_size=5,
@@ -168,7 +168,7 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        region=random.choice(api.contigs),
         sample_sets=[random.choice(all_sample_sets)],
         window_size=random.randint(100, 500),
         min_cohort_size=5,
@@ -197,7 +197,7 @@ def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
             # No samples available, check similar error raised from H12.
             with pytest.raises(ValueError):
                 api.h12_gwss(
-                    contig=contig,
+                    region=contig,
                     sample_sets=sample_sets,
                     analysis=analysis,
                     window_size=window_size,
@@ -208,7 +208,7 @@ def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
             # Samples are available, run full checks.
             n_samples = ds_hap.sizes["samples"]
             h12_params = dict(
-                contig=contig,
+                region=contig,
                 sample_sets=sample_sets,
                 analysis=analysis,
                 window_size=window_size,
@@ -219,7 +219,7 @@ def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
             # Check min_cohort_size behaviour.
             with pytest.raises(ValueError):
                 api.h12_gwss(
-                    contig=contig,
+                    region=contig,
                     sample_sets=sample_sets,
                     analysis=analysis,
                     window_size=window_size,
@@ -236,7 +236,7 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        region=random.choice(api.contigs),
         sample_sets=all_sample_sets,
         window_size=random.randint(100, 500),
         min_cohort_size=1,
@@ -256,7 +256,7 @@ def test_h12_gwss_multi_with_window_size_dict(fixture, api: AnophelesH12Analysis
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        region=random.choice(api.contigs),
         sample_sets=all_sample_sets,
         window_size={
             "cohort1": random.randint(100, 500),
@@ -309,7 +309,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
             # Samples are available, run full checks.
             h12_params = dict(
                 analysis=analysis,
-                contig=contig,
+                region=contig,
                 sample_sets=all_sample_sets,
                 window_size=random.randint(100, 500),
                 min_cohort_size=min(n1, n2),
