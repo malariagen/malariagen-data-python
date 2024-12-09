@@ -126,7 +126,7 @@ class AnophelesFstAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "fst_gwss_v2"
+        name = "fst_gwss_v3"
 
         params = dict(
             region=region,
