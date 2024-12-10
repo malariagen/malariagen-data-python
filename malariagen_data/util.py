@@ -1612,20 +1612,22 @@ def _karyotype_tags_n_alt(gt, alts, inversion_alts):
     return inv_n_alt
 
 
-def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
+def prep_samples_for_cohort_grouping(
+    *, df_samples, area_by, period_by, taxon_by="taxon"
+):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
     # Fix "intermediate" or "unassigned" taxon values - we only want to build
     # cohorts with clean taxon calls, so we set other values to None.
     loc_intermediate_taxon = (
-        df_samples["taxon"].str.startswith("intermediate").fillna(False)
+        df_samples[taxon_by].str.startswith("intermediate").fillna(False)
     )
-    df_samples.loc[loc_intermediate_taxon, "taxon"] = None
+    df_samples.loc[loc_intermediate_taxon, taxon_by] = None
     loc_unassigned_taxon = (
-        df_samples["taxon"].str.startswith("unassigned").fillna(False)
+        df_samples[taxon_by].str.startswith("unassigned").fillna(False)
     )
-    df_samples.loc[loc_unassigned_taxon, "taxon"] = None
+    df_samples.loc[loc_unassigned_taxon, taxon_by] = None
 
     # Add period column.
     if period_by == "year":
@@ -1647,7 +1649,9 @@ def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
     return df_samples
 
 
-def build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_size):
+def build_cohorts_from_sample_grouping(
+    *, group_samples_by_cohort, min_cohort_size, taxon_by="taxon"
+):
     # Build cohorts dataframe.
     df_cohorts = group_samples_by_cohort.agg(
         size=("sample_id", len),
@@ -1669,7 +1673,7 @@ def build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_si
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
     df_cohorts["label"] = df_cohorts.apply(
-        lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
+        lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
     )
 
     # Apply minimum cohort size.
