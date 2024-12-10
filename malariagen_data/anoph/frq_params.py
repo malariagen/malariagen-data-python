@@ -80,3 +80,10 @@ areas: TypeAlias = Annotated[
     Optional[Union[str, List[str], Tuple[str, ...]]],
     "The area or areas to restrict the dataset to.",
 ]
+
+taxon_by: TypeAlias = Annotated[
+    str,
+    "The column to use for taxon stratification.",
+]
+
+taxon_by_default: taxon_by = "taxon"
