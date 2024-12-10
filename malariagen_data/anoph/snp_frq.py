@@ -613,7 +613,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequency):
 
         # Apply variant query.
         if variant_query is not None:
-            loc_variants = df_variants.eval(variant_query).values
+            loc_variants = np.asarray(df_variants.eval(variant_query))
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
@@ -833,7 +833,10 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequency):
             loc_sites = df_snps[f"pass_{site_mask}"]
             df_snps = df_snps.loc[loc_sites]
 
-        return df_snps.query(snp_query)
+        if snp_query is not None:
+            df_snps = df_snps.query(snp_query)
+
+        return df_snps
 
 
 @numba.jit(nopython=True)

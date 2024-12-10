@@ -12,13 +12,21 @@ jobs:
             fail-fast: true
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
-            - uses: actions/setup-python@v5
+            - name: Checkout source
+              uses: actions/checkout@v4
+
+            - name: Setup python
+              uses: actions/setup-python@v5
               with:
                   python-version: '3.12'
-            - uses: pre-commit/action@v3.0.0
-            - name: Install mypy
-              run: pip install mypy
+                  cache: 'pip'
+
+            - name: Run pre-commit checks
+              uses: pre-commit/action@v3.0.0
+
+            - name: Install package
+              run: pip install .[dev]
+
             - name: Run mypy
               run: |
                   mypy malariagen_data tests --ignore-missing-imports

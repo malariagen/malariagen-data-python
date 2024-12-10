@@ -108,7 +108,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequency):
             hap_dict.update(f)
             freq_cols["frq_" + coh] = list(hap_dict.values())
 
-        df_freqs = pd.DataFrame(freq_cols, index=hap_dict.keys())
+        df_freqs = pd.DataFrame(freq_cols, index=list(hap_dict.keys()))
 
         # Compute max_af.
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
@@ -231,14 +231,14 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequency):
             freq_cols["frq_" + cohort_key_str] = list(hap_freq.values())
             nobs_cols["nobs_" + cohort_key_str] = list(hap_nob.values())
 
-        df_freqs = pd.DataFrame(freq_cols, index=hap_freq.keys())
+        df_freqs = pd.DataFrame(freq_cols, index=list(hap_freq.keys()))
 
         # Compute max_af.
         df_max_af = pd.DataFrame({"max_af": df_freqs.max(axis=1)})
 
-        df_counts = pd.DataFrame(count_cols, index=hap_count.keys())
+        df_counts = pd.DataFrame(count_cols, index=list(hap_count.keys()))
 
-        df_nobs = pd.DataFrame(nobs_cols, index=hap_nob.keys())
+        df_nobs = pd.DataFrame(nobs_cols, index=list(hap_nob.keys()))
 
         # Build the final dataframe.
         df_haps = pd.concat([df_freqs, df_counts, df_nobs, df_max_af], axis=1)
