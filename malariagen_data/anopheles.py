@@ -29,6 +29,7 @@ from .anoph import (
     plotly_params,
     xpehh_params,
 )
+from .anoph.karyotype import AnophelesKaryotypeData
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
 from .anoph.cnv_data import AnophelesCnvData
@@ -94,6 +95,7 @@ class AnophelesDataResource(
     AnophelesPca,
     PlinkConverter,
     AnophelesIgv,
+    AnophelesKaryotypeData,
     AnophelesAimData,
     AnophelesHapData,
     AnophelesSnpData,
