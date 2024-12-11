@@ -90,7 +90,7 @@ def test_karyotyping(inversion):
                 inversion=inversion, sample_sets="AG1000G-GH", sample_query=None
             )
     else:
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             af1.karyotype(
                 inversion=inversion,
                 sample_sets="1229-VO-GH-DADZIE-VMF00095",

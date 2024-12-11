@@ -15,12 +15,17 @@ from .karyotype_params import inversion_param
 class AnophelesKaryotypeData(AnophelesSnpData):
     def __init__(
         self,
+        inversion_tag_path: Optional[str] = None,
         **kwargs,
     ):
         # N.B., this class is designed to work cooperatively, and
         # so it's important that any remaining parameters are passed
         # to the superclass constructor.
         super().__init__(**kwargs)
+
+        # If provided, this analysis version will override the
+        # default value provided in the release configuration.
+        self._inversion_tag_path = inversion_tag_path
 
     @check_types
     @doc(
@@ -31,7 +36,7 @@ class AnophelesKaryotypeData(AnophelesSnpData):
         import importlib.resources
         from .. import resources
 
-        with importlib.resources.path(resources, "karyotype_tag_snps.csv") as path:
+        with importlib.resources.path(resources, self._inversion_tag_path) as path:
             df_tag_snps = pd.read_csv(path, sep=",")
         return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 

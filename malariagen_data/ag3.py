@@ -7,7 +7,6 @@ import plotly.express as px  # type: ignore
 import malariagen_data
 from .anopheles import AnophelesDataResource
 
-from typing import Literal, Annotated, TypeAlias
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_native_chunks": False})  # type: ignore
@@ -29,6 +28,7 @@ VIRTUAL_CONTIGS = {
 GENE_NAMES = {
     "AGAP004707": "Vgsc/para",
 }
+INVERSION_TAG_PATH = "karyotype_tag_snps.csv"
 
 
 def _setup_aim_palettes():
@@ -75,12 +75,6 @@ TAXON_COLORS = {
     "gcx4": TAXON_PALETTE[10],
     "unassigned": "black",
 }
-
-
-inversion_param: TypeAlias = Annotated[
-    Literal["2La", "2Rb", "2Rc_gam", "2Rc_col", "2Rd", "2Rj"],
-    "Name of inversion to infer karyotype for.",
-]
 
 
 class Ag3(AnophelesDataResource):
@@ -197,6 +191,7 @@ class Ag3(AnophelesDataResource):
             taxon_colors=TAXON_COLORS,
             virtual_contigs=VIRTUAL_CONTIGS,
             gene_names=GENE_NAMES,
+            inversion_tag_path=INVERSION_TAG_PATH,
         )
 
         # set up caches
