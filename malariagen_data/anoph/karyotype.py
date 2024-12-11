@@ -36,9 +36,14 @@ class AnophelesKaryotypeData(AnophelesSnpData):
         import importlib.resources
         from .. import resources
 
-        with importlib.resources.path(resources, self._inversion_tag_path) as path:
-            df_tag_snps = pd.read_csv(path, sep=",")
-        return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
+        if not self._inversion_tag_path:
+            raise FileNotFoundError(
+                "The file containing the inversion tags is missing."
+            )
+        else:
+            with importlib.resources.path(resources, self._inversion_tag_path) as path:
+                df_tag_snps = pd.read_csv(path, sep=",")
+            return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
     @check_types
     @doc(
