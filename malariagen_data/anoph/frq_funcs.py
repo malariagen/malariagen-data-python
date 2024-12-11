@@ -553,8 +553,8 @@ class AnophelesFrequency(AnophelesBase):
 
         # Set up interactive controls.
         variants = ds["variant_label"].values
-        taxa = ds["cohort_taxon"].to_pandas().dropna().unique()
-        periods = ds["cohort_period"].to_pandas().dropna().unique()
+        taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
+        periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
         controls = ipywidgets.interactive(
             self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
