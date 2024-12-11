@@ -8,8 +8,6 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 
-from .test_snp_frq import random_transcript
-
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -83,7 +81,7 @@ def test_plot_frequencies_heatmap(
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
     min_cohort_size = random.randint(0, 2)
-    transcript = random_transcript(api=api).name
+    transcript = fixture.random_transcript_id()
     cohorts = random.choice(
         ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
     )
@@ -128,7 +126,7 @@ def test_plot_frequencies_time_series(
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
     min_cohort_size = random.randint(0, 2)
-    transcript = random_transcript(api=api).name
+    transcript = fixture.random_transcript_id()
     area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     period_by = random.choice(["year", "quarter", "month"])
 
@@ -179,7 +177,7 @@ def test_plot_frequencies_time_series_with_taxa(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    transcript = random_transcript(api=api).name
+    transcript = fixture.random_transcript_id()
     area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     period_by = random.choice(["year", "quarter", "month"])
 
@@ -225,7 +223,7 @@ def test_plot_frequencies_time_series_with_areas(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    transcript = random_transcript(api=api).name
+    transcript = fixture.random_transcript_id()
     area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     period_by = random.choice(["year", "quarter", "month"])
 
@@ -276,7 +274,7 @@ def test_plot_frequencies_interactive_map(
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
     min_cohort_size = random.randint(0, 2)
-    transcript = random_transcript(api=api).name
+    transcript = fixture.random_transcript_id()
     area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     period_by = random.choice(["year", "quarter", "month"])
 
