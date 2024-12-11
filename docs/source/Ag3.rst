@@ -217,3 +217,10 @@ Fst analysis
     plot_pairwise_average_fst
     fst_gwss
     plot_fst_gwss
+
+Karyotypes
+------------
+.. autosummary::
+    :toctree: generated/
+
+    karyotype
