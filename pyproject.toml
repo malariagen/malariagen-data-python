@@ -30,6 +30,7 @@ dask = {version="*", extras=["array"]}
 distributed = "*"
 fsspec = "*"
 gcsfs = "*"
+s3fs = "*"
 google-auth = "*"
 BioPython = "*"
 scikit-allel = ">=1.3.13"

@@ -186,7 +186,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         self.assertEqual(
             plasmodium.CONF,
             {
-                "default_url": "gs://test_plasmodium_release/",
+                "default_url": "s3://test_plasmodium_release/",
                 "metadata_path": "metadata/test_metadata.txt",
                 "reference_path": "reference/plasmodium.genome.zarr",
                 "reference_contigs": ["contig1", "contig2", "contig3"],
@@ -225,10 +225,8 @@ class TestPlasmodiumDataResource(unittest.TestCase):
 
     @patch("malariagen_data.plasmodium.PlasmodiumDataResource._load_config")
     def test_setup_overrides_default_url(self, mock_load_config):
-        url_starts_with_gs = "gs://test_url"
-        plasmodium = PlasmodiumDataResource(
-            self.test_config_path, url=url_starts_with_gs
-        )
+        url_override = "s3://test_url"
+        plasmodium = PlasmodiumDataResource(self.test_config_path, url=url_override)
         self.assertEqual(plasmodium._path, "test_url")
         mock_load_config.assert_called_once_with(self.test_config_path)
 

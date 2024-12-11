@@ -614,7 +614,7 @@ class AnophelesSnpFrequencyAnalysis(
 
         # Apply variant query.
         if variant_query is not None:
-            loc_variants = df_variants.eval(variant_query).values
+            loc_variants = np.asarray(df_variants.eval(variant_query))
 
             # Check for no SNPs remaining after applying variant query.
             if np.count_nonzero(loc_variants) == 0:
@@ -1192,8 +1192,8 @@ class AnophelesSnpFrequencyAnalysis(
 
         # Set up interactive controls.
         variants = ds["variant_label"].values
-        taxa = ds["cohort_taxon"].to_pandas().dropna().unique()
-        periods = ds["cohort_period"].to_pandas().dropna().unique()
+        taxa = ds["cohort_taxon"].to_pandas().dropna().unique()  # type: ignore
+        periods = ds["cohort_period"].to_pandas().dropna().unique()  # type: ignore
         controls = ipywidgets.interactive(
             self.plot_frequencies_map_markers,
             m=ipywidgets.fixed(freq_map),
@@ -1281,7 +1281,10 @@ class AnophelesSnpFrequencyAnalysis(
             loc_sites = df_snps[f"pass_{site_mask}"]
             df_snps = df_snps.loc[loc_sites]
 
-        return df_snps.query(snp_query)
+        if snp_query is not None:
+            df_snps = df_snps.query(snp_query)
+
+        return df_snps
 
 
 @numba.jit(nopython=True)
