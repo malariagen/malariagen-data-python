@@ -8,15 +8,11 @@ from ..util import check_types, _karyotype_tags_n_alt
 from . import base_params
 from typing import Optional
 
-from .genome_features import AnophelesGenomeFeaturesData
-from .genome_sequence import AnophelesGenomeSequenceData
-from .sample_metadata import AnophelesSampleMetadata
+from .snp_data import AnophelesSnpData
 from .karyotype_params import inversion_param
 
 
-class AnophelesKaryotypeData(
-    AnophelesSampleMetadata, AnophelesGenomeFeaturesData, AnophelesGenomeSequenceData
-):
+class AnophelesKaryotypeData(AnophelesSnpData):
     def __init__(
         self,
         **kwargs,
