@@ -12,6 +12,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 from malariagen_data.util import compare_series_like
+from .test_frq_2 import test_plot_frequencies_heatmap
 
 
 @pytest.fixture
@@ -314,6 +315,8 @@ def test_allele_frequencies_with_str_cohorts(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    test_plot_frequencies_heatmap(api, df_snp)
+
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     if "cohort_" + cohorts in df_samples:
@@ -333,6 +336,8 @@ def test_allele_frequencies_with_str_cohorts(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    test_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
