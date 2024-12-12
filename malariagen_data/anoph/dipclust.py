@@ -1,4 +1,4 @@
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Sequence
 
 import allel  # type: ignore
 import numpy as np
@@ -551,7 +551,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         summary="Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.",
         parameters=dict(
             heterozygosity="Plot heterozygosity track.",
-            snp_transcript="Plot amino acid variants for this transcript.",
+            snp_transcripts="Plot amino acid variants for these transcripts.",
             cnv_region="Plot gene CNV calls for this region.",
             snp_filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
         ),
@@ -561,7 +561,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         region: base_params.regions,
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        snp_transcript: Optional[base_params.transcript] = None,
+        snp_transcripts: Optional[Sequence[base_params.transcript]] = None,
         snp_colorscale: plotly_params.color_continuous_scale = "Greys",
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
@@ -601,7 +601,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
-        if cohort_size and snp_transcript:
+        if cohort_size and snp_transcripts:
             cohort_size = None
             print(
                 "Cohort size is not supported with amino acid heatmap. Overriding cohort size to None."
@@ -682,7 +682,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 figures.append(cnv_trace)
                 subplot_heights.append(cnv_row_height * n_cnv_genes)
 
-        if snp_transcript:
+        for snp_transcript in snp_transcripts:
             snp_trace, n_snps_transcript = self._dipclust_snp_trace(
                 transcript=snp_transcript,
                 sample_sets=sample_sets,
