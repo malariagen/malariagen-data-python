@@ -561,7 +561,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         region: base_params.regions,
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        snp_transcripts: Optional[Sequence[base_params.transcript]] = None,
+        snp_transcripts: Sequence[base_params.transcript] = [],
         snp_colorscale: plotly_params.color_continuous_scale = "Greys",
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
