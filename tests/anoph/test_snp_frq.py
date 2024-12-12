@@ -12,7 +12,13 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 from malariagen_data.util import compare_series_like
-from .test_frq_2 import test_plot_frequencies_heatmap
+from .test_frq import (
+    test_plot_frequencies_heatmap,
+    test_plot_frequencies_time_series,
+    test_plot_frequencies_time_series_with_taxa,
+    test_plot_frequencies_time_series_with_areas,
+    test_plot_frequencies_interactive_map,
+)
 
 
 @pytest.fixture
@@ -391,6 +397,8 @@ def test_allele_frequencies_with_min_cohort_size(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    test_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -401,6 +409,8 @@ def test_allele_frequencies_with_min_cohort_size(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    test_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -448,6 +458,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    test_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -458,6 +470,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    test_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -515,6 +529,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    test_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -525,6 +541,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    test_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -563,6 +581,8 @@ def test_allele_frequencies_with_dict_cohorts(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    test_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -573,6 +593,8 @@ def test_allele_frequencies_with_dict_cohorts(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    test_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -616,6 +638,9 @@ def test_allele_frequencies_without_drop_invariant(
     # Run the function under test.
     df_snp_a = api.snp_allele_frequencies(drop_invariant=True, **params)
     df_snp_b = api.snp_allele_frequencies(drop_invariant=False, **params)
+
+    test_plot_frequencies_heatmap(api, df_snp_a)
+    test_plot_frequencies_heatmap(api, df_snp_b)
 
     # Standard checks.
     check_snp_allele_frequencies(
@@ -670,6 +695,9 @@ def test_allele_frequencies_without_effects(
     # Run the function under test.
     df_snp_a = api.snp_allele_frequencies(effects=True, **params)
     df_snp_b = api.snp_allele_frequencies(effects=False, **params)
+
+    test_plot_frequencies_heatmap(api, df_snp_a)
+    test_plot_frequencies_heatmap(api, df_snp_b)
 
     # Standard checks.
     check_snp_allele_frequencies(
@@ -770,6 +798,8 @@ def test_allele_frequencies_with_region(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    test_plot_frequencies_heatmap(api, df_snp)
+
     # Basic checks.
     assert isinstance(df_snp, pd.DataFrame)
     assert len(df_snp) > 0
@@ -823,6 +853,9 @@ def test_allele_frequencies_with_dup_samples(
     df_snp_b = api.snp_allele_frequencies(
         sample_sets=[sample_set, sample_set], **params
     )
+
+    test_plot_frequencies_heatmap(api, df_snp_a)
+    test_plot_frequencies_heatmap(api, df_snp_b)
 
     # Expect automatically deduplicate sample sets.
     assert_frame_equal(df_snp_b, df_snp_a)
@@ -880,6 +913,10 @@ def check_snp_allele_frequencies_advanced(
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
+    test_plot_frequencies_time_series(api, ds)
+    test_plot_frequencies_time_series_with_taxa(api, ds)
+    test_plot_frequencies_time_series_with_areas(api, ds)
+    test_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     # Check variant variables.
@@ -1067,6 +1104,10 @@ def check_aa_allele_frequencies_advanced(
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
+    test_plot_frequencies_time_series(api, ds)
+    test_plot_frequencies_time_series_with_taxa(api, ds)
+    test_plot_frequencies_time_series_with_areas(api, ds)
+    test_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     expected_variant_vars = (
