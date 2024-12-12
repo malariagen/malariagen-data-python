@@ -120,7 +120,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequency):
         df_haps_sorted["label"] = ["H" + str(i) for i in range(len(df_haps_sorted))]
 
         # Reset index after filtering.
-        df_haps_sorted.set_index(keys="label", drop=True)
+        df_haps_sorted.set_index(keys="label", drop=True, inplace=True)
 
         return df_haps_sorted
 
