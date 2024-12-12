@@ -7,12 +7,14 @@ import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import ag3 as _ag3
+from malariagen_data import af1 as _af1
 from malariagen_data.anoph.hap_frq import AnophelesHapFrequencyAnalysis
 from .test_frq import (
     test_plot_frequencies_heatmap,
     test_plot_frequencies_time_series,
     test_plot_frequencies_time_series_with_taxa,
     test_plot_frequencies_time_series_with_areas,
+    test_plot_frequencies_interactive_map,
 )
 
 
@@ -42,6 +44,23 @@ def ag3_sim_api(ag3_sim_fixture):
     )
 
 
+@pytest.fixture
+def af1_sim_api(af1_sim_fixture):
+    return AnophelesHapFrequencyAnalysis(
+        url=af1_sim_fixture.url,
+        config_path=_af1.CONFIG_PATH,
+        major_version_number=_af1.MAJOR_VERSION_NUMBER,
+        major_version_path=_af1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        results_cache=af1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_af1.TAXON_COLORS,
+        default_phasing_analysis="funestus",
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -56,6 +75,10 @@ def ag3_sim_api(ag3_sim_fixture):
 
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
+
+
+def case_af1_sim(af1_sim_fixture, af1_sim_api):
+    return af1_sim_fixture, af1_sim_api
 
 
 def check_frequency(x):
@@ -90,7 +113,7 @@ def check_hap_frequencies_advanced(
     test_plot_frequencies_time_series(api, ds)
     test_plot_frequencies_time_series_with_taxa(api, ds)
     test_plot_frequencies_time_series_with_areas(api, ds)
-    # test_plot_frequencies_interactive_map(api, ds)
+    test_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     expected_cohort_vars = [
