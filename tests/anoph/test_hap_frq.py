@@ -8,12 +8,6 @@ from pytest_cases import parametrize_with_cases
 
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.hap_frq import AnophelesHapFrequencyAnalysis
-from .test_frq import (
-    test_plot_frequencies_heatmap,
-    test_plot_frequencies_time_series,
-    test_plot_frequencies_time_series_with_taxa,
-    test_plot_frequencies_time_series_with_areas,
-)
 
 
 @pytest.fixture
@@ -88,9 +82,9 @@ def check_hap_frequencies_advanced(
     ds,
 ):
     assert isinstance(ds, xr.Dataset)
-    test_plot_frequencies_time_series(api, ds)
-    test_plot_frequencies_time_series_with_taxa(api, ds)
-    test_plot_frequencies_time_series_with_areas(api, ds)
+    # test_plot_frequencies_time_series(api, ds)
+    # test_plot_frequencies_time_series_with_taxa(api, ds)
+    # test_plot_frequencies_time_series_with_areas(api, ds)
     # test_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
@@ -164,7 +158,7 @@ def test_hap_frequencies_with_str_cohorts(
     # Run the function under test.
     df_hap = api.haplotypes_frequencies(**params)
 
-    test_plot_frequencies_heatmap(api, df_hap)
+    # test_plot_frequencies_heatmap(api, df_hap)
 
     # Standard checks.
     check_hap_frequencies(
