@@ -1013,6 +1013,14 @@ class AnophelesSimulator:
     def random_contig(self):
         return choice(self.contigs)
 
+    def random_transcript_id(self):
+        df_transcripts = self.genome_features.query("type == 'mRNA'")
+        transcript_ids = [
+            t.split(";")[0].split("=")[1] for t in df_transcripts.loc[:, "attributes"]
+        ]
+        transcript_id = choice(transcript_ids)
+        return transcript_id
+
     def random_region_str(self, region_size=None):
         contig = self.random_contig()
         contig_size = self.contig_sizes[contig]
