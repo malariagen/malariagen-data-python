@@ -538,7 +538,7 @@ class AnophelesFrequency(AnophelesBase):
         ds: frq_params.ds_frequencies_advanced,
         center: map_params.center = map_params.center_default,
         zoom: map_params.zoom = map_params.zoom_default,
-        title: Union[bool, str] = True,
+        title: Optional[Union[bool, str]] = True,
         epilogue: Union[bool, str] = True,
     ):
         import ipyleaflet
