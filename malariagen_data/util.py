@@ -1612,9 +1612,7 @@ def _karyotype_tags_n_alt(gt, alts, inversion_alts):
     return inv_n_alt
 
 
-def prep_samples_for_cohort_grouping(
-    *, df_samples, area_by, period_by, taxon_by="taxon"
-):
+def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
