@@ -321,7 +321,7 @@ class AnophelesDipClustAnalysis(
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query],
         sample_query_options: Optional[base_params.sample_query_options],
-        site_mask: base_params.site_mask,
+        site_mask: Optional[base_params.site_mask],
         cohort_size: Optional[base_params.cohort_size],
         random_seed: base_params.random_seed,
         color_continuous_scale: Optional[plotly_params.color_continuous_scale],
