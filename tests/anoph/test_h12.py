@@ -105,7 +105,7 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
     window_sizes = sorted(set([int(x) for x in window_sizes]))
     h12_params = dict(
-        region=random.choice(api.contigs),
+        region=fixture.random_region_str(),
         sample_sets=[random.choice(all_sample_sets)],
         window_sizes=window_sizes,
         min_cohort_size=5,
@@ -168,7 +168,7 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     h12_params = dict(
-        region=random.choice(api.contigs),
+        region=random.choice(api.contigs),  # FIXME: region=fixture.random_region_str(),
         sample_sets=[random.choice(all_sample_sets)],
         window_size=random.randint(100, 500),
         min_cohort_size=5,
@@ -236,7 +236,7 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        region=random.choice(api.contigs),
+        region=random.choice(api.contigs),  # FIXME: region=fixture.random_region_str(),
         sample_sets=all_sample_sets,
         window_size=random.randint(100, 500),
         min_cohort_size=1,
@@ -256,7 +256,7 @@ def test_h12_gwss_multi_with_window_size_dict(fixture, api: AnophelesH12Analysis
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        region=random.choice(api.contigs),
+        region=random.choice(api.contigs),  # FIXME: region=fixture.random_region_str(),
         sample_sets=all_sample_sets,
         window_size={
             "cohort1": random.randint(100, 500),
