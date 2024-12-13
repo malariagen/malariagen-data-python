@@ -128,7 +128,6 @@ def test_plot_diplotype_clustering_advanced(
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
         sample_sets=[random.choice(all_sample_sets)],
-        heterozygosity=False,
         linkage_method=random.choice(linkage_methods),
         distance_metric=distance_metric,
         sample_query=random.choice(sample_queries),
@@ -161,7 +160,6 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
     dipclust_params = dict(
         region=contig,
         snp_transcripts=transcripts,
-        heterozygosity=False,
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric="cityblock",
@@ -193,7 +191,6 @@ def test_plot_diplotype_clustering_advanced_with_cnv_region(
     dipclust_params = dict(
         region=region,
         cnv_region=region,
-        heterozygosity=False,
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric="cityblock",
