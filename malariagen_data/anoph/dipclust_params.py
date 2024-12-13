@@ -12,6 +12,6 @@ linkage_method_default: linkage_method = "complete"
 distance_metric_default: distance_metric = "cityblock"
 
 snp_transcript: TypeAlias = Annotated[
-    Union[None, transcript, Sequence[transcript]],
+    Union[transcript, Sequence[transcript]],
     "A transcript or a list of transcripts",
 ]

@@ -604,7 +604,7 @@ class AnophelesDipClustAnalysis(
         region: base_params.regions,
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        snp_transcript: dipclust_params.snp_transcript = None,
+        snp_transcript: Optional[dipclust_params.snp_transcript] = None,
         snp_colorscale: plotly_params.color_continuous_scale = "Greys",
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
