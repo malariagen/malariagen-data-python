@@ -219,7 +219,7 @@ Fst analysis
     plot_fst_gwss
 
 Inversion karyotypes
-------------
+--------------------
 .. autosummary::
     :toctree: generated/
 
