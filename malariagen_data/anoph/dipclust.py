@@ -23,14 +23,16 @@ from . import (
     cnv_params,
 )
 from .snp_frq import AnophelesSnpFrequencyAnalysis
-from .cnv_data import AnophelesCnvData
+from .cnv_frq import AnophelesCnvFrequencyAnalysis
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
 
 
-class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData):
+class AnophelesDipClustAnalysis(
+    AnophelesCnvFrequencyAnalysis, AnophelesSnpFrequencyAnalysis
+):
     def __init__(
         self,
         **kwargs,
