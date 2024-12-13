@@ -192,7 +192,7 @@ class AnophelesDipClustAnalysis(
         else:
             return {
                 "figure": fig,
-                "dendro_sample_id_order": leaf_data["sample_id"].to_list(),
+                "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
                 "n_snps": n_snps_used,
             }
 
