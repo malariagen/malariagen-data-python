@@ -681,6 +681,7 @@ class AnophelesSnpFrequencyAnalysis(
         ci_method: Optional[frq_params.ci_method] = "wilson",
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
@@ -698,6 +699,7 @@ class AnophelesSnpFrequencyAnalysis(
             ci_method=None,  # we will recompute confidence intervals later
             chunks=chunks,
             inline_array=inline_array,
+            taxon_by=taxon_by,
         )
 
         # N.B., we need to worry about the possibility of the
