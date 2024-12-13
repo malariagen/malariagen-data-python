@@ -159,7 +159,7 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
     sample_queries = (None, "sex_call == 'F'")
     dipclust_params = dict(
         region=contig,
-        snp_transcripts=transcripts,
+        snp_transcript=transcripts,
         sample_sets=[random.choice(all_sample_sets)],
         linkage_method=random.choice(linkage_methods),
         distance_metric="cityblock",
