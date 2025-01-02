@@ -4,7 +4,7 @@ import numpy as np  # type: ignore
 import allel  # type: ignore
 
 from numpydoc_decorator import doc
-from ..util import check_types, _karyotype_tags_n_alt
+from ..util import check_types
 from . import base_params
 from typing import Optional
 
@@ -12,7 +12,28 @@ from .snp_data import AnophelesSnpData
 from .karyotype_params import inversion_param
 
 
-class AnophelesKaryotypeData(AnophelesSnpData):
+def _karyotype_tags_n_alt(gt, alts, inversion_alts):
+    # could be Numba'd for speed but was already quick (not many inversion tag snps)
+    n_sites = gt.shape[0]
+    n_samples = gt.shape[1]
+
+    # create empty array
+    inv_n_alt = np.empty((n_sites, n_samples), dtype=np.int8)
+
+    # for every site
+    for i in range(n_sites):
+        # find the index of the correct tag snp allele
+        tagsnp_index = np.where(alts[i] == inversion_alts[i])[0]
+
+        for j in range(n_samples):
+            # count alleles which == tag snp allele and store
+            n_tag_alleles = np.sum(gt[i, j] == tagsnp_index[0])
+            inv_n_alt[i, j] = n_tag_alleles
+
+    return inv_n_alt
+
+
+class AnophelesKaryotypeAnalysis(AnophelesSnpData):
     def __init__(
         self,
         inversion_tag_path: Optional[str] = None,
@@ -23,13 +44,11 @@ class AnophelesKaryotypeData(AnophelesSnpData):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-        # If provided, this analysis version will override the
-        # default value provided in the release configuration.
         self._inversion_tag_path = inversion_tag_path
 
     @check_types
     @doc(
-        summary="Load tag SNPs for a given inversion in Ag.",
+        summary="Load tag SNPs for a given inversion.",
     )
     def load_inversion_tags(self, inversion: inversion_param) -> pd.DataFrame:
         # needs to be modified depending on where we are hosting

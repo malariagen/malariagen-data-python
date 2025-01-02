@@ -84,15 +84,9 @@ def test_locate_region(region_raw):
 def test_karyotyping(inversion):
     af1 = setup_af1()
 
-    if inversion == "X_x":
-        with pytest.raises(TypeError):
-            af1.karyotype(
-                inversion=inversion, sample_sets="AG1000G-GH", sample_query=None
-            )
-    else:
-        with pytest.raises(FileNotFoundError):
-            af1.karyotype(
-                inversion=inversion,
-                sample_sets="1229-VO-GH-DADZIE-VMF00095",
-                sample_query=None,
-            )
+    with pytest.raises(FileNotFoundError):
+        af1.karyotype(
+            inversion=inversion,
+            sample_sets="1229-VO-GH-DADZIE-VMF00095",
+            sample_query=None,
+        )

@@ -167,7 +167,7 @@ def test_karyotyping(inversion):
     ag3 = setup_ag3(cohorts_analysis="20230516")
 
     if inversion == "X_x":
-        with pytest.raises(TypeError):
+        with pytest.raises(ValueError):
             ag3.karyotype(
                 inversion=inversion, sample_sets="AG1000G-GH", sample_query=None
             )
