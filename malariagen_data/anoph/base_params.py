@@ -10,6 +10,8 @@ from ..util import (
     single_contig_param_type,
     single_region_param_type,
     chunks_param_type,
+    zarr_chunks_type,
+    dask_chunks_type,
 )
 
 contig: TypeAlias = Annotated[
@@ -255,6 +257,13 @@ chunks: TypeAlias = Annotated[
 # choose a different default, especially if they need to retrieve larger
 # amounts of data.
 native_chunks: chunks = "native"
+
+
+def call_chunks_func(zarr_chunks: zarr_chunks_type) -> dask_chunks_type:
+    return tuple([10 * i for i in zarr_chunks])
+
+
+call_chunks: chunks = call_chunks_func
 
 gff_attributes: TypeAlias = Annotated[
     Optional[Union[Sequence[str], str]],
