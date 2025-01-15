@@ -10,7 +10,7 @@ import warnings
 from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, cnv_params, frq_params
-from .frq_funcs import (
+from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
     add_frequency_ci,
@@ -24,11 +24,11 @@ from ..util import (
     simple_xarray_concat,
 )
 from .cnv_data import AnophelesCnvData
-from .frq_funcs import AnophelesFrequency
+from .frq_base import AnophelesFrequencyAnalysis
 from .sample_metadata import locate_cohorts
 
 
-class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequency):
+class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis):
     def __init__(
         self,
         **kwargs,

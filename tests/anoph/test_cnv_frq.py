@@ -12,11 +12,11 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.cnv_frq import AnophelesCnvFrequencyAnalysis
 from malariagen_data.util import compare_series_like
 from .test_frq import (
-    test_plot_frequencies_heatmap,
-    test_plot_frequencies_time_series,
-    test_plot_frequencies_time_series_with_taxa,
-    test_plot_frequencies_time_series_with_areas,
-    test_plot_frequencies_interactive_map,
+    check_plot_frequencies_heatmap,
+    check_plot_frequencies_time_series,
+    check_plot_frequencies_time_series_with_taxa,
+    check_plot_frequencies_time_series_with_areas,
+    check_plot_frequencies_interactive_map,
 )
 
 
@@ -116,7 +116,7 @@ def test_gene_cnv_frequencies_with_str_cohorts(
     # Run the function under test.
     df_cnv = api.gene_cnv_frequencies(**params)
 
-    test_plot_frequencies_heatmap(api, df_cnv)
+    check_plot_frequencies_heatmap(api, df_cnv)
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -177,7 +177,7 @@ def test_gene_cnv_frequencies_with_min_cohort_size(
         # Run the function under test.
     df_cnv = api.gene_cnv_frequencies(**params)
 
-    test_plot_frequencies_heatmap(api, df_cnv)
+    check_plot_frequencies_heatmap(api, df_cnv)
 
     # Standard checks.
     check_gene_cnv_frequencies(
@@ -225,7 +225,7 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query(
     # Run the function under test.
     df_cnv = api.gene_cnv_frequencies(**params)
 
-    test_plot_frequencies_heatmap(api, df_cnv)
+    check_plot_frequencies_heatmap(api, df_cnv)
 
     # Standard checks.
     check_gene_cnv_frequencies(
@@ -283,7 +283,7 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query_options(
     # Run the function under test.
     df_cnv = api.gene_cnv_frequencies(**params)
 
-    test_plot_frequencies_heatmap(api, df_cnv)
+    check_plot_frequencies_heatmap(api, df_cnv)
 
     # Standard checks.
     check_gene_cnv_frequencies(
@@ -322,7 +322,7 @@ def test_gene_cnv_frequencies_with_dict_cohorts(
     # Run the function under test.
     df_cnv = api.gene_cnv_frequencies(**params)
 
-    test_plot_frequencies_heatmap(api, df_cnv)
+    check_plot_frequencies_heatmap(api, df_cnv)
 
     # Standard checks.
     check_gene_cnv_frequencies(
@@ -367,8 +367,8 @@ def test_gene_cnv_frequencies_without_drop_invariant(
     df_cnv_a = api.gene_cnv_frequencies(drop_invariant=True, **params)
     df_cnv_b = api.gene_cnv_frequencies(drop_invariant=False, **params)
 
-    test_plot_frequencies_heatmap(api, df_cnv_a)
-    test_plot_frequencies_heatmap(api, df_cnv_b)
+    check_plot_frequencies_heatmap(api, df_cnv_a)
+    check_plot_frequencies_heatmap(api, df_cnv_b)
 
     # Standard checks.
     check_gene_cnv_frequencies(
@@ -438,7 +438,7 @@ def test_gene_cnv_frequencies_with_max_coverage_variance(
         # checks.
         df_cnv = api.gene_cnv_frequencies(**params)
 
-        test_plot_frequencies_heatmap(api, df_cnv)
+        check_plot_frequencies_heatmap(api, df_cnv)
 
         # Figure out expected cohort labels.
         df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -733,10 +733,10 @@ def check_gene_cnv_frequencies_advanced(
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
-    test_plot_frequencies_time_series(api, ds)
-    test_plot_frequencies_time_series_with_taxa(api, ds)
-    test_plot_frequencies_time_series_with_areas(api, ds)
-    test_plot_frequencies_interactive_map(api, ds)
+    check_plot_frequencies_time_series(api, ds)
+    check_plot_frequencies_time_series_with_taxa(api, ds)
+    check_plot_frequencies_time_series_with_areas(api, ds)
+    check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     # Check variant variables.

@@ -14,13 +14,13 @@ from ..util import (
     pandas_apply,
 )
 from .snp_data import AnophelesSnpData
-from .frq_funcs import (
+from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
     add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
-from .frq_funcs import AnophelesFrequency
+from .frq_base import AnophelesFrequencyAnalysis
 from . import base_params, frq_params
 
 
@@ -29,7 +29,7 @@ AA_CHANGE_QUERY = (
 )
 
 
-class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequency):
+class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis):
     def __init__(
         self,
         **kwargs,

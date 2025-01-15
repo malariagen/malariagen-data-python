@@ -11,17 +11,17 @@ from ..util import (
     haplotype_frequencies,
 )
 from .hap_data import AnophelesHapData
-from .frq_funcs import (
+from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
     add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
-from .frq_funcs import AnophelesFrequency
+from .frq_base import AnophelesFrequencyAnalysis
 from . import base_params, frq_params
 
 
-class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequency):
+class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis):
     def __init__(
         self,
         **kwargs,

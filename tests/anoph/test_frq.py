@@ -4,8 +4,7 @@ import plotly.graph_objects as go  # type: ignore
 import random
 
 
-@pytest.mark.skip
-def test_plot_frequencies_heatmap(api, frq_df):
+def check_plot_frequencies_heatmap(api, frq_df):
     fig = api.plot_frequencies_heatmap(frq_df, show=False, max_len=None)
     assert isinstance(fig, go.Figure)
 
@@ -24,8 +23,7 @@ def test_plot_frequencies_heatmap(api, frq_df):
             )
 
 
-@pytest.mark.skip
-def test_plot_frequencies_time_series(api, ds):
+def check_plot_frequencies_time_series(api, ds):
     # Trim things down a bit for speed.
     ds = ds.isel(variants=slice(0, 100))
 
@@ -36,8 +34,7 @@ def test_plot_frequencies_time_series(api, ds):
     assert isinstance(fig, go.Figure)
 
 
-@pytest.mark.skip
-def test_plot_frequencies_time_series_with_taxa(api, ds):
+def check_plot_frequencies_time_series_with_taxa(api, ds):
     # Trim things down a bit for speed.
     ds = ds.isel(variants=slice(0, 100))
 
@@ -57,8 +54,7 @@ def test_plot_frequencies_time_series_with_taxa(api, ds):
     assert isinstance(fig, go.Figure)
 
 
-@pytest.mark.skip
-def test_plot_frequencies_time_series_with_areas(api, ds):
+def check_plot_frequencies_time_series_with_areas(api, ds):
     # Trim things down a bit for speed.
     ds = ds.isel(variants=slice(0, 100))
 
@@ -84,8 +80,7 @@ def test_plot_frequencies_time_series_with_areas(api, ds):
     assert isinstance(fig, go.Figure)
 
 
-@pytest.mark.skip
-def test_plot_frequencies_interactive_map(api, ds):
+def check_plot_frequencies_interactive_map(api, ds):
     import ipywidgets  # type: ignore
 
     # Trim things down a bit for speed.
