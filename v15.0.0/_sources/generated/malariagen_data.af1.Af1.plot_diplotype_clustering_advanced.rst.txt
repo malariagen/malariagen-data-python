@@ -1,0 +1,6 @@
+﻿malariagen\_data.af1.Af1.plot\_diplotype\_clustering\_advanced
+==============================================================
+
+.. currentmodule:: malariagen_data.af1
+
+.. automethod:: Af1.plot_diplotype_clustering_advanced
