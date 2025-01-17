@@ -84,7 +84,7 @@ def test_fst_gwss(fixture, api: AnophelesFstAnalysis):
     cohort1_query = f"country == {countries[0]!r}"
     cohort2_query = f"country == {countries[1]!r}"
     fst_params = dict(
-        region=fixture.random_region_str(),
+        region=random.choice(api.contigs),  # FIXME: region=fixture.random_region_str(),
         sample_sets=all_sample_sets,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,

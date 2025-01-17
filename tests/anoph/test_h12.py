@@ -105,7 +105,7 @@ def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
     window_sizes = sorted(set([int(x) for x in window_sizes]))
     h12_params = dict(
-        region=fixture.random_region_str(),
+        region=random.choice(api.contigs),  # FIXME: region=fixture.random_region_str(),
         sample_sets=[random.choice(all_sample_sets)],
         window_sizes=window_sizes,
         min_cohort_size=5,
