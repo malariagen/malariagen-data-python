@@ -10,7 +10,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 import zarr  # type: ignore
-from ...malariagen_data.util import gff3_parse_attributes
+from malariagen_data.util import gff3_parse_attributes
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any
