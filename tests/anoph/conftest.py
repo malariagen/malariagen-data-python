@@ -10,6 +10,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 import zarr  # type: ignore
+from malariagen_data.util import gff3_parse_attributes
 
 # N.B., this file (conftest.py) is handled in a special way
 # by pytest. In short, this file is a place to define any
@@ -1012,6 +1013,14 @@ class AnophelesSimulator:
 
     def random_contig(self):
         return choice(self.contigs)
+
+    def random_transcript_id(self):
+        df_transcripts = self.genome_features.query("type == 'mRNA'")
+        transcript_ids = [
+            gff3_parse_attributes(t)["ID"] for t in df_transcripts.loc[:, "attributes"]
+        ]
+        transcript_id = choice(transcript_ids)
+        return transcript_id
 
     def random_region_str(self, region_size=None):
         contig = self.random_contig()
