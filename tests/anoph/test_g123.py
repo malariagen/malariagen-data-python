@@ -101,7 +101,7 @@ def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     g123_params = dict(
-        region=random.choice(api.contigs),  # FIXME: region=fixture.random_region_str(),
+        region=fixture.random_region_str(),
         sample_sets=[random.choice(all_sample_sets)],
         window_size=random.randint(100, 500),
         min_cohort_size=10,
