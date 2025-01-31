@@ -123,6 +123,7 @@ class Af1(AnophelesDataResource):
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
             gene_names=None,
+            inversion_tag_path=None,
         )
 
     def __repr__(self):
