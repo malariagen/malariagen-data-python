@@ -55,9 +55,9 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
         import importlib.resources
         from .. import resources
 
-        if not self._inversion_tag_path:
-            raise FileNotFoundError(
-                "The file containing the inversion tags is missing."
+        if self._inversion_tag_path is None:
+            raise NotImplementedError(
+                "No inversion tags are available for this data resource."
             )
         else:
             with importlib.resources.path(resources, self._inversion_tag_path) as path:
