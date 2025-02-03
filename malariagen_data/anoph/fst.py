@@ -1,4 +1,5 @@
 from typing import Tuple, Optional
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -105,10 +106,10 @@ class AnophelesFstAnalysis(
     )
     def fst_gwss(
         self,
-        region: base_params.region,
-        window_size: fst_params.window_size,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
+        region: Optional[base_params.region] = None,
+        window_size: Optional[fst_params.window_size] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
@@ -123,10 +124,39 @@ class AnophelesFstAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         clip_min: fst_params.clip_min = 0.0,
+        contig: Optional[base_params.region] = None,  # Deprecated
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "fst_gwss_v3"
+
+        # Specify which quasi-positional args are required.
+        required_args = ("window_size", "cohort1_query", "cohort2_query")
+
+        # Raise an error for any missing required args.
+        missing_args = []
+        for required_arg in required_args:
+            if locals()[required_arg] is None:
+                missing_args.append(required_arg)
+        if missing_args:
+            raise ValueError(f"Missing required arguments: '{missing_args}'")
+
+        if contig is not None:
+            # Get the current warning filters.
+            original_warning_filters = warnings.filters[:]
+
+            # Trigger the warning.
+            warnings.simplefilter("default", DeprecationWarning)
+            warnings.warn(
+                "The 'contig' parameter has been deprecated. Please use 'region' instead.",
+                DeprecationWarning,
+            )
+
+            # Restore the original warning filters.
+            warnings.filters = original_warning_filters
+
+            # If contig and region are both given, then prefer region.
+            region = contig if region is None else region
 
         params = dict(
             region=region,
