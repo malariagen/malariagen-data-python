@@ -236,7 +236,7 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        region=fixture.random_region_str(region_size=5000),
+        region=fixture.random_region_str(region_size=10_000),
         sample_sets=all_sample_sets,
         window_size=random.randint(100, 500),
         min_cohort_size=1,
