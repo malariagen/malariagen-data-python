@@ -151,7 +151,7 @@ class AnophelesFstAnalysis(
             args_set_values = []
             for arg in args_set:
                 args_set_values.append(locals().get(arg))
-            if all(args_set_values):
+            if not any(args_set_values):
                 missing_alt_args.append(args_set)
         if missing_alt_args:
             raise ValueError(
