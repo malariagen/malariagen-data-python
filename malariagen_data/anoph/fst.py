@@ -136,10 +136,27 @@ class AnophelesFstAnalysis(
         # Raise an error for any missing required args.
         missing_args = []
         for required_arg in required_args:
-            if locals()[required_arg] is None:
+            if locals().get(required_arg) is None:
                 missing_args.append(required_arg)
         if missing_args:
-            raise ValueError(f"Missing required arguments: '{missing_args}'")
+            raise ValueError(f"Missing required arguments: {missing_args}")
+
+        # Specify which sets of alternative args are required.
+        required_alternative_arg_sets = (("contig", "region"),)
+
+        # Raise an error for any missing required alternative args.
+        missing_alt_args = []
+        for args_set in required_alternative_arg_sets:
+            # Check if all alternative arguments are missing
+            args_set_values = []
+            for arg in args_set:
+                args_set_values.append(locals().get(arg))
+            if all(args_set_values):
+                missing_alt_args.append(args_set)
+        if missing_alt_args:
+            raise ValueError(
+                f"Missing required alternative arguments: {missing_alt_args}"
+            )
 
         if contig is not None:
             # Get the current warning filters.
