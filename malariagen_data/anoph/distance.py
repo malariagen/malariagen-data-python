@@ -421,7 +421,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         height: plotly_params.fig_height = 600,
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
-        render_mode: plotly_params.render_mode = "auto",
+        render_mode: plotly_params.render_mode = "svg",
         title: plotly_params.title = True,
         title_font_size: plotly_params.title_font_size = 14,
         line_width: plotly_params.line_width = 0.5,
