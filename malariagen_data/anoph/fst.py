@@ -130,13 +130,16 @@ class AnophelesFstAnalysis(
         # invalidate any previously cached data.
         name = "fst_gwss_v3"
 
+        # Get a copy of the local variables, which will include all provided function parameters.
+        local_vars = locals().copy()
+
         # Specify which quasi-positional args are required.
         required_args = ("window_size", "cohort1_query", "cohort2_query")
 
         # Raise an error for any missing required args.
         missing_args = []
         for required_arg in required_args:
-            if locals().get(required_arg) is None:
+            if local_vars.get(required_arg) is None:
                 missing_args.append(required_arg)
         if missing_args:
             raise ValueError(f"Missing required arguments: {missing_args}")
@@ -150,7 +153,7 @@ class AnophelesFstAnalysis(
             # Check if all alternative arguments are missing
             args_set_values = []
             for arg in args_set:
-                args_set_values.append(locals().get(arg))
+                args_set_values.append(local_vars.get(arg))
             if not any(args_set_values):
                 missing_alt_args.append(args_set)
         if missing_alt_args:
