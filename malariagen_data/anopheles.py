@@ -24,6 +24,7 @@ from .anoph import (
     plotly_params,
     xpehh_params,
 )
+from .anoph.karyotype import AnophelesKaryotypeAnalysis
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
 from .anoph.genome_features import AnophelesGenomeFeaturesData
@@ -86,6 +87,7 @@ class AnophelesDataResource(
     AnophelesPca,
     PlinkConverter,
     AnophelesIgv,
+    AnophelesKaryotypeAnalysis,
     AnophelesAimData,
     AnophelesHapData,
     AnophelesSnpData,
@@ -129,6 +131,7 @@ class AnophelesDataResource(
         taxon_colors: Optional[Mapping[str, str]],
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],
+        inversion_tag_path: Optional[str],
     ):
         super().__init__(
             url=url,
@@ -162,6 +165,7 @@ class AnophelesDataResource(
             taxon_colors=taxon_colors,
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
+            inversion_tag_path=inversion_tag_path,
         )
 
     @property
