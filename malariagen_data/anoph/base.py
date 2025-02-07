@@ -61,6 +61,8 @@ class AnophelesBase:
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
         tqdm_class=None,
+        unrestricted_use_only: Optional[bool] = False,
+        surveillance_use_only: Optional[bool] = False,
     ):
         # If show_progress has not been specified, then determine the default.
         if show_progress is None:
@@ -85,6 +87,8 @@ class AnophelesBase:
         if tqdm_class is None:
             tqdm_class = tqdm_auto
         self._tqdm_class = tqdm_class
+        self._unrestricted_use_only = unrestricted_use_only
+        self._surveillance_use_only = surveillance_use_only
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
@@ -406,6 +410,7 @@ class AnophelesBase:
          `terms_of_use_url` is the URL of the terms of use,
          `release` is the identifier of the release containing the sample set,
          `unrestricted_use` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+         If `unrestricted_use_only` is set to `True` then only sample sets with `unrestricted_use` set to `True` will be included.
             """,
     )
     def sample_sets(
@@ -428,6 +433,11 @@ class AnophelesBase:
             except KeyError:
                 # Read and cache dataframe for performance.
                 df = self._read_sample_sets(single_release=release)
+
+                # If unrestricted_use_only, restrict to sample sets with unrestricted_use.
+                if "unrestricted_use" in df.columns and self._unrestricted_use_only:
+                    df = df[df["unrestricted_use"].astype(bool)]
+
                 self._cache_sample_sets[release] = df
 
         elif isinstance(release, Sequence):

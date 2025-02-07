@@ -150,6 +150,8 @@ class Ag3(AnophelesDataResource):
         discordant_read_calls_analysis=None,
         pre=False,
         tqdm_class=None,
+        unrestricted_use_only=False,
+        surveillance_use_only=False,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
         super().__init__(
@@ -192,6 +194,8 @@ class Ag3(AnophelesDataResource):
             virtual_contigs=VIRTUAL_CONTIGS,
             gene_names=GENE_NAMES,
             inversion_tag_path=INVERSION_TAG_PATH,
+            unrestricted_use_only=unrestricted_use_only,
+            surveillance_use_only=surveillance_use_only,
         )
 
         # set up caches
@@ -218,6 +222,8 @@ class Ag3(AnophelesDataResource):
             f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : malariagen_data {malariagen_data.__version__}\n"
             f"Client location         : {self.client_location}\n"
+            f"Data filtered to unrestricted use only: {self._unrestricted_use_only}\n"
+            f"Data filtered to surveillance use only: {self._surveillance_use_only}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
@@ -288,6 +294,18 @@ class Ag3(AnophelesDataResource):
                             Client location
                         </th>
                         <td>{self.client_location}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data filtered for unrestricted use only
+                        </th>
+                        <td>{self._unrestricted_use_only}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data filtered for surveillance use only
+                        </th>
+                        <td>{self._surveillance_use_only}</td>
                     </tr>
                 </tbody>
             </table>
