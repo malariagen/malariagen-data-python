@@ -327,7 +327,7 @@ def test_general_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_general_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up the test.
-    release = random.choice(api.releases)
+    release = random.choice(api.relevant_releases)
 
     # Call function to be tested.
     df = api.general_metadata(sample_sets=release)
@@ -411,7 +411,7 @@ def test_sequence_qc_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sequence_qc_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up the test.
-    release = random.choice(api.releases)
+    release = random.choice(api.relevant_releases)
 
     # Call function to be tested.
     df = api.sequence_qc_metadata(sample_sets=release)
@@ -630,7 +630,7 @@ def test_cohorts_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_cohorts_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up test.
-    release = random.choice(api.releases)
+    release = random.choice(api.relevant_releases)
 
     # Call function to be tested.
     df = api.cohorts_metadata(sample_sets=release)
@@ -740,7 +740,7 @@ def test_sample_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sample_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up test.
-    release = random.choice(api.releases)
+    release = random.choice(api.relevant_releases)
 
     # Call function to be tested.
     df = api.sample_metadata(sample_sets=release)
@@ -764,7 +764,7 @@ def test_sample_metadata_with_duplicate_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
     # Set up test.
-    release = random.choice(api.releases)
+    release = random.choice(api.relevant_releases)
     df_sample_sets = api.sample_sets(release=release).set_index("sample_set")
     all_sample_sets = df_sample_sets.index.to_list()
     sample_set = random.choice(all_sample_sets)

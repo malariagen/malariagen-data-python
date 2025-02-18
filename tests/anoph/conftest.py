@@ -1903,24 +1903,34 @@ class Af1Simulator(AnophelesSimulator):
                     "1229-VO-GH-DADZIE-VMF00095",
                     "1230-VO-GA-CF-AYALA-VMF00045",
                     "1231-VO-MULTI-WONDJI-VMF00043",
+                    "1232-VO-KE-OCHOMO-VMF00044",
+                    "1235-VO-MZ-PAAIJMANS-VMF00094",
                 ],
-                "sample_count": [26, 40, 32],
+                "sample_count": [26, 40, 32, 20, 20],
                 "study_id": [
                     "1229-VO-GH-DADZIE",
                     "1230-VO-MULTI-AYALA",
                     "1231-VO-MULTI-WONDJI",
+                    "1232-VO-KE-OCHOMO",
+                    "1235-VO-MZ-PAAIJMANS",
                 ],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1229-VO-GH-DADZIE",
                     "https://www.malariagen.net/network/where-we-work/1230-VO-MULTI-AYALA",
                     "https://www.malariagen.net/network/where-we-work/1231-VO-MULTI-WONDJI",
+                    "https://www.malariagen.net/network/where-we-work/1232-VO-KE-OCHOMO",
+                    "https://www.malariagen.net/network/where-we-work/1235-VO-MZ-PAAIJMANS",
                 ],
                 "terms_of_use_expiry_date": [
                     "2025-06-01",
                     "2025-06-01",
                     "2025-06-01",
+                    "2024-01-01",  # Set to the past in order to test unrestricted_use_only.
+                    "2024-01-01",  # Set to the past in order to test unrestricted_use_only. (We need at least 2 sets.)
                 ],
                 "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                     "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                     "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                     "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
@@ -2119,6 +2129,16 @@ class Af1Simulator(AnophelesSimulator):
             release="1.0",
             release_path="v1.0",
             sample_set="1231-VO-MULTI-WONDJI-VMF00043",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1232-VO-KE-OCHOMO-VMF00044",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1235-VO-MZ-PAAIJMANS-VMF00094",
         )
 
     def init_snp_sites(self):
