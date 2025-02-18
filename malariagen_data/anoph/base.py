@@ -358,6 +358,11 @@ class AnophelesBase:
         return self._cache_releases
 
     @property
+    def relevant_releases(self) -> Tuple[str, ...]:
+        """Relevant data releases. When `unrestricted_use_only` is set to `True`, this excludes releases that contain restricted sample sets."""
+        return tuple(r for r in self.releases if not self.sample_sets(release=r).empty)
+
+    @property
     def client_location(self) -> str:
         details = self._client_details
         if details is not None:
