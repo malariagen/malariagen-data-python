@@ -290,7 +290,8 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
 
-    # FIXME: we should probably add more sample sets to the fixtures to test combinations of unrestricted_use_only and surveillance_use_only.
+    # Skip this test if there are no relevant sample sets to test, e.g. due to unrestricted_use_only and surveillance_use_only.
+    # Note: there should be sufficient test fixtures to run this test, i.e. including unrestricted and surveillance sample sets.
     if len(all_sample_sets) == 0:
         pytest.skip("Skipping because there are no relevant sample sets to test.")
 
