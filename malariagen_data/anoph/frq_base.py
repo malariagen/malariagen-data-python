@@ -49,7 +49,9 @@ def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
     return df_samples
 
 
-def build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_size):
+def build_cohorts_from_sample_grouping(
+    *, group_samples_by_cohort, min_cohort_size, taxon_by
+):
     # Build cohorts dataframe.
     df_cohorts = group_samples_by_cohort.agg(
         size=("sample_id", len),
@@ -71,7 +73,7 @@ def build_cohorts_from_sample_grouping(*, group_samples_by_cohort, min_cohort_si
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
     df_cohorts["label"] = df_cohorts.apply(
-        lambda v: f"{v.area}_{v.taxon[:4]}_{v.period}", axis="columns"
+        lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
     )
 
     # Apply minimum cohort size.

@@ -1628,45 +1628,6 @@ def prep_samples_for_cohort_grouping(
     return df_samples
 
 
-def build_cohorts_from_sample_grouping(
-    *, group_samples_by_cohort, min_cohort_size, taxon_by="taxon"
-):
-    # Build cohorts dataframe.
-    df_cohorts = group_samples_by_cohort.agg(
-        size=("sample_id", len),
-        lat_mean=("latitude", "mean"),
-        lat_max=("latitude", "max"),
-        lat_min=("latitude", "min"),
-        lon_mean=("longitude", "mean"),
-        lon_max=("longitude", "max"),
-        lon_min=("longitude", "min"),
-    )
-    # Reset index so that the index fields are included as columns.
-    df_cohorts = df_cohorts.reset_index()
-
-    # Add cohort helper variables.
-    cohort_period_start = df_cohorts["period"].apply(lambda v: v.start_time)
-    cohort_period_end = df_cohorts["period"].apply(lambda v: v.end_time)
-    df_cohorts["period_start"] = cohort_period_start
-    df_cohorts["period_end"] = cohort_period_end
-    # Create a label that is similar to the cohort metadata,
-    # although this won't be perfect.
-    df_cohorts["label"] = df_cohorts.apply(
-        lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
-    )
-
-    # Apply minimum cohort size.
-    df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
-
-    # Early check for no cohorts.
-    if len(df_cohorts) == 0:
-        raise ValueError(
-            "No cohorts available for the given sample selection parameters and minimum cohort size."
-        )
-
-    return df_cohorts
-
-
 def add_frequency_ci(*, ds, ci_method):
     from statsmodels.stats.proportion import proportion_confint  # type: ignore
 
