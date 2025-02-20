@@ -445,6 +445,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         regions: List[Region] = parse_multi_region(self, region)
         del region
@@ -466,6 +467,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
                     ci_method=ci_method,
                     chunks=chunks,
                     inline_array=inline_array,
+                    taxon_by=taxon_by,
                 )
                 for r in regions
             ],
@@ -494,6 +496,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         ci_method,
         chunks,
         inline_array,
+        taxon_by,
     ):
         debug = self._log.debug
 
@@ -523,6 +526,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
+            taxon_by=taxon_by,
         )
 
         debug("group samples to make cohorts")
@@ -532,6 +536,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         df_cohorts = build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
+            taxon_by=taxon_by,
         )
 
         debug("figure out expected copy number")
@@ -556,7 +561,8 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug("build event count and nobs for each cohort")
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
             # construct grouping key
-            cohort_key = cohort.taxon, cohort.area, cohort.period
+            cohort_taxon = getattr(cohort, taxon_by)
+            cohort_key = cohort_taxon, cohort.area, cohort.period
 
             # obtain sample indices for cohort
             sample_indices = group_samples_by_cohort.indices[cohort_key]

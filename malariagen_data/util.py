@@ -1591,43 +1591,6 @@ def distributed_client():
     return client
 
 
-def prep_samples_for_cohort_grouping(
-    *, df_samples, area_by, period_by, taxon_by="taxon"
-):
-    # Take a copy, as we will modify the dataframe.
-    df_samples = df_samples.copy()
-
-    # Fix "intermediate" or "unassigned" taxon values - we only want to build
-    # cohorts with clean taxon calls, so we set other values to None.
-    loc_intermediate_taxon = (
-        df_samples[taxon_by].str.startswith("intermediate").fillna(False)
-    )
-    df_samples.loc[loc_intermediate_taxon, taxon_by] = None
-    loc_unassigned_taxon = (
-        df_samples[taxon_by].str.startswith("unassigned").fillna(False)
-    )
-    df_samples.loc[loc_unassigned_taxon, taxon_by] = None
-
-    # Add period column.
-    if period_by == "year":
-        make_period = _make_sample_period_year
-    elif period_by == "quarter":
-        make_period = _make_sample_period_quarter
-    elif period_by == "month":
-        make_period = _make_sample_period_month
-    else:  # pragma: no cover
-        raise ValueError(
-            f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
-        )
-    sample_period = df_samples.apply(make_period, axis="columns")
-    df_samples["period"] = sample_period
-
-    # Add area column for consistent output.
-    df_samples["area"] = df_samples[area_by]
-
-    return df_samples
-
-
 def add_frequency_ci(*, ds, ci_method):
     from statsmodels.stats.proportion import proportion_confint  # type: ignore
 

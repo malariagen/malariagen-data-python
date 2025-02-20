@@ -14,20 +14,22 @@ from ..util import check_types
 from .base import AnophelesBase
 
 
-def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by):
+def prep_samples_for_cohort_grouping(
+    *, df_samples, area_by, period_by, taxon_by="taxon"
+):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
     # Fix "intermediate" or "unassigned" taxon values - we only want to build
     # cohorts with clean taxon calls, so we set other values to None.
     loc_intermediate_taxon = (
-        df_samples["taxon"].str.startswith("intermediate").fillna(False)
+        df_samples[taxon_by].str.startswith("intermediate").fillna(False)
     )
-    df_samples.loc[loc_intermediate_taxon, "taxon"] = None
+    df_samples.loc[loc_intermediate_taxon, taxon_by] = None
     loc_unassigned_taxon = (
-        df_samples["taxon"].str.startswith("unassigned").fillna(False)
+        df_samples[taxon_by].str.startswith("unassigned").fillna(False)
     )
-    df_samples.loc[loc_unassigned_taxon, "taxon"] = None
+    df_samples.loc[loc_unassigned_taxon, taxon_by] = None
 
     # Add period column.
     if period_by == "year":
