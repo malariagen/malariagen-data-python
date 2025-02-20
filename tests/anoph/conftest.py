@@ -1256,6 +1256,31 @@ class Ag3Simulator(AnophelesSimulator):
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_general_ds.to_csv(dst_path, index=False)
 
+        # Create surveillance flags by sample from real metadata files.
+        surv_flags_src_path = (
+            self.fixture_dir
+            / "vo_agam_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        df_surveillance_flags = pd.read_csv(surv_flags_src_path)
+        df_surveillance_flags_ds = (
+            df_surveillance_flags.set_index("sample_id").loc[samples_ds].reset_index()
+        )
+        surv_flags_dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        surv_flags_dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_surveillance_flags_ds.to_csv(surv_flags_dst_path, index=False)
+
         if sequence_qc:
             # Create sequence QC metadata by sample from real metadata files.
             src_path = (
@@ -2009,6 +2034,31 @@ class Af1Simulator(AnophelesSimulator):
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_general_ds.to_csv(dst_path, index=False)
+
+        # Create surveillance flags by sample from real metadata files.
+        surv_flags_src_path = (
+            self.fixture_dir
+            / "vo_afun_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        df_surveillance_flags = pd.read_csv(surv_flags_src_path)
+        df_surveillance_flags_ds = (
+            df_surveillance_flags.set_index("sample_id").loc[samples_ds].reset_index()
+        )
+        surv_flags_dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        surv_flags_dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_surveillance_flags_ds.to_csv(surv_flags_dst_path, index=False)
 
         if sequence_qc:
             # Create sequence QC metadata by sample from real metadata files.

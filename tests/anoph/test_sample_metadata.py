@@ -647,13 +647,19 @@ def sample_metadata_expected_columns(
     has_aims, has_cohorts_by_quarter, has_sequence_qc, ordered_contigs
 ):
     expected_columns = general_metadata_expected_columns()
+
     if has_sequence_qc:
         expected_columns.update(sequence_qc_metadata_expected_columns(ordered_contigs))
+
+    expected_columns.update({"is_surveillance": "b"})
+
     if has_aims:
         expected_columns.update(aim_metadata_expected_columns())
+
     expected_columns.update(
         cohorts_metadata_expected_columns(has_cohorts_by_quarter=has_cohorts_by_quarter)
     )
+
     return expected_columns
 
 
@@ -829,8 +835,9 @@ def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
 def test_sample_metadata_with_missing_file(
     missing_metadata_api: AnophelesSampleMetadata,
 ):
-    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # In this test, there is missing metadata.
     # We expect this to be filled with empty values.
+    # We also expect warnings for missing surveillance flags.
     api = missing_metadata_api
 
     # Set up test.
@@ -840,7 +847,15 @@ def test_sample_metadata_with_missing_file(
 
     for sample_set in all_sample_sets:
         # Call function to be tested.
-        df = api.sample_metadata(sample_sets=sample_set)
+        with pytest.warns(UserWarning) as captured_warnings:
+            df = api.sample_metadata(sample_sets=sample_set)
+
+        # Check expected warnings.
+        expected_message = f"WARNING: The surveillance flags data is missing for sample set {sample_set}"
+        assert all(
+            str(captured_warning.message) == expected_message
+            for captured_warning in captured_warnings
+        )
 
         # Check output.
         validate_metadata(
