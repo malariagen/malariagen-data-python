@@ -451,7 +451,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        taxon_by: Optional[frq_params.taxon_by] = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(

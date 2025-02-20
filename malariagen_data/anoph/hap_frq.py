@@ -153,7 +153,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        taxon_by: Optional[frq_params.taxon_by] = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -171,7 +171,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby(["taxon_by", "area", "period"])
+        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
         # Build cohorts dataframe.
         df_cohorts = build_cohorts_from_sample_grouping(
