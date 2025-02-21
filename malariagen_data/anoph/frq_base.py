@@ -30,20 +30,43 @@ def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by
     df_samples.loc[loc_unassigned_taxon, taxon_by] = None
 
     # Add period column.
-    if period_by == "year":
-        make_period = _make_sample_period_year
-    elif period_by == "quarter":
-        make_period = _make_sample_period_quarter
-    elif period_by == "month":
-        make_period = _make_sample_period_month
-    else:  # pragma: no cover
-        raise ValueError(
-            f"Value for period_by parameter must be one of 'year', 'quarter', 'month'; found {period_by!r}."
-        )
-    sample_period = df_samples.apply(make_period, axis="columns")
-    df_samples["period"] = sample_period
 
-    # Add area column for consistent output.
+    # Map supported period_by values to functions that return either the relevant pd.Period or pd.NaT per row.
+    period_by_funcs = {
+        "year": _make_sample_period_year,
+        "quarter": _make_sample_period_quarter,
+        "month": _make_sample_period_month,
+    }
+
+    # Get the matching function for the specified period_by value, or None.
+    period_by_func = period_by_funcs.get(period_by)
+
+    # If there were no matching functions for the specified period_by value...
+    if period_by_func is None:
+        # Raise a ValueError if the specified period_by value is not a column in the DataFrame.
+        if period_by not in df_samples.columns:
+            raise ValueError(
+                f"Invalid value for `period_by`: {period_by!r}. Either specify the name of an existing column "
+                "or a supported period: 'year', 'quarter', or 'month'."
+            )
+
+        # Raise a ValueError if the specified period_by column does not contain instances pd.Period.
+        if not all(
+            df_samples[period_by].apply(
+                lambda value: pd.isnull(value) or isinstance(value, pd.Period)
+            )
+        ):
+            raise TypeError(
+                "Invalid values in {period_by!r} column. Must be either pandas.Period or null."
+            )
+
+        # Copy the specified period_by column to a new "period" column.
+        df_samples["period"] = df_samples[period_by]
+    else:
+        # Apply the matching period_by function to create a new "period" column.
+        df_samples["period"] = df_samples.apply(period_by_func, axis="columns")
+
+    # Copy the specified area_by column to a new "area" column.
     df_samples["area"] = df_samples[area_by]
 
     return df_samples

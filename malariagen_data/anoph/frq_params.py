@@ -25,8 +25,8 @@ area_by: TypeAlias = Annotated[
 ]
 
 period_by: TypeAlias = Annotated[
-    Literal["year", "quarter", "month"],
-    "Length of time to group samples temporally.",
+    Union[str, Literal["year", "quarter", "month"]],
+    "Either the length of time to group samples temporally or the name the column to use.",
 ]
 
 variant_query: TypeAlias = Annotated[

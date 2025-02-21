@@ -1603,29 +1603,3 @@ def add_frequency_ci(*, ds, ci_method):
             )
         ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
         ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
-
-
-def _make_sample_period_month(row):
-    year = row.year
-    month = row.month
-    if year > 0 and month > 0:
-        return pd.Period(freq="M", year=year, month=month)
-    else:
-        return pd.NaT
-
-
-def _make_sample_period_quarter(row):
-    year = row.year
-    month = row.month
-    if year > 0 and month > 0:
-        return pd.Period(freq="Q", year=year, month=month)
-    else:
-        return pd.NaT
-
-
-def _make_sample_period_year(row):
-    year = row.year
-    if year > 0:
-        return pd.Period(freq="Y", year=year)
-    else:
-        return pd.NaT
