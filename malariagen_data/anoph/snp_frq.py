@@ -453,6 +453,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: Optional[frq_params.taxon_by] = frq_params.taxon_by_default,
     ) -> xr.Dataset:
+        # Check that the taxon_by default hasn't been subverted.
+        # This avoids type-checking errors, e.g. with `getattr`.
+        if taxon_by is None:
+            raise ValueError("`taxon_by` cannot be set to `None`.")
+
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
@@ -680,8 +685,13 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = "wilson",
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
+        taxon_by: Optional[frq_params.taxon_by] = frq_params.taxon_by_default,
     ) -> xr.Dataset:
+        # Check that the taxon_by default hasn't been subverted.
+        # This avoids type-checking errors, e.g. with `getattr`.
+        if taxon_by is None:
+            raise ValueError("`taxon_by` cannot be set to `None`.")
+
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
             transcript=transcript,

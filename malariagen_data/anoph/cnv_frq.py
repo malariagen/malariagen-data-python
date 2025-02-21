@@ -447,6 +447,11 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: Optional[frq_params.taxon_by] = frq_params.taxon_by_default,
     ) -> xr.Dataset:
+        # Check that the taxon_by default hasn't been subverted.
+        # This avoids type-checking errors, e.g. with `getattr`.
+        if taxon_by is None:
+            raise ValueError("`taxon_by` cannot be set to `None`.")
+
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
