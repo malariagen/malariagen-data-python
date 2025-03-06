@@ -123,9 +123,9 @@ def add_random_year(*, api):
     # Only create the new column if it doesn't already exist.
     # Otherwise we'll get multiple columns with different suffixes, e.g. 'random_year_x' and 'random_year_y'.
     if "random_year" not in sample_metadata_df.columns:
-        random_years_as_list = np.random.choice(
-            range(1900, 2100), len(sample_metadata_df)
-        )
+        # Avoid "ValueError: No cohorts available" by selecting only a few different years at random.
+        selected_years = random.sample(range(1900, 2100), 3)
+        random_years_as_list = np.random.choice(selected_years, len(sample_metadata_df))
         random_years_as_period_index = pd.PeriodIndex(random_years_as_list, freq="Y")
         extra_metadata_df = pd.DataFrame(
             {
