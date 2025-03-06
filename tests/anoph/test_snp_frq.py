@@ -18,6 +18,7 @@ from .test_frq import (
     check_plot_frequencies_time_series_with_taxa,
     check_plot_frequencies_time_series_with_areas,
     check_plot_frequencies_interactive_map,
+    add_random_year,
 )
 
 
@@ -112,30 +113,6 @@ def random_transcript(*, api):
     transcript_id = random.choice(transcript_ids)
     transcript = df_transcripts.set_index("ID").loc[transcript_id]
     return transcript
-
-
-def add_random_year(*, api):
-    # Add a 'random_year' column to the sample_metadata, if it doesn't exist.
-
-    # Get the existing sample metadata.
-    sample_metadata_df = api.sample_metadata()
-
-    # Only create the new column if it doesn't already exist.
-    # Otherwise we'll get multiple columns with different suffixes, e.g. 'random_year_x' and 'random_year_y'.
-    if "random_year" not in sample_metadata_df.columns:
-        # Avoid "ValueError: No cohorts available" by selecting only a few different years at random.
-        selected_years = random.sample(range(1900, 2100), 3)
-        random_years_as_list = np.random.choice(selected_years, len(sample_metadata_df))
-        random_years_as_period_index = pd.PeriodIndex(random_years_as_list, freq="Y")
-        extra_metadata_df = pd.DataFrame(
-            {
-                "sample_id": sample_metadata_df["sample_id"],
-                "random_year": random_years_as_period_index,
-            }
-        )
-        api.add_extra_metadata(extra_metadata_df)
-
-    return api
 
 
 @parametrize_with_cases("fixture,api", cases=".")
