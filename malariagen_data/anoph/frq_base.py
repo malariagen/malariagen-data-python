@@ -57,7 +57,7 @@ def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by
             )
         ):
             raise TypeError(
-                "Invalid values in {period_by!r} column. Must be either pandas.Period or null."
+                f"Invalid values in {period_by!r} column. Must be either pandas.Period or null."
             )
 
         # Copy the specified period_by column to a new "period" column.
