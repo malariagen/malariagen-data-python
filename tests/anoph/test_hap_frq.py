@@ -15,6 +15,7 @@ from .test_frq import (
     check_plot_frequencies_time_series_with_taxa,
     check_plot_frequencies_time_series_with_areas,
     check_plot_frequencies_interactive_map,
+    add_random_year,
 )
 
 
@@ -200,7 +201,7 @@ def test_hap_frequencies_with_str_cohorts(
 
 @pytest.mark.parametrize(
     "area_by, period_by",
-    [("admin1_iso", "year"), ("admin2_name", "year")],
+    [("admin1_iso", "year"), ("admin2_name", "year"), ("admin1_iso", "random_year")],
 )
 @parametrize_with_cases("fixture,api", cases=".")
 def test_hap_frequencies_advanced(
@@ -210,6 +211,10 @@ def test_hap_frequencies_advanced(
     sample_sets = random.choice(all_sample_sets)
     min_cohort_size = random.randint(0, 2)
     region = fixture.random_region_str()
+
+    if period_by == "random_year":
+        # Add a random_year column to the sample metadata, if there isn't already.
+        api = add_random_year(api=api)
 
     # Set up call params.
     params_advanced = dict(
