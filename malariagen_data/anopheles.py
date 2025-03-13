@@ -44,6 +44,7 @@ from .anoph.h1x import AnophelesH1XAnalysis
 from .mjn import median_joining_network, mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
+from .anoph.inversion_frq import AnophelesInversionFrequencyAnalysis
 from .util import (
     CacheMiss,
     Region,
@@ -82,6 +83,7 @@ class AnophelesDataResource(
     AnophelesH12Analysis,
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
+    AnophelesInversionFrequencyAnalysis,
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
