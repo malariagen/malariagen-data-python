@@ -132,6 +132,8 @@ class AnophelesDataResource(
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],
         inversion_tag_path: Optional[str],
+        unrestricted_use_only: Optional[bool],
+        surveillance_use_only: Optional[bool],
     ):
         super().__init__(
             url=url,
@@ -166,6 +168,8 @@ class AnophelesDataResource(
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
             inversion_tag_path=inversion_tag_path,
+            unrestricted_use_only=unrestricted_use_only,
+            surveillance_use_only=surveillance_use_only,
         )
 
     @property
