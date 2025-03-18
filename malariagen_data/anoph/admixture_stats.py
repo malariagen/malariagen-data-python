@@ -9,6 +9,31 @@ from . import admixture_stats_params
 from .snp_data import AnophelesSampleMetadata, AnophelesSnpData
 
 
+@numba.njit
+def _remap_observed(ac_full):
+    """Remap allele indices to remove unobserved alleles."""
+    n_variants = ac_full.shape[0]
+    n_alleles = ac_full.shape[1]
+    # Create the output array - this is an allele mapping array,
+    # that specifies how to recode allele indices.
+    mapping = np.empty((n_variants, n_alleles), dtype=np.int32)
+    mapping[:] = -1
+    # Iterate over variants.
+    for i in range(n_variants):
+        # This will be the new index that we are mapping this allele to, if the
+        # allele count is not zero.
+        j_out = 0
+        # Iterate over columns (alleles) in the input array.
+        for j in range(n_alleles):
+            # Access the count for the jth allele.
+            c = ac_full[i, j]
+            if c > 0:
+                # We have found a non-zero allele count, remap the allele.
+                mapping[i, j] = j_out
+                j_out += 1
+    return mapping
+
+
 class AnophelesAdmixtureAnalysis(
     AnophelesSnpData,
     AnophelesSampleMetadata,
@@ -21,35 +46,6 @@ class AnophelesAdmixtureAnalysis(
         # so it's important that any remaining parameters are passed
         # to the superclass constructor.
         super().__init__(**kwargs)
-
-    @numba.njit
-    def _remap_observed(self, ac_full):
-        """Remap allele indices to remove unobserved alleles."""
-
-        n_variants = ac_full.shape[0]
-        n_alleles = ac_full.shape[1]
-
-        # Create the output array - this is an allele mapping array,
-        # that specifies how to recode allele indices.
-        mapping = np.empty((n_variants, n_alleles), dtype=np.int32)
-        mapping[:] = -1
-
-        # Iterate over variants.
-        for i in range(n_variants):
-            # This will be the new index that we are mapping this allele to, if the
-            # allele count is not zero.
-            j_out = 0
-
-            # Iterate over columns (alleles) in the input array.
-            for j in range(n_alleles):
-                # Access the count for the jth allele.
-                c = ac_full[i, j]
-                if c > 0:
-                    # We have found a non-zero allele count, remap the allele.
-                    mapping[i, j] = j_out
-                    j_out += 1
-
-        return mapping
 
     def patterson_f3(
         self,
@@ -74,30 +70,6 @@ class AnophelesAdmixtureAnalysis(
         # Purely for conciseness, internally here we use the scikit-allel convention
         # of labelling the recipient population "C" and the source populations as
         # "A" and "B".
-
-        # Find cohort sizes.
-        nc = len(self.sample_metadata(sample_query=recipient_query))
-        na = len(self.sample_metadata(sample_query=source1_query))
-        nb = len(self.sample_metadata(sample_query=source2_query))
-        print(f"Cohort sizes: {nc}, {na}, {nb}")
-        # Account for cohort size downsampling to calculate n_chroms.
-        if cohort_size is not None:
-            sample_size_total = 0
-            for sample_size in [nc, na, nb]:
-                if sample_size > cohort_size:
-                    sample_size_total = sample_size_total + cohort_size
-                else:
-                    sample_size_total = sample_size_total + sample_size
-        elif max_cohort_size is not None:
-            sample_size_total = 0
-            for sample_size in [nc, na, nb]:
-                if sample_size > max_cohort_size:
-                    sample_size_total = sample_size_total + max_cohort_size
-                else:
-                    sample_size_total = sample_size_total + sample_size
-        else:
-            sample_size_total = na + nb + nc
-        n_chroms = sample_size_total * 2
 
         # Compute allele counts for the three cohorts.
         acc = self.snp_allele_counts(
@@ -131,7 +103,8 @@ class AnophelesAdmixtureAnalysis(
         anc = np.sum(acc, axis=1)
         ana = np.sum(aca, axis=1)
         anb = np.sum(acb, axis=1)
-        an = np.sum(ac, axis=1)
+        an = np.sum(ac, axis=1)  # no. required for sample size
+        n_chroms = an.max()
         an_missing = n_chroms - an
         # In addition to applying the max_missing_an threshold, also make sure that
         # all three cohorts have nonzero allele counts.
@@ -143,7 +116,7 @@ class AnophelesAdmixtureAnalysis(
         ac_bi = ac[loc_sites]
 
         # Squeeze the allele counts so we end up with only two columns.
-        sqz_mapping = self._remap_observed(ac_bi)
+        sqz_mapping = _remap_observed(ac_bi)
         acc_sqz = allel.AlleleCountsArray(acc_bi).map_alleles(sqz_mapping, max_allele=1)
         aca_sqz = allel.AlleleCountsArray(aca_bi).map_alleles(sqz_mapping, max_allele=1)
         acb_sqz = allel.AlleleCountsArray(acb_bi).map_alleles(sqz_mapping, max_allele=1)
