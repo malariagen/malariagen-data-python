@@ -45,7 +45,7 @@ class AnophelesDipClustAnalysis(
     @check_types
     @doc(
         summary=""""
-        Hierarchically cluster diplotypes in region and produce an interactive plot. 
+        Hierarchically cluster diplotypes in region and produce an interactive plot.
 
         If you use this function in a publication, please cite the original manuscript: doi.org/10.1093/molbev/msae140
         """,
@@ -596,7 +596,7 @@ class AnophelesDipClustAnalysis(
 
     @doc(
         summary=""""
-        Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants. 
+        Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.
 
         If you use this function in a publication, please cite the original manuscript: doi.org/10.1093/molbev/msae140
         """,
