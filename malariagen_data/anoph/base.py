@@ -577,6 +577,16 @@ class AnophelesBase:
 
         return prepped_sample_sets
 
+    def _prep_sample_query_param(
+        self, *, sample_query: Optional[base_params.sample_query]
+    ) -> str:
+        """Common handling for the `sample_query` parameter."""
+
+        # FIXME: WIP
+        prepped_sample_query = sample_query
+
+        return prepped_sample_query
+
     def _results_cache_add_analysis_params(self, params: dict):
         # Expect sub-classes will override to add any analysis parameters.
         pass

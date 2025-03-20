@@ -671,9 +671,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         )
 
         # Normalise parameters.
-        prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
-        cache_key = tuple(prepped_sample_sets)
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
+        cache_key = tuple(sample_sets_prepped)
 
         try:
             # Attempt to retrieve from the cache.
@@ -685,12 +687,12 @@ class AnophelesSampleMetadata(AnophelesBase):
 
                 # Get the general sample metadata.
                 # Note: this includes study and terms-of-use info.
-                df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
+                df_samples = self.general_metadata(sample_sets=sample_sets_prepped)
 
                 # Merge with the sequence QC metadata.
                 # Note: merging can change column dtypes, e.g. due to new NaNs.
                 df_sequence_qc = self.sequence_qc_metadata(
-                    sample_sets=prepped_sample_sets
+                    sample_sets=sample_sets_prepped
                 )
                 df_samples = df_samples.merge(
                     df_sequence_qc, on="sample_id", sort=False, how="left"
@@ -699,7 +701,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 # Merge with the surveillance flags.
                 # Note: merging can change column dtypes, e.g. due to new NaNs.
                 df_surveillance_flags = self.surveillance_flags(
-                    sample_sets=prepped_sample_sets
+                    sample_sets=sample_sets_prepped
                 )
                 df_samples = df_samples.merge(
                     df_surveillance_flags, on="sample_id", sort=False, how="left"
@@ -707,14 +709,14 @@ class AnophelesSampleMetadata(AnophelesBase):
 
                 # If available, merge with the AIM metadata.
                 if self._aim_analysis:
-                    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
+                    df_aim = self.aim_metadata(sample_sets=sample_sets_prepped)
                     df_samples = df_samples.merge(
                         df_aim, on="sample_id", sort=False, how="left"
                     )
 
                 # If available, merge with the cohorts metadata.
                 if self._cohorts_analysis:
-                    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
+                    df_cohorts = self.cohorts_metadata(sample_sets=sample_sets_prepped)
                     df_samples = df_samples.merge(
                         df_cohorts, on="sample_id", sort=False, how="left"
                     )
@@ -731,10 +733,10 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = df_samples.merge(data, how="left", on=on)
 
         # Apply the sample_query or sample_indices, if specified.
-        if sample_query is not None:
+        if sample_query_prepped is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
-            df_samples = df_samples.query(sample_query, **sample_query_options)
+            df_samples = df_samples.query(sample_query_prepped, **sample_query_options)
             df_samples = df_samples.reset_index(drop=True)
         elif sample_indices is not None:
             # Assume it is an indexer.
@@ -994,6 +996,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Normalise sample sets.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_query = self._prep_sample_query_param(sample_query=sample_query)
 
         if sample_query is not None:
             # Resolve query to a list of integers for more cache hits - we

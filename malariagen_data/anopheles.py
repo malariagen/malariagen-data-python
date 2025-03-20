@@ -1387,7 +1387,7 @@ class AnophelesDataResource(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -1913,8 +1913,8 @@ class AnophelesDataResource(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
+            cohort1_query=self._prep_sample_query_param(sample_query=cohort1_query),
+            cohort2_query=self._prep_sample_query_param(sample_query=cohort2_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
