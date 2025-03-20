@@ -131,8 +131,8 @@ class AnophelesFstAnalysis(
         params = dict(
             contig=contig,
             window_size=window_size,
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
+            cohort1_query=self._prep_sample_query_param(sample_query=cohort1_query),
+            cohort2_query=self._prep_sample_query_param(sample_query=cohort2_query),
             sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             site_mask=self._prep_optional_site_mask_param(site_mask=site_mask),
