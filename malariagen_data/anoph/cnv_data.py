@@ -198,6 +198,7 @@ class AnophelesCnvData(
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_query = self._prep_sample_query_param(sample_query=sample_query)
         regions: List[Region] = parse_multi_region(self, region)
         del region
 
@@ -589,6 +590,7 @@ class AnophelesCnvData(
 
         debug("normalise parameters")
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_query = self._prep_sample_query_param(sample_query=sample_query)
         if isinstance(contig, str):
             contig = [contig]
 

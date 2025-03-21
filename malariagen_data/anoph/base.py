@@ -61,6 +61,8 @@ class AnophelesBase:
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
         tqdm_class=None,
+        unrestricted_use_only: Optional[bool] = False,
+        surveillance_use_only: Optional[bool] = False,
     ):
         # If show_progress has not been specified, then determine the default.
         if show_progress is None:
@@ -85,6 +87,8 @@ class AnophelesBase:
         if tqdm_class is None:
             tqdm_class = tqdm_auto
         self._tqdm_class = tqdm_class
+        self._unrestricted_use_only = unrestricted_use_only
+        self._surveillance_use_only = surveillance_use_only
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
@@ -354,6 +358,11 @@ class AnophelesBase:
         return self._cache_releases
 
     @property
+    def relevant_releases(self) -> Tuple[str, ...]:
+        """Relevant data releases. When `unrestricted_use_only` is set to `True`, this excludes releases that contain restricted sample sets."""
+        return tuple(r for r in self.releases if not self.sample_sets(release=r).empty)
+
+    @property
     def client_location(self) -> str:
         details = self._client_details
         if details is not None:
@@ -406,6 +415,7 @@ class AnophelesBase:
          `terms_of_use_url` is the URL of the terms of use,
          `release` is the identifier of the release containing the sample set,
          `unrestricted_use` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+         If `unrestricted_use_only` is set to `True` then only sample sets with `unrestricted_use` set to `True` will be included.
             """,
     )
     def sample_sets(
@@ -428,6 +438,11 @@ class AnophelesBase:
             except KeyError:
                 # Read and cache dataframe for performance.
                 df = self._read_sample_sets(single_release=release)
+
+                # If unrestricted_use_only, restrict to sample sets with unrestricted_use.
+                if "unrestricted_use" in df.columns and self._unrestricted_use_only:
+                    df = df[df["unrestricted_use"].astype(bool)]
+
                 self._cache_sample_sets[release] = df
 
         elif isinstance(release, Sequence):
@@ -558,6 +573,23 @@ class AnophelesBase:
                 raise ValueError(f"Sample set {s!r} not found.")
 
         return prepped_sample_sets
+
+    def _prep_sample_query_param(
+        self, *, sample_query: Optional[base_params.sample_query]
+    ) -> Optional[base_params.sample_query]:
+        """Common handling for the `sample_query` parameter."""
+
+        # Return the same data type and default to the original value.
+        prepped_sample_query: Optional[base_params.sample_query] = sample_query
+
+        # If self._surveillance_use_only, then add "is_surveillance == True"
+        if self._surveillance_use_only:
+            if sample_query is None or sample_query.strip() == "":
+                prepped_sample_query = "is_surveillance == True"
+            else:
+                prepped_sample_query = f"{sample_query} and is_surveillance == True"
+
+        return prepped_sample_query
 
     def _results_cache_add_analysis_params(self, params: dict):
         # Expect sub-classes will override to add any analysis parameters.
