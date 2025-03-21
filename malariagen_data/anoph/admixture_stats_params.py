@@ -2,8 +2,6 @@
 
 from typing import Optional
 import typing_extensions
-# could install in env. pip install typing_extensions
-# from __future__ import annotations
 
 from . import base_params
 
