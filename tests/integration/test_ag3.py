@@ -186,3 +186,42 @@ def test_karyotyping(inversion):
         assert set(df.columns) == set(expected_cols)
         assert all(df[f"karyotype_{inversion}"].isin([0, 1, 2]))
         assert all(df[f"karyotype_{inversion}_mean"].between(0, 2))
+
+
+@pytest.mark.parametrize(
+    "inversions",
+    ["2La", ["2Rb", "2Rc_col"], [], "X_x"],
+)
+def test_inversion_frequencies(inversions):
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    if inversions == "X_x" or inversions == []:
+        with pytest.raises(ValueError):
+            ag3.inversion_frequencies(
+                inversions=inversions, cohorts="admin1_year", sample_sets="AG1000G-GH"
+            )
+    else:
+        df = ag3.inversion_frequencies(
+            inversions=inversions,
+            cohorts="admin1_year",
+            sample_sets="AG1000G-GH",
+            min_cohort_size=10,
+        )
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "inversion",
+            "allele",
+            "label",
+        ]
+        df_samples = ag3.sample_metadata(sample_sets="AG1000G-GH")
+        cohort_column = "cohort_admin1_year"
+        cohort_counts = df_samples[cohort_column].value_counts()
+        cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+        frq_fields = ["frq_" + s for s in cohort_labels]
+        expected_cols += frq_fields
+        # count_fields = ["count_" + s for s in cohort_labels]
+        # expected_cols += count_fields
+        # nobs_fields = ["nobs_" + s for s in cohort_labels]
+        # expected_cols += nobs_fields
+
+        assert sorted(df.columns.tolist()) == sorted(expected_cols)

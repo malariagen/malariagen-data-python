@@ -60,7 +60,7 @@ class AnophelesInversionFrequencyAnalysis(
     ) -> pd.DataFrame:
         if inversions == []:
             raise ValueError("At least one inversion needs to be provided.")
-        else:
+        elif isinstance(inversions, list):
             df_kar_frqs_list = []
             for inversion in inversions:
                 # Access sample metadata.
@@ -135,6 +135,75 @@ class AnophelesInversionFrequencyAnalysis(
             df_kar_frqs = pd.concat(df_kar_frqs_list, axis=0)
 
             return df_kar_frqs
+        else:
+            # Access sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+            # Build cohort dictionary, maps cohort labels to boolean indexers.
+            coh_dict = locate_cohorts(
+                cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
+            )
+
+            # Access karyotypes
+            kar_df = self.karyotype(
+                inversion=inversions,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+            base_df = pd.DataFrame(
+                {
+                    "inversion": [inversions] * 3,
+                    "allele": ["hom. ref.", "het.", "hom. alt."],
+                    "label": [
+                        f"{inversions} hom. ref.",
+                        f"{inversions} het.",
+                        f"{inversions} hom. alt.",
+                    ],
+                }
+            )
+
+            # Count alleles.
+            count_cols = dict()
+            nobs_cols = dict()
+            freq_cols = dict()
+            cohorts_iterator = self._progress(
+                coh_dict.items(), desc="Compute karyotype frequencies"
+            )
+            for coh, loc_coh in cohorts_iterator:
+                n_samples = np.count_nonzero(loc_coh)
+                assert n_samples >= min_cohort_size
+                kar_loc = kar_df.loc[loc_coh]
+
+                count_cols[f"count_{coh}"] = [
+                    len(kar_loc.query(f"karyotype_{inversions} == {i}"))
+                    for i in range(0, 3)
+                ]
+                freq_cols[f"frq_{coh}"] = [
+                    c / n_samples for c in count_cols[f"count_{coh}"]
+                ]
+                nobs = 2 * n_samples
+                nobs_cols[f"nobs_{coh}"] = [nobs] * 3
+
+            # Build a dataframe with the frequency columns.
+            df_freqs = pd.DataFrame(freq_cols)
+            df_counts = pd.DataFrame(count_cols)
+            df_nobs = pd.DataFrame(nobs_cols)
+
+            # Build the final dataframe.
+            if include_counts:
+                df_kar_frqs_inv = pd.concat(
+                    [base_df, df_freqs, df_counts, df_nobs], axis=1
+                )
+            else:
+                df_kar_frqs_inv = pd.concat([base_df, df_freqs], axis=1)
+
+            return df_kar_frqs_inv
 
     @check_types
     @doc(
