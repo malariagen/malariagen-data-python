@@ -576,8 +576,11 @@ class AnophelesBase:
 
     def _prep_sample_query_param(
         self, *, sample_query: Optional[base_params.sample_query]
-    ) -> Optional[str]:
+    ) -> Optional[base_params.sample_query]:
         """Common handling for the `sample_query` parameter."""
+
+        # Return the same data type and default to the original value.
+        prepped_sample_query: Optional[base_params.sample_query] = sample_query
 
         # If self._surveillance_use_only, then add "is_surveillance == True"
         if self._surveillance_use_only:
@@ -585,8 +588,6 @@ class AnophelesBase:
                 prepped_sample_query = "is_surveillance == True"
             else:
                 prepped_sample_query = f"{sample_query} and is_surveillance == True"
-        else:
-            prepped_sample_query = sample_query
 
         return prepped_sample_query
 
