@@ -54,7 +54,9 @@ igv-notebook = ">=0.2.3"
 tqdm = "*"
 # ensure support for dash in jupyter notebooks
 # https://dash.plotly.com/dash-in-jupyter
-dash = "*"
+# Dash 3.0.0 causes type checking issues.
+# https://github.com/plotly/dash/issues/3226
+dash = "<3.0.0"
 # constrain minimum version to accelerate solve
 dash-cytoscape = ">=1.0.0"
 numpydoc_decorator = ">=2.1.0"
