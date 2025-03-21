@@ -576,7 +576,7 @@ class AnophelesBase:
 
     def _prep_sample_query_param(
         self, *, sample_query: Optional[base_params.sample_query]
-    ) -> str:
+    ) -> Optional[str]:
         """Common handling for the `sample_query` parameter."""
 
         # If self._surveillance_use_only, then add "is_surveillance == True"
