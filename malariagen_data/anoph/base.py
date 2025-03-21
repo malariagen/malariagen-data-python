@@ -579,8 +579,14 @@ class AnophelesBase:
     ) -> str:
         """Common handling for the `sample_query` parameter."""
 
-        # FIXME: WIP
-        prepped_sample_query = sample_query
+        # If self._surveillance_use_only, then add "is_surveillance == True"
+        if self._surveillance_use_only:
+            if sample_query is None or sample_query.strip() == "":
+                prepped_sample_query = "is_surveillance == True"
+            else:
+                prepped_sample_query = f"{sample_query} and is_surveillance == True"
+        else:
+            prepped_sample_query = sample_query
 
         return prepped_sample_query
 

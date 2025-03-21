@@ -705,6 +705,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                     )
 
             # If surveillance_use_only, restrict to samples with is_surveillance.
+            # Note: this will also be enforced via self._prep_sample_query_param().
             if "is_surveillance" in df_samples.columns and self._surveillance_use_only:
                 df_samples = df_samples[df_samples["is_surveillance"].astype(bool)]
 
