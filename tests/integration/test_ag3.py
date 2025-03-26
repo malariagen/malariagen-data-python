@@ -198,7 +198,9 @@ def test_inversion_frequencies(inversions):
     if inversions == "X_x" or inversions == []:
         with pytest.raises(ValueError):
             ag3.inversion_frequencies(
-                inversions=inversions, cohorts="admin1_year", sample_sets="AG1000G-GH"
+                inversions=inversions,
+                cohorts="admin1_year",
+                sample_sets="AG1000G-GH",
             )
     else:
         df = ag3.inversion_frequencies(
@@ -219,9 +221,283 @@ def test_inversion_frequencies(inversions):
         cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
         frq_fields = ["frq_" + s for s in cohort_labels]
         expected_cols += frq_fields
-        # count_fields = ["count_" + s for s in cohort_labels]
-        # expected_cols += count_fields
-        # nobs_fields = ["nobs_" + s for s in cohort_labels]
-        # expected_cols += nobs_fields
 
         assert sorted(df.columns.tolist()) == sorted(expected_cols)
+        for f in frq_fields:
+            x = df[f]
+            check_frequency(x)
+
+
+@pytest.mark.parametrize(
+    "inversions",
+    ["2La", ["2Rb", "2Rc_col"], [], "X_x"],
+)
+def test_inversion_frequencies_include_counts(inversions):
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    if inversions == "X_x" or inversions == []:
+        with pytest.raises(ValueError):
+            ag3.inversion_frequencies(
+                inversions=inversions,
+                cohorts="admin1_year",
+                sample_sets="AG1000G-GH",
+                include_counts=True,
+            )
+    else:
+        df = ag3.inversion_frequencies(
+            inversions=inversions,
+            cohorts="admin1_year",
+            sample_sets="AG1000G-GH",
+            min_cohort_size=10,
+            include_counts=True,
+        )
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "inversion",
+            "allele",
+            "label",
+        ]
+        df_samples = ag3.sample_metadata(sample_sets="AG1000G-GH")
+        cohort_column = "cohort_admin1_year"
+        cohort_counts = df_samples[cohort_column].value_counts()
+        cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+        frq_fields = ["frq_" + s for s in cohort_labels]
+        expected_cols += frq_fields
+        count_fields = ["count_" + s for s in cohort_labels]
+        expected_cols += count_fields
+        nobs_fields = ["nobs_" + s for s in cohort_labels]
+        expected_cols += nobs_fields
+
+        assert sorted(df.columns.tolist()) == sorted(expected_cols)
+        for f in frq_fields:
+            x = df[f]
+            check_frequency(x)
+
+
+@pytest.mark.parametrize(
+    "cohorts", ["admin1_year", "admin2_month", "country", "foobar"]
+)
+def test_inversion_frequencies_cohorts(cohorts):
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    if cohorts == "foobar":
+        with pytest.raises(ValueError):
+            ag3.inversion_frequencies(
+                inversions="2Ru",
+                cohorts=cohorts,
+                sample_sets="AG1000G-GH",
+            )
+    else:
+        df = ag3.inversion_frequencies(
+            inversions="2Ru",
+            cohorts=cohorts,
+            sample_sets="AG1000G-GH",
+            min_cohort_size=10,
+        )
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "inversion",
+            "allele",
+            "label",
+        ]
+        df_samples = ag3.sample_metadata(sample_sets="AG1000G-GH")
+        if cohorts in df_samples.columns:
+            cohort_column = cohorts
+        else:
+            cohort_column = "cohort_" + cohorts
+        cohort_counts = df_samples[cohort_column].value_counts()
+        cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+        frq_fields = ["frq_" + s for s in cohort_labels]
+        expected_cols += frq_fields
+
+        assert sorted(df.columns.tolist()) == sorted(expected_cols)
+        for f in frq_fields:
+            x = df[f]
+            check_frequency(x)
+
+
+@pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
+def test_inversion_frequencies_min_cohort_size(min_cohort_size):
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    # Figure out expected cohort labels.
+    df_samples = ag3.sample_metadata(sample_sets="AG1000G-GH")
+    cohort_counts = df_samples["cohort_admin1_year"].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
+
+    if len(cohort_labels) == 0:
+        # No cohorts, expect error.
+        with pytest.raises(ValueError):
+            ag3.inversion_frequencies(
+                inversions="2Ru",
+                cohorts="admin1_year",
+                sample_sets="AG1000G-GH",
+                min_cohort_size=min_cohort_size,
+            )
+            return
+    else:
+        df = ag3.inversion_frequencies(
+            inversions="2Ru",
+            cohorts="admin1_year",
+            sample_sets="AG1000G-GH",
+            min_cohort_size=min_cohort_size,
+        )
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "inversion",
+            "allele",
+            "label",
+        ]
+        frq_fields = ["frq_" + s for s in cohort_labels]
+        expected_cols += frq_fields
+
+        assert sorted(df.columns.tolist()) == sorted(expected_cols)
+        for f in frq_fields:
+            x = df[f]
+            check_frequency(x)
+
+
+@pytest.mark.parametrize("admin1_name", ["Central Region", "Eastern Region"])
+def test_inversion_frequencies_sample_query(admin1_name):
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    df = ag3.inversion_frequencies(
+        inversions="2Ru",
+        cohorts="admin1_year",
+        sample_query=f"admin1_name == '{admin1_name}'",
+        sample_sets="AG1000G-GH",
+        min_cohort_size=10,
+    )
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "inversion",
+        "allele",
+        "label",
+    ]
+    df_samples = ag3.sample_metadata(
+        sample_sets="AG1000G-GH", sample_query=f"admin1_name == '{admin1_name}'"
+    )
+    cohort_column = "cohort_admin1_year"
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+    frq_fields = ["frq_" + s for s in cohort_labels]
+    expected_cols += frq_fields
+
+    assert sorted(df.columns.tolist()) == sorted(expected_cols)
+    for f in frq_fields:
+        x = df[f]
+        check_frequency(x)
+
+    df = ag3.inversion_frequencies(
+        inversions="2Ru",
+        cohorts="admin1_year",
+        sample_query=f"admin1_name != '{admin1_name}'",
+        sample_sets="AG1000G-GH",
+        min_cohort_size=10,
+    )
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "inversion",
+        "allele",
+        "label",
+    ]
+    df_samples = ag3.sample_metadata(
+        sample_sets="AG1000G-GH", sample_query=f"admin1_name != '{admin1_name}'"
+    )
+    cohort_column = "cohort_admin1_year"
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+    frq_fields = ["frq_" + s for s in cohort_labels]
+    expected_cols += frq_fields
+
+    assert sorted(df.columns.tolist()) == sorted(expected_cols)
+    for f in frq_fields:
+        x = df[f]
+        check_frequency(x)
+
+
+@pytest.mark.parametrize("admin1_name", ["Central Region", "Eastern Region"])
+def test_inversion_frequencies_sample_query_options(admin1_name):
+    ag3 = setup_ag3(cohorts_analysis="20230516")
+
+    df = ag3.inversion_frequencies(
+        inversions="2Ru",
+        cohorts="admin1_year",
+        sample_query="admin1_name == @admin1_name",
+        sample_query_options={
+            "local_dict": {
+                "admin1_name": admin1_name,
+            }
+        },
+        sample_sets="AG1000G-GH",
+        min_cohort_size=10,
+    )
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "inversion",
+        "allele",
+        "label",
+    ]
+    df_samples = ag3.sample_metadata(
+        sample_sets="AG1000G-GH",
+        sample_query="admin1_name == @admin1_name",
+        sample_query_options={
+            "local_dict": {
+                "admin1_name": admin1_name,
+            }
+        },
+    )
+    cohort_column = "cohort_admin1_year"
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+    frq_fields = ["frq_" + s for s in cohort_labels]
+    expected_cols += frq_fields
+
+    assert sorted(df.columns.tolist()) == sorted(expected_cols)
+    for f in frq_fields:
+        x = df[f]
+        check_frequency(x)
+
+    df = ag3.inversion_frequencies(
+        inversions="2Ru",
+        cohorts="admin1_year",
+        sample_query="admin1_name != @admin1_name",
+        sample_query_options={
+            "local_dict": {
+                "admin1_name": admin1_name,
+            }
+        },
+        sample_sets="AG1000G-GH",
+        min_cohort_size=10,
+    )
+    assert isinstance(df, pd.DataFrame)
+    expected_cols = [
+        "inversion",
+        "allele",
+        "label",
+    ]
+    df_samples = ag3.sample_metadata(
+        sample_sets="AG1000G-GH",
+        sample_query="admin1_name != @admin1_name",
+        sample_query_options={
+            "local_dict": {
+                "admin1_name": admin1_name,
+            }
+        },
+    )
+    cohort_column = "cohort_admin1_year"
+    cohort_counts = df_samples[cohort_column].value_counts()
+    cohort_labels = cohort_counts[cohort_counts >= 10].index.to_list()
+    frq_fields = ["frq_" + s for s in cohort_labels]
+    expected_cols += frq_fields
+
+    assert sorted(df.columns.tolist()) == sorted(expected_cols)
+    for f in frq_fields:
+        x = df[f]
+        check_frequency(x)
+
+
+def check_frequency(x):
+    loc_nan = np.isnan(x)
+    assert np.all(x[~loc_nan] >= 0)
+    assert np.all(x[~loc_nan] <= 1)
