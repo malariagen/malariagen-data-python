@@ -2238,8 +2238,17 @@ class AnophelesDataResource(
         color_discrete_map_display = None
         ht_color_counts = None
         if color is not None:
+            # Check if the color column exists in the dataframe
+            if color not in df_haps.columns:
+                raise ValueError(
+                    f"Column '{color}' specified for coloring not found in sample data. Available columns: {', '.join(df_haps.columns)}"
+                )
             # sanitise color column - necessary to avoid grey pie chart segments
-            df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
+            df_haps["partition"] = (
+                df_haps[color].str.replace(r"\W", "", regex=True)
+                if color in df_haps.columns
+                else None
+            )
 
             # extract all unique values of the color column
             color_values = df_haps["partition"].fillna("<NA>").unique()
