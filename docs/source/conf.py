@@ -31,11 +31,6 @@ exclude_patterns = []
 
 html_theme = "pydata_sphinx_theme"
 html_theme_options = {
-    "switcher": {
-        "check_switcher": True,
-        "version_match": version,
-        "json_url": "https://malariagen.github.io/malariagen-data-python/latest/_static/switcher.json",
-    },
     "navbar_center": ["version-switcher", "navbar-nav"],
     "icon_links": [
         {
