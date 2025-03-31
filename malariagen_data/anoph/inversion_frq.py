@@ -14,7 +14,7 @@ from ..util import (
 from .karyotype import AnophelesKaryotypeAnalysis
 from .frq_base import AnophelesFrequencyAnalysis
 from .sample_metadata import locate_cohorts
-from .karyotype_params import inversion_param, inversions_param
+from .karyotype_params import inversions_param
 from . import base_params, frq_params
 
 
@@ -221,10 +221,10 @@ class AnophelesInversionFrequencyAnalysis(
             prefixed with "event" are 2-dimensional arrays with the allele
             counts and frequency calculations.
         """,
-    )
+    )  # I need to add the option for inversionS
     def inversion_frequencies_advanced(
         self,
-        inversion: inversion_param,
+        inversions: inversions_param,
         area_by: frq_params.area_by,
         period_by: frq_params.period_by,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -233,97 +233,214 @@ class AnophelesInversionFrequencyAnalysis(
         min_cohort_size: base_params.min_cohort_size = 10,
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
     ) -> xr.Dataset:
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-        )
+        if inversions == []:
+            raise ValueError("At least one inversion needs to be provided.")
+        elif isinstance(inversions, list):
+            ds_list = []
 
-        # Prepare sample metadata for cohort grouping.
-        df_samples = prep_samples_for_cohort_grouping(
-            df_samples=df_samples,
-            area_by=area_by,
-            period_by=period_by,
-        )
-
-        # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
-
-        # Build cohorts dataframe.
-        df_cohorts = build_cohorts_from_sample_grouping(
-            group_samples_by_cohort=group_samples_by_cohort,
-            min_cohort_size=min_cohort_size,
-        )
-
-        # Early check for no cohorts.
-        if len(df_cohorts) == 0:
-            raise ValueError(
-                "No cohorts available for the given sample selection parameters and minimum cohort size."
+            # Load sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
             )
 
-        # Access karyotypes.
-        kar_df = self.karyotype(
-            inversion=inversion,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            sample_query_options=sample_query_options,
-        )
+            # Prepare sample metadata for cohort grouping.
+            df_samples = prep_samples_for_cohort_grouping(
+                df_samples=df_samples,
+                area_by=area_by,
+                period_by=period_by,
+            )
 
-        # Count alleles.
-        count_cols = dict()
-        nobs_cols = dict()
-        freq_cols = dict()
-        cohorts_iterator = self._progress(
-            df_cohorts.itertuples(), desc="Compute karyotype frequencies"
-        )
-        for cohort in cohorts_iterator:
-            cohort_key = cohort.taxon, cohort.area, cohort.period
-            cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
-            n_samples = cohort.size
-            assert n_samples >= min_cohort_size
-            sample_indices = group_samples_by_cohort.indices[cohort_key]
-            kar_loc = kar_df.loc[sample_indices]
+            # Group samples to make cohorts.
+            group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
 
-            count_cols[f"count_{cohort_key_str}"] = [
-                len(kar_loc.query(f"karyotype_{inversion} == {i}")) for i in range(0, 3)
-            ]
-            freq_cols[f"frq_{cohort_key_str}"] = [
-                c / n_samples for c in count_cols[f"count_{cohort_key_str}"]
-            ]
-            nobs = 2 * n_samples
-            nobs_cols[f"nobs_{cohort_key_str}"] = [nobs] * 3
+            # Build cohorts dataframe.
+            df_cohorts = build_cohorts_from_sample_grouping(
+                group_samples_by_cohort=group_samples_by_cohort,
+                min_cohort_size=min_cohort_size,
+            )
 
-        # Build a dataframe with the frequency columns.
-        df_freqs = pd.DataFrame(freq_cols)
-        df_counts = pd.DataFrame(count_cols)
-        df_nobs = pd.DataFrame(nobs_cols)
+            # Early check for no cohorts.
+            if len(df_cohorts) == 0:
+                raise ValueError(
+                    "No cohorts available for the given sample selection parameters and minimum cohort size."
+                )
+            for inversion in inversions:
+                # Access karyotypes.
+                kar_df = self.karyotype(
+                    inversion=inversion,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    sample_query_options=sample_query_options,
+                )
 
-        # Build the output dataset.
-        ds_out = xr.Dataset()
+                # Count alleles.
+                count_cols = dict()
+                nobs_cols = dict()
+                freq_cols = dict()
+                cohorts_iterator = self._progress(
+                    df_cohorts.itertuples(), desc="Compute karyotype frequencies"
+                )
+                for cohort in cohorts_iterator:
+                    cohort_key = cohort.taxon, cohort.area, cohort.period
+                    cohort_key_str = (
+                        cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
+                    )
+                    n_samples = cohort.size
+                    assert n_samples >= min_cohort_size
+                    sample_indices = group_samples_by_cohort.indices[cohort_key]
+                    kar_loc = kar_df.loc[sample_indices]
 
-        # Cohort variables.
-        for coh_col in df_cohorts.columns:
-            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+                    count_cols[f"count_{cohort_key_str}"] = [
+                        len(kar_loc.query(f"karyotype_{inversion} == {i}"))
+                        for i in range(0, 3)
+                    ]
+                    freq_cols[f"frq_{cohort_key_str}"] = [
+                        c / n_samples for c in count_cols[f"count_{cohort_key_str}"]
+                    ]
+                    nobs = 2 * n_samples
+                    nobs_cols[f"nobs_{cohort_key_str}"] = [nobs] * 3
 
-        # Variant labels
-        ds_out["variant_label"] = (
-            "variants",
-            [f"{inversion}_{allele}" for allele in ["hom_ref", "het", "hom_alt"]],
-        )
+                # Build a dataframe with the frequency columns.
+                df_freqs = pd.DataFrame(freq_cols)
+                df_counts = pd.DataFrame(count_cols)
+                df_nobs = pd.DataFrame(nobs_cols)
 
-        # Event variables.
-        ds_out["event_frequency"] = (("variants", "cohorts"), df_freqs.to_numpy())
-        ds_out["event_count"] = (
-            ("variants", "cohorts"),
-            df_counts.to_numpy(),
-        )
-        ds_out["event_nobs"] = (
-            ("variants", "cohorts"),
-            df_nobs.to_numpy(),
-        )
+                # Build the output dataset.
+                ds_tmp = xr.Dataset()
 
-        # Add confidence intervals.
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+                # Cohort variables.
+                for coh_col in df_cohorts.columns:
+                    ds_tmp[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
-        return ds_out
+                # Variant labels
+                ds_tmp["variant_label"] = (
+                    "variants",
+                    [
+                        f"{inversion}_{allele}"
+                        for allele in ["hom_ref", "het", "hom_alt"]
+                    ],
+                )
+
+                # Event variables.
+                ds_tmp["event_frequency"] = (
+                    ("variants", "cohorts"),
+                    df_freqs.to_numpy(),
+                )
+                ds_tmp["event_count"] = (
+                    ("variants", "cohorts"),
+                    df_counts.to_numpy(),
+                )
+                ds_tmp["event_nobs"] = (
+                    ("variants", "cohorts"),
+                    df_nobs.to_numpy(),
+                )
+
+                # Add confidence intervals.
+                add_frequency_ci(ds=ds_tmp, ci_method=ci_method)
+
+                ds_list.append(ds_tmp)
+
+            ds_out = xr.concat(ds_list, dim="variants", data_vars="minimal")
+
+            return ds_out
+
+        else:
+            # Load sample metadata.
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+            # Prepare sample metadata for cohort grouping.
+            df_samples = prep_samples_for_cohort_grouping(
+                df_samples=df_samples,
+                area_by=area_by,
+                period_by=period_by,
+            )
+
+            # Group samples to make cohorts.
+            group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+
+            # Build cohorts dataframe.
+            df_cohorts = build_cohorts_from_sample_grouping(
+                group_samples_by_cohort=group_samples_by_cohort,
+                min_cohort_size=min_cohort_size,
+            )
+
+            # Early check for no cohorts.
+            if len(df_cohorts) == 0:
+                raise ValueError(
+                    "No cohorts available for the given sample selection parameters and minimum cohort size."
+                )
+
+            # Access karyotypes.
+            kar_df = self.karyotype(
+                inversion=inversions,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+            # Count alleles.
+            count_cols = dict()
+            nobs_cols = dict()
+            freq_cols = dict()
+            cohorts_iterator = self._progress(
+                df_cohorts.itertuples(), desc="Compute karyotype frequencies"
+            )
+            for cohort in cohorts_iterator:
+                cohort_key = cohort.taxon, cohort.area, cohort.period
+                cohort_key_str = (
+                    cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
+                )
+                n_samples = cohort.size
+                assert n_samples >= min_cohort_size
+                sample_indices = group_samples_by_cohort.indices[cohort_key]
+                kar_loc = kar_df.loc[sample_indices]
+
+                count_cols[f"count_{cohort_key_str}"] = [
+                    len(kar_loc.query(f"karyotype_{inversions} == {i}"))
+                    for i in range(0, 3)
+                ]
+                freq_cols[f"frq_{cohort_key_str}"] = [
+                    c / n_samples for c in count_cols[f"count_{cohort_key_str}"]
+                ]
+                nobs = 2 * n_samples
+                nobs_cols[f"nobs_{cohort_key_str}"] = [nobs] * 3
+
+            # Build a dataframe with the frequency columns.
+            df_freqs = pd.DataFrame(freq_cols)
+            df_counts = pd.DataFrame(count_cols)
+            df_nobs = pd.DataFrame(nobs_cols)
+
+            # Build the output dataset.
+            ds_out = xr.Dataset()
+
+            # Cohort variables.
+            for coh_col in df_cohorts.columns:
+                ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+
+            # Variant labels
+            ds_out["variant_label"] = (
+                "variants",
+                [f"{inversions}_{allele}" for allele in ["hom_ref", "het", "hom_alt"]],
+            )
+
+            # Event variables.
+            ds_out["event_frequency"] = (("variants", "cohorts"), df_freqs.to_numpy())
+            ds_out["event_count"] = (
+                ("variants", "cohorts"),
+                df_counts.to_numpy(),
+            )
+            ds_out["event_nobs"] = (
+                ("variants", "cohorts"),
+                df_nobs.to_numpy(),
+            )
+
+            # Add confidence intervals.
+            add_frequency_ci(ds=ds_out, ci_method=ci_method)
+
+            return ds_out
