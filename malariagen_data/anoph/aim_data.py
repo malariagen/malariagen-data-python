@@ -142,6 +142,8 @@ class AnophelesAimData(
         aims = self._prep_aims_param(aims=aims)
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
 
         # Access SNP calls and concatenate multiple sample sets and/or regions.
         ly = []
@@ -156,12 +158,14 @@ class AnophelesAimData(
         ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
         # Handle sample query.
-        if sample_query is not None:
+        if sample_query_prepped is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
+            loc_samples = df_samples.eval(
+                sample_query_prepped, **sample_query_options
+            ).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query_prepped!r}")
             ds = ds.isel(samples=loc_samples)
 
         return ds
