@@ -90,3 +90,97 @@ def test_karyotyping(inversion):
             sample_sets="1229-VO-GH-DADZIE-VMF00095",
             sample_query=None,
         )
+
+
+@pytest.fixture(scope="module")
+def af1():
+    return Af1(
+        "simplecache::gs://vo_afun_release_master_us_central1/",
+        simplecache=dict(cache_storage="gcs_cache"),
+        debug=True,
+    )
+
+
+def test_plot_haplotype_network_string_direct(af1, mocker):
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    af1.plot_haplotype_network(
+        region="2RL:24,630,355-24,633,221",
+        analysis="funestus",
+        sample_sets="1.0",
+        sample_query="taxon == 'funestus'",
+        color="country",
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] == "partition"
+    assert call_args["ht_color_counts"] is not None
+
+
+def test_plot_haplotype_network_string_cohort(af1, mocker):
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    af1.plot_haplotype_network(
+        region="2RL:24,630,355-24,633,221",
+        analysis="funestus",
+        sample_sets="1.0",
+        sample_query="taxon == 'funestus'",
+        color="year",
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] == "partition"
+    assert call_args["ht_color_counts"] is not None
+
+
+def test_plot_haplotype_network_mapping(af1, mocker):
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    color_mapping = {"2012": "year == 2012", "2014": "year == 2014"}
+    af1.plot_haplotype_network(
+        region="2RL:24,630,355-24,633,221",
+        analysis="funestus",
+        sample_sets="1.0",
+        sample_query="taxon == 'funestus'",
+        color=color_mapping,
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] == "partition"
+    assert call_args["ht_color_counts"] is not None
+
+
+def test_plot_haplotype_network_none(af1, mocker):
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    af1.plot_haplotype_network(
+        region="2RL:24,630,355-24,633,221",
+        analysis="funestus",
+        sample_sets="1.0",
+        sample_query="taxon == 'funestus'",
+        color=None,
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] is None
+    assert call_args["ht_color_counts"] is None
