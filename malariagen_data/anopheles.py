@@ -2256,8 +2256,10 @@ class AnophelesDataResource(
                         )
 
                     # Now use the validated color_column for processing
-                    df_haps["partition"] = df_haps[color_column].str.replace(
-                        r"\W", "", regex=True
+                    df_haps["partition"] = (
+                        df_haps[color_column]
+                        .astype(str)
+                        .str.replace(r"\W", "", regex=True)
                     )
 
                     # extract all unique values of the color column
@@ -2337,7 +2339,7 @@ class AnophelesDataResource(
             ht_distinct_mjn=ht_distinct_mjn,
             ht_counts=ht_counts,
             ht_color_counts=ht_color_counts,
-            color=color,
+            color="partition" if color is not None else None,
             color_values=color_values,
             edges=edges,
             alt_edges=alt_edges,
@@ -2389,7 +2391,7 @@ class AnophelesDataResource(
         debug("create figure legend")
         if color is not None:
             legend_fig = plotly_discrete_legend(
-                color=color,
+                color="partition",  # Changed from color=color
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,
                 category_orders=category_orders_prepped,
