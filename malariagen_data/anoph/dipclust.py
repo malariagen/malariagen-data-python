@@ -44,7 +44,11 @@ class AnophelesDipClustAnalysis(
 
     @check_types
     @doc(
-        summary="Hierarchically cluster diplotypes in region and produce an interactive plot.",
+        summary=""""
+        Hierarchically cluster diplotypes in region and produce an interactive plot.
+
+        If you use this function in a publication, please cite the original manuscript: doi.org/10.1093/molbev/msae140
+        """,
     )
     def plot_diplotype_clustering(
         self,
@@ -591,7 +595,11 @@ class AnophelesDipClustAnalysis(
         return figures, subplot_heights
 
     @doc(
-        summary="Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.",
+        summary=""""
+        Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.
+
+        If you use this function in a publication, please cite the original manuscript: doi.org/10.1093/molbev/msae140
+        """,
         parameters=dict(
             heterozygosity="Plot heterozygosity track.",
             snp_transcript="Plot amino acid variants for these transcripts.",
