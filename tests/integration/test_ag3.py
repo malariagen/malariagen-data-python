@@ -188,16 +188,8 @@ def test_karyotyping(inversion):
         assert all(df[f"karyotype_{inversion}_mean"].between(0, 2))
 
 
-@pytest.fixture(scope="module")
-def ag3():
-    return Ag3(
-        "simplecache::gs://vo_agam_release_master_us_central1",
-        simplecache=dict(cache_storage="gcs_cache"),
-        debug=True,
-    )
-
-
-def test_plot_haplotype_network_string_direct(ag3, mocker):
+def test_plot_haplotype_network_string_direct(mocker):
+    ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
     mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
@@ -218,7 +210,8 @@ def test_plot_haplotype_network_string_direct(ag3, mocker):
     assert call_args["ht_color_counts"] is not None
 
 
-def test_plot_haplotype_network_string_cohort(ag3, mocker):
+def test_plot_haplotype_network_string_cohort(mocker):
+    ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
     mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
@@ -239,7 +232,8 @@ def test_plot_haplotype_network_string_cohort(ag3, mocker):
     assert call_args["ht_color_counts"] is not None
 
 
-def test_plot_haplotype_network_mapping(ag3, mocker):
+def test_plot_haplotype_network_mapping(mocker):
+    ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
     mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
@@ -261,7 +255,8 @@ def test_plot_haplotype_network_mapping(ag3, mocker):
     assert call_args["ht_color_counts"] is not None
 
 
-def test_plot_haplotype_network_none(ag3, mocker):
+def test_plot_haplotype_network_none(mocker):
+    ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
     mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
