@@ -27,6 +27,9 @@ llvmlite = "*"
 scipy = "*"
 pandas = "*"
 zarr = ">=2.11, <3.0.0"
+# zarr<3.0.0 is not compatible with numcodecs 0.16.0
+# https://github.com/zarr-developers/zarr-python/issues/2963
+numcodecs = "<0.16"
 dask = {version="*", extras=["array"]}
 distributed = "*"
 fsspec = "*"
