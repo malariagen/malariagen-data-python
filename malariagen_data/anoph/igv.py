@@ -45,6 +45,7 @@ class AnophelesIgv(
             },
             "locus": str(region),
         }
+
         if tracks:
             config["tracks"] = tracks
 
