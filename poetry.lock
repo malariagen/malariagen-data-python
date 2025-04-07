@@ -5854,4 +5854,4 @@ dev = ["jupyterlab", "memory-profiler", "mypy", "notebook", "pandas-stubs", "pre
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.13"
-content-hash = "d9f6520296f769f5000cce4845f312762248bf5ce0867324347f200ebd2b724d"
+content-hash = "66056b9ee4c9d61d0cbee42fbd306b39eca8f9dd36ded5a0f5a18b71f4822ade"
