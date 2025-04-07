@@ -27,6 +27,7 @@ llvmlite = "*"
 scipy = "*"
 pandas = "*"
 zarr = ">=2.11, <3.0.0"
+numcodecs = "<0.16"
 dask = {version="*", extras=["array"]}
 distributed = "*"
 fsspec = "*"
