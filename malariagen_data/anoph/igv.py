@@ -31,14 +31,14 @@ class AnophelesIgv(
             "reference": {
                 "id": self._genome_ref_id,
                 "name": self._genome_ref_name,
-                "fastaURL": f"{self._url}{self._genome_fasta_path}",
-                "indexURL": f"{self._url}{self._genome_fai_path}",
+                "fastaURL": f"{self._public_url}{self._genome_fasta_path}",
+                "indexURL": f"{self._public_url}{self._genome_fai_path}",
                 "tracks": [
                     {
                         "name": "Genes",
                         "type": "annotation",
                         "format": "gff3",
-                        "url": f"{self._url}{self._geneset_gff3_path}",
+                        "url": f"{self._public_url}{self._geneset_gff3_path}",
                         "indexed": False,
                     }
                 ],
@@ -58,7 +58,7 @@ class AnophelesIgv(
     ):
         tracks = []
         for site_mask in self.site_mask_ids:
-            site_filters_vcf_url = f"{self._url}{self._major_version_path}/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
+            site_filters_vcf_url = f"{self._public_url}{self._major_version_path}/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # f"{self._url}{self._major_version_path}/site_filters/{self._site_filters_analysis}/vcf/{site_mask}/{contig}_sitefilters.vcf.gz"  # noqa
             track_config = {
                 "name": f"Filters - {site_mask}",
                 "url": site_filters_vcf_url,

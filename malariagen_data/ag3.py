@@ -138,6 +138,7 @@ class Ag3(AnophelesDataResource):
     def __init__(
         self,
         url=None,
+        public_url="https://storage.googleapis.com/vo_anoph_temp_us_central1/vo_agam_release/",
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -154,6 +155,7 @@ class Ag3(AnophelesDataResource):
     ):
         super().__init__(
             url=url,
+            public_url=public_url,
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
