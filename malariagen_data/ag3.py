@@ -15,6 +15,7 @@ MAJOR_VERSION_NUMBER = 3
 MAJOR_VERSION_PATH = "v3"
 CONFIG_PATH = "v3-config.json"
 GCS_DEFAULT_URL = "gs://vo_agam_release_master_us_central1/"
+GCS_DEFAULT_PUBLIC_URL = "gs://vo_anoph_temp_us_central1/vo_agam_release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_agam_release_master_us_central1",
 }
@@ -138,7 +139,7 @@ class Ag3(AnophelesDataResource):
     def __init__(
         self,
         url=None,
-        public_url="https://storage.googleapis.com/vo_anoph_temp_us_central1/vo_agam_release/",
+        public_url=GCS_DEFAULT_PUBLIC_URL,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
