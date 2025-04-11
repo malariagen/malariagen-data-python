@@ -15,6 +15,7 @@ from malariagen_data.util import Region, resolve_region
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesGenomeFeaturesData(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -30,6 +31,7 @@ def ag3_sim_api(ag3_sim_fixture):
 def af1_sim_api(af1_sim_fixture):
     return AnophelesGenomeFeaturesData(
         url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
@@ -173,6 +175,7 @@ def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
 def gh334_api(fixture_dir):
     return AnophelesGenomeFeaturesData(
         url=(fixture_dir / "gh334").as_uri(),
+        public_url=(fixture_dir / "gh334").as_uri(),
         config_path="config.json",
         major_version_number=1,
         major_version_path="v1.0",
