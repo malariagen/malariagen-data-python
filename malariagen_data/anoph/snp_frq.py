@@ -7,7 +7,6 @@ import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 import xarray as xr
 import numba  # type: ignore
-
 from .. import veff
 from ..util import (
     check_types,
@@ -576,8 +575,8 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                 raise ValueError("No SNPs remaining after dropping invariant SNPs.")
 
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
-            count = np.compress(loc_variant, count, axis=0)
-            nobs = np.compress(loc_variant, nobs, axis=0)
+            count = np.compress(loc_variant, count, axis=0).reshape(-1, count.shape[1])
+            nobs = np.compress(loc_variant, nobs, axis=0).reshape(-1, nobs.shape[1])
             frequency = np.compress(loc_variant, frequency, axis=0)
 
         # Set up variant effect annotator.

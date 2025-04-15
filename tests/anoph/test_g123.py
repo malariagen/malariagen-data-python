@@ -8,6 +8,9 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.g123 import AnophelesG123Analysis
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -178,16 +181,34 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
         api.g123_gwss(**g123_params)
 
 
+def ensure_int_list(value):
+    """Convert a value to a list of integers, flattening nested structures if needed."""
+    if isinstance(value, int):
+        return [value]
+
+    result = []
+
+    def extract_ints(item):
+        if isinstance(item, int):
+            result.append(item)
+        elif isinstance(item, (list, tuple)):
+            for subitem in item:
+                extract_ints(subitem)
+
+    extract_ints(value)
+    return result
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_g123_calibration(fixture, api: AnophelesG123Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
-    window_sizes = sorted([int(x) for x in window_sizes])
+    window_sizes = rng.integers(100, 500, size=random.randint(2, 5)).tolist()
+    window_sizes = sorted(ensure_int_list(window_sizes))
     g123_params = dict(
-        contig=random.choice(api.contigs),
-        sites=random.choice(api.phasing_analysis_ids),
-        sample_sets=[random.choice(all_sample_sets)],
+        contig=rng.choice(api.contigs),
+        sites=rng.choice(api.phasing_analysis_ids),
+        sample_sets=[rng.choice(all_sample_sets)],
         min_cohort_size=10,
         window_sizes=window_sizes,
     )

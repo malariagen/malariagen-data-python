@@ -14,6 +14,9 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -972,7 +975,7 @@ def test_lookup_sample(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = np.random.choice(all_sample_ids)
+    sample_id = rng.choice(all_sample_ids)
 
     # Check we get the same sample_id back.
     sample_rec_by_sample_id = api.lookup_sample(sample_id)
