@@ -9,6 +9,7 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_DEFAULT_URL = "gs://vo_afun_release_master_us_central1/"
+GCS_DEFAULT_PUBLIC_URL = "gs://vo_anoph_temp_us_central1/vo_agam_release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_afun_release_master_us_central1",
 }
@@ -78,6 +79,7 @@ class Af1(AnophelesDataResource):
     def __init__(
         self,
         url=None,
+        public_url=GCS_DEFAULT_PUBLIC_URL,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -93,6 +95,7 @@ class Af1(AnophelesDataResource):
     ):
         super().__init__(
             url=url,
+            public_url=public_url,
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=None,
