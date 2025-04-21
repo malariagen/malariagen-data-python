@@ -47,7 +47,7 @@ class AnophelesDipClustAnalysis(
         summary=""""
         Hierarchically cluster diplotypes in region and produce an interactive plot.
 
-        If you use this function in a publication, please cite the original manuscript: doi.org/10.1093/molbev/msae140
+        If you use this function in a publication, please cite both this package and the original manuscript: doi.org/10.1093/molbev/msae140
         """,
     )
     def plot_diplotype_clustering(
@@ -598,7 +598,7 @@ class AnophelesDipClustAnalysis(
         summary=""""
         Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.
 
-        If you use this function in a publication, please cite the original manuscript: doi.org/10.1093/molbev/msae140
+        If you use this function in a publication, please cite both this package and the original manuscript: doi.org/10.1093/molbev/msae140
         """,
         parameters=dict(
             heterozygosity="Plot heterozygosity track.",
