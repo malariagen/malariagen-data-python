@@ -42,6 +42,7 @@ def ag3_sim_api(ag3_sim_fixture):
 def ag3_sim_unrestricted_use_only_api(ag3_sim_fixture):
     return AnophelesSampleMetadata(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -64,6 +65,7 @@ def ag3_sim_unrestricted_use_only_api(ag3_sim_fixture):
 def ag3_sim_surveillance_use_only_api(ag3_sim_fixture):
     return AnophelesSampleMetadata(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -86,6 +88,7 @@ def ag3_sim_surveillance_use_only_api(ag3_sim_fixture):
 def ag3_sim_unrestricted_surveillance_use_only_api(ag3_sim_fixture):
     return AnophelesSampleMetadata(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -134,6 +137,7 @@ def adir1_sim_api(adir1_sim_fixture):
 def af1_sim_unrestricted_use_only_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
@@ -147,6 +151,7 @@ def af1_sim_unrestricted_use_only_api(af1_sim_fixture):
 def af1_sim_surveillance_use_only_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
@@ -160,6 +165,7 @@ def af1_sim_surveillance_use_only_api(af1_sim_fixture):
 def af1_sim_unrestricted_surveillance_use_only_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
