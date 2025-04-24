@@ -47,6 +47,7 @@ class AnophelesBase:
         self,
         *,
         url: str,
+        public_url: str,
         config_path: str,
         pre: bool,
         major_version_number: int,
@@ -120,6 +121,8 @@ class AnophelesBase:
         else:
             raise ValueError("A value for the `url` parameter must be provided.")
         del url
+
+        self._public_url = public_url
 
         # Set up fsspec filesystem. N.B., we use fsspec here to allow for
         # accessing different types of storage - fsspec will automatically

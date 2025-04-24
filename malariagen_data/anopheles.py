@@ -101,6 +101,7 @@ class AnophelesDataResource(
     def __init__(
         self,
         url,
+        public_url,
         config_path,
         cohorts_analysis: Optional[str],
         aim_analysis: Optional[str],
@@ -137,6 +138,7 @@ class AnophelesDataResource(
     ):
         super().__init__(
             url=url,
+            public_url=public_url,
             config_path=config_path,
             bokeh_output_notebook=bokeh_output_notebook,
             log=log,
