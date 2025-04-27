@@ -25,8 +25,8 @@ area_by: TypeAlias = Annotated[
 ]
 
 period_by: TypeAlias = Annotated[
-    Literal["year", "quarter", "month"],
-    "Length of time to group samples temporally.",
+    Union[str, Literal["year", "quarter", "month"]],
+    "Either the length of time to group samples temporally or the name the column to use.",
 ]
 
 variant_query: TypeAlias = Annotated[
@@ -80,3 +80,10 @@ areas: TypeAlias = Annotated[
     Optional[Union[str, List[str], Tuple[str, ...]]],
     "The area or areas to restrict the dataset to.",
 ]
+
+taxon_by: TypeAlias = Annotated[
+    str,
+    "The column to use for taxon stratification.",
+]
+
+taxon_by_default: taxon_by = "taxon"
