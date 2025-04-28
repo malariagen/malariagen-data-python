@@ -162,10 +162,12 @@ class AnophelesSampleMetadata(AnophelesBase):
                 df[column] = study_info[column]
 
             # Add terms-of-use columns.
-            terms_of_use_info = self.lookup_terms_of_use_info(sample_set=sample_set)
-            for column in terms_of_use_info:
-                df[column] = terms_of_use_info[column]
-
+            try:
+                terms_of_use_info = self.lookup_terms_of_use_info(sample_set=sample_set)
+                for column in terms_of_use_info:
+                    df[column] = terms_of_use_info[column]
+            except ValueError:
+                pass
             return df
 
         else:
