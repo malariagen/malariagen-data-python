@@ -12,6 +12,10 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.hap_data import AnophelesHapData
 
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
+
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesHapData(
@@ -605,7 +609,9 @@ def test_haplotypes_virtual_contigs(
 
         # Test with region.
         seq = api.genome_sequence(region=chrom)
-        start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+        start, stop = sorted(
+            [int(x) for x in rng.integers(low=1, high=len(seq), size=2)]
+        )
         region = f"{chrom}:{start:,}-{stop:,}"
 
         # Standard checks.
@@ -677,7 +683,7 @@ def test_haplotype_sites_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
 
     # Standard checks.
