@@ -20,6 +20,7 @@ rng = np.random.default_rng(seed=42)
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesHapData(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -45,6 +46,7 @@ def ag3_sim_api(ag3_sim_fixture):
 def af1_sim_api(af1_sim_fixture):
     return AnophelesHapData(
         url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
