@@ -543,7 +543,7 @@ class AnophelesFstAnalysis(
                     zs = fst / se
                     fig_df.loc[cohort1, cohort2] = zs
                 except ZeroDivisionError:
-                    fig_df.loc[cohort1, cohort2] = np.NaN
+                    fig_df.loc[cohort1, cohort2] = np.nan
             else:
                 fig_df.loc[cohort1, cohort2] = fst
 
