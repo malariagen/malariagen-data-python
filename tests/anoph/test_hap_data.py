@@ -470,7 +470,7 @@ def test_haplotypes_with_cohort_size_param(
     analysis = api.phasing_analysis_ids[0]
 
     # Parametrize over cohort_size.
-    parametrize_cohort_size = [random.randint(1, 10), random.randint(10, 50), 1_000]
+    parametrize_cohort_size = [rng.integers(1, 10), rng.integers(10, 50), 1_000]
     for cohort_size in parametrize_cohort_size:
         check_haplotypes(
             fixture=fixture,
@@ -497,8 +497,8 @@ def test_haplotypes_with_min_cohort_size_param(
 
     # Parametrize over min_cohort_size.
     parametrize_min_cohort_size = [
-        random.randint(1, 10),
-        random.randint(10, 50),
+        rng.integers(1, 10),
+        rng.integers(10, 50),
         1_000,
     ]
     for min_cohort_size in parametrize_min_cohort_size:
@@ -527,8 +527,8 @@ def test_haplotypes_with_max_cohort_size_param(
 
     # Parametrize over max_cohort_size.
     parametrize_max_cohort_size = [
-        random.randint(1, 10),
-        random.randint(10, 50),
+        rng.integers(1, 10),
+        rng.integers(10, 50),
         1_000,
     ]
     for max_cohort_size in parametrize_max_cohort_size:

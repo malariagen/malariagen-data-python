@@ -125,7 +125,7 @@ def ensure_int_list(value):
 def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = rng.integers(100, 500, size=random.randint(2, 5)).tolist()
+    window_sizes = rng.integers(100, 500, size=rng.integers(2, 5)).tolist()
     # Convert window_sizes to a flattened list of integers
     window_sizes = sorted(set(ensure_int_list(window_sizes)))
     h12_params = dict(
@@ -194,7 +194,7 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
     h12_params = dict(
         contig=random.choice(api.contigs),
         sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        window_size=rng.integers(100, 500),
         min_cohort_size=5,
     )
 
@@ -208,7 +208,7 @@ def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [random.choice(all_sample_sets)]
     contig = random.choice(api.contigs)
-    window_size = random.randint(100, 500)
+    window_size = rng.integers(100, 500)
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -262,7 +262,7 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     h12_params = dict(
         contig=random.choice(api.contigs),
         sample_sets=all_sample_sets,
-        window_size=random.randint(100, 500),
+        window_size=rng.integers(100, 500),
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
     )
@@ -283,8 +283,8 @@ def test_h12_gwss_multi_with_window_size_dict(fixture, api: AnophelesH12Analysis
         contig=random.choice(api.contigs),
         sample_sets=all_sample_sets,
         window_size={
-            "cohort1": random.randint(100, 500),
-            "cohort2": random.randint(100, 500),
+            "cohort1": rng.integers(100, 500),
+            "cohort2": rng.integers(100, 500),
         },
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
@@ -335,7 +335,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
                 analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
-                window_size=random.randint(100, 500),
+                window_size=rng.integers(100, 500),
                 min_cohort_size=min(n1, n2),
                 cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
             )

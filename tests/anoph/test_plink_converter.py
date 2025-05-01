@@ -8,8 +8,10 @@ from malariagen_data.anoph.to_plink import PlinkConverter
 
 import os
 import bed_reader
-
+import numpy as np
 from numpy.testing import assert_array_equal
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -89,7 +91,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
         min_minor_ac=1,
         max_missing_an=1,
         thin_offset=1,
-        random_seed=random.randint(1, 2000),
+        random_seed=rng.integers(1, 2000),
     )
 
     # Load a ds containing the randomly generated samples and regions to get the number of available snps to subset from.
@@ -98,7 +100,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     )
 
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = rng.integers(1, n_snps_available)
 
     # Define plink params.
     plink_params = dict(output_dir=str(tmp_path), n_snps=n_snps, **data_params)

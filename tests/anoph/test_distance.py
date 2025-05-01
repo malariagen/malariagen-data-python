@@ -11,6 +11,9 @@ from malariagen_data.anoph.distance import AnophelesDistanceAnalysis
 from malariagen_data.anoph import pca_params
 
 
+rng = np.random.default_rng(seed=42)
+
+
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesDistanceAnalysis(
@@ -81,7 +84,7 @@ def check_biallelic_diplotype_pairwise_distance(*, api, data_params, metric):
     ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available)
 
     # Run the distance computation.
     dist, samples, n_snps_used = api.biallelic_diplotype_pairwise_distances(
@@ -143,7 +146,7 @@ def check_njt(*, api, data_params, metric, algorithm):
     ds = api.biallelic_snp_calls(**data_params)
     n_samples = ds.sizes["samples"]
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available)
 
     # Run the distance computation.
     Z, samples, n_snps_used = api.njt(
@@ -232,7 +235,7 @@ def test_plot_njt(fixture, api: AnophelesDistanceAnalysis):
     # Check available data.
     ds = api.biallelic_snp_calls(**data_params)
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(4, n_snps_available)
+    n_snps = rng.integers(4, n_snps_available)
 
     # Exercise the function.
     for color, symbol in zip(colors, symbols):
