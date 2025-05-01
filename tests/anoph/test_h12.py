@@ -9,6 +9,9 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.h12 import AnophelesH12Analysis, haplotype_frequencies
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -100,15 +103,34 @@ def test_haplotype_frequencies():
     assert_allclose(vals, np.array([0.2, 0.2, 0.2, 0.4]))
 
 
+def ensure_int_list(value):
+    """Convert a value to a list of integers, and flattening nested structures if needed."""
+    if isinstance(value, int):
+        return [value]
+
+    result = []
+
+    def extract_ints(item):
+        if isinstance(item, int):
+            result.append(item)
+        elif isinstance(item, (list, tuple)):
+            for subitem in item:
+                extract_ints(subitem)
+
+    extract_ints(value)
+    return result
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = np.random.randint(100, 500, size=random.randint(2, 5)).tolist()
-    window_sizes = sorted(set([int(x) for x in window_sizes]))
+    window_sizes = rng.integers(100, 500, size=rng.integers(2, 5)).tolist()
+    # Convert window_sizes to a flattened list of integers
+    window_sizes = sorted(set(ensure_int_list(window_sizes)))
     h12_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
+        contig=rng.choice(api.contigs),
+        sample_sets=[rng.choice(all_sample_sets)],
         window_sizes=window_sizes,
         min_cohort_size=5,
     )
@@ -172,7 +194,7 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
     h12_params = dict(
         contig=random.choice(api.contigs),
         sample_sets=[random.choice(all_sample_sets)],
-        window_size=random.randint(100, 500),
+        window_size=rng.integers(100, 500),
         min_cohort_size=5,
     )
 
@@ -186,7 +208,7 @@ def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = [random.choice(all_sample_sets)]
     contig = random.choice(api.contigs)
-    window_size = random.randint(100, 500)
+    window_size = rng.integers(100, 500)
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -240,7 +262,7 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     h12_params = dict(
         contig=random.choice(api.contigs),
         sample_sets=all_sample_sets,
-        window_size=random.randint(100, 500),
+        window_size=rng.integers(100, 500),
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
     )
@@ -261,8 +283,8 @@ def test_h12_gwss_multi_with_window_size_dict(fixture, api: AnophelesH12Analysis
         contig=random.choice(api.contigs),
         sample_sets=all_sample_sets,
         window_size={
-            "cohort1": random.randint(100, 500),
-            "cohort2": random.randint(100, 500),
+            "cohort1": rng.integers(100, 500),
+            "cohort2": rng.integers(100, 500),
         },
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
@@ -313,7 +335,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
                 analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
-                window_size=random.randint(100, 500),
+                window_size=rng.integers(100, 500),
                 min_cohort_size=min(n1, n2),
                 cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
             )

@@ -13,6 +13,9 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.cnv_data import AnophelesCnvData
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -425,7 +428,7 @@ def test_cnv_hmm__max_coverage_variance(fixture, api: AnophelesCnvData):
     region = fixture.random_contig()
 
     # Parametrize max_coverage_variance.
-    parametrize_max_coverage_variance = np.random.uniform(low=0, high=1, size=4)
+    parametrize_max_coverage_variance = rng.uniform(low=0, high=1, size=4)
 
     for max_coverage_variance in parametrize_max_coverage_variance:
         ds = api.cnv_hmm(
@@ -810,7 +813,7 @@ def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
     region = fixture.random_contig()
     df_samples = api.sample_metadata(sample_sets=sample_set)
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = np.random.choice(all_sample_ids)
+    sample_id = rng.choice(all_sample_ids)
 
     fig = api.plot_cnv_hmm_coverage_track(
         sample=sample_id,
@@ -859,11 +862,11 @@ def test_plot_cnv_hmm_coverage_track(fixture, api: AnophelesCnvData):
 def test_plot_cnv_hmm_coverage(fixture, api: AnophelesCnvData):
     # Set up test.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
     region = fixture.random_contig()
     df_samples = api.sample_metadata(sample_sets=sample_set)
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = np.random.choice(all_sample_ids)
+    sample_id = rng.choice(all_sample_ids)
 
     fig = api.plot_cnv_hmm_coverage(
         sample=sample_id,

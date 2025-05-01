@@ -9,6 +9,8 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.h1x import AnophelesH1XAnalysis, haplotype_joint_frequencies
 
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -147,7 +149,7 @@ def test_h1x_gwss_with_default_analysis(fixture, api: AnophelesH1XAnalysis):
     h1x_params = dict(
         contig=random.choice(api.contigs),
         sample_sets=all_sample_sets,
-        window_size=random.randint(100, 500),
+        window_size=rng.integers(100, 500),
         min_cohort_size=1,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
@@ -198,7 +200,7 @@ def test_h1x_gwss_with_analysis(fixture, api: AnophelesH1XAnalysis):
                 analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
-                window_size=random.randint(100, 500),
+                window_size=rng.integers(100, 500),
                 min_cohort_size=min(n1, n2),
                 cohort1_query=cohort1_query,
                 cohort2_query=cohort2_query,

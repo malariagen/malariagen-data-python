@@ -16,6 +16,9 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.base_params import DEFAULT
 from malariagen_data.anoph.snp_data import AnophelesSnpData
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -256,7 +259,7 @@ def test_snp_sites_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
 
     # Standard checks.
@@ -565,7 +568,7 @@ def test_snp_genotypes_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     # Standard checks.
     check_snp_genotypes(api, region=region)
@@ -590,7 +593,7 @@ def test_snp_variants_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     pos = api.snp_sites(region=region, field="POS").compute()
     ds_region = api.snp_variants(region=region)
@@ -857,7 +860,7 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = random.randint(1, 10)
+    cohort_size = rng.integers(1, 10)
     ds = api.snp_calls(
         sample_sets=sample_sets,
         region=region,
@@ -916,7 +919,7 @@ def test_snp_calls_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
 
     # Standard checks.
@@ -1468,7 +1471,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_cohort_size_param(
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = random.randint(1, 10)
+    cohort_size = rng.integers(1, 10)
     ds = api.biallelic_snp_calls(
         sample_sets=sample_sets,
         region=region,
@@ -1522,8 +1525,8 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     site_mask = random.choice((None,) + api.site_mask_ids)
 
     # Parametrise conditions.
-    min_minor_ac = random.randint(1, 3)
-    max_missing_an = random.randint(5, 10)
+    min_minor_ac = rng.integers(1, 3)
+    max_missing_an = rng.integers(5, 10)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
@@ -1551,7 +1554,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
-    n_snps_requested = random.randint(1, n_snps_available // 2)
+    n_snps_requested = rng.integers(1, n_snps_available // 2)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
         sample_sets=sample_sets,
@@ -1617,7 +1620,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
-    n_snps_requested = random.randint(1, n_snps_available // 2)
+    n_snps_requested = rng.integers(1, n_snps_available // 2)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
         sample_sets=sample_sets,

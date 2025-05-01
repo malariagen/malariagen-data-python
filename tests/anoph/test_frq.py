@@ -1,7 +1,9 @@
 import pytest
 import plotly.graph_objects as go  # type: ignore
-
+import numpy as np
 import random
+
+rng = np.random.default_rng(seed=42)
 
 
 def check_plot_frequencies_heatmap(api, frq_df):
@@ -65,7 +67,7 @@ def check_plot_frequencies_time_series_with_areas(api, ds):
     # Pick a random area and areas from valid areas.
     cohorts_areas = df_cohorts["cohort_area"].dropna().unique().tolist()
     area = random.choice(cohorts_areas)
-    areas = random.sample(cohorts_areas, random.randint(1, len(cohorts_areas)))
+    areas = random.sample(cohorts_areas, rng.integers(1, len(cohorts_areas)))
 
     # Plot with area.
     fig = api.plot_frequencies_time_series(ds, show=False, areas=area)
