@@ -25,7 +25,7 @@ class AnophelesH12Analysis(
 
     def _h12_calibration(
         self,
-        contig,
+        region,
         analysis,
         sample_query,
         sample_query_options,
@@ -39,7 +39,7 @@ class AnophelesH12Analysis(
         inline_array,
     ) -> Mapping[str, np.ndarray]:
         ds_haps = self.haplotypes(
-            region=contig,
+            region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
@@ -73,7 +73,7 @@ class AnophelesH12Analysis(
     )
     def h12_calibration(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -95,7 +95,7 @@ class AnophelesH12Analysis(
         name = "h12_calibration_v1"
 
         params = dict(
-            contig=contig,
+            region=region,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_sizes=window_sizes,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
@@ -131,7 +131,7 @@ class AnophelesH12Analysis(
     )
     def plot_h12_calibration(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
@@ -152,7 +152,7 @@ class AnophelesH12Analysis(
     ) -> gplt_params.optional_figure:
         # Get H12 values.
         calibration_runs = self.h12_calibration(
-            contig=contig,
+            region=region,
             analysis=analysis,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
@@ -227,7 +227,7 @@ class AnophelesH12Analysis(
 
     def _h12_gwss(
         self,
-        contig,
+        region,
         analysis,
         window_size,
         sample_sets,
@@ -241,7 +241,7 @@ class AnophelesH12Analysis(
         inline_array,
     ):
         ds_haps = self.haplotypes(
-            region=contig,
+            region=region,
             analysis=analysis,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
@@ -289,7 +289,7 @@ class AnophelesH12Analysis(
     )
     def h12_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: h12_params.window_size,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_query: Optional[base_params.sample_query] = None,
@@ -308,10 +308,10 @@ class AnophelesH12Analysis(
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h12_gwss_v2"
+        name = "h12_gwss_v3"
 
         params = dict(
-            contig=contig,
+            region=region,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
@@ -345,7 +345,7 @@ class AnophelesH12Analysis(
     )
     def plot_h12_gwss_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: h12_params.window_size,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -372,7 +372,7 @@ class AnophelesH12Analysis(
     ) -> gplt_params.optional_figure:
         # Compute H12.
         x, h12, contigs = self.h12_gwss(
-            contig=contig,
+            region=region,
             analysis=analysis,
             window_size=window_size,
             cohort_size=cohort_size,
@@ -434,7 +434,7 @@ class AnophelesH12Analysis(
         # Tidy up the plot.
         fig.yaxis.axis_label = "H12"
         fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, region)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
@@ -448,7 +448,7 @@ class AnophelesH12Analysis(
     )
     def plot_h12_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: h12_params.window_size,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -477,7 +477,7 @@ class AnophelesH12Analysis(
     ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_track(
-            contig=contig,
+            region=region,
             analysis=analysis,
             window_size=window_size,
             sample_sets=sample_sets,
@@ -502,7 +502,7 @@ class AnophelesH12Analysis(
 
         # Plot genes.
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
@@ -535,7 +535,7 @@ class AnophelesH12Analysis(
     )
     def plot_h12_gwss_multi_overlay_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         cohorts: base_params.cohorts,
         window_size: h12_params.multi_window_size,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -578,7 +578,7 @@ class AnophelesH12Analysis(
         res = {}
         for cohort_label, cohort_query in cohort_queries.items():
             res[cohort_label] = self.h12_gwss(
-                contig=contig,
+                region=region,
                 analysis=analysis,
                 window_size=window_size[cohort_label],
                 cohort_size=cohort_size,
@@ -654,7 +654,7 @@ class AnophelesH12Analysis(
     )
     def plot_h12_gwss_multi_overlay(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         cohorts: base_params.cohorts,
         window_size: h12_params.multi_window_size,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -682,7 +682,7 @@ class AnophelesH12Analysis(
     ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h12_gwss_multi_overlay_track(
-            contig=contig,
+            region=region,
             sample_query=sample_query,
             cohorts=cohorts,
             cohort_size=cohort_size,
@@ -708,7 +708,7 @@ class AnophelesH12Analysis(
 
         # Plot genes.
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
@@ -741,7 +741,7 @@ class AnophelesH12Analysis(
     )
     def plot_h12_gwss_multi_panel(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         cohorts: base_params.cohorts,
         window_size: h12_params.multi_window_size,
         cohort_size: Optional[base_params.cohort_size] = h12_params.cohort_size_default,
@@ -784,7 +784,7 @@ class AnophelesH12Analysis(
         figs: list[gplt_params.figure] = []
         for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
             params = dict(
-                contig=contig,
+                region=region,
                 analysis=analysis,
                 window_size=window_size[cohort_label],
                 sample_sets=sample_sets,
@@ -809,7 +809,7 @@ class AnophelesH12Analysis(
 
         # Plot genes.
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,

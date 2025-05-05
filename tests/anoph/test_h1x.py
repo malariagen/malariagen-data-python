@@ -145,7 +145,7 @@ def test_h1x_gwss_with_default_analysis(fixture, api: AnophelesH1XAnalysis):
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h1x_params = dict(
-        contig=random.choice(api.contigs),
+        region=fixture.random_region_str(region_size=5000),
         sample_sets=all_sample_sets,
         window_size=random.randint(100, 500),
         min_cohort_size=1,
@@ -196,7 +196,7 @@ def test_h1x_gwss_with_analysis(fixture, api: AnophelesH1XAnalysis):
             # Samples are available, run full checks.
             h1x_params = dict(
                 analysis=analysis,
-                contig=contig,
+                region=contig,
                 sample_sets=all_sample_sets,
                 window_size=random.randint(100, 500),
                 min_cohort_size=min(n1, n2),
