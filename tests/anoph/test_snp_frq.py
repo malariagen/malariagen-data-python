@@ -21,6 +21,9 @@ from .test_frq import (
 )
 
 
+rng = np.random.default_rng(seed=42)
+
+
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesSnpFrequencyAnalysis(
@@ -301,7 +304,7 @@ def test_allele_frequencies_with_str_cohorts(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     transcript = random_transcript(api=api)
 
     # Set up call params.
@@ -561,7 +564,7 @@ def test_allele_frequencies_with_dict_cohorts(
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     transcript = random_transcript(api=api)
 
     # Create cohorts by country.
@@ -615,7 +618,7 @@ def test_allele_frequencies_without_drop_invariant(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -671,7 +674,7 @@ def test_allele_frequencies_without_effects(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -753,7 +756,7 @@ def test_allele_frequencies_with_bad_transcript(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
@@ -780,7 +783,7 @@ def test_allele_frequencies_with_region(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
     # This should work, as long as effects=False - i.e., can get frequencies
     # for any genome region.
@@ -838,7 +841,7 @@ def test_allele_frequencies_with_dup_samples(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_set = random.choice(all_sample_sets)
     site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     transcript = random_transcript(api=api)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -895,7 +898,7 @@ def check_snp_allele_frequencies_advanced(
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
         sample_sets = random.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = random.randint(0, 2)
+        min_cohort_size = rng.integers(0, 2)
     if site_mask is None:
         site_mask = random.choice(api.site_mask_ids + (None,))
 
@@ -1089,7 +1092,7 @@ def check_aa_allele_frequencies_advanced(
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
         sample_sets = random.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = random.randint(0, 2)
+        min_cohort_size = rng.integers(0, 2)
 
     # Run function under test.
     ds = api.aa_allele_frequencies_advanced(

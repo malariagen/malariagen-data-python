@@ -860,7 +860,7 @@ def test_snp_calls_with_cohort_size_param(fixture, api: AnophelesSnpData):
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = random.randint(1, 10)
+    cohort_size = rng.integers(1, 10)
     ds = api.snp_calls(
         sample_sets=sample_sets,
         region=region,
@@ -1471,7 +1471,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_cohort_size_param(
     region = fixture.random_region_str()
 
     # Test with specific cohort size.
-    cohort_size = random.randint(1, 10)
+    cohort_size = rng.integers(1, 10)
     ds = api.biallelic_snp_calls(
         sample_sets=sample_sets,
         region=region,
@@ -1525,8 +1525,8 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     site_mask = random.choice((None,) + api.site_mask_ids)
 
     # Parametrise conditions.
-    min_minor_ac = random.randint(1, 3)
-    max_missing_an = random.randint(5, 10)
+    min_minor_ac = rng.integers(1, 3)
+    max_missing_an = rng.integers(5, 10)
 
     # Run tests.
     ds = check_biallelic_snp_calls_and_diplotypes(
@@ -1554,7 +1554,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions(
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
-    n_snps_requested = random.randint(1, n_snps_available // 2)
+    n_snps_requested = rng.integers(1, n_snps_available // 2)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
         sample_sets=sample_sets,
@@ -1620,7 +1620,7 @@ def test_biallelic_snp_calls_and_diplotypes_with_conditions_fractional(
     # This should always be true, although depends on min_minor_ac and max_missing_an,
     # so the range of values for those parameters needs to be chosen with some care.
     assert n_snps_available > 2
-    n_snps_requested = random.randint(1, n_snps_available // 2)
+    n_snps_requested = rng.integers(1, n_snps_available // 2)
     ds_thinned = check_biallelic_snp_calls_and_diplotypes(
         api=api,
         sample_sets=sample_sets,

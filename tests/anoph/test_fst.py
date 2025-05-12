@@ -11,6 +11,8 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.fst import AnophelesFstAnalysis
 
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -91,7 +93,7 @@ def test_fst_gwss(fixture, api: AnophelesFstAnalysis):
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
         site_mask=random.choice(api.site_mask_ids),
-        window_size=random.randint(10, 50),
+        window_size=rng.integers(10, 50),
         min_cohort_size=1,
     )
 
@@ -131,7 +133,7 @@ def test_average_fst(fixture, api: AnophelesFstAnalysis):
         cohort2_query=cohort2_query,
         site_mask=random.choice(api.site_mask_ids),
         min_cohort_size=1,
-        n_jack=random.randint(10, 200),
+        n_jack=rng.integers(10, 200),
     )
 
     # Run main gwss function under test.
@@ -229,7 +231,7 @@ def test_pairwise_average_fst_with_str_cohorts(
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
-        n_jack=random.randint(10, 200),
+        n_jack=rng.integers(10, 200),
     )
 
     # Run checks.
@@ -249,7 +251,7 @@ def test_pairwise_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAna
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=15,
-        n_jack=random.randint(10, 200),
+        n_jack=rng.integers(10, 200),
     )
 
     # Run checks.
@@ -270,7 +272,7 @@ def test_pairwise_average_fst_with_dict_cohorts(fixture, api: AnophelesFstAnalys
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
-        n_jack=random.randint(10, 200),
+        n_jack=rng.integers(10, 200),
     )
 
     # Run checks.
@@ -294,7 +296,7 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
         sample_query=sample_query,
         site_mask=site_mask,
         min_cohort_size=1,
-        n_jack=random.randint(10, 200),
+        n_jack=rng.integers(10, 200),
     )
 
     # Run checks.
