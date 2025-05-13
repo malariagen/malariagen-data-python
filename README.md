@@ -35,8 +35,7 @@ for release notes.
 
 ## Developer setup
 
-To get setup for development, see [this
-video](https://youtu.be/QniQi-Hoo9A) and the instructions below.
+To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A), and the instructions below.
 
 Fork and clone this repo:
 
