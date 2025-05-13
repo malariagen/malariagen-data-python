@@ -48,27 +48,27 @@ Install Python, e.g.:
 
 ```bash
 sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt install python3.9 python3.9-venv
+sudo apt install python3.10 python3.10-venv
 ```
 
 Install pipx, e.g.:
 
 ```bash
-python3.9 -m pip install --user pipx
-python3.9 -m pipx ensurepath
+python3.10 -m pip install --user pipx
+python3.10 -m pipx ensurepath
 ```
 
 Install [poetry](https://python-poetry.org/docs/#installation), e.g.:
 
 ```bash
-pipx install poetry==1.8.2 --python=/usr/bin/python3.9
+pipx install poetry==1.8.2 --python=/usr/bin/python3.10
 ```
 
 Create development environment:
 
 ```bash
 cd malariagen-data-python
-poetry use 3.9
+poetry use 3.10
 poetry install
 ```
 
@@ -81,7 +81,7 @@ poetry shell
 Install pre-commit and pre-commit hooks:
 
 ```bash
-pipx install pre-commit --python=/usr/bin/python3.9
+pipx install pre-commit --python=/usr/bin/python3.10
 pre-commit install
 ```
 
