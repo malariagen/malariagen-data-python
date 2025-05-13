@@ -97,7 +97,9 @@ Run fast unit tests using simulated data:
 poetry run pytest -v tests/anoph
 ```
 
-To run legacy tests which read data from GCS, you'll need to [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
+To run legacy tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html). 
+
+Once access has been granted, [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
 
 ```bash
 ./install_gcloud.sh
