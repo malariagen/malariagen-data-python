@@ -61,7 +61,7 @@ python3.10 -m pipx ensurepath
 Install [poetry](https://python-poetry.org/docs/#installation), e.g.:
 
 ```bash
-pipx install poetry==1.8.2 --python=/usr/bin/python3.10
+pipx install poetry
 ```
 
 Create development environment:
@@ -81,7 +81,7 @@ poetry shell
 Install pre-commit and pre-commit hooks:
 
 ```bash
-pipx install pre-commit --python=/usr/bin/python3.10
+pipx install pre-commit
 pre-commit install
 ```
 
