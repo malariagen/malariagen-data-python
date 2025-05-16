@@ -1,10 +1,11 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
-
+import numpy as np
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.hapclust import AnophelesHapClustAnalysis
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -86,11 +87,12 @@ def test_plot_haplotype_clustering(fixture, api: AnophelesHapClustAnalysis):
         "ward",
     )
     sample_queries = (None, "sex_call == 'F'")
+    idx = rng.choice([0, 1])  # to genrate a random index
     hapclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
-        sample_query=random.choice(sample_queries),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
+        sample_query=sample_queries[idx],
         show=False,
     )
 

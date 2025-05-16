@@ -148,7 +148,7 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
         # If there are no genes, we cannot label them.
         if not genes_df.empty:
             # Get a random number of genes to sample.
-            random_genes_n = rng.integers(low=1, high=len(genes_df) + 1)
+            random_genes_n = int(rng.integers(low=1, high=len(genes_df) + 1))
 
             # Get a random sample of genes.
             random_sample_genes_df = genes_df.sample(n=random_genes_n)

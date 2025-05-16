@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -107,7 +106,7 @@ def test_haplotype_frequencies():
 def test_h12_calibration(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    window_sizes = rng.integers(100, 500, size=rng.integers(2, 5)).tolist()
+    window_sizes = rng.integers(100, 500, size=int(rng.integers(2, 5))).tolist()
     # Convert window_sizes to a flattened list of integers
     window_sizes = sorted(set([int(x) for x in window_sizes]))
     h12_params = dict(
@@ -174,9 +173,9 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     h12_params = dict(
-        contig=random.choice(api.contigs),
-        sample_sets=[random.choice(all_sample_sets)],
-        window_size=rng.integers(100, 500),
+        contig=rng.choice(api.contigs),
+        sample_sets=[rng.choice(all_sample_sets)],
+        window_size=int(rng.integers(100, 500)),
         min_cohort_size=5,
     )
 
@@ -188,9 +187,9 @@ def test_h12_gwss_with_default_analysis(fixture, api: AnophelesH12Analysis):
 def test_h12_gwss_with_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = [random.choice(all_sample_sets)]
-    contig = random.choice(api.contigs)
-    window_size = rng.integers(100, 500)
+    sample_sets = [rng.choice(all_sample_sets)]
+    contig = rng.choice(api.contigs)
+    window_size = int(rng.integers(100, 500))
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -238,13 +237,13 @@ def test_h12_gwss_multi_with_default_analysis(fixture, api: AnophelesH12Analysis
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        contig=rng.choice(api.contigs),
         sample_sets=all_sample_sets,
-        window_size=rng.integers(100, 500),
+        window_size=int(rng.integers(100, 500)),
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
     )
@@ -258,15 +257,15 @@ def test_h12_gwss_multi_with_window_size_dict(fixture, api: AnophelesH12Analysis
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h12_params = dict(
-        contig=random.choice(api.contigs),
+        contig=rng.choice(api.contigs),
         sample_sets=all_sample_sets,
         window_size={
-            "cohort1": rng.integers(100, 500),
-            "cohort2": rng.integers(100, 500),
+            "cohort1": int(rng.integers(100, 500)),
+            "cohort2": int(rng.integers(100, 500)),
         },
         min_cohort_size=1,
         cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
@@ -281,10 +280,10 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
-    contig = random.choice(api.contigs)
+    contig = rng.choice(api.contigs)
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -317,7 +316,7 @@ def test_h12_gwss_multi_with_analysis(fixture, api: AnophelesH12Analysis):
                 analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
-                window_size=rng.integers(100, 500),
+                window_size=int(rng.integers(100, 500)),
                 min_cohort_size=min(n1, n2),
                 cohorts={"cohort1": cohort1_query, "cohort2": cohort2_query},
             )

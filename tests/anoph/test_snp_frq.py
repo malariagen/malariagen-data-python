@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
@@ -7,6 +5,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
+from .conftest import Af1Simulator, Ag3Simulator
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -114,7 +113,7 @@ def random_transcript(*, api):
     df_gff = api.genome_features(attributes=["ID", "Parent"])
     df_transcripts = df_gff.query("type == 'mRNA'")
     transcript_ids = df_transcripts["ID"].dropna().to_list()
-    transcript_id = random.choice(transcript_ids)
+    transcript_id = rng.choice(transcript_ids)
     transcript = df_transcripts.set_index("ID").loc[transcript_id]
     return transcript
 
@@ -125,7 +124,13 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
     transcript = random_transcript(api=api)
 
     # Pick a random site mask.
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
 
     # Compute effects.
     df = api.snp_effects(transcript=transcript.name, site_mask=site_mask)
@@ -302,9 +307,16 @@ def test_allele_frequencies_with_str_cohorts(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
+
+    min_cohort_size = int(rng.integers(0, 2))
     transcript = random_transcript(api=api)
 
     # Set up call params.
@@ -367,8 +379,14 @@ def test_allele_frequencies_with_min_cohort_size(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    sample_sets = rng.choice(all_sample_sets)
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
     transcript = random_transcript(api=api)
     cohorts = "admin1_year"
 
@@ -432,15 +450,19 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
 ):
     # Pick test parameters at random.
     sample_sets = None
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
     min_cohort_size = 0
     transcript = random_transcript(api=api)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
-    )
+    cohorts = rng.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique()
-    country = random.choice(countries)
+    country = rng.choice(countries)
     sample_query = f"country == '{country}'"
 
     # Figure out expected cohort labels.
@@ -493,15 +515,19 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
 ):
     # Pick test parameters at random.
     sample_sets = None
-    site_mask = random.choice(api.site_mask_ids + (None,))
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
     min_cohort_size = 0
     transcript = random_transcript(api=api)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
-    )
+    cohorts = rng.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = random.sample(countries, 2)
+    countries_list = rng.choice(countries, 2, replace=False).tolist()
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -563,8 +589,8 @@ def test_allele_frequencies_with_dict_cohorts(
 ):
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
+    site_mask = rng.choice(list(api.site_mask_ids) + [""])
+    min_cohort_size = int(rng.integers(0, 2))
     transcript = random_transcript(api=api)
 
     # Create cohorts by country.
@@ -616,11 +642,11 @@ def test_allele_frequencies_without_drop_invariant(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice(list(api.site_mask_ids) + [""])
+    min_cohort_size = int(rng.integers(0, 2))
     transcript = random_transcript(api=api)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -672,11 +698,17 @@ def test_allele_frequencies_without_effects(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
+    min_cohort_size = int(rng.integers(0, 2))
     transcript = random_transcript(api=api)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -754,10 +786,10 @@ def test_allele_frequencies_with_bad_transcript(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    sample_sets = rng.choice(all_sample_sets)
+    site_mask = rng.choice(list(api.site_mask_ids) + [""])
+    min_cohort_size = int(rng.integers(0, 2))
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
     params = dict(
@@ -781,10 +813,16 @@ def test_allele_frequencies_with_region(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    sample_sets = rng.choice(all_sample_sets)
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
+    min_cohort_size = int(rng.integers(0, 2))
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
     # This should work, as long as effects=False - i.e., can get frequencies
     # for any genome region.
     transcript = fixture.random_region_str(region_size=500)
@@ -839,11 +877,17 @@ def test_allele_frequencies_with_dup_samples(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = rng.integers(0, 2)
+    sample_set = rng.choice(all_sample_sets)
+    if isinstance(fixture, Af1Simulator):
+        valid_site_masks = ["funestus"]
+    elif isinstance(fixture, Ag3Simulator):
+        valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+    else:
+        valid_site_masks = [""] + list(api.site_mask_ids)
+    site_mask = rng.choice(valid_site_masks)
+    min_cohort_size = int(rng.integers(0, 2))
     transcript = random_transcript(api=api)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
     params = dict(
@@ -875,6 +919,7 @@ def test_allele_frequencies_with_dup_samples(
 
 def check_snp_allele_frequencies_advanced(
     *,
+    fixture,
     api: AnophelesSnpFrequencyAnalysis,
     transcript=None,
     area_by="admin1_iso",
@@ -891,16 +936,22 @@ def check_snp_allele_frequencies_advanced(
     if transcript is None:
         transcript = random_transcript(api=api).name
     if area_by is None:
-        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+        area_by = rng.choice(["country", "admin1_iso", "admin2_name"])
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month"])
+        period_by = rng.choice(["year", "quarter", "month"])
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
-        sample_sets = random.choice(all_sample_sets)
+        sample_sets = rng.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = rng.integers(0, 2)
+        min_cohort_size = int(rng.integers(0, 2))
     if site_mask is None:
-        site_mask = random.choice(api.site_mask_ids + (None,))
+        if isinstance(fixture, Af1Simulator):
+            valid_site_masks = ["funestus"]
+        elif isinstance(fixture, Ag3Simulator):
+            valid_site_masks = ["gamb_colu_arab", "gamb_colu", "arab"]
+        else:
+            valid_site_masks = [""] + list(api.site_mask_ids)
+        site_mask = rng.choice(valid_site_masks)
 
     # Run function under test.
     ds = api.snp_allele_frequencies_advanced(
@@ -1085,14 +1136,14 @@ def check_aa_allele_frequencies_advanced(
     if transcript is None:
         transcript = random_transcript(api=api).name
     if area_by is None:
-        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+        area_by = rng.choice(["country", "admin1_iso", "admin2_name"])
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month"])
+        period_by = rng.choice(["year", "quarter", "month"])
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
-        sample_sets = random.choice(all_sample_sets)
+        sample_sets = rng.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = rng.integers(0, 2)
+        min_cohort_size = int(rng.integers(0, 2))
 
     # Run function under test.
     ds = api.aa_allele_frequencies_advanced(
@@ -1262,6 +1313,7 @@ def test_allele_frequencies_advanced_with_area_by(
     area_by,
 ):
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         area_by=area_by,
     )
@@ -1279,6 +1331,7 @@ def test_allele_frequencies_advanced_with_period_by(
     period_by,
 ):
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         period_by=period_by,
     )
@@ -1296,10 +1349,11 @@ def test_allele_frequencies_advanced_with_sample_query(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique()
-    country = random.choice(countries)
+    country = rng.choice(countries)
     sample_query = f"country == '{country}'"
 
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
@@ -1321,7 +1375,7 @@ def test_allele_frequencies_advanced_with_sample_query_options(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = random.sample(countries, 2)
+    countries_list = rng.choice(countries, 2, replace=False).tolist()
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -1330,6 +1384,7 @@ def test_allele_frequencies_advanced_with_sample_query_options(
     sample_query = "country in @countries_list"
 
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         sample_sets=all_sample_sets,
         sample_query=sample_query,
@@ -1361,6 +1416,7 @@ def test_allele_frequencies_advanced_with_min_cohort_size(
         # Expect this to find at least one cohort, so go ahead with full
         # checks.
         check_snp_allele_frequencies_advanced(
+            fixture=fixture,
             api=api,
             transcript=transcript,
             sample_sets=all_sample_sets,
@@ -1409,6 +1465,7 @@ def test_allele_frequencies_advanced_with_variant_query(
     # Test a query that should succeed.
     variant_query = "effect == 'NON_SYNONYMOUS_CODING'"
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         transcript=transcript,
         sample_sets=all_sample_sets,
@@ -1453,6 +1510,7 @@ def test_allele_frequencies_advanced_with_nobs_mode(
     nobs_mode,
 ):
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         nobs_mode=nobs_mode,
     )
@@ -1468,10 +1526,11 @@ def test_allele_frequencies_advanced_with_dup_samples(
     api: AnophelesSnpFrequencyAnalysis,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
     sample_sets = [sample_set, sample_set]
 
     check_snp_allele_frequencies_advanced(
+        fixture=fixture,
         api=api,
         sample_sets=sample_sets,
     )

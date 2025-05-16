@@ -1,5 +1,3 @@
-import random
-
 import pandas as pd
 import numpy as np
 import xarray as xr
@@ -169,8 +167,8 @@ def test_hap_frequencies_with_str_cohorts(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = rng.integers(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = int(rng.integers(0, 2))
     region = fixture.random_region_str()
 
     # Set up call params.
@@ -211,8 +209,8 @@ def test_hap_frequencies_advanced(
     fixture, api: AnophelesHapFrequencyAnalysis, area_by, period_by
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = rng.integers(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = int(rng.integers(0, 2))
     region = fixture.random_region_str()
 
     # Set up call params.

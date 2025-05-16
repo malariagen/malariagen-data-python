@@ -1,5 +1,4 @@
 import itertools
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -84,16 +83,16 @@ def test_fst_gwss(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
-    countries = random.sample(all_countries, 2)
+    countries = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == {countries[0]!r}"
     cohort2_query = f"country == {countries[1]!r}"
     fst_params = dict(
-        contig=random.choice(api.contigs),
+        contig=rng.choice(api.contigs),
         sample_sets=all_sample_sets,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        site_mask=random.choice(api.site_mask_ids),
-        window_size=rng.integers(10, 50),
+        site_mask=rng.choice(api.site_mask_ids),
+        window_size=int(rng.integers(10, 50)),
         min_cohort_size=1,
     )
 
@@ -123,17 +122,17 @@ def test_average_fst(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
-    countries = random.sample(all_countries, 2)
+    countries = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == {countries[0]!r}"
     cohort2_query = f"country == {countries[1]!r}"
     fst_params = dict(
-        region=random.choice(api.contigs),
+        region=rng.choice(api.contigs),
         sample_sets=all_sample_sets,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        site_mask=random.choice(api.site_mask_ids),
+        site_mask=rng.choice(api.site_mask_ids),
         min_cohort_size=1,
-        n_jack=rng.integers(10, 200),
+        n_jack=int(rng.integers(10, 200)),
     )
 
     # Run main gwss function under test.
@@ -151,15 +150,15 @@ def test_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
-    countries = random.sample(all_countries, 2)
+    countries = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == {countries[0]!r}"
     cohort2_query = f"country == {countries[1]!r}"
     fst_params = dict(
-        region=random.choice(api.contigs),
+        region=rng.choice(api.contigs),
         sample_sets=all_sample_sets,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
-        site_mask=random.choice(api.site_mask_ids),
+        site_mask=rng.choice(api.site_mask_ids),
         min_cohort_size=1000,
     )
 
@@ -223,15 +222,15 @@ def test_pairwise_average_fst_with_str_cohorts(
 ):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    region = random.choice(api.contigs)
-    site_mask = random.choice(api.site_mask_ids)
+    region = rng.choice(api.contigs)
+    site_mask = rng.choice(api.site_mask_ids)
     fst_params = dict(
         region=region,
         cohorts=cohorts,
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
-        n_jack=rng.integers(10, 200),
+        n_jack=int(rng.integers(10, 200)),
     )
 
     # Run checks.
@@ -242,8 +241,8 @@ def test_pairwise_average_fst_with_str_cohorts(
 def test_pairwise_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    region = random.choice(api.contigs)
-    site_mask = random.choice(api.site_mask_ids)
+    region = rng.choice(api.contigs)
+    site_mask = rng.choice(api.site_mask_ids)
     cohorts = "admin1_year"
     fst_params = dict(
         region=region,
@@ -251,7 +250,7 @@ def test_pairwise_average_fst_with_min_cohort_size(fixture, api: AnophelesFstAna
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=15,
-        n_jack=rng.integers(10, 200),
+        n_jack=int(rng.integers(10, 200)),
     )
 
     # Run checks.
@@ -264,15 +263,15 @@ def test_pairwise_average_fst_with_dict_cohorts(fixture, api: AnophelesFstAnalys
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].dropna().unique().tolist()
     cohorts = {country: f"country == '{country}'" for country in all_countries}
-    region = random.choice(api.contigs)
-    site_mask = random.choice(api.site_mask_ids)
+    region = rng.choice(api.contigs)
+    site_mask = rng.choice(api.site_mask_ids)
     fst_params = dict(
         region=region,
         cohorts=cohorts,
         sample_sets=all_sample_sets,
         site_mask=site_mask,
         min_cohort_size=1,
-        n_jack=rng.integers(10, 200),
+        n_jack=int(rng.integers(10, 200)),
     )
 
     # Run checks.
@@ -283,12 +282,12 @@ def test_pairwise_average_fst_with_dict_cohorts(fixture, api: AnophelesFstAnalys
 def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalysis):
     # Set up test parameters.
     all_taxa = api.sample_metadata()["taxon"].dropna().unique().tolist()
-    taxon = random.choice(all_taxa)
+    taxon = rng.choice(all_taxa)
     sample_query = f"taxon == '{taxon}'"
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     cohorts = "admin2_month"
-    region = random.choice(api.contigs)
-    site_mask = random.choice(api.site_mask_ids)
+    region = rng.choice(api.contigs)
+    site_mask = rng.choice(api.site_mask_ids)
     fst_params = dict(
         region=region,
         cohorts=cohorts,
@@ -296,7 +295,7 @@ def test_pairwise_average_fst_with_sample_query(fixture, api: AnophelesFstAnalys
         sample_query=sample_query,
         site_mask=site_mask,
         min_cohort_size=1,
-        n_jack=rng.integers(10, 200),
+        n_jack=int(rng.integers(10, 200)),
     )
 
     # Run checks.
@@ -308,8 +307,8 @@ def test_pairwise_average_fst_with_bad_cohorts(fixture, api: AnophelesFstAnalysi
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     cohorts = "foobar"
-    region = random.choice(api.contigs)
-    site_mask = random.choice(api.site_mask_ids)
+    region = rng.choice(api.contigs)
+    site_mask = rng.choice(api.site_mask_ids)
     fst_params = dict(
         region=region,
         cohorts=cohorts,

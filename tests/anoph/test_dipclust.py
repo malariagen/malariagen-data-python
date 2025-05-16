@@ -1,17 +1,18 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
-
+import numpy as np
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.dipclust import AnophelesDipClustAnalysis
+
+rng = np.random.default_rng(seed=42)
 
 
 def random_transcripts_contig(*, api, contig, n):
     df_gff = api.genome_features(attributes=["ID", "Parent"])
     df_transcripts = df_gff.query(f"type == 'mRNA' and contig == '{contig}'")
     transcript_ids = df_transcripts["ID"].dropna().to_list()
-    transcripts = random.sample(transcript_ids, n)
+    transcripts = rng.choice(transcript_ids, n, replace=False).tolist()
     return transcripts
 
 
@@ -97,12 +98,13 @@ def test_plot_diplotype_clustering(
         "ward",
     )
     sample_queries = (None, "sex_call == 'F'")
+    idx = rng.choice([0, 1])
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric=distance_metric,
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_queries[idx],
         show=False,
     )
 
@@ -127,12 +129,13 @@ def test_plot_diplotype_clustering_advanced(
         "ward",
     )
     sample_queries = (None, "sex_call == 'F'")
+    idx = rng.choice([0, 1])
     dipclust_params = dict(
         region=fixture.random_region_str(region_size=5000),
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric=distance_metric,
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_queries[idx],
         show=False,
     )
 
@@ -159,13 +162,14 @@ def test_plot_diplotype_clustering_advanced_with_transcript(
         "ward",
     )
     sample_queries = (None, "sex_call == 'F'")
+    idx = rng.choice([0, 1])
     dipclust_params = dict(
         region=contig,
         snp_transcript=transcripts,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric="cityblock",
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_queries[idx],
         show=False,
     )
 
@@ -190,13 +194,14 @@ def test_plot_diplotype_clustering_advanced_with_cnv_region(
         "ward",
     )
     sample_queries = (None, "sex_call == 'F'")
+    idx = rng.choice([0, 1])
     dipclust_params = dict(
         region=region,
         cnv_region=region,
-        sample_sets=[random.choice(all_sample_sets)],
-        linkage_method=random.choice(linkage_methods),
+        sample_sets=[rng.choice(all_sample_sets)],
+        linkage_method=str(rng.choice(linkage_methods)),
         distance_metric="cityblock",
-        sample_query=random.choice(sample_queries),
+        sample_query=sample_queries[idx],
         show=False,
     )
 

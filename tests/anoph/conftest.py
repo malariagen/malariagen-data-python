@@ -2,7 +2,6 @@ import json
 import shutil
 import string
 from pathlib import Path
-from random import choice, choices, randint
 from typing import Any, Dict, Tuple
 
 import numpy as np
@@ -40,7 +39,7 @@ def fixture_dir():
 
 
 def simulate_contig(*, low, high, base_composition):
-    size = rng.integers(low=low, high=high)
+    size = int(rng.integers(low=low, high=high))
     bases = np.array([b"a", b"c", b"g", b"t", b"n", b"A", b"C", b"G", b"T", b"N"])
     p = np.array([base_composition[b] for b in bases])
     seq = rng.choice(bases, size=size, replace=True, p=p)
@@ -151,9 +150,9 @@ class Gff3Simulator:
         # Simulate genes.
         for gene_ix in range(self.max_genes):
             gene_id = f"gene-{contig}-{gene_ix}"
-            strand = choice(["+", "-"])
-            inter_size = randint(self.inter_size_low, self.inter_size_high)
-            gene_size = randint(self.gene_size_low, self.gene_size_high)
+            strand = rng.choice(["+", "-"])
+            inter_size = int(rng.integers(self.inter_size_low, self.inter_size_high))
+            gene_size = int(rng.integers(self.gene_size_low, self.gene_size_high))
             if strand == "+":
                 gene_start = cur_fwd + inter_size
             else:
@@ -166,7 +165,11 @@ class Gff3Simulator:
             gene_attrs = f"ID={gene_id}"
             for attr in self.attrs:
                 random_str = "".join(
-                    choices(string.ascii_uppercase + string.digits, k=5)
+                    rng.choice(
+                        list(string.ascii_uppercase + string.digits),
+                        size=5,
+                        replace=True,
+                    )
                 )
                 gene_attrs += f";{attr}={random_str}"
             gene = (
@@ -212,7 +215,7 @@ class Gff3Simulator:
         # accurate in real data.
 
         for transcript_ix in range(
-            randint(self.n_transcripts_low, self.n_transcripts_high)
+            int(rng.integers(self.n_transcripts_low, self.n_transcripts_high))
         ):
             transcript_id = f"transcript-{contig}-{gene_ix}-{transcript_ix}"
             transcript_start = gene_start
@@ -260,13 +263,16 @@ class Gff3Simulator:
         transcript_size = transcript_end - transcript_start
         exons = []
         exon_end = transcript_start
-        n_exons = randint(self.n_exons_low, self.n_exons_high)
+        n_exons = int(rng.integers(self.n_exons_low, self.n_exons_high))
         for exon_ix in range(n_exons):
             exon_id = f"exon-{contig}-{gene_ix}-{transcript_ix}-{exon_ix}"
             if exon_ix > 0:
                 # Insert an intron between this exon and the previous one.
-                intron_size = randint(
-                    self.intron_size_low, min(transcript_size, self.intron_size_high)
+                intron_size = int(
+                    rng.integers(
+                        self.intron_size_low,
+                        min(transcript_size, self.intron_size_high),
+                    )
                 )
                 exon_start = exon_end + intron_size
                 if exon_start >= transcript_end:
@@ -275,7 +281,7 @@ class Gff3Simulator:
             else:
                 # First exon, assume exon starts where the transcript starts.
                 exon_start = transcript_start
-            exon_size = randint(self.exon_size_low, self.exon_size_high)
+            exon_size = int(rng.integers(self.exon_size_low, self.exon_size_high))
             exon_end = min(exon_start + exon_size, transcript_end)
             assert exon_end > exon_start
             exon = (
@@ -311,7 +317,7 @@ class Gff3Simulator:
             else:
                 feature_type = self.cds_type
                 # Cheat a little, random phase.
-                phase = choice([1, 2, 3])
+                phase = rng.choice([1, 2, 3])
             feature = (
                 contig,
                 self.source,
@@ -549,7 +555,7 @@ def simulate_aim_variants(path, contigs, snp_sites, n_sites_low, n_sites_high):
         # Simulate AIM positions variable.
         snp_pos = snp_sites[f"{contig}/variants/POS"][:]
         loc_aim_sites = rng.choice(
-            snp_pos.shape[0], size=rng.integers(n_sites_low, n_sites_high)
+            snp_pos.shape[0], size=int(rng.integers(n_sites_low, n_sites_high))
         )
         loc_aim_sites.sort()
         aim_pos = snp_pos[loc_aim_sites]
@@ -731,11 +737,10 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
         contig_length_bp = contig_sizes[contig]
 
         # Get a random number of CNV alleles ("variants") to simulate.
-        n_cnv_alleles = rng.integers(1, 5_000)
+        n_cnv_alleles = int(rng.integers(1, 5_000))
 
         # Produce a set of random start positions for each allele as a sorted list.
         allele_start_pos = sorted(rng.integers(1, contig_length_bp, size=n_cnv_alleles))
-
         # Produce a set of random allele lengths for each allele, according to a range.
         allele_length_bp_min = 100
         allele_length_bp_max = 100_000
@@ -874,7 +879,7 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
         contig_length_bp = contig_sizes[contig]
 
         # Get a random number of CNV variants to simulate.
-        n_cnv_variants = rng.integers(1, 100)
+        n_cnv_variants = int(rng.integers(1, 100))
 
         # Produce a set of random start positions for each variant as a sorted list.
         variant_start_pos = sorted(
@@ -1010,20 +1015,20 @@ class AnophelesSimulator:
         return tuple(self.config["CONTIGS"])
 
     def random_contig(self):
-        return choice(self.contigs)
+        return rng.choice(self.contigs)
 
     def random_transcript_id(self):
         df_transcripts = self.genome_features.query("type == 'mRNA'")
         transcript_ids = [
             gff3_parse_attributes(t)["ID"] for t in df_transcripts.loc[:, "attributes"]
         ]
-        transcript_id = choice(transcript_ids)
+        transcript_id = rng.choice(transcript_ids)
         return transcript_id
 
     def random_region_str(self, region_size=None):
         contig = self.random_contig()
         contig_size = self.contig_sizes[contig]
-        region_start = randint(1, contig_size)
+        region_start = int(rng.integers(1, contig_size))
         if region_size:
             # Ensure we the region span doesn't exceed the contig size.
             if contig_size - region_start < region_size:
@@ -1031,7 +1036,7 @@ class AnophelesSimulator:
 
             region_end = region_start + region_size
         else:
-            region_end = randint(region_start, contig_size)
+            region_end = int(rng.integers(region_start, contig_size))
         region = f"{contig}:{region_start:,}-{region_end:,}"
         return region
 
@@ -1133,7 +1138,7 @@ class Ag3Simulator(AnophelesSimulator):
         manifest = pd.DataFrame(
             {
                 "sample_set": ["AG1000G-AO", "AG1000G-BF-A"],
-                "sample_count": [randint(10, 50), randint(10, 40)],
+                "sample_count": [int(rng.integers(10, 50)), int(rng.integers(10, 40))],
                 "study_id": ["AG1000G-AO", "AG1000G-BF-1"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/AG1000G-AO",
@@ -1165,7 +1170,7 @@ class Ag3Simulator(AnophelesSimulator):
                     "1177-VO-ML-LEHMANN-VMF00004",
                 ],
                 # Make sure we have some gambiae, coluzzii and arabiensis.
-                "sample_count": [randint(20, 60)],
+                "sample_count": [int(rng.integers(20, 60))],
                 "study_id": ["1177-VO-ML-LEHMANN"],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1177-VO-ML-LEHMANN"

@@ -1,13 +1,13 @@
 import itertools
-import random
-
 import plotly.graph_objects as go
 import pytest
 import xarray as xr
 from numpy.testing import assert_array_equal
-
+import numpy as np
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.aim_data import AnophelesAimData
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -88,9 +88,9 @@ def test_aim_calls(aims, ag3_sim_api):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Parametrize sample_query.
@@ -179,9 +179,9 @@ def test_plot_aim_heatmap(aims, ag3_sim_api):
     all_releases = api.releases
     parametrize_sample_sets = [
         None,
-        random.choice(all_sample_sets),
-        random.sample(all_sample_sets, 2),
-        random.choice(all_releases),
+        rng.choice(all_sample_sets),
+        rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        rng.choice(all_releases),
     ]
 
     # Parametrize sample_query.
