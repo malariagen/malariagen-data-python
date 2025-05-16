@@ -10,8 +10,15 @@ def check_plot_frequencies_heatmap(api, frq_df):
     assert isinstance(fig, go.Figure)
 
     # Test max_len behaviour.
+    # Only test if we have more than 1 row, otherwise set max_len to 0
+    # should still raise ValueError
+    if len(frq_df) > 1:
+        test_max_len = len(frq_df) - 1
+    else:
+        test_max_len = 0
+
     with pytest.raises(ValueError):
-        api.plot_frequencies_heatmap(frq_df, show=False, max_len=len(frq_df) - 1)
+        api.plot_frequencies_heatmap(frq_df, show=False, max_len=test_max_len)
 
     # Test index parameter - if None, should use dataframe index.
     fig = api.plot_frequencies_heatmap(frq_df, show=False, index=None, max_len=None)
