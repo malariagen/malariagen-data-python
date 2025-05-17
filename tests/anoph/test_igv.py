@@ -1,5 +1,4 @@
-import random
-
+import numpy as np
 import igv_notebook  # type: ignore
 import pytest
 from pytest_cases import parametrize_with_cases
@@ -7,6 +6,8 @@ from pytest_cases import parametrize_with_cases
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.igv import AnophelesIgv
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -81,7 +82,7 @@ def test_igv(fixture, api: AnophelesIgv):
 @parametrize_with_cases("fixture,api", cases=".")
 def test_view_alignments(fixture, api: AnophelesIgv):
     region = fixture.random_region_str()
-    sample = random.choice(api.sample_metadata()["sample_id"])
+    sample = rng.choice(api.sample_metadata()["sample_id"])
     ret = api.view_alignments(region=region, sample=sample, init=False)
     # No return value to avoid cluttering notebook output.
     assert ret is None
