@@ -35,8 +35,7 @@ for release notes.
 
 ## Developer setup
 
-To get setup for development, see [this
-video](https://youtu.be/QniQi-Hoo9A) and the instructions below.
+To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A), and the instructions below.
 
 Fork and clone this repo:
 
@@ -48,27 +47,27 @@ Install Python, e.g.:
 
 ```bash
 sudo add-apt-repository ppa:deadsnakes/ppa
-sudo apt install python3.9 python3.9-venv
+sudo apt install python3.10 python3.10-venv
 ```
 
 Install pipx, e.g.:
 
 ```bash
-python3.9 -m pip install --user pipx
-python3.9 -m pipx ensurepath
+python3.10 -m pip install --user pipx
+python3.10 -m pipx ensurepath
 ```
 
 Install [poetry](https://python-poetry.org/docs/#installation), e.g.:
 
 ```bash
-pipx install poetry==1.8.2 --python=/usr/bin/python3.9
+pipx install poetry
 ```
 
 Create development environment:
 
 ```bash
 cd malariagen-data-python
-poetry use 3.9
+poetry use 3.10
 poetry install
 ```
 
@@ -81,7 +80,7 @@ poetry shell
 Install pre-commit and pre-commit hooks:
 
 ```bash
-pipx install pre-commit --python=/usr/bin/python3.9
+pipx install pre-commit
 pre-commit install
 ```
 
@@ -97,7 +96,9 @@ Run fast unit tests using simulated data:
 poetry run pytest -v tests/anoph
 ```
 
-To run legacy tests which read data from GCS, you'll need to [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
+To run legacy tests which read data from GCS, you'll need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
+
+Once access has been granted, [install the Google Cloud CLI](https://cloud.google.com/sdk/docs/install). E.g., if on Linux:
 
 ```bash
 ./install_gcloud.sh
