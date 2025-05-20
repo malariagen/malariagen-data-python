@@ -610,12 +610,18 @@ class AnophelesCnvData(
 
                 ly.append(y)
 
-                if len(ly) == 0:
-                    # Bail out, no data for given sample sets and analysis.
-                    raise ValueError("No data found for requested sample sets.")
+            # Check after processing all sample sets for a given contig.
+            if not ly:
+                # Bail out, no data for given sample sets and analysis.
+                raise ValueError("No data found for requested sample sets.")
 
             x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
+
+        # Optionally, check if no contigs yielded data.
+        if not lx:
+            raise ValueError("No data found for requested sample sets across all contigs.")
+
 
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
