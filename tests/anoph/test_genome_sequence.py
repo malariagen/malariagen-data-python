@@ -10,6 +10,9 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.genome_sequence import AnophelesGenomeSequenceData
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -79,7 +82,7 @@ def test_genome_sequence_region(fixture, api):
     for contig in fixture.contigs:
         contig_seq = api.genome_sequence(region=contig)
         # Pick a random start and stop position.
-        start, stop = sorted(np.random.randint(low=1, high=len(contig_seq), size=2))
+        start, stop = sorted(rng.integers(low=1, high=len(contig_seq), size=2))
         region = f"{contig}:{start:,}-{stop:,}"
         seq = api.genome_sequence(region=region)
         assert isinstance(seq, da.Array)
@@ -118,7 +121,7 @@ def test_genome_sequence_virtual_contigs(ag3_sim_api, chrom):
     )
 
     # Test with region.
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     seq_region = api.genome_sequence(region=region)
     assert isinstance(seq_region, da.Array)
