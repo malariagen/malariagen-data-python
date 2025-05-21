@@ -7,18 +7,25 @@ import pytest
 from pytest_cases import parametrize_with_cases
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
-import plotly.graph_objects as go  # type: ignore
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 from malariagen_data.util import compare_series_like
+from .test_frq import (
+    check_plot_frequencies_heatmap,
+    check_plot_frequencies_time_series,
+    check_plot_frequencies_time_series_with_taxa,
+    check_plot_frequencies_time_series_with_areas,
+    check_plot_frequencies_interactive_map,
+)
 
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesSnpFrequencyAnalysis(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -44,6 +51,7 @@ def ag3_sim_api(ag3_sim_fixture):
 def af1_sim_api(af1_sim_fixture):
     return AnophelesSnpFrequencyAnalysis(
         url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
         config_path=_af1.CONFIG_PATH,
         major_version_number=_af1.MAJOR_VERSION_NUMBER,
         major_version_path=_af1.MAJOR_VERSION_PATH,
@@ -315,6 +323,8 @@ def test_allele_frequencies_with_str_cohorts(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    check_plot_frequencies_heatmap(api, df_snp)
+
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     if "cohort_" + cohorts in df_samples:
@@ -334,6 +344,8 @@ def test_allele_frequencies_with_str_cohorts(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -387,6 +399,8 @@ def test_allele_frequencies_with_min_cohort_size(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    check_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -397,6 +411,8 @@ def test_allele_frequencies_with_min_cohort_size(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -444,6 +460,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    check_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -454,6 +472,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -511,6 +531,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    check_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -521,6 +543,8 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -559,6 +583,8 @@ def test_allele_frequencies_with_dict_cohorts(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    check_plot_frequencies_heatmap(api, df_snp)
+
     # Standard checks.
     check_snp_allele_frequencies(
         api=api,
@@ -569,6 +595,8 @@ def test_allele_frequencies_with_dict_cohorts(
 
     # Run the function under test.
     df_aa = api.aa_allele_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_aa)
 
     # Standard checks.
     check_aa_allele_frequencies(
@@ -612,6 +640,9 @@ def test_allele_frequencies_without_drop_invariant(
     # Run the function under test.
     df_snp_a = api.snp_allele_frequencies(drop_invariant=True, **params)
     df_snp_b = api.snp_allele_frequencies(drop_invariant=False, **params)
+
+    check_plot_frequencies_heatmap(api, df_snp_a)
+    check_plot_frequencies_heatmap(api, df_snp_b)
 
     # Standard checks.
     check_snp_allele_frequencies(
@@ -666,6 +697,9 @@ def test_allele_frequencies_without_effects(
     # Run the function under test.
     df_snp_a = api.snp_allele_frequencies(effects=True, **params)
     df_snp_b = api.snp_allele_frequencies(effects=False, **params)
+
+    check_plot_frequencies_heatmap(api, df_snp_a)
+    check_plot_frequencies_heatmap(api, df_snp_b)
 
     # Standard checks.
     check_snp_allele_frequencies(
@@ -766,6 +800,8 @@ def test_allele_frequencies_with_region(
     # Run the function under test.
     df_snp = api.snp_allele_frequencies(**params)
 
+    check_plot_frequencies_heatmap(api, df_snp)
+
     # Basic checks.
     assert isinstance(df_snp, pd.DataFrame)
     assert len(df_snp) > 0
@@ -819,6 +855,9 @@ def test_allele_frequencies_with_dup_samples(
     df_snp_b = api.snp_allele_frequencies(
         sample_sets=[sample_set, sample_set], **params
     )
+
+    check_plot_frequencies_heatmap(api, df_snp_a)
+    check_plot_frequencies_heatmap(api, df_snp_b)
 
     # Expect automatically deduplicate sample sets.
     assert_frame_equal(df_snp_b, df_snp_a)
@@ -876,6 +915,10 @@ def check_snp_allele_frequencies_advanced(
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
+    check_plot_frequencies_time_series(api, ds)
+    check_plot_frequencies_time_series_with_taxa(api, ds)
+    check_plot_frequencies_time_series_with_areas(api, ds)
+    check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     # Check variant variables.
@@ -1063,6 +1106,10 @@ def check_aa_allele_frequencies_advanced(
 
     # Check the result.
     assert isinstance(ds, xr.Dataset)
+    check_plot_frequencies_time_series(api, ds)
+    check_plot_frequencies_time_series_with_taxa(api, ds)
+    check_plot_frequencies_time_series_with_areas(api, ds)
+    check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     expected_variant_vars = (
@@ -1429,248 +1476,3 @@ def test_allele_frequencies_advanced_with_dup_samples(
         api=api,
         sample_sets=sample_sets,
     )
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_plot_frequencies_heatmap(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-):
-    # Pick test parameters at random.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
-    transcript = random_transcript(api=api).name
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
-    )
-
-    # Set up call params.
-    params = dict(
-        transcript=transcript,
-        cohorts=cohorts,
-        min_cohort_size=min_cohort_size,
-        site_mask=site_mask,
-        sample_sets=sample_sets,
-    )
-
-    # Test SNP allele frequencies.
-    df_snp = api.snp_allele_frequencies(**params)
-    fig = api.plot_frequencies_heatmap(df_snp, show=False, max_len=None)
-    assert isinstance(fig, go.Figure)
-
-    # Test amino acid change allele frequencies.
-    df_aa = api.aa_allele_frequencies(**params)
-    fig = api.plot_frequencies_heatmap(df_aa, show=False, max_len=None)
-    assert isinstance(fig, go.Figure)
-
-    # Test max_len behaviour.
-    with pytest.raises(ValueError):
-        api.plot_frequencies_heatmap(df_snp, show=False, max_len=len(df_snp) - 1)
-
-    # Test index parameter - if None, should use dataframe index.
-    fig = api.plot_frequencies_heatmap(df_snp, show=False, index=None, max_len=None)
-    # Not unique.
-    with pytest.raises(ValueError):
-        api.plot_frequencies_heatmap(df_snp, show=False, index="contig", max_len=None)
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_plot_frequencies_time_series(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-):
-    # Pick test parameters at random.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
-    transcript = random_transcript(api=api).name
-    area_by = random.choice(["country", "admin1_iso", "admin2_name"])
-    period_by = random.choice(["year", "quarter", "month"])
-
-    # Compute SNP frequencies.
-    ds = api.snp_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        min_cohort_size=min_cohort_size,
-        site_mask=site_mask,
-    )
-
-    # Trim things down a bit for speed.
-    ds = ds.isel(variants=slice(0, 100))
-
-    # Plot.
-    fig = api.plot_frequencies_time_series(ds, show=False)
-
-    # Test.
-    assert isinstance(fig, go.Figure)
-
-    # Compute amino acid change frequencies.
-    ds = api.aa_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        min_cohort_size=min_cohort_size,
-    )
-
-    # Trim things down a bit for speed.
-    ds = ds.isel(variants=slice(0, 100))
-
-    # Plot.
-    fig = api.plot_frequencies_time_series(ds, show=False)
-
-    # Test.
-    assert isinstance(fig, go.Figure)
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_plot_frequencies_time_series_with_taxa(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-):
-    # Pick test parameters at random.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    transcript = random_transcript(api=api).name
-    area_by = random.choice(["country", "admin1_iso", "admin2_name"])
-    period_by = random.choice(["year", "quarter", "month"])
-
-    # Pick a random taxon and taxa from valid taxa.
-    sample_sets_taxa = (
-        api.sample_metadata(sample_sets=sample_sets)["taxon"].dropna().unique().tolist()
-    )
-    taxon = random.choice(sample_sets_taxa)
-    taxa = random.sample(sample_sets_taxa, random.randint(1, len(sample_sets_taxa)))
-
-    # Compute SNP frequencies.
-    ds = api.snp_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        min_cohort_size=1,  # Don't exclude any samples.
-        site_mask=site_mask,
-    )
-
-    # Trim things down a bit for speed.
-    ds = ds.isel(variants=slice(0, 100))
-
-    # Plot with taxon.
-    fig = api.plot_frequencies_time_series(ds, show=False, taxa=taxon)
-
-    # Test taxon plot.
-    assert isinstance(fig, go.Figure)
-
-    # Plot with taxa.
-    fig = api.plot_frequencies_time_series(ds, show=False, taxa=taxa)
-
-    # Test taxa plot.
-    assert isinstance(fig, go.Figure)
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_plot_frequencies_time_series_with_areas(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-):
-    # Pick test parameters at random.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    transcript = random_transcript(api=api).name
-    area_by = random.choice(["country", "admin1_iso", "admin2_name"])
-    period_by = random.choice(["year", "quarter", "month"])
-
-    # Compute SNP frequencies.
-    ds = api.snp_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        min_cohort_size=1,  # Don't exclude any samples.
-        site_mask=site_mask,
-    )
-
-    # Trim things down a bit for speed.
-    ds = ds.isel(variants=slice(0, 100))
-
-    # Extract cohorts into a DataFrame.
-    cohort_vars = [v for v in ds if str(v).startswith("cohort_")]
-    df_cohorts = ds[cohort_vars].to_dataframe()
-
-    # Pick a random area and areas from valid areas.
-    cohorts_areas = df_cohorts["cohort_area"].dropna().unique().tolist()
-    area = random.choice(cohorts_areas)
-    areas = random.sample(cohorts_areas, random.randint(1, len(cohorts_areas)))
-
-    # Plot with area.
-    fig = api.plot_frequencies_time_series(ds, show=False, areas=area)
-
-    # Test areas plot.
-    assert isinstance(fig, go.Figure)
-
-    # Plot with areas.
-    fig = api.plot_frequencies_time_series(ds, show=False, areas=areas)
-
-    # Test area plot.
-    assert isinstance(fig, go.Figure)
-
-
-@parametrize_with_cases("fixture,api", cases=".")
-def test_plot_frequencies_interactive_map(
-    fixture,
-    api: AnophelesSnpFrequencyAnalysis,
-):
-    import ipywidgets  # type: ignore
-
-    # Pick test parameters at random.
-    all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    site_mask = random.choice(api.site_mask_ids + (None,))
-    min_cohort_size = random.randint(0, 2)
-    transcript = random_transcript(api=api).name
-    area_by = random.choice(["country", "admin1_iso", "admin2_name"])
-    period_by = random.choice(["year", "quarter", "month"])
-
-    # Compute SNP frequencies.
-    ds = api.snp_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        min_cohort_size=min_cohort_size,
-        site_mask=site_mask,
-    )
-
-    # Trim things down a bit for speed.
-    ds = ds.isel(variants=slice(0, 100))
-
-    # Plot.
-    fig = api.plot_frequencies_interactive_map(ds)
-
-    # Test.
-    assert isinstance(fig, ipywidgets.Widget)
-
-    # Compute amino acid change frequencies.
-    ds = api.aa_allele_frequencies_advanced(
-        transcript=transcript,
-        area_by=area_by,
-        period_by=period_by,
-        sample_sets=sample_sets,
-        min_cohort_size=min_cohort_size,
-    )
-
-    # Trim things down a bit for speed.
-    ds = ds.isel(variants=slice(0, 100))
-
-    # Plot.
-    fig = api.plot_frequencies_interactive_map(ds)
-
-    # Test.
-    assert isinstance(fig, ipywidgets.Widget)

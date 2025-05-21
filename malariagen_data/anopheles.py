@@ -12,11 +12,6 @@ import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from malariagen_data.anoph.snp_frq import (
-    AnophelesSnpFrequencyAnalysis,
-)
-
-from .anoph.cnv_frq import AnophelesCnvFrequencyAnalysis
 
 from .anoph import (
     aim_params,
@@ -29,9 +24,9 @@ from .anoph import (
     plotly_params,
     xpehh_params,
 )
+from .anoph.karyotype import AnophelesKaryotypeAnalysis
 from .anoph.aim_data import AnophelesAimData
 from .anoph.base import AnophelesBase
-from .anoph.cnv_data import AnophelesCnvData
 from .anoph.genome_features import AnophelesGenomeFeaturesData
 from .anoph.genome_sequence import AnophelesGenomeSequenceData
 from .anoph.hap_data import AnophelesHapData, hap_params
@@ -87,17 +82,15 @@ class AnophelesDataResource(
     AnophelesH12Analysis,
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
-    AnophelesCnvFrequencyAnalysis,
-    AnophelesSnpFrequencyAnalysis,
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
     PlinkConverter,
     AnophelesIgv,
+    AnophelesKaryotypeAnalysis,
     AnophelesAimData,
     AnophelesHapData,
     AnophelesSnpData,
-    AnophelesCnvData,
     AnophelesSampleMetadata,
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
@@ -108,6 +101,7 @@ class AnophelesDataResource(
     def __init__(
         self,
         url,
+        public_url,
         config_path,
         cohorts_analysis: Optional[str],
         aim_analysis: Optional[str],
@@ -138,9 +132,11 @@ class AnophelesDataResource(
         taxon_colors: Optional[Mapping[str, str]],
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],
+        inversion_tag_path: Optional[str],
     ):
         super().__init__(
             url=url,
+            public_url=public_url,
             config_path=config_path,
             bokeh_output_notebook=bokeh_output_notebook,
             log=log,
@@ -171,6 +167,7 @@ class AnophelesDataResource(
             taxon_colors=taxon_colors,
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
+            inversion_tag_path=inversion_tag_path,
         )
 
     @property
