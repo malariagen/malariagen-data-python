@@ -1,6 +1,7 @@
 import io
 from itertools import cycle
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+import warnings
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -89,17 +90,17 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         path_template: str,
         parse_metadata_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
-        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_sets: List[str],
         aim_analysis: Optional[str] = None,
         cohorts_analysis: Optional[str] = None,
     ) -> pd.DataFrame:
-        # Normalise input parameters.
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
+        # Note: we don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a `RecursionError`.
+        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags`, which uses `_parse_metadata_paths`.
+        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` as a `List[str]` before passing it to this function.
 
         # Obtain paths for all files we need to fetch.
         file_paths: Mapping[str, str] = self._metadata_paths(
-            sample_sets=sample_sets_prepped,
+            sample_sets=sample_sets,
             path_template=path_template,
             aim_analysis=aim_analysis,
             cohorts_analysis=cohorts_analysis,
@@ -113,7 +114,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Parse files into DataFrames.
         dfs = []
-        for sample_set in sample_sets_prepped:
+        for sample_set in sample_sets:
             path = file_paths[sample_set]
             data = files[path]
             df = parse_metadata_func(sample_set, data)
@@ -182,10 +183,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     def general_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/general/{sample_set}/samples.meta.csv",
             parse_metadata_func=self._parse_general_metadata,
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
         )
 
     @property
@@ -323,9 +327,100 @@ class AnophelesSampleMetadata(AnophelesBase):
     def sequence_qc_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/curation/{sample_set}/sequence_qc_stats.csv",
             parse_metadata_func=self._parse_sequence_qc_metadata,
+            sample_sets=prepared_sample_sets,
+        )
+
+    def _parse_surveillance_flags(
+        self, sample_set: str, data: Union[bytes, Exception]
+    ) -> pd.DataFrame:
+        # Get the current warning filters.
+        original_warning_filters = warnings.filters[:]
+
+        # Specify the expected data type for each column.
+        # Note: "bool" is not nullable and does not support `NaN`, which is required when missing data.
+        # Otherwise `NaN` will be mis-translated to `True` when the dtype is applied to the DataFrame.
+        dtype = {
+            "sample_id": "object",
+            "is_surveillance": "boolean",
+        }
+
+        if isinstance(data, bytes):
+            # Read the CSV data.
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+
+            # If there are any nulls in these data, show a warning.
+            if df.isnull().values.any():
+                # Trigger the warning.
+                warnings.simplefilter("default", UserWarning)
+                warnings.warn(
+                    f"WARNING: The surveillance flags data contains null values for sample set {sample_set}",
+                    UserWarning,
+                )
+
+                # Restore the original warning filters.
+                warnings.filters = original_warning_filters
+
+            # Ensure all column names are lower case.
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
+
+            return df
+
+        elif isinstance(data, FileNotFoundError):
+            # Surveillance flags are missing for this sample set.
+            # Show a warning and return a blank DataFrame.
+
+            # Trigger the warning.
+            warnings.simplefilter("default", UserWarning)
+            warnings.warn(
+                f"WARNING: The surveillance flags data is missing for sample set {sample_set}",
+                UserWarning,
+            )
+
+            # Restore the original warning filters.
+            warnings.filters = original_warning_filters
+
+            # Get a copy of the sample ids.
+            df_general = self.general_metadata(sample_sets=sample_set)
+            df = df_general[["sample_id"]].copy()
+
+            # Set each column value to null.
+            df["is_surveillance"] = np.nan
+
+            # Set the data type.
+            df = df.astype(dtype)
+
+            return df
+
+        else:
+            raise data
+
+    @check_types
+    @doc(
+        summary="""
+            Access surveillance flags for one or more sample sets.
+        """,
+        parameters=dict(
+            sample_sets="List of sample sets.",
+        ),
+        returns="""A pandas DataFrame, one row per sample. The columns are:
+        `sample_id` is the identifier of the sample,
+        `is_surveillance` indicates whether the sample can be used for surveillance,
+        """,
+    )
+    def _surveillance_flags(self, sample_sets: List[str]) -> pd.DataFrame:
+        # Note: we don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a `RecursionError`.
+        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags`.
+        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` as a `List[str]` before passing it to this function.
+
+        return self._parse_metadata_paths(
+            path_template="{release_path}/metadata/general/{sample_set}/surveillance.flags.csv",
+            parse_metadata_func=self._parse_surveillance_flags,
             sample_sets=sample_sets,
         )
 
@@ -436,10 +531,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_cohorts_analysis()
 
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv",
             parse_metadata_func=self._parse_cohorts_metadata,
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
             cohorts_analysis=self._cohorts_analysis,
         )
 
@@ -497,10 +595,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_aim_analysis()
 
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/species_calls_aim_{aim_analysis}/{sample_set}/samples.species_aim.csv",
             parse_metadata_func=self._parse_aim_metadata,
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
             aim_analysis=self._aim_analysis,
         )
 
@@ -566,16 +667,21 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
-        # Extra parameter checks.
+        # Check that either sample_query xor sample_indices are provided.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Normalise parameters.
-        prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
-        cache_key = tuple(prepped_sample_sets)
+        # Prepare parameters.
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
 
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
+
+        # Determine the cache key.
+        cache_key = tuple(prepared_sample_sets)
         try:
             # Attempt to retrieve from the cache.
             df_samples = self._cache_sample_metadata[cache_key]
@@ -586,28 +692,36 @@ class AnophelesSampleMetadata(AnophelesBase):
 
                 # Get the general sample metadata.
                 # Note: this includes study and terms-of-use info.
-                df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
+                df_samples = self.general_metadata(sample_sets=prepared_sample_sets)
 
                 # Merge with the sequence QC metadata.
+                # Note: merging can change column dtypes, e.g. due to new NaNs.
                 df_sequence_qc = self.sequence_qc_metadata(
-                    sample_sets=prepped_sample_sets
+                    sample_sets=prepared_sample_sets
                 )
-
-                # Note: merging can change column dtypes
                 df_samples = df_samples.merge(
                     df_sequence_qc, on="sample_id", sort=False, how="left"
                 )
 
+                # Merge with the surveillance flags.
+                # Note: merging can change column dtypes, e.g. due to new NaNs.
+                df_surveillance_flags = self._surveillance_flags(
+                    sample_sets=prepared_sample_sets
+                )
+                df_samples = df_samples.merge(
+                    df_surveillance_flags, on="sample_id", sort=False, how="left"
+                )
+
                 # If available, merge with the AIM metadata.
                 if self._aim_analysis:
-                    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
+                    df_aim = self.aim_metadata(sample_sets=prepared_sample_sets)
                     df_samples = df_samples.merge(
                         df_aim, on="sample_id", sort=False, how="left"
                     )
 
                 # If available, merge with the cohorts metadata.
                 if self._cohorts_analysis:
-                    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
+                    df_cohorts = self.cohorts_metadata(sample_sets=prepared_sample_sets)
                     df_samples = df_samples.merge(
                         df_cohorts, on="sample_id", sort=False, how="left"
                     )
@@ -619,11 +733,11 @@ class AnophelesSampleMetadata(AnophelesBase):
         for on, data in self._extra_metadata:
             df_samples = df_samples.merge(data, how="left", on=on)
 
-        # For convenience, apply a sample selection.
-        if sample_query is not None:
+        # Apply the sample_query or sample_indices, if specified.
+        if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
-            df_samples = df_samples.query(sample_query, **sample_query_options)
+            df_samples = df_samples.query(prepared_sample_query, **sample_query_options)
             df_samples = df_samples.reset_index(drop=True)
         elif sample_indices is not None:
             # Assume it is an indexer.
@@ -843,6 +957,24 @@ class AnophelesSampleMetadata(AnophelesBase):
             ]
         ]
 
+        # If `_unrestricted_use_only` is `True`, then only return data if this sample set has `unrestricted_use` set to `True`.
+        if self._unrestricted_use_only and not self._sample_set_has_unrestricted_use(
+            sample_set=sample_set
+        ):
+            # Remove all the data from the DataFrame and reset its index.
+            df = df.iloc[0:0].reset_index(drop=True)
+
+        # If `_surveillance_use_only` is `True`, then only return samples that have `is_surveillance` set to `True`.
+        if self._surveillance_use_only:
+            surveillance_flags_df = self._surveillance_flags(sample_sets=[sample_set])
+            df = df.merge(
+                surveillance_flags_df[["sample_id", "is_surveillance"]],
+                on="sample_id",
+                how="left",
+            )
+            df = df[df["is_surveillance"]]
+            df = df.drop(columns=["is_surveillance"])
+
         return df
 
     @check_types
@@ -883,6 +1015,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Normalise sample sets.
         sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        sample_query = self._prep_sample_query_param(sample_query=sample_query)
 
         if sample_query is not None:
             # Resolve query to a list of integers for more cache hits - we
