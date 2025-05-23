@@ -138,35 +138,64 @@ class AnophelesAimData(
     ) -> xr.Dataset:
         self._require_aim_analysis()
 
-        # Normalise parameters.
-        aims = self._prep_aims_param(aims=aims)
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        # Prepare parameters.
+        prepared_aims = self._prep_aims_param(aims=aims)
+        del aims
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
-        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
         del sample_query
 
-        # Access SNP calls and concatenate multiple sample sets and/or regions.
-        ly = []
-        for s in sample_sets_prepped:
-            y = self._aim_calls_dataset(
-                aims=aims,
-                sample_set=s,
+        # Start a list of AIM calls Datasets, one for each sample set.
+        aim_calls_datasets = []
+
+        # For each sample set...
+        for sample_set in prepared_sample_sets:
+            # Get the AIM calls for all samples in the set, as a Xarray Dataset.
+            aim_calls_dataset = self._aim_calls_dataset(
+                aims=prepared_aims,
+                sample_set=sample_set,
             )
-            ly.append(y)
+
+            # Add this Dataset to the list.
+            aim_calls_datasets.append(aim_calls_dataset)
 
         # Concatenate data from multiple sample sets.
-        ds = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+        ds = simple_xarray_concat(aim_calls_datasets, dim=DIM_SAMPLE)
 
-        # Handle sample query.
-        if sample_query_prepped is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
+        # If there's a sample query...
+        if prepared_sample_query is not None:
+            # Get the relevant sample metadata.
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
+
+            # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
+
+            # Determine which samples match the sample query.
             loc_samples = df_samples.eval(
-                sample_query_prepped, **sample_query_options
+                prepared_sample_query, **sample_query_options
             ).values
+
+            # Raise an error if no samples match the sample query.
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query_prepped!r}")
-            ds = ds.isel(samples=loc_samples)
+                raise ValueError(
+                    f"No samples found for query {prepared_sample_query!r}"
+                )
+
+            # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
+            relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
+
+            # Get all the sample ids from the unfiltered AIM calls Dataset.
+            ds_sample_ids = ds.coords["sample_id"].values
+
+            # Get the indices of samples in the AIM calls Dataset that match the relevant sample ids.
+            # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
+            relevant_sample_indices = np.where(
+                np.isin(ds_sample_ids, relevant_sample_ids)
+            )[0]
+
+            # Select only the relevant samples from the AIM calls Dataset.
+            ds = ds.isel(samples=relevant_sample_indices)
 
         return ds
 

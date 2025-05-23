@@ -210,23 +210,24 @@ class Ag3(AnophelesDataResource):
         3.0 release, excluding the lab crosses."""
         return [
             x
-            for x in self.sample_sets(release="3.0")["sample_set"].tolist()
+            for x in self._available_sample_sets(release="3.0")["sample_set"].tolist()
             if x != "AG1000G-X"
         ]
 
     def __repr__(self):
         text = (
             f"<MalariaGEN Ag3 API client>\n"
-            f"Storage URL             : {self._url}\n"
-            f"Data releases available : {', '.join(self.releases)}\n"
-            f"Results cache           : {self._results_cache}\n"
-            f"Cohorts analysis        : {self._cohorts_analysis}\n"
-            f"AIM analysis            : {self._aim_analysis}\n"
-            f"Site filters analysis   : {self._site_filters_analysis}\n"
-            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
-            f"Client location         : {self.client_location}\n"
+            f"Storage URL                           : {self._url}\n"
+            f"Data releases available               : {', '.join(self._available_releases)}\n"
+            f"Results cache                         : {self._results_cache}\n"
+            f"Cohorts analysis                      : {self._cohorts_analysis}\n"
+            f"AIM analysis                          : {self._aim_analysis}\n"
+            f"Site filters analysis                 : {self._site_filters_analysis}\n"
+            f"Software version                      : malariagen_data {malariagen_data.__version__}\n"
+            f"Client location                       : {self.client_location}\n"
             f"Data filtered to unrestricted use only: {self._unrestricted_use_only}\n"
             f"Data filtered to surveillance use only: {self._surveillance_use_only}\n"
+            f"Relevant data releases                : {', '.join(self.releases)}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
@@ -260,7 +261,7 @@ class Ag3(AnophelesDataResource):
                         <th style="text-align: left">
                             Data releases available
                         </th>
-                        <td>{', '.join(self.releases)}</td>
+                        <td>{', '.join(self._available_releases)}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
@@ -310,6 +311,12 @@ class Ag3(AnophelesDataResource):
                         </th>
                         <td>{self._surveillance_use_only}</td>
                     </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Relevant data releases
+                        </th>
+                        <td>{', '.join(self.releases)}</td>
+                    </tr>
                 </tbody>
             </table>
         """
@@ -357,6 +364,34 @@ class Ag3(AnophelesDataResource):
             debug("drop 'phenotype' column, not used")
             df.drop("phenotype", axis="columns", inplace=True)
 
+            # Identify the crosses sample set.
+            # Note: this sample set identifier is also hard-coded in `v3_wild()`.
+            crosses_sample_set = "AG1000G-X"
+
+            # If `_unrestricted_use_only` is `True`, then only return data if the crosses sample set has `unrestricted_use` set to `True`.
+            if (
+                self._unrestricted_use_only
+                and not self._sample_set_has_unrestricted_use(
+                    sample_set=crosses_sample_set
+                )
+            ):
+                # Remove all the data from the DataFrame and reset its index.
+                df = df.iloc[0:0].reset_index(drop=True)
+
+            # If `_surveillance_use_only` is `True`, then only return samples that have `is_surveillance` set to `True`.
+            if self._surveillance_use_only:
+                crosses_surveillance_flags_df = self._surveillance_flags(
+                    sample_sets=[crosses_sample_set]
+                )
+                df = df.merge(
+                    crosses_surveillance_flags_df[["sample_id", "is_surveillance"]],
+                    on="sample_id",
+                    how="left",
+                )
+                df = df[df["is_surveillance"]]
+                df = df.drop(columns=["is_surveillance"])
+
+            # Cache the cross metadata.
             self._cache_cross_metadata = df
 
         return self._cache_cross_metadata.copy()
