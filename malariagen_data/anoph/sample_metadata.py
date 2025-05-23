@@ -405,6 +405,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         summary="""
             Access surveillance flags for one or more sample sets.
         """,
+        parameters=dict(
+            sample_sets="List of sample sets.",
+        ),
         returns="""A pandas DataFrame, one row per sample. The columns are:
         `sample_id` is the identifier of the sample,
         `is_surveillance` indicates whether the sample can be used for surveillance,
