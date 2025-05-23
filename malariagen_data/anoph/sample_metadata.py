@@ -90,13 +90,13 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         path_template: str,
         parse_metadata_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
-        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_sets: List[str],
         aim_analysis: Optional[str] = None,
         cohorts_analysis: Optional[str] = None,
     ) -> pd.DataFrame:
-        # Warning: don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a RecursionError.
-        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags, which uses `_parse_metadata_paths`.
-        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` before passing it to this function.
+        # Note: we don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a `RecursionError`.
+        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags`, which uses `_parse_metadata_paths`.
+        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` as a `List[str]` before passing it to this function.
 
         # Obtain paths for all files we need to fetch.
         file_paths: Mapping[str, str] = self._metadata_paths(
@@ -410,10 +410,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         `is_surveillance` indicates whether the sample can be used for surveillance,
         """,
     )
-    def _surveillance_flags(self, sample_sets: base_params.sample_sets) -> pd.DataFrame:
-        # Warning: don't use `_prep_sample_sets_param` here, because `_prep_sample_sets_param` uses `_relevant_sample_sets`,
-        # which uses this function, which would cause a RecursionError due to cyclic dependency.
-        # Instead, prepare the `sample_sets` parameter before calling this function.
+    def _surveillance_flags(self, sample_sets: List[str]) -> pd.DataFrame:
+        # Note: we don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a `RecursionError`.
+        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags`.
+        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` as a `List[str]` before passing it to this function.
 
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/general/{sample_set}/surveillance.flags.csv",

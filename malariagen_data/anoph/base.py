@@ -405,14 +405,14 @@ class AnophelesBase:
 
         if self._cache_releases is None:
             # Start a list of the relevant releases.
-            relevant_releases = []
+            relevant_releases = []  # type: List[str]
 
             # Get the available releases, which depends on the `pre` setting.
             available_releases = self._available_releases
 
             # If there are no criteria, then all available releases are relevant.
             if not self._unrestricted_use_only and not self._surveillance_use_only:
-                relevant_releases = available_releases
+                relevant_releases = list(available_releases)
 
             elif self._unrestricted_use_only and not self._surveillance_use_only:
                 # Get the releases with unrestricted data.
@@ -494,6 +494,9 @@ class AnophelesBase:
             location = "unknown"
         return location
 
+    def _surveillance_flags(self, sample_sets: List[str]):
+        raise NotImplementedError("Subclasses must implement `_surveillance_flags`.")
+
     def _release_has_unrestricted_data(self, *, release: str):
         """Return `True` if the specified release has any unrestricted data. Otherwise return `False`."""
 
@@ -526,7 +529,6 @@ class AnophelesBase:
         sample_sets = sample_sets_manifest_df["sample_set"].to_list()
 
         # Determine whether any of the sample sets have surveillance data.
-        # Note: rather than using `_surveillance_flags`, to avoid unnecessary processing, we only need to find one sample set.
         release_has_surveillance_data = False
         for sample_set in sample_sets:
             if self._sample_set_has_surveillance_data(sample_set=sample_set):
