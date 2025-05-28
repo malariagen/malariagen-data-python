@@ -39,7 +39,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
-        self._aim_metadata_dtype: Dict[str, Any] = dict()
+        self._aim_metadata_dtype: Dict[str, Union[str, type, np.dtype]] = dict()
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
@@ -140,6 +140,16 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "longitude": "float64",
                 "sex_call": "object",
             }
+            # Mapping of string dtypes to actual dtypes
+            dtype_map = {
+                "object": str,
+                "int64": np.int64,
+                "float64": np.float64,
+            }
+
+            # Convert string dtypes to actual dtypes
+            dtype = {col: dtype_map.get(dtype[col], str) for col in dtype}
+
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
