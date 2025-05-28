@@ -10,6 +10,9 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.genome_features import AnophelesGenomeFeaturesData
 from malariagen_data.util import Region, resolve_region
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -145,7 +148,7 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
         # If there are no genes, we cannot label them.
         if not genes_df.empty:
             # Get a random number of genes to sample.
-            random_genes_n = np.random.randint(low=1, high=len(genes_df) + 1)
+            random_genes_n = rng.integers(low=1, high=len(genes_df) + 1)
 
             # Get a random sample of genes.
             random_sample_genes_df = genes_df.sample(n=random_genes_n)
@@ -166,7 +169,7 @@ def test_plot_genes_with_gene_labels(fixture, api: AnophelesGenomeFeaturesData):
 def test_plot_transcript(fixture, api: AnophelesGenomeFeaturesData):
     for contig in fixture.contigs:
         df_transcripts = api.genome_features(region=contig).query("type == 'mRNA'")
-        transcript = np.random.choice(df_transcripts["ID"].values)
+        transcript = rng.choice(df_transcripts["ID"].values)
         fig = api.plot_transcript(transcript=transcript, show=False)
         assert isinstance(fig, bokeh.plotting.figure)
 
@@ -212,7 +215,7 @@ def test_genome_features_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
     df = api.genome_features(region=region)
     assert isinstance(df, pd.DataFrame)

@@ -12,6 +12,10 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.hap_data import AnophelesHapData
 
 
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
+
+
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesHapData(
@@ -466,7 +470,7 @@ def test_haplotypes_with_cohort_size_param(
     analysis = api.phasing_analysis_ids[0]
 
     # Parametrize over cohort_size.
-    parametrize_cohort_size = [random.randint(1, 10), random.randint(10, 50), 1_000]
+    parametrize_cohort_size = [rng.integers(1, 10), rng.integers(10, 50), 1_000]
     for cohort_size in parametrize_cohort_size:
         check_haplotypes(
             fixture=fixture,
@@ -493,8 +497,8 @@ def test_haplotypes_with_min_cohort_size_param(
 
     # Parametrize over min_cohort_size.
     parametrize_min_cohort_size = [
-        random.randint(1, 10),
-        random.randint(10, 50),
+        rng.integers(1, 10),
+        rng.integers(10, 50),
         1_000,
     ]
     for min_cohort_size in parametrize_min_cohort_size:
@@ -523,8 +527,8 @@ def test_haplotypes_with_max_cohort_size_param(
 
     # Parametrize over max_cohort_size.
     parametrize_max_cohort_size = [
-        random.randint(1, 10),
-        random.randint(10, 50),
+        rng.integers(1, 10),
+        rng.integers(10, 50),
         1_000,
     ]
     for max_cohort_size in parametrize_max_cohort_size:
@@ -605,7 +609,9 @@ def test_haplotypes_virtual_contigs(
 
         # Test with region.
         seq = api.genome_sequence(region=chrom)
-        start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+        start, stop = sorted(
+            [int(x) for x in rng.integers(low=1, high=len(seq), size=2)]
+        )
         region = f"{chrom}:{start:,}-{stop:,}"
 
         # Standard checks.
@@ -677,7 +683,7 @@ def test_haplotype_sites_with_virtual_contigs(ag3_sim_api, chrom):
 
     # Test with region.
     seq = api.genome_sequence(region=chrom)
-    start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+    start, stop = sorted(rng.integers(low=1, high=len(seq), size=2))
     region = f"{chrom}:{start:,}-{stop:,}"
 
     # Standard checks.

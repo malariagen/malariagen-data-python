@@ -19,6 +19,8 @@ from .test_frq import (
     check_plot_frequencies_interactive_map,
 )
 
+rng = np.random.default_rng(seed=42)
+
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
@@ -97,7 +99,7 @@ def test_gene_cnv_frequencies_with_str_cohorts(
     region = random.choice(api.contigs)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
 
     # Set up call params.
     params = dict(
@@ -302,7 +304,7 @@ def test_gene_cnv_frequencies_with_dict_cohorts(
 ):
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     region = random.choice(api.contigs)
 
     # Create cohorts by country.
@@ -343,7 +345,7 @@ def test_gene_cnv_frequencies_without_drop_invariant(
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     region = random.choice(api.contigs)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
@@ -398,7 +400,7 @@ def test_gene_cnv_frequencies_with_bad_region(
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
+    min_cohort_size = rng.integers(0, 2)
     cohorts = random.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
@@ -718,7 +720,7 @@ def check_gene_cnv_frequencies_advanced(
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
         sample_sets = random.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = random.randint(0, 2)
+        min_cohort_size = rng.integers(0, 2)
 
     # Run function under test.
     ds = api.gene_cnv_frequencies_advanced(

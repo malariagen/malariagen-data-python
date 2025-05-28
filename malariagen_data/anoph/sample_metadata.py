@@ -1,6 +1,17 @@
 import io
 from itertools import cycle
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -11,6 +22,7 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import check_types
 from . import base_params, map_params, plotly_params
 from .base import AnophelesBase
+from numpy.typing import NDArray
 
 
 class AnophelesSampleMetadata(AnophelesBase):
@@ -891,8 +903,11 @@ class AnophelesSampleMetadata(AnophelesBase):
             # integer indices instead.
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
-            sample_indices = np.nonzero(loc_samples)[0].tolist()
+            loc_samples = cast(
+                NDArray[Any],
+                df_samples.eval(sample_query, **sample_query_options).values,
+            )
+            sample_indices = cast(List[int], np.nonzero(loc_samples)[0].tolist())
 
         return sample_sets, sample_indices
 
