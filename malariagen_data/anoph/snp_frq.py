@@ -3,6 +3,7 @@ import warnings
 
 import allel  # type: ignore
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 import xarray as xr
@@ -518,8 +519,8 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Set up main event variables.
         n_variants, n_cohorts = len(variant_position), len(df_cohorts)
-        count = np.zeros((n_variants, n_cohorts), dtype=int)
-        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
+        count: npt.NDArray[np.float64] = np.zeros((n_variants, n_cohorts), dtype=int)
+        nobs: npt.NDArray[np.float64] = np.zeros((n_variants, n_cohorts), dtype=int)
 
         # Build event count and nobs for each cohort.
         cohorts_iterator = self._progress(
