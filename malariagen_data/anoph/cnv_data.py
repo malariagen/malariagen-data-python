@@ -200,6 +200,10 @@ class AnophelesCnvData(
         prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
         regions: List[Region] = parse_multi_region(self, region)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
         del region
 
         with self._spinner("Access CNV HMM data"):
@@ -244,7 +248,6 @@ class AnophelesCnvData(
             ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
             debug("handle sample query")
-
             # If there's a sample query...
             if prepared_sample_query is not None:
                 # Get the relevant sample metadata.
@@ -640,16 +643,20 @@ class AnophelesCnvData(
         # CNV alleles have unknown start or end coordinates.
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        sample_query = self._prep_sample_query_param(sample_query=sample_query)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
         if isinstance(contig, str):
             contig = [contig]
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
 
         debug("access data and concatenate as needed")
         lx = []
         for c in contig:
             ly = []
-            for s in sample_sets:
+            for s in prepared_sample_sets:
                 y = self._cnv_discordant_read_calls_dataset(
                     contig=c,
                     sample_set=s,
@@ -673,30 +680,39 @@ class AnophelesCnvData(
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
-        if sample_query is not None:
-            debug("load sample metadata")
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
 
-            if df_samples.empty:
+        # If there's a sample query...
+        if prepared_sample_query is not None:
+            debug("load sample metadata")
+            # Get the relevant sample metadata.
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
+
+            # If there are no sample query options, then default to an empty dict.
+            sample_query_options = sample_query_options or {}
+
+            # Determine which samples match the sample query.
+            loc_samples = df_samples.eval(prepared_sample_query, **sample_query_options)
+
+            # Raise an error if no samples match the sample query.
+            if not loc_samples.any():
                 raise ValueError(
-                    f"No samples found for sample sets {sample_sets!r}. These samples might be unavailable or irrelevant with respect to settings."
+                    f"No samples found for query {prepared_sample_query!r}"
                 )
 
-            debug("align sample metadata with CNV data")
-            cnv_samples = ds["sample_id"].values.tolist()
-            df_samples_cnv = (
-                df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
-            )
+            # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
+            relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
 
-            debug("apply the query")
-            sample_query_options = sample_query_options or {}
-            loc_query_samples = df_samples_cnv.eval(
-                sample_query, **sample_query_options
-            ).values
-            if np.count_nonzero(loc_query_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+            # Get all the sample ids from the unfiltered CNV discordant reads Dataset.
+            ds_sample_ids = ds.coords["sample_id"].values
 
-            ds = ds.isel(samples=loc_query_samples)
+            # Get the indices of samples in the CNV discordant reads Dataset that match the relevant sample ids.
+            # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
+            relevant_sample_indices = np.where(
+                np.isin(ds_sample_ids, relevant_sample_ids)
+            )[0]
+
+            # Select only the relevant samples from the CNV discordant reads Dataset.
+            ds = ds.isel(samples=relevant_sample_indices)
 
         return ds
 
