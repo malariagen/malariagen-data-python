@@ -2,6 +2,7 @@ import io
 from itertools import cycle
 from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
 import warnings
+from collections import defaultdict
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -141,6 +142,8 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "longitude": "float64",
                 "sex_call": "object",
             }
+            #  `dtype` of `dict[str, str]` is incompatible with `read_csv`
+            dtype = defaultdict(str, dtype)
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
@@ -349,6 +352,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             "sample_id": "object",
             "is_surveillance": "boolean",
         }
+        #  `dtype` of `dict[str, str]` is incompatible with `read_csv`
+        dtype = defaultdict(str, dtype)
 
         if isinstance(data, bytes):
             # Read the CSV data.
