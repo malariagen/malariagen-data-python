@@ -42,7 +42,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
         #  `dtype` of `dict[str, Any]` is incompatible with `read_csv`
-        self._aim_metadata_dtype: defaultdict[str, Any] = dict()
+        self._aim_metadata_dtype: defaultdict[str, Any] = defaultdict()
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
