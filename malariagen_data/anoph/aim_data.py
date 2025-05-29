@@ -172,12 +172,10 @@ class AnophelesAimData(
             sample_query_options = sample_query_options or {}
 
             # Determine which samples match the sample query.
-            loc_samples = df_samples.eval(
-                prepared_sample_query, **sample_query_options
-            ).values
+            loc_samples = df_samples.eval(prepared_sample_query, **sample_query_options)
 
             # Raise an error if no samples match the sample query.
-            if np.count_nonzero(loc_samples) == 0:
+            if not loc_samples.any():
                 raise ValueError(
                     f"No samples found for query {prepared_sample_query!r}"
                 )

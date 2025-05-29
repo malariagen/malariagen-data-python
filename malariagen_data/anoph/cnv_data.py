@@ -256,10 +256,10 @@ class AnophelesCnvData(
                 # Determine which samples match the sample query.
                 loc_samples = df_samples.eval(
                     prepared_sample_query, **sample_query_options
-                ).values
+                )
 
                 # Raise an error if no samples match the sample query.
-                if np.count_nonzero(loc_samples) == 0:
+                if not loc_samples.any():
                     raise ValueError(
                         f"No samples found for query {prepared_sample_query!r}"
                     )
@@ -435,7 +435,11 @@ class AnophelesCnvData(
 
         debug("normalise parameters")
         regions: List[Region] = parse_multi_region(self, region)
+        prepared_sample_set = self._prep_sample_sets_param(sample_sets=sample_set)[0]
+
+        # Delete original parameters to prevent accidental use.
         del region
+        del sample_set
 
         debug("access data and concatenate as needed")
         lx = []
@@ -443,7 +447,7 @@ class AnophelesCnvData(
             debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
-                sample_set=sample_set,
+                sample_set=prepared_sample_set,
                 analysis=analysis,
                 inline_array=inline_array,
                 chunks=chunks,
@@ -461,6 +465,38 @@ class AnophelesCnvData(
 
             lx.append(x)
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+
+        # Filter the samples using this default sample query.
+        # For example, this might filter out non-surveillance samples.
+        prepared_sample_query = self._prep_sample_query_param(sample_query="")
+
+        # Get the relevant sample metadata.
+        df_samples = self.sample_metadata(sample_sets=prepared_sample_set)
+
+        # Determine which samples match the sample query.
+        if prepared_sample_query != "":
+            loc_samples = df_samples.eval(prepared_sample_query)
+        else:
+            loc_samples = pd.Series(True, index=df_samples.index)
+
+        # Raise an error if no samples match the sample query.
+        if not loc_samples.any():
+            raise ValueError(f"No samples found for query {prepared_sample_query!r}")
+
+        # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
+        relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
+
+        # Get all the sample ids from the unfiltered CNV coverage calls Dataset.
+        ds_sample_ids = ds.coords["sample_id"].values
+
+        # Get the indices of samples in the CNV coverage calls Dataset that match the relevant sample ids.
+        # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
+        relevant_sample_indices = np.where(np.isin(ds_sample_ids, relevant_sample_ids))[
+            0
+        ]
+
+        # Select only the relevant samples from the CNV coverage calls Dataset.
+        ds = ds.isel(samples=relevant_sample_indices)
 
         return ds
 
