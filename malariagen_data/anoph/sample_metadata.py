@@ -1,8 +1,18 @@
 import io
 from itertools import cycle
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    cast,
+)
 import warnings
-from collections import defaultdict
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -41,11 +51,21 @@ class AnophelesSampleMetadata(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
-        #  `dtype` of `dict[str, Any]` is incompatible with `read_csv`
-        self._aim_metadata_dtype: defaultdict[str, Any] = defaultdict()
+        #  `dtype` of `dict[str, Any]` is incompatible with `pd.read_csv`
+        self._aim_metadata_dtype: Mapping[
+            str, Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype]
+        ] = {}
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
-            self._aim_metadata_dtype.update(aim_metadata_dtype)
+            self._aim_metadata_dtype.update(
+                cast(
+                    Mapping[
+                        str,
+                        Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype],
+                    ],
+                    aim_metadata_dtype,
+                )
+            )
         self._aim_metadata_dtype["sample_id"] = "object"
 
         # Set up taxon colors.
@@ -143,9 +163,14 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "longitude": "float64",
                 "sex_call": "object",
             }
-            #  `dtype` of `dict[str, str]` is incompatible with `read_csv`
-            dtype = defaultdict(str, dtype)
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            #  `dtype` of `dict[str, str]` is incompatible with `pd.read_csv`
+            dtype_mapping = cast(
+                Mapping[
+                    str, Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype]
+                ],
+                dtype,
+            )
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype_mapping, na_values="")
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -349,12 +374,15 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Specify the expected data type for each column.
         # Note: "bool" is not nullable and does not support `NaN`, which is required when missing data.
         # Otherwise `NaN` will be mis-translated to `True` when the dtype is applied to the DataFrame.
-        dtype = {
+        dtype_dict = {
             "sample_id": "object",
             "is_surveillance": "boolean",
         }
         #  `dtype` of `dict[str, str]` is incompatible with `read_csv`
-        dtype = defaultdict(str, dtype)
+        dtype = cast(
+            Mapping[str, Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype]],
+            dtype_dict,
+        )
 
         if isinstance(data, bytes):
             # Read the CSV data.
