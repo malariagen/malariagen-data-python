@@ -778,10 +778,10 @@ class AnophelesBase:
 
         try:
             return self._cache_sample_set_to_release[sample_set]
-        except KeyError:
+        except KeyError as e:
             raise ValueError(
                 f"No release found for sample set {sample_set!r}. This sample set might be unavailable or irrelevant with respect to settings."
-            )
+            ) from e
 
     @check_types
     @doc(
@@ -794,8 +794,8 @@ class AnophelesBase:
             self._cache_sample_set_to_study = df_sample_sets["study_id"].to_dict()
         try:
             return self._cache_sample_set_to_study[sample_set]
-        except KeyError:
-            raise ValueError(f"No study ID found for sample set {sample_set!r}")
+        except KeyError as e:
+            raise ValueError(f"No study ID found for sample set {sample_set!r}") from e
 
     @check_types
     @doc(
@@ -810,8 +810,10 @@ class AnophelesBase:
             ].to_dict(orient="index")
         try:
             return self._cache_sample_set_to_study_info[sample_set]
-        except KeyError:
-            raise ValueError(f"No study info found for sample set {sample_set!r}")
+        except KeyError as e:
+            raise ValueError(
+                f"No study info found for sample set {sample_set!r}"
+            ) from e
 
     @check_types
     @doc(
@@ -830,10 +832,10 @@ class AnophelesBase:
             ].to_dict(orient="index")
         try:
             return self._cache_sample_set_to_terms_of_use_info[sample_set]
-        except KeyError:
+        except KeyError as e:
             raise ValueError(
                 f"No terms-of-use info found for sample set {sample_set!r}"
-            )
+            ) from e
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
