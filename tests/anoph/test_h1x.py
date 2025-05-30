@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 import numpy as np
@@ -8,6 +7,8 @@ import bokeh.models
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.h1x import AnophelesH1XAnalysis, haplotype_joint_frequencies
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -141,13 +142,13 @@ def test_h1x_gwss_with_default_analysis(fixture, api: AnophelesH1XAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
     h1x_params = dict(
-        contig=random.choice(api.contigs),
+        contig=rng.choice(api.contigs),
         sample_sets=all_sample_sets,
-        window_size=random.randint(100, 500),
+        window_size=int(rng.integers(100, 500)),
         min_cohort_size=1,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
@@ -162,10 +163,10 @@ def test_h1x_gwss_with_analysis(fixture, api: AnophelesH1XAnalysis):
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     all_countries = api.sample_metadata()["country"].unique().tolist()
-    country1, country2 = random.sample(all_countries, 2)
+    country1, country2 = rng.choice(all_countries, 2, replace=False).tolist()
     cohort1_query = f"country == '{country1}'"
     cohort2_query = f"country == '{country2}'"
-    contig = random.choice(api.contigs)
+    contig = rng.choice(api.contigs)
 
     for analysis in api.phasing_analysis_ids:
         # Check if any samples available for the given phasing analysis.
@@ -198,7 +199,7 @@ def test_h1x_gwss_with_analysis(fixture, api: AnophelesH1XAnalysis):
                 analysis=analysis,
                 contig=contig,
                 sample_sets=all_sample_sets,
-                window_size=random.randint(100, 500),
+                window_size=int(rng.integers(100, 500)),
                 min_cohort_size=min(n1, n2),
                 cohort1_query=cohort1_query,
                 cohort2_query=cohort2_query,
