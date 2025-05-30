@@ -286,7 +286,7 @@ def validate_metadata(df, expected_columns):
 
     # Check column types.
     for c in df.columns:
-        assert df[c].dtype.kind == expected_columns[c]
+        assert df[c].dtype.kind == expected_columns[c], c
 
 
 @parametrize_with_cases("fixture,api", cases=".")

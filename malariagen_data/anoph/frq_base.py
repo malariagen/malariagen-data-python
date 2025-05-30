@@ -243,7 +243,8 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         # Indexing.
         if index is None:
-            # `list[Hashable]` is incompatible with `list`
+            # `list[Hashable]` is incompatible with the param for `list`
+            # Convert `df.index.names` to a `list[str]` instead.
             index_names_as_list = [str(name) for name in df.index.names]
             index = list(index_names_as_list)
         df = df.reset_index().copy()
