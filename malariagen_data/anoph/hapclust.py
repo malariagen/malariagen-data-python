@@ -212,12 +212,16 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         # Normalize params for consistent hash value.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         region_prepped = self._prep_region_cache_param(region=region)
+        del region
         params = dict(
             region=region_prepped,
             analysis=analysis,
             sample_sets=sample_sets_prepped,
-            sample_query=sample_query,
+            sample_query=sample_query_prepped,
             sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             random_seed=random_seed,

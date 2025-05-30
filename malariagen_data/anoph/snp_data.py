@@ -464,6 +464,8 @@ class AnophelesSnpData(
         # Normalise parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         regions: List[Region] = parse_multi_region(self, region)
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
@@ -514,12 +516,14 @@ class AnophelesSnpData(
             d = da_compress(loc_sites, d, axis=0)
 
         # Apply sample selection if requested.
-        if sample_query is not None:
+        if sample_query_prepped is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
+            loc_samples = df_samples.eval(
+                sample_query_prepped, **sample_query_options
+            ).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query_prepped!r}")
             d = da.compress(loc_samples, d, axis=1)
         elif sample_indices is not None:
             d = da.take(d, sample_indices, axis=1)
@@ -1007,6 +1011,8 @@ class AnophelesSnpData(
             self._prep_sample_sets_param(sample_sets=sample_sets)
         )
         del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         if sample_indices is not None:
             sample_indices_prepped: Optional[Tuple[int, ...]] = tuple(sample_indices)
         else:
@@ -1020,7 +1026,7 @@ class AnophelesSnpData(
         return self._snp_calls(
             regions=regions,
             sample_sets=sample_sets_prepped,
-            sample_query=sample_query,
+            sample_query=sample_query_prepped,
             sample_query_options=sample_query_options,
             sample_indices=sample_indices_prepped,
             site_mask=site_mask_prepped,
