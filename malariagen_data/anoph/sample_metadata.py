@@ -921,7 +921,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             df_samples = self.sample_metadata(sample_sets=sample_sets)
             sample_query_options = sample_query_options or {}
             loc_samples = (
-                df_samples.eval(sample_query, **sample_query_options).values,
+                df_samples.eval(sample_query, **sample_query_options).values
             )
             sample_indices = np.nonzero(loc_samples)[0].tolist()
 
