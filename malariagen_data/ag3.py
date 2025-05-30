@@ -77,6 +77,18 @@ TAXON_COLORS = {
     "unassigned": "black",
 }
 
+# Note: These column names will be treated as case-insensitive,
+# because these column names and the column names from the CSV
+# will be converted to lowercase before applying these dtypes.
+AIM_METADATA_DTYPE = {
+    "aim_species_fraction_arab": "float64",
+    "aim_species_fraction_colu": "float64",
+    "aim_species_fraction_colu_no2l": "float64",
+    "aim_species_gambcolu_arabiensis": "object",
+    "aim_species_gambiae_coluzzii": "object",
+    "aim_species": "object",
+}
+
 
 class Ag3(AnophelesDataResource):
     """Provides access to data from Ag3.x releases.
@@ -162,14 +174,7 @@ class Ag3(AnophelesDataResource):
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=aim_analysis,
-            aim_metadata_dtype={
-                "aim_species_fraction_arab": "float64",
-                "aim_species_fraction_colu": "float64",
-                "aim_species_fraction_colu_no2l": "float64",
-                "aim_species_gambcolu_arabiensis": "object",
-                "aim_species_gambiae_coluzzii": "object",
-                "aim_species": "object",
-            },
+            aim_metadata_dtype=AIM_METADATA_DTYPE,
             aim_ids=("gambcolu_vs_arab", "gamb_vs_colu"),
             aim_palettes=AIM_PALETTES,
             site_filters_analysis=site_filters_analysis,

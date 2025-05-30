@@ -3,6 +3,7 @@ from itertools import cycle
 from typing import (
     Any,
     Callable,
+    DefaultDict,
     Dict,
     List,
     Mapping,
@@ -10,8 +11,8 @@ from typing import (
     Sequence,
     Tuple,
     Union,
-    cast,
 )
+from collections import defaultdict
 import warnings
 
 import ipyleaflet  # type: ignore
@@ -51,21 +52,22 @@ class AnophelesSampleMetadata(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
-        #  `dtype` of `dict[str, Any]` is incompatible with `pd.read_csv`
-        self._aim_metadata_dtype: Mapping[
-            str, Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype]
-        ] = {}
+        self._aim_metadata_dtype: Optional[Mapping[str, Any]] = {}
+
+        # Only apply the `aim_metadata_dtype` if it is a type of `Mapping`.
         if isinstance(aim_metadata_dtype, Mapping):
-            self._aim_metadata_columns = list(aim_metadata_dtype.keys())
-            self._aim_metadata_dtype.update(
-                cast(
-                    Mapping[
-                        str,
-                        Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype],
-                    ],
-                    aim_metadata_dtype,
-                )
-            )
+            # Convert all of the column names to lowercase.
+            prepared_aim_metadata_dtype_dict = {
+                k.lower(): v for k, v in aim_metadata_dtype.items()
+            }
+
+            # Get all the column names from the prepared dict.
+            self._aim_metadata_columns = list(prepared_aim_metadata_dtype_dict.keys())
+
+            # Update the _aim_metadata_dtype with the prepared dict.
+            self._aim_metadata_dtype.update(prepared_aim_metadata_dtype_dict)
+
+        # Add the sample_id to the _aim_metadata_dtype.
         self._aim_metadata_dtype["sample_id"] = "object"
 
         # Set up taxon colors.
@@ -151,7 +153,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
-            dtype = {
+            dtype_dict = {
                 "sample_id": "object",
                 "partner_sample_id": "object",
                 "contributor": "object",
@@ -163,14 +165,9 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "longitude": "float64",
                 "sex_call": "object",
             }
-            #  `dtype` of `dict[str, str]` is incompatible with `pd.read_csv`
-            dtype_mapping = cast(
-                Mapping[
-                    str, Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype]
-                ],
-                dtype,
-            )
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype_mapping, na_values="")
+            # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+            dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -255,7 +252,10 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Get the dtype of the constant columns.
-            dtype = self._sequence_qc_metadata_dtype
+            dtype_dict = self._sequence_qc_metadata_dtype
+
+            # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+            dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
 
             # Read the CSV using the dtype dict.
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
@@ -272,8 +272,8 @@ class AnophelesSampleMetadata(AnophelesBase):
 
             # Add the sequence QC columns with appropriate missing values.
             # For each column, set the value to either NA or NaN.
-            for c, dtype in self._sequence_qc_metadata_dtype.items():
-                if pd.api.types.is_integer_dtype(dtype):
+            for c, datum_dtype in self._sequence_qc_metadata_dtype.items():
+                if pd.api.types.is_integer_dtype(datum_dtype):
                     # Note: this creates a column with dtype int64.
                     df[c] = -1
                 else:
@@ -378,11 +378,8 @@ class AnophelesSampleMetadata(AnophelesBase):
             "sample_id": "object",
             "is_surveillance": "boolean",
         }
-        #  `dtype` of `dict[str, str]` is incompatible with `read_csv`
-        dtype = cast(
-            Mapping[str, Union[str, type, np.dtype, pd.api.extensions.ExtensionDtype]],
-            dtype_dict,
-        )
+        # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+        dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
 
         if isinstance(data, bytes):
             # Read the CSV data.
@@ -516,7 +513,11 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Parse CSV data.
-            dtype = self._cohorts_metadata_dtype
+            dtype_dict = self._cohorts_metadata_dtype
+
+            # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+            dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
+
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
@@ -590,13 +591,18 @@ class AnophelesSampleMetadata(AnophelesBase):
         assert self._aim_metadata_columns is not None
         assert self._aim_metadata_dtype is not None
         if isinstance(data, bytes):
-            # Parse CSV data.
-            df = pd.read_csv(
-                io.BytesIO(data), dtype=self._aim_metadata_dtype, na_values=""
-            )
+            # Parse CSV data but don't apply the dtype yet.
+            df = pd.read_csv(io.BytesIO(data), na_values="")
 
-            # Ensure all column names are lower case.
+            # Convert all column names to lowercase.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
+
+            # For each column in the DataFrame...
+            for c in df.columns:
+                # Apply the corresponding dtype from `_aim_metadata_dtype`.
+                # Convert the type to a NumPy dtype.
+                col_dtype_as_np = np.dtype(self._aim_metadata_dtype[c])
+                df[c] = df[c].astype(col_dtype_as_np)
 
             return df
 
