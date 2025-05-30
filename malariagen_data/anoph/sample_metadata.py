@@ -11,7 +11,7 @@ from typing import (
     Tuple,
     Union,
     Hashable,
-    cast
+    cast,
 )
 
 import ipyleaflet  # type: ignore
