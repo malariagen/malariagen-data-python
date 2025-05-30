@@ -153,7 +153,7 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
 
     # Check some values.
     assert np.all(df["contig"] == transcript["contig"])
-    position = df["position"].values
+    position = df["position"].to_numpy()
     assert np.all(position >= transcript["start"])
     assert np.all(position <= transcript["end"])
     assert np.all(position[1:] >= position[:-1])
