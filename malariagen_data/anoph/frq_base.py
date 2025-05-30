@@ -210,7 +210,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         # Indexing.
         if index is None:
-            index = list(df.index.names)
+            index = [str(name) for name in df.index.names]
         df = df.reset_index().copy()
         if isinstance(index, list):
             index_col = (
