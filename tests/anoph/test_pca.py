@@ -288,3 +288,31 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
         len(pca_df.query(f"sample_id in {exclude_samples} and not pca_fit"))
         == n_samples_excluded
     )
+
+
+def test_pca_cohort_downsampling(ag3_sim_api):
+    # Use a real cohort column, e.g., 'country' or 'location'.
+    api = ag3_sim_api
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    region = random.choice(api.contigs)
+    sample_sets = random.sample(all_sample_sets, 2)
+    site_mask = random.choice((None,) + api.site_mask_ids)
+    # Use a small max_cohort_size for test
+    max_cohort_size = 2
+    # Run PCA with cohort-based downsampling
+    df_pca, evr = api.pca(
+        region=region,
+        n_snps=10,
+        n_components=3,
+        sample_sets=sample_sets,
+        site_mask=site_mask,
+        max_cohort_size=max_cohort_size,
+        cohorts="country",
+    )
+    # Check that no cohort exceeds max_cohort_size
+    if "country" in df_pca.columns:
+        counts = df_pca["country"].value_counts()
+        assert (counts <= max_cohort_size).all(), f"Some cohorts exceed max_cohort_size: {counts}"
+    # Check output shape
+    assert df_pca.shape[1] >= 3 + 1  # at least PC1, PC2, PC3, plus metadata
+    assert isinstance(evr, np.ndarray)

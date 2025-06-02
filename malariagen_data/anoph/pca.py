@@ -43,6 +43,11 @@ class AnophelesPca(
             `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
             `random_seed`.
 
+            .. versionchanged:: 8.1.0
+               Added the `cohorts` parameter. If provided, samples are grouped by the specified
+               column in the sample metadata, and each group is downsampled to a maximum size
+               equal to `max_cohort_size`. If `cohorts` is not provided, `max_cohort_size` applies
+               globally to all selected samples.
         """,
         returns=("df_pca", "evr"),
         notes="""
@@ -77,6 +82,7 @@ class AnophelesPca(
         random_seed: base_params.random_seed = 42,
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
+        cohorts: Optional[str] = None, 
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
@@ -100,6 +106,7 @@ class AnophelesPca(
             thin_offset=thin_offset,
             sample_sets=sample_sets_prepped,
             sample_indices=sample_indices_prepped,
+            cohorts=cohorts,
             site_mask=site_mask_prepped,
             site_class=site_class,
             min_minor_ac=min_minor_ac,
@@ -116,25 +123,38 @@ class AnophelesPca(
         # Try to retrieve results from the cache.
         try:
             results = self.results_cache_get(name=name, params=params)
-
         except CacheMiss:
             results = self._pca(chunks=chunks, inline_array=inline_array, **params)
             self.results_cache_set(name=name, params=params, results=results)
-
         # Unpack results.
         coords = results["coords"]
         evr = results["evr"]
         samples = results["samples"]
         loc_keep_fit = results["loc_keep_fit"]
-
         # Load sample metadata.
         df_samples = self.sample_metadata(
             sample_sets=sample_sets,
         )
-
-        # Ensure aligned with genotype data.
-        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
-
+        # If cohort-based downsampling is requested, filter samples accordingly.
+        if cohorts is not None and max_cohort_size is not None:
+            if cohorts not in df_samples.columns:
+                raise ValueError(f"Cohort column '{cohorts}' not found in sample metadata.")
+            # Group by cohort and sample up to max_cohort_size per group
+            df_samples = (
+                df_samples.groupby(cohorts, group_keys=False)
+                .apply(lambda x: x.sample(n=min(len(x), max_cohort_size), random_state=random_seed))
+            )
+            # Only keep the selected samples
+            selected_sample_ids = set(df_samples["sample_id"])
+            # Filter coords, samples, and loc_keep_fit accordingly
+            mask = [s in selected_sample_ids for s in samples]
+            coords = coords[mask]
+            samples = [s for s in samples if s in selected_sample_ids]
+            loc_keep_fit = loc_keep_fit[mask]
+            df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+        else:
+            # Ensure aligned with genotype data.
+            df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
         # Combine coords and sample metadata.
         df_coords = pd.DataFrame(
             {f"PC{i + 1}": coords[:, i] for i in range(coords.shape[1])}
@@ -166,6 +186,7 @@ class AnophelesPca(
         random_seed,
         chunks,
         inline_array,
+        cohorts=None,
     ):
         # Load diplotypes.
         gn, samples = self.biallelic_diplotypes(
