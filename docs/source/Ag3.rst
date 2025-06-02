@@ -141,6 +141,22 @@ Principal components analysis (PCA)
     plot_pca_coords
     plot_pca_coords_3d
 
+.. rubric:: Cohort-based downsampling
+
+The ``pca`` method supports a ``cohorts`` parameter. If provided, samples are grouped by the specified column in the sample metadata, and each group is downsampled to a maximum size equal to ``max_cohort_size``. If ``cohorts`` is not provided, ``max_cohort_size`` applies globally to all selected samples.
+
+**Example:**
+
+.. code-block:: python
+
+    df_pca, evr = ag3.pca(
+        region="3L:15,000,000-16,000,000",
+        sample_sets="AG1000G-BF-A",
+        n_snps=10_000,
+        max_cohort_size=5,  
+        cohorts="country",
+    )
+
 Genetic distance and neighbour-joining trees (NJT)
 --------------------------------------------------
 .. autosummary::
