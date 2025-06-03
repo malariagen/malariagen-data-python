@@ -1007,29 +1007,34 @@ class AnophelesSnpData(
         )
 
         # Normalise parameters.
-        sample_sets_prepped: Tuple[str, ...] = tuple(
+        prepared_regions: Tuple[Region, ...] = tuple(parse_multi_region(self, region))
+        prepared_sample_sets: Tuple[str, ...] = tuple(
             self._prep_sample_sets_param(sample_sets=sample_sets)
         )
-        del sample_sets
+
         sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
-        del sample_query
+
         if sample_indices is not None:
-            sample_indices_prepped: Optional[Tuple[int, ...]] = tuple(sample_indices)
+            prepared_sample_indices: Optional[Tuple[int, ...]] = tuple(sample_indices)
         else:
-            sample_indices_prepped = sample_indices
+            prepared_sample_indices = sample_indices
+
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
         del sample_indices
-        regions: Tuple[Region, ...] = tuple(parse_multi_region(self, region))
         del region
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
 
         return self._snp_calls(
-            regions=regions,
-            sample_sets=sample_sets_prepped,
+            regions=prepared_regions,
+            sample_sets=prepared_sample_sets,
             sample_query=sample_query_prepped,
             sample_query_options=sample_query_options,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_indices=prepared_sample_indices,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -1134,7 +1139,10 @@ class AnophelesSnpData(
         inline_array,
         chunks,
     ):
+        # Note: sample_sets and sample_query should be "prepared" before being passed to this private function.
+
         # Get SNP calls and concatenate multiple sample sets and/or regions.
+        # Note: we don't cache different sample_query or sample_indices subsets.
         ds = self._cached_snp_calls(
             regions=regions,
             sample_sets=sample_sets,
@@ -1146,12 +1154,19 @@ class AnophelesSnpData(
 
         # Handle sample selection.
         if sample_query is not None:
+            # Get the relevant sample metadata.
             df_samples = self.sample_metadata(sample_sets=sample_sets)
+
+            # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-            ds = ds.isel(samples=loc_samples)
+
+            ds = self._filter_sample_dataset(
+                ds=ds,
+                df_samples=df_samples,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+
         elif sample_indices is not None:
             ds = ds.isel(samples=list(sample_indices))
 
@@ -1287,7 +1302,10 @@ class AnophelesSnpData(
         # to invalidate any previously cached data.
         name = "snp_allele_counts_v2"
 
-        # Normalize params for consistent hash value.
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
             sample_sets_prepped,
             sample_indices_prepped,
@@ -1829,33 +1847,39 @@ class AnophelesSnpData(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "biallelic_diplotypes"
+        name = "biallelic_diplotypes_v2"
 
-        # Normalize params for consistent hash value.
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
-            sample_sets_prepped,
-            sample_indices_prepped,
+            prepared_sample_sets,
+            prepared_sample_indices,
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        prepared_region = self._prep_region_cache_param(region=region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
         del sample_sets
         del sample_query
         del sample_query_options
         del sample_indices
         del region
         del site_mask
+
         params = dict(
-            region=region_prepped,
+            region=prepared_region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_sets=prepared_sample_sets,
+            sample_indices=prepared_sample_indices,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -1900,6 +1924,8 @@ class AnophelesSnpData(
         inline_array,
         chunks,
     ):
+        # Note: this uses sample_indices and should not expect a sample_query.
+
         # Access biallelic SNPs.
         ds = self.biallelic_snp_calls(
             region=region,

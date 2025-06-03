@@ -256,31 +256,12 @@ class AnophelesCnvData(
                 # If there are no sample query options, then default to an empty dict.
                 sample_query_options = sample_query_options or {}
 
-                # Determine which samples match the sample query.
-                loc_samples = df_samples.eval(
-                    prepared_sample_query, **sample_query_options
+                ds = self._filter_sample_dataset(
+                    ds=ds,
+                    df_samples=df_samples,
+                    sample_query=prepared_sample_query,
+                    sample_query_options=sample_query_options,
                 )
-
-                # Raise an error if no samples match the sample query.
-                if not loc_samples.any():
-                    raise ValueError(
-                        f"No samples found for query {prepared_sample_query!r}"
-                    )
-
-                # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
-                relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
-
-                # Get all the sample ids from the unfiltered CNV HMM Dataset.
-                ds_sample_ids = ds.coords["sample_id"].values
-
-                # Get the indices of samples in the CNV HMM Dataset that match the relevant sample ids.
-                # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
-                relevant_sample_indices = np.where(
-                    np.isin(ds_sample_ids, relevant_sample_ids)
-                )[0]
-
-                # Select only the relevant samples from the CNV HMM Dataset.
-                ds = ds.isel(samples=relevant_sample_indices)
 
             debug("handle coverage variance filter")
             if max_coverage_variance is not None:
@@ -476,30 +457,15 @@ class AnophelesCnvData(
         # Get the relevant sample metadata.
         df_samples = self.sample_metadata(sample_sets=prepared_sample_set)
 
-        # Determine which samples match the sample query.
-        if prepared_sample_query != "":
-            loc_samples = df_samples.eval(prepared_sample_query)
-        else:
-            loc_samples = pd.Series(True, index=df_samples.index)
+        # If there is no sample query, then default to an empty str.
+        prepared_sample_query = prepared_sample_query or ""
 
-        # Raise an error if no samples match the sample query.
-        if not loc_samples.any():
-            raise ValueError(f"No samples found for query {prepared_sample_query!r}")
-
-        # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
-        relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
-
-        # Get all the sample ids from the unfiltered CNV coverage calls Dataset.
-        ds_sample_ids = ds.coords["sample_id"].values
-
-        # Get the indices of samples in the CNV coverage calls Dataset that match the relevant sample ids.
-        # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
-        relevant_sample_indices = np.where(np.isin(ds_sample_ids, relevant_sample_ids))[
-            0
-        ]
-
-        # Select only the relevant samples from the CNV coverage calls Dataset.
-        ds = ds.isel(samples=relevant_sample_indices)
+        ds = self._filter_sample_dataset(
+            ds=ds,
+            df_samples=df_samples,
+            sample_query=prepared_sample_query,
+            sample_query_options={},
+        )
 
         return ds
 
@@ -690,29 +656,12 @@ class AnophelesCnvData(
             # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
 
-            # Determine which samples match the sample query.
-            loc_samples = df_samples.eval(prepared_sample_query, **sample_query_options)
-
-            # Raise an error if no samples match the sample query.
-            if not loc_samples.any():
-                raise ValueError(
-                    f"No samples found for query {prepared_sample_query!r}"
-                )
-
-            # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
-            relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
-
-            # Get all the sample ids from the unfiltered CNV discordant reads Dataset.
-            ds_sample_ids = ds.coords["sample_id"].values
-
-            # Get the indices of samples in the CNV discordant reads Dataset that match the relevant sample ids.
-            # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
-            relevant_sample_indices = np.where(
-                np.isin(ds_sample_ids, relevant_sample_ids)
-            )[0]
-
-            # Select only the relevant samples from the CNV discordant reads Dataset.
-            ds = ds.isel(samples=relevant_sample_indices)
+            ds = self._filter_sample_dataset(
+                ds=ds,
+                df_samples=df_samples,
+                sample_query=prepared_sample_query,
+                sample_query_options=sample_query_options,
+            )
 
         return ds
 

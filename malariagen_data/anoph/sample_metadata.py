@@ -1054,20 +1054,26 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Normalise sample sets.
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        sample_query = self._prep_sample_query_param(sample_query=sample_query)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
 
-        if sample_query is not None:
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
+
+        if prepared_sample_query is not None:
             # Resolve query to a list of integers for more cache hits - we
             # do this because there are different ways to write the same pandas
             # query, and so it's better to evaluate the query and use a list of
             # integer indices instead.
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
+            loc_samples = df_samples.eval(
+                prepared_sample_query, **sample_query_options
+            ).values
             sample_indices = np.nonzero(loc_samples)[0].tolist()
 
-        return sample_sets, sample_indices
+        return prepared_sample_sets, sample_indices
 
     def _results_cache_add_analysis_params(self, params: dict):
         super()._results_cache_add_analysis_params(params)
