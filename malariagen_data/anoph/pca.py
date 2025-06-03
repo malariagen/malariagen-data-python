@@ -142,14 +142,29 @@ class AnophelesPca(
         # Create a new DataFrame containing the PCA coords data.
         df_pca = pd.DataFrame(coords, index=samples)
 
-        # Name the DataFrame's columns PC1, PC2, etc.
+        # Name the index of the PCA data and set it to a string type.
+        df_pca.index.name = "sample_id"
+        # df_pca.index = df_pca.index.astype(str)
+
+        # Name the DataFrame's columns as PC1, PC2, etc.
         df_pca.columns = pd.Index([f"PC{i+1}" for i in range(coords.shape[1])])
+
+        # Load the sample metadata.
+        df_samples = self.sample_metadata(
+            sample_sets=prepared_sample_sets,
+        )
+
+        # Set the index of the sample metadata.
+        df_samples.set_index("sample_id", inplace=True)
+
+        # Join the relevant sample metadata.
+        df_pca = df_pca.join(df_samples, how="left", on="sample_id")
 
         # Add a column to indicate which samples were included in fitting.
         df_pca["pca_fit"] = loc_keep_fit
 
-        # Name the index.
-        df_pca.index.name = "sample_id"
+        # Keep "sample_id" as a column, so that it can be specified as a `hover_name` in `plot_pca_coords`, etc.
+        df_pca.reset_index(inplace=True)
 
         return df_pca, evr
 
