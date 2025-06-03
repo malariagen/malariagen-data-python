@@ -1847,7 +1847,7 @@ class AnophelesSnpData(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "biallelic_diplotypes_v2"
+        name = "biallelic_diplotypes"
 
         ## Normalize params for consistent hash value.
 
