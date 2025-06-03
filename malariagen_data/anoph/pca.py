@@ -80,27 +80,39 @@ class AnophelesPca(
     ) -> Tuple[pca_params.df_pca, pca_params.evr]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "pca_v4"
+        name = "pca_v5"
 
-        # Normalize params for consistent hash value.
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
-            sample_sets_prepped,
-            sample_indices_prepped,
+            prepared_sample_sets,
+            prepared_sample_indices,
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        prepared_region = self._prep_region_cache_param(region=region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_indices
+        del sample_query
+        del sample_query_options
+        del region
+        del site_mask
+
         params = dict(
-            region=region_prepped,
+            region=prepared_region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_sets=prepared_sample_sets,
+            sample_indices=prepared_sample_indices,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
@@ -127,21 +139,17 @@ class AnophelesPca(
         samples = results["samples"]
         loc_keep_fit = results["loc_keep_fit"]
 
-        # Load sample metadata.
-        df_samples = self.sample_metadata(
-            sample_sets=sample_sets,
-        )
+        # Create a new DataFrame containing the PCA coords data.
+        df_pca = pd.DataFrame(coords, index=samples)
 
-        # Ensure aligned with genotype data.
-        df_samples = df_samples.set_index("sample_id").loc[samples].reset_index()
+        # Name the DataFrame's columns PC1, PC2, etc.
+        df_pca.columns = pd.Index([f"PC{i+1}" for i in range(coords.shape[1])])
 
-        # Combine coords and sample metadata.
-        df_coords = pd.DataFrame(
-            {f"PC{i + 1}": coords[:, i] for i in range(coords.shape[1])}
-        )
-        df_pca = df_samples.join(df_coords, how="inner")
-        # Add a column for which samples were included in fitting.
+        # Add a column to indicate which samples were included in fitting.
         df_pca["pca_fit"] = loc_keep_fit
+
+        # Name the index.
+        df_pca.index.name = "sample_id"
 
         return df_pca, evr
 

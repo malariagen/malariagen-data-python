@@ -171,29 +171,12 @@ class AnophelesAimData(
             # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
 
-            # Determine which samples match the sample query.
-            loc_samples = df_samples.eval(prepared_sample_query, **sample_query_options)
-
-            # Raise an error if no samples match the sample query.
-            if not loc_samples.any():
-                raise ValueError(
-                    f"No samples found for query {prepared_sample_query!r}"
-                )
-
-            # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
-            relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
-
-            # Get all the sample ids from the unfiltered AIM calls Dataset.
-            ds_sample_ids = ds.coords["sample_id"].values
-
-            # Get the indices of samples in the AIM calls Dataset that match the relevant sample ids.
-            # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
-            relevant_sample_indices = np.where(
-                np.isin(ds_sample_ids, relevant_sample_ids)
-            )[0]
-
-            # Select only the relevant samples from the AIM calls Dataset.
-            ds = ds.isel(samples=relevant_sample_indices)
+            ds = self._filter_sample_dataset(
+                ds=ds,
+                df_samples=df_samples,
+                sample_query=prepared_sample_query,
+                sample_query_options=sample_query_options,
+            )
 
         return ds
 

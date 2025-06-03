@@ -28,6 +28,7 @@ from numpydoc_decorator import doc  # type: ignore
 from tqdm.auto import tqdm as tqdm_auto  # type: ignore
 from tqdm.dask import TqdmCallback  # type: ignore
 from yaspin import yaspin  # type: ignore
+import xarray as xr
 
 from ..util import (
     CacheMiss,
@@ -932,6 +933,45 @@ class AnophelesBase:
                     )
 
         return prepped_sample_query
+
+    def _filter_sample_dataset(
+        self,
+        *,
+        ds: xr.Dataset,
+        df_samples: pd.DataFrame,
+        sample_query: str,
+        sample_query_options: dict,
+    ) -> xr.Dataset:
+        """Filters the given Dataset using the given DataFrame and query."""
+
+        # Note: "prepare" the params before calling this function.
+
+        # Determine which samples match the sample query.
+        if sample_query != "":
+            loc_samples = df_samples.eval(sample_query, **sample_query_options)
+        else:
+            loc_samples = pd.Series(True, index=df_samples.index)
+
+        # Raise an error if no samples match the sample query.
+        if not loc_samples.any():
+            raise ValueError(f"No samples found for query {sample_query!r}")
+
+        # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
+        relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
+
+        # Get all the sample ids from the unfiltered Dataset.
+        ds_sample_ids = ds.coords["sample_id"].values
+
+        # Get the indices of samples in the Dataset that match the relevant sample ids.
+        # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
+        relevant_sample_indices = np.where(np.isin(ds_sample_ids, relevant_sample_ids))[
+            0
+        ]
+
+        # Select only the relevant samples from the Dataset.
+        ds = ds.isel(samples=relevant_sample_indices)
+
+        return ds
 
     def _results_cache_add_analysis_params(self, params: dict):
         # Expect sub-classes will override to add any analysis parameters.
