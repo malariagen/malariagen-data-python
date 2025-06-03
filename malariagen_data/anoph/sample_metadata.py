@@ -1345,7 +1345,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohort_size: Optional[base_params.cohort_size],
         min_cohort_size: Optional[base_params.min_cohort_size],
     ):
-        """Convenience function to normalise the `cohorts` paramater to a
+        """Convenience function to normalise the `cohorts` parameter to a
         dictionary mapping cohort labels to sample metadata queries."""
 
         if isinstance(cohorts, dict):
