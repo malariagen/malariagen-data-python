@@ -3,9 +3,9 @@ import sys
 import dask
 import pandas as pd  # type: ignore
 import plotly.express as px  # type: ignore
-
 import malariagen_data
 from .anopheles import AnophelesDataResource
+from .anoph.phenotypes import PhenotypeDataMixin
 
 
 # silence dask performance warnings
@@ -78,7 +78,7 @@ TAXON_COLORS = {
 }
 
 
-class Ag3(AnophelesDataResource):
+class Ag3(AnophelesDataResource, PhenotypeDataMixin):
     """Provides access to data from Ag3.x releases.
 
     Parameters
@@ -135,6 +135,7 @@ class Ag3(AnophelesDataResource):
 
     _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
     _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+    _phenotype_gcs_path_template = "gs://vo_agam_release_master_us_central1/v3.2/phenotypes/all/{sample_set}/phenotypes.csv"
 
     def __init__(
         self,
