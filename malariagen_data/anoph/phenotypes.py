@@ -12,7 +12,7 @@ class PhenotypeDataMixin:
 
     _fs: fsspec.AbstractFileSystem
     _phenotype_gcs_path_template: str
-    sample_metadata: pd.DataFrame
+    sample_metadata: Callable[..., pd.DataFrame]
     sample_sets: list[str]
     snp_calls: Callable[..., Any]
     haplotypes: Callable[..., Any]
@@ -267,19 +267,19 @@ class PhenotypeDataMixin:
 
         # 4. Get metadata for those samples
         sample_ids_with_phenotypes = df_phenotypes["sample_id"].unique().tolist()
-        df_sample_metadata: pd.DataFrame = self.sample_metadata(
+        df_sample_metadata = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=f"sample_id in {sample_ids_with_phenotypes}",
         )
 
         # 5. Merge phenotype + metadata
-        df_merged = self._merge_phenotype_with_metadata(
+        df_merged: pd.DataFrame = self._merge_phenotype_with_metadata(
             df_phenotypes, df_sample_metadata
         )
 
         # 6. Apply sample_query if provided
         if sample_query is not None:
-            df_merged: pd.DataFrame = self.sample_metadata(
+            df_merged = self.sample_metadata(
                 sample_query=sample_query,
                 sample_query_options=sample_query_options,
                 df=df_merged,
