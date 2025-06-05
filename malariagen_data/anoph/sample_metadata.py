@@ -3,6 +3,7 @@ from itertools import cycle
 from typing import (
     Any,
     Callable,
+    DefaultDict,
     Dict,
     List,
     Mapping,
@@ -10,9 +11,9 @@ from typing import (
     Sequence,
     Tuple,
     Union,
-    Hashable,
-    cast,
 )
+from collections import defaultdict
+import warnings
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -51,10 +52,22 @@ class AnophelesSampleMetadata(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
-        self._aim_metadata_dtype: Dict[str, Union[str, type, np.dtype]] = dict()
+        self._aim_metadata_dtype: Optional[Mapping[str, Any]] = {}
+
+        # Only apply the `aim_metadata_dtype` if it is a type of `Mapping`.
         if isinstance(aim_metadata_dtype, Mapping):
-            self._aim_metadata_columns = list(aim_metadata_dtype.keys())
-            self._aim_metadata_dtype.update(aim_metadata_dtype)
+            # Convert all of the column names to lowercase.
+            prepared_aim_metadata_dtype_dict = {
+                k.lower(): v for k, v in aim_metadata_dtype.items()
+            }
+
+            # Get all the column names from the prepared dict.
+            self._aim_metadata_columns = list(prepared_aim_metadata_dtype_dict.keys())
+
+            # Update the _aim_metadata_dtype with the prepared dict.
+            self._aim_metadata_dtype.update(prepared_aim_metadata_dtype_dict)
+
+        # Add the sample_id to the _aim_metadata_dtype.
         self._aim_metadata_dtype["sample_id"] = "object"
 
         # Set up taxon colors.
@@ -101,17 +114,17 @@ class AnophelesSampleMetadata(AnophelesBase):
         self,
         path_template: str,
         parse_metadata_func: Callable[[str, Union[bytes, Exception]], pd.DataFrame],
-        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_sets: List[str],
         aim_analysis: Optional[str] = None,
         cohorts_analysis: Optional[str] = None,
     ) -> pd.DataFrame:
-        # Normalise input parameters.
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
+        # Note: we don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a `RecursionError`.
+        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags`, which uses `_parse_metadata_paths`.
+        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` as a `List[str]` before passing it to this function.
 
         # Obtain paths for all files we need to fetch.
         file_paths: Mapping[str, str] = self._metadata_paths(
-            sample_sets=sample_sets_prepped,
+            sample_sets=sample_sets,
             path_template=path_template,
             aim_analysis=aim_analysis,
             cohorts_analysis=cohorts_analysis,
@@ -125,7 +138,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Parse files into DataFrames.
         dfs = []
-        for sample_set in sample_sets_prepped:
+        for sample_set in sample_sets:
             path = file_paths[sample_set]
             data = files[path]
             df = parse_metadata_func(sample_set, data)
@@ -140,7 +153,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_set: str, data: Union[bytes, Exception]
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
-            dtype = {
+            dtype_dict = {
                 "sample_id": "object",
                 "partner_sample_id": "object",
                 "contributor": "object",
@@ -152,19 +165,9 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "longitude": "float64",
                 "sex_call": "object",
             }
-            # Mapping of string dtypes to actual dtypes
-            dtype_map = {
-                "object": str,
-                "int64": np.int64,
-                "float64": np.float64,
-            }
-
-            # Convert string dtypes to actual dtypes
-            dtype_fixed: Mapping[Hashable, Union[str, np.dtype, type]] = {
-                col: dtype_map.get(dtype[col], str) for col in dtype
-            }
-
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype_fixed, na_values="")
+            # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+            dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -206,10 +209,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     def general_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/general/{sample_set}/samples.meta.csv",
             parse_metadata_func=self._parse_general_metadata,
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
         )
 
     @property
@@ -246,7 +252,10 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Get the dtype of the constant columns.
-            dtype = self._sequence_qc_metadata_dtype
+            dtype_dict = self._sequence_qc_metadata_dtype
+
+            # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+            dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
 
             # Read the CSV using the dtype dict.
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
@@ -263,8 +272,8 @@ class AnophelesSampleMetadata(AnophelesBase):
 
             # Add the sequence QC columns with appropriate missing values.
             # For each column, set the value to either NA or NaN.
-            for c, dtype in self._sequence_qc_metadata_dtype.items():
-                if pd.api.types.is_integer_dtype(dtype):
+            for c, datum_dtype in self._sequence_qc_metadata_dtype.items():
+                if pd.api.types.is_integer_dtype(datum_dtype):
                     # Note: this creates a column with dtype int64.
                     df[c] = -1
                 else:
@@ -347,9 +356,102 @@ class AnophelesSampleMetadata(AnophelesBase):
     def sequence_qc_metadata(
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/curation/{sample_set}/sequence_qc_stats.csv",
             parse_metadata_func=self._parse_sequence_qc_metadata,
+            sample_sets=prepared_sample_sets,
+        )
+
+    def _parse_surveillance_flags(
+        self, sample_set: str, data: Union[bytes, Exception]
+    ) -> pd.DataFrame:
+        # Get the current warning filters.
+        original_warning_filters = warnings.filters[:]
+
+        # Specify the expected data type for each column.
+        # Note: "bool" is not nullable and does not support `NaN`, which is required when missing data.
+        # Otherwise `NaN` will be mis-translated to `True` when the dtype is applied to the DataFrame.
+        dtype_dict = {
+            "sample_id": "object",
+            "is_surveillance": "boolean",
+        }
+        # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+        dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
+
+        if isinstance(data, bytes):
+            # Read the CSV data.
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+
+            # If there are any nulls in these data, show a warning.
+            if df.isnull().values.any():
+                # Trigger the warning.
+                warnings.simplefilter("default", UserWarning)
+                warnings.warn(
+                    f"WARNING: The surveillance flags data contains null values for sample set {sample_set}",
+                    UserWarning,
+                )
+
+                # Restore the original warning filters.
+                warnings.filters = original_warning_filters
+
+            # Ensure all column names are lower case.
+            df.columns = [c.lower() for c in df.columns]  # type: ignore
+
+            return df
+
+        elif isinstance(data, FileNotFoundError):
+            # Surveillance flags are missing for this sample set.
+            # Show a warning and return a blank DataFrame.
+
+            # Trigger the warning.
+            warnings.simplefilter("default", UserWarning)
+            warnings.warn(
+                f"WARNING: The surveillance flags data is missing for sample set {sample_set}",
+                UserWarning,
+            )
+
+            # Restore the original warning filters.
+            warnings.filters = original_warning_filters
+
+            # Get a copy of the sample ids.
+            df_general = self.general_metadata(sample_sets=sample_set)
+            df = df_general[["sample_id"]].copy()
+
+            # Set each column value to null.
+            df["is_surveillance"] = np.nan
+
+            # Set the data type.
+            df = df.astype(dtype)
+
+            return df
+
+        else:
+            raise data
+
+    @check_types
+    @doc(
+        summary="""
+            Access surveillance flags for one or more sample sets.
+        """,
+        parameters=dict(
+            sample_sets="List of sample sets.",
+        ),
+        returns="""A pandas DataFrame, one row per sample. The columns are:
+        `sample_id` is the identifier of the sample,
+        `is_surveillance` indicates whether the sample can be used for surveillance,
+        """,
+    )
+    def _surveillance_flags(self, sample_sets: List[str]) -> pd.DataFrame:
+        # Note: we don't use `_prep_sample_sets_param` in this function because that can cause a circular dependency, eventually raising a `RecursionError`.
+        # For instance, `_prep_sample_sets_param` uses `_relevant_sample_sets`, which uses `_surveillance_flags`.
+        # Instead, use `_prep_sample_sets_param` to prepare `sample_sets` as a `List[str]` before passing it to this function.
+
+        return self._parse_metadata_paths(
+            path_template="{release_path}/metadata/general/{sample_set}/surveillance.flags.csv",
+            parse_metadata_func=self._parse_surveillance_flags,
             sample_sets=sample_sets,
         )
 
@@ -411,7 +513,11 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         if isinstance(data, bytes):
             # Parse CSV data.
-            dtype = self._cohorts_metadata_dtype
+            dtype_dict = self._cohorts_metadata_dtype
+
+            # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
+            dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
+
             df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
 
             # Ensure all column names are lower case.
@@ -460,10 +566,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_cohorts_analysis()
 
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/cohorts_{cohorts_analysis}/{sample_set}/samples.cohorts.csv",
             parse_metadata_func=self._parse_cohorts_metadata,
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
             cohorts_analysis=self._cohorts_analysis,
         )
 
@@ -482,18 +591,18 @@ class AnophelesSampleMetadata(AnophelesBase):
         assert self._aim_metadata_columns is not None
         assert self._aim_metadata_dtype is not None
         if isinstance(data, bytes):
-            # Parse CSV data.
-            df = pd.read_csv(
-                io.BytesIO(data),
-                dtype=cast(
-                    Mapping[Hashable, Union[str, type, np.dtype]],
-                    self._aim_metadata_dtype,
-                ),
-                na_values="",
-            )
+            # Parse CSV data but don't apply the dtype yet.
+            df = pd.read_csv(io.BytesIO(data), na_values="")
 
-            # Ensure all column names are lower case.
+            # Convert all column names to lowercase.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
+
+            # For each column in the DataFrame...
+            for c in df.columns:
+                # Apply the corresponding dtype from `_aim_metadata_dtype`.
+                # Convert the type to a NumPy dtype.
+                col_dtype_as_np = np.dtype(self._aim_metadata_dtype[c])
+                df[c] = df[c].astype(col_dtype_as_np)
 
             return df
 
@@ -526,10 +635,13 @@ class AnophelesSampleMetadata(AnophelesBase):
     ) -> pd.DataFrame:
         self._require_aim_analysis()
 
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+
         return self._parse_metadata_paths(
             path_template="{release_path}/metadata/species_calls_aim_{aim_analysis}/{sample_set}/samples.species_aim.csv",
             parse_metadata_func=self._parse_aim_metadata,
-            sample_sets=sample_sets,
+            sample_sets=prepared_sample_sets,
             aim_analysis=self._aim_analysis,
         )
 
@@ -595,16 +707,21 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
-        # Extra parameter checks.
+        # Check that either sample_query xor sample_indices are provided.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Normalise parameters.
-        prepped_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
-        del sample_sets
-        cache_key = tuple(prepped_sample_sets)
+        # Prepare parameters.
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
 
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
+
+        # Determine the cache key.
+        cache_key = tuple(prepared_sample_sets)
         try:
             # Attempt to retrieve from the cache.
             df_samples = self._cache_sample_metadata[cache_key]
@@ -615,28 +732,36 @@ class AnophelesSampleMetadata(AnophelesBase):
 
                 # Get the general sample metadata.
                 # Note: this includes study and terms-of-use info.
-                df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
+                df_samples = self.general_metadata(sample_sets=prepared_sample_sets)
 
                 # Merge with the sequence QC metadata.
+                # Note: merging can change column dtypes, e.g. due to new NaNs.
                 df_sequence_qc = self.sequence_qc_metadata(
-                    sample_sets=prepped_sample_sets
+                    sample_sets=prepared_sample_sets
                 )
-
-                # Note: merging can change column dtypes
                 df_samples = df_samples.merge(
                     df_sequence_qc, on="sample_id", sort=False, how="left"
                 )
 
+                # Merge with the surveillance flags.
+                # Note: merging can change column dtypes, e.g. due to new NaNs.
+                df_surveillance_flags = self._surveillance_flags(
+                    sample_sets=prepared_sample_sets
+                )
+                df_samples = df_samples.merge(
+                    df_surveillance_flags, on="sample_id", sort=False, how="left"
+                )
+
                 # If available, merge with the AIM metadata.
                 if self._aim_analysis:
-                    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
+                    df_aim = self.aim_metadata(sample_sets=prepared_sample_sets)
                     df_samples = df_samples.merge(
                         df_aim, on="sample_id", sort=False, how="left"
                     )
 
                 # If available, merge with the cohorts metadata.
                 if self._cohorts_analysis:
-                    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
+                    df_cohorts = self.cohorts_metadata(sample_sets=prepared_sample_sets)
                     df_samples = df_samples.merge(
                         df_cohorts, on="sample_id", sort=False, how="left"
                     )
@@ -648,11 +773,14 @@ class AnophelesSampleMetadata(AnophelesBase):
         for on, data in self._extra_metadata:
             df_samples = df_samples.merge(data, how="left", on=on)
 
-        # For convenience, apply a sample selection.
-        if sample_query is not None:
+        # Apply the sample_query or sample_indices, if specified.
+        if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
-            df_samples = df_samples.query(sample_query, **sample_query_options)
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            df_samples = df_samples.query(
+                prepared_sample_query, **sample_query_options, engine="python"
+            )
             df_samples = df_samples.reset_index(drop=True)
         elif sample_indices is not None:
             # Assume it is an indexer.
@@ -872,6 +1000,24 @@ class AnophelesSampleMetadata(AnophelesBase):
             ]
         ]
 
+        # If `_unrestricted_use_only` is `True`, then only return data if this sample set has `unrestricted_use` set to `True`.
+        if self._unrestricted_use_only and not self._sample_set_has_unrestricted_use(
+            sample_set=sample_set
+        ):
+            # Remove all the data from the DataFrame and reset its index.
+            df = df.iloc[0:0].reset_index(drop=True)
+
+        # If `_surveillance_use_only` is `True`, then only return samples that have `is_surveillance` set to `True`.
+        if self._surveillance_use_only:
+            surveillance_flags_df = self._surveillance_flags(sample_sets=[sample_set])
+            df = df.merge(
+                surveillance_flags_df[["sample_id", "is_surveillance"]],
+                on="sample_id",
+                how="left",
+            )
+            df = df[df["is_surveillance"]]
+            df = df.drop(columns=["is_surveillance"])
+
         return df
 
     @check_types
@@ -911,19 +1057,27 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Normalise sample sets.
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
 
-        if sample_query is not None:
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
+
+        if prepared_sample_query is not None:
             # Resolve query to a list of integers for more cache hits - we
             # do this because there are different ways to write the same pandas
             # query, and so it's better to evaluate the query and use a list of
             # integer indices instead.
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            loc_samples = df_samples.eval(
+                prepared_sample_query, **sample_query_options, engine="python"
+            ).values
             sample_indices = np.nonzero(loc_samples)[0].tolist()
 
-        return sample_sets, sample_indices
+        return prepared_sample_sets, sample_indices
 
     def _results_cache_add_analysis_params(self, params: dict):
         super()._results_cache_add_analysis_params(params)
@@ -1195,7 +1349,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         cohort_size: Optional[base_params.cohort_size],
         min_cohort_size: Optional[base_params.min_cohort_size],
     ):
-        """Convenience function to normalise the `cohorts` paramater to a
+        """Convenience function to normalise the `cohorts` parameter to a
         dictionary mapping cohort labels to sample metadata queries."""
 
         if isinstance(cohorts, dict):

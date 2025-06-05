@@ -115,7 +115,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # invalidate any previously cached data.
         name = "biallelic_diplotype_pairwise_distances"
 
-        # Normalize params for consistent hash value.
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
             sample_sets_prepped,
             sample_indices_prepped,
@@ -269,7 +272,10 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # invalidate any previously cached data.
         name = "njt_v1"
 
-        # Normalize params for consistent hash value.
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
             sample_sets_prepped,
             sample_indices_prepped,

@@ -350,6 +350,8 @@ class AnophelesHapData(
         # Normalise parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         regions: List[Region] = parse_multi_region(self, region)
         del region
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
@@ -392,7 +394,7 @@ class AnophelesHapData(
             ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Handle sample query.
-        if sample_query is not None:
+        if sample_query_prepped is not None:
             # Load sample metadata.
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
 
@@ -405,12 +407,12 @@ class AnophelesHapData(
             # Apply the query.
             sample_query_options = sample_query_options or {}
             loc_samples = df_samples_phased.eval(
-                sample_query, **sample_query_options
+                sample_query_prepped, **sample_query_options
             ).values
             if np.count_nonzero(loc_samples) == 0:
                 # Bail out, no samples matching the query.
                 raise ValueError(
-                    f"No samples found for phasing analysis {analysis!r} and query {sample_query!r}"
+                    f"No samples found for phasing analysis {analysis!r} and query {sample_query_prepped!r}"
                 )
             ds = ds.isel(samples=loc_samples)
 
