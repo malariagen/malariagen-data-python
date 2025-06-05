@@ -1,7 +1,8 @@
 import pandas as pd
 import xarray as xr
-from typing import Optional, Union, List, Dict, Any
+from typing import Callable, Optional, Union, List, Dict, Any
 import warnings
+import fsspec
 
 
 class PhenotypeDataMixin:
@@ -9,12 +10,19 @@ class PhenotypeDataMixin:
     Mixin providing methods for accessing insecticide resistance phenotypic data.
     """
 
+    _fs: fsspec.AbstractFileSystem
+    _phenotype_gcs_path_template: str
+    sample_metadata: pd.DataFrame
+    sample_sets: list[str]
+    snp_calls: Callable[..., Any]
+    haplotypes: Callable[..., Any]
+
     def _load_phenotype_data(
         self,
-        sample_sets: List[str],
-        insecticide: Optional[List[str]] = None,
-        dose: Optional[List[float]] = None,
-        phenotype: Optional[List[str]] = None,
+        sample_sets: list[str],
+        insecticide: list[str] | None = None,
+        dose: list[float] | None = None,
+        phenotype: list[str] | None = None,
     ) -> pd.DataFrame:
         """
         Load raw phenotypic data from GCS for given sample sets.
@@ -240,7 +248,7 @@ class PhenotypeDataMixin:
         """
         # 1. Normalize sample_sets
         if sample_sets is None:
-            sample_sets = self.sample_sets()
+            sample_sets = self.sample_sets
         elif isinstance(sample_sets, str):
             sample_sets = [sample_sets]
 
@@ -252,9 +260,9 @@ class PhenotypeDataMixin:
         # 3. Load raw phenotype data
         df_phenotypes = self._load_phenotype_data(
             sample_sets=sample_sets,
-            insecticide=insecticide,
-            dose=dose,
-            phenotype=phenotype,
+            insecticide=[insecticide] if isinstance(insecticide, str) else insecticide,
+            dose=[dose] if isinstance(dose, float) else dose,
+            phenotype=[phenotype] if isinstance(phenotype, str) else phenotype,
         )
 
         # 4. Get metadata for those samples
@@ -344,6 +352,8 @@ class PhenotypeDataMixin:
             max_cohort_size=max_cohort_size,
         )
 
+        print(f"snp_calls is callable? {callable(self.snp_calls)}")
+        print(f"haplotypes is callable? {callable(self.haplotypes)}")
         # 2. Optionally load variant data if region is specified
         variant_data = None
         if region is not None:
@@ -373,7 +383,7 @@ class PhenotypeDataMixin:
         """
         Get list of sample sets that have phenotypic data available.
         """
-        all_sample_sets = self.sample_sets()
+        all_sample_sets = self.sample_sets
         phenotype_sample_sets = []
         for sample_set in all_sample_sets:
             try:
