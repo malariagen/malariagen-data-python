@@ -948,7 +948,10 @@ class AnophelesBase:
 
         # Determine which samples match the sample query.
         if sample_query != "":
-            loc_samples = df_samples.eval(sample_query, **sample_query_options)
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            loc_samples = df_samples.eval(
+                sample_query, **sample_query_options, engine="python"
+            )
         else:
             loc_samples = pd.Series(True, index=df_samples.index)
 
