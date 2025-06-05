@@ -267,7 +267,7 @@ class PhenotypeDataMixin:
 
         # 4. Get metadata for those samples
         sample_ids_with_phenotypes = df_phenotypes["sample_id"].unique().tolist()
-        df_sample_metadata = self.sample_metadata(
+        df_sample_metadata: pd.DataFrame = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=f"sample_id in {sample_ids_with_phenotypes}",
         )
@@ -279,7 +279,7 @@ class PhenotypeDataMixin:
 
         # 6. Apply sample_query if provided
         if sample_query is not None:
-            df_merged = self.sample_metadata(
+            df_merged: pd.DataFrame = self.sample_metadata(
                 sample_query=sample_query,
                 sample_query_options=sample_query_options,
                 df=df_merged,
@@ -319,7 +319,7 @@ class PhenotypeDataMixin:
             max_cohort_size=max_cohort_size,
         )
         binary_series = self._create_phenotype_binary_series(df)
-        binary_series.index = df["sample_id"]
+        binary_series.index = df["sample_id"].index
         return binary_series
 
     def phenotypes(
