@@ -777,7 +777,10 @@ class AnophelesSampleMetadata(AnophelesBase):
         if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
-            df_samples = df_samples.query(prepared_sample_query, **sample_query_options)
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            df_samples = df_samples.query(
+                prepared_sample_query, **sample_query_options, engine="python"
+            )
             df_samples = df_samples.reset_index(drop=True)
         elif sample_indices is not None:
             # Assume it is an indexer.
@@ -1068,8 +1071,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             # integer indices instead.
             df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
             sample_query_options = sample_query_options or {}
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
             loc_samples = df_samples.eval(
-                prepared_sample_query, **sample_query_options
+                prepared_sample_query, **sample_query_options, engine="python"
             ).values
             sample_indices = np.nonzero(loc_samples)[0].tolist()
 
