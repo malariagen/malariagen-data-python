@@ -1,41 +1,46 @@
 import pandas as pd
 import xarray as xr
-from typing import Callable, Optional, Union, List, Dict, Any
+from typing import Callable, Optional, List, Any
 import warnings
 import fsspec
+from . import base_params, phenotype_params
 
 
-class PhenotypeDataMixin:
+class AnophelesPhenotypeData:
+
     """
-    Mixin providing methods for accessing insecticide resistance phenotypic data.
+    Provides methods for accessing insecticide resistance phenotypic data.
+    Inherited by AnophelesDataResource subclasses (e.g., Ag3).
     """
 
+    _url: str
     _fs: fsspec.AbstractFileSystem
-    _phenotype_gcs_path_template: str
     sample_metadata: Callable[..., pd.DataFrame]
     sample_sets: list[str]
     snp_calls: Callable[..., Any]
+    _prep_sample_sets_param: Callable[..., Any]
     haplotypes: Callable[..., Any]
 
     def _load_phenotype_data(
         self,
-        sample_sets: list[str],
-        insecticide: list[str] | None = None,
-        dose: list[float] | None = None,
-        phenotype: list[str] | None = None,
+        sample_sets: base_params.sample_sets,
+        insecticide: phenotype_params.insecticide,
+        dose: phenotype_params.dose = None,
+        phenotype: phenotype_params.phenotype = None,
     ) -> pd.DataFrame:
         """
         Load raw phenotypic data from GCS for given sample sets.
         """
         phenotype_dfs = []
+        base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
 
         for sample_set in sample_sets:
-            phenotype_path = self._phenotype_gcs_path_template.format(
-                sample_set=sample_set
-            )
+            phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
             try:
                 if not self._fs.exists(phenotype_path):
-                    warnings.warn(f"Phenotype data file not found for {sample_set}")
+                    warnings.warn(
+                        f"Phenotype data file not found for {sample_set} at {phenotype_path}"
+                    )
                     continue
 
                 with self._fs.open(phenotype_path, "r") as f:
@@ -45,11 +50,13 @@ class PhenotypeDataMixin:
                 phenotype_dfs.append(df_pheno)
 
             except FileNotFoundError:
-                warnings.warn(f"Phenotype data file not found for {sample_set}")
+                warnings.warn(
+                    f"Phenotype data file not found for {sample_set} at {phenotype_path}"
+                )
                 continue
             except Exception as e:
                 warnings.warn(
-                    f"Unexpected error loading phenotype data for {sample_set}: {e}"
+                    f"Unexpected error loading phenotype data for {sample_set} from {phenotype_path}: {e}"
                 )
                 continue
 
@@ -78,28 +85,28 @@ class PhenotypeDataMixin:
         """
         Merge phenotypic data with sample metadata.
         """
-        df_merged = df_phenotypes.merge(
-            df_sample_metadata,
+        # Identify columns present in both, excluding the merge key ("sample_id")
+        pheno_cols = set(df_phenotypes.columns)
+        meta_cols = set(df_sample_metadata.columns)
+        common_cols = (pheno_cols & meta_cols) - {"sample_id"}
+        # Drop common columns from metadata *before* merging to avoid suffixes
+        df_meta_subset = df_sample_metadata.drop(columns=list(common_cols))
+        # Merge phenotype data with the subset of metadata
+        df_merged = pd.merge(
+            df_phenotypes,
+            df_meta_subset,
             on="sample_id",
-            how="left",
-            suffixes=("", "_meta"),
+            how="left",  # Keeping just the phenotype rows
         )
-
-        duplicate_cols = [col for col in df_merged.columns if col.endswith("_meta")]
-        for col in duplicate_cols:
-            base_col = col.replace("_meta", "")
-            if base_col in df_merged.columns:
-                df_merged[base_col] = df_merged[base_col].fillna(df_merged[col])
-            df_merged = df_merged.drop(columns=[col])
 
         return df_merged
 
     def _apply_phenotype_cohort_filtering(
         self,
         df: pd.DataFrame,
-        cohort_size: Optional[int] = None,
-        min_cohort_size: Optional[int] = None,
-        max_cohort_size: Optional[int] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> pd.DataFrame:
         """
         Apply cohort size filtering based on insecticide resistance experimental groups.
@@ -109,7 +116,7 @@ class PhenotypeDataMixin:
         ):
             return df
 
-        cohort_keys = ["insecticide", "dose", "location", "country"]
+        cohort_keys = ["insecticide", "dose", "location", "country", "sample_set"]
         available_keys = [col for col in cohort_keys if col in df.columns]
         if not available_keys:
             warnings.warn("No suitable columns found for cohort grouping")
@@ -138,7 +145,8 @@ class PhenotypeDataMixin:
 
     def _create_phenotype_binary_series(self, df: pd.DataFrame) -> pd.Series:
         """
-        Convert phenotype outcomes to binary format.
+        Convert phenotype outcomes to binary format(1=alive/resistant, 0=dead/susceptible).
+        Handles case-insensitivity and warns about unmapped values.
         """
         if "phenotype" not in df.columns:
             raise ValueError("DataFrame must contain 'phenotype' column")
@@ -151,13 +159,26 @@ class PhenotypeDataMixin:
             "resistant": 1,
             "susceptible": 0,
         }
-        binary_series = df["phenotype"].str.lower().map(phenotype_map)
+        # Ensure input is string and lowercase, then map
+        phenotype_lower = df["phenotype"].astype(str).str.lower()
+        binary_series = phenotype_lower.map(phenotype_map)
 
-        unmapped = df["phenotype"][binary_series.isna()]
-        if not unmapped.empty:
-            warnings.warn(f"Unmapped phenotype values found: {unmapped.unique()}")
+        unmapped_mask = binary_series.isna()
+        if unmapped_mask.any():
+            original_unmapped_values = df.loc[unmapped_mask, "phenotype"].unique()
+            warnings.warn(
+                f"Unmapped phenotype values found and converted to NaN: {list(original_unmapped_values)}. "
+                f"Expected values (case-insensitive): {list(phenotype_map.keys())}"
+            )
+        if "sample_id" in df.columns:
+            binary_series.index = df["sample_id"]
+        else:
+            warnings.warn(
+                "Cannot set index to sample_id as it is missing from the input DataFrame."
+            )
 
-        return binary_series
+        # Convert to appropriate dtype (float64 allows NaN, int64 is also an option)
+        return binary_series.astype(float)
 
     def _create_phenotype_dataset(
         self,
@@ -170,6 +191,8 @@ class PhenotypeDataMixin:
         df_indexed = df_phenotypes.set_index("sample_id")
         sample_ids = df_indexed.index.values
         phenotype_binary = self._create_phenotype_binary_series(df_phenotypes)
+        # Reindex to match df_indexed in case rows were dropped or index was not set previously
+        phenotype_binary = phenotype_binary.reindex(sample_ids)
 
         data_vars = {
             "phenotype_binary": (["samples"], phenotype_binary.values),
@@ -179,7 +202,7 @@ class PhenotypeDataMixin:
         }
 
         # Optional variables
-        for var in ["location", "country", "collection_date", "species"]:
+        for var in ["location", "country", "collection_date", "species", "sample_set"]:
             if var in df_indexed.columns:
                 data_vars[var] = (["samples"], df_indexed[var].values)
 
@@ -187,23 +210,30 @@ class PhenotypeDataMixin:
         ds = xr.Dataset(data_vars, coords=coords)
 
         if variant_data is not None:
-            common_samples = list(set(sample_ids) & set(variant_data.samples.values))
-            if not common_samples:
+            if "samples" not in variant_data.dims:
                 warnings.warn(
-                    "No common samples found between phenotype and variant data"
+                    "Variant data does not contain 'samples' dimension, cannot merge."
                 )
             else:
-                ds = ds.sel(samples=common_samples)
-                variant_data_subset = variant_data.sel(samples=common_samples)
-                ds = xr.merge([ds, variant_data_subset])
+                common_samples = list(
+                    set(sample_ids) & set(variant_data.coords["samples"].values)
+                )
+                if not common_samples:
+                    warnings.warn(
+                        "No common samples found between phenotype and variant data"
+                    )
+                else:
+                    ds_common = ds.sel(samples=common_samples)
+                    variant_data_common = variant_data.sel(samples=common_samples)
+                    ds = xr.merge([ds_common, variant_data_common])
 
         return ds
 
     def _validate_phenotype_parameters(
         self,
-        insecticide: Optional[Union[str, List[str]]] = None,
-        dose: Optional[Union[float, List[float]]] = None,
-        phenotype: Optional[Union[str, List[str]]] = None,
+        insecticide: phenotype_params.insecticide = None,
+        dose: phenotype_params.dose = None,
+        phenotype: phenotype_params.phenotype = None,
     ) -> tuple:
         """
         Validate and normalize phenotype-specific parameters.
@@ -233,40 +263,46 @@ class PhenotypeDataMixin:
 
     def phenotype_data(
         self,
-        sample_sets: Optional[Union[str, List[str]]] = None,
-        sample_query: Optional[str] = None,
-        sample_query_options: Optional[Dict[str, Any]] = None,
-        insecticide: Optional[Union[str, List[str]]] = None,
-        dose: Optional[Union[float, List[float]]] = None,
-        phenotype: Optional[Union[str, List[str]]] = None,
-        cohort_size: Optional[int] = None,
-        min_cohort_size: Optional[int] = None,
-        max_cohort_size: Optional[int] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        insecticide: phenotype_params.insecticide = None,
+        dose: phenotype_params.dose = None,
+        phenotype: phenotype_params.phenotype = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> pd.DataFrame:
         """
         Load phenotypic data from insecticide resistance bioassays.
         """
         # 1. Normalize sample_sets
-        if sample_sets is None:
-            sample_sets = self.sample_sets
-        elif isinstance(sample_sets, str):
-            sample_sets = [sample_sets]
+        sample_sets_norm = self._prep_sample_sets_param(sample_sets=sample_sets)
 
         # 2. Validate parameters
-        insecticide, dose, phenotype = self._validate_phenotype_parameters(
-            insecticide, dose, phenotype
-        )
+        (
+            insecticide_norm,
+            dose_norm,
+            phenotype_norm,
+        ) = self._validate_phenotype_parameters(insecticide, dose, phenotype)
 
         # 3. Load raw phenotype data
         df_phenotypes = self._load_phenotype_data(
-            sample_sets=sample_sets,
-            insecticide=[insecticide] if isinstance(insecticide, str) else insecticide,
-            dose=[dose] if isinstance(dose, float) else dose,
-            phenotype=[phenotype] if isinstance(phenotype, str) else phenotype,
+            sample_sets=sample_sets_norm,
+            insecticide=insecticide_norm,
+            dose=dose_norm,
+            phenotype=phenotype_norm,
         )
 
         # 4. Get metadata for those samples
         sample_ids_with_phenotypes = df_phenotypes["sample_id"].unique().tolist()
+        if not sample_ids_with_phenotypes:
+            warnings.warn(
+                "No samples found in loaded phenotype data, cannot fetch metadata."
+            )
+            return df_phenotypes
+
+        # Fetch metadata only for samples that have phenotype data
         df_sample_metadata = self.sample_metadata(
             sample_sets=sample_sets,
             sample_query=f"sample_id in {sample_ids_with_phenotypes}",
@@ -279,11 +315,21 @@ class PhenotypeDataMixin:
 
         # 6. Apply sample_query if provided
         if sample_query is not None:
-            df_merged = self.sample_metadata(
-                sample_query=sample_query,
-                sample_query_options=sample_query_options,
-                df=df_merged,
-            )
+            try:
+                df_merged = self.sample_metadata(
+                    sample_query=sample_query,
+                    sample_query_options=sample_query_options,
+                    df=df_merged,  # Pass the dataframe to filter
+                )
+            except TypeError as e:
+                if "unexpected keyword argument 'df'" in str(e):
+                    warnings.warn(
+                        "Cannot apply sample_query to merged data; base sample_metadata might not support filtering an existing DataFrame."
+                    )
+                else:
+                    raise e
+            except Exception as e:
+                warnings.warn(f"Error applying sample_query to merged data: {e}")
 
         # 7. Apply cohort filtering
         df_final = self._apply_phenotype_cohort_filtering(
@@ -294,19 +340,21 @@ class PhenotypeDataMixin:
 
     def phenotype_binary(
         self,
-        sample_sets: Optional[Union[str, List[str]]] = None,
-        sample_query: Optional[str] = None,
-        sample_query_options: Optional[Dict[str, Any]] = None,
-        insecticide: Optional[Union[str, List[str]]] = None,
-        dose: Optional[Union[float, List[float]]] = None,
-        phenotype: Optional[Union[str, List[str]]] = None,
-        cohort_size: Optional[int] = None,
-        min_cohort_size: Optional[int] = None,
-        max_cohort_size: Optional[int] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        insecticide: phenotype_params.insecticide = None,
+        dose: phenotype_params.dose = None,
+        phenotype: phenotype_params.phenotype = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> pd.Series:
         """
-        Load phenotypic data as binary outcomes (1=alive, 0=dead).
+        Load phenotypic data as binary outcomes (1=alive/resistant, 0=dead/susceptible, NaN=unknown).
+        Returns a pandas Series indexed by sample_id.
         """
+
         df = self.phenotype_data(
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -318,27 +366,35 @@ class PhenotypeDataMixin:
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
         )
+        if df.empty:
+            return pd.Series(dtype=float, name="phenotype_binary")
+
         binary_series = self._create_phenotype_binary_series(df)
+
+        binary_series.name = "phenotype_binary"
+
         binary_series.index = df["sample_id"].index
+
         return binary_series
 
     def phenotypes(
         self,
-        sample_sets: Optional[Union[str, List[str]]] = None,
-        sample_query: Optional[str] = None,
-        sample_query_options: Optional[Dict[str, Any]] = None,
-        insecticide: Optional[Union[str, List[str]]] = None,
-        dose: Optional[Union[float, List[float]]] = None,
-        phenotype: Optional[Union[str, List[str]]] = None,
-        region: Optional[Union[str, List[str]]] = None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        insecticide: phenotype_params.insecticide = None,
+        dose: phenotype_params.dose = None,
+        phenotype: phenotype_params.phenotype = None,
+        region: Optional[base_params.region] = None,
         analysis: str = "arab",
-        cohort_size: Optional[int] = None,
-        min_cohort_size: Optional[int] = None,
-        max_cohort_size: Optional[int] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> xr.Dataset:
         """
         Load phenotypic data combined with genetic variant data.
         """
+
         # 1. Get phenotypic DataFrame
         df_phenotypes = self.phenotype_data(
             sample_sets=sample_sets,
@@ -351,29 +407,74 @@ class PhenotypeDataMixin:
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
         )
+        if df_phenotypes.empty:
+            warnings.warn(
+                "No phenotype data found for the specified parameters. Cannot merge genetic data."
+            )
+            return self._create_phenotype_dataset(
+                df_phenotypes=df_phenotypes, variant_data=None
+            )
 
-        print(f"snp_calls is callable? {callable(self.snp_calls)}")
-        print(f"haplotypes is callable? {callable(self.haplotypes)}")
         # 2. Optionally load variant data if region is specified
         variant_data = None
         if region is not None:
             sample_ids = df_phenotypes["sample_id"].unique().tolist()
+            sample_query_for_genetics = f"sample_id in {sample_ids}"
+            snp_error_message = None
+            hap_error_message = None
+
+            sample_sets_norm = self._prep_sample_sets_param(sample_sets=sample_sets)
             try:
-                variant_data = self.snp_calls(
-                    region=region,
-                    sample_sets=sample_sets,
-                    sample_query=f"sample_id in {sample_ids}",
-                )
-            except Exception as e:
-                try:
-                    variant_data = self.haplotypes(
+                if hasattr(self, "snp_calls") and callable(self.snp_calls):
+                    variant_data = self.snp_calls(
                         region=region,
-                        sample_sets=sample_sets,
-                        sample_query=f"sample_id in {sample_ids}",
-                        analysis=analysis,
+                        sample_sets=sample_sets_norm,
+                        sample_query=sample_query_for_genetics,
                     )
-                except Exception:
-                    warnings.warn(f"Could not load genetic data: {e}")
+                    if (
+                        variant_data is None
+                        or variant_data.sizes.get("variants", 0) == 0
+                    ):
+                        variant_data = None
+                        snp_error_message = "snp_calls returned no data"
+                else:
+                    snp_error_message = "snp_calls method not available"
+
+            except Exception as e:
+                snp_error_message = f"snp_calls failed with Exception: {e}"
+                variant_data = None
+
+            if variant_data is None:
+                try:
+                    if hasattr(self, "haplotypes") and callable(self.haplotypes):
+                        hap_kwargs = {
+                            "region": region,
+                            "sample_sets": sample_sets_norm,
+                            "sample_query": sample_query_for_genetics,
+                        }
+                        if analysis is not None:
+                            hap_kwargs["analysis"] = analysis
+
+                        variant_data = self.haplotypes(**hap_kwargs)
+
+                        if (
+                            variant_data is None
+                            or variant_data.sizes.get("variants", 0) == 0
+                        ):
+                            variant_data = None
+                            hap_error_message = "haplotypes returned no data"
+                    else:
+                        hap_error_message = "haplotypes method not available"
+
+                except Exception as e:
+                    hap_error_message = f"haplotypes failed with Exception: {e}"
+                    variant_data = None
+
+            # If both failed, issue a warning
+            if variant_data is None:
+                warnings.warn(
+                    f"Could not load genetic data. snp_calls status: [{snp_error_message or 'Not attempted/Available'}]. haplotypes status: [{hap_error_message or 'Not attempted/Available'}]"
+                )
 
         # 3. Merge into an xarray Dataset
         ds = self._create_phenotype_dataset(df_phenotypes, variant_data)
@@ -385,11 +486,12 @@ class PhenotypeDataMixin:
         """
         all_sample_sets = self.sample_sets
         phenotype_sample_sets = []
+        base_phenotype_path = f"{self._url}/v3.2/phenotypes/all"
         for sample_set in all_sample_sets:
             try:
-                phenotype_path = self._phenotype_gcs_path_template.format(
-                    sample_set=sample_set
-                )
+                phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
+                if self._fs.exists(phenotype_path):
+                    phenotype_sample_sets.append(sample_set)
                 if self._fs.exists(phenotype_path):
                     phenotype_sample_sets.append(sample_set)
             except Exception:

@@ -52,7 +52,7 @@ from .util import (
     parse_single_region,
     plotly_discrete_legend,
 )
-
+from .anoph.phenotypes import AnophelesPhenotypeData
 
 # N.B., we are in the process of breaking up the AnophelesDataResource
 # class into multiple parent classes like AnophelesGenomeSequenceData
@@ -95,6 +95,7 @@ class AnophelesDataResource(
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
     AnophelesBase,
+    AnophelesPhenotypeData,
 ):
     """Anopheles data resources."""
 
