@@ -70,8 +70,11 @@ class AnophelesPhenotypeData:
         # Apply simple filters
         if insecticide is not None:
             df_combined = df_combined[df_combined["insecticide"].isin(insecticide)]
-        if dose is not None:
-            df_combined = df_combined[df_combined["dose"].isin(dose)]
+
+        df_combined = df_combined[
+            df_combined["dose"].isin(dose if isinstance(dose, list) else [dose])
+        ]
+
         if phenotype is not None:
             df_combined = df_combined[df_combined["phenotype"].isin(phenotype)]
 
@@ -171,7 +174,7 @@ class AnophelesPhenotypeData:
                 f"Expected values (case-insensitive): {list(phenotype_map.keys())}"
             )
         if "sample_id" in df.columns:
-            binary_series.index = df["sample_id"]
+            binary_series.index = pd.Index(df["sample_id"])
         else:
             warnings.warn(
                 "Cannot set index to sample_id as it is missing from the input DataFrame."
