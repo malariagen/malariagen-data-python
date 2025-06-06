@@ -75,3 +75,18 @@ def test_locate_region(region_raw):
         assert region == Region("2RL", 48714463, 48715355)
     if region_raw == "2RL:24,630,355-24,633,221":
         assert region == Region("2RL", 24630355, 24633221)
+
+
+@pytest.mark.parametrize(
+    "inversion",
+    ["2La", "2Rb", "2Rc_col", "X_x"],
+)
+def test_karyotyping(inversion):
+    af1 = setup_af1()
+
+    with pytest.raises(NotImplementedError):
+        af1.karyotype(
+            inversion=inversion,
+            sample_sets="1229-VO-GH-DADZIE-VMF00095",
+            sample_query=None,
+        )
