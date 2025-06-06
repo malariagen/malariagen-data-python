@@ -71,9 +71,12 @@ class AnophelesPhenotypeData:
         if insecticide is not None:
             df_combined = df_combined[df_combined["insecticide"].isin(insecticide)]
 
-        df_combined = df_combined[
-            df_combined["dose"].isin(dose if isinstance(dose, list) else [dose])
-        ]
+        if dose is None:
+            df_combined = df_combined[df_combined["dose"].isna()]
+        else:
+            df_combined = df_combined[
+                df_combined["dose"].isin(dose if isinstance(dose, list) else [dose])
+            ]
 
         if phenotype is not None:
             df_combined = df_combined[df_combined["phenotype"].isin(phenotype)]
