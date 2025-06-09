@@ -3,7 +3,7 @@ import xarray as xr
 from typing import Callable, Optional, List, Any
 import warnings
 import fsspec
-from . import base_params, phenotype_params
+from malariagen_data.anoph import base_params, phenotype_params
 
 
 class AnophelesPhenotypeData:
@@ -20,6 +20,44 @@ class AnophelesPhenotypeData:
     snp_calls: Callable[..., Any]
     _prep_sample_sets_param: Callable[..., Any]
     haplotypes: Callable[..., Any]
+
+    def __init__(
+        self,
+        url: str,
+        fs: fsspec.AbstractFileSystem,
+        sample_metadata: Callable[..., pd.DataFrame],
+        sample_sets: list[str],
+        snp_calls: Callable[..., Any],
+        prep_sample_sets_param: Callable[..., Any],
+        haplotypes: Callable[..., Any],
+    ):
+        """
+        Initialize the AnophelesPhenotypeData class.
+
+        Parameters
+        ----------
+        url : str
+            Base URL for accessing phenotype data.
+        fs : fsspec.AbstractFileSystem
+            File system interface for accessing remote data.
+        sample_metadata : callable
+            Function to retrieve sample metadata.
+        sample_sets : list of str
+            List of available sample sets.
+        snp_calls : callable
+            Function to retrieve SNP calls.
+        prep_sample_sets_param : callable
+            Function to prepare sample sets parameter.
+        haplotypes : callable
+            Function to retrieve haplotype data.
+        """
+        self._url = url
+        self._fs = fs
+        self.sample_metadata = sample_metadata
+        self.sample_sets = sample_sets
+        self.snp_calls = snp_calls
+        self._prep_sample_sets_param = prep_sample_sets_param
+        self.haplotypes = haplotypes
 
     def _load_phenotype_data(
         self,
