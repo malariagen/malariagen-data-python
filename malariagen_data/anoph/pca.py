@@ -82,6 +82,11 @@ class AnophelesPca(
         # invalidate any previously cached data.
         name = "pca_v5"
 
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
         ## Normalize params for consistent hash value.
 
         # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.

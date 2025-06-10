@@ -115,6 +115,11 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # invalidate any previously cached data.
         name = "biallelic_diplotype_pairwise_distances"
 
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
         ## Normalize params for consistent hash value.
 
         # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
@@ -271,6 +276,11 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "njt_v1"
+
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
 
         ## Normalize params for consistent hash value.
 
@@ -458,6 +468,11 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> plotly_params.figure:
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
         # Only import anjl if needed, as it requires a couple of seconds to compile
         # functions.
         import anjl  # type: ignore
