@@ -773,7 +773,8 @@ class AnophelesSampleMetadata(AnophelesBase):
         for on, data in self._extra_metadata:
             df_samples = df_samples.merge(data, how="left", on=on)
 
-        # Apply the sample_query or sample_indices, if specified.
+        # Apply the sample_query, if there is one.
+        # Note: this might have been internally modified, e.g. `is_surveillance == True`.
         if prepared_sample_query is not None:
             # Assume a pandas query string.
             sample_query_options = sample_query_options or {}
@@ -782,7 +783,10 @@ class AnophelesSampleMetadata(AnophelesBase):
                 prepared_sample_query, **sample_query_options, engine="python"
             )
             df_samples = df_samples.reset_index(drop=True)
-        elif sample_indices is not None:
+
+        # Apply the sample_indices, if there are any.
+        # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
+        if sample_indices is not None:
             # Assume it is an indexer.
             df_samples = df_samples.iloc[sample_indices]
             df_samples = df_samples.reset_index(drop=True)
