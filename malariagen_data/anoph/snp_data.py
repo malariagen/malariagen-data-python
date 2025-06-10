@@ -456,7 +456,7 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
-        # Additional parameter checks.
+        # Check that either sample_query xor sample_indices are provided.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
@@ -1001,7 +1001,7 @@ class AnophelesSnpData(
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> xr.Dataset:
-        # Additional parameter checks.
+        # Check that either sample_query xor sample_indices are provided.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
@@ -1301,6 +1301,11 @@ class AnophelesSnpData(
         # Change this name if you ever change the behaviour of this function,
         # to invalidate any previously cached data.
         name = "snp_allele_counts_v2"
+
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
 
         ## Normalize params for consistent hash value.
 
@@ -1688,6 +1693,11 @@ class AnophelesSnpData(
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
     ) -> xr.Dataset:
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
         # Perform an allele count.
         ac = self.snp_allele_counts(
             region=region,
@@ -1848,6 +1858,11 @@ class AnophelesSnpData(
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "biallelic_diplotypes"
+
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
 
         ## Normalize params for consistent hash value.
 
