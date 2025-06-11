@@ -605,7 +605,7 @@ class AnophelesPhenotypeData:
         """
         Get list of sample sets that have phenotypic data available.
         """
-        all_sample_sets = self.sample_sets()["sample_set"].tolist()
+        all_sample_sets = self.sample_sets()["sample_set"].tolist()  # type: ignore[operator]
         phenotype_sample_sets = []
         base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
         for sample_set in all_sample_sets:
