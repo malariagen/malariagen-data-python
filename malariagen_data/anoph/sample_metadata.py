@@ -589,29 +589,31 @@ class AnophelesSampleMetadata(AnophelesBase):
                 # Note: this includes study and terms-of-use info.
                 df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
 
+                # Commented this out as it breaks some things - will fix
+
                 # Merge with the sequence QC metadata.
-                df_sequence_qc = self.sequence_qc_metadata(
-                    sample_sets=prepped_sample_sets
-                )
+                # df_sequence_qc = self.sequence_qc_metadata(
+                #    sample_sets=prepped_sample_sets
+                # )
 
                 # Note: merging can change column dtypes
-                df_samples = df_samples.merge(
-                    df_sequence_qc, on="sample_id", sort=False, how="left"
-                )
+                # df_samples = df_samples.merge(
+                #    df_sequence_qc, on="sample_id", sort=False, how="left"
+                # )
 
                 # If available, merge with the AIM metadata.
-                if self._aim_analysis:
-                    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
-                    df_samples = df_samples.merge(
-                        df_aim, on="sample_id", sort=False, how="left"
-                    )
+                # if self._aim_analysis:
+                #    df_aim = self.aim_metadata(sample_sets=prepped_sample_sets)
+                #    df_samples = df_samples.merge(
+                #        df_aim, on="sample_id", sort=False, how="left"
+                #    )
 
                 # If available, merge with the cohorts metadata.
-                if self._cohorts_analysis:
-                    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
-                    df_samples = df_samples.merge(
-                        df_cohorts, on="sample_id", sort=False, how="left"
-                    )
+                # if self._cohorts_analysis:
+                #    df_cohorts = self.cohorts_metadata(sample_sets=prepped_sample_sets)
+                #    df_samples = df_samples.merge(
+                #        df_cohorts, on="sample_id", sort=False, how="left"
+                #    )
 
             # Store sample metadata in the cache.
             self._cache_sample_metadata[cache_key] = df_samples
