@@ -269,7 +269,7 @@ def test_cohort_filtering(cohort_param, expected_result):
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
     insecticide = "Deltamethrin"
 
-    df_baseline = ag3.phenotype_data(sample_sets=sample_set, insecticide=insecticide)
+    # df_baseline = ag3.phenotype_data(sample_sets=sample_set, insecticide=insecticide)
 
     # Apply cohort filtering
     df_filtered = ag3.phenotype_data(
