@@ -252,22 +252,93 @@ class AnophelesPhenotypeData:
         ds = xr.Dataset(data_vars, coords=coords)
 
         if variant_data is not None:
-            if "samples" not in variant_data.dims:
+            # Find the sample dimension and coordinate
+            sample_dim = None
+            sample_coord = None
+
+            # Check for sample dimension
+            for dim_name in ["samples", "sample_id"]:
+                if dim_name in variant_data.dims:
+                    sample_dim = dim_name
+                    break
+
+            if sample_dim is None:
                 warnings.warn(
-                    "Variant data does not contain 'samples' dimension, cannot merge."
+                    f"Variant data does not contain 'samples' or 'sample_id' dimension. "
+                    f"Available dimensions: {list(variant_data.dims)}"
                 )
+                return ds
+
+            for coord_name in ["sample_id", "samples"]:
+                if coord_name in variant_data.coords:
+                    sample_coord = coord_name
+                    break
+
+            if sample_coord is None:
+                warnings.warn(
+                    f"Variant data does not contain 'samples' or 'sample_id' coordinate. "
+                    f"Available coordinates: {list(variant_data.coords.keys())}"
+                )
+                return ds
+
+            # Get variant sample IDs - use the correct coordinate name
+            variant_sample_ids = variant_data.coords[sample_coord].values
+
+            # Find common samples
+            common_samples = list(set(sample_ids) & set(variant_sample_ids))
+            print(f"DEBUG: Found {len(common_samples)} common samples")
+
+            if not common_samples:
+                warnings.warn(
+                    "No common samples found between phenotype and variant data"
+                )
+                return ds
             else:
-                common_samples = list(
-                    set(sample_ids) & set(variant_data.coords["samples"].values)
-                )
-                if not common_samples:
-                    warnings.warn(
-                        "No common samples found between phenotype and variant data"
+                # Select common samples from phenotype dataset
+                ds_common = ds.sel(samples=common_samples)
+
+                # Select common samples from variant dataset
+                try:
+                    # NEW APPROACH: Use isel with boolean indexing instead of sel
+                    # This avoids the "no index found" error
+
+                    sample_mask = pd.Series(variant_sample_ids).isin(common_samples)
+                    sample_indices = sample_mask[sample_mask].index.tolist()
+                    variant_data_common = variant_data.isel(
+                        {sample_dim: sample_indices}
                     )
-                else:
-                    ds_common = ds.sel(samples=common_samples)
-                    variant_data_common = variant_data.sel(samples=common_samples)
-                    ds = xr.merge([ds_common, variant_data_common])
+
+                    # Rename dimension to "samples" if it's not already
+                    if sample_dim != "samples":
+                        variant_data_common = variant_data_common.rename(
+                            {sample_dim: "samples"}
+                        )
+
+                    if (
+                        sample_coord != "samples"
+                        and sample_coord in variant_data_common.coords
+                    ):
+                        variant_data_common = variant_data_common.rename(
+                            {sample_coord: "samples"}
+                        )
+
+                    variant_samples_selected = variant_data_common.coords[
+                        "samples"
+                    ].values
+
+                    ds_common_reordered = ds_common.sel(
+                        samples=variant_samples_selected
+                    )
+
+                    # Merge the datasets
+                    ds = xr.merge([ds_common_reordered, variant_data_common])
+
+                except Exception as e:
+                    warnings.warn(f"Error selecting/merging variant data: {e}")
+                    import traceback
+
+                    traceback.print_exc()
+                    return ds
 
         return ds
 
@@ -466,6 +537,7 @@ class AnophelesPhenotypeData:
             hap_error_message = None
 
             sample_sets_norm = self._prep_sample_sets_param(sample_sets=sample_sets)
+
             try:
                 if hasattr(self, "snp_calls") and callable(self.snp_calls):
                     variant_data = self.snp_calls(
@@ -519,16 +591,23 @@ class AnophelesPhenotypeData:
                 )
 
         # 3. Merge into an xarray Dataset
-        ds = self._create_phenotype_dataset(df_phenotypes, variant_data)
-        return ds
+        try:
+            ds = self._create_phenotype_dataset(df_phenotypes, variant_data)
+            return ds
+        except Exception:
+            import traceback
+
+            traceback.print_exc()
+            # Return phenotype-only dataset as fallback
+            return self._create_phenotype_dataset(df_phenotypes, None)
 
     def phenotype_sample_sets(self) -> List[str]:
         """
         Get list of sample sets that have phenotypic data available.
         """
-        all_sample_sets = self.sample_sets
+        all_sample_sets = self.sample_sets()["sample_set"].tolist()
         phenotype_sample_sets = []
-        base_phenotype_path = f"{self._url}/v3.2/phenotypes/all"
+        base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
         for sample_set in all_sample_sets:
             try:
                 phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
