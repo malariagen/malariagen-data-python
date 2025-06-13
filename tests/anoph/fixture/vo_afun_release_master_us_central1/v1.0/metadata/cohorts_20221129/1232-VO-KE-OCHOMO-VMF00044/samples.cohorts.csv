@@ -1,0 +1,82 @@
+sample_id,country_ISO,adm1_name,adm1_ISO,adm2_name,taxon,cohort_admin1_year,cohort_admin1_month,cohort_admin2_year,cohort_admin2_month
+VBS17631,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17632,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17633,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17634,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17635,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17636,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17637,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17638,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17641,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17642,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17643,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17645,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17646,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17647,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17648,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17649,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17650,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17651,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17652,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17653,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17654,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17657,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17658,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17659,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17660,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17661,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17663,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17664,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17665,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17666,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17668,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17669,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17672,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17673,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17674,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17676,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17677,KEN,Kisumu,KE-17,Nyando,funestus,KE-17_fune_2014,KE-17_fune_2014_06,KE-17_Nyando_fune_2014,KE-17_Nyando_fune_2014_06
+VBS17678,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17679,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17680,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17681,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17683,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17684,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17685,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17686,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17687,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17689,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17690,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17691,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17692,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17693,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17694,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17695,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17696,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17697,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17698,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17699,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17700,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17701,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17702,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17703,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17704,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17705,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17706,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17707,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17709,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17710,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17711,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17714,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17715,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17716,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17717,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17718,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17719,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17720,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17721,KEN,Bungoma,KE-03,Mt Elgon,funestus,KE-03_fune_2016,KE-03_fune_2016_10,KE-03_Mt-Elgon_fune_2016,KE-03_Mt-Elgon_fune_2016_10
+VBS17722,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17723,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17724,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17725,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10
+VBS17726,KEN,Migori,KE-27,Migori,funestus,KE-27_fune_2016,KE-27_fune_2016_10,KE-27_Migori_fune_2016,KE-27_Migori_fune_2016_10

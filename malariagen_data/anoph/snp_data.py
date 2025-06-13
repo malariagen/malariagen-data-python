@@ -456,7 +456,7 @@ class AnophelesSnpData(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
-        # Additional parameter checks.
+        # Check that either sample_query xor sample_indices are provided.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
@@ -464,6 +464,8 @@ class AnophelesSnpData(
         # Normalise parameters.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
         del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         regions: List[Region] = parse_multi_region(self, region)
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
@@ -514,12 +516,14 @@ class AnophelesSnpData(
             d = da_compress(loc_sites, d, axis=0)
 
         # Apply sample selection if requested.
-        if sample_query is not None:
+        if sample_query_prepped is not None:
             df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
             sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
+            loc_samples = df_samples.eval(
+                sample_query_prepped, **sample_query_options
+            ).values
             if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
+                raise ValueError(f"No samples found for query {sample_query_prepped!r}")
             d = da.compress(loc_samples, d, axis=1)
         elif sample_indices is not None:
             d = da.take(d, sample_indices, axis=1)
@@ -749,7 +753,7 @@ class AnophelesSnpData(
         try:
             loc_ann = self._cache_locate_site_class[cache_key]
 
-        except KeyError:
+        except KeyError as exc:
             # Access site annotations data.
             ds_ann = self._site_annotations_raw(
                 contig=region.contig,
@@ -873,7 +877,7 @@ class AnophelesSnpData(
                 ) | ((seq_cls == SEQ_CLS_DOWNSTREAM) & (seq_relpos_start > 10_000))
 
             else:
-                raise NotImplementedError(site_class)
+                raise NotImplementedError(site_class) from exc
 
             # N.B., site annotations data are provided for every position in the genome. We need to
             # therefore subset to SNP positions.
@@ -997,33 +1001,51 @@ class AnophelesSnpData(
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
         random_seed: base_params.random_seed = 42,
     ) -> xr.Dataset:
-        # Additional parameter checks.
+        # Check that either sample_query xor sample_indices are provided.
         base_params.validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
         # Normalise parameters.
-        sample_sets_prepped: Tuple[str, ...] = tuple(
-            self._prep_sample_sets_param(sample_sets=sample_sets)
-        )
-        del sample_sets
-        if sample_indices is not None:
-            sample_indices_prepped: Optional[Tuple[int, ...]] = tuple(sample_indices)
-        else:
-            sample_indices_prepped = sample_indices
-        del sample_indices
-        regions: Tuple[Region, ...] = tuple(parse_multi_region(self, region))
-        del region
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
-        del site_mask
+        prepared_regions = parse_multi_region(self, region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
-        return self._snp_calls(
-            regions=regions,
-            sample_sets=sample_sets_prepped,
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
+        (
+            prepared_sample_sets,
+            prepared_sample_indices,
+        ) = self._prep_sample_selection_cache_params(
+            sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_indices=sample_indices,
+        )
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
+        del sample_indices
+        del region
+        del site_mask
+
+        # Convert lists to tuples to avoid CacheMiss "TypeError: unhashable type: 'list'".
+        prepared_regions_tuple: Tuple[Region, ...] = tuple(prepared_regions)
+        prepared_sample_sets_tuple: Optional[Tuple[str, ...]] = (
+            tuple(prepared_sample_sets) if prepared_sample_sets is not None else None
+        )
+        prepared_sample_indices_tuple: Optional[Tuple[int, ...]] = (
+            tuple(prepared_sample_indices)
+            if prepared_sample_indices is not None
+            else None
+        )
+
+        # Note: `_snp_calls` should only take `sample_indices`, not `sample_query`, to facilitate caching.
+        return self._snp_calls(
+            regions=prepared_regions_tuple,
+            sample_sets=prepared_sample_sets_tuple,
+            sample_indices=prepared_sample_indices_tuple,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -1116,8 +1138,6 @@ class AnophelesSnpData(
         *,
         regions: Tuple[Region, ...],
         sample_sets,
-        sample_query,
-        sample_query_options,
         sample_indices,
         site_mask,
         site_class,
@@ -1128,7 +1148,15 @@ class AnophelesSnpData(
         inline_array,
         chunks,
     ):
-        # Get SNP calls and concatenate multiple sample sets and/or regions.
+        ## Get SNP calls and concatenate multiple sample sets and/or regions.
+
+        # Note: sample_sets should be "prepared" before being passed to this private function.
+
+        # Note: `_snp_calls` should only take `sample_indices`, not `sample_query`.
+        #       Use `_prep_sample_selection_cache_params` to convert `sample_query` to `sample_indices`.
+
+        # Note: we don't cache different sample_indices subsets, which are selected below.
+
         ds = self._cached_snp_calls(
             regions=regions,
             sample_sets=sample_sets,
@@ -1139,15 +1167,41 @@ class AnophelesSnpData(
         )
 
         # Handle sample selection.
-        if sample_query is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
-            sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(sample_query, **sample_query_options).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
-            ds = ds.isel(samples=loc_samples)
-        elif sample_indices is not None:
-            ds = ds.isel(samples=list(sample_indices))
+        if sample_indices is not None:
+            # Note: `sample_indices` could be any tuple of integers, while the `ds` DataSet will contain data for all samples in the `sample_sets`.
+            # In other words, the internal `sample_query` is not being applied to `ds`.
+            # We need to get the filtered set of samples from `sample_metadata` and then select samples based on that set.
+
+            # Get the relevant sample metadata.
+            relevant_samples_df = self.sample_metadata(sample_sets=sample_sets)
+
+            # We need to select only the samples that are identified by the `sample_indices` tuple relative to the results of `sample_metadata`.
+            # However, the `ds` DataSet contains data for all samples in the `sample_sets`, regardless of any internal `sample_query`.
+
+            # Get the samples identified via `sample_indices`.
+            # Note: this might raise `IndexingError` if the user provides bad indices, e.g. "positional indexers are out-of-bounds".
+            # Note: `sample_indices` needs to be a list rather than tuple for `iloc`, otherwise `IndexingError`, e.g. "Too many indexers".
+            sample_indices_as_list = list(sample_indices)
+            selected_samples_df = relevant_samples_df.iloc[sample_indices_as_list]
+
+            # Get the selected sample ids from the sample metadata DataFrame.
+            relevant_sample_ids = selected_samples_df["sample_id"].values
+
+            # Get all the sample ids from the unfiltered Dataset.
+            ds_sample_ids = ds.coords["sample_id"].values
+
+            # Get the indices of samples in the Dataset that match the relevant sample ids.
+            # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
+            relevant_sample_indices = np.where(
+                np.isin(ds_sample_ids, relevant_sample_ids)
+            )[0]
+
+            # Preserve the behaviour of raising a `ValueError` instead of empty results.
+            if relevant_sample_indices.size == 0:
+                raise ValueError("No relevant samples found.")
+
+            # Select only the relevant samples from the Dataset.
+            ds = ds.isel(samples=relevant_sample_indices)
 
         # Handle cohort size, overrides min and max.
         if cohort_size is not None:
@@ -1281,7 +1335,15 @@ class AnophelesSnpData(
         # to invalidate any previously cached data.
         name = "snp_allele_counts_v2"
 
-        # Normalize params for consistent hash value.
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
             sample_sets_prepped,
             sample_indices_prepped,
@@ -1664,6 +1726,11 @@ class AnophelesSnpData(
         n_snps: Optional[base_params.n_snps] = None,
         thin_offset: base_params.thin_offset = 0,
     ) -> xr.Dataset:
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
         # Perform an allele count.
         ac = self.snp_allele_counts(
             region=region,
@@ -1825,31 +1892,42 @@ class AnophelesSnpData(
         # invalidate any previously cached data.
         name = "biallelic_diplotypes"
 
-        # Normalize params for consistent hash value.
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
+        ## Normalize params for consistent hash value.
+
+        # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
+        # So `sample_query` and `sample_query_options` should not be used beyond this point. (`sample_indices` should be used instead.)
         (
-            sample_sets_prepped,
-            sample_indices_prepped,
+            prepared_sample_sets,
+            prepared_sample_indices,
         ) = self._prep_sample_selection_cache_params(
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
             sample_indices=sample_indices,
         )
-        region_prepped = self._prep_region_cache_param(region=region)
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
+        prepared_region = self._prep_region_cache_param(region=region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
         del sample_sets
         del sample_query
         del sample_query_options
         del sample_indices
         del region
         del site_mask
+
         params = dict(
-            region=region_prepped,
+            region=prepared_region,
             n_snps=n_snps,
             thin_offset=thin_offset,
-            sample_sets=sample_sets_prepped,
-            sample_indices=sample_indices_prepped,
-            site_mask=site_mask_prepped,
+            sample_sets=prepared_sample_sets,
+            sample_indices=prepared_sample_indices,
+            site_mask=prepared_site_mask,
             site_class=site_class,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -1894,6 +1972,8 @@ class AnophelesSnpData(
         inline_array,
         chunks,
     ):
+        # Note: this function uses sample_indices and should not expect a sample_query.
+
         # Access biallelic SNPs.
         ds = self.biallelic_snp_calls(
             region=region,
