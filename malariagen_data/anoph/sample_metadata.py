@@ -1060,6 +1060,36 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_query_options: Optional[base_params.sample_query_options],
         sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
+        # Check that either sample_query xor sample_indices are provided.
+        base_params.validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
+        # Resolve query to a list of integers for more cache hits - we
+        # do this because there are different ways to write the same pandas
+        # query, and so it's better to evaluate the query and use a list of
+        # integer indices instead.
+
+        # Scenario 1: No `sample_query` nor `sample_indices` were given,
+        #             and there is no internal `sample_query`,
+        #             so no `sample_indices` will be returned.
+
+        # Scenario 2: No `sample_query` nor `sample_indices` were given,
+        #             but there is an internal `sample_query`,
+        #             which will be converted into `sample_indices` and returned.
+
+        # Scenario 3: Only `sample_query` has been provided,
+        #             which will be converted into `sample_indices` and returned.
+        #             This will be handled the same as Scenario 2.
+
+        # Scenario 4: Only `sample_indices` has been provided,
+        #             and there is no internal `sample_query`,
+        #             simply return `sample_indices`.
+
+        # Scenario 5: Only `sample_indices` has been provided,
+        #             but there is also an internal `sample_query`, still return `sample_indices`,
+        #             which ought to already align with `sample_metadata`.
+
         # Normalise sample sets.
         prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
@@ -1068,20 +1098,46 @@ class AnophelesSampleMetadata(AnophelesBase):
         del sample_sets
         del sample_query
 
-        if prepared_sample_query is not None:
-            # Resolve query to a list of integers for more cache hits - we
-            # do this because there are different ways to write the same pandas
-            # query, and so it's better to evaluate the query and use a list of
-            # integer indices instead.
+        # Start with assuming there are no sample indices.
+        # This can be returned if there is no `prepared_sample_query` nor `sample_indices`.
+        prepared_sample_indices = None
+
+        # If there is a `prepared_sample_query` but no `sample_indices`...
+        if prepared_sample_query is not None and sample_indices is None:
+            # Get the unfiltered sample metadata for the given sample sets.
+            # Note: we don't want to pass the `sample_query` to `sample_metadata` here
+            # because we want to get the sample indices that represent the `sample_query`.
             df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
+
+            # Default the sample_query_options to an empty dict.
             sample_query_options = sample_query_options or {}
+
             # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            # Get the Pandas Series as a NumPy array of Boolean values.
+            # Note: if `prepared_sample_query` is an internal query, this will select all samples,
+            # since `sample_metadata` should have already applied the internal query.
             loc_samples = df_samples.eval(
                 prepared_sample_query, **sample_query_options, engine="python"
             ).values
-            sample_indices = np.nonzero(loc_samples)[0].tolist()
 
-        return prepared_sample_sets, sample_indices
+            # Convert the sample indices to a list.
+            # Get the indices of the True values in the Boolean array and convert it to a list of integers.
+            prepared_sample_indices = np.nonzero(loc_samples)[0].tolist()
+
+        # If there is a `prepared_sample_query` and a `sample_indices`...
+        elif prepared_sample_query is not None and sample_indices is not None:
+            # Given that we don't allow both `sample_query` and `sample_indices` params in this function,
+            # we can deduce that the `prepared_sample_query` has resulted from an internal query.
+            # Given that `sample_indices` should be aligned with the results of `sample_metadata`,
+            # which should already apply the internal query, simply return the given `sample_indices`.
+
+            prepared_sample_indices = sample_indices
+
+        # If there is no `prepared_sample_query` but there is a `sample_indices`...
+        elif prepared_sample_query is None and sample_indices is not None:
+            prepared_sample_indices = sample_indices
+
+        return prepared_sample_sets, prepared_sample_indices
 
     def _results_cache_add_analysis_params(self, params: dict):
         super()._results_cache_add_analysis_params(params)
