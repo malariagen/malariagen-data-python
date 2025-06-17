@@ -8,6 +8,7 @@ MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
 GCS_DEFAULT_URL = "gs://vo_aste_release_master_us_central1/"
+GCS_DEFAULT_PUBLIC_URL = "gs://vo_aste_temp_us_central1/vo_aste_release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_aste_release_master_us_central1",
 }
@@ -72,6 +73,7 @@ class As1(AnophelesDataResource):
     def __init__(
         self,
         url=None,
+        public_url=GCS_DEFAULT_PUBLIC_URL,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -87,6 +89,7 @@ class As1(AnophelesDataResource):
     ):
         super().__init__(
             url=url,
+            public_url=public_url,
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=None,
@@ -117,4 +120,5 @@ class As1(AnophelesDataResource):
             taxon_colors=TAXON_COLORS,
             virtual_contigs=None,
             gene_names=None,
+            inversion_tag_path=None,
         )
