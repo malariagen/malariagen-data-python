@@ -461,24 +461,26 @@ class AnophelesSnpData(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
-        # Normalise parameters.
-        sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        # Prepare parameters.
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
+        prepared_regions: List[Region] = parse_multi_region(self, region)
+        prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
+
+        # Delete original parameters to prevent accidental use.
         del sample_sets
-        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
         del sample_query
-        regions: List[Region] = parse_multi_region(self, region)
         del region
-        site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
 
         with self._spinner("Access SNP genotypes"):
             # Concatenate multiple sample sets and/or contigs.
             lx = []
-            for r in regions:
+            for r in prepared_regions:
                 contig = r.contig
                 ly = []
 
-                for s in sample_sets_prepped:
+                for s in prepared_sample_sets:
                     y = self._snp_genotypes_for_contig(
                         contig=contig,
                         sample_set=s,
@@ -508,24 +510,53 @@ class AnophelesSnpData(
             d = da_concat(lx, axis=0)
 
         # Apply site filters if requested.
-        if site_mask_prepped is not None:
+        if prepared_site_mask is not None:
             loc_sites = self.site_filters(
-                region=regions,
-                mask=site_mask_prepped,
+                region=prepared_regions,
+                mask=prepared_site_mask,
             )
             d = da_compress(loc_sites, d, axis=0)
 
-        # Apply sample selection if requested.
-        if sample_query_prepped is not None:
-            df_samples = self.sample_metadata(sample_sets=sample_sets_prepped)
-            sample_query_options = sample_query_options or {}
-            loc_samples = df_samples.eval(
-                sample_query_prepped, **sample_query_options
-            ).values
-            if np.count_nonzero(loc_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query_prepped!r}")
+        # Apply the sample_query, if there is one.
+        # Note: this might have been internally modified, e.g. `is_surveillance == True`.
+        if prepared_sample_query is not None:
+            # Note: the unfiltered Dask array `d` is not aligned with the filtered `sample_metadata`,
+            #       so we cannot use filtered `sample_metadata` to get the relevant boolean filter.
+
+            # Note: the unfiltered Dask array `d` does not contain sample identifiers,
+            #       so we cannot use a list of relevant sample ids to produce the boolean filter directly.
+
+            # Note: we can first determine the list of relevant sample ids using filtered `sample_metadata`,
+            #       then use the unfiltered `general_metadata` to determine the appropriate boolean filter.
+
+            df_filtered_samples = self.sample_metadata(
+                sample_sets=prepared_sample_sets,
+                sample_query=prepared_sample_query,
+                sample_query_options=sample_query_options,
+            )
+
+            # Raise an error if no samples match the sample query.
+            if len(df_filtered_samples) == 0:
+                raise ValueError(
+                    f"No samples found for query {prepared_sample_query!r}"
+                )
+
+            # Get the list of unfiltered samples, in order to produce an aligned boolean filter.
+            df_unfiltered_samples = self.general_metadata(
+                sample_sets=prepared_sample_sets
+            )
+
+            # Get a boolean array for unfiltered data, indicating which samples match the query.
+            loc_samples = df_unfiltered_samples["sample_id"].isin(
+                df_filtered_samples["sample_id"]
+            )
+
+            # Filter the Dask array using the boolean array.
             d = da.compress(loc_samples, d, axis=1)
-        elif sample_indices is not None:
+
+        # Apply the sample_indices, if there are any.
+        # Note: this might need to apply to the result of an internal sample_query, e.g. `is_surveillance == True`.
+        if sample_indices is not None:
             d = da.take(d, sample_indices, axis=1)
 
         return d
