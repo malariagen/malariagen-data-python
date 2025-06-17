@@ -7,13 +7,22 @@ import pytest
 from pytest_cases import parametrize_with_cases
 
 from malariagen_data import ag3 as _ag3
+from malariagen_data import af1 as _af1
 from malariagen_data.anoph.hap_frq import AnophelesHapFrequencyAnalysis
+from .test_frq import (
+    check_plot_frequencies_heatmap,
+    check_plot_frequencies_time_series,
+    check_plot_frequencies_time_series_with_taxa,
+    check_plot_frequencies_time_series_with_areas,
+    check_plot_frequencies_interactive_map,
+)
 
 
 @pytest.fixture
 def ag3_sim_api(ag3_sim_fixture):
     return AnophelesHapFrequencyAnalysis(
         url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
         config_path=_ag3.CONFIG_PATH,
         major_version_number=_ag3.MAJOR_VERSION_NUMBER,
         major_version_path=_ag3.MAJOR_VERSION_PATH,
@@ -36,6 +45,24 @@ def ag3_sim_api(ag3_sim_fixture):
     )
 
 
+@pytest.fixture
+def af1_sim_api(af1_sim_fixture):
+    return AnophelesHapFrequencyAnalysis(
+        url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
+        config_path=_af1.CONFIG_PATH,
+        major_version_number=_af1.MAJOR_VERSION_NUMBER,
+        major_version_path=_af1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        results_cache=af1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_af1.TAXON_COLORS,
+        default_phasing_analysis="funestus",
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -50,6 +77,10 @@ def ag3_sim_api(ag3_sim_fixture):
 
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
+
+
+def case_af1_sim(af1_sim_fixture, af1_sim_api):
+    return af1_sim_fixture, af1_sim_api
 
 
 def check_frequency(x):
@@ -70,9 +101,8 @@ def check_hap_frequencies(*, api, df, sample_sets, cohorts, min_cohort_size):
     cohort_counts = df_samples[cohort_column].value_counts()
     cohort_labels = cohort_counts[cohort_counts >= min_cohort_size].index.to_list()
 
-    universal_fields = ["label"]
     frq_fields = ["frq_" + s for s in cohort_labels] + ["max_af"]
-    expected_fields = universal_fields + frq_fields
+    expected_fields = frq_fields
     assert sorted(df.columns.tolist()) == sorted(expected_fields)
 
 
@@ -82,6 +112,10 @@ def check_hap_frequencies_advanced(
     ds,
 ):
     assert isinstance(ds, xr.Dataset)
+    check_plot_frequencies_time_series(api, ds)
+    check_plot_frequencies_time_series_with_taxa(api, ds)
+    check_plot_frequencies_time_series_with_areas(api, ds)
+    check_plot_frequencies_interactive_map(api, ds)
     assert set(ds.dims) == {"cohorts", "variants"}
 
     expected_cohort_vars = [
@@ -153,6 +187,8 @@ def test_hap_frequencies_with_str_cohorts(
 
     # Run the function under test.
     df_hap = api.haplotypes_frequencies(**params)
+
+    check_plot_frequencies_heatmap(api, df_hap)
 
     # Standard checks.
     check_hap_frequencies(

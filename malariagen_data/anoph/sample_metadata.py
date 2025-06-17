@@ -1,6 +1,18 @@
 import io
 from itertools import cycle
-from typing import Any, Callable, Dict, List, Mapping, Optional, Sequence, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Tuple,
+    Union,
+    Hashable,
+    cast,
+)
 
 import ipyleaflet  # type: ignore
 import numpy as np
@@ -39,7 +51,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         # data resources, and so column names and dtype need to be
         # passed in as parameters.
         self._aim_metadata_columns: Optional[List[str]] = None
-        self._aim_metadata_dtype: Dict[str, Any] = dict()
+        self._aim_metadata_dtype: Dict[str, Union[str, type, np.dtype]] = dict()
         if isinstance(aim_metadata_dtype, Mapping):
             self._aim_metadata_columns = list(aim_metadata_dtype.keys())
             self._aim_metadata_dtype.update(aim_metadata_dtype)
@@ -140,7 +152,19 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "longitude": "float64",
                 "sex_call": "object",
             }
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            # Mapping of string dtypes to actual dtypes
+            dtype_map = {
+                "object": str,
+                "int64": np.int64,
+                "float64": np.float64,
+            }
+
+            # Convert string dtypes to actual dtypes
+            dtype_fixed: Mapping[Hashable, Union[str, np.dtype, type]] = {
+                col: dtype_map.get(dtype[col], str) for col in dtype
+            }
+
+            df = pd.read_csv(io.BytesIO(data), dtype=dtype_fixed, na_values="")
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -460,7 +484,12 @@ class AnophelesSampleMetadata(AnophelesBase):
         if isinstance(data, bytes):
             # Parse CSV data.
             df = pd.read_csv(
-                io.BytesIO(data), dtype=self._aim_metadata_dtype, na_values=""
+                io.BytesIO(data),
+                dtype=cast(
+                    Mapping[Hashable, Union[str, type, np.dtype]],
+                    self._aim_metadata_dtype,
+                ),
+                na_values="",
             )
 
             # Ensure all column names are lower case.

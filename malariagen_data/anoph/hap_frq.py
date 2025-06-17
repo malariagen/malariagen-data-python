@@ -9,18 +9,19 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import (
     check_types,
     haplotype_frequencies,
+)
+from .hap_data import AnophelesHapData
+from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
     add_frequency_ci,
 )
-from .hap_data import AnophelesHapData
 from .sample_metadata import locate_cohorts
+from .frq_base import AnophelesFrequencyAnalysis
 from . import base_params, frq_params
 
 
-class AnophelesHapFrequencyAnalysis(
-    AnophelesHapData,
-):
+class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis):
     def __init__(
         self,
         **kwargs,
@@ -119,7 +120,7 @@ class AnophelesHapFrequencyAnalysis(
         df_haps_sorted["label"] = ["H" + str(i) for i in range(len(df_haps_sorted))]
 
         # Reset index after filtering.
-        df_haps_sorted.set_index(keys="label", drop=True)
+        df_haps_sorted.set_index(keys="label", drop=True, inplace=True)
 
         return df_haps_sorted
 

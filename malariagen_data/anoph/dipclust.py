@@ -23,14 +23,16 @@ from . import (
     cnv_params,
 )
 from .snp_frq import AnophelesSnpFrequencyAnalysis
-from .cnv_data import AnophelesCnvData
+from .cnv_frq import AnophelesCnvFrequencyAnalysis
 
 AA_CHANGE_QUERY = (
     "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
 )
 
 
-class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData):
+class AnophelesDipClustAnalysis(
+    AnophelesCnvFrequencyAnalysis, AnophelesSnpFrequencyAnalysis
+):
     def __init__(
         self,
         **kwargs,
@@ -42,7 +44,11 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
     @check_types
     @doc(
-        summary="Hierarchically cluster diplotypes in region and produce an interactive plot.",
+        summary=""""
+        Hierarchically cluster diplotypes in region and produce an interactive plot.
+
+        If you use this function in a publication, please cite both this package and the original manuscript: doi.org/10.1093/molbev/msae140
+        """,
     )
     def plot_diplotype_clustering(
         self,
@@ -190,7 +196,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         else:
             return {
                 "figure": fig,
-                "dendro_sample_id_order": leaf_data["sample_id"].to_list(),
+                "dendro_sample_id_order": np.asarray(leaf_data["sample_id"].to_list()),
                 "n_snps": n_snps_used,
             }
 
@@ -319,7 +325,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         sample_sets: Optional[base_params.sample_sets],
         sample_query: Optional[base_params.sample_query],
         sample_query_options: Optional[base_params.sample_query_options],
-        site_mask: base_params.site_mask,
+        site_mask: Optional[base_params.site_mask],
         cohort_size: Optional[base_params.cohort_size],
         random_seed: base_params.random_seed,
         color_continuous_scale: Optional[plotly_params.color_continuous_scale],
@@ -547,11 +553,56 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
 
         return fig
 
+    def _insert_dipclust_snp_trace(
+        self,
+        *,
+        figures,
+        subplot_heights,
+        snp_row_height: plotly_params.height = 25,
+        transcript: base_params.transcript,
+        snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
+        sample_sets: Optional[base_params.sample_sets],
+        sample_query: Optional[base_params.sample_query],
+        sample_query_options: Optional[base_params.sample_query_options],
+        site_mask: Optional[base_params.site_mask],
+        dendro_sample_id_order: np.ndarray,
+        snp_filter_min_maf: float,
+        snp_colorscale: Optional[plotly_params.color_continuous_scale],
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
+    ):
+        snp_trace, n_snps_transcript = self._dipclust_snp_trace(
+            transcript=transcript,
+            sample_sets=sample_sets,
+            sample_query=sample_query,
+            sample_query_options=sample_query_options,
+            snp_query=snp_query,
+            site_mask=site_mask,
+            dendro_sample_id_order=dendro_sample_id_order,
+            snp_filter_min_maf=snp_filter_min_maf,
+            snp_colorscale=snp_colorscale,
+            chunks=chunks,
+            inline_array=inline_array,
+        )
+
+        if snp_trace:
+            figures.append(snp_trace)
+            subplot_heights.append(snp_row_height * n_snps_transcript)
+        else:
+            print(
+                f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
+            )
+        return figures, subplot_heights
+
     @doc(
-        summary="Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.",
+        summary=""""
+        Perform diplotype clustering, annotated with heterozygosity, gene copy number and amino acid variants.
+
+        If you use this function in a publication, please cite both this package and the original manuscript: doi.org/10.1093/molbev/msae140
+        """,
         parameters=dict(
             heterozygosity="Plot heterozygosity track.",
-            snp_transcript="Plot amino acid variants for this transcript.",
+            snp_transcript="Plot amino acid variants for these transcripts.",
             cnv_region="Plot gene CNV calls for this region.",
             snp_filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
         ),
@@ -561,7 +612,7 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
         region: base_params.regions,
         heterozygosity: bool = True,
         heterozygosity_colorscale: plotly_params.color_continuous_scale = "Greys",
-        snp_transcript: Optional[base_params.transcript] = None,
+        snp_transcript: Optional[dipclust_params.snp_transcript] = None,
         snp_colorscale: plotly_params.color_continuous_scale = "Greys",
         snp_filter_min_maf: float = 0.05,
         snp_query: Optional[base_params.snp_query] = AA_CHANGE_QUERY,
@@ -682,9 +733,11 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 figures.append(cnv_trace)
                 subplot_heights.append(cnv_row_height * n_cnv_genes)
 
-        if snp_transcript:
-            snp_trace, n_snps_transcript = self._dipclust_snp_trace(
+        if isinstance(snp_transcript, str):
+            figures, subplot_heights = self._insert_dipclust_snp_trace(
                 transcript=snp_transcript,
+                figures=figures,
+                subplot_heights=subplot_heights,
                 sample_sets=sample_sets,
                 sample_query=sample_query,
                 sample_query_options=sample_query_options,
@@ -696,13 +749,22 @@ class AnophelesDipClustAnalysis(AnophelesSnpFrequencyAnalysis, AnophelesCnvData)
                 chunks=chunks,
                 inline_array=inline_array,
             )
-
-            if snp_trace:
-                figures.append(snp_trace)
-                subplot_heights.append(snp_row_height * n_snps_transcript)
-            else:
-                print(
-                    f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
+        elif isinstance(snp_transcript, list):
+            for st in snp_transcript:
+                figures, subplot_heights = self._insert_dipclust_snp_trace(
+                    transcript=st,
+                    figures=figures,
+                    subplot_heights=subplot_heights,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    sample_query_options=sample_query_options,
+                    snp_query=snp_query,
+                    site_mask=site_mask,
+                    dendro_sample_id_order=dendro_sample_id_order,
+                    snp_filter_min_maf=snp_filter_min_maf,
+                    snp_colorscale=snp_colorscale,
+                    chunks=chunks,
+                    inline_array=inline_array,
                 )
 
         # Calculate total height based on subplot heights, plus a fixed
