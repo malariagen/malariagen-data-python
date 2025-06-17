@@ -1,4 +1,5 @@
 from typing import Tuple, Optional
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -29,7 +30,7 @@ class AnophelesFstAnalysis(
     def _fst_gwss(
         self,
         *,
-        contig,
+        region,
         window_size,
         sample_sets,
         cohort1_query,
@@ -46,7 +47,7 @@ class AnophelesFstAnalysis(
     ):
         # Compute allele counts.
         ac1 = self.snp_allele_counts(
-            region=contig,
+            region=region,
             sample_query=cohort1_query,
             sample_query_options=sample_query_options,
             sample_sets=sample_sets,
@@ -59,7 +60,7 @@ class AnophelesFstAnalysis(
             chunks=chunks,
         )
         ac2 = self.snp_allele_counts(
-            region=contig,
+            region=region,
             sample_query=cohort2_query,
             sample_query_options=sample_query_options,
             sample_sets=sample_sets,
@@ -74,7 +75,7 @@ class AnophelesFstAnalysis(
 
         with self._spinner(desc="Load SNP positions"):
             pos = self.snp_sites(
-                region=contig,
+                region=region,
                 field="POS",
                 site_mask=site_mask,
                 inline_array=inline_array,
@@ -105,10 +106,10 @@ class AnophelesFstAnalysis(
     )
     def fst_gwss(
         self,
-        contig: base_params.contig,
-        window_size: fst_params.window_size,
-        cohort1_query: base_params.sample_query,
-        cohort2_query: base_params.sample_query,
+        region: Optional[base_params.region] = None,
+        window_size: Optional[fst_params.window_size] = None,
+        cohort1_query: Optional[base_params.sample_query] = None,
+        cohort2_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_sets: Optional[base_params.sample_sets] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
@@ -123,13 +124,62 @@ class AnophelesFstAnalysis(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
         clip_min: fst_params.clip_min = 0.0,
+        contig: Optional[base_params.region] = None,  # Deprecated
     ) -> Tuple[np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "fst_gwss_v2"
+        name = "fst_gwss_v3"
+
+        # Get a copy of the local variables, which will include all provided function parameters.
+        local_vars = locals().copy()
+
+        # Specify which quasi-positional args are required.
+        required_args = ("window_size", "cohort1_query", "cohort2_query")
+
+        # Raise an error for any missing required args.
+        missing_args = []
+        for required_arg in required_args:
+            if local_vars.get(required_arg) is None:
+                missing_args.append(required_arg)
+        if missing_args:
+            raise ValueError(f"Missing required arguments: {missing_args}")
+
+        # Specify which sets of alternative args are required.
+        required_alternative_arg_sets = (("contig", "region"),)
+
+        # Raise an error for any missing required alternative args.
+        missing_alt_args = []
+        for args_set in required_alternative_arg_sets:
+            # Check if all alternative arguments are missing
+            args_set_values = []
+            for arg in args_set:
+                args_set_values.append(local_vars.get(arg))
+            if not any(args_set_values):
+                missing_alt_args.append(args_set)
+        if missing_alt_args:
+            raise ValueError(
+                f"Missing required alternative arguments: {missing_alt_args}"
+            )
+
+        if contig is not None:
+            # Get the current warning filters.
+            original_warning_filters = warnings.filters[:]
+
+            # Trigger the warning.
+            warnings.simplefilter("default", DeprecationWarning)
+            warnings.warn(
+                "The 'contig' parameter has been deprecated. Please use 'region' instead.",
+                DeprecationWarning,
+            )
+
+            # Restore the original warning filters.
+            warnings.filters = original_warning_filters
+
+            # If contig and region are both given, then prefer region.
+            region = contig if region is None else region
 
         params = dict(
-            contig=contig,
+            region=region,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
@@ -164,7 +214,7 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -190,7 +240,7 @@ class AnophelesFstAnalysis(
     ) -> gplt_params.optional_figure:
         # compute Fst
         x, fst = self.fst_gwss(
-            contig=contig,
+            region=region,
             window_size=window_size,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
@@ -253,7 +303,7 @@ class AnophelesFstAnalysis(
         # tidy up the plot
         fig.yaxis.axis_label = "Fst"
         fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, region)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
@@ -270,7 +320,7 @@ class AnophelesFstAnalysis(
     )
     def plot_fst_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: fst_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -298,7 +348,7 @@ class AnophelesFstAnalysis(
     ) -> gplt_params.optional_figure:
         # gwss track
         fig1 = self.plot_fst_gwss_track(
-            contig=contig,
+            region=region,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
@@ -322,7 +372,7 @@ class AnophelesFstAnalysis(
 
         # plot genes
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
