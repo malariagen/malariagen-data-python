@@ -595,7 +595,17 @@ class AnophelesDataResource(
         try:
             # Load cached numeric data, adding str / obj data again.
             results = self.results_cache_get(name=name, params=params)
-            df_roh = pd.DataFrame(results)
+
+            # Reconstruct dataframe
+            df_roh = pd.DataFrame(
+                {
+                    "roh_start": results["roh_start"],
+                    "roh_stop": results["roh_stop"],
+                    "roh_length": results["roh_length"],
+                    "roh_is_marginal": results["roh_is_marginal"],
+                }
+            )
+
             df_roh["sample_id"] = sample
             df_roh["contig"] = resolved_region.contig
 
@@ -630,6 +640,7 @@ class AnophelesDataResource(
                 "roh_length",
                 "roh_is_marginal",
             ]
+
             self.results_cache_set(
                 name=name,
                 params=params,

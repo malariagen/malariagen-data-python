@@ -79,6 +79,7 @@ class Adir1(AnophelesDataResource):
     def __init__(
         self,
         url=None,
+        public_url=GCS_DEFAULT_PUBLIC_URL,
         bokeh_output_notebook=True,
         results_cache=None,
         log=sys.stdout,
@@ -94,6 +95,7 @@ class Adir1(AnophelesDataResource):
     ):
         super().__init__(
             url=url,
+            public_url=public_url,
             config_path=CONFIG_PATH,
             cohorts_analysis=cohorts_analysis,
             aim_analysis=None,
