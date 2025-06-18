@@ -575,7 +575,8 @@ class AnophelesDataResource(
 
         resolved_region: Region = parse_single_region(self, region)
 
-        name = "roh"
+        # Create params for hashing.
+        name = "roh_v1"
 
         params = dict(
             sample=sample,
@@ -592,8 +593,9 @@ class AnophelesDataResource(
 
         del region
 
+        # The caching struggles with saving variable length strings, so we can just load/save the numeric data, and
+        # add the strings (sample ID and contig) from user input.
         try:
-            # Load cached numeric data, adding str / obj data again.
             results = self.results_cache_get(name=name, params=params)
             df_roh = pd.DataFrame(results)
             df_roh["sample_id"] = sample
@@ -623,13 +625,15 @@ class AnophelesDataResource(
                 contig=resolved_region.contig,
             )
 
-            # Specify numeric columns to save (saving obj - sample ID and contig - breaks the save.
+            # Specify numeric columns to save to cache. (See above - variable length strings can break the save).
             columns_to_save = [
                 "roh_start",
                 "roh_stop",
                 "roh_length",
                 "roh_is_marginal",
             ]
+
+            # Save cache
             self.results_cache_set(
                 name=name,
                 params=params,
