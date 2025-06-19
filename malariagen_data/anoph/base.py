@@ -437,12 +437,25 @@ class AnophelesBase:
             # Ensure no duplicates.
             releases = sorted(set(release))
 
-            # Retrieve and concatenate sample sets from multiple releases.
-            df = pd.concat(
-                [self.sample_sets(release=r) for r in releases],
-                axis=0,
-                ignore_index=True,
-            )
+            # Add each release's sample sets DataFrame to a list.
+            sample_set_dfs = []
+            for release in releases:
+                # Get the sample sets for this release.
+                release_sample_sets_df = self.sample_sets(release=release)
+
+                # Only include if there are sample sets for this release.
+                if (
+                    release_sample_sets_df is not None
+                    and not release_sample_sets_df.empty
+                ):
+                    sample_set_dfs.append(release_sample_sets_df)
+
+            if sample_set_dfs:
+                # Concatenate the sample sets DataFrames from multiple releases.
+                df = pd.concat(sample_set_dfs, axis=0, ignore_index=True)
+            else:
+                # If there are no sample sets for this release, return an empty DataFrame.
+                df = pd.DataFrame()
 
         else:
             raise TypeError
