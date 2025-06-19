@@ -2,6 +2,7 @@ import sys
 
 import plotly.express as px  # type: ignore
 
+import malariagen_data
 from .anopheles import AnophelesDataResource
 
 MAJOR_VERSION_NUMBER = 1
@@ -12,6 +13,8 @@ GCS_DEFAULT_PUBLIC_URL = "gs://vo_aste_temp_us_central1/vo_aste_release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_aste_release_master_us_central1",
 }
+XPEHH_GWSS_CACHE_NAME = "as1_xpehh_gwss_v1"
+IHS_GWSS_CACHE_NAME = "as1_ihs_gwss_v1"
 
 TAXON_PALETTE = px.colors.qualitative.Plotly
 TAXON_COLORS = {
@@ -70,6 +73,9 @@ class As1(AnophelesDataResource):
 
     """
 
+    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
+    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
+
     def __init__(
         self,
         url=None,
@@ -122,3 +128,83 @@ class As1(AnophelesDataResource):
             gene_names=None,
             inversion_tag_path=None,
         )
+
+    def __repr__(self):
+        text = (
+            f"<MalariaGEN Af1 API client>\n"
+            f"Storage URL             : {self._url}\n"
+            f"Data releases available : {', '.join(self.releases)}\n"
+            f"Results cache           : {self._results_cache}\n"
+            f"Cohorts analysis        : {self._cohorts_analysis}\n"
+            f"Site filters analysis   : {self._site_filters_analysis}\n"
+            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
+            f"Client location         : {self.client_location}\n"
+            f"---\n"
+            f"Please note that data are subject to terms of use,\n"
+            f"for more information see https://www.malariagen.net/data\n"
+            f"or contact support@malariagen.net. For API documentation see \n"
+            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/As1.html"
+        )
+        return text
+
+    def _repr_html_(self):
+        html = f"""
+            <table class="malariagen-as1">
+                <thead>
+                    <tr>
+                        <th style="text-align: left" colspan="2">MalariaGEN As1 API client</th>
+                    </tr>
+                    <tr><td colspan="2" style="text-align: left">
+                        Please note that data are subject to terms of use,
+                        for more information see <a href="https://www.malariagen.net/data">
+                        the MalariaGEN website</a> or contact support@malariagen.net.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/As1.html">As1 API docs</a>.
+                    </td></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th style="text-align: left">
+                            Storage URL
+                        </th>
+                        <td>{self._url}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data releases available
+                        </th>
+                        <td>{', '.join(self.releases)}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Results cache
+                        </th>
+                        <td>{self._results_cache}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Cohorts analysis
+                        </th>
+                        <td>{self._cohorts_analysis}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Site filters analysis
+                        </th>
+                        <td>{self._site_filters_analysis}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Software version
+                        </th>
+                        <td>malariagen_data {malariagen_data.__version__}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Client location
+                        </th>
+                        <td>{self.client_location}</td>
+                    </tr>
+                </tbody>
+            </table>
+        """
+        return html
