@@ -67,7 +67,7 @@ natural genetic variation.
 
 Some data from MalariaGEN are subject to **terms of use** which may include an embargo on
 public communication of any analysis results without permission from data owners. If you
-have any questions about terms of use please email data@malariagen.net.
+have any questions about terms of use please email support@malariagen.net.
 
 By default, this sofware package accesses data directly from the **MalariaGEN cloud data repository**
 hosted in Google Cloud Storage in the US. Note that data access will be more efficient if your
