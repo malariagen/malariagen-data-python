@@ -101,7 +101,9 @@ class AnophelesPca(
         # Handle cohort downsampling.
         if cohorts is not None:
             if max_cohort_size is None:
-                raise ValueError("`max_cohort_size` is required when `cohorts` is provided.")
+                raise ValueError(
+                    "`max_cohort_size` is required when `cohorts` is provided."
+                )
             if sample_indices is not None:
                 raise ValueError(
                     "Cannot use `sample_indices` with `cohorts` and `max_cohort_size`."
