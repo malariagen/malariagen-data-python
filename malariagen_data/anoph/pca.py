@@ -43,12 +43,27 @@ class AnophelesPca(
             `site_class`, `cohort_size`, `min_cohort_size`, `max_cohort_size`,
             `random_seed`.
 
+            .. versionchanged:: 9.0.0
+               The `cohorts` parameter has been added to enable cohort-based
+               downsampling via the `max_cohort_size` parameter.
         """,
         returns=("df_pca", "evr"),
         notes="""
             This computation may take some time to run, depending on your computing
             environment. Results of this computation will be cached and re-used if
             the `results_cache` parameter was set when instantiating the API client.
+        """,
+        examples="""
+            Run a PCA, downsampling to a maximum of 20 samples per country::
+
+                >>> import malariagen_data
+                >>> ag3 = malariagen_data.Ag3()
+                >>> df_pca, evr = ag3.pca(
+                ...     region="3R",
+                ...     n_snps=1000,
+                ...     cohorts="country",
+                ...     max_cohort_size=20,
+                ... )
         """,
     )
     def pca(
@@ -61,6 +76,10 @@ class AnophelesPca(
         sample_query: Optional[base_params.sample_query] = None,
         sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
+        cohorts: Optional[base_params.cohorts] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         site_class: Optional[base_params.site_class] = None,
         min_minor_ac: Optional[
@@ -69,9 +88,6 @@ class AnophelesPca(
         max_missing_an: Optional[
             base_params.max_missing_an
         ] = pca_params.max_missing_an_default,
-        cohort_size: Optional[base_params.cohort_size] = None,
-        min_cohort_size: Optional[base_params.min_cohort_size] = None,
-        max_cohort_size: Optional[base_params.max_cohort_size] = None,
         exclude_samples: Optional[base_params.samples] = None,
         fit_exclude_samples: Optional[base_params.samples] = None,
         random_seed: base_params.random_seed = 42,
@@ -81,6 +97,41 @@ class AnophelesPca(
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "pca_v4"
+
+        # Handle cohort downsampling.
+        if cohorts is not None:
+            if max_cohort_size is None:
+                raise ValueError("`max_cohort_size` is required when `cohorts` is provided.")
+            if sample_indices is not None:
+                raise ValueError(
+                    "Cannot use `sample_indices` with `cohorts` and `max_cohort_size`."
+                )
+            if cohort_size is not None or min_cohort_size is not None:
+                raise ValueError(
+                    "Cannot use `cohort_size` or `min_cohort_size` with `cohorts`."
+                )
+            df_samples = self.sample_metadata(
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                sample_query_options=sample_query_options,
+            )
+            # N.B., we are going to overwrite the sample_indices parameter here.
+            groups = df_samples.groupby(cohorts, sort=False)
+            ix = []
+            for _, group in groups:
+                if len(group) > max_cohort_size:
+                    ix.extend(
+                        group.sample(
+                            n=max_cohort_size, random_state=random_seed, replace=False
+                        ).index
+                    )
+                else:
+                    ix.extend(group.index)
+            sample_indices = ix
+            # From this point onwards, the sample_query is no longer needed, because
+            # the sample selection is defined by the sample_indices.
+            sample_query = None
+            sample_query_options = None
 
         # Normalize params for consistent hash value.
         (
@@ -105,6 +156,7 @@ class AnophelesPca(
             min_minor_ac=min_minor_ac,
             max_missing_an=max_missing_an,
             n_components=n_components,
+            cohorts=cohorts,
             cohort_size=cohort_size,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -122,10 +174,10 @@ class AnophelesPca(
             self.results_cache_set(name=name, params=params, results=results)
 
         # Unpack results.
-        coords = results["coords"]
-        evr = results["evr"]
-        samples = results["samples"]
-        loc_keep_fit = results["loc_keep_fit"]
+        coords = np.array(results["coords"])
+        evr = np.array(results["evr"])
+        samples = np.array(results["samples"])
+        loc_keep_fit = np.array(results["loc_keep_fit"])
 
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -166,6 +218,7 @@ class AnophelesPca(
         random_seed,
         chunks,
         inline_array,
+        **kwargs,
     ):
         # Load diplotypes.
         gn, samples = self.biallelic_diplotypes(

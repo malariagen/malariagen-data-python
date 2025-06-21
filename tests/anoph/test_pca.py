@@ -288,3 +288,82 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
         len(pca_df.query(f"sample_id in {exclude_samples} and not pca_fit"))
         == n_samples_excluded
     )
+
+
+@parametrize_with_cases("fixture,api", cases=".")
+def test_pca_cohort_downsampling(fixture, api: AnophelesPca):
+    # Parameters for selecting input data.
+    all_sample_sets = api.sample_sets()["sample_set"].to_list()
+    sample_sets = random.sample(all_sample_sets, 2)
+    data_params = dict(
+        region=random.choice(api.contigs),
+        sample_sets=sample_sets,
+        site_mask=random.choice((None,) + api.site_mask_ids),
+    )
+
+    # Test cohort downsampling.
+    cohort_col = "country"
+    max_cohort_size = 10
+    random_seed = 42
+
+    # Try to run the PCA with cohort downsampling.
+    try:
+        pca_df, pca_evr = api.pca(
+            n_snps=100,  # Use a small number to avoid "Not enough SNPs" errors
+            n_components=2,
+            cohorts=cohort_col,
+            max_cohort_size=max_cohort_size,
+            random_seed=random_seed,
+            **data_params,
+        )
+    except ValueError as e:
+        if "Not enough SNPs" in str(e):
+            pytest.skip("Not enough SNPs available after downsampling to run test.")
+        else:
+            raise
+
+    # Check types.
+    assert isinstance(pca_df, pd.DataFrame)
+    assert isinstance(pca_evr, np.ndarray)
+
+    # Check basic structure.
+    assert len(pca_df) > 0
+    assert "PC1" in pca_df.columns
+    assert "PC2" in pca_df.columns
+    assert "pca_fit" in pca_df.columns
+    assert pca_df["pca_fit"].all()
+    assert pca_evr.ndim == 1
+    assert pca_evr.shape[0] == 2
+
+    # Check cohort counts.
+    final_cohort_counts = pca_df[cohort_col].value_counts()
+    for cohort, count in final_cohort_counts.items():
+        assert count <= max_cohort_size
+
+    # Test bad parameter combinations.
+    with pytest.raises(ValueError):
+        api.pca(
+            n_snps=100,
+            n_components=2,
+            cohorts=cohort_col,
+            # max_cohort_size is missing
+            **data_params,
+        )
+    with pytest.raises(ValueError):
+        api.pca(
+            n_snps=100,
+            n_components=2,
+            cohorts=cohort_col,
+            max_cohort_size=max_cohort_size,
+            sample_indices=[0, 1, 2],
+            **data_params,
+        )
+    with pytest.raises(ValueError):
+        api.pca(
+            n_snps=100,
+            n_components=2,
+            cohorts=cohort_col,
+            max_cohort_size=max_cohort_size,
+            cohort_size=10,
+            **data_params,
+        )
