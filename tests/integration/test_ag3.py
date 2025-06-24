@@ -191,14 +191,16 @@ def test_karyotyping(inversion):
 
 
 def test_phenotype_data():
-    """Test basic functionality of phenotype_data method."""
+    """Test basic functionality of phenotype_data method with sample_query."""
     ag3 = setup_ag3()
 
-    # Test with a known sample set that has phenotype data
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-    insecticide = "Deltamethrin"
+    insecticide_query = "Deltamethrin"
 
-    df = ag3.phenotype_data(sample_sets=sample_set, insecticide=insecticide)
+    # Use sample_query for filtering
+    df = ag3.phenotype_data(
+        sample_sets=sample_set, sample_query=f"insecticide == '{insecticide_query}'"
+    )
 
     assert isinstance(df, pd.DataFrame)
 
@@ -208,49 +210,28 @@ def test_phenotype_data():
 
     # Check data content
     assert len(df) > 0
-    assert "Deltamethrin" in df["insecticide"].unique()
+    assert all(df["insecticide"] == insecticide_query)  # Check if filter was applied
     assert set(df["phenotype"].str.lower().unique()).issubset(
-        {"alive", "dead", "resistant", "susceptible"}
+        {
+            "alive",
+            "dead",
+            "resistant",
+            "susceptible",
+            "died",
+            "survived",
+        }  # Include all possible values
     )
     assert sample_set in df["sample_set"].unique()
 
-
-def test_phenotype_binary():
-    """Test phenotype_binary method for binary outcome representation."""
-    ag3 = setup_ag3()
-
-    # Test with a known sample set that has phenotype data
-    sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-    insecticide = "Deltamethrin"
-
-    binary_series = ag3.phenotype_binary(
-        sample_sets=sample_set, insecticide=insecticide
+    # Test with multiple query conditions
+    df_multi_query = ag3.phenotype_data(
+        sample_sets=sample_set,
+        sample_query=f"insecticide == '{insecticide_query}' and dose == 0.5",
     )
-
-    assert isinstance(binary_series, pd.Series)
-    assert binary_series.name == "phenotype_binary"
-
-    assert len(binary_series) > 0
-    assert set(binary_series.unique()).issubset({0.0, 1.0, np.nan})
-
-    # Check that values match expected binary mapping
-    df = ag3.phenotype_data(sample_sets=sample_set, insecticide=insecticide)
-
-    # Get the sample IDs from the binary series index
-    sample_ids = binary_series.index.tolist()
-
-    # Filter the DataFrame
-    df_filtered = df[df["sample_id"].isin(sample_ids)]
-
-    # Check each sample individually
-    for sample_id in sample_ids:
-        row = df_filtered[df_filtered["sample_id"] == sample_id]
-        if len(row) > 0:
-            phenotype = row["phenotype"].iloc[0].lower()
-            if phenotype in ["alive", "resistant", "survived"]:
-                assert binary_series.loc[sample_id] == 1.0
-            elif phenotype in ["dead", "susceptible", "died"]:
-                assert binary_series.loc[sample_id] == 0.0
+    assert isinstance(df_multi_query, pd.DataFrame)
+    assert len(df_multi_query) > 0
+    assert all(df_multi_query["insecticide"] == insecticide_query)
+    assert all(df_multi_query["dose"] == 0.5)
 
 
 @pytest.mark.parametrize(
@@ -262,87 +243,57 @@ def test_phenotype_binary():
     ],
 )
 def test_cohort_filtering(cohort_param, expected_result):
-    """Test cohort size filtering functionality."""
+    """Test cohort size filtering functionality with sample_query."""
     ag3 = setup_ag3()
 
-    # Test with a known sample set that has phenotype data
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-    insecticide = "Deltamethrin"
+    insecticide_query = "Deltamethrin"
 
-    # df_baseline = ag3.phenotype_data(sample_sets=sample_set, insecticide=insecticide)
-
-    # Apply cohort filtering
+    # Apply cohort filtering with sample_query
     df_filtered = ag3.phenotype_data(
-        sample_sets=sample_set, insecticide=insecticide, **cohort_param
+        sample_sets=sample_set,
+        sample_query=f"insecticide == '{insecticide_query}'",
+        **cohort_param,
     )
 
-    # Check that filtering was applied
     assert isinstance(df_filtered, pd.DataFrame)
 
     if expected_result == "min_size":
         cohort_keys = ["insecticide", "dose", "location", "country", "sample_set"]
         available_keys = [col for col in cohort_keys if col in df_filtered.columns]
-        if available_keys:
+        if available_keys and not df_filtered.empty:
             cohort_sizes = df_filtered.groupby(available_keys).size()
             assert all(size >= cohort_param["min_cohort_size"] for size in cohort_sizes)
+        elif df_filtered.empty and cohort_param["min_cohort_size"] > 0:
+            # If no data meets criteria, ensure it's empty
+            pass
 
     elif expected_result == "max_size":
         cohort_keys = ["insecticide", "dose", "location", "country", "sample_set"]
         available_keys = [col for col in cohort_keys if col in df_filtered.columns]
-        if available_keys:
+        if available_keys and not df_filtered.empty:
             cohort_sizes = df_filtered.groupby(available_keys).size()
             assert all(size <= cohort_param["max_cohort_size"] for size in cohort_sizes)
 
     elif expected_result == "exact_size":
         cohort_keys = ["insecticide", "dose", "location", "country", "sample_set"]
         available_keys = [col for col in cohort_keys if col in df_filtered.columns]
-        if available_keys and len(df_filtered) > 0:
+        if available_keys and not df_filtered.empty:
             cohort_sizes = df_filtered.groupby(available_keys).size()
             assert all(size == cohort_param["cohort_size"] for size in cohort_sizes)
+        elif df_filtered.empty and cohort_param["cohort_size"] > 0:
+            pass  # Acceptable if no cohorts meet exact size
 
 
-@pytest.mark.parametrize(
-    "param_name,param_value,expected_type",
-    [
-        ("insecticide", "Deltamethrin", str),
-        ("insecticide", ["Deltamethrin", "Permethrin"], list),
-        ("dose", 0.5, float),
-        ("dose", [0.5, 1.0], list),
-        ("phenotype", "alive", str),
-        ("phenotype", ["alive", "dead"], list),
-    ],
-)
-def test_parameter_validation(param_name, param_value, expected_type):
-    """Test parameter validation for different input types."""
-    ag3 = setup_ag3()
-
-    # Test with a known sample set that has phenotype data
-    sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-
-    params = {"sample_sets": sample_set, param_name: param_value}
-
-    df = ag3.phenotype_data(**params)
-
-    assert isinstance(df, pd.DataFrame)
-
-    # For non-empty results
-    if len(df) > 0 and param_name in df.columns:
-        if isinstance(param_value, list):
-            assert df[param_name].isin(param_value).all()
-        else:
-            assert (df[param_name] == param_value).all()
-
-
-def test_sample_query():
+def test_sample_query_functionality():
     """Test sample_query functionality."""
     ag3 = setup_ag3()
 
-    # Test with a known sample set that has phenotype data
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
 
     df_baseline = ag3.phenotype_data(sample_sets=sample_set)
 
-    if len(df_baseline) > 0 and "location" in df_baseline.columns:
+    if not df_baseline.empty and "location" in df_baseline.columns:
         test_location = df_baseline["location"].iloc[0]
 
         # Apply sample query
@@ -353,29 +304,34 @@ def test_sample_query():
         assert isinstance(df_filtered, pd.DataFrame)
         assert len(df_filtered) > 0
         assert all(df_filtered["location"] == test_location)
+    else:
+        pytest.skip(
+            f"No data or 'location' column found for sample set {sample_set} to test query."
+        )
 
 
 def test_invalid_parameters():
     """Test error handling for invalid parameters."""
     ag3 = setup_ag3()
 
-    # Test with invalid insecticide type
-    with pytest.raises(TypeError):
-        ag3.phenotype_data(sample_sets="1237-VO-BJ-DJOGBENOU-VMF00050", insecticide=123)
-
-    # Test with invalid dose type
-    with pytest.raises(TypeError):
-        ag3.phenotype_data(
-            sample_sets="1237-VO-BJ-DJOGBENOU-VMF00050", dose="not_a_number"
-        )
-
     # Test with non-existent sample set
-    with pytest.raises(ValueError):
+    with pytest.raises(
+        ValueError, match=r"Sample set 'NON_EXISTENT_SAMPLE_SET' not found."
+    ):
         ag3.phenotype_data(sample_sets="NON_EXISTENT_SAMPLE_SET")
+
+    # Test with a syntactically invalid sample_query (pandas will raise ParserError)
+    # The current implementation of phenotype_data catches this and warns, returning empty DF.
+    with pytest.warns(UserWarning, match="Error applying sample_query"):
+        df = ag3.phenotype_data(
+            sample_sets="1237-VO-BJ-DJOGBENOU-VMF00050",
+            sample_query="invalid query string here",
+        )
+        assert df.empty
 
 
 def test_phenotype_binary_conversion():
-    """Test binary conversion of phenotype values."""
+    """Test binary conversion of phenotype values (internal method)."""
     ag3 = setup_ag3()
 
     # Create test DataFrame with mixed case phenotypes
@@ -388,6 +344,7 @@ def test_phenotype_binary_conversion():
                 "sample4",
                 "sample5",
                 "sample6",
+                "sample7",  # Add one for unmapped
             ],
             "phenotype": [
                 "ALIVE",
@@ -396,6 +353,7 @@ def test_phenotype_binary_conversion():
                 "SUSCEPTIBLE",
                 "Survived",
                 "Died",
+                "UNKNOWN",  # Unmapped value
             ],
         }
     )
@@ -404,15 +362,16 @@ def test_phenotype_binary_conversion():
     binary_series = ag3._create_phenotype_binary_series(test_df)
 
     # Check results
-    expected = [1.0, 0.0, 1.0, 0.0, 1.0, 0.0]
-    assert list(binary_series.values) == expected
+    expected = [1.0, 0.0, 1.0, 0.0, 1.0, 0.0, np.nan]
+    # Use np.testing.assert_array_equal for NaN comparison
+    np.testing.assert_array_equal(binary_series.values, np.array(expected))
 
     # Test with invalid phenotype value
     test_df_invalid = pd.DataFrame(
-        {"sample_id": ["sample1"], "phenotype": ["INVALID_VALUE"]}
+        {"sample_id": ["sample1"], "phenotype": ["ANOTHER_INVALID_VALUE"]}
     )
 
-    with pytest.warns(UserWarning):
+    with pytest.warns(UserWarning, match="Unmapped phenotype values found"):
         invalid_binary = ag3._create_phenotype_binary_series(test_df_invalid)
         assert np.isnan(invalid_binary.values[0])
 
@@ -423,108 +382,84 @@ def test_phenotype_sample_sets():
 
     phenotype_sets = ag3.phenotype_sample_sets()
 
-    # Check return type
     assert isinstance(phenotype_sets, list)
-
-    # Check that we have at least one sample set with phenotype data
     assert len(phenotype_sets) > 0
 
-    # Check that all returned sample sets actually have phenotype data
-    for sample_set in phenotype_sets[:1]:  # Test just the first one to keep test fast
-        df = ag3.phenotype_data(sample_sets=sample_set)
+    # Test just the first one to keep test fast and ensure it returns data
+    if phenotype_sets:
+        sample_set_to_check = phenotype_sets[0]
+        df = ag3.phenotype_data(sample_sets=sample_set_to_check)
         assert len(df) > 0
+    else:
+        pytest.fail("No phenotype sample sets found to test.")
 
 
 def test_phenotypes_with_snp_calls():
-    """Test phenotypes method with genetic data from snp_calls."""
+    """Test phenotypes_with_snps method."""
     ag3 = setup_ag3()
 
-    # Test with a known sample set that has phenotype data
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-    insecticide = "Deltamethrin"
+    insecticide_query = "Deltamethrin"
+    region = "2L:2420000-2430000"  # Small region to keep test fast
 
-    # Small region to keep test fast
-    region = "2L:2420000-2430000"
-
-    # Test with snp_calls explicitly
-    ds = ag3.phenotypes(
+    ds = ag3.phenotypes_with_snps(
         sample_sets=sample_set,
-        insecticide=insecticide,
+        sample_query=f"insecticide == '{insecticide_query}'",
         region=region,
-        # No analysis parameter - will default to snp_calls
     )
-
-    # Check return type
     assert isinstance(ds, xr.Dataset)
-
-    # Check dimensions and coordinates
     assert "samples" in ds.dims
     assert "variants" in ds.dims
     assert len(ds.coords["samples"]) > 0
     assert len(ds.coords["variant_position"]) > 0
-
-    # Check that genetic data variables exist
-    assert "call_genotype" in ds.data_vars
-
-    # Check that phenotype data variables exist
+    assert "call_genotype" in ds.data_vars  # Specific to SNPs
     assert "phenotype_binary" in ds.data_vars
     assert "insecticide" in ds.data_vars
+    assert all(ds["insecticide"].values == insecticide_query)
 
 
 def test_phenotypes_with_haplotypes():
-    """Test phenotypes method with genetic data from haplotypes."""
+    """Test phenotypes_with_haplotypes method."""
     ag3 = setup_ag3()
 
-    # Test with a known sample set that has phenotype data
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-    insecticide = "Deltamethrin"
+    insecticide_query = "Deltamethrin"
+    region = "2L:2420000-2430000"  # Small region to keep test fast
 
-    # Small region to keep test fast
-    region = "2L:2420000-2430000"
-
-    # Test with haplotypes explicitly
-    ds = ag3.phenotypes(
+    ds = ag3.phenotypes_with_haplotypes(
         sample_sets=sample_set,
-        insecticide=insecticide,
+        sample_query=f"insecticide == '{insecticide_query}'",
         region=region,
-        analysis="arab",  # Specify analysis to use haplotypes
     )
-
-    # Check return type
     assert isinstance(ds, xr.Dataset)
-
-    # Check dimensions and coordinates
     assert "samples" in ds.dims
     assert "variants" in ds.dims
     assert len(ds.coords["samples"]) > 0
     assert len(ds.coords["variant_position"]) > 0
-
-    # Check that phenotype data variables exist
+    assert "call_genotype" in ds.data_vars  # Haplotypes also often have call_genotype
     assert "phenotype_binary" in ds.data_vars
     assert "insecticide" in ds.data_vars
+    assert all(ds["insecticide"].values == insecticide_query)
 
 
-def test_phenotypes_without_genetic_data():
-    """Test phenotypes method without genetic data."""
+def test_phenotype_data_only():
+    """Test phenotype_data method returns only phenotype data (DataFrame), no genetic data."""
     ag3 = setup_ag3()
 
-    # Test with a known sample set that has phenotype data
     sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"
-    insecticide = "Deltamethrin"
+    insecticide_query = "Deltamethrin"
 
-    # Test without region parameter (no genetic data)
-    ds = ag3.phenotypes(sample_sets=sample_set, insecticide=insecticide)
-
-    # Check return type
-    assert isinstance(ds, xr.Dataset)
-
-    # Check dimensions and coordinates
-    assert "samples" in ds.dims
-    assert "variants" not in ds.dims
-    assert len(ds.coords["samples"]) > 0
-
-    # Check that phenotype data variables exist
-    assert "phenotype_binary" in ds.data_vars
-    assert "insecticide" in ds.data_vars
-    assert "dose" in ds.data_vars
-    assert "phenotype" in ds.data_vars
+    # Call phenotype_data without a region or genetic data type specified
+    df = ag3.phenotype_data(
+        sample_sets=sample_set, sample_query=f"insecticide == '{insecticide_query}'"
+    )
+    assert isinstance(df, pd.DataFrame)
+    assert "sample_id" in df.columns
+    assert "phenotype" in df.columns
+    assert "insecticide" in df.columns
+    assert "dose" in df.columns
+    # Assert that it's not an xarray Dataset (which would contain genetic data)
+    assert not isinstance(df, xr.Dataset)
+    # Also check that genetic data specific columns/attributes are NOT present
+    assert "variants" not in df.columns and "variants" not in df.attrs
+    assert "call_genotype" not in df.columns and "call_genotype" not in df.attrs
