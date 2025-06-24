@@ -378,13 +378,8 @@ class AnophelesPhenotypeData:
             return pd.DataFrame()
 
         # 3. Get sample metadata for all samples that have phenotype data
-        #    The sample_metadata method does not accept a 'df' argument.
-        #    We need to fetch the metadata first, then merge and filter.
         try:
-            df_metadata = self.sample_metadata(
-                sample_sets=sample_sets_norm,
-                sample_query_options=sample_query_options,
-            )
+            df_metadata = self.sample_metadata(sample_sets=sample_sets_norm)
         except Exception as e:
             warnings.warn(f"Error fetching sample metadata: {e}")
             return pd.DataFrame()
@@ -394,7 +389,7 @@ class AnophelesPhenotypeData:
             return pd.DataFrame()
 
         # 4. Merge phenotype data with metadata
-        #    Filter phenotype data to samples present in metadata before merging
+        # Filter phenotype data to samples present in metadata before merging
         metadata_sample_ids = set(df_metadata["sample_id"].unique())
         df_phenotypes_filtered = df_phenotypes[
             df_phenotypes["sample_id"].isin(metadata_sample_ids)
@@ -407,8 +402,9 @@ class AnophelesPhenotypeData:
         # 5. Apply user's sample_query if provided
         if sample_query:
             try:
-                # Use pandas query method to filter the merged data
-                df_merged = df_merged.query(sample_query)
+                df_merged = df_merged.query(
+                    sample_query, **(sample_query_options or {})
+                )
             except Exception as e:
                 warnings.warn(f"Error applying sample_query '{sample_query}': {e}")
                 return pd.DataFrame()

@@ -41,6 +41,7 @@ from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
+from .anoph.phenotypes import AnophelesPhenotypeData
 from .mjn import median_joining_network, mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
@@ -52,7 +53,7 @@ from .util import (
     parse_single_region,
     plotly_discrete_legend,
 )
-from .anoph.phenotypes import AnophelesPhenotypeData
+
 
 # N.B., we are in the process of breaking up the AnophelesDataResource
 # class into multiple parent classes like AnophelesGenomeSequenceData
