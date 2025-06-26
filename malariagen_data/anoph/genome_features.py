@@ -675,18 +675,6 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
                     parent=transcript_id,
                 )
 
-                # --- ADD THESE DEBUG PRINTS ---
-                debug(
-                    f"Raw features returned for transcript '{transcript_id}':\n{exons.to_string()}"
-                )
-
-                exons = exons[exons["type"] == "exon"]
-
-                # --- ADD THIS DEBUG PRINT ---
-                debug(
-                    f"Filtered exons for transcript '{transcript_id}':\n{exons.to_string()}"
-                )
-
                 if exons.empty:
                     debug(f"No exons found for transcript '{transcript_id}', skipping")
                     continue
@@ -709,7 +697,9 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             )
 
         # Find transcript with maximum length
-        canonical_transcript_id = max(transcript_lengths, key=transcript_lengths.get)
+        canonical_transcript_id = max(
+            transcript_lengths, key=lambda k: transcript_lengths[k]
+        )
         max_length = transcript_lengths[canonical_transcript_id]
 
         debug(
