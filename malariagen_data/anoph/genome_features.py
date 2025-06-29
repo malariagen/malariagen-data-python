@@ -568,7 +568,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def find_gene_feature(
         self,
-        gene: str,
+        gene: base_params.gene,
         region: Optional[base_params.regions] = None,
         attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> pd.DataFrame:
@@ -624,7 +624,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def get_gene_transcripts(
         self,
-        gene_id: str,
+        gene_id: base_params.gene,
         attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> pd.DataFrame:
         """Get all transcripts (mRNA/transcript features) for a given gene ID."""
@@ -661,7 +661,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def get_transcript_exons(
         self,
-        transcript_id: str,
+        transcript_id: base_params.transcript,
         attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> pd.DataFrame:
         """Get all exons for a given transcript ID."""
@@ -691,7 +691,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def calculate_transcript_length(
         self,
-        transcript_id: str,
+        transcript_id: base_params.transcript,
         attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> int:
         """Calculate the total transcribed length of a transcript by summing exon lengths."""
@@ -730,7 +730,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def get_gene_transcript_lengths(
         self,
-        gene: str,
+        gene: base_params.gene,
         region: Optional[base_params.regions] = None,
         attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> Dict[str, int]:
@@ -812,7 +812,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
     )
     def canonical_transcript(
         self,
-        gene: str,
+        gene: base_params.gene,
         region: Optional[base_params.regions] = None,
         attributes: base_params.gff_attributes = base_params.DEFAULT,
     ) -> str:
