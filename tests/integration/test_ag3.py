@@ -234,6 +234,55 @@ def test_phenotype_data():
     assert all(df_multi_query["dose"] == 0.5)
 
 
+def test_phenotype_binary_functionality():
+    """Test phenotype_binary method using sample_query for filtering."""
+    ag3 = setup_ag3()
+
+    sample_set = "1237-VO-BJ-DJOGBENOU-VMF00050"  # Use a known sample set for testing
+
+    # Test 1: Filter by insecticide
+    query_insecticide = "insecticide == 'Deltamethrin'"
+    binary_series_insecticide = ag3.phenotype_binary(
+        sample_sets=[sample_set], sample_query=query_insecticide
+    )
+    assert isinstance(binary_series_insecticide, pd.Series)
+    assert binary_series_insecticide.name == "phenotype_binary"
+    assert len(binary_series_insecticide) > 0
+    assert set(binary_series_insecticide.unique()).issubset({0.0, 1.0, np.nan})
+
+    # Test 2: Filter by multiple conditions (insecticide and phenotype outcome)
+    query_multi = "insecticide == 'Deltamethrin' and phenotype == 'alive'"
+    binary_series_multi = ag3.phenotype_binary(
+        sample_sets=[sample_set], sample_query=query_multi
+    )
+    assert isinstance(binary_series_multi, pd.Series)
+    assert binary_series_multi.name == "phenotype_binary"
+    assert len(binary_series_multi) > 0
+    assert set(binary_series_multi.unique()).issubset(
+        {1.0, np.nan}
+    )  # Expect mostly 1.0s
+
+    # Test 3: Filter by dose
+    query_dose = "dose == 0.5"
+    binary_series_dose = ag3.phenotype_binary(
+        sample_sets=[sample_set], sample_query=query_dose
+    )
+    assert isinstance(binary_series_dose, pd.Series)
+    assert len(binary_series_dose) > 0
+    assert set(binary_series_dose.unique()).issubset(
+        {0.0, 1.0, np.nan}
+    )  # Depending on data, could be 0.0, 1.0 or both
+
+    # Test 4: Test with no matching data (should return empty Series)
+    query_no_match = "insecticide == 'NonExistentInsecticide'"
+    binary_series_empty = ag3.phenotype_binary(
+        sample_sets=[sample_set], sample_query=query_no_match
+    )
+    assert isinstance(binary_series_empty, pd.Series)
+    assert binary_series_empty.empty
+    assert binary_series_empty.name == "phenotype_binary"
+
+
 @pytest.mark.parametrize(
     "cohort_param,expected_result",
     [

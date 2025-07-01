@@ -3,7 +3,7 @@ import xarray as xr
 from typing import Callable, Optional, List, Any
 import warnings
 import fsspec
-from malariagen_data.anoph import base_params
+from malariagen_data.anoph import base_params, phenotype_params
 
 
 class AnophelesPhenotypeData:
@@ -516,3 +516,73 @@ class AnophelesPhenotypeData:
                 continue
 
         return phenotype_sample_sets
+
+    def phenotype_binary(
+        self,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        insecticide: Optional[phenotype_params.insecticide] = None,
+        dose: Optional[phenotype_params.dose] = None,
+        phenotype: Optional[phenotype_params.phenotype] = None,
+        sample_query: Optional[
+            base_params.sample_query
+        ] = None,  # Allow direct sample_query
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        min_cohort_size: Optional[base_params.min_cohort_size] = None,
+        max_cohort_size: Optional[base_params.max_cohort_size] = None,
+    ) -> pd.Series:
+        """
+        Load phenotypic data as binary outcomes (1=alive/resistant, 0=dead/susceptible, NaN=unknown).
+        Returns a pandas Series indexed by sample_id.
+        """
+        # Build the sample_query string from individual parameters
+        query_parts = []
+        if insecticide is not None:
+            if isinstance(insecticide, list):
+                query_parts.append(f"insecticide in {insecticide}")
+            else:
+                query_parts.append(f"insecticide == '{insecticide}'")
+        if dose is not None:
+            if isinstance(dose, list):
+                query_parts.append(f"dose in {dose}")
+            else:
+                query_parts.append(f"dose == {dose}")
+        if phenotype is not None:
+            if isinstance(phenotype, list):
+                query_parts.append(f"phenotype in {phenotype}")
+            else:
+                query_parts.append(f"phenotype == '{phenotype}'")
+
+        # Combine with an existing sample_query if provided
+        final_sample_query = sample_query
+        if query_parts:
+            generated_query = " and ".join(query_parts)
+            if final_sample_query:
+                final_sample_query = f"({final_sample_query}) and ({generated_query})"
+            else:
+                final_sample_query = generated_query
+
+        df = self.phenotype_data(
+            sample_sets=sample_sets,
+            sample_query=final_sample_query,
+            sample_query_options=sample_query_options,
+            cohort_size=cohort_size,
+            min_cohort_size=min_cohort_size,
+            max_cohort_size=max_cohort_size,
+        )
+
+        if df.empty:
+            return pd.Series(dtype=float, name="phenotype_binary")
+
+        binary_series = self._create_phenotype_binary_series(df)
+
+        binary_series.name = "phenotype_binary"
+        # Ensure the index is correctly set to sample_id
+        if "sample_id" in df.columns:
+            binary_series.index = pd.Index(df["sample_id"])
+        else:
+            warnings.warn(
+                "Cannot set index to sample_id as it is missing from the DataFrame returned by phenotype_data."
+            )
+
+        return binary_series
