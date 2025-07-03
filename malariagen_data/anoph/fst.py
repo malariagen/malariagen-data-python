@@ -1,5 +1,4 @@
 from typing import Tuple, Optional
-import warnings
 
 import numpy as np
 import pandas as pd
@@ -12,7 +11,7 @@ import plotly.express as px
 
 from .snp_data import AnophelesSnpData
 from . import base_params, fst_params, gplt_params, plotly_params
-from ..util import CacheMiss, check_types
+from ..util import CacheMiss, check_types, _resolve_region_with_deprec_contig_param
 
 
 class AnophelesFstAnalysis(
@@ -134,6 +133,7 @@ class AnophelesFstAnalysis(
         local_vars = locals().copy()
 
         # Specify which quasi-positional args are required.
+        # Note: to avoid this, we should move towards a keyword-only version of this function.
         required_args = ("window_size", "cohort1_query", "cohort2_query")
 
         # Raise an error for any missing required args.
@@ -144,42 +144,16 @@ class AnophelesFstAnalysis(
         if missing_args:
             raise ValueError(f"Missing required arguments: {missing_args}")
 
-        # Specify which sets of alternative args are required.
-        required_alternative_arg_sets = (("contig", "region"),)
+        resolved_region = _resolve_region_with_deprec_contig_param(
+            region=region, contig=contig
+        )
 
-        # Raise an error for any missing required alternative args.
-        missing_alt_args = []
-        for args_set in required_alternative_arg_sets:
-            # Check if all alternative arguments are missing
-            args_set_values = []
-            for arg in args_set:
-                args_set_values.append(local_vars.get(arg))
-            if not any(args_set_values):
-                missing_alt_args.append(args_set)
-        if missing_alt_args:
-            raise ValueError(
-                f"Missing required alternative arguments: {missing_alt_args}"
-            )
-
-        if contig is not None:
-            # Get the current warning filters.
-            original_warning_filters = warnings.filters[:]
-
-            # Trigger the warning.
-            warnings.simplefilter("default", DeprecationWarning)
-            warnings.warn(
-                "The 'contig' parameter has been deprecated. Please use 'region' instead.",
-                DeprecationWarning,
-            )
-
-            # Restore the original warning filters.
-            warnings.filters = original_warning_filters
-
-            # If contig and region are both given, then prefer region.
-            region = contig if region is None else region
+        # Delete original parameters to prevent accidental use.
+        del region
+        del contig
 
         params = dict(
-            region=region,
+            region=resolved_region,
             window_size=window_size,
             cohort1_query=cohort1_query,
             cohort2_query=cohort2_query,
