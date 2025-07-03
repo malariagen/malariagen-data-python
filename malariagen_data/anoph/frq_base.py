@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import re
 import xarray as xr
 import plotly.express as px
 from textwrap import dedent
@@ -95,9 +96,16 @@ def build_cohorts_from_sample_grouping(
     df_cohorts["period_end"] = cohort_period_end
     # Create a label that is similar to the cohort metadata,
     # although this won't be perfect.
-    df_cohorts["label"] = df_cohorts.apply(
-        lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
-    )
+    if taxon_by == frq_params.taxon_by_default:
+        df_cohorts["label"] = df_cohorts.apply(
+            lambda v: f"{v.area}_{v[taxon_by][:4]}_{v.period}", axis="columns"
+        )
+    else:
+        # Replace non-alphanumeric characters in the taxon with underscores.
+        df_cohorts["label"] = df_cohorts.apply(
+            lambda v: f"{v.area}_{re.sub(r'[^A-Za-z0-9]+', '_', str(v[taxon_by]))}_{v.period}",
+            axis="columns",
+        )
 
     # Apply minimum cohort size.
     df_cohorts = df_cohorts.query(f"size >= {min_cohort_size}").reset_index(drop=True)
