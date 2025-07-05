@@ -796,19 +796,6 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         raises=dict(
             ValueError="If the gene is not found or if no transcripts are available for the gene."
         ),
-        examples="""
-        Get canonical transcript for a specific gene:
-
-        >>> import malariagen_data
-        >>> ag3 = malariagen_data.Ag3()
-        >>> canonical_id = ag3.canonical_transcript("AGAP004707")
-        >>> print(canonical_id)
-        AGAP004707-RA
-
-        Restrict search to specific chromosome:
-
-        >>> canonical_id = ag3.canonical_transcript("AGAP004707", region="2R")
-        """,
     )
     def canonical_transcript(
         self,
