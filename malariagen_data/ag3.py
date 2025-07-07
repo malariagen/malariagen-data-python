@@ -3,10 +3,8 @@ import sys
 import dask
 import pandas as pd  # type: ignore
 import plotly.express as px  # type: ignore
-
 import malariagen_data
 from .anopheles import AnophelesDataResource
-
 
 # silence dask performance warnings
 dask.config.set(**{"array.slicing.split_native_chunks": False})  # type: ignore
