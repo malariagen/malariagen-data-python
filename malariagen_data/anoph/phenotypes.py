@@ -344,28 +344,6 @@ class AnophelesPhenotypeData:
         -------
         pd.DataFrame
             DataFrame containing phenotype data merged with sample metadata.
-
-        Examples
-        --------
-        # Load all phenotype data
-        df = ag3.phenotype_data(sample_sets=['1237-VO-BJ-DJOGBENOU-VMF00050'])
-
-        # Filter by insecticide
-        df = ag3.phenotype_data(
-            sample_sets=['1237-VO-BJ-DJOGBENOU-VMF00050'],
-            sample_query="insecticide == 'Deltamethrin'"
-        )
-
-        # Filter by multiple criteria
-        df = ag3.phenotype_data(
-            sample_sets=['1237-VO-BJ-DJOGBENOU-VMF00050'],
-            sample_query="insecticide == 'Deltamethrin' and dose >= 1.0 and phenotype == 'alive'"
-        )
-
-        # Filter by location and insecticide
-        df = ag3.phenotype_data(
-            sample_query="location == 'Cotonou' and insecticide in ['Deltamethrin', 'Bendiocarb']"
-        )
         """
         # 1. Normalize sample_sets
         sample_sets_norm = self._prep_sample_sets_param(sample_sets=sample_sets)
