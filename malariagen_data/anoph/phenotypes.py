@@ -320,30 +320,42 @@ class AnophelesPhenotypeData:
         """
         Load phenotypic data from insecticide resistance bioassays.
 
+        This function retrieves phenotypic data from bioassay experiments and merges it
+        with sample metadata to provide a comprehensive dataset for analysis. The data
+        includes information about insecticide resistance testing, mortality rates,
+        and associated sample characteristics.
+
         Parameters
         ----------
-        sample_sets : Optional[base_params.sample_sets]
-            Sample sets to load data for.
-        sample_query : Optional[base_params.sample_query]
-            Query string to filter samples. Can include phenotype-specific columns like:
+        sample_sets : base_params.sample_sets, optional
+            Sample sets to load data for. If None, loads data from all available sample sets.
+        sample_query : base_params.sample_query, optional
+            Query string to filter samples using pandas query syntax. Can include
+            phenotype-specific columns such as:
             - insecticide: e.g., "insecticide == 'Deltamethrin'"
             - dose: e.g., "dose in [0.5, 2.0]"
             - phenotype: e.g., "phenotype == 'alive'"
             - location: e.g., "location == 'Cotonou'"
-            - Any other metadata columns
-        sample_query_options : Optional[base_params.sample_query_options]
-            Options for the sample query.
-        cohort_size : Optional[base_params.cohort_size]
-            Exact cohort size for sampling.
-        min_cohort_size : Optional[base_params.min_cohort_size]
-            Minimum cohort size to include.
-        max_cohort_size : Optional[base_params.max_cohort_size]
-            Maximum cohort size (will be randomly sampled if exceeded).
+            - Any other metadata columns available in the dataset
+        sample_query_options : base_params.sample_query_options, optional
+            Additional options for the sample query, passed to pandas.DataFrame.query().
+        cohort_size : base_params.cohort_size, optional
+            Exact number of samples to include. If specified, samples will be randomly
+            selected to match this size.
+        min_cohort_size : base_params.min_cohort_size, optional
+            Minimum number of samples required. Function will return empty DataFrame
+            if fewer samples are available.
+        max_cohort_size : base_params.max_cohort_size, optional
+            Maximum number of samples to include. If more samples are available,
+            they will be randomly sampled to this size.
 
         Returns
         -------
         pd.DataFrame
-            DataFrame containing phenotype data merged with sample metadata.
+            DataFrame containing phenotype data merged with sample metadata. Includes
+            columns for sample identifiers, phenotypic measurements, experimental
+            conditions (insecticide, dose), and sample metadata (location, collection
+            date, etc.).
         """
         # 1. Normalize sample_sets
         sample_sets_norm = self._prep_sample_sets_param(sample_sets=sample_sets)
@@ -405,7 +417,36 @@ class AnophelesPhenotypeData:
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> xr.Dataset:
         """
-        Load phenotypic data and merge with SNP calls.
+        Load phenotypic data and merge with SNP calls for genetic association analysis.
+
+        This function combines phenotypic traits with SNP genotype data, enabling
+        genome-wide association studies (GWAS) and other genetic analyses. It first
+        retrieves phenotype data based on the provided filters, then fetches SNP calls
+        for the same samples within the specified genomic region.
+
+        Parameters
+        ----------
+        region : base_params.region
+            Genomic region specification (e.g., chromosome, start/end positions).
+        sample_sets : base_params.sample_sets, optional
+            Specific sample sets to include in the analysis.
+        sample_query : base_params.sample_query, optional
+            Query string to filter samples (e.g., "population == 'CEU'").
+        sample_query_options : base_params.sample_query_options, optional
+            Additional query options for sample filtering.
+        cohort_size : base_params.cohort_size, optional
+            Exact number of samples to include.
+        min_cohort_size : base_params.min_cohort_size, optional
+            Minimum number of samples required.
+        max_cohort_size : base_params.max_cohort_size, optional
+            Maximum number of samples to include.
+
+        Returns
+        -------
+        xr.Dataset
+            A xarray Dataset containing phenotype data indexed by sample_id and
+            SNP genotype calls for the specified genomic region, merged for
+            direct phenotype-genotype analysis.
         """
         df_phenotypes = self.phenotype_data(
             sample_sets=sample_sets,
@@ -444,7 +485,36 @@ class AnophelesPhenotypeData:
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> xr.Dataset:
         """
-        Load phenotypic data and merge with haplotype data.
+        Load phenotypic data and merge with haplotype data for extended genetic analysis.
+
+        This function combines phenotypic traits with haplotype data, enabling analysis
+        of linked genetic variants and their association with phenotypes. Haplotypes
+        represent combinations of alleles at multiple nearby loci that are inherited
+        together.
+
+        Parameters
+        ----------
+        region : base_params.region
+            Genomic region specification for haplotype analysis.
+        sample_sets : base_params.sample_sets, optional
+            Specific sample sets to include in the analysis.
+        sample_query : base_params.sample_query, optional
+            Query string to filter samples.
+        sample_query_options : base_params.sample_query_options, optional
+            Additional query options for sample filtering.
+        cohort_size : base_params.cohort_size, optional
+            Exact number of samples to include.
+        min_cohort_size : base_params.min_cohort_size, optional
+            Minimum number of samples required.
+        max_cohort_size : base_params.max_cohort_size, optional
+            Maximum number of samples to include.
+
+        Returns
+        -------
+        xr.Dataset
+            A xarray Dataset containing phenotype data indexed by sample_id and
+            haplotype data for the specified genomic region, merged for
+            haplotype-phenotype association analysis.
         """
         df_phenotypes = self.phenotype_data(
             sample_sets=sample_sets,
@@ -476,10 +546,14 @@ class AnophelesPhenotypeData:
         """
         Get list of sample sets that have phenotypic data available.
 
+        This function scans the available data repository to identify which sample sets
+        contain phenotypic information, helping users determine which datasets can be
+        used for phenotype-based analyses.
+
         Returns
         -------
         List[str]
-            List of sample set identifiers with available phenotype data.
+            List of sample set identifiers that have associated phenotype data available.
         """
         all_sample_sets = self.sample_sets()["sample_set"].tolist()  # type: ignore[operator]
         phenotype_sample_sets = []
@@ -510,8 +584,41 @@ class AnophelesPhenotypeData:
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> pd.Series:
         """
-        Load phenotypic data as binary outcomes (1=alive/resistant, 0=dead/susceptible, NaN=unknown).
-        Returns a pandas Series indexed by sample_id.
+        Load phenotypic data as binary outcomes for statistical analysis.
+
+        This function converts phenotypic measurements into binary classifications
+        suitable for statistical analysis, particularly useful for resistance/susceptibility
+        studies. The binary encoding follows: 1=alive/resistant, 0=dead/susceptible,
+        NaN=unknown/missing.
+
+        Parameters
+        ----------
+        sample_sets : base_params.sample_sets, optional
+            Specific sample sets to include in the analysis.
+        insecticide : phenotype_params.insecticide, optional
+            Insecticide type(s) to filter by. Can be a single value or list.
+        dose : phenotype_params.dose, optional
+            Dose level(s) to filter by. Can be a single value or list.
+        phenotype : phenotype_params.phenotype, optional
+            Specific phenotype(s) to filter by. Can be a single value or list.
+        sample_query : base_params.sample_query, optional
+            Additional query string for sample filtering.
+        sample_query_options : base_params.sample_query_options, optional
+            Additional query options for sample filtering.
+        cohort_size : base_params.cohort_size, optional
+            Exact number of samples to include.
+        min_cohort_size : base_params.min_cohort_size, optional
+            Minimum number of samples required.
+        max_cohort_size : base_params.max_cohort_size, optional
+            Maximum number of samples to include.
+
+        Returns
+        -------
+        pd.Series
+            A pandas Series indexed by sample_id with binary values:
+            - 1: Alive/resistant phenotype
+            - 0: Dead/susceptible phenotype
+            - NaN: Unknown or missing phenotype
         """
         # Build the sample_query string from individual parameters
         query_parts = []
