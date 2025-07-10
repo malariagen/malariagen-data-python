@@ -135,7 +135,7 @@ class Adir1(AnophelesDataResource):
             f"Storage URL             : {self._url}\n"
             f"Data releases available : {', '.join(self.releases)}\n"
             f"Results cache           : {self._results_cache}\n"
-            # f"Cohorts analysis        : {self._cohorts_analysis}\n"
+            f"Cohorts analysis        : {self._cohorts_analysis}\n"
             f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : malariagen_data {malariagen_data.__version__}\n"
             f"Client location         : {self.client_location}\n"
