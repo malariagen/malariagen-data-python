@@ -189,6 +189,7 @@ def test_karyotyping(inversion):
         assert all(df[f"karyotype_{inversion}"].isin([0, 1, 2]))
         assert all(df[f"karyotype_{inversion}_mean"].between(0, 2))
 
+
 def test_plot_haplotype_network_string_direct(mocker):
     ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
@@ -276,6 +277,7 @@ def test_plot_haplotype_network_none(mocker):
     call_args = mock_mjn.call_args[1]
     assert call_args["color"] is None
     assert call_args["ht_color_counts"] is None
+
 
 def test_phenotype_data():
     """Test basic functionality of phenotype_data method with sample_query."""
