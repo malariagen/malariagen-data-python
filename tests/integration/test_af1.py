@@ -110,7 +110,7 @@ def test_plot_haplotype_network_string_direct(mocker):
 
     assert mock_mjn.called
     call_args = mock_mjn.call_args[1]
-    assert call_args["color"] == "partition"
+    assert call_args["color"] == "_partition"
     assert call_args["ht_color_counts"] is not None
 
 
@@ -132,7 +132,7 @@ def test_plot_haplotype_network_string_cohort(mocker):
 
     assert mock_mjn.called
     call_args = mock_mjn.call_args[1]
-    assert call_args["color"] == "partition"
+    assert call_args["color"] == "_partition"
     assert call_args["ht_color_counts"] is not None
 
 
@@ -155,7 +155,7 @@ def test_plot_haplotype_network_mapping(mocker):
 
     assert mock_mjn.called
     call_args = mock_mjn.call_args[1]
-    assert call_args["color"] == "partition"
+    assert call_args["color"] == "_partition"
     assert call_args["ht_color_counts"] is not None
 
 
