@@ -2260,16 +2260,16 @@ class AnophelesDataResource(
                         )
 
                     # Now use the validated color_column for processing
-                    df_haps["partition"] = (
+                    df_haps["_partition"] = (
                         df_haps[color_column]
                         .astype(str)
                         .str.replace(r"\W", "", regex=True)
                     )
 
                     # extract all unique values of the color column
-                    color_values = df_haps["partition"].fillna("<NA>").unique()
+                    color_values = df_haps["_partition"].fillna("<NA>").unique()
                     color_values_mapping = dict(
-                        zip(df_haps["partition"], df_haps[color_column])
+                        zip(df_haps["_partition"], df_haps[color_column])
                     )
                     color_values_mapping["<NA>"] = "black"
                     color_values_display = [
@@ -2280,25 +2280,25 @@ class AnophelesDataResource(
                 elif isinstance(color, Mapping):
                     # For mapping case, we need to create a new column based on the mapping
                     # Initialize with None
-                    df_haps["partition"] = None
+                    df_haps["_partition"] = None
 
-                    # Apply each query in the mapping to create the partition column
+                    # Apply each query in the mapping to create the _partition column
                     for label, query in color.items():
                         # Apply the query and assign the label to matching rows
                         mask = df_haps.eval(query)
-                        df_haps.loc[mask, "partition"] = label
+                        df_haps.loc[mask, "_partition"] = label
 
-                    # Clean up the partition column to avoid issues with special characters
-                    if df_haps["partition"].notna().any():
-                        df_haps["partition"] = df_haps["partition"].str.replace(
+                    # Clean up the _partition column to avoid issues with special characters
+                    if df_haps["_partition"].notna().any():
+                        df_haps["_partition"] = df_haps["_partition"].str.replace(
                             r"\W", "", regex=True
                         )
 
                     # extract all unique values of the color column
-                    color_values = df_haps["partition"].fillna("<NA>").unique()
-                    # For mapping case, use partition values directly as they're already the labels
+                    color_values = df_haps["_partition"].fillna("<NA>").unique()
+                    # For mapping case, use _partition values directly as they're already the labels
                     color_values_mapping = dict(
-                        zip(df_haps["partition"], df_haps["partition"])
+                        zip(df_haps["_partition"], df_haps["_partition"])
                     )
                     color_values_mapping["<NA>"] = "black"
                     color_values_display = [
@@ -2312,7 +2312,7 @@ class AnophelesDataResource(
 
                 # count color values for each distinct haplotype (same for both string and mapping cases)
                 ht_color_counts = [
-                    df_haps.iloc[list(s)]["partition"].value_counts().to_dict()
+                    df_haps.iloc[list(s)]["_partition"].value_counts().to_dict()
                     for s in ht_distinct_sets
                 ]
 
@@ -2323,7 +2323,7 @@ class AnophelesDataResource(
                     category_orders_prepped,
                 ) = self._setup_sample_colors_plotly(
                     data=df_haps,
-                    color="partition",
+                    color="_partition",
                     color_discrete_map=color_discrete_map,
                     color_discrete_sequence=color_discrete_sequence,
                     category_orders=category_orders,
@@ -2343,7 +2343,7 @@ class AnophelesDataResource(
             ht_distinct_mjn=ht_distinct_mjn,
             ht_counts=ht_counts,
             ht_color_counts=ht_color_counts,
-            color="partition" if color is not None else None,
+            color="_partition" if color is not None else None,
             color_values=color_values,
             edges=edges,
             alt_edges=alt_edges,
@@ -2395,7 +2395,7 @@ class AnophelesDataResource(
         debug("create figure legend")
         if color is not None:
             legend_fig = plotly_discrete_legend(
-                color="partition",  # Changed from color=color
+                color="_partition",  # Changed from color=color
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,
                 category_orders=category_orders_prepped,
