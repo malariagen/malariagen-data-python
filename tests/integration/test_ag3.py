@@ -104,13 +104,13 @@ def test_locate_region(region_raw):
 def test_ihs_gwss():
     ag3 = setup_ag3(cohorts_analysis="20230516")
     sample_query = "country == 'Ghana'"
-    contig = "3L"
+    region = "3L"
     analysis = "gamb_colu"
     sample_sets = "3.0"
     window_size = 1000
 
     x, ihs = ag3.ihs_gwss(
-        contig=contig,
+        region=region,
         analysis=analysis,
         sample_query=sample_query,
         sample_sets=sample_sets,
@@ -140,7 +140,7 @@ def test_xpehh_gwss():
     window_size = 1000
 
     x, xpehh = ag3.xpehh_gwss(
-        contig=contig,
+        region=contig,
         analysis=analysis,
         cohort1_query=cohort1_query,
         cohort2_query=cohort2_query,
