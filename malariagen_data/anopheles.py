@@ -2240,18 +2240,15 @@ class AnophelesDataResource(
         color_discrete_map_display = None
         ht_color_counts = None
         if color is not None:
-            # sanitise color column - necessary to avoid grey pie chart segments
-            df_haps["partition"] = df_haps[color].str.replace(r"\W", "", regex=True)
-
-            # extract all unique values of the color column
-            color_values = df_haps["partition"].fillna("<NA>").unique()
-            color_values_mapping = dict(zip(df_haps["partition"], df_haps[color]))
+            df_haps["_partition"] = df_haps[color].str.replace(r"\\W", "", regex=True)
+            color_values = df_haps["_partition"].fillna("<NA>").unique()
+            color_values_mapping = dict(zip(df_haps["_partition"], df_haps[color]))
             color_values_mapping["<NA>"] = "black"
             color_values_display = [color_values_mapping[c] for c in color_values]
 
             # count color values for each distinct haplotype
             ht_color_counts = [
-                df_haps.iloc[list(s)]["partition"].value_counts().to_dict()
+                df_haps.iloc[list(s)]["_partition"].value_counts().to_dict()
                 for s in ht_distinct_sets
             ]
 
@@ -2262,7 +2259,7 @@ class AnophelesDataResource(
                 category_orders_prepped,
             ) = self._setup_sample_colors_plotly(
                 data=df_haps,
-                color="partition",
+                color="_partition",
                 color_discrete_map=color_discrete_map,
                 color_discrete_sequence=color_discrete_sequence,
                 category_orders=category_orders,
