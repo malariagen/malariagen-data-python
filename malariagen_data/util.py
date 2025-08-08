@@ -488,7 +488,6 @@ def init_filesystem(url, **kwargs):
 
     # Process the URL using fsspec.
     fs, path = url_to_fs(url, **storage_options)
-
     # Path compatibility, fsspec/gcsfs behaviour varies between versions.
     while path.endswith("/"):
         path = path[:-1]

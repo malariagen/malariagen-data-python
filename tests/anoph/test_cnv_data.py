@@ -181,6 +181,21 @@ def test_open_cnv_discordant_read_calls(fixture, api: AnophelesCnvData):
         root = api.open_cnv_discordant_read_calls(sample_set="foobar")
 
 
+def fake_none_dataset(*args, **kwargs):
+    return None
+
+def test_cnv_discordant_read_calls_no_data(monkeypatch):
+    # Create an instance of AnophelesCnvData; assuming you have a fixture or a way to instantiate.
+    api = AnophelesCnvData(...)
+    
+    # Monkey-patch the dataset method to always return None.
+    monkeypatch.setattr(api, "_cnv_discordant_read_calls_dataset", fake_none_dataset)
+    
+    # Expect a ValueError since no dataset will be found.
+    with pytest.raises(ValueError, match="No data found for requested sample sets"):
+        # Pass some valid contig string (e.g., "2RL") and sample_sets
+        api.cnv_discordant_read_calls(contig="2RL", sample_sets=["some_sample_set"])
+
 def test_cnv_hmm__sample_query(ag3_sim_fixture, ag3_sim_api: AnophelesCnvData):
     api = ag3_sim_api
     fixture = ag3_sim_fixture
