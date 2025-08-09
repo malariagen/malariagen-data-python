@@ -41,6 +41,7 @@ from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
+from .anoph.phenotypes import AnophelesPhenotypeData
 from .mjn import median_joining_network, mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
@@ -95,6 +96,7 @@ class AnophelesDataResource(
     AnophelesGenomeFeaturesData,
     AnophelesGenomeSequenceData,
     AnophelesBase,
+    AnophelesPhenotypeData,
 ):
     """Anopheles data resources."""
 
@@ -2234,43 +2236,105 @@ class AnophelesDataResource(
             edges = np.triu(edges)
             alt_edges = np.triu(alt_edges)
 
-        debug("setup colors")
-        color_values = None
-        color_values_display = None
-        color_discrete_map_display = None
-        ht_color_counts = None
-        if color is not None:
-            df_haps["_partition"] = df_haps[color].str.replace(r"\\W", "", regex=True)
-            color_values = df_haps["_partition"].fillna("<NA>").unique()
-            color_values_mapping = dict(zip(df_haps["_partition"], df_haps[color]))
-            color_values_mapping["<NA>"] = "black"
-            color_values_display = [color_values_mapping[c] for c in color_values]
+            debug("setup colors")
+            color_values = None
+            color_values_display = None
+            color_discrete_map_display = None
+            ht_color_counts = None
 
-            # count color values for each distinct haplotype
-            ht_color_counts = [
-                df_haps.iloc[list(s)]["_partition"].value_counts().to_dict()
-                for s in ht_distinct_sets
-            ]
+            if color is not None:
+                # Handle string case (direct column name or cohorts_ prefix)
+                if isinstance(color, str):
+                    # Try direct column name
+                    if color in df_haps.columns:
+                        color_column = color
+                    # Try with cohorts_ prefix
+                    elif f"cohorts_{color}" in df_haps.columns:
+                        color_column = f"cohorts_{color}"
+                    # Neither exists, raise helpful error
+                    else:
+                        available_columns = ", ".join(df_haps.columns)
+                        raise ValueError(
+                            f"Column '{color}' or 'cohorts_{color}' not found in sample data. "
+                            f"Available columns: {available_columns}"
+                        )
 
-            # Set up colors.
-            (
-                color_prepped,
-                color_discrete_map_prepped,
-                category_orders_prepped,
-            ) = self._setup_sample_colors_plotly(
-                data=df_haps,
-                color="_partition",
-                color_discrete_map=color_discrete_map,
-                color_discrete_sequence=color_discrete_sequence,
-                category_orders=category_orders,
-            )
-            del color_discrete_map
-            del color_discrete_sequence
-            del category_orders
-            color_discrete_map_display = {
-                color_values_mapping[v]: c
-                for v, c in color_discrete_map_prepped.items()
-            }
+                    # Now use the validated color_column for processing
+                    df_haps["_partition"] = (
+                        df_haps[color_column]
+                        .astype(str)
+                        .str.replace(r"\W", "", regex=True)
+                    )
+
+                    # extract all unique values of the color column
+                    color_values = df_haps["_partition"].fillna("<NA>").unique()
+                    color_values_mapping = dict(
+                        zip(df_haps["_partition"], df_haps[color_column])
+                    )
+                    color_values_mapping["<NA>"] = "black"
+                    color_values_display = [
+                        color_values_mapping[c] for c in color_values
+                    ]
+
+                # Handle mapping/dictionary case
+                elif isinstance(color, Mapping):
+                    # For mapping case, we need to create a new column based on the mapping
+                    # Initialize with None
+                    df_haps["_partition"] = None
+
+                    # Apply each query in the mapping to create the _partition column
+                    for label, query in color.items():
+                        # Apply the query and assign the label to matching rows
+                        mask = df_haps.eval(query)
+                        df_haps.loc[mask, "_partition"] = label
+
+                    # Clean up the _partition column to avoid issues with special characters
+                    if df_haps["_partition"].notna().any():
+                        df_haps["_partition"] = df_haps["_partition"].str.replace(
+                            r"\W", "", regex=True
+                        )
+
+                    # extract all unique values of the color column
+                    color_values = df_haps["_partition"].fillna("<NA>").unique()
+                    # For mapping case, use _partition values directly as they're already the labels
+                    color_values_mapping = dict(
+                        zip(df_haps["_partition"], df_haps["_partition"])
+                    )
+                    color_values_mapping["<NA>"] = "black"
+                    color_values_display = [
+                        color_values_mapping[c] for c in color_values
+                    ]
+                else:
+                    # Invalid type
+                    raise TypeError(
+                        f"Expected color parameter to be a string or mapping, got {type(color).__name__}"
+                    )
+
+                # count color values for each distinct haplotype (same for both string and mapping cases)
+                ht_color_counts = [
+                    df_haps.iloc[list(s)]["_partition"].value_counts().to_dict()
+                    for s in ht_distinct_sets
+                ]
+
+                # Set up colors (same for both string and mapping cases)
+                (
+                    color_prepped,
+                    color_discrete_map_prepped,
+                    category_orders_prepped,
+                ) = self._setup_sample_colors_plotly(
+                    data=df_haps,
+                    color="_partition",
+                    color_discrete_map=color_discrete_map,
+                    color_discrete_sequence=color_discrete_sequence,
+                    category_orders=category_orders,
+                )
+                del color_discrete_map
+                del color_discrete_sequence
+                del category_orders
+                color_discrete_map_display = {
+                    color_values_mapping[v]: c
+                    for v, c in color_discrete_map_prepped.items()
+                }
 
         debug("construct graph")
         anon_width = np.sqrt(0.3 * node_size_factor)
@@ -2279,7 +2343,7 @@ class AnophelesDataResource(
             ht_distinct_mjn=ht_distinct_mjn,
             ht_counts=ht_counts,
             ht_color_counts=ht_color_counts,
-            color=color,
+            color="_partition" if color is not None else None,
             color_values=color_values,
             edges=edges,
             alt_edges=alt_edges,
@@ -2331,7 +2395,7 @@ class AnophelesDataResource(
         debug("create figure legend")
         if color is not None:
             legend_fig = plotly_discrete_legend(
-                color=color,
+                color="_partition",  # Changed from color=color
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,
                 category_orders=category_orders_prepped,

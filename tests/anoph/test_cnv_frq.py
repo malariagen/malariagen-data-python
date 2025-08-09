@@ -15,6 +15,7 @@ from .test_frq import (
     check_plot_frequencies_time_series_with_taxa,
     check_plot_frequencies_time_series_with_areas,
     check_plot_frequencies_interactive_map,
+    add_random_year,
 )
 
 rng = np.random.default_rng(seed=42)
@@ -477,7 +478,7 @@ def test_gene_cnv_frequencies_advanced_with_area_by(
     )
 
 
-@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month", "random_year"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_gene_cnv_frequencies_advanced_with_period_by(
     fixture,
@@ -716,6 +717,10 @@ def check_gene_cnv_frequencies_advanced(
     if min_cohort_size is None:
         min_cohort_size = int(rng.integers(0, 2))
 
+    if period_by == "random_year":
+        # Add a random_year column to the sample metadata, if there isn't already.
+        api = add_random_year(api=api)
+
     # Run function under test.
     ds = api.gene_cnv_frequencies_advanced(
         region=region,
@@ -814,6 +819,8 @@ def check_gene_cnv_frequencies_advanced(
         expected_freqstr = "M"
     elif period_by == "quarter":
         expected_freqstr = "Q-DEC"
+    elif period_by == "random_year":
+        expected_freqstr = "Y-DEC"
     else:
         assert False, "not implemented"
     for p in period_values:
