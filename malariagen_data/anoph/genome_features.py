@@ -713,7 +713,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             f"Transcript '{transcript_id}' has {len(exons)} exons, total length: {total_length} bp"
         )
 
-        return total_length
+        return int(total_length)
 
     @check_types
     @doc(
