@@ -577,7 +577,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         # Prepare attributes - ensure we have the necessary ones for traversal
         attributes_list = list(self._prep_gff_attributes(attributes))
-        required_attrs = {"ID", "Parent", "Name"}
+        required_attrs = {"ID", "Parent", self._gff_gene_name_attribute}
         for attr in required_attrs:
             if attr not in attributes_list:
                 attributes_list.append(attr)
