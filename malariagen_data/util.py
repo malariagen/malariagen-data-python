@@ -1603,3 +1603,30 @@ def add_frequency_ci(*, ds, ci_method):
             )
         ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
         ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
+
+
+def _resolve_region_with_deprec_contig_param(*, region, contig):
+    """
+    This helper function should be used by any public function that accepts both a `region` and a `contig` parameter.
+    The `contig` parameter is now deprecated, so we need to determine which value the `region` should have.
+    This function returns the determined value for the `region` based on the given parameters.
+    """
+
+    if contig is None:
+        # A `contig` has not been given, so return whatever `region` is.
+        return region
+    elif region is None:
+        # A `contig` has been given, and a `region` has not been given.
+        # Raise a `DeprecationWarning` for the `contig` param.
+        # Note: this might not be shown due to warning filters.
+        warnings.warn(
+            "The 'contig' parameter has been deprecated. Please use 'region' instead.",
+            DeprecationWarning,
+        )
+        # The given `contig` should be a valid `region`, so return the given `contig` as the region.
+        return contig
+    else:
+        # Both a `contig` and a `region` have been given.
+        raise ValueError(
+            "Both 'region' and 'contig' parameters were provided. Please provide a 'region' parameter only. The 'contig' parameter has been deprecated."
+        )
