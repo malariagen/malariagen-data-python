@@ -22,12 +22,8 @@ from . import (
     dipclust_params,
     cnv_params,
 )
-from .snp_frq import AnophelesSnpFrequencyAnalysis
+from .snp_frq import AnophelesSnpFrequencyAnalysis, AA_CHANGE_QUERY
 from .cnv_frq import AnophelesCnvFrequencyAnalysis
-
-AA_CHANGE_QUERY = (
-    "effect in ['NON_SYNONYMOUS_CODING', 'START_LOST', 'STOP_LOST', 'STOP_GAINED']"
-)
 
 
 class AnophelesDipClustAnalysis(
