@@ -189,7 +189,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
                 "n_snps": n_snps_used,
                 "dist": dist,
                 "dist_samples": phased_samples,
-                "leaf_data":leaf_data,
+                "leaf_data": leaf_data,
             }
 
     @doc(
@@ -388,24 +388,24 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         figures = [fig_dendro]
         subplot_heights = [dendrogram_height]
-        
+
         if cut_height and min_cluster_size:
             cluster_col_list = px.colors.sequential.Turbo.copy()
-            cluster_col_list.insert(0, 'white')
-            
+            cluster_col_list.insert(0, "white")
+
             df_clusters = self.cut_dist_tree(
-                dist=res['dist'], 
-                dist_samples=_make_unique(np.repeat(res['dist_samples'], 2)),
+                dist=res["dist"],
+                dist_samples=_make_unique(np.repeat(res["dist_samples"], 2)),
                 dendro_sample_id_order=dendro_sample_id_order,
-                linkage_method=linkage_method, 
+                linkage_method=linkage_method,
                 cut_height=cut_height,
-                min_cluster_size=min_cluster_size, 
-                count_sort=count_sort, 
-                distance_sort=distance_sort
+                min_cluster_size=min_cluster_size,
+                count_sort=count_sort,
+                distance_sort=distance_sort,
             )
 
             leaf_data = leaf_data.merge(df_clusters.T.reset_index())
-            
+
             snp_trace = go.Heatmap(
                 z=df_clusters.values,
                 y=df_clusters.index.to_list(),
@@ -415,8 +415,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             )
             figures.append(snp_trace)
             subplot_heights.append(25)
-            
-            
+
         figures, subplot_heights, df_haps = self._insert_hapclust_snp_trace(
             transcript=snp_transcript,
             snp_query=snp_query,
@@ -448,31 +447,46 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             n_snps=n_snps_cluster,
         )
 
-        fig["layout"]["yaxis"]["title"] = f"Distance"
+        fig["layout"]["yaxis"]["title"] = "Distance"
         fig.update_layout(
             title_font=dict(
                 size=title_font_size,
             ),
             legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
-        
+
         if snp_transcript:
-        # add lines to aa plot
+            # add lines to aa plot
             aa_idx = len(figures)
             fig.add_hline(y=-0.5, line_width=1, line_color="grey", row=aa_idx, col=1)
             for i in range(n_aa):
-                fig.add_hline(y=i+0.5, line_width=1, line_color="grey", row=aa_idx, col=1)
-            
-            fig.update_xaxes(showline = True, linecolor = 'grey', linewidth = 1, row = aa_idx, col = 1, mirror = True)
-            fig.update_yaxes(showline = True, linecolor = 'grey', linewidth = 1, row = aa_idx, col = 1, mirror = True)
+                fig.add_hline(
+                    y=i + 0.5, line_width=1, line_color="grey", row=aa_idx, col=1
+                )
+
+            fig.update_xaxes(
+                showline=True,
+                linecolor="grey",
+                linewidth=1,
+                row=aa_idx,
+                col=1,
+                mirror=True,
+            )
+            fig.update_yaxes(
+                showline=True,
+                linecolor="grey",
+                linewidth=1,
+                row=aa_idx,
+                col=1,
+                mirror=True,
+            )
 
         if show:
             fig.show(renderer=renderer)
             return None
         else:
             return fig, leaf_data, df_haps
-        
-        
+
     def transcript_haplotypes(
         self,
         transcript,
@@ -481,25 +495,19 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         analysis,
         snp_query,
         chunks,
-        inline_array
+        inline_array,
     ):
         """
         Extract haplotype calls for a given transcript.
         """
-        
+
         # Get SNP genotype allele counts for the transcript, applying snp_query
-        df_snps = self.snp_genotype_allele_counts(
+        df_eff = self.snp_effects(
             transcript=transcript,
-            sample_query=sample_query,
-            sample_sets=sample_sets,
-            site_mask=None,
-            snp_query=snp_query,
-            chunks=chunks,
-            inline_array=inline_array
         )
 
         # Add a unique variant identifier: "position-alt_allele"
-        df_snps = df_snps.assign(
+        df_eff = df_eff.assign(
             pos_alt=lambda x: x.position.astype(str) + "-" + x.alt_allele
         )
 
@@ -510,7 +518,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             sample_query=sample_query,
             analysis=analysis,
             chunks=chunks,
-            inline_array=inline_array
+            inline_array=inline_array,
         )
 
         # Convert genotype calls to haplotypes
@@ -520,17 +528,17 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         h_pos_alts = np.array([f"{pos}-{h_alts[i]}" for i, pos in enumerate(h_pos)])
         sample_ids = ds_haps["sample_id"].values
 
-        # Filter haplotypes to SNPs present in df_snps
-        df_snps = df_snps.query("pos_alt in @h_pos_alts")
-        label = df_snps.label.values
-        haps_bool = np.isin(h_pos_alts, df_snps.pos_alt)
+        # Filter df_eff to haplotypes, and filter haplotypes to SNPs present in df_eff
+        df_eff = df_eff.query("pos_alt in @h_pos_alts")
+        label = df_eff.label.values
+        haps_bool = np.isin(h_pos_alts, df_eff.pos_alt)
         haps = haps.compress(haps_bool)
 
         # Build haplotype DataFrame
         df_haps = pd.DataFrame(
             haps,
             index=label,
-            columns=_make_unique(np.repeat(sample_ids, 2))  # two haplotypes per sample
+            columns=_make_unique(np.repeat(sample_ids, 2)),  # two haplotypes per sample
         )
 
         return df_haps
@@ -552,7 +560,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         inline_array,
     ):
         from plotly import graph_objects as go
-        
+
         # load genotype allele counts at SNP variants for each sample
         df_haps = self.transcript_haplotypes(
             transcript=transcript,
@@ -561,13 +569,11 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             sample_sets=sample_sets,
             analysis=analysis,
             chunks=chunks,
-            inline_array=inline_array
+            inline_array=inline_array,
         )
-        
+
         # set to diplotype cluster order
-        df_haps = df_haps.loc[
-            :, dendro_sample_id_order
-        ]
+        df_haps = df_haps.loc[:, dendro_sample_id_order]
 
         if snp_filter_min_maf:
             df_haps = df_haps.assign(af=lambda x: x.sum(axis=1) / x.shape[1])
@@ -583,7 +589,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             )
         else:
             snp_trace = None
-            
+
         if snp_trace:
             figures.append(snp_trace)
             subplot_heights.append(snp_row_height * df_haps.shape[0])
@@ -593,8 +599,17 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             )
         return figures, subplot_heights, df_haps
 
-
-    def cut_dist_tree(self, dist, dist_samples, dendro_sample_id_order, linkage_method, cut_height, min_cluster_size, count_sort, distance_sort):
+    def cut_dist_tree(
+        self,
+        dist,
+        dist_samples,
+        dendro_sample_id_order,
+        linkage_method,
+        cut_height,
+        min_cluster_size,
+        count_sort,
+        distance_sort,
+    ):
         """
         Create a one-row DataFrame with haplotype_ids as columns and cluster assignments as values
 
@@ -625,20 +640,28 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         Z = linkage(dist, method=linkage_method)
 
         # Get cluster assignments for each individual
-        cluster_assignments = fcluster(
-            Z, cut_height, criterion='distance'
-        )
-        
+        cluster_assignments = fcluster(Z, cut_height, criterion="distance")
+
         # Create initial DataFrame
-        df = pd.DataFrame({
-            'sample_id': dist_samples,
-            'cluster_id': _filter_and_remap(cluster_assignments, x=min_cluster_size)
-        }).set_index('sample_id').T.loc[:, dendro_sample_id_order]
+        df = (
+            pd.DataFrame(
+                {
+                    "sample_id": dist_samples,
+                    "cluster_id": _filter_and_remap(
+                        cluster_assignments, x=min_cluster_size
+                    ),
+                }
+            )
+            .set_index("sample_id")
+            .T.loc[:, dendro_sample_id_order]
+        )
 
         return df
 
+
 def _filter_and_remap(arr, x):
     from collections import Counter
+
     # Get unique values that appear >= x times
     valid_values = [val for val, count in Counter(arr).items() if count >= x]
     # Create mapping to 1, 2, 3, ..., n
@@ -650,7 +673,7 @@ def _filter_and_remap(arr, x):
 def _make_unique(values):
     value_counts = {}
     unique_values = []
-    
+
     for value in values:
         if value in value_counts:
             value_counts[value] += 1
@@ -658,5 +681,5 @@ def _make_unique(values):
         else:
             value_counts[value] = 0
             unique_values.append(f"{value}_{value_counts[value]}")
-    
+
     return np.array(unique_values)
