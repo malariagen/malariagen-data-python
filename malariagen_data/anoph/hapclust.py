@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, pdist_abs_hamming
+from ..util import CacheMiss, check_types, pdist_abs_hamming, pandas_apply
 from ..plotly_dendrogram import plot_dendrogram
 from . import (
     base_params,
@@ -16,7 +16,7 @@ from . import (
     hapclust_params,
 )
 from .snp_data import AnophelesSnpData
-from .snp_frq import AA_CHANGE_QUERY
+from .snp_frq import AA_CHANGE_QUERY, _make_snp_label_effect
 from .hap_data import AnophelesHapData
 
 
@@ -504,6 +504,12 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         # Get SNP genotype allele counts for the transcript, applying snp_query
         df_eff = self.snp_effects(
             transcript=transcript,
+        ).query(snp_query)
+
+        df_eff["label"] = pandas_apply(
+            _make_snp_label_effect,
+            df_eff,
+            columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
         )
 
         # Add a unique variant identifier: "position-alt_allele"
