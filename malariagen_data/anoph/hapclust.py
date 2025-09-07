@@ -68,7 +68,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         legend_sizing: plotly_params.legend_sizing = "constant",
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
-    ) -> plotly_params.figure:
+    ) -> Optional[dict]:
         import sys
 
         # Normalise params.
