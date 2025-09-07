@@ -14,4 +14,4 @@ distance_metric: TypeAlias = Annotated[
     """,
 ]
 
-distance_metric_default: str = "hamming"
+distance_metric_default: Literal["hamming", "dxy"] = "hamming"
