@@ -48,6 +48,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
         linkage_method: hapclust_params.linkage_method = hapclust_params.linkage_method_default,
+        distance_metric: hapclust_params.distance_metric = hapclust_params.distance_metric_default,
         count_sort: Optional[tree_params.count_sort] = None,
         distance_sort: Optional[tree_params.distance_sort] = None,
         title: plotly_params.title = True,
@@ -90,6 +91,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         dist, phased_samples, n_snps_used = self.haplotype_pairwise_distances(
             region=region,
             analysis=analysis,
+            distance_metric=distance_metric,
             sample_sets=sample_sets,
             sample_query=sample_query,
             sample_query_options=sample_query_options,
@@ -168,7 +170,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
                 leaf_color_discrete_map=color_discrete_map_prepped,
                 leaf_category_orders=category_orders_prepped,
                 template="simple_white",
-                y_axis_title="Distance (no. SNPs)",
+                y_axis_title=f"Distance ({distance_metric})",
                 y_axis_buffer=1,
             )
 
@@ -205,6 +207,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
     def haplotype_pairwise_distances(
         self,
         region: base_params.regions,
+        distance_metric: hapclust_params.distance_metric = hapclust_params.distance_metric_default,
         analysis: hap_params.analysis = base_params.DEFAULT,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -223,6 +226,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         region_prepped = self._prep_region_cache_param(region=region)
         params = dict(
             region=region_prepped,
+            distance_metric=distance_metric,
             analysis=analysis,
             sample_sets=sample_sets_prepped,
             sample_query=sample_query,
@@ -252,6 +256,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         self,
         *,
         region,
+        distance_metric,
         analysis,
         sample_sets,
         sample_query,
@@ -295,10 +300,27 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         # to allow these to be saved to the results cache.
         phased_samples = ds_haps["sample_id"].values.astype("U")
 
+        # Number of sites
+        n_total_sites = region["end"] - region["start"] + 1
+
+        # Adjust distances if dxy requested
+        if distance_metric == "dxy":
+            # Normalize by total sites (common definition of dxy)
+            dist = dist / n_total_sites
+        elif distance_metric == "hamming":
+            # Leave as raw SNP differences
+            pass
+        else:
+            raise ValueError(
+                f"Unsupported distance_metric: {distance_metric}. "
+                "Choose from {'hamming', 'dxy'}."
+            )
+
         return dict(
             dist=dist,
             phased_samples=phased_samples,
-            n_snps=np.array(ht.shape[0]),
+            n_snps=np.array(n_total_sites),
+            n_seg_sites=np.array(ht.shape[0]),
         )
 
     def plot_haplotype_clustering_advanced(
@@ -314,8 +336,10 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         sample_query_options=None,
         random_seed=42,
         cohort_size=None,
-        cut_height=None,
+        distance_metric="hamming",
+        cluster_threshold=None,
         min_cluster_size=None,
+        cluster_criterion="distance",
         color=None,
         symbol=None,
         linkage_method="complete",
@@ -358,6 +382,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             count_sort=count_sort,
             cohort_size=cohort_size,
             distance_sort=distance_sort,
+            distance_metric=distance_metric,
             linkage_method=linkage_method,
             color=color,
             symbol=symbol,
@@ -389,22 +414,26 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         figures = [fig_dendro]
         subplot_heights = [dendrogram_height]
 
-        if cut_height and min_cluster_size:
-            cluster_col_list = px.colors.sequential.Turbo.copy()
-            cluster_col_list.insert(0, "white")
-
+        if cluster_threshold and min_cluster_size:
             df_clusters = self.cut_dist_tree(
                 dist=res["dist"],
                 dist_samples=_make_unique(np.repeat(res["dist_samples"], 2)),
                 dendro_sample_id_order=dendro_sample_id_order,
                 linkage_method=linkage_method,
-                cut_height=cut_height,
+                cluster_threshold=cluster_threshold,
                 min_cluster_size=min_cluster_size,
-                count_sort=count_sort,
-                distance_sort=distance_sort,
+                cluster_criterion=cluster_criterion,
             )
 
             leaf_data = leaf_data.merge(df_clusters.T.reset_index())
+
+            # if more than 8 clusters, use px.colors.qualitative.Alphabet
+            if df_clusters.max().max() > 8:
+                cluster_col_list = px.colors.qualitative.Alphabet.copy()
+                cluster_col_list.insert(0, "white")
+            else:
+                cluster_col_list = px.colors.qualitative.Dark2.copy()
+            cluster_col_list.insert(0, "white")
 
             snp_trace = go.Heatmap(
                 z=df_clusters.values,
@@ -455,7 +484,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
 
-        if snp_transcript:
+        if snp_transcript and n_aa > 0:
             # add lines to aa plot
             aa_idx = len(figures)
             fig.add_hline(y=-0.5, line_width=1, line_color="grey", row=aa_idx, col=1)
@@ -502,9 +531,13 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         """
 
         # Get SNP genotype allele counts for the transcript, applying snp_query
-        df_eff = self.snp_effects(
-            transcript=transcript,
-        ).query(snp_query)
+        df_eff = (
+            self.snp_effects(
+                transcript=transcript,
+            )
+            .query(snp_query)
+            .reset_index(drop=True)
+        )
 
         df_eff["label"] = pandas_apply(
             _make_snp_label_effect,
@@ -611,10 +644,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         dist_samples,
         dendro_sample_id_order,
         linkage_method,
-        cut_height,
+        cluster_threshold,
+        cluster_criterion,
         min_cluster_size,
-        count_sort,
-        distance_sort,
     ):
         """
         Create a one-row DataFrame with haplotype_ids as columns and cluster assignments as values
@@ -627,14 +659,17 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             List/array of individual identifiers (haplotype_ids)
         linkage_method : str
             Method used to calculate the linkage matrix
-        cut_height : float
+        cluster_threshold : float
             Height at which to cut the dendrogram
         min_cluster_size : int, default=1
             Minimum number of individuals required in a cluster to be included
-        count_sort : bool
-            Whether to sort clusters by count
-        distance_sort : bool
-            Whether to sort clusters by distance
+        dendro_sample_id_order : array-like
+            List/array of individual identifiers (haplotype_ids) in the order they appear in
+            the dendrogram
+        cluster_criterion : str, default='distance'
+            The cluster_criterion to use in forming flat clusters. One of
+            'inconsistent', 'distance', 'maxclust', 'maxclust_monochronic', 'monocrit'
+            See scipy.cluster.hierarchy.fcluster for details.
 
         Returns:
         --------
@@ -646,7 +681,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         Z = linkage(dist, method=linkage_method)
 
         # Get cluster assignments for each individual
-        cluster_assignments = fcluster(Z, cut_height, criterion="distance")
+        cluster_assignments = fcluster(
+            Z, t=cluster_threshold, criterion=cluster_criterion
+        )
 
         # Create initial DataFrame
         df = (
