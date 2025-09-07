@@ -3,6 +3,7 @@ import xarray as xr
 from typing import Callable, Optional, List, Any
 import warnings
 import fsspec
+import posixpath
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import check_types
@@ -35,10 +36,12 @@ class AnophelesPhenotypeData:
         Load raw phenotypic data from GCS for given sample sets.
         """
         phenotype_dfs = []
-        base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
+        #base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
+        release = getattr(self, "release", "v3.2")
+        base_phenotype_path = posixpath.join(self._url, release, "phenotypes", "all")
 
         for sample_set in sample_sets:
-            phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
+            phenotype_path = posixpath.join(base_phenotype_path,sample_set,"phenotypes.csv")
             try:
                 if not self._fs.exists(phenotype_path):
                     warnings.warn(
@@ -480,7 +483,9 @@ class AnophelesPhenotypeData:
 
         all_sample_sets = self.sample_sets()["sample_set"].tolist()  # type: ignore[operator]
         phenotype_sample_sets = []
-        base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
+        #base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
+        release = getattr(self,"release","v3.2")
+        base_phenotype_path = posixpath.join(self._url,release,"phenotypes","all")
 
         for sample_set in all_sample_sets:
             try:
