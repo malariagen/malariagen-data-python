@@ -756,7 +756,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             pd.DataFrame(
                 {
                     "sample_id": dist_samples,
-                    "cluster_id": _filter_and_remap(
+                    "Cluster ID": _filter_and_remap(
                         cluster_assignments, x=min_cluster_size
                     ),
                 }
