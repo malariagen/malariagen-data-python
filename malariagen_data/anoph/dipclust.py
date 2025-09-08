@@ -742,6 +742,7 @@ class AnophelesDipClustAnalysis(
                 dendro_sample_id_order=dendro_sample_id_order,
                 snp_filter_min_maf=snp_filter_min_maf,
                 snp_colorscale=snp_colorscale,
+                snp_row_height=snp_row_height,
                 chunks=chunks,
                 inline_array=inline_array,
             )
@@ -759,6 +760,7 @@ class AnophelesDipClustAnalysis(
                     dendro_sample_id_order=dendro_sample_id_order,
                     snp_filter_min_maf=snp_filter_min_maf,
                     snp_colorscale=snp_colorscale,
+                    snp_row_height=snp_row_height,
                     chunks=chunks,
                     inline_array=inline_array,
                 )

@@ -14,6 +14,7 @@ from . import (
     hap_params,
     clustering_params,
     hapclust_params,
+    dipclust_params,
 )
 from .snp_data import AnophelesSnpData
 from .snp_frq import AA_CHANGE_QUERY, _make_snp_label_effect
@@ -323,46 +324,60 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             n_seg_sites=np.array(ht.shape[0]),
         )
 
+    @check_types
+    @doc(
+        summary="""
+            Hierarchically cluster haplotypes in region, and produce an interactive plot
+            with optional SNP haplotype heatmap and/or cluster assignments.
+        """,
+        returns="""
+            If `show` is False, returns a tuple (fig, leaf_data, df_haps) where
+            `fig` is a plotly Figure object, `leaf_data` is a DataFrame with
+            metadata for each haplotype in the dendrogram, and `df_haps` is a DataFrame
+            of haplotype calls for each sample at each SNP in the specified transcript.
+            If `show` is True, displays the figure and returns None.
+        """,
+    )
     def plot_haplotype_clustering_advanced(
         self,
-        region,
-        analysis,
-        snp_transcript=None,
-        snp_colorscale="Greys",
-        snp_filter_min_maf=0.05,
+        region: base_params.regions,
+        analysis: hap_params.analysis = base_params.DEFAULT,
+        snp_transcript: dipclust_params.snp_transcript = None,
+        snp_colorscale: dipclust_params.snp_colorscale = "Greys",
+        snp_filter_min_maf: dipclust_params.snp_filter_min_maf = 0.05,
         snp_query=AA_CHANGE_QUERY,
-        sample_sets=None,
-        sample_query=None,
-        sample_query_options=None,
-        random_seed=42,
-        cohort_size=None,
-        distance_metric="hamming",
-        cluster_threshold=None,
-        min_cluster_size=None,
+        sample_sets: Optional[base_params.sample_sets] = None,
+        sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
+        random_seed: base_params.random_seed = 42,
+        cohort_size: Optional[base_params.cohort_size] = None,
+        distance_metric: hapclust_params.distance_metric = hapclust_params.distance_metric_default,
+        cluster_threshold: Optional[float] = None,
+        min_cluster_size: Optional[int] = None,
         cluster_criterion="distance",
-        color=None,
-        symbol=None,
-        linkage_method="complete",
-        count_sort=None,
-        distance_sort=None,
-        title=True,
-        title_font_size=14,
-        width=None,
-        dendrogram_height=300,
-        snp_row_height=25,
-        show=True,
-        renderer=None,
-        render_mode="svg",
-        leaf_y=0,
-        marker_size=5,
-        line_width=0.5,
-        line_color="black",
-        color_discrete_sequence=None,
-        color_discrete_map=None,
-        category_orders=None,
-        legend_sizing="constant",
-        chunks="native",
-        inline_array=True,
+        color: plotly_params.color = None,
+        symbol: plotly_params.symbol = None,
+        linkage_method: dipclust_params.linkage_method = "complete",
+        count_sort: Optional[tree_params.count_sort] = None,
+        distance_sort: Optional[tree_params.distance_sort] = None,
+        title: plotly_params.title = True,
+        title_font_size: plotly_params.title_font_size = 14,
+        width: plotly_params.fig_width = None,
+        dendrogram_height: plotly_params.height = 300,
+        snp_row_height: plotly_params.height = 25,
+        show: plotly_params.show = True,
+        renderer: plotly_params.renderer = None,
+        render_mode: plotly_params.render_mode = "svg",
+        leaf_y: plotly_params.leaf_y = 0,
+        marker_size: plotly_params.marker_size = 5,
+        line_width: plotly_params.line_width = 0.5,
+        line_color: plotly_params.line_color = "black",
+        color_discrete_sequence: plotly_params.color_discrete_sequence = None,
+        color_discrete_map: plotly_params.color_discrete_map = None,
+        category_orders: plotly_params.category_order = None,
+        legend_sizing: plotly_params.legend_sizing = "constant",
+        chunks: base_params.chunks = base_params.native_chunks,
+        inline_array: base_params.inline_array = base_params.inline_array_default,
     ):
         import plotly.express as px
         import plotly.graph_objects as go
@@ -565,7 +580,6 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         h_pos = allel.SortedIndex(ds_haps["variant_position"].values)
         h_alts = ds_haps["variant_allele"].values.astype(str)[:, 1]
         h_pos_alts = np.array([f"{pos}-{h_alts[i]}" for i, pos in enumerate(h_pos)])
-        sample_ids = ds_haps["sample_id"].values
 
         # Filter df_eff to haplotypes, and filter haplotypes to SNPs present in df_eff
         df_eff = df_eff.query("pos_alt in @h_pos_alts")
@@ -577,7 +591,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         df_haps = pd.DataFrame(
             haps,
             index=label,
-            columns=_make_unique(np.repeat(sample_ids, 2)),  # two haplotypes per sample
+            columns=_make_unique(
+                np.repeat(ds_haps["sample_id"].values, 2)
+            ),  # two haplotypes per sample
         )
 
         return df_haps
