@@ -343,7 +343,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         region: base_params.regions,
         analysis: hap_params.analysis = base_params.DEFAULT,
         snp_transcript: dipclust_params.snp_transcript = None,
-        snp_colorscale: dipclust_params.snp_colorscale = "Greys",
+        snp_colorscale: plotly_params.snp_colorscale = "Greys",
         snp_filter_min_maf: dipclust_params.snp_filter_min_maf = 0.05,
         snp_query=AA_CHANGE_QUERY,
         sample_sets: Optional[base_params.sample_sets] = None,
