@@ -13,7 +13,7 @@ from ..util import (
     multiallelic_diplotype_mean_sqeuclidean,
     multiallelic_diplotype_mean_cityblock,
 )
-from ..plotly_dendrogram import plot_dendrogram
+from ..plotly_dendrogram import plot_dendrogram, concat_clustering_subplots
 from . import (
     base_params,
     plotly_params,
@@ -499,56 +499,6 @@ class AnophelesDipClustAnalysis(
 
         return snp_trace, n_snps
 
-    def _dipclust_concat_subplots(
-        self,
-        figures,
-        width,
-        height,
-        row_heights,
-        region: base_params.regions,
-        n_snps: int,
-        sample_sets: Optional[base_params.sample_sets],
-        sample_query: Optional[base_params.sample_query],
-    ):
-        from plotly.subplots import make_subplots  # type: ignore
-
-        title_lines = []
-        if sample_sets is not None:
-            title_lines.append(f"sample sets: {sample_sets}")
-        if sample_query is not None:
-            title_lines.append(f"sample query: {sample_query}")
-        title_lines.append(f"genomic region: {region} ({n_snps} SNPs)")
-        title = "<br>".join(title_lines)
-
-        # make subplots
-        fig = make_subplots(
-            rows=len(figures),
-            cols=1,
-            shared_xaxes=True,
-            vertical_spacing=0.02,
-            row_heights=row_heights,
-        )
-
-        for i, figure in enumerate(figures):
-            if isinstance(figure, go.Figure):
-                # This is a figure, access the traces within it.
-                for trace in range(len(figure["data"])):
-                    fig.append_trace(figure["data"][trace], row=i + 1, col=1)
-            else:
-                # Assume this is a trace, add directly.
-                fig.append_trace(figure, row=i + 1, col=1)
-
-        fig.update_xaxes(visible=False)
-        fig.update_layout(
-            title=title,
-            width=width,
-            height=height,
-            hovermode="closest",
-            plot_bgcolor="white",
-        )
-
-        return fig
-
     def _insert_dipclust_snp_trace(
         self,
         *,
@@ -768,7 +718,7 @@ class AnophelesDipClustAnalysis(
         # Calculate total height based on subplot heights, plus a fixed
         # additional component to allow for title, axes etc.
         height = sum(subplot_heights) + 50
-        fig = self._dipclust_concat_subplots(
+        fig = concat_clustering_subplots(
             figures=figures,
             width=width,
             height=height,

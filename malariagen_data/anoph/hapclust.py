@@ -6,7 +6,7 @@ import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import CacheMiss, check_types, pdist_abs_hamming, pandas_apply
-from ..plotly_dendrogram import plot_dendrogram
+from ..plotly_dendrogram import plot_dendrogram, concat_clustering_subplots
 from . import (
     base_params,
     plotly_params,
@@ -19,12 +19,9 @@ from . import (
 from .snp_data import AnophelesSnpData
 from .snp_frq import AA_CHANGE_QUERY, _make_snp_label_effect
 from .hap_data import AnophelesHapData
-from .dipclust import AnophelesDipClustAnalysis
 
 
-class AnophelesHapClustAnalysis(
-    AnophelesHapData, AnophelesSnpData, AnophelesDipClustAnalysis
-):
+class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
     def __init__(
         self,
         **kwargs,
@@ -343,6 +340,10 @@ class AnophelesHapClustAnalysis(
         parameters=dict(
             snp_transcript="Plot amino acid variants for these transcripts.",
             snp_filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
+            snp_query="Query to filter SNPs for amino acid heatmap. Default is to include all non-synonymous SNPs.",
+            cluster_threshold="Height at which to cut the dendrogram to form clusters. If not provided, no clusters assignment is not performed.",
+            min_cluster_size="Minimum number of haplotypes required in a cluster to be included when cutting the dendrogram. Default is 5.",
+            cluster_criterion="The cluster_criterion to use in forming flat clusters. One of 'inconsistent', 'distance', 'maxclust', 'maxclust_monochronic', 'monocrit'. See scipy.cluster.hierarchy.fcluster for details.",
         ),
     )
     def plot_haplotype_clustering_advanced(
@@ -360,7 +361,7 @@ class AnophelesHapClustAnalysis(
         cohort_size: Optional[base_params.cohort_size] = None,
         distance_metric: hapclust_params.distance_metric = hapclust_params.distance_metric_default,
         cluster_threshold: Optional[float] = None,
-        min_cluster_size: Optional[int] = None,
+        min_cluster_size: Optional[int] = 5,
         cluster_criterion="distance",
         color: plotly_params.color = None,
         symbol: plotly_params.symbol = None,
@@ -487,7 +488,7 @@ class AnophelesHapClustAnalysis(
         # Calculate total height based on subplot heights, plus a fixed
         # additional component to allow for title, axes etc.
         height = sum(subplot_heights) + 50
-        fig = self._dipclust_concat_subplots(
+        fig = concat_clustering_subplots(
             figures=figures,
             width=width,
             height=height,
