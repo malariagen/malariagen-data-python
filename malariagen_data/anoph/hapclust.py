@@ -19,9 +19,12 @@ from . import (
 from .snp_data import AnophelesSnpData
 from .snp_frq import AA_CHANGE_QUERY, _make_snp_label_effect
 from .hap_data import AnophelesHapData
+from .dipclust import AnophelesDipClustAnalysis
 
 
-class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
+class AnophelesHapClustAnalysis(
+    AnophelesHapData, AnophelesSnpData, AnophelesDipClustAnalysis
+):
     def __init__(
         self,
         **kwargs,
@@ -342,9 +345,9 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         self,
         region: base_params.regions,
         analysis: hap_params.analysis = base_params.DEFAULT,
-        snp_transcript: dipclust_params.snp_transcript = None,
-        snp_colorscale: plotly_params.snp_colorscale = "Greys",
-        snp_filter_min_maf: dipclust_params.snp_filter_min_maf = 0.05,
+        snp_transcript: Optional[dipclust_params.snp_transcript] = None,
+        snp_colorscale: Optional[plotly_params.color_continuous_scale] = "Greys",
+        snp_filter_min_maf: float = 0.05,
         snp_query=AA_CHANGE_QUERY,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
@@ -368,7 +371,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         show: plotly_params.show = True,
         renderer: plotly_params.renderer = None,
         render_mode: plotly_params.render_mode = "svg",
-        leaf_y: plotly_params.leaf_y = 0,
+        leaf_y: clustering_params.leaf_y = 0,
         marker_size: plotly_params.marker_size = 5,
         line_width: plotly_params.line_width = 0.5,
         line_color: plotly_params.line_color = "black",
