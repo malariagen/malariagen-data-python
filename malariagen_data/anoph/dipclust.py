@@ -538,7 +538,7 @@ class AnophelesDipClustAnalysis(
             print(
                 f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
             )
-        return figures, subplot_heights
+        return figures, subplot_heights, n_snps_transcript
 
     @doc(
         summary=""""
@@ -679,8 +679,13 @@ class AnophelesDipClustAnalysis(
                 figures.append(cnv_trace)
                 subplot_heights.append(cnv_row_height * n_cnv_genes)
 
+        n_snps_transcripts = []
         if isinstance(snp_transcript, str):
-            figures, subplot_heights = self._insert_dipclust_snp_trace(
+            (
+                figures,
+                subplot_heights,
+                n_snps_transcript,
+            ) = self._insert_dipclust_snp_trace(
                 transcript=snp_transcript,
                 figures=figures,
                 subplot_heights=subplot_heights,
@@ -696,9 +701,14 @@ class AnophelesDipClustAnalysis(
                 chunks=chunks,
                 inline_array=inline_array,
             )
+            n_snps_transcripts.append(n_snps_transcript)
         elif isinstance(snp_transcript, list):
             for st in snp_transcript:
-                figures, subplot_heights = self._insert_dipclust_snp_trace(
+                (
+                    figures,
+                    subplot_heights,
+                    n_snps_transcript,
+                ) = self._insert_dipclust_snp_trace(
                     transcript=st,
                     figures=figures,
                     subplot_heights=subplot_heights,
@@ -714,6 +724,7 @@ class AnophelesDipClustAnalysis(
                     chunks=chunks,
                     inline_array=inline_array,
                 )
+                n_snps_transcripts.append(n_snps_transcript)
 
         # Calculate total height based on subplot heights, plus a fixed
         # additional component to allow for title, axes etc.
@@ -738,6 +749,44 @@ class AnophelesDipClustAnalysis(
             ),
             legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
+
+        # add lines to aa plot - looks neater
+        if snp_transcript:
+            n_transcripts = (
+                len(snp_transcript) if isinstance(snp_transcript, list) else 1
+            )
+            for i in range(n_transcripts):
+                tx_idx = len(figures) - n_transcripts + i + 1
+                if n_snps_transcripts[i] > 0:
+                    fig.add_hline(
+                        y=-0.5, line_width=1, line_color="grey", row=tx_idx, col=1
+                    )
+                    for j in range(n_snps_transcripts[i]):
+                        fig.add_hline(
+                            y=j + 0.5,
+                            line_width=1,
+                            line_color="grey",
+                            row=tx_idx,
+                            col=1,
+                        )
+
+                fig.update_xaxes(
+                    showline=True,
+                    linecolor="grey",
+                    linewidth=1,
+                    row=tx_idx,
+                    col=1,
+                    mirror=True,
+                )
+
+                fig.update_yaxes(
+                    showline=True,
+                    linecolor="grey",
+                    linewidth=1,
+                    row=tx_idx,
+                    col=1,
+                    mirror=True,
+                )
 
         if show:
             fig.show(renderer=renderer)

@@ -468,22 +468,50 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             figures.append(snp_trace)
             subplot_heights.append(25)
 
-        figures, subplot_heights, df_haps = self._insert_hapclust_snp_trace(
-            transcript=snp_transcript,
-            snp_query=snp_query,
-            figures=figures,
-            subplot_heights=subplot_heights,
-            sample_sets=sample_sets,
-            sample_query=sample_query,
-            analysis=analysis,
-            dendro_sample_id_order=dendro_sample_id_order,
-            snp_filter_min_maf=snp_filter_min_maf,
-            snp_colorscale=snp_colorscale,
-            snp_row_height=snp_row_height,
-            chunks=chunks,
-            inline_array=inline_array,
-        )
-        n_aa = df_haps.shape[0]
+        n_snps_transcripts = []
+        if isinstance(snp_transcript, str):
+            (
+                figures,
+                subplot_heights,
+                n_snps_transcript,
+            ) = self._insert_hapclust_snp_trace(
+                transcript=snp_transcript,
+                snp_query=snp_query,
+                figures=figures,
+                subplot_heights=subplot_heights,
+                sample_sets=sample_sets,
+                sample_query=sample_query,
+                analysis=analysis,
+                dendro_sample_id_order=dendro_sample_id_order,
+                snp_filter_min_maf=snp_filter_min_maf,
+                snp_colorscale=snp_colorscale,
+                snp_row_height=snp_row_height,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+            n_snps_transcripts.append(n_snps_transcript)
+        elif isinstance(snp_transcript, list):
+            for st in snp_transcript:
+                (
+                    figures,
+                    subplot_heights,
+                    n_snps_transcript,
+                ) = self._insert_hapclust_snp_trace(
+                    transcript=st,
+                    snp_query=snp_query,
+                    figures=figures,
+                    subplot_heights=subplot_heights,
+                    sample_sets=sample_sets,
+                    sample_query=sample_query,
+                    analysis=analysis,
+                    dendro_sample_id_order=dendro_sample_id_order,
+                    snp_filter_min_maf=snp_filter_min_maf,
+                    snp_colorscale=snp_colorscale,
+                    snp_row_height=snp_row_height,
+                    chunks=chunks,
+                    inline_array=inline_array,
+                )
+                n_snps_transcripts.append(n_snps_transcript)
 
         # Calculate total height based on subplot heights, plus a fixed
         # additional component to allow for title, axes etc.
@@ -499,7 +527,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             n_snps=n_snps_cluster,
         )
 
-        fig["layout"]["yaxis"]["title"] = "Distance"
+        fig["layout"]["yaxis"]["title"] = f"Distance ({distance_metric})"
         fig.update_layout(
             title_font=dict(
                 size=title_font_size,
@@ -507,37 +535,49 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             legend=dict(itemsizing=legend_sizing, tracegroupgap=0),
         )
 
-        if snp_transcript and n_aa > 0:
-            # add lines to aa plot
-            aa_idx = len(figures)
-            fig.add_hline(y=-0.5, line_width=1, line_color="grey", row=aa_idx, col=1)
-            for i in range(n_aa):
-                fig.add_hline(
-                    y=i + 0.5, line_width=1, line_color="grey", row=aa_idx, col=1
+        # add lines to aa plot - looks neater
+        if snp_transcript:
+            n_transcripts = (
+                len(snp_transcript) if isinstance(snp_transcript, list) else 1
+            )
+            for i in range(n_transcripts):
+                tx_idx = len(figures) - n_transcripts + i + 1
+                if n_snps_transcripts[i] > 0:
+                    fig.add_hline(
+                        y=-0.5, line_width=1, line_color="grey", row=tx_idx, col=1
+                    )
+                    for j in range(n_snps_transcripts[i]):
+                        fig.add_hline(
+                            y=j + 0.5,
+                            line_width=1,
+                            line_color="grey",
+                            row=tx_idx,
+                            col=1,
+                        )
+
+                fig.update_xaxes(
+                    showline=True,
+                    linecolor="grey",
+                    linewidth=1,
+                    row=tx_idx,
+                    col=1,
+                    mirror=True,
                 )
 
-            fig.update_xaxes(
-                showline=True,
-                linecolor="grey",
-                linewidth=1,
-                row=aa_idx,
-                col=1,
-                mirror=True,
-            )
-            fig.update_yaxes(
-                showline=True,
-                linecolor="grey",
-                linewidth=1,
-                row=aa_idx,
-                col=1,
-                mirror=True,
-            )
+                fig.update_yaxes(
+                    showline=True,
+                    linecolor="grey",
+                    linewidth=1,
+                    row=tx_idx,
+                    col=1,
+                    mirror=True,
+                )
 
         if show:
             fig.show(renderer=renderer)
             return None
         else:
-            return fig, leaf_data, df_haps
+            return fig, leaf_data
 
     def transcript_haplotypes(
         self,
@@ -642,6 +682,8 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             df_haps = df_haps.assign(af=lambda x: x.sum(axis=1) / x.shape[1])
             df_haps = df_haps.query("af > @snp_filter_min_maf").drop(columns="af")
 
+        n_snps_transcript = df_haps.shape[0]
+
         if not df_haps.empty:
             snp_trace = go.Heatmap(
                 z=df_haps.values,
@@ -660,7 +702,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
             print(
                 f"No SNPs were found below {snp_filter_min_maf} allele frequency. Omitting SNP genotype plot."
             )
-        return figures, subplot_heights, df_haps
+        return figures, subplot_heights, n_snps_transcript
 
     def cut_dist_tree(
         self,
