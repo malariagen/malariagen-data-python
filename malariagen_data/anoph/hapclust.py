@@ -340,6 +340,10 @@ class AnophelesHapClustAnalysis(
             of haplotype calls for each sample at each SNP in the specified transcript.
             If `show` is True, displays the figure and returns None.
         """,
+        parameters=dict(
+            snp_transcript="Plot amino acid variants for these transcripts.",
+            snp_filter_min_maf="Filter amino acid variants with alternate allele frequency below this threshold.",
+        ),
     )
     def plot_haplotype_clustering_advanced(
         self,
