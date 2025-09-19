@@ -17,11 +17,11 @@ from . import (
     dipclust_params,
 )
 from .snp_data import AnophelesSnpData
-from .snp_frq import AA_CHANGE_QUERY, _make_snp_label_effect
+from .snp_frq import AnophelesFrequencyAnalysis, AA_CHANGE_QUERY, _make_snp_label_effect
 from .hap_data import AnophelesHapData
 
 
-class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
+class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData, AnophelesFrequencyAnalysis):
     def __init__(
         self,
         **kwargs,
