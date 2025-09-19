@@ -21,7 +21,9 @@ from .snp_frq import AnophelesFrequencyAnalysis, AA_CHANGE_QUERY, _make_snp_labe
 from .hap_data import AnophelesHapData
 
 
-class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData, AnophelesFrequencyAnalysis):
+class AnophelesHapClustAnalysis(
+    AnophelesHapData, AnophelesSnpData, AnophelesFrequencyAnalysis
+):
     def __init__(
         self,
         **kwargs,
