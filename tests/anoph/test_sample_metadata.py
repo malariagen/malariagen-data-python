@@ -1,5 +1,3 @@
-import random
-
 import ipyleaflet  # type: ignore
 import numpy as np
 import pandas as pd
@@ -13,6 +11,9 @@ from typeguard import suppress_type_checks
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
+
+# Global RNG for test file; functions may override with local RNG for reproducibility
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -120,7 +121,7 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     # Call function to be tested.
     df = api.general_metadata(sample_sets=sample_set)
@@ -139,7 +140,7 @@ def test_general_metadata_with_multiple_sample_sets(
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     # Call function to be tested.
     df = api.general_metadata(sample_sets=sample_sets)
@@ -153,7 +154,7 @@ def test_general_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_general_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up the test.
-    release = random.choice(api.releases)
+    release = rng.choice(api.releases)
 
     # Call function to be tested.
     df = api.general_metadata(sample_sets=release)
@@ -200,7 +201,7 @@ def test_sequence_qc_metadata_with_single_sample_set(
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     # Call function to be tested.
     df = api.sequence_qc_metadata(sample_sets=sample_set)
@@ -221,7 +222,7 @@ def test_sequence_qc_metadata_with_multiple_sample_sets(
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     # Call function to be tested.
     df = api.sequence_qc_metadata(sample_sets=sample_sets)
@@ -237,7 +238,7 @@ def test_sequence_qc_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sequence_qc_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up the test.
-    release = random.choice(api.releases)
+    release = rng.choice(api.releases)
 
     # Call function to be tested.
     df = api.sequence_qc_metadata(sample_sets=release)
@@ -311,7 +312,7 @@ def test_aim_metadata_with_single_sample_set(ag3_sim_api):
     df_sample_sets = ag3_sim_api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     # Call function to be tested.
     df = ag3_sim_api.aim_metadata(sample_sets=sample_set)
@@ -329,7 +330,7 @@ def test_aim_metadata_with_multiple_sample_sets(ag3_sim_api):
     df_sample_sets = ag3_sim_api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     # Call function to be tested.
     df = ag3_sim_api.aim_metadata(sample_sets=sample_sets)
@@ -344,7 +345,7 @@ def test_aim_metadata_with_release(ag3_sim_api):
     # N.B., only Ag3 has AIM data.
 
     # Set up the test.
-    release = random.choice(ag3_sim_api.releases)
+    release = rng.choice(ag3_sim_api.releases)
 
     # Call function to be tested.
     df = ag3_sim_api.aim_metadata(sample_sets=release)
@@ -423,7 +424,7 @@ def test_cohorts_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     # Call function to be tested.
     df = api.cohorts_metadata(sample_sets=sample_set)
@@ -442,7 +443,7 @@ def test_cohorts_metadata_with_multiple_sample_sets(
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     # Call function to be tested.
     df = api.cohorts_metadata(sample_sets=sample_sets)
@@ -456,7 +457,7 @@ def test_cohorts_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_cohorts_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up test.
-    release = random.choice(api.releases)
+    release = rng.choice(api.releases)
 
     # Call function to be tested.
     df = api.cohorts_metadata(sample_sets=release)
@@ -517,7 +518,7 @@ def test_sample_metadata_with_single_sample_set(fixture, api: AnophelesSampleMet
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     # Call function to be tested.
     df = api.sample_metadata(sample_sets=sample_set)
@@ -544,7 +545,7 @@ def test_sample_metadata_with_multiple_sample_sets(
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     # Call function to be tested.
     df = api.sample_metadata(sample_sets=sample_sets)
@@ -566,7 +567,7 @@ def test_sample_metadata_with_multiple_sample_sets(
 @parametrize_with_cases("fixture,api", cases=".")
 def test_sample_metadata_with_release(fixture, api: AnophelesSampleMetadata):
     # Set up test.
-    release = random.choice(api.releases)
+    release = rng.choice(api.releases)
 
     # Call function to be tested.
     df = api.sample_metadata(sample_sets=release)
@@ -590,10 +591,10 @@ def test_sample_metadata_with_duplicate_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
     # Set up test.
-    release = random.choice(api.releases)
+    release = rng.choice(api.releases)
     df_sample_sets = api.sample_sets(release=release).set_index("sample_set")
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_set = random.choice(all_sample_sets)
+    sample_set = rng.choice(all_sample_sets)
 
     # Call function to be tested.
     assert_frame_equal(
@@ -945,7 +946,7 @@ def test_plot_sample_location_mapbox(fixture, api):
     # Get test sample_sets.
     df_sample_sets = api.sample_sets().set_index("sample_set")
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     fig = api.plot_sample_location_mapbox(
         sample_sets=sample_sets,
@@ -960,7 +961,7 @@ def test_plot_sample_location_geo(fixture, api):
     # Get test sample_sets.
     df_sample_sets = api.sample_sets().set_index("sample_set")
     all_sample_sets = df_sample_sets.index.to_list()
-    sample_sets = random.sample(all_sample_sets, 2)
+    sample_sets = rng.choice(all_sample_sets, 2, replace=False).tolist()
 
     fig = api.plot_sample_location_geo(
         sample_sets=sample_sets,
@@ -975,7 +976,7 @@ def test_lookup_sample(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()
     all_sample_ids = df_samples["sample_id"].values
-    sample_id = np.random.choice(all_sample_ids)
+    sample_id = rng.choice(all_sample_ids)
 
     # Check we get the same sample_id back.
     sample_rec_by_sample_id = api.lookup_sample(sample_id)

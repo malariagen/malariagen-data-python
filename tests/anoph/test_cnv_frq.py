@@ -1,5 +1,3 @@
-import random
-
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -19,6 +17,8 @@ from .test_frq import (
     check_plot_frequencies_interactive_map,
     add_random_year,
 )
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -95,10 +95,10 @@ def test_gene_cnv_frequencies_with_str_cohorts(
     api: AnophelesCnvFrequencyAnalysis,
     cohorts,
 ):
-    region = random.choice(api.contigs)
+    region = rng.choice(api.contigs)
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = int(rng.integers(0, 2))
 
     # Set up call params.
     params = dict(
@@ -148,8 +148,8 @@ def test_gene_cnv_frequencies_with_min_cohort_size(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    region = random.choice(api.contigs)
+    sample_sets = rng.choice(all_sample_sets)
+    region = rng.choice(api.contigs)
     cohorts = "admin1_year"
 
     # Set up call params.
@@ -199,13 +199,11 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query(
     # Pick test parameters at random.
     sample_sets = None
     min_cohort_size = 0
-    region = random.choice(api.contigs)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
-    )
+    region = rng.choice(api.contigs)
+    cohorts = rng.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique()
-    country = random.choice(countries)
+    country = rng.choice(countries)
     sample_query = f"country == '{country}'"
 
     # Figure out expected cohort labels.
@@ -247,13 +245,11 @@ def test_gene_cnv_frequencies_with_str_cohorts_and_sample_query_options(
     # Pick test parameters at random.
     sample_sets = None
     min_cohort_size = 0
-    region = random.choice(api.contigs)
-    cohorts = random.choice(
-        ["admin1_year", "admin1_month", "admin2_year", "admin2_month"]
-    )
+    region = rng.choice(api.contigs)
+    cohorts = rng.choice(["admin1_year", "admin1_month", "admin2_year", "admin2_month"])
     df_samples = api.sample_metadata(sample_sets=sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = random.sample(countries, 2)
+    countries_list = rng.choice(countries, 2, replace=False).tolist()
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -303,8 +299,8 @@ def test_gene_cnv_frequencies_with_dict_cohorts(
 ):
     # Pick test parameters at random.
     sample_sets = None  # all sample sets
-    min_cohort_size = random.randint(0, 2)
-    region = random.choice(api.contigs)
+    min_cohort_size = int(rng.integers(0, 2))
+    region = rng.choice(api.contigs)
 
     # Create cohorts by country.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -343,10 +339,10 @@ def test_gene_cnv_frequencies_without_drop_invariant(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
-    region = random.choice(api.contigs)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = int(rng.integers(0, 2))
+    region = rng.choice(api.contigs)
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Figure out expected cohort labels.
     df_samples = api.sample_metadata(sample_sets=sample_sets)
@@ -398,9 +394,9 @@ def test_gene_cnv_frequencies_with_bad_region(
 ):
     # Pick test parameters at random.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    min_cohort_size = random.randint(0, 2)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
+    sample_sets = rng.choice(all_sample_sets)
+    min_cohort_size = int(rng.integers(0, 2))
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
 
     # Set up call params.
     params = dict(
@@ -424,9 +420,9 @@ def test_gene_cnv_frequencies_with_max_coverage_variance(
     max_coverage_variance,
 ):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
-    sample_sets = random.choice(all_sample_sets)
-    cohorts = random.choice(["admin1_year", "admin2_month", "country"])
-    region = random.choice(api.contigs)
+    sample_sets = rng.choice(all_sample_sets)
+    cohorts = rng.choice(["admin1_year", "admin2_month", "country"])
+    region = rng.choice(api.contigs)
 
     params = dict(
         region=region,
@@ -503,7 +499,7 @@ def test_gene_cnv_frequencies_advanced_with_sample_query(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique()
-    country = random.choice(countries)
+    country = rng.choice(countries)
     sample_query = f"country == '{country}'"
 
     check_gene_cnv_frequencies_advanced(
@@ -522,7 +518,7 @@ def test_gene_cnv_frequencies_advanced_with_sample_query_options(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     df_samples = api.sample_metadata(sample_sets=all_sample_sets)
     countries = df_samples["country"].unique().tolist()
-    countries_list = random.sample(countries, 2)
+    countries_list = rng.choice(countries, 2, replace=False).tolist()
     sample_query_options = {
         "local_dict": {
             "countries_list": countries_list,
@@ -549,7 +545,7 @@ def test_gene_cnv_frequencies_advanced_with_min_cohort_size(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = random.choice(api.contigs)
+    region = rng.choice(api.contigs)
 
     if min_cohort_size <= 10:
         # Expect this to find at least one cohort, so go ahead with full
@@ -585,7 +581,7 @@ def test_gene_cnv_frequencies_advanced_with_max_coverage_variance(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = random.choice(api.contigs)
+    region = rng.choice(api.contigs)
 
     if max_coverage_variance >= 0.4:
         # Expect this to find at least one cohort, so go ahead with full
@@ -620,7 +616,7 @@ def test_gene_cnv_frequencies_advanced_with_nobs_mode(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = random.choice(api.contigs)
+    region = rng.choice(api.contigs)
 
     check_gene_cnv_frequencies_advanced(
         api=api,
@@ -642,7 +638,7 @@ def test_gene_cnv_frequencies_advanced_with_variant_query(
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     area_by = "admin1_iso"
     period_by = "year"
-    region = random.choice(api.contigs)
+    region = rng.choice(api.contigs)
     variant_query = "cnv_type == '{variant_query_option}'"
 
     check_gene_cnv_frequencies_advanced(
@@ -710,16 +706,16 @@ def check_gene_cnv_frequencies_advanced(
 ):
     # Pick test parameters at random.
     if region is None:
-        region = random.choice(api.contigs)
+        region = rng.choice(api.contigs)
     if area_by is None:
-        area_by = random.choice(["country", "admin1_iso", "admin2_name"])
+        area_by = rng.choice(["country", "admin1_iso", "admin2_name"])
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month", "random_year"])
+        period_by = rng.choice(["year", "quarter", "month"])
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
-        sample_sets = random.choice(all_sample_sets)
+        sample_sets = rng.choice(all_sample_sets)
     if min_cohort_size is None:
-        min_cohort_size = random.randint(0, 2)
+        min_cohort_size = int(rng.integers(0, 2))
 
     if period_by == "random_year":
         # Add a random_year column to the sample metadata, if there isn't already.

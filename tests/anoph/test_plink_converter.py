@@ -1,4 +1,3 @@
-import random
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -8,8 +7,10 @@ from malariagen_data.anoph.to_plink import PlinkConverter
 
 import os
 import bed_reader
-
+import numpy as np
 from numpy.testing import assert_array_equal
+
+rng = np.random.default_rng(seed=42)
 
 
 @pytest.fixture
@@ -83,13 +84,13 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
 
     data_params = dict(
-        region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 2),
-        site_mask=random.choice((None,) + api.site_mask_ids),
+        region=rng.choice(api.contigs),
+        sample_sets=rng.choice(all_sample_sets, 2, replace=False).tolist(),
+        site_mask=rng.choice(np.array([""] + list(api.site_mask_ids), dtype=object)),
         min_minor_ac=1,
         max_missing_an=1,
         thin_offset=1,
-        random_seed=random.randint(1, 2000),
+        random_seed=int(rng.integers(1, 2000)),
     )
 
     # Load a ds containing the randomly generated samples and regions to get the number of available snps to subset from.
@@ -98,7 +99,7 @@ def test_plink_converter(fixture, api: PlinkConverter, tmp_path):
     )
 
     n_snps_available = ds.sizes["variants"]
-    n_snps = random.randint(1, n_snps_available)
+    n_snps = int(rng.integers(1, n_snps_available))
 
     # Define plink params.
     plink_params = dict(output_dir=str(tmp_path), n_snps=n_snps, **data_params)
