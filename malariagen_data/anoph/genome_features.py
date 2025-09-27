@@ -554,3 +554,274 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             rec_parent = df_genome_features.loc[parent_id]
             # Try to access "Name" attribute, fall back to "ID" if not present.
             return rec_parent.get("Name", parent_id)
+
+    @check_types
+    @doc(
+        summary="Find a gene feature by identifier.",
+        parameters=dict(
+            gene="Gene identifier (e.g., gene ID, gene name).",
+            region="Genomic region to restrict search (optional).",
+            attributes="Additional GFF3 attributes to include.",
+        ),
+        returns="DataFrame containing gene features matching the identifier.",
+        raises=dict(ValueError="If the gene is not found."),
+    )
+    def find_gene_feature(
+        self,
+        gene: base_params.gene,
+        region: Optional[base_params.regions] = None,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
+    ) -> pd.DataFrame:
+        """Find a gene feature by identifier (ID, Name, or gene name attribute)."""
+        debug = self._log.debug
+
+        # Prepare attributes - ensure we have the necessary ones for traversal
+        attributes_list = list(self._prep_gff_attributes(attributes))
+        required_attrs = {"ID", "Parent", self._gff_gene_name_attribute}
+        for attr in required_attrs:
+            if attr not in attributes_list:
+                attributes_list.append(attr)
+        attributes_normed = tuple(attributes_list)
+
+        # Get genome features
+        df_genome_features = self.genome_features(
+            region=region, attributes=attributes_normed
+        )
+
+        debug(f"Find gene '{gene}' in genome features")
+
+        # Find the gene using multiple identifier patterns
+        gene_mask = (
+            (df_genome_features.get("Name", pd.Series(dtype=object)) == gene)
+            | (df_genome_features.get("ID", pd.Series(dtype=object)) == gene)
+            | (
+                df_genome_features.get(
+                    self._gff_gene_name_attribute, pd.Series(dtype=object)
+                )
+                == gene
+            )
+        )
+
+        gene_features = df_genome_features[
+            gene_mask & (df_genome_features["type"] == self._gff_gene_type)
+        ]
+
+        if gene_features.empty:
+            raise ValueError(f"Gene '{gene}' not found")
+
+        debug(f"Found {len(gene_features)} gene feature(s) for '{gene}'")
+        return gene_features
+
+    @check_types
+    @doc(
+        summary="Get all transcripts for a given gene.",
+        parameters=dict(
+            gene_id="Gene ID to find transcripts for.",
+            attributes="Additional GFF3 attributes to include.",
+        ),
+        returns="DataFrame containing all transcripts for the gene.",
+        raises=dict(ValueError="If no transcripts are found for the gene."),
+    )
+    def get_gene_transcripts(
+        self,
+        gene_id: base_params.gene,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
+    ) -> pd.DataFrame:
+        """Get all transcripts (mRNA/transcript features) for a given gene ID."""
+        debug = self._log.debug
+
+        attributes_normed = self._prep_gff_attributes(attributes)
+
+        # Get transcripts for this gene
+        transcript_features = self.genome_feature_children(
+            parent=gene_id, attributes=attributes_normed
+        )
+
+        # Filter for 'mRNA' or 'transcript' types
+        transcript_features = transcript_features[
+            transcript_features["type"].isin(["mRNA", "transcript"])
+        ]
+
+        if transcript_features.empty:
+            raise ValueError(
+                f"No transcripts of type 'mRNA' or 'transcript' found for gene '{gene_id}'"
+            )
+
+        debug(f"Found {len(transcript_features)} transcript(s) for gene '{gene_id}'")
+        return transcript_features
+
+    @check_types
+    @doc(
+        summary="Get all exons for a given transcript.",
+        parameters=dict(
+            transcript_id="Transcript ID to find exons for.",
+            attributes="Additional GFF3 attributes to include.",
+        ),
+        returns="DataFrame containing all exons for the transcript.",
+    )
+    def get_transcript_exons(
+        self,
+        transcript_id: base_params.transcript,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
+    ) -> pd.DataFrame:
+        """Get all exons for a given transcript ID."""
+        debug = self._log.debug
+
+        attributes_normed = self._prep_gff_attributes(attributes)
+
+        # Get exons for this transcript
+        exons = self.genome_feature_children(
+            parent=transcript_id, attributes=attributes_normed
+        )
+
+        # Filter for exon features
+        exons = exons[exons["type"] == "exon"]
+
+        debug(f"Found {len(exons)} exon(s) for transcript '{transcript_id}'")
+        return exons
+
+    @check_types
+    @doc(
+        summary="Calculate the total transcribed length of a transcript.",
+        parameters=dict(
+            transcript_id="Transcript ID to calculate length for.",
+            attributes="Additional GFF3 attributes to include.",
+        ),
+        returns="Total transcribed length in base pairs (sum of exon lengths).",
+    )
+    def calculate_transcript_length(
+        self,
+        transcript_id: base_params.transcript,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
+    ) -> int:
+        """Calculate the total transcribed length of a transcript by summing exon lengths."""
+        debug = self._log.debug
+
+        debug(f"Calculate length for transcript '{transcript_id}'")
+
+        # Get exons for this transcript
+        exons = self.get_transcript_exons(transcript_id, attributes=attributes)
+
+        if exons.empty:
+            debug(f"No exons found for transcript '{transcript_id}'")
+            return 0
+
+        # Sum exon lengths using vectorized operation
+        total_length = (exons["end"] - exons["start"] + 1).sum()
+
+        debug(
+            f"Transcript '{transcript_id}' has {len(exons)} exons, total length: {total_length} bp"
+        )
+
+        return int(total_length)
+
+    @check_types
+    @doc(
+        summary="Get all transcripts for a gene with their calculated lengths.",
+        parameters=dict(
+            gene="Gene identifier (e.g., gene ID, gene name).",
+            region="Genomic region to restrict search (optional).",
+            attributes="Additional GFF3 attributes to include.",
+        ),
+        returns="Dictionary mapping transcript IDs to their transcribed lengths.",
+        raises=dict(
+            ValueError="If the gene is not found or no transcripts are available."
+        ),
+    )
+    def get_gene_transcript_lengths(
+        self,
+        gene: base_params.gene,
+        region: Optional[base_params.regions] = None,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
+    ) -> Dict[str, int]:
+        """Get all transcripts for a gene along with their calculated lengths."""
+        debug = self._log.debug
+
+        # Find the gene
+        gene_features = self.find_gene_feature(
+            gene, region=region, attributes=attributes
+        )
+
+        # Get all transcripts for all gene features (in case of multiple matches)
+        all_transcript_lengths = {}
+
+        for gene_id in gene_features["ID"]:
+            try:
+                transcript_features = self.get_gene_transcripts(
+                    gene_id, attributes=attributes
+                )
+
+                # Calculate lengths for each transcript
+                for _, transcript_row in transcript_features.iterrows():
+                    transcript_id = transcript_row["ID"]
+
+                    try:
+                        length = self.calculate_transcript_length(
+                            transcript_id, attributes=attributes
+                        )
+                        if length > 0:  # Only include transcripts with exons
+                            all_transcript_lengths[transcript_id] = length
+                    except Exception as e:
+                        debug(f"Error processing transcript '{transcript_id}': {e}")
+                        continue
+
+            except ValueError as e:
+                debug(f"No transcripts found for gene '{gene_id}': {e}")
+                continue
+
+        if not all_transcript_lengths:
+            raise ValueError(
+                f"No transcripts with exons found for gene '{gene}' or an error occurred processing them."
+            )
+
+        return all_transcript_lengths
+
+    @check_types
+    @doc(
+        summary="Return the canonical transcript for a given gene.",
+        extended_summary="""
+        The canonical transcript is defined as the transcript with the highest
+        number of transcribed base pairs (sum of exon lengths).
+
+        This method is part of the SNP browser functionality that replaces Panoptes,
+        providing programmatic access to identify the most representative transcript
+        for genomic analyses and visualizations.
+        """,
+        parameters=dict(
+            gene="Gene identifier (e.g., gene ID, gene name). Can be a gene ID like 'AGAP004707' or gene name.",
+            region="Genomic region to restrict search (e.g., '2R', '3L'). If None, searches across all regions.",
+            attributes="Additional GFF3 attributes to include when accessing genome features.",
+        ),
+        returns="The ID of the canonical transcript for the given gene.",
+        raises=dict(
+            ValueError="If the gene is not found or if no transcripts are available for the gene."
+        ),
+    )
+    def canonical_transcript(
+        self,
+        gene: base_params.gene,
+        region: Optional[base_params.regions] = None,
+        attributes: base_params.gff_attributes = base_params.DEFAULT,
+    ) -> str:
+        """Return the canonical transcript for a given gene."""
+        debug = self._log.debug
+
+        debug("Access genome features for canonical transcript identification")
+
+        # Get all transcript lengths for this gene
+        with self._spinner(desc="Load genome features for canonical transcript"):
+            transcript_lengths = self.get_gene_transcript_lengths(
+                gene, region=region, attributes=attributes
+            )
+
+        # Find transcript with maximum length
+        canonical_transcript_id = max(
+            transcript_lengths, key=lambda k: transcript_lengths[k]
+        )
+        max_length = transcript_lengths[canonical_transcript_id]
+
+        debug(
+            f"Canonical transcript for gene '{gene}': '{canonical_transcript_id}' ({max_length} bp)"
+        )
+
+        return canonical_transcript_id
