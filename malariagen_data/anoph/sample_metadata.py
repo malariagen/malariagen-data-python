@@ -618,8 +618,6 @@ class AnophelesSampleMetadata(AnophelesBase):
                 # Note: this includes study and terms-of-use info.
                 df_samples = self.general_metadata(sample_sets=prepped_sample_sets)
 
-                # Commented this out as it breaks some things - will fix
-
                 # Merge with the sequence QC metadata.
                 df_sequence_qc = self.sequence_qc_metadata(
                     sample_sets=prepped_sample_sets
