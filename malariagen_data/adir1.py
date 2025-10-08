@@ -23,7 +23,7 @@ TAXON_COLORS = {
 
 
 class Adir1(AnophelesDataResource):
-    """Provides access to data from Adir1.x releases.
+    """Provides access to data from Adir1.0 releases.
 
     Parameters
     ----------
