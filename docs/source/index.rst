@@ -35,6 +35,14 @@ API documentation
 
       .. image:: https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Anopheles_minimus_1.jpg/640px-Anopheles_minimus_1.jpg
 
+   .. grid-item-card:: ``Adir1``
+      :link: Adir1
+      :link-type: doc
+
+      *Anopheles dirus* complex.
+
+      .. image:: https://phil.cdc.gov//PHIL_Images/8777/8777_lores.jpg
+
 Documentation for the `Pf7 <https://malariagen.github.io/parasite-data/pf7/api.html>`_ (*Plasmodium falciparum*)
 and `Pv4 <https://malariagen.github.io/parasite-data/pv4/api.html>`_ (*Plasmodium vivax*) APIs is also available,
 currently hosted on a separate site.
