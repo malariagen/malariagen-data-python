@@ -6,15 +6,13 @@ import malariagen_data
 from .anopheles import AnophelesDataResource
 
 MAJOR_VERSION_NUMBER = 1
-MAJOR_VERSION_PATH = "v1.x"
-CONFIG_PATH = "v1.x-config.json"
+MAJOR_VERSION_PATH = "v1.0"
+CONFIG_PATH = "v1.0-config.json"
 GCS_DEFAULT_URL = "gs://vo_adir_production_us_central1/"
-GCS_DEFAULT_PUBLIC_URL = "gs://vo_adir_production_us_central1/v1.x/staging"
+GCS_DEFAULT_PUBLIC_URL = "gs://vo_adir_production_us_central1/release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_adir_production_us_central1",
 }
-# XPEHH_GWSS_CACHE_NAME = "adir1_xpehh_gwss_v1"
-# IHS_GWSS_CACHE_NAME = "adir1_ihs_gwss_v1"
 
 TAXON_PALETTE = px.colors.qualitative.Plotly
 TAXON_COLORS = {
