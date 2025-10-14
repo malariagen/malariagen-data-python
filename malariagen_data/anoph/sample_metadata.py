@@ -348,7 +348,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         self, sample_sets: Optional[base_params.sample_sets] = None
     ) -> pd.DataFrame:
         return self._parse_metadata_paths(
-            path_template="{release_path}/metadata/general/{sample_set}/sequence_qc_stats.csv",
+            path_template="{release_path}/metadata/curation/{sample_set}/sequence_qc_stats.csv",
             parse_metadata_func=self._parse_sequence_qc_metadata,
             sample_sets=sample_sets,
         )
