@@ -8,7 +8,7 @@ from .anopheles import AnophelesDataResource
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
-GCS_DEFAULT_URL = "gs://vo_adir_production_us_central1/"
+GCS_DEFAULT_URL = "gs://vo_adir_production_us_central1/release/"
 GCS_DEFAULT_PUBLIC_URL = "gs://vo_adir_production_us_central1/release/"
 GCS_REGION_URLS = {
     "us-central1": "gs://vo_adir_production_us_central1",
