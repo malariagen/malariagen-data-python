@@ -180,16 +180,15 @@ class AnophelesSampleMetadata(AnophelesBase):
                 axis="columns",
             )
 
-            # Have commented these out for now as a) this is not a public release and b) for some reason it breaks everything and I haven't had the time to work out why
             # Add study columns.
-            # study_info = self.lookup_study_info(sample_set=sample_set)
-            # for column in study_info:
-            #    df[column] = study_info[column]
+            study_info = self.lookup_study_info(sample_set=sample_set)
+            for column in study_info:
+                df[column] = study_info[column]
 
             # Add terms-of-use columns.
-            # terms_of_use_info = self.lookup_terms_of_use_info(sample_set=sample_set)
-            # for column in terms_of_use_info:
-            #    df[column] = terms_of_use_info[column]
+            terms_of_use_info = self.lookup_terms_of_use_info(sample_set=sample_set)
+            for column in terms_of_use_info:
+                df[column] = terms_of_use_info[column]
 
             return df
 
