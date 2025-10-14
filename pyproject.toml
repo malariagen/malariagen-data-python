@@ -93,7 +93,6 @@ sphinx = "*"
 pydata-sphinx-theme = "*"
 sphinx_design = "*"
 pandas-stubs = "*"
-ipykernel = "^6.29.5"
 
 [tool.poetry.extras]
 dev = ["pytest", "pytest-xdist", "pytest-cases", "pytest-cov", "notebook", "jupyterlab", "pre-commit", "ruff", "snakeviz", "mypy", "memory-profiler", "sphinx", "pydata-sphinx-theme", "sphinx_design", "pandas-stubs"]
