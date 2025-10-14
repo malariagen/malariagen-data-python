@@ -68,8 +68,7 @@ def test_locate_region(region_raw):
         assert pos[loc_region][0] == gene.start
         assert pos[loc_region][-1] == gene.end
         assert (
-            ref[loc_region][:5].compute()
-            == np.array(["T", "T", "T", "C", "T"], dtype="S1")
+            ref[loc_region][:5].compute() == np.array(["T", "T", "G", "T", "T"])
         ).all()
 
     # check string parsing
