@@ -60,7 +60,7 @@ class Adir1(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> adir1 = malariagen_data.Adir1(
-        ...     "simplecache::gs://vo_adir_production_us_central1",
+        ...     "simplecache::gs://vo_adir_release_us_central1",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 
