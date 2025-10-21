@@ -8,10 +8,10 @@ from .anopheles import AnophelesDataResource
 MAJOR_VERSION_NUMBER = 1
 MAJOR_VERSION_PATH = "v1.0"
 CONFIG_PATH = "v1.0-config.json"
-GCS_DEFAULT_URL = "gs://vo_adir_release_us_central1/"
-GCS_DEFAULT_PUBLIC_URL = "gs://vo_adir_release_us_central1/"
+GCS_DEFAULT_URL = "gs://vo_adir_release_master_us_central1/"
+GCS_DEFAULT_PUBLIC_URL = "gs://vo_adir_release_master_us_central1/"
 GCS_REGION_URLS = {
-    "us-central1": "gs://vo_adir_release_us_central1",
+    "us-central1": "gs://vo_adir_release_master_us_central1",
 }
 
 TAXON_PALETTE = px.colors.qualitative.Plotly
@@ -60,7 +60,7 @@ class Adir1(AnophelesDataResource):
     in a directory named "gcs_cache":
 
         >>> adir1 = malariagen_data.Adir1(
-        ...     "simplecache::gs://vo_adir_release_us_central1",
+        ...     "simplecache::gs://vo_adir_release_master_us_central1",
         ...     simplecache=dict(cache_storage="gcs_cache"),
         ... )
 
