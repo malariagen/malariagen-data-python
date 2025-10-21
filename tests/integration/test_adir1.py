@@ -5,9 +5,7 @@ from malariagen_data import Adir1, Region
 from malariagen_data.util import locate_region, resolve_region
 
 
-def setup_adir1(
-    url="simplecache::gs://vo_adir_production_us_central1/release/", **kwargs
-):
+def setup_adir1(url="simplecache::gs://vo_adir_release_master_us_central1/", **kwargs):
     kwargs.setdefault("check_location", False)
     kwargs.setdefault("show_progress", False)
     if url is None:
