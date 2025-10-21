@@ -2,7 +2,7 @@ Amin1
 =====
 
 This page provides a curated list of functions and properties available in the ``malariagen_data`` API
-for data on mosquitoes from the *Anopheles dirus* complex.
+for data on *Anopheles minimus* mosquitoes.
 
 To set up the API, use the following code::
 
