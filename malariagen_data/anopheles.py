@@ -556,6 +556,11 @@ class AnophelesDataResource(
 
         return sample_id, sample_set, windows, counts
 
+    @property
+    @abstractmethod
+    def _roh_hmm_cache_name(self):
+        raise NotImplementedError("Must override _roh_hmm_cache_name")
+
     @check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
@@ -577,7 +582,7 @@ class AnophelesDataResource(
 
         resolved_region: Region = parse_single_region(self, region)
 
-        name = "roh"
+        name = self._roh_hmm_cache_name
 
         params = dict(
             sample=sample,
