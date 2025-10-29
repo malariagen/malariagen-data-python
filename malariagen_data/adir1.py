@@ -71,9 +71,6 @@ class Adir1(AnophelesDataResource):
 
     """
 
-    #    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
-    #    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
-
     def __init__(
         self,
         url=None,
