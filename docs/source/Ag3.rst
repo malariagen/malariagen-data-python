@@ -224,3 +224,14 @@ Inversion karyotypes
     :toctree: generated/
 
     karyotype
+
+Phenotype data access
+---------------------
+.. autosummary::
+    :toctree: generated/
+
+    phenotype_data
+    phenotypes_with_snps
+    phenotypes_with_haplotypes
+    phenotype_sample_sets
+    phenotype_binary

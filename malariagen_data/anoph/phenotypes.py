@@ -1,8 +1,11 @@
 import pandas as pd
 import xarray as xr
-from typing import Callable, Optional, List, Any
+from typing import Callable, Optional, List, Any, TYPE_CHECKING
 import warnings
 import fsspec
+from numpydoc_decorator import doc  # type: ignore
+
+from ..util import check_types
 from malariagen_data.anoph import base_params, phenotype_params
 
 
@@ -12,14 +15,20 @@ class AnophelesPhenotypeData:
     Inherited by AnophelesDataResource subclasses (e.g., Ag3).
     """
 
-    # Type annotations for MyPy
-    _url: str
-    _fs: fsspec.AbstractFileSystem
-    sample_metadata: Callable[..., pd.DataFrame]
-    sample_sets: list[str]
-    _prep_sample_sets_param: Callable[..., Any]
-    snp_calls: Callable[..., Any]
-    haplotypes: Callable[..., Any]
+    if TYPE_CHECKING:
+        # Type annotations for MyPy
+        _url: str
+        _fs: fsspec.AbstractFileSystem
+        sample_metadata: Callable[..., pd.DataFrame]
+        _base_path: str
+        _major_version_path: str
+        _release_to_path: Callable[[str], str]
+        lookup_release: Callable[..., str]
+        _prep_sample_sets_param: Callable[..., Any]
+
+        sample_sets: Callable[..., pd.DataFrame]
+        snp_calls: Callable[..., Any]
+        haplotypes: Callable[..., Any]
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
@@ -32,11 +41,14 @@ class AnophelesPhenotypeData:
         Load raw phenotypic data from GCS for given sample sets.
         """
         phenotype_dfs = []
-        base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
 
         for sample_set in sample_sets:
-            phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
             try:
+                release = self.lookup_release(sample_set=sample_set)
+                release_path = self._release_to_path(release)
+
+                phenotype_path = f"{self._base_path}/{release_path}/phenotypes/all/{sample_set}/phenotypes.csv"
+
                 if not self._fs.exists(phenotype_path):
                     warnings.warn(
                         f"Phenotype data file not found for {sample_set} at {phenotype_path}"
@@ -58,14 +70,9 @@ class AnophelesPhenotypeData:
                 df_pheno["sample_set"] = sample_set
                 phenotype_dfs.append(df_pheno)
 
-            except FileNotFoundError:
-                warnings.warn(
-                    f"Phenotype data file not found for {sample_set} at {phenotype_path}"
-                )
-                continue
             except Exception as e:
                 warnings.warn(
-                    f"Unexpected error loading phenotype data for {sample_set} from {phenotype_path}: {e}"
+                    f"Unexpected error loading phenotype data for {sample_set}: {e}"
                 )
                 continue
 
@@ -308,6 +315,13 @@ class AnophelesPhenotypeData:
 
         return ds
 
+    @check_types
+    @doc(
+        summary="Load phenotypic data from insecticide resistance bioassays.",
+        returns=dict(
+            df="DataFrame containing phenotype data merged with sample metadata. Includes sample identifiers, phenotypic measurements, and experimental conditions."
+        ),
+    )
     def phenotype_data(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -318,55 +332,9 @@ class AnophelesPhenotypeData:
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> pd.DataFrame:
         """
-        Load phenotypic data from insecticide resistance bioassays.
-
-        Parameters
-        ----------
-        sample_sets : Optional[base_params.sample_sets]
-            Sample sets to load data for.
-        sample_query : Optional[base_params.sample_query]
-            Query string to filter samples. Can include phenotype-specific columns like:
-            - insecticide: e.g., "insecticide == 'Deltamethrin'"
-            - dose: e.g., "dose in [0.5, 2.0]"
-            - phenotype: e.g., "phenotype == 'alive'"
-            - location: e.g., "location == 'Cotonou'"
-            - Any other metadata columns
-        sample_query_options : Optional[base_params.sample_query_options]
-            Options for the sample query.
-        cohort_size : Optional[base_params.cohort_size]
-            Exact cohort size for sampling.
-        min_cohort_size : Optional[base_params.min_cohort_size]
-            Minimum cohort size to include.
-        max_cohort_size : Optional[base_params.max_cohort_size]
-            Maximum cohort size (will be randomly sampled if exceeded).
-
-        Returns
-        -------
-        pd.DataFrame
-            DataFrame containing phenotype data merged with sample metadata.
-
-        Examples
-        --------
-        # Load all phenotype data
-        df = ag3.phenotype_data(sample_sets=['1237-VO-BJ-DJOGBENOU-VMF00050'])
-
-        # Filter by insecticide
-        df = ag3.phenotype_data(
-            sample_sets=['1237-VO-BJ-DJOGBENOU-VMF00050'],
-            sample_query="insecticide == 'Deltamethrin'"
-        )
-
-        # Filter by multiple criteria
-        df = ag3.phenotype_data(
-            sample_sets=['1237-VO-BJ-DJOGBENOU-VMF00050'],
-            sample_query="insecticide == 'Deltamethrin' and dose >= 1.0 and phenotype == 'alive'"
-        )
-
-        # Filter by location and insecticide
-        df = ag3.phenotype_data(
-            sample_query="location == 'Cotonou' and insecticide in ['Deltamethrin', 'Bendiocarb']"
-        )
+        Retrieve and merge phenotype data with sample metadata for bioassay analysis.
         """
+
         # 1. Normalize sample_sets
         sample_sets_norm = self._prep_sample_sets_param(sample_sets=sample_sets)
 
@@ -416,6 +384,13 @@ class AnophelesPhenotypeData:
 
         return df_final
 
+    @check_types
+    @doc(
+        summary="Combine phenotypic traits with SNP genotype data for GWAS analysis.",
+        returns=dict(
+            ds="xarray Dataset containing phenotype data and SNP genotype calls for the specified region."
+        ),
+    )
     def phenotypes_with_snps(
         self,
         region: base_params.region,
@@ -426,9 +401,8 @@ class AnophelesPhenotypeData:
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> xr.Dataset:
-        """
-        Load phenotypic data and merge with SNP calls.
-        """
+        """Merge phenotypes with SNP calls in a given region for association testing."""
+
         df_phenotypes = self.phenotype_data(
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -455,6 +429,13 @@ class AnophelesPhenotypeData:
 
         return ds
 
+    @check_types
+    @doc(
+        summary="Combine phenotypic traits with haplotype data for extended association analysis.",
+        returns=dict(
+            ds="xarray Dataset with phenotype and haplotype data for the specified region."
+        ),
+    )
     def phenotypes_with_haplotypes(
         self,
         region: base_params.region,
@@ -465,9 +446,8 @@ class AnophelesPhenotypeData:
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> xr.Dataset:
-        """
-        Load phenotypic data and merge with haplotype data.
-        """
+        """Merge phenotypes with haplotype data in a given region for association testing."""
+
         df_phenotypes = self.phenotype_data(
             sample_sets=sample_sets,
             sample_query=sample_query,
@@ -494,22 +474,24 @@ class AnophelesPhenotypeData:
 
         return ds
 
+    @check_types
+    @doc(
+        summary="List sample sets that contain phenotypic data.",
+        returns=dict(sample_sets="List of sample set identifiers with phenotype data."),
+    )
     def phenotype_sample_sets(self) -> List[str]:
-        """
-        Get list of sample sets that have phenotypic data available.
+        """Identify sample sets containing phenotype data."""
 
-        Returns
-        -------
-        List[str]
-            List of sample set identifiers with available phenotype data.
-        """
         all_sample_sets = self.sample_sets()["sample_set"].tolist()  # type: ignore[operator]
         phenotype_sample_sets = []
-        base_phenotype_path = f"{self._url}v3.2/phenotypes/all"
 
         for sample_set in all_sample_sets:
             try:
-                phenotype_path = f"{base_phenotype_path}/{sample_set}/phenotypes.csv"
+                release = self.lookup_release(sample_set=sample_set)
+                release_path = self._release_to_path(release)
+
+                phenotype_path = f"{self._base_path}/{release_path}/phenotypes/all/{sample_set}/phenotypes.csv"
+
                 if self._fs.exists(phenotype_path):
                     phenotype_sample_sets.append(sample_set)
             except Exception:
@@ -517,6 +499,12 @@ class AnophelesPhenotypeData:
 
         return phenotype_sample_sets
 
+    @doc(
+        summary="Convert phenotype data into binary format for statistical analysis.",
+        returns=dict(
+            binary="Pandas Series indexed by sample_id with binary classification: 1 for resistant, 0 for susceptible, NaN for unknown."
+        ),
+    )
     def phenotype_binary(
         self,
         sample_sets: Optional[base_params.sample_sets] = None,
@@ -531,10 +519,8 @@ class AnophelesPhenotypeData:
         min_cohort_size: Optional[base_params.min_cohort_size] = None,
         max_cohort_size: Optional[base_params.max_cohort_size] = None,
     ) -> pd.Series:
-        """
-        Load phenotypic data as binary outcomes (1=alive/resistant, 0=dead/susceptible, NaN=unknown).
-        Returns a pandas Series indexed by sample_id.
-        """
+        """Generate binary phenotypic labels from raw phenotype data."""
+
         # Build the sample_query string from individual parameters
         query_parts = []
         if insecticide is not None:

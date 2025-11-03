@@ -190,6 +190,95 @@ def test_karyotyping(inversion):
         assert all(df[f"karyotype_{inversion}_mean"].between(0, 2))
 
 
+def test_plot_haplotype_network_string_direct(mocker):
+    ag3 = setup_ag3()
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    ag3.plot_haplotype_network(
+        region="2L:2,358,158-2,358,258",
+        analysis="gamb_colu",
+        sample_sets="3.0",
+        sample_query="taxon == 'coluzzii'",
+        color="country",
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] == "_partition"
+    assert call_args["ht_color_counts"] is not None
+
+
+def test_plot_haplotype_network_string_cohort(mocker):
+    ag3 = setup_ag3()
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    ag3.plot_haplotype_network(
+        region="2L:2,358,158-2,358,258",
+        analysis="gamb_colu",
+        sample_sets="3.0",
+        sample_query="taxon == 'coluzzii'",
+        color="admin1_iso",
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] == "_partition"
+    assert call_args["ht_color_counts"] is not None
+
+
+def test_plot_haplotype_network_mapping(mocker):
+    ag3 = setup_ag3()
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    color_mapping = {"Ghana": "country == 'Ghana'", "Other": "country != 'Ghana'"}
+    ag3.plot_haplotype_network(
+        region="2L:2,358,158-2,358,258",
+        analysis="gamb_colu",
+        sample_sets="3.0",
+        sample_query="taxon == 'coluzzii'",
+        color=color_mapping,
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] == "_partition"
+    assert call_args["ht_color_counts"] is not None
+
+
+def test_plot_haplotype_network_none(mocker):
+    ag3 = setup_ag3()
+    mocker.patch("dash.Dash.run")
+    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
+
+    ag3.plot_haplotype_network(
+        region="2L:2,358,158-2,358,258",
+        analysis="gamb_colu",
+        sample_sets="3.0",
+        sample_query="taxon == 'coluzzii'",
+        color=None,
+        max_dist=2,
+        server_mode="inline",
+    )
+
+    assert mock_mjn.called
+    call_args = mock_mjn.call_args[1]
+    assert call_args["color"] is None
+    assert call_args["ht_color_counts"] is None
+
+
 def test_phenotype_data():
     """Test basic functionality of phenotype_data method with sample_query."""
     ag3 = setup_ag3()
