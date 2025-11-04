@@ -2588,28 +2588,28 @@ class Adir1Simulator(AnophelesSimulator):
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_cat_ds.to_csv(dst_path, index=False)
 
-    #        # Create accessions catalog by sampling from some real metadata files.
-    #        src_path = (
-    #            self.fixture_dir
-    #            / "vo_adir_release_master_us_central1"
-    #            / release_path
-    #            / "metadata"
-    #            / "general"
-    #            / sample_set
-    #            / "wgs_accession_data.csv"
-    #        )
-    #        df_cat = pd.read_csv(src_path)
-    #        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
-    #        dst_path = (
-    #            self.bucket_path
-    #            / release_path
-    #            / "metadata"
-    #            / "general"
-    #            / sample_set
-    #            / "wgs_accession_data.csv"
-    #        )
-    #        dst_path.parent.mkdir(parents=True, exist_ok=True)
-    #        df_cat_ds.to_csv(dst_path, index=False)
+        # Create accessions catalog by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_adir_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_accession_data.csv"
+        )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_accession_data.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_cat_ds.to_csv(dst_path, index=False)
 
     def init_metadata(self):
         self.write_metadata(

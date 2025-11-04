@@ -7,6 +7,7 @@ from pytest_cases import parametrize_with_cases
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data import adir1 as _adir1
 from malariagen_data.anoph.genome_features import AnophelesGenomeFeaturesData
 from malariagen_data.util import Region, resolve_region
 
@@ -42,12 +43,31 @@ def af1_sim_api(af1_sim_fixture):
     )
 
 
+@pytest.fixture
+def adir1_sim_api(adir1_sim_fixture):
+    return AnophelesGenomeFeaturesData(
+        url=adir1_sim_fixture.url,
+        public_url=adir1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+    )
+
+
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+
+
+def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
+    return adir1_sim_fixture, adir1_sim_api
 
 
 gff3_cols = [
@@ -86,6 +106,15 @@ def test_genome_features_default_attributes_af1(
     af1_sim_api: AnophelesGenomeFeaturesData,
 ):
     df_gf = af1_sim_api.genome_features()
+    assert isinstance(df_gf, pd.DataFrame)
+    expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
+    assert df_gf.columns.to_list() == expected_cols
+
+
+def test_genome_features_default_attributes_adir1(
+    adir1_sim_api: AnophelesGenomeFeaturesData,
+):
+    df_gf = adir1_sim_api.genome_features()
     assert isinstance(df_gf, pd.DataFrame)
     expected_cols = gff3_cols + ["ID", "Parent", "Note", "description"]
     assert df_gf.columns.to_list() == expected_cols
