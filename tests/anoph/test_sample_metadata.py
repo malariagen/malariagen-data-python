@@ -13,7 +13,6 @@ from typeguard import suppress_type_checks
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
-from malariagen_data import amin1 as _amin1
 from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
 
 
@@ -66,19 +65,6 @@ def adir1_sim_api(adir1_sim_fixture):
 
 
 @pytest.fixture
-def amin1_sim_api(amin1_sim_fixture):
-    return AnophelesSampleMetadata(
-        url=amin1_sim_fixture.url,
-        public_url=amin1_sim_fixture.url,
-        config_path=_amin1.CONFIG_PATH,
-        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
-        major_version_path=_amin1.MAJOR_VERSION_PATH,
-        pre=False,
-        taxon_colors=_amin1.TAXON_COLORS,
-    )
-
-
-@pytest.fixture
 def missing_metadata_api(fixture_dir):
     # In this fixture, one of the sample sets (AG1000G-BF-A) has missing files
     # for sequence QC, AIM and cohorts metadata.
@@ -108,12 +94,8 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-def case_adir1_sim(adir1_sim_fixture, adir_sim_api):
-    return adir1_sim_fixture, adir_sim_api
-
-
-def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
-    return amin1_sim_fixture, amin1_sim_api
+def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
+    return adir1_sim_fixture, adir1_sim_api
 
 
 def general_metadata_expected_columns():
