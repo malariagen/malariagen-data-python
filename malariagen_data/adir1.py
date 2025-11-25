@@ -131,13 +131,16 @@ class Adir1(AnophelesDataResource):
     def __repr__(self):
         text = (
             f"<MalariaGEN Adir1 API client>\n"
-            f"Storage URL             : {self._url}\n"
-            f"Data releases available : {', '.join(self.releases)}\n"
-            f"Results cache           : {self._results_cache}\n"
-            f"Cohorts analysis        : {self._cohorts_analysis}\n"
-            f"Site filters analysis   : {self._site_filters_analysis}\n"
-            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
-            f"Client location         : {self.client_location}\n"
+            f"Storage URL                           : {self._url}\n"
+            f"Data releases available               : {', '.join(self._available_releases)}\n"
+            f"Results cache                         : {self._results_cache}\n"
+            f"Cohorts analysis                      : {self._cohorts_analysis}\n"
+            f"Site filters analysis                 : {self._site_filters_analysis}\n"
+            f"Software version                      : malariagen_data {malariagen_data.__version__}\n"
+            f"Client location                       : {self.client_location}\n"
+            f"Data filtered to unrestricted use only: {self._unrestricted_use_only}\n"
+            f"Data filtered to surveillance use only: {self._surveillance_use_only}\n"
+            f"Relevant data releases                : {', '.join(self.releases)}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
             f"for more information see https://www.malariagen.net/data\n"
@@ -171,7 +174,7 @@ class Adir1(AnophelesDataResource):
                         <th style="text-align: left">
                             Data releases available
                         </th>
-                        <td>{', '.join(self.releases)}</td>
+                        <td>{', '.join(self._available_releases)}</td>
                     </tr>
                     <tr>
                         <th style="text-align: left">
