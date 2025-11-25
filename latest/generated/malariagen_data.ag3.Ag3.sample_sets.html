@@ -393,8 +393,13 @@ set,          <cite>study_url</cite> is the URL of the study on the MalariaGEN
 website,          <cite>term_of_use_expiry</cite> is the date when the terms of
 use expire,          <cite>terms_of_use_url</cite> is the URL of the terms of
 use,          <cite>release</cite> is the identifier of the release containing
-the sample set,          <cite>unrestricted_use</cite> whether the sample set
-can be without restriction (e.g., if the terms of use have expired).</p>
+the sample set,          <cite>unrestricted_use_only</cite> whether the sample
+set can be without restriction (e.g., if the terms of use have
+expired).          If <cite>unrestricted_use_only</cite> was set to <cite>True</cite> then
+only sample sets with <cite>unrestricted_use</cite> set to <cite>True</cite> will be
+included.          If <cite>surveillance_use_only</cite> was set to <cite>True</cite> then
+only sample sets that contain one or more samples with
+<cite>is_surveillance</cite> set to <cite>True</cite> will be included.</p>
 </dd>
 </dl>
 </section>
