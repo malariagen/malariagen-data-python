@@ -80,10 +80,6 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
-    return adir1_sim_fixture, adir1_sim_api
-
-
 @pytest.mark.parametrize("distance_metric", ["cityblock", "euclidean"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_plot_diplotype_clustering(
