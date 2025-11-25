@@ -84,7 +84,13 @@ class AnophelesIgv(
         visibility_window: int = 20_000,
     ):
         # Look up sample set for sample.
-        sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        try:
+            sample_rec = self.sample_metadata().set_index("sample_id").loc[sample]
+        except KeyError as e:
+            raise ValueError(
+                f"No data found for sample {sample!r}. This sample might be unavailable or irrelevant with respect to settings."
+            ) from e
+
         sample_set = sample_rec["sample_set"]
 
         # Load data catalog.

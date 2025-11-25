@@ -28,6 +28,7 @@ from numpydoc_decorator import doc  # type: ignore
 from tqdm.auto import tqdm as tqdm_auto  # type: ignore
 from tqdm.dask import TqdmCallback  # type: ignore
 from yaspin import yaspin  # type: ignore
+import xarray as xr
 
 from ..util import (
     CacheMiss,
@@ -62,6 +63,8 @@ class AnophelesBase:
         storage_options: Optional[Mapping] = None,
         results_cache: Optional[str] = None,
         tqdm_class=None,
+        unrestricted_use_only: Optional[bool] = False,
+        surveillance_use_only: Optional[bool] = False,
     ):
         # If show_progress has not been specified, then determine the default.
         if show_progress is None:
@@ -86,6 +89,8 @@ class AnophelesBase:
         if tqdm_class is None:
             tqdm_class = tqdm_auto
         self._tqdm_class = tqdm_class
+        self._unrestricted_use_only = unrestricted_use_only
+        self._surveillance_use_only = surveillance_use_only
 
         # Set up logging.
         self._log = LoggingHelper(name=__name__, out=log, debug=debug)
@@ -168,7 +173,9 @@ class AnophelesBase:
 
         # Set up cache attributes.
         self._cache_releases: Optional[Tuple[str, ...]] = None
+        self._cache_available_releases: Optional[Tuple[str, ...]] = None
         self._cache_sample_sets: Dict[str, pd.DataFrame] = dict()
+        self._cache_available_sample_sets: Dict[str, pd.DataFrame] = dict()
         self._cache_sample_set_to_release: Optional[Dict[str, str]] = None
         self._cache_sample_set_to_study: Optional[Dict[str, str]] = None
         self._cache_sample_set_to_study_info: Optional[Dict[str, dict]] = None
@@ -347,14 +354,133 @@ class AnophelesBase:
         return discovered_releases
 
     @property
-    def releases(self) -> Tuple[str, ...]:
-        """Currently available data releases."""
-        if self._cache_releases is None:
+    def _available_releases(self) -> Tuple[str, ...]:
+        """Currently available data releases, regardless of `unrestricted_use_only` and `surveillance_use_only`. When `pre` is set to `True`, this includes "pre-releases", otherwise only the "public" releases."""
+        if self._cache_available_releases is None:
             if self._pre:
-                self._cache_releases = self._discover_releases()
+                self._cache_available_releases = self._discover_releases()
             else:
-                self._cache_releases = self._public_releases()
+                self._cache_available_releases = self._public_releases()
+
+        return self._cache_available_releases
+
+    @property
+    def _releases_with_unrestricted_data(self) -> Tuple[str, ...]:
+        """Releases that contain some unrestricted data."""
+
+        # Start a list of releases that contain some unrestricted data.
+        releases_with_unrestricted_data = []
+
+        # Get the available releases, which depends on the `pre` setting.
+        available_releases = self._available_releases
+
+        # For each available release...
+        for release in available_releases:
+            # Determine whether this release contains any unrestricted data.
+            if self._release_has_unrestricted_data(release=release):
+                releases_with_unrestricted_data.append(release)
+
+        return tuple(releases_with_unrestricted_data)
+
+    @property
+    def _releases_with_surveillance_data(self) -> Tuple[str, ...]:
+        """Releases that contain some surveillance data."""
+
+        # Start a list of releases that contain some surveillance data.
+        releases_with_surveillance_data = []
+
+        # Get the available releases, which will depend on the `pre` setting.
+        available_releases = self._available_releases
+
+        # For each available release...
+        for release in available_releases:
+            # Determine whether this release contains any surveillance data.
+            if self._release_has_surveillance_data(release=release):
+                releases_with_surveillance_data.append(release)
+
+        return tuple(releases_with_surveillance_data)
+
+    @property
+    def _relevant_releases(self) -> Tuple[str, ...]:
+        """Relevant data releases. When `unrestricted_use_only` is set to `True`, only releases that contain some unrestricted data will be included. When `surveillance_use_only` is set to true, only releases that contain some surveillance data will be included. When `pre` is set to `True`, this includes "pre-releases", otherwise only the "public" releases."""
+
+        if self._cache_releases is None:
+            # Start a list of the relevant releases.
+            relevant_releases = []  # type: List[str]
+
+            # Get the available releases, which depends on the `pre` setting.
+            available_releases = self._available_releases
+
+            # If there are no criteria, then all available releases are relevant.
+            if not self._unrestricted_use_only and not self._surveillance_use_only:
+                relevant_releases = list(available_releases)
+
+            elif self._unrestricted_use_only and not self._surveillance_use_only:
+                # Get the releases with unrestricted data.
+                releases_with_unrestricted_data = self._releases_with_unrestricted_data
+
+                # Determine whether each release is relevant to the specified criteria.
+                for release in available_releases:
+                    # Determine whether this release has any unrestricted data.
+                    has_unrestricted_data = release in releases_with_unrestricted_data
+
+                    # If we want unrestricted data, but this release doesn't have any, then don't include it.
+                    if self._unrestricted_use_only and not has_unrestricted_data:
+                        continue
+
+                    # Otherwise, this release is relevant, so include it.
+                    relevant_releases.append(release)
+
+            elif not self._unrestricted_use_only and self._surveillance_use_only:
+                # Get the releases with surveillance data.
+                releases_with_surveillance_data = self._releases_with_surveillance_data
+
+                # Determine whether each release is relevant to the specified criteria.
+                for release in available_releases:
+                    # Determine whether this release has any surveillance data.
+                    has_surveillance_data = release in releases_with_surveillance_data
+
+                    # If we want surveillance data, but this release doesn't have any, then don't include it.
+                    if self._surveillance_use_only and not has_surveillance_data:
+                        continue
+
+                    # Otherwise, this release is relevant, so include it.
+                    relevant_releases.append(release)
+
+            elif self._unrestricted_use_only and self._surveillance_use_only:
+                # Get the releases with unrestricted data.
+                releases_with_unrestricted_data = self._releases_with_unrestricted_data
+
+                # Get the releases with surveillance data.
+                releases_with_surveillance_data = self._releases_with_surveillance_data
+
+                # Determine whether each release is relevant to the specified criteria.
+                for release in available_releases:
+                    # Determine whether this release has any unrestricted data.
+                    has_unrestricted_data = release in releases_with_unrestricted_data
+
+                    # Determine whether this release has any surveillance data.
+                    has_surveillance_data = release in releases_with_surveillance_data
+
+                    # If we want unrestricted data, but this release doesn't have any, then don't include it.
+                    if self._unrestricted_use_only and not has_unrestricted_data:
+                        continue
+
+                    # If we want surveillance data, but this release doesn't have any, then don't include it.
+                    if self._surveillance_use_only and not has_surveillance_data:
+                        continue
+
+                    # Otherwise, this release is relevant, so include it.
+                    relevant_releases.append(release)
+
+            self._cache_releases = tuple(relevant_releases)
+
         return self._cache_releases
+
+    @property
+    def releases(self) -> Tuple[str, ...]:
+        """Relevant data releases. When `unrestricted_use_only` is set to `True`, only releases that contain some unrestricted data will be included. When `surveillance_use_only` is set to true, only releases that contain some surveillance data will be included. When `pre` is set to `True`, this includes "pre-releases", otherwise only the "public" releases."""
+        return self._relevant_releases
 
     @property
     def client_location(self) -> str:
@@ -369,7 +495,92 @@ class AnophelesBase:
             location = "unknown"
         return location
 
-    def _read_sample_sets(self, *, single_release: str):
+    def _surveillance_flags(self, sample_sets: List[str]):
+        raise NotImplementedError("Subclasses must implement `_surveillance_flags`.")
+
+    def _release_has_unrestricted_data(self, *, release: str):
+        """Return `True` if the specified release has any unrestricted data. Otherwise return `False`."""
+
+        # The release has unrestricted data if any of its sample sets are marked as unrestricted.
+        # `_read_sample_sets_manifest` gives the sample sets manifest for a release as a DataFrame, potentially with an `unrestricted_use` column.
+
+        # Get the sample sets manifest for the specified release, potentially with the derived `unrestricted_use` column.
+        sample_sets_manifest_df = self._read_sample_sets_manifest(
+            single_release=release
+        )
+
+        # Determine whether any of the sample sets in the manifest are marked as unrestricted.
+        release_has_unrestricted_data = (
+            "unrestricted_use" in sample_sets_manifest_df.columns
+            and sample_sets_manifest_df["unrestricted_use"].any()
+        )
+
+        return release_has_unrestricted_data
+
+    def _release_has_surveillance_data(self, *, release: str):
+        """Return `True` if the specified release has any surveillance data. Otherwise return `False`."""
+
+        # The release has surveillance data if any of its sample sets have any samples that are flagged as `is_surveillance`.
+
+        # Get the list of sample sets for the specified release.
+        # Note: rather than using `sample_sets()`, to avoid additional processing, we are using `_read_sample_sets_manifest()`.
+        sample_sets_manifest_df = self._read_sample_sets_manifest(
+            single_release=release
+        )
+        sample_sets = sample_sets_manifest_df["sample_set"].to_list()
+
+        # Determine whether any of the sample sets have surveillance data.
+        release_has_surveillance_data = False
+        for sample_set in sample_sets:
+            if self._sample_set_has_surveillance_data(sample_set=sample_set):
+                release_has_surveillance_data = True
+                break
+
+        return release_has_surveillance_data
+
+    def _sample_set_has_surveillance_data(self, *, sample_set: str):
+        """Return `True` if the specified sample set has any surveillance data. Otherwise return `False`."""
+
+        # Get the surveillance flags for this sample set.
+        sample_set_surveillance_flags_df = self._surveillance_flags(
+            sample_sets=[sample_set]
+        )
+
+        # Determine whether there are any samples in this sample set with `is_surveillance` set to `True`.
+        sample_set_has_surveillance_data = (
+            "is_surveillance" in sample_set_surveillance_flags_df.columns
+            and sample_set_surveillance_flags_df["is_surveillance"].any()
+        )
+
+        return sample_set_has_surveillance_data
+
+    def _sample_set_has_unrestricted_use(self, *, sample_set: str):
+        """Return `True` if the specified sample set has any unrestricted use. Otherwise return `False`."""
+
+        # Get the manifest data for this sample set.
+        sample_set_release = self.lookup_release(sample_set)
+        release_manifest_df = self._read_sample_sets_manifest(
+            single_release=sample_set_release
+        )
+        sample_set_records_srs = release_manifest_df.loc[
+            release_manifest_df["sample_set"] == sample_set, "unrestricted_use"
+        ]
+
+        if len(sample_set_records_srs) == 0:
+            raise ValueError(
+                f"No release manifest info found for sample_set '{sample_set}'"
+            )
+        elif len(sample_set_records_srs) > 1:
+            raise ValueError(
+                f"More than one record found in the release manifest for sample_set '{sample_set}'"
+            )
+        else:
+            # Convert the NumPy boolean to a standard Python bool.
+            sample_set_has_unrestricted_use = bool(sample_set_records_srs.iloc[0])
+
+        return sample_set_has_unrestricted_use
+
+    def _read_sample_sets_manifest(self, *, single_release: str):
         """Read the manifest of sample sets for a single release."""
         # Construct a path for the manifest file.
         release_path = self._release_to_path(single_release)
@@ -408,29 +619,135 @@ class AnophelesBase:
          `term_of_use_expiry` is the date when the terms of use expire,
          `terms_of_use_url` is the URL of the terms of use,
          `release` is the identifier of the release containing the sample set,
-         `unrestricted_use` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+         `unrestricted_use_only` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+         If `unrestricted_use_only` was set to `True` then only sample sets with `unrestricted_use` set to `True` will be included.
+         If `surveillance_use_only` was set to `True` then only sample sets that contain one or more samples with `is_surveillance` set to `True` will be included.
             """,
     )
     def sample_sets(
         self,
         release: Optional[base_params.release] = None,
     ) -> pd.DataFrame:
+        return self._relevant_sample_sets(release=release)
+
+    @check_types
+    @doc(
+        summary="Access a dataframe of available sample sets",
+        returns="""A dataframe of available sample sets, one row per sample set. It contains five columns:
+         `sample_set` is the name of the sample set,
+         `sample_count` is the number of samples the sample set contains,
+         `study_id` is the identifier for the study that generated the sample set,
+         `study_url` is the URL of the study on the MalariaGEN website,
+         `term_of_use_expiry` is the date when the terms of use expire,
+         `terms_of_use_url` is the URL of the terms of use,
+         `release` is the identifier of the release containing the sample set,
+         `unrestricted_use_only` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+            """,
+    )
+    def _available_sample_sets(
+        self,
+        release: Optional[base_params.release] = None,
+    ) -> pd.DataFrame:
         if release is None:
             # Retrieve sample sets from all available releases.
-            release = self.releases
+            release = self._available_releases
 
         if isinstance(release, str):
             # Retrieve sample sets for a single release.
 
-            if release not in self.releases:
-                raise ValueError(f"Release not available: {release!r}")
+            if release not in self._available_releases:
+                raise ValueError(
+                    f"Release is either not relevant or not available: {release!r}"
+                )
+
+            try:
+                df = self._cache_available_sample_sets[release]
+
+            except KeyError:
+                # Read and cache dataframe for performance.
+                df = self._read_sample_sets_manifest(single_release=release)
+                self._cache_available_sample_sets[release] = df
+
+        elif isinstance(release, Sequence):
+            # Ensure no duplicates.
+            releases = sorted(set(release))
+
+            # Retrieve and concatenate sample sets from multiple releases.
+            df = pd.concat(
+                [self._available_sample_sets(release=r) for r in releases],
+                axis=0,
+                ignore_index=True,
+            )
+
+        else:
+            raise TypeError
+
+        # Return copy to ensure cached dataframes aren't modified by user.
+        return df.copy()
+
+    @check_types
+    @doc(
+        summary="Access a dataframe of relevant sample sets",
+        returns="""A dataframe of relevant sample sets, one row per sample set. It contains five columns:
+         `sample_set` is the name of the sample set,
+         `sample_count` is the number of samples the sample set contains,
+         `study_id` is the identifier for the study that generated the sample set,
+         `study_url` is the URL of the study on the MalariaGEN website,
+         `term_of_use_expiry` is the date when the terms of use expire,
+         `terms_of_use_url` is the URL of the terms of use,
+         `release` is the identifier of the release containing the sample set,
+         `unrestricted_use_only` whether the sample set can be without restriction (e.g., if the terms of use have expired).
+         If `unrestricted_use_only` was set to `True` then only sample sets with `unrestricted_use` set to `True` will be included.
+         If `surveillance_use_only` was set to `True` then only sample sets that contain one or more samples with `is_surveillance` set to `True` will be included.
+            """,
+    )
+    def _relevant_sample_sets(
+        self,
+        release: Optional[base_params.release] = None,
+    ) -> pd.DataFrame:
+        # Note: `release` must either be `None` or be one of `_relevant_releases`.
+        # Otherwise this function will raise a `ValueError`.
+
+        if release is None:
+            # Retrieve sample sets from all relevant releases.
+            release = self._relevant_releases
+
+        if isinstance(release, str):
+            # Retrieve sample sets for a single release.
+
+            if release not in self._relevant_releases:
+                raise ValueError(
+                    f"Release is either not relevant or not available: {release!r}"
+                )
 
             try:
                 df = self._cache_sample_sets[release]
 
             except KeyError:
                 # Read and cache dataframe for performance.
-                df = self._read_sample_sets(single_release=release)
+                df = self._read_sample_sets_manifest(single_release=release)
+
+                # If unrestricted_use_only, restrict to sample sets with unrestricted_use.
+                if "unrestricted_use" in df.columns and self._unrestricted_use_only:
+                    df = df[df["unrestricted_use"].astype(bool)]
+
+                # If surveillance_use_only, restrict to sample sets that contain one or more `is_surveillance` samples.
+                if self._surveillance_use_only:
+                    # Start a list of the relevant sample sets.
+                    relevant_sample_sets = []
+
+                    # For each of the DataFrame's sample sets...
+                    release_sample_sets = df["sample_set"].to_list()
+                    for sample_set in release_sample_sets:
+                        # Determine whether this sample set has surveillance data.
+                        if self._sample_set_has_surveillance_data(
+                            sample_set=sample_set
+                        ):
+                            relevant_sample_sets.append(sample_set)
+
+                    # Remove other sample sets from the DataFrame.
+                    df = df[df["sample_set"].isin(relevant_sample_sets)]
+
                 self._cache_sample_sets[release] = df
 
         elif isinstance(release, Sequence):
@@ -439,7 +756,7 @@ class AnophelesBase:
 
             # Retrieve and concatenate sample sets from multiple releases.
             df = pd.concat(
-                [self.sample_sets(release=r) for r in releases],
+                [self._relevant_sample_sets(release=r) for r in releases],
                 axis=0,
                 ignore_index=True,
             )
@@ -457,13 +774,15 @@ class AnophelesBase:
     )
     def lookup_release(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_release is None:
-            df_sample_sets = self.sample_sets().set_index("sample_set")
+            df_sample_sets = self._available_sample_sets().set_index("sample_set")
             self._cache_sample_set_to_release = df_sample_sets["release"].to_dict()
 
         try:
             return self._cache_sample_set_to_release[sample_set]
-        except KeyError:
-            raise ValueError(f"No release found for sample set {sample_set!r}")
+        except KeyError as e:
+            raise ValueError(
+                f"No release found for sample set {sample_set!r}. This sample set might be unavailable or irrelevant with respect to settings."
+            ) from e
 
     @check_types
     @doc(
@@ -472,12 +791,12 @@ class AnophelesBase:
     )
     def lookup_study(self, sample_set: base_params.sample_set) -> str:
         if self._cache_sample_set_to_study is None:
-            df_sample_sets = self.sample_sets().set_index("sample_set")
+            df_sample_sets = self._available_sample_sets().set_index("sample_set")
             self._cache_sample_set_to_study = df_sample_sets["study_id"].to_dict()
         try:
             return self._cache_sample_set_to_study[sample_set]
-        except KeyError:
-            raise ValueError(f"No study ID found for sample set {sample_set!r}")
+        except KeyError as e:
+            raise ValueError(f"No study ID found for sample set {sample_set!r}") from e
 
     @check_types
     @doc(
@@ -486,14 +805,16 @@ class AnophelesBase:
     )
     def lookup_study_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_study_info is None:
-            df_sample_sets = self.sample_sets().set_index("sample_set")
+            df_sample_sets = self._available_sample_sets().set_index("sample_set")
             self._cache_sample_set_to_study_info = df_sample_sets[
                 ["study_id", "study_url"]
             ].to_dict(orient="index")
         try:
             return self._cache_sample_set_to_study_info[sample_set]
-        except KeyError:
-            raise ValueError(f"No study info found for sample set {sample_set!r}")
+        except KeyError as e:
+            raise ValueError(
+                f"No study info found for sample set {sample_set!r}"
+            ) from e
 
     @check_types
     @doc(
@@ -502,7 +823,7 @@ class AnophelesBase:
     )
     def lookup_terms_of_use_info(self, sample_set: base_params.sample_set) -> dict:
         if self._cache_sample_set_to_terms_of_use_info is None:
-            df_sample_sets = self.sample_sets().set_index("sample_set")
+            df_sample_sets = self._available_sample_sets().set_index("sample_set")
             self._cache_sample_set_to_terms_of_use_info = df_sample_sets[
                 [
                     "terms_of_use_expiry_date",
@@ -512,10 +833,10 @@ class AnophelesBase:
             ].to_dict(orient="index")
         try:
             return self._cache_sample_set_to_terms_of_use_info[sample_set]
-        except KeyError:
+        except KeyError as e:
             raise ValueError(
                 f"No terms-of-use info found for sample set {sample_set!r}"
-            )
+            ) from e
 
     def _prep_sample_sets_param(
         self, *, sample_sets: Optional[base_params.sample_sets]
@@ -524,43 +845,136 @@ class AnophelesBase:
         allow this to be a single sample set, or a list of sample sets, or a
         release identifier, or a list of release identifiers."""
 
-        all_sample_sets = self.sample_sets()["sample_set"].to_list()
+        # Get the relevant sample sets as a list.
+        all_relevant_sample_sets = self._relevant_sample_sets()["sample_set"].to_list()
 
+        # If no sample sets are specified...
         if sample_sets is None:
-            # All available sample sets.
-            prepped_sample_sets = all_sample_sets
+            # Assume we want all relevant sample sets.
+            prepared_sample_sets = all_relevant_sample_sets
 
+        # Otherwise, if the sample sets are specified as a string...
         elif isinstance(sample_sets, str):
+            # If the given string starts with the release major version number...
             if sample_sets.startswith(f"{self._major_version_number}."):
-                # Convenience, can use a release identifier to denote all sample sets in a release.
-                prepped_sample_sets = self.sample_sets(release=sample_sets)[
+                # Assume the given string is a release.
+                release = str(sample_sets)
+
+                # Get the relevant sample sets for this release as a list.
+                prepared_sample_sets = self._relevant_sample_sets(release=release)[
                     "sample_set"
                 ].to_list()
 
             else:
-                # Single sample set, normalise to always return a list.
-                prepped_sample_sets = [sample_sets]
+                # Assume the given string is a single sample set identifier.
+                # Put the single sample set identifier into a list, for consistency.
+                prepared_sample_sets = [sample_sets]
 
         else:
-            # Sequence of sample sets or releases.
-            assert isinstance(sample_sets, Sequence)
-            prepped_sample_sets = []
-            for s in sample_sets:
-                # Make a recursive call to handle the case where s is a release identifier.
-                sp = self._prep_sample_sets_param(sample_sets=s)
+            # Check that the given sample_sets is some kind of Sequence.
+            # Otherwise, raise an error.
+            if not isinstance(sample_sets, Sequence):
+                sample_sets_type = type(sample_sets)
+                raise ValueError(
+                    f"Unsupported data type for sample_sets param: {sample_sets_type}"
+                )
 
-                # Make sure we end up with a flat list of sample sets.
-                prepped_sample_sets.extend(sp)
+            # sample_sets is a kind of Sequence.
+            seq = sample_sets
 
-        # Ensure all sample sets selected at most once.
-        prepped_sample_sets = sorted(set(prepped_sample_sets))
+            # Start a list of prepared sample sets.
+            prepared_sample_sets = []
 
-        # Check for bad sample sets.
-        for s in prepped_sample_sets:
-            if s not in all_sample_sets:
-                raise ValueError(f"Sample set {s!r} not found.")
+            # For each item in the given Sequence...
+            for seq_item in seq:
+                # The item might be a release identifier.
+                # Make a recursive call to reduce release identifiers into a list of sample sets.
+                seq_item_sample_sets = self._prep_sample_sets_param(
+                    sample_sets=seq_item
+                )
 
-        return prepped_sample_sets
+                # Use `extend` rather than `append`, because we are adding a list to a list.
+                prepared_sample_sets.extend(seq_item_sample_sets)
+
+        # Remove duplicates from the list of sample sets and sort it.
+        prepared_sample_sets = sorted(set(prepared_sample_sets))
+
+        # Check for unavailable or irrelevant sample sets.
+        if set(prepared_sample_sets) != set(all_relevant_sample_sets):
+            for sample_set in prepared_sample_sets:
+                if sample_set not in all_relevant_sample_sets:
+                    raise ValueError(
+                        f"Sample set {sample_set!r} not found. This sample set might be unavailable or irrelevant with respect to settings."
+                    )
+
+        return prepared_sample_sets
+
+    def _prep_sample_query_param(
+        self, *, sample_query: Optional[base_params.sample_query]
+    ) -> Optional[base_params.sample_query]:
+        """Common handling for the `sample_query` parameter."""
+
+        # Return the same data type and default to the original value.
+        prepped_sample_query: Optional[base_params.sample_query] = sample_query
+
+        # If `_surveillance_use_only` then ensure there is an is_surveillance query criterion.
+        if self._surveillance_use_only:
+            is_surveillance_query_criterion = "is_surveillance == True"
+            # If there is no query, then set it to the is_surveillance query criterion.
+            if sample_query is None or sample_query.strip() == "":
+                prepped_sample_query = is_surveillance_query_criterion
+            else:
+                # If the current query already ends with the is_surveillance query criterion, then keep it as it is.
+                if sample_query.endswith(f" and {is_surveillance_query_criterion}"):
+                    prepped_sample_query = sample_query
+                else:
+                    prepped_sample_query = (
+                        f"{sample_query} and {is_surveillance_query_criterion}"
+                    )
+
+        return prepped_sample_query
+
+    def _filter_sample_dataset(
+        self,
+        *,
+        ds: xr.Dataset,
+        df_samples: pd.DataFrame,
+        sample_query: str,
+        sample_query_options: dict,
+    ) -> xr.Dataset:
+        """Filters the given Dataset using the given DataFrame and query."""
+
+        # Note: "prepare" the params before calling this function.
+
+        # Determine which samples match the sample query.
+        if sample_query != "":
+            # Use the python engine in order to support extension array dtypes, e.g. Float64, Int64, boolean.
+            loc_samples = df_samples.eval(
+                sample_query, **sample_query_options, engine="python"
+            )
+        else:
+            loc_samples = pd.Series(True, index=df_samples.index)
+
+        # Raise an error if no samples match the sample query.
+        if not loc_samples.any():
+            raise ValueError(f"No samples found for query {sample_query!r}")
+
+        # Get the relevant sample ids from the sample metadata DataFrame, using the boolean mask.
+        relevant_sample_ids = df_samples.loc[loc_samples, "sample_id"].values
+
+        # Get all the sample ids from the unfiltered Dataset.
+        ds_sample_ids = ds.coords["sample_id"].values
+
+        # Get the indices of samples in the Dataset that match the relevant sample ids.
+        # Note: we use `[0]` to get the first element of the tuple returned by `np.where`.
+        relevant_sample_indices = np.where(np.isin(ds_sample_ids, relevant_sample_ids))[
+            0
+        ]
+
+        # Select only the relevant samples from the Dataset.
+        ds = ds.isel(samples=relevant_sample_indices)
+
+        return ds
 
     def _results_cache_add_analysis_params(self, params: dict):
         # Expect sub-classes will override to add any analysis parameters.

@@ -197,8 +197,13 @@ class AnophelesCnvData(
         debug = self._log.debug
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
         regions: List[Region] = parse_multi_region(self, region)
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
         del region
 
         with self._spinner("Access CNV HMM data"):
@@ -206,7 +211,7 @@ class AnophelesCnvData(
             lx = []
             for r in regions:
                 ly = []
-                for s in sample_sets:
+                for s in prepared_sample_sets:
                     y = self._cnv_hmm_dataset(
                         contig=r.contig,
                         sample_set=s,
@@ -243,25 +248,20 @@ class AnophelesCnvData(
             ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
             debug("handle sample query")
-            if sample_query is not None:
-                debug("load sample metadata")
-                df_samples = self.sample_metadata(sample_sets=sample_sets)
+            # If there's a sample query...
+            if prepared_sample_query is not None:
+                # Get the relevant sample metadata.
+                df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
 
-                debug("align sample metadata with CNV data")
-                cnv_samples = ds["sample_id"].values.tolist()
-                df_samples_cnv = (
-                    df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
-                )
-
-                debug("apply the query")
+                # If there are no sample query options, then default to an empty dict.
                 sample_query_options = sample_query_options or {}
-                loc_query_samples = df_samples_cnv.eval(
-                    sample_query, **sample_query_options
-                ).values
-                if np.count_nonzero(loc_query_samples) == 0:
-                    raise ValueError(f"No samples found for query {sample_query!r}")
 
-                ds = ds.isel(samples=loc_query_samples)
+                ds = self._filter_sample_dataset(
+                    ds=ds,
+                    df_samples=df_samples,
+                    sample_query=prepared_sample_query,
+                    sample_query_options=sample_query_options,
+                )
 
             debug("handle coverage variance filter")
             if max_coverage_variance is not None:
@@ -419,7 +419,11 @@ class AnophelesCnvData(
 
         debug("normalise parameters")
         regions: List[Region] = parse_multi_region(self, region)
+        prepared_sample_set = self._prep_sample_sets_param(sample_sets=sample_set)[0]
+
+        # Delete original parameters to prevent accidental use.
         del region
+        del sample_set
 
         debug("access data and concatenate as needed")
         lx = []
@@ -427,7 +431,7 @@ class AnophelesCnvData(
             debug("obtain coverage calls for the contig")
             x = self._cnv_coverage_calls_dataset(
                 contig=r.contig,
-                sample_set=sample_set,
+                sample_set=prepared_sample_set,
                 analysis=analysis,
                 inline_array=inline_array,
                 chunks=chunks,
@@ -445,6 +449,23 @@ class AnophelesCnvData(
 
             lx.append(x)
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+
+        # Filter the samples using this default sample query.
+        # For example, this might filter out non-surveillance samples.
+        prepared_sample_query = self._prep_sample_query_param(sample_query="")
+
+        # Get the relevant sample metadata.
+        df_samples = self.sample_metadata(sample_sets=prepared_sample_set)
+
+        # If there is no sample query, then default to an empty str.
+        prepared_sample_query = prepared_sample_query or ""
+
+        ds = self._filter_sample_dataset(
+            ds=ds,
+            df_samples=df_samples,
+            sample_query=prepared_sample_query,
+            sample_query_options={},
+        )
 
         return ds
 
@@ -588,15 +609,20 @@ class AnophelesCnvData(
         # CNV alleles have unknown start or end coordinates.
 
         debug("normalise parameters")
-        sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
+        prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
         if isinstance(contig, str):
             contig = [contig]
+
+        # Delete original parameters to prevent accidental use.
+        del sample_sets
+        del sample_query
 
         debug("access data and concatenate as needed")
         lx = []
         for c in contig:
             ly = []
-            for s in sample_sets:
+            for s in prepared_sample_sets:
                 y = self._cnv_discordant_read_calls_dataset(
                     contig=c,
                     sample_set=s,
@@ -620,25 +646,22 @@ class AnophelesCnvData(
         ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
-        if sample_query is not None:
+
+        # If there's a sample query...
+        if prepared_sample_query is not None:
             debug("load sample metadata")
-            df_samples = self.sample_metadata(sample_sets=sample_sets)
+            # Get the relevant sample metadata.
+            df_samples = self.sample_metadata(sample_sets=prepared_sample_sets)
 
-            debug("align sample metadata with CNV data")
-            cnv_samples = ds["sample_id"].values.tolist()
-            df_samples_cnv = (
-                df_samples.set_index("sample_id").loc[cnv_samples].reset_index()
-            )
-
-            debug("apply the query")
+            # If there are no sample query options, then default to an empty dict.
             sample_query_options = sample_query_options or {}
-            loc_query_samples = df_samples_cnv.eval(
-                sample_query, **sample_query_options
-            ).values
-            if np.count_nonzero(loc_query_samples) == 0:
-                raise ValueError(f"No samples found for query {sample_query!r}")
 
-            ds = ds.isel(samples=loc_query_samples)
+            ds = self._filter_sample_dataset(
+                ds=ds,
+                df_samples=df_samples,
+                sample_query=prepared_sample_query,
+                sample_query_options=sample_query_options,
+            )
 
         return ds
 

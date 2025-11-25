@@ -7,7 +7,7 @@ import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pytest
 from pandas.testing import assert_frame_equal
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize_with_cases, case
 from typeguard import suppress_type_checks
 
 from malariagen_data import af1 as _af1
@@ -35,6 +35,76 @@ def ag3_sim_api(ag3_sim_fixture):
         },
         taxon_colors=_ag3.TAXON_COLORS,
         cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+    )
+
+
+@pytest.fixture
+def ag3_sim_unrestricted_use_only_api(ag3_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        unrestricted_use_only=True,
+    )
+
+
+@pytest.fixture
+def ag3_sim_surveillance_use_only_api(ag3_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        surveillance_use_only=True,
+    )
+
+
+@pytest.fixture
+def ag3_sim_unrestricted_surveillance_use_only_api(ag3_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        unrestricted_use_only=True,
+        surveillance_use_only=True,
     )
 
 
@@ -86,14 +156,17 @@ def missing_metadata_api(fixture_dir):
     )
 
 
+@case
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
+@case
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+  
 
-
+@case
 def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
@@ -129,7 +202,7 @@ def validate_metadata(df, expected_columns):
 
     # Check column types.
     for c in df.columns:
-        assert df[c].dtype.kind == expected_columns[c]
+        assert df[c].dtype.kind == expected_columns[c], c
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -138,6 +211,12 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
+
+    # Skip this test if there are no relevant sample sets to test, e.g. due to unrestricted_use_only and surveillance_use_only.
+    # Note: there should be sufficient test fixtures to run this test, i.e. including unrestricted and surveillance sample sets.
+    if len(all_sample_sets) == 0:
+        pytest.skip("Skipping because there are no relevant sample sets to test.")
+
     sample_set = random.choice(all_sample_sets)
 
     # Call function to be tested.
@@ -511,13 +590,19 @@ def sample_metadata_expected_columns(
     has_aims, has_cohorts_by_quarter, has_sequence_qc, ordered_contigs
 ):
     expected_columns = general_metadata_expected_columns()
+
     if has_sequence_qc:
         expected_columns.update(sequence_qc_metadata_expected_columns(ordered_contigs))
+
+    expected_columns.update({"is_surveillance": "b"})
+
     if has_aims:
         expected_columns.update(aim_metadata_expected_columns())
+
     expected_columns.update(
         cohorts_metadata_expected_columns(has_cohorts_by_quarter=has_cohorts_by_quarter)
     )
+
     return expected_columns
 
 
@@ -693,8 +778,9 @@ def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
 def test_sample_metadata_with_missing_file(
     missing_metadata_api: AnophelesSampleMetadata,
 ):
-    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # In this test, there is missing metadata.
     # We expect this to be filled with empty values.
+    # We also expect warnings for missing surveillance flags.
     api = missing_metadata_api
 
     # Set up test.
@@ -704,7 +790,15 @@ def test_sample_metadata_with_missing_file(
 
     for sample_set in all_sample_sets:
         # Call function to be tested.
-        df = api.sample_metadata(sample_sets=sample_set)
+        with pytest.warns(UserWarning) as captured_warnings:
+            df = api.sample_metadata(sample_sets=sample_set)
+
+        # Check expected warnings.
+        expected_message = f"WARNING: The surveillance flags data is missing for sample set {sample_set}"
+        assert all(
+            str(captured_warning.message) == expected_message
+            for captured_warning in captured_warnings
+        )
 
         # Check output.
         validate_metadata(

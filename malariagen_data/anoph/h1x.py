@@ -139,8 +139,8 @@ class AnophelesH1XAnalysis(
             # N.B., do not be tempted to convert these sample queries into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
+            cohort1_query=self._prep_sample_query_param(sample_query=cohort1_query),
+            cohort2_query=self._prep_sample_query_param(sample_query=cohort2_query),
             sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
