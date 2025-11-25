@@ -164,7 +164,7 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
 @case
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
-  
+
 
 @case
 def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
