@@ -2371,7 +2371,7 @@ class Adir1Simulator(AnophelesSimulator):
             bucket="vo_adir_release_master_us_central1",
             releases=("1.0",),
             has_aims=False,
-            has_cohorts_by_quarter=False,
+            has_cohorts_by_quarter=True,
             has_sequence_qc=True,
         )
 

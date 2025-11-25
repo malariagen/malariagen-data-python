@@ -72,7 +72,7 @@ def adir1_sim_api(adir1_sim_fixture):
         default_site_mask="dirus",
         results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
         taxon_colors=_adir1.TAXON_COLORS,
-        default_phasing_analysis="dirus_noneyet",
+        default_phasing_analysis="all",
     )
 
 
