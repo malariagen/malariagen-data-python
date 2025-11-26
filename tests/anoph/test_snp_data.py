@@ -9,7 +9,9 @@ import pytest
 import xarray as xr
 import zarr  # type: ignore
 from numpy.testing import assert_array_equal
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize_with_cases, case
+from pytest_cases import filters as ft
+
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
@@ -91,14 +93,17 @@ def adir1_sim_api(adir1_sim_fixture):
 # pytest alone.
 
 
+@case(tags="ag3")
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
+@case(tags="af1")
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
+@case(tags="adir1")
 def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
@@ -1076,7 +1081,7 @@ def test_snp_allele_counts_with_site_mask_param(fixture, api: AnophelesSnpData):
         )
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases("fixture,api", cases=".", filter=~ft.has_tag("adir1"))
 def test_snp_allele_counts_with_sample_query_param(fixture, api: AnophelesSnpData):
     # Fixed parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -1098,7 +1103,7 @@ def test_snp_allele_counts_with_sample_query_param(fixture, api: AnophelesSnpDat
         )
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases("fixture,api", cases=".", filter=~ft.has_tag("adir1"))
 def test_snp_allele_counts_with_sample_query_options_param(
     fixture, api: AnophelesSnpData
 ):
