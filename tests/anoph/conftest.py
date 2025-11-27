@@ -1265,6 +1265,31 @@ class Ag3Simulator(AnophelesSimulator):
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_general_ds.to_csv(dst_path, index=False)
 
+        # Create surveillance flags by sample from real metadata files.
+        surv_flags_src_path = (
+            self.fixture_dir
+            / "vo_agam_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        df_surveillance_flags = pd.read_csv(surv_flags_src_path)
+        df_surveillance_flags_ds = (
+            df_surveillance_flags.set_index("sample_id").loc[samples_ds].reset_index()
+        )
+        surv_flags_dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        surv_flags_dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_surveillance_flags_ds.to_csv(surv_flags_dst_path, index=False)
+
         if sequence_qc:
             # Create sequence QC metadata by sample from real metadata files.
             src_path = (
@@ -1903,24 +1928,34 @@ class Af1Simulator(AnophelesSimulator):
                     "1229-VO-GH-DADZIE-VMF00095",
                     "1230-VO-GA-CF-AYALA-VMF00045",
                     "1231-VO-MULTI-WONDJI-VMF00043",
+                    "1232-VO-KE-OCHOMO-VMF00044",
+                    "1235-VO-MZ-PAAIJMANS-VMF00094",
                 ],
-                "sample_count": [26, 40, 32],
+                "sample_count": [26, 40, 32, 20, 20],
                 "study_id": [
                     "1229-VO-GH-DADZIE",
                     "1230-VO-MULTI-AYALA",
                     "1231-VO-MULTI-WONDJI",
+                    "1232-VO-KE-OCHOMO",
+                    "1235-VO-MZ-PAAIJMANS",
                 ],
                 "study_url": [
                     "https://www.malariagen.net/network/where-we-work/1229-VO-GH-DADZIE",
                     "https://www.malariagen.net/network/where-we-work/1230-VO-MULTI-AYALA",
                     "https://www.malariagen.net/network/where-we-work/1231-VO-MULTI-WONDJI",
+                    "https://www.malariagen.net/network/where-we-work/1232-VO-KE-OCHOMO",
+                    "https://www.malariagen.net/network/where-we-work/1235-VO-MZ-PAAIJMANS",
                 ],
                 "terms_of_use_expiry_date": [
                     "2025-06-01",
                     "2025-06-01",
                     "2025-06-01",
+                    "2024-01-01",  # Set to the past in order to test unrestricted_use_only.
+                    "2024-01-01",  # Set to the past in order to test unrestricted_use_only. (We need at least 2 sets.)
                 ],
                 "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                     "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                     "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
                     "https://malariagen.github.io/vector-data/af1/af1.0.html#terms-of-use",
@@ -2008,6 +2043,31 @@ class Af1Simulator(AnophelesSimulator):
         )
         dst_path.parent.mkdir(parents=True, exist_ok=True)
         df_general_ds.to_csv(dst_path, index=False)
+
+        # Create surveillance flags by sample from real metadata files.
+        surv_flags_src_path = (
+            self.fixture_dir
+            / "vo_afun_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        df_surveillance_flags = pd.read_csv(surv_flags_src_path)
+        df_surveillance_flags_ds = (
+            df_surveillance_flags.set_index("sample_id").loc[samples_ds].reset_index()
+        )
+        surv_flags_dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "surveillance.flags.csv"
+        )
+        surv_flags_dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_surveillance_flags_ds.to_csv(surv_flags_dst_path, index=False)
 
         if sequence_qc:
             # Create sequence QC metadata by sample from real metadata files.
@@ -2119,6 +2179,16 @@ class Af1Simulator(AnophelesSimulator):
             release="1.0",
             release_path="v1.0",
             sample_set="1231-VO-MULTI-WONDJI-VMF00043",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1232-VO-KE-OCHOMO-VMF00044",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1235-VO-MZ-PAAIJMANS-VMF00094",
         )
 
     def init_snp_sites(self):
@@ -2364,6 +2434,326 @@ class Af1Simulator(AnophelesSimulator):
                 )
 
 
+class Adir1Simulator(AnophelesSimulator):
+    def __init__(self, fixture_dir):
+        super().__init__(
+            fixture_dir=fixture_dir,
+            bucket="vo_adir_release_master_us_central1",
+            releases=("1.0",),
+            has_aims=False,
+            has_cohorts_by_quarter=True,
+            has_sequence_qc=True,
+        )
+
+    def init_config(self):
+        self.config = {
+            "PUBLIC_RELEASES": ["1.0"],
+            "GENESET_GFF3_PATH": "reference/genome/AdirusWRAIR2/VectorBase-68_AdirusWRAIR2.gff.gz",
+            "GENOME_FASTA_PATH": "reference/genome/AdirusWRAIR2/VectorBase-56_AdirusWRAIR2_Genome.fasta",
+            "GENOME_FAI_PATH": "reference/genome/AdirusWRAIR2/VectorBase-56_AdirusWRAIR2_Genome.fasta.fai",
+            "GENOME_ZARR_PATH": "reference/genome/AdirusWRAIR2/VectorBase-56_AdirusWRAIR2_Genome.zarr",
+            "GENOME_REF_ID": "AdirusWRAIR2",
+            "GENOME_REF_NAME": "Anopheles dirus",
+            "CONTIGS": [
+                "KB672490",
+                "KB672868",
+                "KB672979",
+            ],  # Just using the three largest.
+            "SITE_ANNOTATIONS_ZARR_PATH": "reference/genome/AdirusWRAIR2/VectorBase-56_AdirusWRAIR2_Genome.SEQANNOTATION.zarr",
+            "DEFAULT_SITE_FILTERS_ANALYSIS": "sc_20250610",
+            "DEFAULT_COHORTS_ANALYSIS": "20250710",
+            "DEFAULT_DISCORDANT_READ_CALLS_ANALYSIS": "",
+            "SITE_MASK_IDS": ["dirus"],
+            "PHASING_ANALYSIS_IDS": ["dirus_noneyet"],
+        }
+        config_path = self.bucket_path / "v1.0-config.json"
+        with config_path.open(mode="w") as f:
+            json.dump(self.config, f, indent=4)
+
+    def init_public_release_manifest(self):
+        # Here we create a release manifest for an Adir1-style
+        # public release. Note this is not the exact same data
+        # as the real release.
+        release_path = self.bucket_path / "v1.0"
+        release_path.mkdir(parents=True, exist_ok=True)
+        manifest_path = release_path / "manifest.tsv"
+        manifest = pd.DataFrame(
+            {
+                "sample_set": [
+                    "1277-VO-KH-WITKOWSKI-VMF00151",
+                    "1276-AD-BD-ALAM-VMF00156",
+                ],
+                "sample_count": [20, 10],
+                "study_id": [
+                    "1277-VO-KH-WITKOWSKI",
+                    "1276-AD-BD-ALAM",
+                ],
+                "study_url": [
+                    "https://www.malariagen.net/network/where-we-work/1277-VO-KH-WITKOWSKI",
+                    "https://www.malariagen.net/network/where-we-work/1276-AD-BD-ALAM",
+                ],
+                "terms_of_use_expiry_date": [
+                    "2027-06-01",
+                    "2027-06-01",
+                ],
+                "terms_of_use_url": [
+                    "https://malariagen.github.io/vector-data/adir1/adir1.0.html#terms-of-use",
+                    "https://malariagen.github.io/vector-data/adir1/adir1.0.html#terms-of-use",
+                ],
+            }
+        )
+        manifest.to_csv(manifest_path, index=False, sep="\t")
+        self.release_manifests["1.0"] = manifest
+
+    def init_genome_sequence(self):
+        # Here we simulate a reference genome in a simple way
+        # but with much smaller contigs. The data are stored
+        # using zarr as with the real data releases.
+
+        # Use real base composition.
+        base_composition = {
+            b"a": 0.0,
+            b"c": 0.0,
+            b"g": 0.0,
+            b"t": 0.0,
+            b"n": 0.0,
+            b"A": 0.29432128333333335,
+            b"C": 0.20542065,
+            b"G": 0.20575796666666665,
+            b"T": 0.2944834333333333,
+            b"N": 1.6666666666666667e-05,
+        }
+        path = self.bucket_path / self.config["GENOME_ZARR_PATH"]
+        self.genome = simulate_genome(
+            path=path,
+            contigs=self.contigs,
+            low=80_000,
+            high=120_000,
+            base_composition=base_composition,
+        )
+        self.contig_sizes = {
+            contig: self.genome[contig].shape[0] for contig in self.contigs
+        }
+
+    def init_genome_features(self):
+        path = self.bucket_path / self.config["GENESET_GFF3_PATH"]
+        path.parent.mkdir(parents=True, exist_ok=True)
+        simulator = Gff3Simulator(
+            contig_sizes=self.contig_sizes,
+            # Af1 has a different gene type
+            gene_type="protein_coding_gene",
+            # Af1 has different attributes
+            attrs=("Note", "description"),
+        )
+        self.genome_features = simulator.simulate_gff(path=path)
+
+    def write_metadata(self, release, release_path, sample_set, sequence_qc=True):
+        # Here we take the approach of using some of the real metadata,
+        # but truncating it to the number of samples included in the
+        # simulated data resource.
+
+        # Look up the number of samples in this sample set within the
+        # simulated data resource.
+        n_samples_sim = (
+            self.release_manifests[release]
+            .set_index("sample_set")
+            .loc[sample_set]["sample_count"]
+        )
+
+        # Create general metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_adir_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        df_general = pd.read_csv(src_path)
+        df_general_ds = df_general.sample(n_samples_sim, replace=False)
+        samples_ds = df_general_ds["sample_id"].tolist()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "samples.meta.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_general_ds.to_csv(dst_path, index=False)
+
+        if sequence_qc:
+            # Create sequence QC metadata by sample from real metadata files.
+            src_path = (
+                self.fixture_dir
+                / "vo_adir_release_master_us_central1"
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats_ds = (
+                df_sequence_qc_stats.set_index("sample_id")
+                .loc[samples_ds]
+                .reset_index()
+            )
+            dst_path = (
+                self.bucket_path
+                / release_path
+                / "metadata"
+                / "curation"
+                / sample_set
+                / "sequence_qc_stats.csv"
+            )
+            dst_path.parent.mkdir(parents=True, exist_ok=True)
+            df_sequence_qc_stats_ds.to_csv(dst_path, index=False)
+
+        # Create cohorts metadata by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_adir_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "cohorts_20250710"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        df_coh = pd.read_csv(src_path)
+        df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "cohorts_20250710"
+            / sample_set
+            / "samples.cohorts.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_coh_ds.to_csv(dst_path, index=False)
+
+        # Create data catalog by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_adir_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_snp_data.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_cat_ds.to_csv(dst_path, index=False)
+
+        # Create accessions catalog by sampling from some real metadata files.
+        src_path = (
+            self.fixture_dir
+            / "vo_adir_release_master_us_central1"
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_accession_data.csv"
+        )
+        df_cat = pd.read_csv(src_path)
+        df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
+        dst_path = (
+            self.bucket_path
+            / release_path
+            / "metadata"
+            / "general"
+            / sample_set
+            / "wgs_accession_data.csv"
+        )
+        dst_path.parent.mkdir(parents=True, exist_ok=True)
+        df_cat_ds.to_csv(dst_path, index=False)
+
+    def init_metadata(self):
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1277-VO-KH-WITKOWSKI-VMF00151",
+        )
+        self.write_metadata(
+            release="1.0",
+            release_path="v1.0",
+            sample_set="1276-AD-BD-ALAM-VMF00156",
+        )
+
+    def init_snp_sites(self):
+        path = self.bucket_path / "v1.0/snp_genotypes/all/sites/"
+        self.snp_sites, self.n_snp_sites = simulate_snp_sites(
+            path=path, contigs=self.contigs, genome=self.genome
+        )
+
+    def init_site_filters(self):
+        analysis = self.config["DEFAULT_SITE_FILTERS_ANALYSIS"]
+
+        # Simulate the funestus mask.
+        mask = "dirus"
+        p_pass = 0.59
+        path = self.bucket_path / "v1.0/site_filters" / analysis / mask
+        simulate_site_filters(
+            path=path, contigs=self.contigs, p_pass=p_pass, n_sites=self.n_snp_sites
+        )
+
+    def init_snp_genotypes(self):
+        # Iterate over releases.
+        for release, manifest in self.release_manifests.items():
+            # Determine release path.
+            release_path = f"v{release}"
+
+            # Iterate over sample sets in the release.
+            for rec in manifest.itertuples():
+                sample_set = rec.sample_set
+                metadata_path = (
+                    self.bucket_path
+                    / release_path
+                    / "metadata"
+                    / "general"
+                    / sample_set
+                    / "samples.meta.csv"
+                )
+
+                # Create zarr hierarchy.
+                zarr_path = (
+                    self.bucket_path
+                    / release_path
+                    / "snp_genotypes"
+                    / "all"
+                    / sample_set
+                )
+
+                # Simulate SNP genotype data.
+                p_allele = np.array([0.981, 0.006, 0.008, 0.005])
+                p_missing = np.array([0.95, 0.05])
+                simulate_snp_genotypes(
+                    zarr_path=zarr_path,
+                    metadata_path=metadata_path,
+                    contigs=self.contigs,
+                    n_sites=self.n_snp_sites,
+                    p_allele=p_allele,
+                    p_missing=p_missing,
+                )
+
+    def init_site_annotations(self):
+        path = self.bucket_path / self.config["SITE_ANNOTATIONS_ZARR_PATH"]
+        simulate_site_annotations(path=path, genome=self.genome)
+
+
 # For the following data fixtures we will use the "session" scope
 # so that the fixture data will be created only once per test
 # session (i.e., per invocation of pytest).
@@ -2384,3 +2774,8 @@ def ag3_sim_fixture(fixture_dir):
 @pytest.fixture(scope="session")
 def af1_sim_fixture(fixture_dir):
     return Af1Simulator(fixture_dir=fixture_dir)
+
+
+@pytest.fixture(scope="session")
+def adir1_sim_fixture(fixture_dir):
+    return Adir1Simulator(fixture_dir=fixture_dir)

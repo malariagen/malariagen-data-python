@@ -135,6 +135,8 @@ class AnophelesDataResource(
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],
         inversion_tag_path: Optional[str],
+        unrestricted_use_only: Optional[bool],
+        surveillance_use_only: Optional[bool],
     ):
         super().__init__(
             url=url,
@@ -170,6 +172,8 @@ class AnophelesDataResource(
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
             inversion_tag_path=inversion_tag_path,
+            unrestricted_use_only=unrestricted_use_only,
+            surveillance_use_only=surveillance_use_only,
         )
 
     @property
@@ -556,6 +560,11 @@ class AnophelesDataResource(
 
         return sample_id, sample_set, windows, counts
 
+    @property
+    @abstractmethod
+    def _roh_hmm_cache_name(self):
+        raise NotImplementedError("Must override _roh_hmm_cache_name")
+
     @check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
@@ -576,30 +585,78 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         resolved_region: Region = parse_single_region(self, region)
-        del region
 
-        debug("compute windowed heterozygosity")
-        sample_id, sample_set, windows, counts = self._sample_count_het(
+        name = self._roh_hmm_cache_name
+
+        params = dict(
             sample=sample,
-            region=resolved_region,
-            site_mask=site_mask,
+            region=region,
             window_size=window_size,
+            site_mask=site_mask,
             sample_set=sample_set,
+            phet_roh=phet_roh,
+            phet_nonroh=phet_nonroh,
+            transition=transition,
             chunks=chunks,
             inline_array=inline_array,
         )
 
-        debug("compute runs of homozygosity")
-        df_roh = self._roh_hmm_predict(
-            windows=windows,
-            counts=counts,
-            phet_roh=phet_roh,
-            phet_nonroh=phet_nonroh,
-            transition=transition,
-            window_size=window_size,
-            sample_id=sample_id,
-            contig=resolved_region.contig,
-        )
+        del region
+
+        try:
+            # Load cached numeric data, adding str / obj data again.
+            results = self.results_cache_get(name=name, params=params)
+
+            # Reconstruct dataframe
+            df_roh = pd.DataFrame(
+                {
+                    "roh_start": results["roh_start"],
+                    "roh_stop": results["roh_stop"],
+                    "roh_length": results["roh_length"],
+                    "roh_is_marginal": results["roh_is_marginal"],
+                }
+            )
+
+            df_roh["sample_id"] = sample
+            df_roh["contig"] = resolved_region.contig
+
+        except CacheMiss:
+            debug("compute windowed heterozygosity")
+            sample_id, sample_set, windows, counts = self._sample_count_het(
+                sample=sample,
+                region=resolved_region,
+                site_mask=site_mask,
+                window_size=window_size,
+                sample_set=sample_set,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+
+            debug("compute runs of homozygosity")
+            df_roh = self._roh_hmm_predict(
+                windows=windows,
+                counts=counts,
+                phet_roh=phet_roh,
+                phet_nonroh=phet_nonroh,
+                transition=transition,
+                window_size=window_size,
+                sample_id=sample_id,
+                contig=resolved_region.contig,
+            )
+
+            # Specify numeric columns to save (saving obj - sample ID and contig - breaks the save.
+            columns_to_save = [
+                "roh_start",
+                "roh_stop",
+                "roh_length",
+                "roh_is_marginal",
+            ]
+
+            self.results_cache_set(
+                name=name,
+                params=params,
+                results={col: df_roh[col].to_numpy() for col in columns_to_save},
+            )
 
         return df_roh
 
@@ -1308,7 +1365,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = self._ihs_gwss_cache_name
+        name = "roh"
 
         params = dict(
             contig=contig,
@@ -1330,7 +1387,7 @@ class AnophelesDataResource(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -1856,8 +1913,8 @@ class AnophelesDataResource(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
+            cohort1_query=self._prep_sample_query_param(sample_query=cohort1_query),
+            cohort2_query=self._prep_sample_query_param(sample_query=cohort2_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
