@@ -10,6 +10,8 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data import adir1 as _adir1
+
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
 from malariagen_data.util import compare_series_like
 from .test_frq import (
@@ -66,6 +68,24 @@ def af1_sim_api(af1_sim_fixture):
     )
 
 
+@pytest.fixture
+def adir1_sim_api(adir1_sim_fixture):
+    return AnophelesSnpFrequencyAnalysis(
+        url=adir1_sim_fixture.url,
+        public_url=adir1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="dirus",
+        results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_adir1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -84,6 +104,10 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
 
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+
+
+def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
+    return adir1_sim_fixture, adir1_sim_api
 
 
 expected_alleles = list("ACGT")
