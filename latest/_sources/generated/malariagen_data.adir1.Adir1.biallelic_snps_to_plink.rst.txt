@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.biallelic\_snps\_to\_plink
+=======================================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.biallelic_snps_to_plink

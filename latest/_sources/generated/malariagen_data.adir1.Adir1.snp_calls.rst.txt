@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.snp\_calls
+=======================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.snp_calls
