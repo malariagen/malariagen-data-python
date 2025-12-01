@@ -30,7 +30,7 @@ from ..util import (
     _parse_multi_region,
     _parse_single_region,
     _simple_xarray_concat,
-    trim_alleles,
+    _trim_alleles,
     true_runs,
 )
 from . import base_params
@@ -1786,7 +1786,7 @@ class AnophelesSnpData(
 
         # Remap alleles to squeeze out unobserved alleles.
         ac_bi = ac[loc_bi]
-        allele_mapping = trim_alleles(ac_bi)
+        allele_mapping = _trim_alleles(ac_bi)
 
         # Set up SNP calls.
         ds = self.snp_calls(

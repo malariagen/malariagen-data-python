@@ -1381,7 +1381,7 @@ def _multiallelic_diplotype_mean_euclidean(x, y):
 
 
 @numba.njit
-def trim_alleles(ac):
+def _trim_alleles(ac):
     """Remap allele indices to trim out unobserved alleles.
 
     The idea here is that our SNP data includes alleles which
