@@ -74,7 +74,7 @@ def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by
     return df_samples
 
 
-def build_cohorts_from_sample_grouping(
+def _build_cohorts_from_sample_grouping(
     *, group_samples_by_cohort, min_cohort_size, taxon_by
 ):
     # Build cohorts dataframe.

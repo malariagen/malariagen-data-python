@@ -13,7 +13,7 @@ from ..util import (
 from .hap_data import AnophelesHapData
 from .frq_base import (
     prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
+    _build_cohorts_from_sample_grouping,
     _add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
@@ -174,7 +174,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
         # Build cohorts dataframe.
-        df_cohorts = build_cohorts_from_sample_grouping(
+        df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
             taxon_by=taxon_by,

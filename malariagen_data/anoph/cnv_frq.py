@@ -12,7 +12,7 @@ from numpydoc_decorator import doc  # type: ignore
 from . import base_params, cnv_params, frq_params
 from .frq_base import (
     prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
+    _build_cohorts_from_sample_grouping,
     _add_frequency_ci,
 )
 from ..util import (
@@ -533,7 +533,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
         debug("build cohorts dataframe")
-        df_cohorts = build_cohorts_from_sample_grouping(
+        df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
             taxon_by=taxon_by,
