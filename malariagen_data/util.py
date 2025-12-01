@@ -1580,7 +1580,7 @@ def haplotype_frequencies(h):
     return freqs, counts, nobs
 
 
-def distributed_client():
+def _distributed_client():
     from distributed import get_client
 
     try:

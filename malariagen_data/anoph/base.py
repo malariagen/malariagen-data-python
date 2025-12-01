@@ -35,7 +35,7 @@ from ..util import (
     LoggingHelper,
     _check_colab_location,
     check_types,
-    distributed_client,
+    _distributed_client,
     get_gcp_region,
     hash_params,
     init_filesystem,
@@ -199,7 +199,7 @@ class AnophelesBase:
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
         if show_progress:
-            if distributed_client():
+            if _distributed_client():
                 # Cannot easily show progress, fall back to spinner.
                 return self._spinner(desc=desc)
             else:
