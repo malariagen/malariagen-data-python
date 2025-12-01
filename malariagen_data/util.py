@@ -1059,7 +1059,7 @@ def plotly_discrete_legend(
     return fig
 
 
-def get_gcp_region(details):
+def _get_gcp_region(details):
     """Attempt to determine the current GCP region based on
     response from ipinfo."""
 

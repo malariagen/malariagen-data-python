@@ -36,7 +36,7 @@ from ..util import (
     _check_colab_location,
     check_types,
     _distributed_client,
-    get_gcp_region,
+    _get_gcp_region,
     hash_params,
     init_filesystem,
 )
@@ -104,7 +104,7 @@ class AnophelesBase:
                 pass
 
         # Determine cloud location details.
-        self._gcp_region = get_gcp_region(self._client_details)
+        self._gcp_region = _get_gcp_region(self._client_details)
 
         # Check colab location.
         _check_colab_location(self._gcp_region)
