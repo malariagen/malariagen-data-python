@@ -6,9 +6,11 @@ import plotly.graph_objects as go  # type: ignore
 import pytest
 from pytest_cases import parametrize_with_cases
 
+
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
+
 from malariagen_data.anoph.pca import AnophelesPca
 from malariagen_data.anoph import pca_params
 
