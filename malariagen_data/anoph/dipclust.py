@@ -269,6 +269,7 @@ class AnophelesDipClustAnalysis(
         chunks,
         inline_array,
     ):
+        metric = None  # To prevent using before assignment (Pylint).
         if distance_metric == "cityblock":
             metric = multiallelic_diplotype_mean_cityblock
         elif distance_metric == "euclidean":

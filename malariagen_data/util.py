@@ -24,7 +24,6 @@ import dask.array as da
 from dask.utils import parse_bytes
 import numba  # type: ignore
 import numpy as np
-import pandas
 import pandas as pd
 import plotly.express as px  # type: ignore
 import typeguard
@@ -77,7 +76,7 @@ gff3_cols = (
 
 def read_gff3(buf, compression="gzip"):
     # read as dataframe
-    df = pandas.read_csv(
+    df = pd.read_csv(
         buf,
         sep="\t",
         comment="#",
@@ -345,7 +344,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
         # apply the indexing operation
         data = a.data
         if isinstance(data, da.Array):
-            v = da_compress(
+            v = _da_compress(
                 indexer=indexer,
                 data=a.data,
                 axis=axis,
@@ -357,7 +356,7 @@ def _dask_compress_dataarray(a, indexer, indexer_computed, dim):
     return v
 
 
-def da_compress(
+def _da_compress(
     indexer: da.Array | np.ndarray,
     data: da.Array,
     axis: int,

@@ -19,7 +19,7 @@ from ..util import (
     Region,
     _apply_allele_mapping,
     check_types,
-    da_compress,
+    _da_compress,
     da_concat,
     da_from_zarr,
     dask_apply_allele_mapping,
@@ -400,7 +400,7 @@ class AnophelesSnpData(
                 chunks=chunks,
                 inline_array=inline_array,
             )
-            ret = da_compress(loc_sites, ret, axis=0)
+            ret = _da_compress(loc_sites, ret, axis=0)
 
         return ret
 
@@ -515,7 +515,7 @@ class AnophelesSnpData(
                 region=prepared_regions,
                 mask=prepared_site_mask,
             )
-            d = da_compress(loc_sites, d, axis=0)
+            d = _da_compress(loc_sites, d, axis=0)
 
         # Apply the sample_query, if there is one.
         # Note: this might have been internally modified, e.g. `is_surveillance == True`.
