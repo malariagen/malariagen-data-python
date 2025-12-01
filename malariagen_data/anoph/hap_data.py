@@ -18,7 +18,7 @@ from ..util import (
     _init_zarr_store,
     _locate_region,
     _parse_multi_region,
-    simple_xarray_concat,
+    _simple_xarray_concat,
 )
 from . import base_params, hap_params
 from .genome_features import AnophelesGenomeFeaturesData
@@ -246,7 +246,7 @@ class AnophelesHapData(
                     dsc["variant_position"] = dsc["variant_position"] + offset
                 datasets.append(dsc)
                 offset += self.genome_sequence(region=c).shape[0]
-            ret = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            ret = _simple_xarray_concat(datasets, dim=DIM_VARIANT)
             return ret
 
         # Handle contig in the reference genome.
@@ -382,7 +382,7 @@ class AnophelesHapData(
                     )
 
                 # Concatenate data from multiple sample sets.
-                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 # Handle region.
                 if r.start or r.end:
@@ -393,7 +393,7 @@ class AnophelesHapData(
                 lx.append(x)
 
             # Concatenate data from multiple regions.
-            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Handle sample query.
         if sample_query_prepped is not None:

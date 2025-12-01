@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots as go_make_subplots  # type: ignore
 
 from malariagen_data.anoph import plotly_params
 
-from ..util import DIM_SAMPLE, check_types, _init_zarr_store, simple_xarray_concat
+from ..util import DIM_SAMPLE, check_types, _init_zarr_store, _simple_xarray_concat
 from . import aim_params, base_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -161,7 +161,7 @@ class AnophelesAimData(
             aim_calls_datasets.append(aim_calls_dataset)
 
         # Concatenate data from multiple sample sets.
-        ds = simple_xarray_concat(aim_calls_datasets, dim=DIM_SAMPLE)
+        ds = _simple_xarray_concat(aim_calls_datasets, dim=DIM_SAMPLE)
 
         # If there's a sample query...
         if prepared_sample_query is not None:

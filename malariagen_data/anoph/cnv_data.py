@@ -16,7 +16,7 @@ from ..util import (
     _init_zarr_store,
     _parse_multi_region,
     _parse_single_region,
-    simple_xarray_concat,
+    _simple_xarray_concat,
 )
 from . import base_params, cnv_params, gplt_params
 from .genome_features import AnophelesGenomeFeaturesData
@@ -230,7 +230,7 @@ class AnophelesCnvData(
                     raise ValueError("No data found for requested sample sets.")
 
                 debug("concatenate data from multiple sample sets")
-                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 debug("handle region, do this only once - optimisation")
                 if r.start is not None or r.end is not None:
@@ -245,7 +245,7 @@ class AnophelesCnvData(
                 lx.append(x)
 
             debug("concatenate data from multiple regions")
-            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
             debug("handle sample query")
             # If there's a sample query...
@@ -448,7 +448,7 @@ class AnophelesCnvData(
                 x = x.isel(variants=loc_region)
 
             lx.append(x)
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Filter the samples using this default sample query.
         # For example, this might filter out non-surveillance samples.
@@ -640,10 +640,10 @@ class AnophelesCnvData(
                     # Bail out, no data for given sample sets and analysis.
                     raise ValueError("No data found for requested sample sets.")
 
-            x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+            x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
             lx.append(x)
 
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         debug("handle sample query")
 

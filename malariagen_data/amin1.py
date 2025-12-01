@@ -16,7 +16,7 @@ from .util import (
     _locate_region,
     _read_gff3,
     _resolve_region,
-    simple_xarray_concat,
+    _simple_xarray_concat,
     unpack_gff3_attributes,
 )
 
@@ -267,7 +267,7 @@ class Amin1:
             )
             for r in region
         ]
-        ds = simple_xarray_concat(
+        ds = _simple_xarray_concat(
             datasets,
             dim=DIM_VARIANT,
         )

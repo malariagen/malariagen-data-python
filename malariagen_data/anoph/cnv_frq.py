@@ -21,7 +21,7 @@ from ..util import (
     Region,
     _parse_multi_region,
     _region_str,
-    simple_xarray_concat,
+    _simple_xarray_concat,
 )
 from .cnv_data import AnophelesCnvData
 from .frq_base import AnophelesFrequencyAnalysis
@@ -60,7 +60,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         regions: List[Region] = _parse_multi_region(self, region)
         del region
 
-        ds = simple_xarray_concat(
+        ds = _simple_xarray_concat(
             [
                 self._gene_cnv(
                     region=r,
@@ -450,7 +450,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         regions: List[Region] = _parse_multi_region(self, region)
         del region
 
-        ds = simple_xarray_concat(
+        ds = _simple_xarray_concat(
             [
                 self._gene_cnv_frequencies_advanced(
                     region=r,

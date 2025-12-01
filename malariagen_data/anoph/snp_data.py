@@ -29,7 +29,7 @@ from ..util import (
     _locate_region,
     _parse_multi_region,
     _parse_single_region,
-    simple_xarray_concat,
+    _simple_xarray_concat,
     trim_alleles,
     true_runs,
 )
@@ -582,7 +582,7 @@ class AnophelesSnpData(
                     dsc["variant_position"] = dsc["variant_position"] + offset
                 offset += self.genome_sequence(region=c).shape[0]
                 datasets.append(dsc)
-            ret = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            ret = _simple_xarray_concat(datasets, dim=DIM_VARIANT)
             return ret
 
         else:
@@ -666,7 +666,7 @@ class AnophelesSnpData(
             lx.append(x)
 
         # Concatenate data from multiple regions.
-        ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+        ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         # Apply site filters.
         if site_mask_prepped is not None:
@@ -950,7 +950,7 @@ class AnophelesSnpData(
                 )
                 for c in contigs
             ]
-            ds = simple_xarray_concat(datasets, dim=DIM_VARIANT)
+            ds = _simple_xarray_concat(datasets, dim=DIM_VARIANT)
             return ds
 
         # Handle contig in the reference genome.
@@ -1122,7 +1122,7 @@ class AnophelesSnpData(
                     ly.append(y)
 
                 # Concatenate data from multiple sample sets.
-                x = simple_xarray_concat(ly, dim=DIM_SAMPLE)
+                x = _simple_xarray_concat(ly, dim=DIM_SAMPLE)
 
                 # Add variants variables.
                 v = self._snp_variants_for_contig(
@@ -1151,7 +1151,7 @@ class AnophelesSnpData(
                 lx.append(x)
 
             # Concatenate data from multiple regions.
-            ds = simple_xarray_concat(lx, dim=DIM_VARIANT)
+            ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
 
         if site_mask is not None:
             with self._spinner(desc="Apply site filters"):

@@ -782,7 +782,7 @@ def _simple_xarray_concat_arrays(
     return out
 
 
-def simple_xarray_concat(
+def _simple_xarray_concat(
     datasets: List[xr.Dataset], dim: str, attrs: Optional[Mapping] = None
 ) -> xr.Dataset:
     # Access the first dataset, this will be used as the template for
