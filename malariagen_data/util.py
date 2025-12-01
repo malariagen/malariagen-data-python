@@ -43,7 +43,7 @@ DIM_SAMPLE = "samples"
 DIM_PLOIDY = "ploidy"
 
 
-def gff3_parse_attributes(attributes_string):
+def _gff3_parse_attributes(attributes_string):
     """Parse a string of GFF3 attributes ('key=value' pairs delimited by ';')
     and return a dictionary."""
 
@@ -86,7 +86,7 @@ def read_gff3(buf, compression="gzip"):
     )
 
     # parse attributes
-    df["attributes"] = df["attributes"].apply(gff3_parse_attributes)
+    df["attributes"] = df["attributes"].apply(_gff3_parse_attributes)
 
     return df
 
