@@ -2880,7 +2880,7 @@ class Amin1Simulator(AnophelesSimulator):
         # Create general metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_amin1_release_master_us_central1"
+            / "vo_amin_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -2905,7 +2905,7 @@ class Amin1Simulator(AnophelesSimulator):
             # Create sequence QC metadata by sample from real metadata files.
             src_path = (
                 self.fixture_dir
-                / "vo_amin1_release_master_us_central1"
+                / "vo_amin_release_master_us_central1"
                 / release_path
                 / "metadata"
                 / "curation"
@@ -2932,10 +2932,10 @@ class Amin1Simulator(AnophelesSimulator):
         # Create cohorts metadata by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_amin1_release_master_us_central1"
+            / "vo_amin_release_master_us_central1"
             / release_path
             / "metadata"
-            / "cohorts_20250710"
+            / "cohorts_20251019"
             / sample_set
             / "samples.cohorts.csv"
         )
@@ -2945,7 +2945,7 @@ class Amin1Simulator(AnophelesSimulator):
             self.bucket_path
             / release_path
             / "metadata"
-            / "cohorts_20250710"
+            / "cohorts_20251019"
             / sample_set
             / "samples.cohorts.csv"
         )
@@ -2955,7 +2955,7 @@ class Amin1Simulator(AnophelesSimulator):
         # Create data catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_amin1_release_master_us_central1"
+            / "vo_amin_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"
@@ -2978,7 +2978,7 @@ class Amin1Simulator(AnophelesSimulator):
         # Create accessions catalog by sampling from some real metadata files.
         src_path = (
             self.fixture_dir
-            / "vo_amin1_release_master_us_central1"
+            / "vo_amin_release_master_us_central1"
             / release_path
             / "metadata"
             / "general"

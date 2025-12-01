@@ -151,6 +151,7 @@ def amin1_sim_api(amin1_sim_fixture):
     )
 
 
+@pytest.fixture
 def af1_sim_unrestricted_use_only_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
