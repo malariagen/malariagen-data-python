@@ -855,7 +855,7 @@ def value_error(
     raise ValueError(message)
 
 
-def hash_params(params):
+def _hash_params(params):
     """Helper function to hash function parameters."""
     s = json.dumps(params, sort_keys=True, indent=4)
     h = hashlib.md5(s.encode()).hexdigest()

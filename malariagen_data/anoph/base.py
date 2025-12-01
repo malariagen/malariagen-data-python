@@ -37,7 +37,7 @@ from ..util import (
     check_types,
     _distributed_client,
     _get_gcp_region,
-    hash_params,
+    _hash_params,
     init_filesystem,
 )
 from . import base_params
@@ -989,7 +989,7 @@ class AnophelesBase:
             raise CacheMiss
         params = params.copy()
         self._results_cache_add_analysis_params(params)
-        cache_key, _ = hash_params(params)
+        cache_key, _ = _hash_params(params)
         cache_path = self._results_cache / name / cache_key
 
         # Read zipped zarr format.
@@ -1015,7 +1015,7 @@ class AnophelesBase:
         # Set up parameters for the results to be saved.
         params = params.copy()
         self._results_cache_add_analysis_params(params)
-        cache_key, params_json = hash_params(params)
+        cache_key, params_json = _hash_params(params)
 
         # Determine storage path.
         cache_path = self._results_cache / name / cache_key
