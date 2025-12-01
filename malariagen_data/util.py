@@ -714,7 +714,7 @@ def _locate_region(region: Region, pos: np.ndarray) -> slice:
     return loc_region
 
 
-def region_str(region: List[Region]) -> str:
+def _region_str(region: List[Region]) -> str:
     """Convert a region to a string representation.
 
     Parameters

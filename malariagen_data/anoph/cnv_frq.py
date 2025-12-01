@@ -20,7 +20,7 @@ from ..util import (
     _pandas_apply,
     Region,
     _parse_multi_region,
-    region_str,
+    _region_str,
     simple_xarray_concat,
 )
 from .cnv_data import AnophelesCnvData
@@ -237,7 +237,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         )
 
         debug("add metadata")
-        title = f"Gene CNV frequencies ({region_str(regions)})"
+        title = f"Gene CNV frequencies ({_region_str(regions)})"
         df.attrs["title"] = title
 
         return df
@@ -474,7 +474,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             dim="variants",
         )
 
-        title = f"Gene CNV frequencies ({region_str(regions)})"
+        title = f"Gene CNV frequencies ({_region_str(regions)})"
         ds.attrs["title"] = title
 
         return ds
