@@ -1214,7 +1214,7 @@ def square_to_condensed(i, j, n):
 
 
 @numba.njit(parallel=True)
-def multiallelic_diplotype_pdist(X, metric):
+def _multiallelic_diplotype_pdist(X, metric):
     """Optimised implementation of pairwise distance between diplotypes.
 
     N.B., here we assume the array X provides diplotypes as genotype allele

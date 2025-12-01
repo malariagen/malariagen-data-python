@@ -9,7 +9,7 @@ import pandas as pd  # type: ignore
 from ..util import (
     CacheMiss,
     check_types,
-    multiallelic_diplotype_pdist,
+    _multiallelic_diplotype_pdist,
     _multiallelic_diplotype_mean_sqeuclidean,
     _multiallelic_diplotype_mean_cityblock,
 )
@@ -303,7 +303,7 @@ class AnophelesDipClustAnalysis(
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
-            dist = multiallelic_diplotype_pdist(X, metric=metric)
+            dist = _multiallelic_diplotype_pdist(X, metric=metric)
 
         # Extract IDs of samples. Convert to "U" dtype here
         # to allow these to be saved to the results cache.
