@@ -6,7 +6,7 @@ import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import CacheMiss, check_types, _pdist_abs_hamming
-from ..plotly_dendrogram import plot_dendrogram
+from ..plotly_dendrogram import _plot_dendrogram
 from . import (
     base_params,
     plotly_params,
@@ -145,7 +145,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig, _ = plot_dendrogram(
+            fig, _ = _plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,

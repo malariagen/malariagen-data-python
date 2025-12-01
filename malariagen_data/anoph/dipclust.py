@@ -13,7 +13,7 @@ from ..util import (
     _multiallelic_diplotype_mean_sqeuclidean,
     _multiallelic_diplotype_mean_cityblock,
 )
-from ..plotly_dendrogram import plot_dendrogram
+from ..plotly_dendrogram import _plot_dendrogram
 from . import (
     base_params,
     plotly_params,
@@ -157,7 +157,7 @@ class AnophelesDipClustAnalysis(
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig, leaf_data = plot_dendrogram(
+            fig, leaf_data = _plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,
