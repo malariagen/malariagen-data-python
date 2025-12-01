@@ -1299,7 +1299,7 @@ def _multiallelic_diplotype_mean_cityblock(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_sqeuclidean(x, y):
+def _multiallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     n_alleles = x.shape[1]
     distance = np.float32(0)
@@ -1345,7 +1345,7 @@ def _multiallelic_diplotype_mean_sqeuclidean(x, y):
 
     """
 
-    distance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    distance, n_sites_called = _multiallelic_diplotype_sqeuclidean(x, y)
 
     # Compute the mean distance over sites with called genotypes.
     if n_sites_called > 0:
@@ -1368,7 +1368,7 @@ def _multiallelic_diplotype_mean_euclidean(x, y):
 
     """
 
-    sqdistance, n_sites_called = multiallelic_diplotype_sqeuclidean(x, y)
+    sqdistance, n_sites_called = _multiallelic_diplotype_sqeuclidean(x, y)
     distance = np.sqrt(sqdistance)
 
     # Compute the mean distance over sites with called genotypes.
