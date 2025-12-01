@@ -1482,7 +1482,7 @@ def _dask_apply_allele_mapping(v, mapping, max_allele):
     return out
 
 
-def genotype_array_map_alleles(gt, mapping):
+def _genotype_array_map_alleles(gt, mapping):
     # Transform genotype calls via an allele mapping.
     # N.B., scikit-allel does not handle empty blocks well, so we
     # include some extra logic to handle that better.
@@ -1513,7 +1513,7 @@ def _dask_genotype_array_map_alleles(gt, mapping):
     assert gt.shape[0] == mapping.shape[0]
     mapping = da.from_array(mapping, chunks=(gt.chunks[0], -1))
     gt_out = da.map_blocks(
-        genotype_array_map_alleles,
+        _genotype_array_map_alleles,
         gt,
         mapping[:, None, :],
         chunks=gt.chunks,
