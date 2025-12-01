@@ -688,7 +688,7 @@ def resolve_region(
         return parse_single_region(resource, region)
 
 
-def locate_region(region: Region, pos: np.ndarray) -> slice:
+def _locate_region(region: Region, pos: np.ndarray) -> slice:
     """Get array slice and a parsed genomic region.
 
     Parameters

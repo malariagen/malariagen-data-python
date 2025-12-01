@@ -4,7 +4,7 @@ import pytest
 from numpy.testing import assert_allclose
 
 from malariagen_data import Ag3, Region
-from malariagen_data.util import locate_region, resolve_region
+from malariagen_data.util import _locate_region, resolve_region
 import xarray as xr
 
 
@@ -67,7 +67,7 @@ def test_locate_region(region_raw):
     region = resolve_region(ag3, region_raw)
     pos = ag3.snp_sites(region=region.contig, field="POS")
     ref = ag3.snp_sites(region=region.contig, field="REF")
-    loc_region = locate_region(region, pos)
+    loc_region = _locate_region(region, pos)
 
     # check types
     assert isinstance(loc_region, slice)

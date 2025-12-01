@@ -13,7 +13,7 @@ from .util import (
     _dask_compress_dataset,
     _init_filesystem,
     _init_zarr_store,
-    locate_region,
+    _locate_region,
     read_gff3,
     resolve_region,
     simple_xarray_concat,
@@ -223,7 +223,7 @@ class Amin1:
 
         # deal with region
         if region.start or region.end:
-            loc_region = locate_region(region, pos_z)
+            loc_region = _locate_region(region, pos_z)
             ds = ds.isel(variants=loc_region)
 
         return ds

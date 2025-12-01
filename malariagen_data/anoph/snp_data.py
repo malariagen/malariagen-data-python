@@ -26,7 +26,7 @@ from ..util import (
     _dask_compress_dataset,
     _dask_genotype_array_map_alleles,
     _init_zarr_store,
-    locate_region,
+    _locate_region,
     parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
@@ -248,7 +248,7 @@ class AnophelesSnpData(
                 inline_array=inline_array,
                 chunks=chunks,
             )
-            loc_region = locate_region(region, np.asarray(pos))
+            loc_region = _locate_region(region, np.asarray(pos))
             d = d[loc_region]
         return d
 
@@ -351,7 +351,7 @@ class AnophelesSnpData(
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-            loc_region = locate_region(region, np.asarray(pos))
+            loc_region = _locate_region(region, np.asarray(pos))
             ret = ret[loc_region]
 
         return ret
@@ -501,7 +501,7 @@ class AnophelesSnpData(
                         inline_array=inline_array,
                         chunks=chunks,
                     )
-                    loc_region = locate_region(r, np.asarray(pos))
+                    loc_region = _locate_region(r, np.asarray(pos))
                     x = x[loc_region]
 
                 lx.append(x)
@@ -660,7 +660,7 @@ class AnophelesSnpData(
             # Handle region.
             if r.start or r.end:
                 pos = x["variant_position"].values
-                loc_region = locate_region(r, pos)
+                loc_region = _locate_region(r, pos)
                 x = x.isel(variants=loc_region)
 
             lx.append(x)
@@ -1133,7 +1133,7 @@ class AnophelesSnpData(
                 # Handle region, do this only once - optimisation.
                 if r.start or r.end:
                     pos = x["variant_position"].values
-                    loc_region = locate_region(r, pos)
+                    loc_region = _locate_region(r, pos)
                     x = x.isel(variants=loc_region)
 
                 # Handle site class.

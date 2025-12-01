@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from malariagen_data import Adir1, Region
-from malariagen_data.util import locate_region, resolve_region
+from malariagen_data.util import _locate_region, resolve_region
 
 
 def setup_adir1(url="simplecache::gs://vo_adir_release_master_us_central1/", **kwargs):
@@ -43,7 +43,7 @@ def test_locate_region(region_raw):
     region = resolve_region(adir1, region_raw)
     pos = adir1.snp_sites(region=region.contig, field="POS")
     ref = adir1.snp_sites(region=region.contig, field="REF")
-    loc_region = locate_region(region, pos)
+    loc_region = _locate_region(region, pos)
 
     # check types
     assert isinstance(loc_region, slice)

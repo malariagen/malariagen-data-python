@@ -16,7 +16,7 @@ from ..util import (
     _da_concat,
     _da_from_zarr,
     _init_zarr_store,
-    locate_region,
+    _locate_region,
     parse_multi_region,
     simple_xarray_concat,
 )
@@ -154,7 +154,7 @@ class AnophelesHapData(
                     inline_array=inline_array,
                     chunks=chunks,
                 )
-            loc_region = locate_region(region, np.asarray(pos))
+            loc_region = _locate_region(region, np.asarray(pos))
             ret = ret[loc_region]
 
         return ret
@@ -387,7 +387,7 @@ class AnophelesHapData(
                 # Handle region.
                 if r.start or r.end:
                     pos = x["variant_position"].values
-                    loc_region = locate_region(r, pos)
+                    loc_region = _locate_region(r, pos)
                     x = x.isel(variants=loc_region)
 
                 lx.append(x)
