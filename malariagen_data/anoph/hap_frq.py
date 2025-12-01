@@ -8,7 +8,7 @@ from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     check_types,
-    haplotype_frequencies,
+    _haplotype_frequencies,
 )
 from .hap_data import AnophelesHapData
 from .frq_base import (
@@ -88,7 +88,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
 
         # List all haplotypes
         gt_hap = gt.to_haplotypes()
-        f_all, _, _ = haplotype_frequencies(gt_hap)
+        f_all, _, _ = _haplotype_frequencies(gt_hap)
 
         # Count haplotypes.
         freq_cols = dict()
@@ -103,7 +103,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             assert n_samples >= min_cohort_size
             gt_coh = gt.compress(loc_coh, axis=1)
             gt_hap = gt_coh.to_haplotypes()
-            f, _, _ = haplotype_frequencies(gt_hap)
+            f, _, _ = _haplotype_frequencies(gt_hap)
             # The frequencies of the observed haplotypes are then updated
             hap_dict.update(f)
             freq_cols["frq_" + coh] = list(hap_dict.values())
@@ -201,7 +201,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
 
         # List all haplotypes
         gt_hap = gt.to_haplotypes()
-        f_all, _, _ = haplotype_frequencies(gt_hap)
+        f_all, _, _ = _haplotype_frequencies(gt_hap)
 
         # Count haplotypes.
         hap_freq: dict[np.int64, float] = dict()
@@ -226,7 +226,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             sample_indices = group_samples_by_cohort.indices[cohort_key]
             gt_coh = gt.take(sample_indices, axis=1)
             gt_hap = gt_coh.to_haplotypes()
-            f, c, o = haplotype_frequencies(gt_hap)
+            f, c, o = _haplotype_frequencies(gt_hap)
             # The frequencies and counts of the observed haplotypes are then updated, so are the nobs but the values should actually stay the same
             hap_freq.update(f)
             hap_count.update(c)

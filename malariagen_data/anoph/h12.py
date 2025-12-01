@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss, haplotype_frequencies
+from ..util import check_types, CacheMiss, _haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -843,7 +843,7 @@ def _garud_h12(ht):
     """Compute Garud's H12."""
 
     # Compute haplotype frequencies.
-    frq_counter, _, _ = haplotype_frequencies(ht)
+    frq_counter, _, _ = _haplotype_frequencies(ht)
 
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]

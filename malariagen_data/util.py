@@ -1568,7 +1568,7 @@ def hash_columns(x):
     return out
 
 
-def haplotype_frequencies(h):
+def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
     haplotype hash values to frequencies."""
     n = h.shape[1]
