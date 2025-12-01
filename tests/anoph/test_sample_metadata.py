@@ -8,11 +8,15 @@ import plotly.graph_objects as go  # type: ignore
 import pytest
 from pandas.testing import assert_frame_equal
 from pytest_cases import parametrize_with_cases, case
+from pytest_cases import filters as ft
+
 from typeguard import suppress_type_checks
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
+from malariagen_data import amin1 as _amin1
+
 from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
 
 
@@ -177,6 +181,19 @@ def af1_sim_unrestricted_surveillance_use_only_api(af1_sim_fixture):
 
 
 @pytest.fixture
+def amin1_sim_api(amin1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=amin1_sim_fixture.url,
+        public_url=amin1_sim_fixture.url,
+        config_path=_amin1.CONFIG_PATH,
+        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
+        major_version_path=_amin1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_amin1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
 def missing_metadata_api(fixture_dir):
     # In this fixture, one of the sample sets (AG1000G-BF-A) has missing files
     # for sequence QC, AIM and cohorts metadata.
@@ -198,19 +215,24 @@ def missing_metadata_api(fixture_dir):
     )
 
 
-@case
+@case(tags="af1")
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
-@case
+@case(tags="af1")
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
 
 
-@case
+@case(tags="adir1")
 def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
+
+
+@case(tags="amin1")
+def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
+    return amin1_sim_fixture, amin1_sim_api
 
 
 @case
@@ -312,7 +334,9 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_general_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -394,7 +418,9 @@ def test_sequence_qc_metadata_with_single_sample_set(
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_sequence_qc_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -615,7 +641,9 @@ def test_cohorts_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_cohorts_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -723,7 +751,9 @@ def test_sample_metadata_with_single_sample_set(fixture, api: AnophelesSampleMet
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_sample_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -1136,7 +1166,9 @@ def test_plot_samples_bar(fixture, api):
     assert isinstance(fig, go.Figure)
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.)
 def test_plot_sample_location_mapbox(fixture, api):
     # Get test sample_sets.
     df_sample_sets = api.sample_sets().set_index("sample_set")
@@ -1151,7 +1183,9 @@ def test_plot_sample_location_mapbox(fixture, api):
     assert isinstance(fig, go.Figure)
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_plot_sample_location_geo(fixture, api):
     # Get test sample_sets.
     df_sample_sets = api.sample_sets().set_index("sample_set")
@@ -1215,7 +1249,9 @@ def test_lookup_sample(fixture, api):
     assert sorted(list(sample_rec_by_sample_loc_set.index)) == sorted_expected_fields
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is no sex call data.
 def test_setup_sample_symbol(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()
@@ -1248,7 +1284,9 @@ def test_setup_sample_symbol(fixture, api):
         api._setup_sample_symbol(data=data, symbol="foo")
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is no sex call data.
 def test_setup_sample_colors_plotly(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()
