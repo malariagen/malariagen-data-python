@@ -82,8 +82,8 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
 
-# def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
-#    return amin1_sim_fixture, amin1_sim_api
+def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
+    return amin1_sim_fixture, amin1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")
