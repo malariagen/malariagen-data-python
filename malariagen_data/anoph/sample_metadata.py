@@ -708,7 +708,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -1061,7 +1061,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 

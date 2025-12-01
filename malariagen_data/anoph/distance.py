@@ -116,7 +116,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         name = "biallelic_diplotype_pairwise_distances"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -278,7 +278,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         name = "njt_v1"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -469,7 +469,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> plotly_params.figure:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 

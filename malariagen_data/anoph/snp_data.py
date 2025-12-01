@@ -457,7 +457,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -1035,7 +1035,7 @@ class AnophelesSnpData(
         random_seed: base_params.random_seed = 42,
     ) -> xr.Dataset:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -1369,7 +1369,7 @@ class AnophelesSnpData(
         name = "snp_allele_counts_v2"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -1760,7 +1760,7 @@ class AnophelesSnpData(
         thin_offset: base_params.thin_offset = 0,
     ) -> xr.Dataset:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -1926,7 +1926,7 @@ class AnophelesSnpData(
         name = "biallelic_diplotypes"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 

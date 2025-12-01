@@ -83,7 +83,7 @@ class AnophelesPca(
         name = "pca_v5"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
