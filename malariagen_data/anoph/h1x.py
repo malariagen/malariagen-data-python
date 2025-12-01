@@ -78,7 +78,7 @@ class AnophelesH1XAnalysis(
 
         with self._spinner(desc="Compute H1X"):
             # Run H1X scan.
-            h1x = moving_h1x(ht1, ht2, size=window_size)
+            h1x = _moving_h1x(ht1, ht2, size=window_size)
 
             # Compute window midpoints.
             pos = ds1["variant_position"].values
@@ -382,7 +382,7 @@ def _h1x(ha, hb):
     return np.sum(list(jf.values()))
 
 
-def moving_h1x(ha, hb, size, start=0, stop=None, step=None):
+def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     """Compute H1X in moving windows.
 
     Parameters
