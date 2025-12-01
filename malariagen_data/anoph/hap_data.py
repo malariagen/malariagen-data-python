@@ -13,7 +13,7 @@ from ..util import (
     DIM_VARIANT,
     Region,
     check_types,
-    da_concat,
+    _da_concat,
     da_from_zarr,
     init_zarr_store,
     locate_region,
@@ -180,7 +180,7 @@ class AnophelesHapData(
         del region
 
         # Access SNP sites and concatenate over regions.
-        ret = da_concat(
+        ret = _da_concat(
             [
                 self._haplotype_sites_for_region(
                     region=r,

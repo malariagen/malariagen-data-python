@@ -837,7 +837,7 @@ def simple_xarray_concat(
 #         )
 
 
-def da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
+def _da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
     if len(arrays) == 1:
         return arrays[0]
     else:

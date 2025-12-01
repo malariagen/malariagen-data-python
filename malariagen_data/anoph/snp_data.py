@@ -20,7 +20,7 @@ from ..util import (
     _apply_allele_mapping,
     check_types,
     _da_compress,
-    da_concat,
+    _da_concat,
     da_from_zarr,
     dask_apply_allele_mapping,
     dask_compress_dataset,
@@ -275,7 +275,7 @@ class AnophelesSnpData(
         del region
 
         # Load arrays and concatenate if needed.
-        d = da_concat(
+        d = _da_concat(
             [
                 self._site_filters_for_region(
                     region=r,
@@ -379,7 +379,7 @@ class AnophelesSnpData(
         del site_mask
 
         # Access SNP sites and concatenate over regions.
-        ret = da_concat(
+        ret = _da_concat(
             [
                 self._snp_sites_for_region(
                     region=r,
@@ -491,7 +491,7 @@ class AnophelesSnpData(
                     ly.append(y)
 
                 # Concatenate data from multiple sample sets.
-                x = da_concat(ly, axis=1)
+                x = _da_concat(ly, axis=1)
 
                 # Locate region - do this only once, optimisation.
                 if r.start or r.end:
@@ -507,7 +507,7 @@ class AnophelesSnpData(
                 lx.append(x)
 
             # Concatenate data from multiple regions.
-            d = da_concat(lx, axis=0)
+            d = _da_concat(lx, axis=0)
 
         # Apply site filters if requested.
         if prepared_site_mask is not None:
