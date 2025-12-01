@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.genome\_sequence
+=============================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.genome_sequence

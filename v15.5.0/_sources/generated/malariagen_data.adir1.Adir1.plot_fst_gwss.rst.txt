@@ -1,0 +1,6 @@
+﻿malariagen\_data.adir1.Adir1.plot\_fst\_gwss
+============================================
+
+.. currentmodule:: malariagen_data.adir1
+
+.. automethod:: Adir1.plot_fst_gwss
