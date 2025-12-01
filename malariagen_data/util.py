@@ -629,7 +629,7 @@ contig_param_type: TypeAlias = Union[
 ]
 
 
-def parse_single_region(resource, region: single_region_param_type) -> Region:
+def _parse_single_region(resource, region: single_region_param_type) -> Region:
     if isinstance(region, Region):
         # The region is already a Region, nothing to do.
         return region
@@ -668,9 +668,9 @@ def _parse_multi_region(
     region: region_param_type,
 ) -> List[Region]:
     if isinstance(region, (list, tuple)):
-        return [parse_single_region(resource, r) for r in region]
+        return [_parse_single_region(resource, r) for r in region]
     else:
-        return [parse_single_region(resource, region)]
+        return [_parse_single_region(resource, region)]
 
 
 def resolve_region(
@@ -685,9 +685,9 @@ def resolve_region(
     """
     if isinstance(region, (list, tuple)):
         # Multiple regions, normalise to list and resolve components.
-        return [parse_single_region(resource, r) for r in region]
+        return [_parse_single_region(resource, r) for r in region]
     else:
-        return parse_single_region(resource, region)
+        return _parse_single_region(resource, region)
 
 
 def _locate_region(region: Region, pos: np.ndarray) -> slice:

@@ -15,7 +15,7 @@ from ..util import (
     _da_from_zarr,
     _init_zarr_store,
     _parse_multi_region,
-    parse_single_region,
+    _parse_single_region,
     simple_xarray_concat,
 )
 from . import base_params, cnv_params, gplt_params
@@ -694,7 +694,7 @@ class AnophelesCnvData(
         import bokeh.plotting as bkplt
 
         debug("resolve region")
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("access sample metadata, look up sample")
@@ -889,7 +889,7 @@ class AnophelesCnvData(
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
 
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("access HMM data")

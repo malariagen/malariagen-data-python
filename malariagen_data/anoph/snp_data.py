@@ -28,7 +28,7 @@ from ..util import (
     _init_zarr_store,
     _locate_region,
     _parse_multi_region,
-    parse_single_region,
+    _parse_single_region,
     simple_xarray_concat,
     trim_alleles,
     true_runs,
@@ -744,7 +744,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> xr.Dataset:
         # Resolve region.
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
         contig = resolved_region.contig
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
@@ -1523,7 +1523,7 @@ class AnophelesSnpData(
         del site_mask
 
         # Resolve and check region.
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         if (
@@ -1694,7 +1694,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> np.ndarray:
         # Normalise params.
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
         site_mask_prepped = self._prep_site_mask_param(site_mask=site_mask)
         del site_mask

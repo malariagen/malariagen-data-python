@@ -50,7 +50,7 @@ from .util import (
     Region,
     check_types,
     _jackknife_ci,
-    parse_single_region,
+    _parse_single_region,
     plotly_discrete_legend,
 )
 
@@ -366,7 +366,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         # Normalise parameters.
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -584,7 +584,7 @@ class AnophelesDataResource(
     ) -> het_params.df_roh:
         debug = self._log.debug
 
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
 
         name = self._roh_hmm_cache_name
 
@@ -679,7 +679,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
         contig = resolved_region.contig
         start = resolved_region.start
@@ -782,7 +782,7 @@ class AnophelesDataResource(
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")

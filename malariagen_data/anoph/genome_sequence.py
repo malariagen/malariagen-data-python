@@ -9,7 +9,7 @@ from ..util import (
     check_types,
     _da_from_zarr,
     _init_zarr_store,
-    parse_single_region,
+    _parse_single_region,
 )
 from . import base_params
 from .base import AnophelesBase
@@ -112,7 +112,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Parse the region parameter into a Region object.
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         # Obtain complete sequence for the requested contig.

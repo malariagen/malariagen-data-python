@@ -11,7 +11,7 @@ from ..util import (
     Region,
     check_types,
     _parse_multi_region,
-    parse_single_region,
+    _parse_single_region,
     read_gff3,
     unpack_gff3_attributes,
 )
@@ -339,7 +339,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         debug("handle region bounds")
