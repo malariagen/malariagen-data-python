@@ -95,7 +95,7 @@ def amin1_sim_api(amin1_sim_fixture):
         gff_gene_type="protein_coding_gene",
         gff_gene_name_attribute="Note",
         gff_default_attributes=("ID", "Parent", "Note", "description"),
-        default_site_mask="dirus",
+        default_site_mask="minimus",
         results_cache=amin1_sim_fixture.results_cache_path.as_posix(),
     )
 
@@ -127,7 +127,7 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
 
-@case(tags="no_sex_calls")
+@case(tags=["no_sex_calls", "single-sampleset"])
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
 
@@ -501,7 +501,9 @@ def check_snp_genotypes(
     assert gt_native.chunks != gt_auto.chunks
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_snp_genotypes_with_sample_sets_param(fixture, api: AnophelesSnpData):
     # Fixed parameters.
     region = fixture.random_region_str()
@@ -740,7 +742,9 @@ def check_snp_calls(api, sample_sets, region, site_mask):
     assert pos.shape == pos.compute().shape
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_snp_calls_with_sample_sets_param(fixture, api: AnophelesSnpData):
     # Fixed parameters.
     region = fixture.random_region_str()
@@ -1029,7 +1033,9 @@ def check_snp_allele_counts(
     assert_array_equal(ac, ac2)
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_snp_allele_counts_with_sample_sets_param(fixture, api: AnophelesSnpData):
     # Fixed parameters.
     region = fixture.random_region_str()
@@ -1336,7 +1342,9 @@ def check_biallelic_snp_calls_and_diplotypes(
     return ds
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_biallelic_snp_calls_and_diplotypes_with_sample_sets_param(
     fixture, api: AnophelesSnpData
 ):
