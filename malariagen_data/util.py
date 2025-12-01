@@ -846,7 +846,7 @@ def _da_concat(arrays: List[da.Array], **kwargs) -> da.Array:
         return da.concatenate(arrays, **kwargs)
 
 
-def value_error(
+def _value_error(
     name,
     value,
     expectation,
