@@ -6,10 +6,10 @@ import plotly.graph_objects as go  # type: ignore
 import pytest
 from pytest_cases import parametrize_with_cases
 
+
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
-from malariagen_data import amin1 as _amin1
 
 from malariagen_data.anoph.pca import AnophelesPca
 from malariagen_data.anoph import pca_params
@@ -78,24 +78,6 @@ def adir1_sim_api(adir1_sim_fixture):
     )
 
 
-@pytest.fixture
-def amin1_sim_api(amin1_sim_fixture):
-    return AnophelesPca(
-        url=amin1_sim_fixture.url,
-        public_url=amin1_sim_fixture.url,
-        config_path=_amin1.CONFIG_PATH,
-        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
-        major_version_path=_amin1.MAJOR_VERSION_PATH,
-        pre=False,
-        gff_gene_type="protein_coding_gene",
-        gff_gene_name_attribute="Note",
-        gff_default_attributes=("ID", "Parent", "Note", "description"),
-        default_site_mask="dirus",
-        results_cache=amin1_sim_fixture.results_cache_path.as_posix(),
-        taxon_colors=_amin1.TAXON_COLORS,
-    )
-
-
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -120,17 +102,13 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
 
-def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
-    return amin1_sim_fixture, amin1_sim_api
-
-
 @parametrize_with_cases("fixture,api", cases=".")
 def test_pca_plotting(fixture, api: AnophelesPca):
     # Parameters for selecting input data.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
         region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 1),
+        sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
     )
     ds = api.biallelic_snp_calls(
@@ -216,7 +194,7 @@ def test_pca_exclude_samples(fixture, api: AnophelesPca):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
         region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 1),
+        sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
     )
     ds = api.biallelic_snp_calls(
@@ -277,7 +255,7 @@ def test_pca_fit_exclude_samples(fixture, api: AnophelesPca):
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
     data_params = dict(
         region=random.choice(api.contigs),
-        sample_sets=random.sample(all_sample_sets, 1),
+        sample_sets=random.sample(all_sample_sets, 2),
         site_mask=random.choice((None,) + api.site_mask_ids),
     )
     ds = api.biallelic_snp_calls(
