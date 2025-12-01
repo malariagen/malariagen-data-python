@@ -663,7 +663,7 @@ def parse_single_region(resource, region: single_region_param_type) -> Region:
     )
 
 
-def parse_multi_region(
+def _parse_multi_region(
     resource,
     region: region_param_type,
 ) -> List[Region]:

@@ -14,7 +14,7 @@ from ..util import (
     check_types,
     _da_from_zarr,
     _init_zarr_store,
-    parse_multi_region,
+    _parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
 )
@@ -199,7 +199,7 @@ class AnophelesCnvData(
         debug("normalise parameters")
         prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
 
         # Delete original parameters to prevent accidental use.
         del sample_sets
@@ -418,7 +418,7 @@ class AnophelesCnvData(
         # calling is done independently in different sample sets.
 
         debug("normalise parameters")
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         prepared_sample_set = self._prep_sample_sets_param(sample_sets=sample_set)[0]
 
         # Delete original parameters to prevent accidental use.

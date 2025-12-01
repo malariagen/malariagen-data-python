@@ -19,7 +19,7 @@ from ..util import (
     check_types,
     _pandas_apply,
     Region,
-    parse_multi_region,
+    _parse_multi_region,
     region_str,
     simple_xarray_concat,
 )
@@ -57,7 +57,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> xr.Dataset:
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         ds = simple_xarray_concat(
@@ -212,7 +212,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug = self._log.debug
 
         debug("check and normalise parameters")
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         debug("access and concatenate data from regions")
@@ -447,7 +447,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         inline_array: base_params.inline_array = base_params.inline_array_default,
         taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         ds = simple_xarray_concat(

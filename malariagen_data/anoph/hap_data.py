@@ -17,7 +17,7 @@ from ..util import (
     _da_from_zarr,
     _init_zarr_store,
     _locate_region,
-    parse_multi_region,
+    _parse_multi_region,
     simple_xarray_concat,
 )
 from . import base_params, hap_params
@@ -176,7 +176,7 @@ class AnophelesHapData(
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         # Access SNP sites and concatenate over regions.
@@ -354,7 +354,7 @@ class AnophelesHapData(
         del sample_sets
         sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
         del sample_query
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
         analysis = self._prep_phasing_analysis_param(analysis=analysis)
 

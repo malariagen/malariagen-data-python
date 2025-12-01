@@ -10,7 +10,7 @@ from pandas.io.common import infer_compression  # type: ignore
 from ..util import (
     Region,
     check_types,
-    parse_multi_region,
+    _parse_multi_region,
     parse_single_region,
     read_gff3,
     unpack_gff3_attributes,
@@ -134,7 +134,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         with self._spinner(desc="Load genome features"):
             if region is not None:
                 debug("Handle region.")
-                regions = parse_multi_region(self, region)
+                regions = _parse_multi_region(self, region)
                 del region
 
                 debug("Apply region query.")

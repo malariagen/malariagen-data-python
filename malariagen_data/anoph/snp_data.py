@@ -27,7 +27,7 @@ from ..util import (
     _dask_genotype_array_map_alleles,
     _init_zarr_store,
     _locate_region,
-    parse_multi_region,
+    _parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
     trim_alleles,
@@ -271,7 +271,7 @@ class AnophelesSnpData(
         del mask
 
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         # Load arrays and concatenate if needed.
@@ -373,7 +373,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> da.Array:
         # Resolve the region parameter to a standard type.
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
@@ -464,7 +464,7 @@ class AnophelesSnpData(
         # Prepare parameters.
         prepared_sample_sets = self._prep_sample_sets_param(sample_sets=sample_sets)
         prepared_sample_query = self._prep_sample_query_param(sample_query=sample_query)
-        prepared_regions: List[Region] = parse_multi_region(self, region)
+        prepared_regions: List[Region] = _parse_multi_region(self, region)
         prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
         # Delete original parameters to prevent accidental use.
@@ -642,7 +642,7 @@ class AnophelesSnpData(
         chunks: base_params.chunks = base_params.native_chunks,
     ):
         # Normalise parameters.
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
         site_mask_prepped = self._prep_optional_site_mask_param(site_mask=site_mask)
         del site_mask
@@ -1040,7 +1040,7 @@ class AnophelesSnpData(
         )
 
         # Normalise parameters.
-        prepared_regions = parse_multi_region(self, region)
+        prepared_regions = _parse_multi_region(self, region)
         prepared_site_mask = self._prep_optional_site_mask_param(site_mask=site_mask)
 
         # Note: `_prep_sample_selection_cache_params` converts `sample_query` and `sample_query_options` into `sample_indices`.
@@ -1275,7 +1275,7 @@ class AnophelesSnpData(
         # N.B., we need to convert to a dict, because cache saves params as
         # JSON.
 
-        region_prepped: List[Region] = parse_multi_region(self, region)
+        region_prepped: List[Region] = _parse_multi_region(self, region)
         if len(region_prepped) > 1:
             ret = [r.to_dict() for r in region_prepped]
         else:
