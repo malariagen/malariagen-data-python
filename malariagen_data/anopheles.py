@@ -49,7 +49,7 @@ from .util import (
     CacheMiss,
     Region,
     check_types,
-    jackknife_ci,
+    _jackknife_ci,
     parse_single_region,
     plotly_discrete_legend,
 )
@@ -956,7 +956,7 @@ class AnophelesDataResource(
             theta_pi_ci_err,
             theta_pi_ci_low,
             theta_pi_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=theta_pi_data,
             jack_stat=jack_theta_pi,
             confidence_level=confidence_level,
@@ -968,7 +968,7 @@ class AnophelesDataResource(
             theta_w_ci_err,
             theta_w_ci_low,
             theta_w_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=theta_w_data,
             jack_stat=jack_theta_w,
             confidence_level=confidence_level,
@@ -980,7 +980,7 @@ class AnophelesDataResource(
             tajima_d_ci_err,
             tajima_d_ci_low,
             tajima_d_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=tajima_d_data,
             jack_stat=jack_tajima_d,
             confidence_level=confidence_level,

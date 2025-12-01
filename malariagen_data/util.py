@@ -927,7 +927,7 @@ class LoggingHelper:
             self._handler.setLevel(level)
 
 
-def jackknife_ci(stat_data, jack_stat, confidence_level):
+def _jackknife_ci(stat_data, jack_stat, confidence_level):
     """Compute a confidence interval from jackknife resampling.
 
     Parameters
