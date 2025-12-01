@@ -4,7 +4,8 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize_with_cases, case
+from pytest_cases import filters as ft
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -130,6 +131,7 @@ def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
 
 
+@case(tags="single-sampleset")
 def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
     return amin1_sim_fixture, amin1_sim_api
 
@@ -532,7 +534,9 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     )
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
@@ -1371,7 +1375,9 @@ def test_allele_frequencies_advanced_with_sample_query(
     )
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_allele_frequencies_advanced_with_sample_query_options(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
@@ -1404,7 +1410,9 @@ def test_allele_frequencies_advanced_with_sample_query_options(
 
 
 @pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_allele_frequencies_advanced_with_min_cohort_size(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
