@@ -596,7 +596,7 @@ class AnophelesG123Analysis(
             return fig
 
 
-def diplotype_frequencies(gt):
+def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
 
@@ -621,7 +621,7 @@ def garud_g123(gt):
     """Compute Garud's G123."""
 
     # compute diplotype frequencies
-    frq_counter = diplotype_frequencies(gt)
+    frq_counter = _diplotype_frequencies(gt)
 
     # convert to array of sorted frequencies
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]
