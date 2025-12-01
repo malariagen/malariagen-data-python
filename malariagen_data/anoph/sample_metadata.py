@@ -1669,7 +1669,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             return fig
 
 
-def locate_cohorts(*, cohorts, data, min_cohort_size):
+def _locate_cohorts(*, cohorts, data, min_cohort_size):
     # Build cohort dictionary where key=cohort_id, value=loc_coh.
     coh_dict = {}
 

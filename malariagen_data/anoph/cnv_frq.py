@@ -25,7 +25,7 @@ from ..util import (
 )
 from .cnv_data import AnophelesCnvData
 from .frq_base import AnophelesFrequencyAnalysis
-from .sample_metadata import locate_cohorts
+from .sample_metadata import _locate_cohorts
 
 
 class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis):
@@ -329,7 +329,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = locate_cohorts(
+        coh_dict = _locate_cohorts(
             cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
         )
 

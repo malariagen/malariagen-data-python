@@ -20,7 +20,7 @@ from .frq_base import (
     _build_cohorts_from_sample_grouping,
     _add_frequency_ci,
 )
-from .sample_metadata import locate_cohorts
+from .sample_metadata import _locate_cohorts
 from .frq_base import AnophelesFrequencyAnalysis
 from . import base_params, frq_params
 
@@ -167,7 +167,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
-        coh_dict = locate_cohorts(
+        coh_dict = _locate_cohorts(
             cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
         )
 
