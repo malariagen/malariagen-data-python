@@ -374,7 +374,7 @@ def haplotype_joint_frequencies(ha, hb):
     return joint_freqs
 
 
-def h1x(ha, hb):
+def _h1x(ha, hb):
     """Compute H1X, the sum of joint haplotype frequencies between
     two cohorts, which is a summary statistic useful for detecting
     shared selective sweeps."""
@@ -414,6 +414,6 @@ def moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     windows = allel.index_windows(ha, size, start, stop, step)
 
     # Compute statistics for each window.
-    out = np.array([h1x(ha[i:j], hb[i:j]) for i, j in windows])
+    out = np.array([_h1x(ha[i:j], hb[i:j]) for i, j in windows])
 
     return out
