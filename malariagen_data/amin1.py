@@ -14,7 +14,7 @@ from .util import (
     _init_filesystem,
     _init_zarr_store,
     _locate_region,
-    read_gff3,
+    _read_gff3,
     resolve_region,
     simple_xarray_concat,
     unpack_gff3_attributes,
@@ -143,7 +143,7 @@ class Amin1:
         except KeyError:
             path = f"{self._path}/{GENOME_FEATURES_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression="gzip")
+                df = _read_gff3(f, compression="gzip")
             if attributes is not None:
                 df = unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df

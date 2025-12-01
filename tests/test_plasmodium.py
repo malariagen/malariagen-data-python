@@ -425,7 +425,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         )
 
     @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features(self, mock_open, mock_read_gff, mock_unpack):
         mock_read_gff.return_value = self.test_annotations_df
@@ -441,7 +441,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             attributes=tuple(["ID", "Parent", "Name"]),
         )
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_default_attributes_no_cache(
         self, mock_open, mock_read_gff
@@ -470,7 +470,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         )
 
     @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_uses_cache(self, mock_open, mock_read_gff, mock_unpack):
         mock_read_gff.return_value = self.test_annotations_df
@@ -481,7 +481,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         mock_read_gff.assert_called_once()
         mock_unpack.assert_called_once()
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_all_attributes(self, mock_open, mock_read_gff):
         mock_read_gff.return_value = self.test_annotations_df
@@ -503,7 +503,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         )
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_attribute_list(self, mock_open, mock_read_gff):
         mock_read_gff.return_value = self.test_annotations_df
@@ -524,7 +524,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         )
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
-    @patch("malariagen_data.plasmodium.read_gff3")
+    @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_with_attribute_tuple(self, mock_open, mock_read_gff):
         mock_read_gff.return_value = self.test_annotations_df

@@ -74,7 +74,7 @@ gff3_cols = (
 )
 
 
-def read_gff3(buf, compression="gzip"):
+def _read_gff3(buf, compression="gzip"):
     # read as dataframe
     df = pd.read_csv(
         buf,
