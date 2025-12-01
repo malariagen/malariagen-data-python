@@ -1334,7 +1334,7 @@ def multiallelic_diplotype_sqeuclidean(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_sqeuclidean(x, y):
+def _multiallelic_diplotype_mean_sqeuclidean(x, y):
     """Compute the mean squared euclidean distance between two diplotypes x and
     y. The diplotype vectors are expected as genotype allele counts, i.e., x and
     y should have the same shape (n_sites, n_alleles).

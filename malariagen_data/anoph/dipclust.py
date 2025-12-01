@@ -10,7 +10,7 @@ from ..util import (
     CacheMiss,
     check_types,
     multiallelic_diplotype_pdist,
-    multiallelic_diplotype_mean_sqeuclidean,
+    _multiallelic_diplotype_mean_sqeuclidean,
     _multiallelic_diplotype_mean_cityblock,
 )
 from ..plotly_dendrogram import plot_dendrogram
@@ -273,7 +273,7 @@ class AnophelesDipClustAnalysis(
         if distance_metric == "cityblock":
             metric = _multiallelic_diplotype_mean_cityblock
         elif distance_metric == "euclidean":
-            metric = multiallelic_diplotype_mean_sqeuclidean
+            metric = _multiallelic_diplotype_mean_sqeuclidean
 
         # Load SNP data.
         ds_snps = self.snp_calls(
