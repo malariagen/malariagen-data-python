@@ -1464,7 +1464,7 @@ def _apply_allele_mapping(x, mapping, max_allele):
     return out
 
 
-def dask_apply_allele_mapping(v, mapping, max_allele):
+def _dask_apply_allele_mapping(v, mapping, max_allele):
     assert isinstance(v, da.Array)
     assert isinstance(mapping, np.ndarray)
     assert v.ndim == 2

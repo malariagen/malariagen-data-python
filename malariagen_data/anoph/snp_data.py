@@ -22,7 +22,7 @@ from ..util import (
     _da_compress,
     _da_concat,
     _da_from_zarr,
-    dask_apply_allele_mapping,
+    _dask_apply_allele_mapping,
     dask_compress_dataset,
     dask_genotype_array_map_alleles,
     init_zarr_store,
@@ -1825,7 +1825,7 @@ class AnophelesSnpData(
 
             # Store alleles, transformed.
             variant_allele_dask = ds_bi["variant_allele"].data
-            variant_allele_out = dask_apply_allele_mapping(
+            variant_allele_out = _dask_apply_allele_mapping(
                 variant_allele_dask, allele_mapping, max_allele=1
             )
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
