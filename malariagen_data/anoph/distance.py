@@ -14,7 +14,7 @@ from ..util import square_to_condensed, check_types, CacheMiss
 
 
 @numba.njit(parallel=True)
-def biallelic_diplotype_pdist(X, distfun):
+def _biallelic_diplotype_pdist(X, distfun):
     n_samples = X.shape[0]
     n_pairs = (n_samples * (n_samples - 1)) // 2
     out = np.zeros(n_pairs, dtype=np.float32)
@@ -230,7 +230,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             raise ValueError("Unsupported metric.")
 
         with self._spinner("Compute pairwise distances"):
-            dist = biallelic_diplotype_pdist(X, distfun=distfun)
+            dist = _biallelic_diplotype_pdist(X, distfun=distfun)
 
         return dict(
             dist=dist,
