@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from malariagen_data import Adir1, Region
-from malariagen_data.util import _locate_region, resolve_region
+from malariagen_data.util import _locate_region, _resolve_region
 
 
 def setup_adir1(url="simplecache::gs://vo_adir_release_master_us_central1/", **kwargs):
@@ -40,7 +40,7 @@ def test_locate_region(region_raw):
     # TODO Migrate this test.
     adir1 = setup_adir1()
     gene_annotation = adir1.geneset(attributes=["ID"])
-    region = resolve_region(adir1, region_raw)
+    region = _resolve_region(adir1, region_raw)
     pos = adir1.snp_sites(region=region.contig, field="POS")
     ref = adir1.snp_sites(region=region.contig, field="REF")
     loc_region = _locate_region(region, pos)

@@ -673,7 +673,7 @@ def _parse_multi_region(
         return [_parse_single_region(resource, region)]
 
 
-def resolve_region(
+def _resolve_region(
     resource,
     region: region_param_type,
 ) -> Union[Region, List[Region]]:

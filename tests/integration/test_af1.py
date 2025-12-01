@@ -2,7 +2,7 @@ import numpy as np
 import pytest
 
 from malariagen_data import Af1, Region
-from malariagen_data.util import _locate_region, resolve_region
+from malariagen_data.util import _locate_region, _resolve_region
 
 
 def setup_af1(url="simplecache::gs://vo_afun_release_master_us_central1/", **kwargs):
@@ -40,7 +40,7 @@ def test_locate_region(region_raw):
     # TODO Migrate this test.
     af1 = setup_af1()
     gene_annotation = af1.geneset(attributes=["ID"])
-    region = resolve_region(af1, region_raw)
+    region = _resolve_region(af1, region_raw)
     pos = af1.snp_sites(region=region.contig, field="POS")
     ref = af1.snp_sites(region=region.contig, field="REF")
     loc_region = _locate_region(region, pos)

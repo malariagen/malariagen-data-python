@@ -15,7 +15,7 @@ from malariagen_data.util import (
     _init_filesystem,
     _init_zarr_store,
     _read_gff3,
-    resolve_region,
+    _resolve_region,
     unpack_gff3_attributes,
 )
 
@@ -209,7 +209,7 @@ class PlasmodiumDataResource:
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
-    def resolve_region(self, region):
+    def _resolve_region(self, region):
         """Convert a genome region into a standard data structure.
 
         Parameters
@@ -226,13 +226,13 @@ class PlasmodiumDataResource:
 
         """
 
-        return resolve_region(self, region)
+        return _resolve_region(self, region)
 
     def _subset_genome_sequence_region(
         self, genome, region, inline_array=True, chunks="native"
     ):
         """Sebset reference genome sequence."""
-        region = self.resolve_region(region)
+        region = self._resolve_region(region)
         z = genome[region.contig]
 
         d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)

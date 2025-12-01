@@ -15,7 +15,7 @@ from .util import (
     _init_zarr_store,
     _locate_region,
     _read_gff3,
-    resolve_region,
+    _resolve_region,
     simple_xarray_concat,
     unpack_gff3_attributes,
 )
@@ -100,7 +100,7 @@ class Amin1:
 
         """
         genome = self.open_genome()
-        region = resolve_region(self, region)
+        region = _resolve_region(self, region)
         z = genome[region.contig]
         d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
@@ -252,7 +252,7 @@ class Amin1:
 
         """
 
-        region = resolve_region(self, region)
+        region = _resolve_region(self, region)
 
         # normalise to simplify concatenation logic
         if isinstance(region, str) or isinstance(region, Region):
