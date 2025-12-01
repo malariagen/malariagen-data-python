@@ -988,7 +988,7 @@ def _jackknife_ci(stat_data, jack_stat, confidence_level):
     return estimate, bias, std_err, ci_err, ci_low, ci_upp
 
 
-def plotly_discrete_legend(
+def _plotly_discrete_legend(
     color,
     color_values,
     **kwargs,

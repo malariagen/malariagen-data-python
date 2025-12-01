@@ -51,7 +51,7 @@ from .util import (
     check_types,
     _jackknife_ci,
     _parse_single_region,
-    plotly_discrete_legend,
+    _plotly_discrete_legend,
 )
 
 
@@ -2451,7 +2451,7 @@ class AnophelesDataResource(
 
         debug("create figure legend")
         if color is not None:
-            legend_fig = plotly_discrete_legend(
+            legend_fig = _plotly_discrete_legend(
                 color="_partition",  # Changed from color=color
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,
