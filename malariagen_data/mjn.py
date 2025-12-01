@@ -295,7 +295,7 @@ def _mjn_graph_edges(
                 graph_edges.append(graph_edge)
 
 
-def mjn_graph(
+def _mjn_graph(
     ht_distinct,
     ht_distinct_mjn,
     ht_counts,

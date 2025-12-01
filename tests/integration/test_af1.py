@@ -95,7 +95,7 @@ def test_karyotyping(inversion):
 def test_plot_haplotype_network_string_direct(mocker):
     af1 = setup_af1(debug=True)
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     af1.plot_haplotype_network(
@@ -117,7 +117,7 @@ def test_plot_haplotype_network_string_direct(mocker):
 def test_plot_haplotype_network_string_cohort(mocker):
     af1 = setup_af1(debug=True)
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     af1.plot_haplotype_network(
@@ -139,7 +139,7 @@ def test_plot_haplotype_network_string_cohort(mocker):
 def test_plot_haplotype_network_mapping(mocker):
     af1 = setup_af1(debug=True)
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     color_mapping = {"2012": "year == 2012", "2014": "year == 2014"}
@@ -162,7 +162,7 @@ def test_plot_haplotype_network_mapping(mocker):
 def test_plot_haplotype_network_none(mocker):
     af1 = setup_af1(debug=True)
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     af1.plot_haplotype_network(

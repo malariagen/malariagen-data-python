@@ -193,7 +193,7 @@ def test_karyotyping(inversion):
 def test_plot_haplotype_network_string_direct(mocker):
     ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     ag3.plot_haplotype_network(
@@ -215,7 +215,7 @@ def test_plot_haplotype_network_string_direct(mocker):
 def test_plot_haplotype_network_string_cohort(mocker):
     ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     ag3.plot_haplotype_network(
@@ -237,7 +237,7 @@ def test_plot_haplotype_network_string_cohort(mocker):
 def test_plot_haplotype_network_mapping(mocker):
     ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     color_mapping = {"Ghana": "country == 'Ghana'", "Other": "country != 'Ghana'"}
@@ -260,7 +260,7 @@ def test_plot_haplotype_network_mapping(mocker):
 def test_plot_haplotype_network_none(mocker):
     ag3 = setup_ag3()
     mocker.patch("dash.Dash.run")
-    mock_mjn = mocker.patch("malariagen_data.anopheles.mjn_graph")
+    mock_mjn = mocker.patch("malariagen_data.anopheles._mjn_graph")
     mock_mjn.return_value = ([{"data": {"id": "n1"}}], [])
 
     ag3.plot_haplotype_network(

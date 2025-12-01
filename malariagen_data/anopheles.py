@@ -42,7 +42,7 @@ from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
 from .anoph.phenotypes import AnophelesPhenotypeData
-from .mjn import _median_joining_network, mjn_graph
+from .mjn import _median_joining_network, _mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
@@ -2395,7 +2395,7 @@ class AnophelesDataResource(
 
         debug("construct graph")
         anon_width = np.sqrt(0.3 * node_size_factor)
-        graph_nodes, graph_edges = mjn_graph(
+        graph_nodes, graph_edges = _mjn_graph(
             ht_distinct=ht_distinct,
             ht_distinct_mjn=ht_distinct_mjn,
             ht_counts=ht_counts,
