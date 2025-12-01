@@ -70,7 +70,7 @@ def biallelic_diplotype_sqeuclidean(x, y):
 
 
 @numba.njit
-def biallelic_diplotype_euclidean(x, y):
+def _biallelic_diplotype_euclidean(x, y):
     return np.sqrt(biallelic_diplotype_sqeuclidean(x, y))
 
 
@@ -225,7 +225,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         elif metric == "sqeuclidean":
             distfun = biallelic_diplotype_sqeuclidean
         elif metric == "euclidean":
-            distfun = biallelic_diplotype_euclidean
+            distfun = _biallelic_diplotype_euclidean
         else:
             raise ValueError("Unsupported metric.")
 
