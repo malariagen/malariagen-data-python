@@ -1589,17 +1589,3 @@ def distributed_client():
     except ValueError:
         client = None
     return client
-
-
-def add_frequency_ci(*, ds, ci_method):
-    from statsmodels.stats.proportion import proportion_confint  # type: ignore
-
-    if ci_method is not None:
-        count = ds["event_count"].values
-        nobs = ds["event_nobs"].values
-        with np.errstate(divide="ignore", invalid="ignore"):
-            frq_ci_low, frq_ci_upp = proportion_confint(
-                count=count, nobs=nobs, method=ci_method
-            )
-        ds["event_frequency_ci_low"] = ("variants", "cohorts"), frq_ci_low
-        ds["event_frequency_ci_upp"] = ("variants", "cohorts"), frq_ci_upp
