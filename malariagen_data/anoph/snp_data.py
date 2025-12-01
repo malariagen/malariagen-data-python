@@ -17,7 +17,7 @@ from ..util import (
     DIM_VARIANT,
     CacheMiss,
     Region,
-    apply_allele_mapping,
+    _apply_allele_mapping,
     check_types,
     da_compress,
     da_concat,
@@ -1829,7 +1829,7 @@ class AnophelesSnpData(
             data_vars["variant_allele"] = ("variants", "alleles"), variant_allele_out
 
             # Store allele counts, transformed.
-            ac_out = apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
+            ac_out = _apply_allele_mapping(ac_bi, allele_mapping, max_allele=1)
             data_vars["variant_allele_count"] = ("variants", "alleles"), ac_out
 
             # Store genotype calls, transformed.
