@@ -33,7 +33,7 @@ import xarray as xr
 from ..util import (
     CacheMiss,
     LoggingHelper,
-    check_colab_location,
+    _check_colab_location,
     check_types,
     distributed_client,
     get_gcp_region,
@@ -107,7 +107,7 @@ class AnophelesBase:
         self._gcp_region = get_gcp_region(self._client_details)
 
         # Check colab location.
-        check_colab_location(self._gcp_region)
+        _check_colab_location(self._gcp_region)
 
         # Determine storage URL.
         if url:

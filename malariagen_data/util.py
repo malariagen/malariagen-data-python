@@ -1102,7 +1102,7 @@ class ColabLocationError(RuntimeError):
     pass
 
 
-def check_colab_location(gcp_region: Optional[str]):
+def _check_colab_location(gcp_region: Optional[str]):
     """
     Sometimes, colab will allocate a VM outside the US, e.g., in
     Europe or Asia. Because the MalariaGEN GCS buckets are located
