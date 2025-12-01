@@ -1168,7 +1168,7 @@ def check_types(f):
 
 
 @numba.njit
-def true_runs(a):
+def _true_runs(a):
     in_run = False
     starts = []
     stops = []

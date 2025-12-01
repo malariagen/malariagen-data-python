@@ -31,7 +31,7 @@ from ..util import (
     _parse_single_region,
     _simple_xarray_concat,
     _trim_alleles,
-    true_runs,
+    _true_runs,
 )
 from . import base_params
 from .genome_features import AnophelesGenomeFeaturesData, gplt_params
@@ -1585,7 +1585,7 @@ class AnophelesSnpData(
         # Find gaps in the reference genome.
         seq = self.genome_sequence(region=resolved_region.contig).compute()
         is_n = (seq == b"N") | (seq == b"n")
-        n_starts, n_stops = true_runs(is_n)
+        n_starts, n_stops = _true_runs(is_n)
 
         # Create figure.
         xwheel_zoom = bokeh.models.WheelZoomTool(
