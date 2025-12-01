@@ -16,7 +16,7 @@ from malariagen_data.util import (
     _init_zarr_store,
     _read_gff3,
     _resolve_region,
-    unpack_gff3_attributes,
+    _unpack_gff3_attributes,
 )
 
 
@@ -320,7 +320,7 @@ class PlasmodiumDataResource:
             with self._fs.open(path, mode="rb") as f:
                 df = _read_gff3(f, compression="gzip")
             if attributes is not None:
-                df = unpack_gff3_attributes(df, attributes=attributes)
+                df = _unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
 
         return df

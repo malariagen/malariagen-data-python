@@ -17,7 +17,7 @@ from .util import (
     _read_gff3,
     _resolve_region,
     _simple_xarray_concat,
-    unpack_gff3_attributes,
+    _unpack_gff3_attributes,
 )
 
 GENOME_FEATURES_GFF3_PATH = (
@@ -145,7 +145,7 @@ class Amin1:
             with self._fs.open(path, mode="rb") as f:
                 df = _read_gff3(f, compression="gzip")
             if attributes is not None:
-                df = unpack_gff3_attributes(df, attributes=attributes)
+                df = _unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
 
         return df

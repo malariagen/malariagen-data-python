@@ -13,7 +13,7 @@ from ..util import (
     _parse_multi_region,
     _parse_single_region,
     _read_gff3,
-    unpack_gff3_attributes,
+    _unpack_gff3_attributes,
 )
 from . import base_params, gplt_params
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -66,7 +66,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             with self._fs.open(path, mode="rb") as f:
                 df = _read_gff3(f, compression=compression)
             if attributes:
-                df = unpack_gff3_attributes(df, attributes=attributes)
+                df = _unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
 
         return df

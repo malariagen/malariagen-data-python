@@ -91,7 +91,7 @@ def _read_gff3(buf, compression="gzip"):
     return df
 
 
-def unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
+def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     df = df.copy()
 
     # discover all attribute keys

@@ -424,7 +424,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             ],
         )
 
-    @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
+    @patch("malariagen_data.plasmodium._unpack_gff3_attributes")
     @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features(self, mock_open, mock_read_gff, mock_unpack):
@@ -469,7 +469,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
             TypeError, self.test_plasmodium_class.genome_features, "bad_attribute"
         )
 
-    @patch("malariagen_data.plasmodium.unpack_gff3_attributes")
+    @patch("malariagen_data.plasmodium._unpack_gff3_attributes")
     @patch("malariagen_data.plasmodium._read_gff3")
     @patch("builtins.open", new_callable=mock_open)
     def test_genome_features_uses_cache(self, mock_open, mock_read_gff, mock_unpack):
