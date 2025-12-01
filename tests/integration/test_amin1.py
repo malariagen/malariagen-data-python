@@ -5,7 +5,7 @@ from malariagen_data import Amin1, Region
 from malariagen_data.util import locate_region, resolve_region
 
 
-def setup_amin1(url="simplecache::gs://vo_adir_release_master_us_central1/", **kwargs):
+def setup_amin1(url="simplecache::gs://vo_amin_release_master_us_central1/", **kwargs):
     kwargs.setdefault("check_location", False)
     kwargs.setdefault("show_progress", False)
     if url is None:
@@ -21,7 +21,7 @@ def setup_amin1(url="simplecache::gs://vo_adir_release_master_us_central1/", **k
 
 def test_repr():
     amin1 = setup_amin1(check_location=True)
-    assert isinstance(amin1, amin1)
+    assert isinstance(amin1, Amin1)
     r = repr(amin1)
     assert isinstance(r, str)
 
@@ -66,11 +66,12 @@ def test_locate_region(region_raw):
         assert pos[loc_region][0] == gene.start
         assert pos[loc_region][-1] == gene.end
         assert (
-            ref[loc_region][:5].compute() == np.array(["T", "C", "A", "G", "A"])
+            ref[loc_region][:5].compute()
+            == np.array(["T", "C", "A", "G", "A"], dtype="S1")
         ).all()
 
     # check string parsing
     if region_raw == "KB663655:3548753-3550841":
-        assert region == Region("KB672490", 3548753, 3550841)
+        assert region == Region("KB663655", 3548753, 3550841)
     if region_raw == "KB663655:3,548,753-3,550,841":
         assert region == Region("KB663655", 3548753, 3550841)
