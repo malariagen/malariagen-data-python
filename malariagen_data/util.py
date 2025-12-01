@@ -429,6 +429,8 @@ def _da_compress(
 def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
 
+    storage_options = None  # To prevent using before assignment (Pylint).
+
     # Special case Google Cloud Storage, authenticate the user.
     if "gs://" in url or "gcs://" in url:
         if colab is not None:  # pragma: no cover
@@ -1355,7 +1357,7 @@ def multiallelic_diplotype_mean_sqeuclidean(x, y):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_euclidean(x, y):
+def _multiallelic_diplotype_mean_euclidean(x, y):
     """Compute the mean euclidean distance between two diplotypes x and
     y. The diplotype vectors are expected as genotype allele counts, i.e., x and
     y should have the same shape (n_sites, n_alleles).
