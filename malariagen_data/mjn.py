@@ -128,7 +128,7 @@ def _uvw_consensus(h, max_allele):
     return out
 
 
-def median_joining_network(h, max_dist=None, max_allele=1):
+def _median_joining_network(h, max_dist=None, max_allele=1):
     # setup
     h = np.asarray(h)
     orig_n_haplotypes = h.shape[1]

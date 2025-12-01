@@ -42,7 +42,7 @@ from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
 from .anoph.phenotypes import AnophelesPhenotypeData
-from .mjn import median_joining_network, mjn_graph
+from .mjn import _median_joining_network, mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
@@ -2287,7 +2287,7 @@ class AnophelesDataResource(
             ht_counts = [len(s) for s in ht_distinct_sets]
 
             debug("construct median joining network")
-            ht_distinct_mjn, edges, alt_edges = median_joining_network(
+            ht_distinct_mjn, edges, alt_edges = _median_joining_network(
                 ht_distinct, max_dist=max_dist
             )
             edges = np.triu(edges)
