@@ -14,7 +14,7 @@ from .hap_data import AnophelesHapData
 from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
-    add_frequency_ci,
+    _add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
 from .frq_base import AnophelesFrequencyAnalysis
@@ -277,6 +277,6 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Add confidence intervals.
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         return ds_out

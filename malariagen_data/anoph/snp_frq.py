@@ -18,7 +18,7 @@ from .snp_data import AnophelesSnpData
 from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
-    add_frequency_ci,
+    _add_frequency_ci,
 )
 from .sample_metadata import locate_cohorts
 from .frq_base import AnophelesFrequencyAnalysis
@@ -633,7 +633,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             ds_out = ds_out.isel(variants=loc_variants)
 
         # Add confidence intervals.
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         # Tidy up display by sorting variables.
         sorted_vars: List[str] = sorted([str(k) for k in ds_out.keys()])
@@ -771,7 +771,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
 
         # Compute new confidence intervals.
-        add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
 
         # Tidy up display by sorting variables.
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]

@@ -13,7 +13,7 @@ from . import base_params, cnv_params, frq_params
 from .frq_base import (
     prep_samples_for_cohort_grouping,
     build_cohorts_from_sample_grouping,
-    add_frequency_ci,
+    _add_frequency_ci,
 )
 from ..util import (
     check_types,
@@ -644,7 +644,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             ds_out = ds_out.isel(variants=loc_variants)
 
         debug("add confidence intervals")
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]
