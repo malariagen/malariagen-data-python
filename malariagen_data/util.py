@@ -862,7 +862,7 @@ def _hash_params(params):
     return h, s
 
 
-def jitter(a, fraction):
+def _jitter(a, fraction):
     """Jitter data in `a` using the fraction `f`."""
     r = a.max() - a.min()
     return a + fraction * np.random.uniform(-r, r, a.shape)

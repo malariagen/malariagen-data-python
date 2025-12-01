@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, jitter
+from ..util import CacheMiss, check_types, _jitter
 from . import base_params, pca_params, plotly_params
 from .snp_data import AnophelesSnpData
 
@@ -347,8 +347,8 @@ class AnophelesPca(
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
+            data[x] = _jitter(data[x], jitter_frac)
+            data[y] = _jitter(data[y], jitter_frac)
 
         # Convenience variables.
         data["country_location"] = data["country"] + " - " + data["location"]
@@ -450,9 +450,9 @@ class AnophelesPca(
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
-            data[z] = jitter(data[z], jitter_frac)
+            data[x] = _jitter(data[x], jitter_frac)
+            data[y] = _jitter(data[y], jitter_frac)
+            data[z] = _jitter(data[z], jitter_frac)
 
         # Convenience variables.
         data["country_location"] = data["country"] + " - " + data["location"]
