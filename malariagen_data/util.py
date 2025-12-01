@@ -1204,7 +1204,7 @@ def _pdist_abs_hamming(X):
 
 
 @numba.njit
-def square_to_condensed(i, j, n):
+def _square_to_condensed(i, j, n):
     """Convert distance matrix coordinates from square form (i, j) to condensed form."""
 
     assert i != j, "no diagonal elements in condensed matrix"
@@ -1242,7 +1242,7 @@ def _multiallelic_diplotype_pdist(X, metric):
             d = metric(x, y)
 
             # Store result for the current pair.
-            k = square_to_condensed(i, j, n_samples)
+            k = _square_to_condensed(i, j, n_samples)
             out[k] = d
 
     return out

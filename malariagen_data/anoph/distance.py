@@ -10,7 +10,7 @@ from numpydoc_decorator import doc  # type: ignore
 # Internal imports.
 from .snp_data import AnophelesSnpData
 from . import base_params, distance_params, plotly_params, pca_params, tree_params
-from ..util import square_to_condensed, check_types, CacheMiss
+from ..util import _square_to_condensed, check_types, CacheMiss
 
 
 @numba.njit(parallel=True)
@@ -31,7 +31,7 @@ def _biallelic_diplotype_pdist(X, distfun):
             d = distfun(x, y)
 
             # Store result for the current pair.
-            k = square_to_condensed(i, j, n_samples)
+            k = _square_to_condensed(i, j, n_samples)
             out[k] = d
 
     return out
