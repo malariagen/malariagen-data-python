@@ -15,7 +15,7 @@ from ..util import (
     check_types,
     _da_concat,
     _da_from_zarr,
-    init_zarr_store,
+    _init_zarr_store,
     locate_region,
     parse_multi_region,
     simple_xarray_concat,
@@ -80,7 +80,7 @@ class AnophelesHapData(
             return self._cache_haplotype_sites[analysis]
         except KeyError:
             path = f"{self._base_path}/{self._major_version_path}/snp_haplotypes/sites/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_haplotype_sites[analysis] = root
         return root
@@ -213,7 +213,7 @@ class AnophelesHapData(
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/snp_haplotypes/{sample_set}/{analysis}/zarr"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             # Some sample sets have no data for a given analysis, handle this.
             try:
                 root = zarr.open_consolidated(store=store)

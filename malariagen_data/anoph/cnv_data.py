@@ -13,7 +13,7 @@ from ..util import (
     Region,
     check_types,
     _da_from_zarr,
-    init_zarr_store,
+    _init_zarr_store,
     parse_multi_region,
     parse_single_region,
     simple_xarray_concat,
@@ -83,7 +83,7 @@ class AnophelesCnvData(
 
             # If CNV HMM data exists for this sample set then return the zarr,
             # Otherwise return None.
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             try:
                 root = zarr.open_consolidated(store=store)
             except FileNotFoundError:
@@ -294,7 +294,7 @@ class AnophelesCnvData(
                 raise ValueError(
                     f"CNV coverage calls analysis f{analysis!r} not implemented for sample set {sample_set!r}"
                 )
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_coverage_calls[key] = root
         return root
@@ -489,7 +489,7 @@ class AnophelesCnvData(
                 calls_version = "discordant_read_calls"
             path = f"{self._base_path}/{release_path}/cnv/{sample_set}/{calls_version}/zarr"
             # print(analysis)
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_cnv_discordant_read_calls[sample_set] = root
         return root

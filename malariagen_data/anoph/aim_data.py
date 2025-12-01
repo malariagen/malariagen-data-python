@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots as go_make_subplots  # type: ignore
 
 from malariagen_data.anoph import plotly_params
 
-from ..util import DIM_SAMPLE, check_types, init_zarr_store, simple_xarray_concat
+from ..util import DIM_SAMPLE, check_types, _init_zarr_store, simple_xarray_concat
 from . import aim_params, base_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -84,7 +84,7 @@ class AnophelesAimData(
             path = f"{self._base_path}/reference/aim_defs_{analysis}/{aims}.zarr"
 
             # Initialise and open the zarr data.
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             ds = ds.set_coords(["variant_contig", "variant_position"])
 
@@ -105,7 +105,7 @@ class AnophelesAimData(
         path = f"{self._base_path}/{release_path}/aim_calls_{analysis}/{sample_set}/{aims}.zarr"
 
         # Initialise and open the zarr data.
-        store = init_zarr_store(fs=self._fs, path=path)
+        store = _init_zarr_store(fs=self._fs, path=path)
         ds = xr.open_zarr(store=store, concat_characters=False)
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
         return ds

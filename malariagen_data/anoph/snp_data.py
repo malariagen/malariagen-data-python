@@ -25,7 +25,7 @@ from ..util import (
     _dask_apply_allele_mapping,
     _dask_compress_dataset,
     _dask_genotype_array_map_alleles,
-    init_zarr_store,
+    _init_zarr_store,
     locate_region,
     parse_multi_region,
     parse_single_region,
@@ -128,7 +128,7 @@ class AnophelesSnpData(
             path = (
                 f"{self._base_path}/{self._major_version_path}/snp_genotypes/all/sites/"
             )
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_sites = root
         return self._cache_snp_sites
@@ -149,7 +149,7 @@ class AnophelesSnpData(
             release = self.lookup_release(sample_set=sample_set)
             release_path = self._release_to_path(release)
             path = f"{self._base_path}/{release_path}/snp_genotypes/all/{sample_set}/"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_snp_genotypes[sample_set] = root
             return root
@@ -178,7 +178,7 @@ class AnophelesSnpData(
             return self._cache_site_filters[mask_prepped]
         except KeyError:
             path = f"{self._base_path}/{self._major_version_path}/site_filters/{self._site_filters_analysis}/{mask_prepped}/"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             root = zarr.open_consolidated(store=store)
             self._cache_site_filters[mask_prepped] = root
             return root
@@ -190,7 +190,7 @@ class AnophelesSnpData(
     def open_site_annotations(self) -> zarr.hierarchy.Group:
         if self._cache_site_annotations is None:
             path = f"{self._base_path}/{self._site_annotations_zarr_path}"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_site_annotations = zarr.open_consolidated(store=store)
         return self._cache_site_annotations
 

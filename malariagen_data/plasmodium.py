@@ -13,7 +13,7 @@ from malariagen_data.util import (
     _prep_geneset_attributes_arg,
     _da_from_zarr,
     _init_filesystem,
-    init_zarr_store,
+    _init_zarr_store,
     read_gff3,
     resolve_region,
     unpack_gff3_attributes,
@@ -75,7 +75,7 @@ class PlasmodiumDataResource:
         """
         if self._cache_variant_calls_zarr is None:
             path = f"{self._path}/{self.CONF['variant_calls_zarr_path']}"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_variant_calls_zarr = zarr.open_consolidated(store=store)
         return self._cache_variant_calls_zarr
 
@@ -205,7 +205,7 @@ class PlasmodiumDataResource:
         """
         if self._cache_genome is None:
             path = f"{self._path}/{self.CONF['reference_path']}"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 

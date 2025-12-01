@@ -12,7 +12,7 @@ from .util import (
     _da_from_zarr,
     _dask_compress_dataset,
     _init_filesystem,
-    init_zarr_store,
+    _init_zarr_store,
     locate_region,
     read_gff3,
     resolve_region,
@@ -74,7 +74,7 @@ class Amin1:
         """
         if self._cache_genome is None:
             path = f"{self._path}/{genome_zarr_path}"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -153,7 +153,7 @@ class Amin1:
     def open_snp_calls(self):
         if self._cache_snp_genotypes is None:
             path = f"{self._path}/v1/snp_genotypes/all"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_snp_genotypes = zarr.open_consolidated(store=store)
         return self._cache_snp_genotypes
 

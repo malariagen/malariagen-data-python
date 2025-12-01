@@ -495,7 +495,7 @@ def _init_filesystem(url, **kwargs):
     return fs, path
 
 
-def init_zarr_store(fs, path):
+def _init_zarr_store(fs, path):
     """Initialise a zarr store (mapping) from a fsspec filesystem."""
 
     return SafeStore(FSMap(fs=fs, root=path, check=False, create=False))

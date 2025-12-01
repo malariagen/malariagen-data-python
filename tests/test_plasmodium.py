@@ -256,7 +256,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         mock_read_csv.assert_called_once()
 
     @patch(
-        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+        "malariagen_data.plasmodium._init_zarr_store", return_value="Safe store object"
     )
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_variant_calls_zarr_uses_cache(self, mock_zarr, mock_safestore):
@@ -546,7 +546,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         self.assertEqual(annotations.shape, (5, len(expected_columns)))
 
     @patch(
-        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+        "malariagen_data.plasmodium._init_zarr_store", return_value="Safe store object"
     )
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_genome_without_cache(self, mock_zarr, mock_safestore):
@@ -565,7 +565,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
         mock_zarr.assert_called_once_with(store="Safe store object")
 
     @patch(
-        "malariagen_data.plasmodium.init_zarr_store", return_value="Safe store object"
+        "malariagen_data.plasmodium._init_zarr_store", return_value="Safe store object"
     )
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_genome_with_cache(self, mock_zarr, mock_safestore):
