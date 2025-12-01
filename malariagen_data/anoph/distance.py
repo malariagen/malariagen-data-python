@@ -54,7 +54,7 @@ def _biallelic_diplotype_cityblock(x, y):
 
 
 @numba.njit
-def biallelic_diplotype_sqeuclidean(x, y):
+def _biallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     distance = np.float32(0)
 
@@ -71,7 +71,7 @@ def biallelic_diplotype_sqeuclidean(x, y):
 
 @numba.njit
 def _biallelic_diplotype_euclidean(x, y):
-    return np.sqrt(biallelic_diplotype_sqeuclidean(x, y))
+    return np.sqrt(_biallelic_diplotype_sqeuclidean(x, y))
 
 
 class AnophelesDistanceAnalysis(AnophelesSnpData):
@@ -223,7 +223,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         if metric == "cityblock":
             distfun = _biallelic_diplotype_cityblock
         elif metric == "sqeuclidean":
-            distfun = biallelic_diplotype_sqeuclidean
+            distfun = _biallelic_diplotype_sqeuclidean
         elif metric == "euclidean":
             distfun = _biallelic_diplotype_euclidean
         else:
