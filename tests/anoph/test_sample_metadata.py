@@ -138,6 +138,19 @@ def adir1_sim_api(adir1_sim_fixture):
     )
 
 
+@pytest.fixture
+def amin1_sim_api(amin1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=amin1_sim_fixture.url,
+        public_url=amin1_sim_fixture.url,
+        config_path=_amin1.CONFIG_PATH,
+        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
+        major_version_path=_amin1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_amin1.TAXON_COLORS,
+    )
+
+
 def af1_sim_unrestricted_use_only_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
@@ -181,19 +194,6 @@ def af1_sim_unrestricted_surveillance_use_only_api(af1_sim_fixture):
 
 
 @pytest.fixture
-def amin1_sim_api(amin1_sim_fixture):
-    return AnophelesSampleMetadata(
-        url=amin1_sim_fixture.url,
-        public_url=amin1_sim_fixture.url,
-        config_path=_amin1.CONFIG_PATH,
-        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
-        major_version_path=_amin1.MAJOR_VERSION_PATH,
-        pre=False,
-        taxon_colors=_amin1.TAXON_COLORS,
-    )
-
-
-@pytest.fixture
 def missing_metadata_api(fixture_dir):
     # In this fixture, one of the sample sets (AG1000G-BF-A) has missing files
     # for sequence QC, AIM and cohorts metadata.
@@ -215,7 +215,7 @@ def missing_metadata_api(fixture_dir):
     )
 
 
-@case(tags="af1")
+@case(tags="ag3")
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
