@@ -12,7 +12,7 @@ import numba  # type: ignore
 from .. import veff
 from ..util import (
     check_types,
-    pandas_apply,
+    _pandas_apply,
 )
 from .snp_data import AnophelesSnpData
 from .frq_base import (
@@ -255,7 +255,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             )
 
             # Add label.
-            df_snps["label"] = pandas_apply(
+            df_snps["label"] = _pandas_apply(
                 _make_snp_label_effect,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
@@ -269,7 +269,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         else:
             # Add label.
-            df_snps["label"] = pandas_apply(
+            df_snps["label"] = _pandas_apply(
                 _make_snp_label,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele"],
@@ -397,7 +397,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         # Add label.
-        df_aaf["label"] = pandas_apply(
+        df_aaf["label"] = _pandas_apply(
             _make_snp_label_aa,
             df_aaf,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
@@ -594,7 +594,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Add variant labels.
-        df_variants["label"] = pandas_apply(
+        df_variants["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_variants,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
@@ -751,7 +751,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
         # Assign new variant label.
-        label = pandas_apply(
+        label = _pandas_apply(
             _make_snp_label_aa,
             df_variants,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
@@ -834,7 +834,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Add label.
-        df_snps["label"] = pandas_apply(
+        df_snps["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_snps,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],

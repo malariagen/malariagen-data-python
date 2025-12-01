@@ -1524,7 +1524,7 @@ def _dask_genotype_array_map_alleles(gt, mapping):
     return gt_out
 
 
-def pandas_apply(f, df, columns):
+def _pandas_apply(f, df, columns):
     """Optimised alternative to pandas apply."""
     df = df.reset_index(drop=True)
     iterator = zip(*[df[c].values for c in columns])

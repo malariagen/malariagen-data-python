@@ -17,7 +17,7 @@ from .frq_base import (
 )
 from ..util import (
     check_types,
-    pandas_apply,
+    _pandas_apply,
     Region,
     parse_multi_region,
     region_str,
@@ -399,7 +399,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         df.reset_index(drop=True, inplace=True)
 
         debug("add label")
-        df["label"] = pandas_apply(
+        df["label"] = _pandas_apply(
             _make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
         )
 
@@ -610,7 +610,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         )
 
         debug("add variant label")
-        df_variants["label"] = pandas_apply(
+        df_variants["label"] = _pandas_apply(
             _make_gene_cnv_label,
             df_variants,
             columns=["gene_id", "gene_name", "cnv_type"],
