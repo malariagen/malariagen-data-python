@@ -134,7 +134,7 @@ class AnophelesG123Analysis(
         )
 
         with self._spinner("Compute G123"):
-            g123 = allel.moving_statistic(gt, statistic=garud_g123, size=window_size)
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, g123=g123)
@@ -243,7 +243,7 @@ class AnophelesG123Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute G123"):
-            g123 = allel.moving_statistic(gt, statistic=garud_g123, size=window_size)
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             calibration_runs[str(window_size)] = g123
 
         return calibration_runs
@@ -617,7 +617,7 @@ def _diplotype_frequencies(gt):
     return freqs
 
 
-def garud_g123(gt):
+def _garud_g123(gt):
     """Compute Garud's G123."""
 
     # compute diplotype frequencies
