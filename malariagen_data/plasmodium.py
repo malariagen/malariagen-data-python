@@ -12,7 +12,7 @@ from malariagen_data.util import (
     DIM_VARIANT,
     _prep_geneset_attributes_arg,
     _da_from_zarr,
-    init_filesystem,
+    _init_filesystem,
     init_zarr_store,
     read_gff3,
     resolve_region,
@@ -31,7 +31,7 @@ class PlasmodiumDataResource:
         self.CONF = self._load_config(data_config)
         if not url:
             url = self.CONF["default_url"]
-        self._fs, self._path = init_filesystem(url, **kwargs)
+        self._fs, self._path = _init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_sample_metadata = None

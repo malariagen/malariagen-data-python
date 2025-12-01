@@ -164,7 +164,7 @@ class Ag3(AnophelesDataResource):
         tqdm_class=None,
         unrestricted_use_only=False,
         surveillance_use_only=False,
-        **storage_options,  # used by fsspec via init_filesystem()
+        **storage_options,
     ):
         super().__init__(
             url=url,
@@ -194,7 +194,7 @@ class Ag3(AnophelesDataResource):
             gff_gene_type="gene",
             gff_gene_name_attribute="Name",
             gff_default_attributes=("ID", "Parent", "Name", "description"),
-            storage_options=storage_options,  # used by fsspec via init_filesystem()
+            storage_options=storage_options,
             tqdm_class=tqdm_class,
             taxon_colors=TAXON_COLORS,
             virtual_contigs=VIRTUAL_CONTIGS,

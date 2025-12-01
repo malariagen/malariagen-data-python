@@ -426,7 +426,7 @@ def _da_compress(
     return v
 
 
-def init_filesystem(url, **kwargs):
+def _init_filesystem(url, **kwargs):
     """Initialise a fsspec filesystem from a given base URL and parameters."""
 
     # Special case Google Cloud Storage, authenticate the user.

@@ -38,7 +38,7 @@ from ..util import (
     _distributed_client,
     _get_gcp_region,
     _hash_params,
-    init_filesystem,
+    _init_filesystem,
 )
 from . import base_params
 
@@ -133,7 +133,7 @@ class AnophelesBase:
         if storage_options is None:
             storage_options = dict()
         try:
-            self._fs, self._base_path = init_filesystem(self._url, **storage_options)
+            self._fs, self._base_path = _init_filesystem(self._url, **storage_options)
         except Exception as exc:  # pragma: no cover
             raise IOError(
                 "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."

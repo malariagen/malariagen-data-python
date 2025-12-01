@@ -130,7 +130,7 @@ class AnophelesDataResource(
         gff_gene_name_attribute: str,
         gff_default_attributes: Tuple[str, ...],
         tqdm_class,
-        storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
+        storage_options: Mapping,
         taxon_colors: Optional[Mapping[str, str]],
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],

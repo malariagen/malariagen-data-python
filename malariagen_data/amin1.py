@@ -11,7 +11,7 @@ from .util import (
     Region,
     _da_from_zarr,
     _dask_compress_dataset,
-    init_filesystem,
+    _init_filesystem,
     init_zarr_store,
     locate_region,
     read_gff3,
@@ -32,7 +32,7 @@ DEFAULT_URL = "gs://vo_amin_release/"
 class Amin1:
     def __init__(self, url=DEFAULT_URL, **kwargs):
         # setup filesystem
-        self._fs, self._path = init_filesystem(url, **kwargs)
+        self._fs, self._path = _init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_sample_metadata = None

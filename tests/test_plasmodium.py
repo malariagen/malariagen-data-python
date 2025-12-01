@@ -261,7 +261,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_variant_calls_zarr_uses_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.plasmodium.init_filesystem",
+            "malariagen_data.plasmodium._init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             plas_mock_fs = PlasmodiumDataResource(
@@ -551,7 +551,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_genome_without_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.plasmodium.init_filesystem",
+            "malariagen_data.plasmodium._init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             plas_mock_fs = PlasmodiumDataResource(
@@ -570,7 +570,7 @@ class TestPlasmodiumDataResource(unittest.TestCase):
     @patch("malariagen_data.plasmodium.zarr.open_consolidated")
     def test_open_genome_with_cache(self, mock_zarr, mock_safestore):
         with patch(
-            "malariagen_data.plasmodium.init_filesystem",
+            "malariagen_data.plasmodium._init_filesystem",
             return_value=["fs", self.test_data_path],
         ):
             plas_mock_fs = PlasmodiumDataResource(
