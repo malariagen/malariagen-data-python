@@ -1547,7 +1547,7 @@ def _compare_series_like(actual, expect):
 
 
 @numba.njit
-def hash_columns(x):
+def _hash_columns(x):
     # Here we want to compute a hash for each column in the
     # input array. However, we assume the input array is in
     # C contiguous order, and therefore we scan the array
@@ -1572,7 +1572,7 @@ def _haplotype_frequencies(h):
     """Compute haplotype frequencies, returning a dictionary that maps
     haplotype hash values to frequencies."""
     n = h.shape[1]
-    hashes = hash_columns(np.asarray(h))
+    hashes = _hash_columns(np.asarray(h))
     count = Counter(hashes)
     freqs = {key: count / n for key, count in count.items()}
     counts = {key: count for key, count in count.items()}

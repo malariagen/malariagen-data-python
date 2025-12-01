@@ -8,7 +8,7 @@ import bokeh.plotting
 
 from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
-from ..util import hash_columns, check_types, CacheMiss
+from ..util import _hash_columns, check_types, CacheMiss
 from . import base_params
 from . import g123_params, gplt_params
 
@@ -608,7 +608,7 @@ def _diplotype_frequencies(gt):
     x = np.asarray(gt).view(np.int16).reshape((m, n))
 
     # Now call optimised hashing function.
-    hashes = hash_columns(x)
+    hashes = _hash_columns(x)
 
     # Now compute counts and frequencies of distinct haplotypes.
     counts = Counter(hashes)
