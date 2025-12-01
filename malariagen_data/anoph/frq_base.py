@@ -1,10 +1,11 @@
-import numpy as np
-import pandas as pd
 import re
-import xarray as xr
-import plotly.express as px
 from textwrap import dedent
 from typing import Optional, Union, List
+
+import numpy as np
+import pandas as pd
+import xarray as xr
+import plotly.express as px
 from numpydoc_decorator import doc  # type: ignore
 from . import (
     plotly_params,
@@ -119,7 +120,7 @@ def build_cohorts_from_sample_grouping(
     return df_cohorts
 
 
-def add_frequency_ci(*, ds, ci_method):
+def _add_frequency_ci(*, ds, ci_method):
     from statsmodels.stats.proportion import proportion_confint  # type: ignore
 
     if ci_method is not None:
