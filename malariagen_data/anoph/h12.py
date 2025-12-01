@@ -58,7 +58,7 @@ class AnophelesH12Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
-            h12 = allel.moving_statistic(ht, statistic=garud_h12, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
             calibration_runs[str(window_size)] = h12
 
         return calibration_runs
@@ -260,7 +260,7 @@ class AnophelesH12Analysis(
 
         with self._spinner(desc="Compute H12"):
             # Compute H12.
-            h12 = allel.moving_statistic(ht, statistic=garud_h12, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
 
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
@@ -839,7 +839,7 @@ class AnophelesH12Analysis(
             return fig
 
 
-def garud_h12(ht):
+def _garud_h12(ht):
     """Compute Garud's H12."""
 
     # Compute haplotype frequencies.
