@@ -363,7 +363,7 @@ class AnophelesH1XAnalysis(
             return fig
 
 
-def haplotype_joint_frequencies(ha, hb):
+def _haplotype_joint_frequencies(ha, hb):
     """Compute the joint frequency of haplotypes in two difference
     cohorts. Returns a dictionary mapping haplotype hash values to
     the product of frequencies in each cohort."""
@@ -378,7 +378,7 @@ def _h1x(ha, hb):
     """Compute H1X, the sum of joint haplotype frequencies between
     two cohorts, which is a summary statistic useful for detecting
     shared selective sweeps."""
-    jf = haplotype_joint_frequencies(ha, hb)
+    jf = _haplotype_joint_frequencies(ha, hb)
     return np.sum(list(jf.values()))
 
 
