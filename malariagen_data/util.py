@@ -1186,7 +1186,7 @@ def true_runs(a):
 
 
 @numba.njit(parallel=True)
-def pdist_abs_hamming(X):
+def _pdist_abs_hamming(X):
     n_obs = X.shape[0]
     n_ftr = X.shape[1]
     out = np.zeros((n_obs, n_obs), dtype=np.int32)

@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, pdist_abs_hamming
+from ..util import CacheMiss, check_types, _pdist_abs_hamming
 from ..plotly_dendrogram import plot_dendrogram
 from . import (
     base_params,
@@ -284,7 +284,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
-            dist_sq = pdist_abs_hamming(ht_t)
+            dist_sq = _pdist_abs_hamming(ht_t)
         dist = squareform(dist_sq)
 
         # Extract IDs of phased samples. Convert to "U" dtype here
