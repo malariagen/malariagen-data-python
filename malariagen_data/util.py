@@ -1531,7 +1531,7 @@ def pandas_apply(f, df, columns):
     return ret
 
 
-def compare_series_like(actual, expect):
+def _compare_series_like(actual, expect):
     """Compare pandas series-like objects for equality or floating point
     similarity, handling missing values appropriately."""
 
