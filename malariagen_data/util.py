@@ -1247,7 +1247,7 @@ def multiallelic_diplotype_pdist(X, metric):
 
 
 @numba.njit
-def multiallelic_diplotype_mean_cityblock(x, y):
+def _multiallelic_diplotype_mean_cityblock(x, y):
     """Compute the mean cityblock distance between two diplotypes x and y. The
     diplotype vectors are expected as genotype allele counts, i.e., x and y
     should have the same shape (n_sites, n_alleles).

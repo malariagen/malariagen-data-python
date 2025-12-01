@@ -11,7 +11,7 @@ from ..util import (
     check_types,
     multiallelic_diplotype_pdist,
     multiallelic_diplotype_mean_sqeuclidean,
-    multiallelic_diplotype_mean_cityblock,
+    _multiallelic_diplotype_mean_cityblock,
 )
 from ..plotly_dendrogram import plot_dendrogram
 from . import (
@@ -271,7 +271,7 @@ class AnophelesDipClustAnalysis(
     ):
         metric = None  # To prevent using before assignment (Pylint).
         if distance_metric == "cityblock":
-            metric = multiallelic_diplotype_mean_cityblock
+            metric = _multiallelic_diplotype_mean_cityblock
         elif distance_metric == "euclidean":
             metric = multiallelic_diplotype_mean_sqeuclidean
 
