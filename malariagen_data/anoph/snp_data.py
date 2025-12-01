@@ -23,7 +23,7 @@ from ..util import (
     _da_concat,
     _da_from_zarr,
     _dask_apply_allele_mapping,
-    dask_compress_dataset,
+    _dask_compress_dataset,
     dask_genotype_array_map_alleles,
     init_zarr_store,
     locate_region,
@@ -670,7 +670,7 @@ class AnophelesSnpData(
 
         # Apply site filters.
         if site_mask_prepped is not None:
-            ds = dask_compress_dataset(
+            ds = _dask_compress_dataset(
                 ds, indexer=f"variant_filter_pass_{site_mask_prepped}", dim=DIM_VARIANT
             )
 
@@ -1155,7 +1155,7 @@ class AnophelesSnpData(
 
         if site_mask is not None:
             with self._spinner(desc="Apply site filters"):
-                ds = dask_compress_dataset(
+                ds = _dask_compress_dataset(
                     ds,
                     indexer=f"variant_filter_pass_{site_mask}",
                     dim=DIM_VARIANT,
@@ -1807,7 +1807,7 @@ class AnophelesSnpData(
 
         with self._spinner("Prepare biallelic SNP calls"):
             # Subset to biallelic sites.
-            ds_bi = dask_compress_dataset(ds, indexer=loc_bi, dim="variants")
+            ds_bi = _dask_compress_dataset(ds, indexer=loc_bi, dim="variants")
 
             # Start building a new dataset.
             coords: Dict[str, Any] = dict()
@@ -1875,7 +1875,7 @@ class AnophelesSnpData(
                     loc_out &= loc_minor
 
                 # Apply selection from conditions.
-                ds_out = dask_compress_dataset(ds_out, indexer=loc_out, dim="variants")
+                ds_out = _dask_compress_dataset(ds_out, indexer=loc_out, dim="variants")
 
             # Try to meet target number of SNPs.
             if n_snps is not None:

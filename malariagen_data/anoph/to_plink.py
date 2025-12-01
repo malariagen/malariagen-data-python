@@ -5,7 +5,7 @@ import numpy as np
 import os
 import bed_reader
 
-from ..util import dask_compress_dataset
+from ..util import _dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
@@ -114,7 +114,7 @@ class PlinkConverter(
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
 
         # Load final data
-        ds_snps_final = dask_compress_dataset(ds_snps, loc_var, dim="variants")
+        ds_snps_final = _dask_compress_dataset(ds_snps, loc_var, dim="variants")
 
         # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]

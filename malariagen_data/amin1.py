@@ -10,7 +10,7 @@ from .util import (
     DIM_VARIANT,
     Region,
     _da_from_zarr,
-    dask_compress_dataset,
+    _dask_compress_dataset,
     init_filesystem,
     init_zarr_store,
     locate_region,
@@ -274,7 +274,7 @@ class Amin1:
 
         # apply site filters
         if site_mask:
-            ds = dask_compress_dataset(
+            ds = _dask_compress_dataset(
                 ds, indexer="variant_filter_pass", dim=DIM_VARIANT
             )
 

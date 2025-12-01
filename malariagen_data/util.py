@@ -281,7 +281,7 @@ def _da_from_zarr(
     return d
 
 
-def dask_compress_dataset(ds, indexer, dim):
+def _dask_compress_dataset(ds, indexer, dim):
     """Temporary workaround for memory issues when attempting to
     index a xarray dataset with a Boolean array.
 
