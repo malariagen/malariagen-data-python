@@ -1505,7 +1505,7 @@ def genotype_array_map_alleles(gt, mapping):
     return out
 
 
-def dask_genotype_array_map_alleles(gt, mapping):
+def _dask_genotype_array_map_alleles(gt, mapping):
     assert isinstance(gt, da.Array)
     assert isinstance(mapping, np.ndarray)
     assert gt.ndim == 3

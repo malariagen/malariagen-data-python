@@ -24,7 +24,7 @@ from ..util import (
     _da_from_zarr,
     _dask_apply_allele_mapping,
     _dask_compress_dataset,
-    dask_genotype_array_map_alleles,
+    _dask_genotype_array_map_alleles,
     init_zarr_store,
     locate_region,
     parse_multi_region,
@@ -1836,7 +1836,7 @@ class AnophelesSnpData(
 
             # Store genotype calls, transformed.
             gt_dask = ds_bi["call_genotype"].data
-            gt_out = dask_genotype_array_map_alleles(gt_dask, allele_mapping)
+            gt_out = _dask_genotype_array_map_alleles(gt_dask, allele_mapping)
             data_vars["call_genotype"] = (
                 (
                     "variants",
