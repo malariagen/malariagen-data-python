@@ -16,7 +16,7 @@ from ..util import (
 )
 from .snp_data import AnophelesSnpData
 from .frq_base import (
-    prep_samples_for_cohort_grouping,
+    _prep_samples_for_cohort_grouping,
     _build_cohorts_from_sample_grouping,
     _add_frequency_ci,
 )
@@ -462,7 +462,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Prepare sample metadata for cohort grouping.
-        df_samples = prep_samples_for_cohort_grouping(
+        df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,

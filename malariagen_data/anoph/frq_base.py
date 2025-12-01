@@ -16,7 +16,7 @@ from ..util import check_types
 from .base import AnophelesBase
 
 
-def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by):
+def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 

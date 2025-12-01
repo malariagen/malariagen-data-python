@@ -11,7 +11,7 @@ from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, cnv_params, frq_params
 from .frq_base import (
-    prep_samples_for_cohort_grouping,
+    _prep_samples_for_cohort_grouping,
     _build_cohorts_from_sample_grouping,
     _add_frequency_ci,
 )
@@ -522,7 +522,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
         debug("prepare sample metadata for cohort grouping")
-        df_samples = prep_samples_for_cohort_grouping(
+        df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
