@@ -12,7 +12,7 @@ from ..util import (
     DIM_VARIANT,
     Region,
     check_types,
-    da_from_zarr,
+    _da_from_zarr,
     init_zarr_store,
     parse_multi_region,
     parse_single_region,
@@ -109,11 +109,11 @@ class AnophelesCnvData(
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -127,13 +127,13 @@ class AnophelesCnvData(
         debug("call arrays")
         data_vars["call_CN"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/CN"], inline_array=inline_array, chunks=chunks
             ),
         )
         data_vars["call_RawCov"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/RawCov"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -141,7 +141,7 @@ class AnophelesCnvData(
         )
         data_vars["call_NormCov"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/NormCov"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -151,12 +151,12 @@ class AnophelesCnvData(
         debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
         for field in "sample_coverage_variance", "sample_is_high_variance":
             data_vars[field] = (
                 [DIM_SAMPLE],
-                da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
         debug("set up attributes")
@@ -320,11 +320,11 @@ class AnophelesCnvData(
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -335,13 +335,13 @@ class AnophelesCnvData(
         )
         coords["variant_id"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
             ),
         )
         data_vars["variant_CIPOS"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/CIPOS"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -349,7 +349,7 @@ class AnophelesCnvData(
         )
         data_vars["variant_CIEND"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/CIEND"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -357,7 +357,7 @@ class AnophelesCnvData(
         )
         data_vars["variant_filter_pass"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/FILTER_PASS"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -367,7 +367,7 @@ class AnophelesCnvData(
         debug("call arrays")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -375,7 +375,7 @@ class AnophelesCnvData(
         debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
 
         debug("set up attributes")
@@ -519,17 +519,17 @@ class AnophelesCnvData(
         pos = root[f"{contig}/variants/POS"]
         coords["variant_position"] = (
             [DIM_VARIANT],
-            da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
         )
         coords["variant_end"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/END"], inline_array=inline_array, chunks=chunks
             ),
         )
         coords["variant_id"] = (
             [DIM_VARIANT],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/variants/ID"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -541,7 +541,7 @@ class AnophelesCnvData(
         for field in "Region", "StartBreakpointMethod", "EndBreakpointMethod":
             data_vars[f"variant_{field}"] = (
                 [DIM_VARIANT],
-                da_from_zarr(
+                _da_from_zarr(
                     root[f"{contig}/variants/{field}"],
                     inline_array=inline_array,
                     chunks=chunks,
@@ -551,7 +551,7 @@ class AnophelesCnvData(
         debug("call arrays")
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE],
-            da_from_zarr(
+            _da_from_zarr(
                 root[f"{contig}/calldata/GT"], inline_array=inline_array, chunks=chunks
             ),
         )
@@ -559,12 +559,12 @@ class AnophelesCnvData(
         debug("sample arrays")
         coords["sample_id"] = (
             [DIM_SAMPLE],
-            da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+            _da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
         )
         for field in "sample_coverage_variance", "sample_is_high_variance":
             data_vars[field] = (
                 [DIM_SAMPLE],
-                da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(root[field], inline_array=inline_array, chunks=chunks),
             )
 
         debug("set up attributes")

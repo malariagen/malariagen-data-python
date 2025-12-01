@@ -179,7 +179,7 @@ chunks_param_type: TypeAlias = Union[
 ]
 
 
-def da_from_zarr(
+def _da_from_zarr(
     z: zarr.core.Array,
     inline_array: bool,
     chunks: chunks_param_type,

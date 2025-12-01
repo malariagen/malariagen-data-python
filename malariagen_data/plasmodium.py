@@ -11,7 +11,7 @@ from malariagen_data.util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     _prep_geneset_attributes_arg,
-    da_from_zarr,
+    _da_from_zarr,
     init_filesystem,
     init_zarr_store,
     read_gff3,
@@ -85,11 +85,11 @@ class PlasmodiumDataResource:
         coords = dict()
         for var_name in ["POS", "CHROM"]:
             z = root[f"variants/{var_name}"]
-            var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            var = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             coords[f"variant_{var_names_for_outputs[var_name]}"] = [DIM_VARIANT], var
 
         z = root["samples"]
-        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        sample_id = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
         return coords
 
@@ -100,8 +100,8 @@ class PlasmodiumDataResource:
         # Add variant_allele as combination of REF and ALT
         ref_z = root["variants/REF"]
         alt_z = root["variants/ALT"]
-        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        ref = _da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        alt = _da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
@@ -110,7 +110,7 @@ class PlasmodiumDataResource:
         for var_name in configurable_default_variant_variables:
             z = root[f"variants/{var_name}"]
             dimension = configurable_default_variant_variables[var_name]
-            var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            var = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             if var_name in var_names_for_outputs.keys():
                 var_name = var_names_for_outputs[var_name]
             data_vars[f"variant_{var_name}"] = dimension, var
@@ -118,8 +118,8 @@ class PlasmodiumDataResource:
         # call arrays
         gt_z = root["calldata/GT"]
         ad_z = root["calldata/AD"]
-        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+        call_genotype = _da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+        call_ad = _da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
@@ -136,7 +136,7 @@ class PlasmodiumDataResource:
 
         for var_name in subset_extended_calldata:
             z = root[f"calldata/{var_name}"]
-            var = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            var = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"call_{var_name}"] = (
                 subset_extended_calldata[var_name],
                 var,
@@ -144,7 +144,7 @@ class PlasmodiumDataResource:
 
         for var_name in subset_extended_variants:
             z = root[f"variants/{var_name}"]
-            field = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            field = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             data_vars[f"variant_{var_name}"] = (
                 subset_extended_variants[var_name],
                 field,
@@ -235,7 +235,7 @@ class PlasmodiumDataResource:
         region = self.resolve_region(region)
         z = genome[region.contig]
 
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         if region.start:
             slice_start = region.start - 1

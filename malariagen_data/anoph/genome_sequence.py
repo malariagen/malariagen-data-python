@@ -7,7 +7,7 @@ from numpydoc_decorator import doc  # type: ignore
 from ..util import (
     Region,
     check_types,
-    da_from_zarr,
+    _da_from_zarr,
     init_zarr_store,
     parse_single_region,
 )
@@ -94,7 +94,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
             assert contig in self.contigs
             root = self.open_genome()
             z = root[contig]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return d
 
     @check_types

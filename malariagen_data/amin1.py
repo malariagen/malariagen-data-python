@@ -9,7 +9,7 @@ from .util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    da_from_zarr,
+    _da_from_zarr,
     dask_compress_dataset,
     init_filesystem,
     init_zarr_store,
@@ -102,7 +102,7 @@ class Amin1:
         genome = self.open_genome()
         region = resolve_region(self, region)
         z = genome[region.contig]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         if region.start:
             slice_start = region.start - 1
@@ -168,14 +168,16 @@ class Amin1:
 
         # variant_position
         pos_z = root[f"{contig}/variants/POS"]
-        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
+        variant_position = _da_from_zarr(
+            pos_z, inline_array=inline_array, chunks=chunks
+        )
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
         ref_z = root[f"{contig}/variants/REF"]
         alt_z = root[f"{contig}/variants/ALT"]
-        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        ref = _da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        alt = _da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
@@ -188,18 +190,18 @@ class Amin1:
 
         # variant_filter_pass
         fp_z = root[f"{contig}/variants/filter_pass"]
-        fp = da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
+        fp = _da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
         data_vars["variant_filter_pass"] = [DIM_VARIANT], fp
 
         # call arrays
         gt_z = root[f"{contig}/calldata/GT"]
-        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+        call_genotype = _da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
         gq_z = root[f"{contig}/calldata/GQ"]
-        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+        call_gq = _da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
         ad_z = root[f"{contig}/calldata/AD"]
-        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+        call_ad = _da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         mq_z = root[f"{contig}/calldata/MQ"]
-        call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
+        call_mq = _da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
@@ -210,7 +212,7 @@ class Amin1:
 
         # sample arrays
         z = root["samples"]
-        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        sample_id = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes

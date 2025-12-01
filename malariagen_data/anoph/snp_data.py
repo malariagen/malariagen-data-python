@@ -21,7 +21,7 @@ from ..util import (
     check_types,
     _da_compress,
     _da_concat,
-    da_from_zarr,
+    _da_from_zarr,
     dask_apply_allele_mapping,
     dask_compress_dataset,
     dask_genotype_array_map_alleles,
@@ -222,7 +222,7 @@ class AnophelesSnpData(
             assert contig in self.contigs
             root = self.open_site_filters(mask=mask)
             z = root[f"{contig}/variants/{field}"]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return d
 
     def _site_filters_for_region(
@@ -324,7 +324,7 @@ class AnophelesSnpData(
             assert contig in self.contigs
             root = self.open_snp_sites()
             z = root[f"{contig}/variants/{field}"]
-            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            ret = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return ret
 
     def _snp_sites_for_region(
@@ -433,7 +433,7 @@ class AnophelesSnpData(
             assert contig in self.contigs
             root = self.open_snp_genotypes(sample_set=sample_set)
             z = root[f"{contig}/calldata/{field}"]
-            d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return d
 
     @check_types
@@ -593,7 +593,7 @@ class AnophelesSnpData(
 
             # Set up variant_position.
             pos_z = sites_root[f"{contig}/variants/POS"]
-            variant_position = da_from_zarr(
+            variant_position = _da_from_zarr(
                 pos_z, inline_array=inline_array, chunks=chunks
             )
             coords["variant_position"] = [DIM_VARIANT], variant_position
@@ -601,8 +601,8 @@ class AnophelesSnpData(
             # Set up variant_allele.
             ref_z = sites_root[f"{contig}/variants/REF"]
             alt_z = sites_root[f"{contig}/variants/ALT"]
-            ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-            alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+            ref = _da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+            alt = _da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
             variant_allele = da.concatenate([ref[:, None], alt], axis=1)
             variant_allele = variant_allele.rechunk((variant_allele.chunks[0], -1))
             data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
@@ -618,7 +618,7 @@ class AnophelesSnpData(
             for mask in self.site_mask_ids:
                 filters_root = self.open_site_filters(mask=mask)
                 z = filters_root[f"{contig}/variants/filter_pass"]
-                d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+                d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
                 data_vars[f"variant_filter_pass_{mask}"] = [DIM_VARIANT], d
 
             # Set up attributes.
@@ -697,7 +697,7 @@ class AnophelesSnpData(
             "seq_relpos_start",
             "seq_relpos_stop",
         ):
-            data = da_from_zarr(
+            data = _da_from_zarr(
                 root[field][contig],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -963,13 +963,15 @@ class AnophelesSnpData(
             # Set up call arrays.
             calls_root = self.open_snp_genotypes(sample_set=sample_set)
             gt_z = calls_root[f"{contig}/calldata/GT"]
-            call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+            call_genotype = _da_from_zarr(
+                gt_z, inline_array=inline_array, chunks=chunks
+            )
             gq_z = calls_root[f"{contig}/calldata/GQ"]
-            call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+            call_gq = _da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
             ad_z = calls_root[f"{contig}/calldata/AD"]
-            call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+            call_ad = _da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
             mq_z = calls_root[f"{contig}/calldata/MQ"]
-            call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
+            call_mq = _da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
             data_vars["call_genotype"] = (
                 [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
                 call_genotype,
@@ -983,7 +985,7 @@ class AnophelesSnpData(
 
             # Set up sample arrays.
             z = calls_root["samples"]
-            sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            sample_id = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             # Decode to unicode strings, as it is stored as bytes objects.
             sample_id = sample_id.astype("U")
             coords["sample_id"] = [DIM_SAMPLE], sample_id

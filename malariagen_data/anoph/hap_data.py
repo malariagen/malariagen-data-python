@@ -14,7 +14,7 @@ from ..util import (
     Region,
     check_types,
     _da_concat,
-    da_from_zarr,
+    _da_from_zarr,
     init_zarr_store,
     locate_region,
     parse_multi_region,
@@ -121,7 +121,7 @@ class AnophelesHapData(
             assert contig in self.contigs
             root = self.open_haplotype_sites(analysis=analysis)
             z = root[f"{contig}/variants/{field}"]
-            ret = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+            ret = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return ret
 
     def _haplotype_sites_for_region(
@@ -270,7 +270,7 @@ class AnophelesHapData(
             pos = sites[f"{contig}/variants/POS"]
             coords["variant_position"] = (
                 [DIM_VARIANT],
-                da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(pos, inline_array=inline_array, chunks=chunks),
             )
 
             # Set up variant_contig.
@@ -281,12 +281,12 @@ class AnophelesHapData(
             )
 
             # Set up variant_allele.
-            ref = da_from_zarr(
+            ref = _da_from_zarr(
                 sites[f"{contig}/variants/REF"],
                 inline_array=inline_array,
                 chunks=chunks,
             )
-            alt = da_from_zarr(
+            alt = _da_from_zarr(
                 sites[f"{contig}/variants/ALT"],
                 inline_array=inline_array,
                 chunks=chunks,
@@ -297,7 +297,7 @@ class AnophelesHapData(
             # Set up call_genotype.
             data_vars["call_genotype"] = (
                 [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-                da_from_zarr(
+                _da_from_zarr(
                     root[f"{contig}/calldata/GT"],
                     inline_array=inline_array,
                     chunks=chunks,
@@ -307,7 +307,9 @@ class AnophelesHapData(
             # Set up sample array.
             coords["sample_id"] = (
                 [DIM_SAMPLE],
-                da_from_zarr(root["samples"], inline_array=inline_array, chunks=chunks),
+                _da_from_zarr(
+                    root["samples"], inline_array=inline_array, chunks=chunks
+                ),
             )
 
             # Set up attributes.
