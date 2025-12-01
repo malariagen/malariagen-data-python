@@ -1435,7 +1435,7 @@ def trim_alleles(ac):
 
 
 @numba.njit
-def apply_allele_mapping(x, mapping, max_allele):
+def _apply_allele_mapping(x, mapping, max_allele):
     """Transform an array x, where the columns correspond to alleles,
     according to an allele mapping.
 
@@ -1474,7 +1474,7 @@ def dask_apply_allele_mapping(v, mapping, max_allele):
     v = v.rechunk((v.chunks[0], -1))
     mapping = da.from_array(mapping, chunks=(v.chunks[0], -1))
     out = da.map_blocks(
-        lambda xb, mb: apply_allele_mapping(xb, mb, max_allele=max_allele),
+        lambda xb, mb: _apply_allele_mapping(xb, mb, max_allele=max_allele),
         v,
         mapping,
         dtype=v.dtype,
