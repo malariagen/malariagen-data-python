@@ -145,7 +145,7 @@ class SafeStore(BaseStore):
     def __len__(self):
         return len(self._store)
 
-    def __setitem__(self, item):
+    def __setitem__(self, key, value):  # __setitem__ expects 2 params (Pylint)
         raise NotImplementedError
 
     def __delitem__(self, item):
@@ -1538,7 +1538,7 @@ def _compare_series_like(actual, expect):
 
     # Handle object arrays, these don't get nans compared properly.
     t = actual.dtype
-    if t == object:
+    if t is object:  # Type comparisons should use is, is not or isinstance() (Pylint).
         expect = expect.fillna("NA")
         actual = actual.fillna("NA")
 
