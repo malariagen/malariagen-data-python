@@ -351,7 +351,10 @@ class AnophelesPca(
             data[y] = _jitter(data[y], jitter_frac)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(
@@ -455,7 +458,10 @@ class AnophelesPca(
             data[z] = _jitter(data[z], jitter_frac)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(
