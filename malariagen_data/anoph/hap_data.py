@@ -12,7 +12,7 @@ from ..util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    check_types,
+    _check_types,
     _da_concat,
     _da_from_zarr,
     _init_zarr_store,
@@ -67,7 +67,7 @@ class AnophelesHapData(
                 f"Invalid phasing analysis, must be one of f{self.phasing_analysis_ids}."
             )
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open haplotype sites zarr.",
         returns="Zarr hierarchy.",
@@ -159,7 +159,7 @@ class AnophelesHapData(
 
         return ret
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access haplotype site data (positions or alleles).",
         returns="""
@@ -196,7 +196,7 @@ class AnophelesHapData(
 
         return ret
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open haplotypes zarr.",
         returns="Zarr hierarchy.",
@@ -320,7 +320,7 @@ class AnophelesHapData(
 
             return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access haplotype data.",
         returns="""A dataset with 4 dimensions:

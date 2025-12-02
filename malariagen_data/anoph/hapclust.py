@@ -5,7 +5,7 @@ import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, _pdist_abs_hamming
+from ..util import CacheMiss, _check_types, _pdist_abs_hamming
 from ..plotly_dendrogram import _plot_dendrogram
 from . import (
     base_params,
@@ -29,7 +29,7 @@ class AnophelesHapClustAnalysis(AnophelesHapData, AnophelesSnpData):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Hierarchically cluster haplotypes in region and produce an interactive plot.

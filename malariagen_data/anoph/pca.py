@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, _jitter
+from ..util import CacheMiss, _check_types, _jitter
 from . import base_params, pca_params, plotly_params
 from .snp_data import AnophelesSnpData
 
@@ -23,7 +23,7 @@ class AnophelesPca(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
@@ -263,7 +263,7 @@ class AnophelesPca(
         )
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot explained variance ratios from a principal components analysis
@@ -308,7 +308,7 @@ class AnophelesPca(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -416,7 +416,7 @@ class AnophelesPca(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)

@@ -3,7 +3,7 @@ from typing import List, Optional
 import igv_notebook  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import Region, check_types, _parse_single_region
+from ..util import Region, _check_types, _parse_single_region
 from . import base_params
 from .snp_data import AnophelesSnpData
 
@@ -136,7 +136,7 @@ class AnophelesIgv(
 
         return tracks
 
-    @check_types
+    @_check_types
     @doc(
         summary="Create an IGV browser and inject into the current notebook.",
         parameters=dict(
@@ -170,7 +170,7 @@ class AnophelesIgv(
 
         return browser
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Launch IGV and view sequence read alignments and SNP genotypes from

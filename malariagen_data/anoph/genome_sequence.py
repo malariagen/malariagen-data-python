@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
     Region,
-    check_types,
+    _check_types,
     _da_from_zarr,
     _init_zarr_store,
     _parse_single_region,
@@ -62,7 +62,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
     def _genome_ref_name(self) -> str:
         return self.config["GENOME_REF_NAME"]
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open the reference genome zarr.",
         returns="Zarr hierarchy containing the reference genome sequence.",
@@ -97,7 +97,7 @@ class AnophelesGenomeSequenceData(AnophelesBase):
             d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return d
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access the reference genome sequence.",
         returns="""

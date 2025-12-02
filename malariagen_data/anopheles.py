@@ -48,7 +48,7 @@ from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
     CacheMiss,
     Region,
-    check_types,
+    _check_types,
     _jackknife_ci,
     _parse_single_region,
     _plotly_discrete_legend,
@@ -341,7 +341,7 @@ class AnophelesDataResource(
 
         return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -404,7 +404,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -565,7 +565,7 @@ class AnophelesDataResource(
     def _roh_hmm_cache_name(self):
         raise NotImplementedError("Must override _roh_hmm_cache_name")
 
-    @check_types
+    @_check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
     )
@@ -660,7 +660,7 @@ class AnophelesDataResource(
 
         return df_roh
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot a runs of homozygosity track.",
     )
@@ -749,7 +749,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot windowed heterozygosity and inferred runs of homozygosity for a
@@ -1011,7 +1011,7 @@ class AnophelesDataResource(
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for a cohort of
@@ -1123,7 +1123,7 @@ class AnophelesDataResource(
 
         return pd.Series(stats)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for multiple cohorts.
@@ -1187,7 +1187,7 @@ class AnophelesDataResource(
 
         return df_stats
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot diversity summary statistics for multiple cohorts.",
         parameters=dict(
@@ -1325,7 +1325,7 @@ class AnophelesDataResource(
         else:
             return (fig1, fig2, fig3, fig4)
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run iHS GWSS.",
         returns=dict(
@@ -1502,7 +1502,7 @@ class AnophelesDataResource(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
@@ -1648,7 +1648,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run and plot XP-EHH GWSS data.",
     )
@@ -1858,7 +1858,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run XP-EHH GWSS.",
         returns=dict(
@@ -2180,7 +2180,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Construct a median-joining haplotype network and display it using

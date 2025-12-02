@@ -9,7 +9,7 @@ from pandas.io.common import infer_compression  # type: ignore
 
 from ..util import (
     Region,
-    check_types,
+    _check_types,
     _parse_multi_region,
     _parse_single_region,
     _read_gff3,
@@ -116,7 +116,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             attributes_normed = tuple(attributes)
         return attributes_normed
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access genome feature annotations.",
         returns="A dataframe of genome annotations, one row per feature. The dataframe follows the GFF3 format (https://github.com/The-Sequence-Ontology/Specifications/blob/master/gff3.md), including extra attributes `ID`, `Parent`, `Name` and `description` depending on the dataset.",
@@ -179,7 +179,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         return df_children.copy()
 
-    @check_types
+    @_check_types
     @doc(summary="Plot a transcript, using bokeh.")
     def plot_transcript(
         self,
@@ -316,7 +316,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot a genes track, using bokeh.",
     )

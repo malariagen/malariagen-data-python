@@ -18,7 +18,7 @@ from ..util import (
     CacheMiss,
     Region,
     _apply_allele_mapping,
-    check_types,
+    _check_types,
     _da_compress,
     _da_concat,
     _da_from_zarr,
@@ -133,7 +133,7 @@ class AnophelesSnpData(
             self._cache_snp_sites = root
         return self._cache_snp_sites
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open SNP genotypes zarr for a given sample set.",
         returns="Zarr hierarchy.",
@@ -160,7 +160,7 @@ class AnophelesSnpData(
                 "Site filters not available for this data resource."
             )
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open site filters zarr.",
         returns="Zarr hierarchy.",
@@ -252,7 +252,7 @@ class AnophelesSnpData(
             d = d[loc_region]
         return d
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access SNP site filters.",
         returns="""
@@ -356,7 +356,7 @@ class AnophelesSnpData(
 
         return ret
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access SNP site data (positions or alleles).",
         returns="""
@@ -436,7 +436,7 @@ class AnophelesSnpData(
             d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
             return d
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access SNP genotypes and associated data.",
         returns="""
@@ -629,7 +629,7 @@ class AnophelesSnpData(
 
             return dsc
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access SNP sites and site filters.",
         returns="A dataset containing SNP sites and site filters.",
@@ -706,7 +706,7 @@ class AnophelesSnpData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Load site annotations.",
         returns="""
@@ -995,7 +995,7 @@ class AnophelesSnpData(
 
             return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access SNP sites, site filters and genotype calls.",
         returns="""A dataset with 4 dimensions:
@@ -1328,7 +1328,7 @@ class AnophelesSnpData(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute SNP allele counts. This returns the number of times each
@@ -1418,7 +1418,7 @@ class AnophelesSnpData(
         ac = results["ac"]
         return ac
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot SNPs in a given genome region. SNPs are shown as rectangles,
@@ -1489,7 +1489,7 @@ class AnophelesSnpData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot SNPs in a given genome region. SNPs are shown as rectangles,
@@ -1681,7 +1681,7 @@ class AnophelesSnpData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Compute genome accessibility array.",
         returns="An array of boolean values identifying accessible genome sites.",
@@ -1726,7 +1726,7 @@ class AnophelesSnpData(
 
         return is_accessible
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access SNP calls at sites which are biallelic within the selected samples.",
         returns="""
@@ -1890,7 +1890,7 @@ class AnophelesSnpData(
 
         return ds_out
 
-    @check_types
+    @_check_types
     @doc(
         summary="Load biallelic SNP genotypes.",
         returns=dict(

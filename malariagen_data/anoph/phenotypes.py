@@ -5,7 +5,7 @@ import warnings
 import fsspec
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import check_types
+from ..util import _check_types
 from malariagen_data.anoph import base_params, phenotype_params
 
 
@@ -315,7 +315,7 @@ class AnophelesPhenotypeData:
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Load phenotypic data from insecticide resistance bioassays.",
         returns=dict(
@@ -384,7 +384,7 @@ class AnophelesPhenotypeData:
 
         return df_final
 
-    @check_types
+    @_check_types
     @doc(
         summary="Combine phenotypic traits with SNP genotype data for GWAS analysis.",
         returns=dict(
@@ -429,7 +429,7 @@ class AnophelesPhenotypeData:
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Combine phenotypic traits with haplotype data for extended association analysis.",
         returns=dict(
@@ -474,7 +474,7 @@ class AnophelesPhenotypeData:
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="List sample sets that contain phenotypic data.",
         returns=dict(sample_sets="List of sample set identifiers with phenotype data."),

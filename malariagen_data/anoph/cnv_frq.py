@@ -16,7 +16,7 @@ from .frq_base import (
     _add_frequency_ci,
 )
 from ..util import (
-    check_types,
+    _check_types,
     _pandas_apply,
     Region,
     _parse_multi_region,
@@ -38,7 +38,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
         Compute modal copy number by gene, from HMM data.
@@ -183,7 +183,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
 
         return ds_out
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
         Compute modal copy number by gene, then compute the frequency of
@@ -412,7 +412,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
 
         return df
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
         Group samples by taxon, area (space) and period (time), then compute

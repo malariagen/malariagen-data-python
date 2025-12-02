@@ -1127,7 +1127,7 @@ def _check_colab_location(gcp_region: Optional[str]):
             )
 
 
-def check_types(f):
+def _check_types(f):
     """Simple decorator to provide runtime checking of parameter types.
 
     N.B., the typeguard package does have a decorator function called

@@ -8,7 +8,7 @@ import bokeh.plotting
 
 from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
-from ..util import _hash_columns, check_types, CacheMiss
+from ..util import _hash_columns, _check_types, CacheMiss
 from . import base_params
 from . import g123_params, gplt_params
 
@@ -141,7 +141,7 @@ class AnophelesG123Analysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run a G123 genome-wide selection scan.",
         returns=dict(
@@ -248,7 +248,7 @@ class AnophelesG123Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Generate G123 GWSS calibration data for different window sizes.",
         returns="""
@@ -306,7 +306,7 @@ class AnophelesG123Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -409,7 +409,7 @@ class AnophelesG123Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -494,7 +494,7 @@ class AnophelesG123Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS calibration data for different window sizes.",
     )

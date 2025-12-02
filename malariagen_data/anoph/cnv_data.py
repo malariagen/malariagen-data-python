@@ -11,7 +11,7 @@ from ..util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    check_types,
+    _check_types,
     _da_from_zarr,
     _init_zarr_store,
     _parse_multi_region,
@@ -68,7 +68,7 @@ class AnophelesCnvData(
         """
         return tuple(self.config.get("COVERAGE_CALLS_ANALYSIS_IDS", ()))  # ensure tuple
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open CNV HMM zarr.",
         returns="Zarr hierarchy or None.",
@@ -167,7 +167,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access CNV HMM data from CNV calling.",
         returns="""A dataset with 2 dimensions:
@@ -271,7 +271,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open CNV coverage calls zarr.",
         returns="Zarr hierarchy.",
@@ -386,7 +386,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access CNV HMM data from genome-wide CNV discovery and filtering.",
         returns="""A dataset with 2 dimensions:
@@ -469,7 +469,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Open CNV discordant read calls zarr.",
         returns="Zarr hierarchy.",
@@ -575,7 +575,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access CNV discordant read calls data.",
         returns="""A dataset with 2 dimensions:
@@ -665,7 +665,7 @@ class AnophelesCnvData(
 
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for a single sample, using bokeh.",
         returns="Bokeh figure.",
@@ -790,7 +790,7 @@ class AnophelesCnvData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for a single sample, together with a genes track, using bokeh.",
         returns="Bokeh figure.",
@@ -864,7 +864,7 @@ class AnophelesCnvData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for multiple samples as a heatmap, using bokeh.",
         returns="Bokeh figure.",
@@ -1006,7 +1006,7 @@ class AnophelesCnvData(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot CNV HMM data for multiple samples as a heatmap, with a genes track, using bokeh.",
         returns="Bokeh figure.",

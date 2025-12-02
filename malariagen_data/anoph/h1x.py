@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss, _haplotype_frequencies
+from ..util import _check_types, CacheMiss, _haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -96,7 +96,7 @@ class AnophelesH1XAnalysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a H1X genome-wide scan to detect genome regions with
@@ -162,7 +162,7 @@ class AnophelesH1XAnalysis(
 
         return x, h1x, contigs
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run and plot a H1X genome-wide scan to detect genome regions
@@ -270,7 +270,7 @@ class AnophelesH1XAnalysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run and plot a H1X genome-wide scan to detect genome regions

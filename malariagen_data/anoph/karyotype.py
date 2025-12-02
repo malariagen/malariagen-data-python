@@ -4,7 +4,7 @@ import numpy as np  # type: ignore
 import allel  # type: ignore
 
 from numpydoc_decorator import doc
-from ..util import check_types
+from ..util import _check_types
 from . import base_params
 from typing import Optional
 
@@ -46,7 +46,7 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
 
         self._inversion_tag_path = inversion_tag_path
 
-    @check_types
+    @_check_types
     @doc(
         summary="Load tag SNPs for a given inversion.",
     )
@@ -64,7 +64,7 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
                 df_tag_snps = pd.read_csv(path, sep=",")
             return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
-    @check_types
+    @_check_types
     @doc(
         summary="Infer karyotype from tag SNPs for a given inversion in Ag.",
     )

@@ -12,7 +12,7 @@ from . import (
     frq_params,
     map_params,
 )
-from ..util import check_types
+from ..util import _check_types
 from .base import AnophelesBase
 
 
@@ -170,7 +170,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
@@ -323,7 +323,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Create a time series plot of variant frequencies using plotly.",
         parameters=dict(
@@ -461,7 +461,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot markers on a map showing variant frequencies for cohorts grouped
@@ -552,7 +552,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             )
             m.add(marker)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Create an interactive map with markers showing variant frequencies or

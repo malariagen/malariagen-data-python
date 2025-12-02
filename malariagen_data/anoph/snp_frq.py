@@ -11,7 +11,7 @@ import numba  # type: ignore
 
 from .. import veff
 from ..util import (
-    check_types,
+    _check_types,
     _pandas_apply,
 )
 from .snp_data import AnophelesSnpData
@@ -89,7 +89,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             )
         return self._cache_annotator
 
-    @check_types
+    @_check_types
     @doc(
         summary="Compute variant effects for a gene transcript.",
         returns="""
@@ -119,7 +119,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute SNP allele frequencies for a gene transcript.
@@ -291,7 +291,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
@@ -419,7 +419,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_aaf
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -649,7 +649,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return ds_out
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute

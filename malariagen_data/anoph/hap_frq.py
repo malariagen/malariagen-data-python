@@ -7,7 +7,7 @@ import allel
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
-    check_types,
+    _check_types,
     _haplotype_frequencies,
 )
 from .hap_data import AnophelesHapData
@@ -31,7 +31,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute haplotype frequencies for a region.
@@ -124,7 +124,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
 
         return df_haps_sorted
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute

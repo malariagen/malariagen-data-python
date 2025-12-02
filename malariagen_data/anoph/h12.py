@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss, _haplotype_frequencies
+from ..util import _check_types, CacheMiss, _haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -63,7 +63,7 @@ class AnophelesH12Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Generate h12 GWSS calibration data for different window sizes.",
         returns="""
@@ -121,7 +121,7 @@ class AnophelesH12Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS calibration data for different window sizes.",
         parameters=dict(
@@ -278,7 +278,7 @@ class AnophelesH12Analysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run h12 genome-wide selection scan.",
         returns=dict(
@@ -339,7 +339,7 @@ class AnophelesH12Analysis(
 
         return x, h12, contigs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -442,7 +442,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -529,7 +529,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data track with multiple traces overlaid.",
     )
@@ -648,7 +648,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple traces overlaid.",
     )
@@ -735,7 +735,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple tracks.",
     )

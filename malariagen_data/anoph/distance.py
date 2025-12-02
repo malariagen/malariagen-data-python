@@ -10,7 +10,7 @@ from numpydoc_decorator import doc  # type: ignore
 # Internal imports.
 from .snp_data import AnophelesSnpData
 from . import base_params, distance_params, plotly_params, pca_params, tree_params
-from ..util import _square_to_condensed, check_types, CacheMiss
+from ..util import _square_to_condensed, _check_types, CacheMiss
 
 
 @numba.njit(parallel=True)
@@ -81,7 +81,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute pairwise distances between samples using biallelic SNP genotypes.
@@ -240,7 +240,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             ),  # ensure consistent behaviour to/from results cache
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Construct a neighbour-joining tree between samples using biallelic SNP genotypes.
@@ -409,7 +409,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             ),  # ensure consistent behaviour to/from results cache
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot an unrooted neighbour-joining tree, computed from pairwise distances

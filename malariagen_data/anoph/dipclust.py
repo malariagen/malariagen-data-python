@@ -8,7 +8,7 @@ import pandas as pd  # type: ignore
 
 from ..util import (
     CacheMiss,
-    check_types,
+    _check_types,
     _multiallelic_diplotype_pdist,
     _multiallelic_diplotype_mean_sqeuclidean,
     _multiallelic_diplotype_mean_cityblock,
@@ -42,7 +42,7 @@ class AnophelesDipClustAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary=""""
         Hierarchically cluster diplotypes in region and produce an interactive plot.

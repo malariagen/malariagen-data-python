@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots as go_make_subplots  # type: ignore
 
 from malariagen_data.anoph import plotly_params
 
-from ..util import DIM_SAMPLE, check_types, _init_zarr_store, _simple_xarray_concat
+from ..util import DIM_SAMPLE, _check_types, _init_zarr_store, _simple_xarray_concat
 from . import aim_params, base_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -62,7 +62,7 @@ class AnophelesAimData(
         else:
             raise ValueError(f"Invalid aims parameter, must be one of {self.aim_ids}.")
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access ancestry informative marker variants.",
         returns="""
@@ -110,7 +110,7 @@ class AnophelesAimData(
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access ancestry informative marker SNP sites, alleles and genotype
