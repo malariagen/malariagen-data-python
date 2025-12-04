@@ -83,7 +83,6 @@ def _read_gff3(buf, compression="gzip"):
         names=gff3_cols,
         na_values=["", "."],
         compression=compression,
-        engine="python",
     )
 
     # parse attributes
