@@ -26,7 +26,7 @@ class AnophelesH1XAnalysis(
     def _h1x_gwss(
         self,
         *,
-        contig,
+        region,
         analysis,
         window_size,
         sample_sets,
@@ -42,7 +42,7 @@ class AnophelesH1XAnalysis(
     ):
         # Access haplotype datasets for each cohort.
         ds1 = self.haplotypes(
-            region=contig,
+            region=region,
             analysis=analysis,
             sample_query=cohort1_query,
             sample_query_options=sample_query_options,
@@ -55,7 +55,7 @@ class AnophelesH1XAnalysis(
             inline_array=inline_array,
         )
         ds2 = self.haplotypes(
-            region=contig,
+            region=region,
             analysis=analysis,
             sample_query=cohort2_query,
             sample_query_options=sample_query_options,
@@ -110,7 +110,7 @@ class AnophelesH1XAnalysis(
     )
     def h1x_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: h12_params.window_size,
         cohort1_query: base_params.sample_query,
         cohort2_query: base_params.sample_query,
@@ -130,10 +130,10 @@ class AnophelesH1XAnalysis(
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
-        name = "h1x_gwss_v2"
+        name = "h1x_gwss_v3"
 
         params = dict(
-            contig=contig,
+            region=region,
             analysis=self._prep_phasing_analysis_param(analysis=analysis),
             window_size=window_size,
             # N.B., do not be tempted to convert these sample queries into integer
@@ -171,7 +171,7 @@ class AnophelesH1XAnalysis(
     )
     def plot_h1x_gwss_track(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
@@ -199,7 +199,7 @@ class AnophelesH1XAnalysis(
     ) -> gplt_params.optional_figure:
         # Compute H1X.
         x, h1x, contigs = self.h1x_gwss(
-            contig=contig,
+            region=region,
             analysis=analysis,
             window_size=window_size,
             cohort_size=cohort_size,
@@ -262,7 +262,7 @@ class AnophelesH1XAnalysis(
         # Tidy up the plot.
         fig.yaxis.axis_label = "H1X"
         fig.yaxis.ticker = [0, 1]
-        self._bokeh_style_genome_xaxis(fig, contig)
+        self._bokeh_style_genome_xaxis(fig, region)
 
         if show:  # pragma: no cover
             bokeh.plotting.show(fig)
@@ -279,7 +279,7 @@ class AnophelesH1XAnalysis(
     )
     def plot_h1x_gwss(
         self,
-        contig: base_params.contig,
+        region: base_params.region,
         window_size: h12_params.window_size,
         cohort1_query: base_params.cohort1_query,
         cohort2_query: base_params.cohort2_query,
@@ -309,7 +309,7 @@ class AnophelesH1XAnalysis(
     ) -> gplt_params.optional_figure:
         # Plot GWSS track.
         fig1 = self.plot_h1x_gwss_track(
-            contig=contig,
+            region=region,
             analysis=analysis,
             window_size=window_size,
             cohort1_query=cohort1_query,
@@ -335,7 +335,7 @@ class AnophelesH1XAnalysis(
 
         # Plot genes.
         fig2 = self.plot_genes(
-            region=contig,
+            region=region,
             sizing_mode=sizing_mode,
             width=width,
             height=genes_height,
