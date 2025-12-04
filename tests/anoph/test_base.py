@@ -46,6 +46,18 @@ def adir1_sim_api(adir1_sim_fixture):
     )
 
 
+@pytest.fixture
+def amin1_sim_api(amin1_sim_fixture):
+    return AnophelesBase(
+        url=amin1_sim_fixture.url,
+        public_url=amin1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -68,6 +80,10 @@ def case_af1_sim(af1_sim_fixture, af1_sim_api):
 
 def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
     return adir1_sim_fixture, adir1_sim_api
+
+
+def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
+    return amin1_sim_fixture, amin1_sim_api
 
 
 @parametrize_with_cases("fixture,api", cases=".")
