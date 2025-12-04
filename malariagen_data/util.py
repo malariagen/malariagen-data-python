@@ -1538,11 +1538,11 @@ def _compare_series_like(actual, expect):
 
     # Handle object arrays, these don't get nans compared properly.
     t = actual.dtype
-    if t is object:  # Type comparisons should use is, is not or isinstance() (Pylint).
+
+    if t.kind == "O":
         expect = expect.fillna("NA")
         actual = actual.fillna("NA")
-
-    if t.kind == "f":
+    elif t.kind == "f":
         assert_allclose(actual.values, expect.values)
     else:
         assert_array_equal(actual.values, expect.values)
