@@ -6,7 +6,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, jitter
+from ..util import CacheMiss, _check_types, _jitter
 from . import base_params, pca_params, plotly_params
 from .snp_data import AnophelesSnpData
 
@@ -23,7 +23,7 @@ class AnophelesPca(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a principal components analysis (PCA) using biallelic SNPs from
@@ -83,7 +83,7 @@ class AnophelesPca(
         name = "pca_v5"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -263,7 +263,7 @@ class AnophelesPca(
         )
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot explained variance ratios from a principal components analysis
@@ -308,7 +308,7 @@ class AnophelesPca(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -347,11 +347,14 @@ class AnophelesPca(
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
+            data[x] = _jitter(data[x], jitter_frac)
+            data[y] = _jitter(data[y], jitter_frac)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(
@@ -413,7 +416,7 @@ class AnophelesPca(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot sample coordinates from a principal components analysis (PCA)
@@ -450,12 +453,15 @@ class AnophelesPca(
         # Apply jitter if desired - helps spread out points when tightly clustered.
         if jitter_frac:
             np.random.seed(random_seed)
-            data[x] = jitter(data[x], jitter_frac)
-            data[y] = jitter(data[y], jitter_frac)
-            data[z] = jitter(data[z], jitter_frac)
+            data[x] = _jitter(data[x], jitter_frac)
+            data[y] = _jitter(data[y], jitter_frac)
+            data[z] = _jitter(data[z], jitter_frac)
 
         # Convenience variables.
-        data["country_location"] = data["country"] + " - " + data["location"]
+        # Prevent lint error (mypy): Unsupported operand types for + ("Series[Any]" and "str")
+        data["country_location"] = (
+            data["country"].astype(str) + " - " + data["location"].astype(str)
+        )
 
         # Normalise color and symbol parameters.
         symbol_prepped = self._setup_sample_symbol(

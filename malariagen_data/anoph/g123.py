@@ -8,7 +8,7 @@ import bokeh.plotting
 
 from .snp_data import AnophelesSnpData
 from .hap_data import AnophelesHapData
-from ..util import hash_columns, check_types, CacheMiss
+from ..util import _hash_columns, _check_types, CacheMiss
 from . import base_params
 from . import g123_params, gplt_params
 
@@ -134,14 +134,14 @@ class AnophelesG123Analysis(
         )
 
         with self._spinner("Compute G123"):
-            g123 = allel.moving_statistic(gt, statistic=garud_g123, size=window_size)
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             x = allel.moving_statistic(pos, statistic=np.mean, size=window_size)
 
         results = dict(x=x, g123=g123)
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run a G123 genome-wide selection scan.",
         returns=dict(
@@ -243,12 +243,12 @@ class AnophelesG123Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute G123"):
-            g123 = allel.moving_statistic(gt, statistic=garud_g123, size=window_size)
+            g123 = allel.moving_statistic(gt, statistic=_garud_g123, size=window_size)
             calibration_runs[str(window_size)] = g123
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Generate G123 GWSS calibration data for different window sizes.",
         returns="""
@@ -306,7 +306,7 @@ class AnophelesG123Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -409,7 +409,7 @@ class AnophelesG123Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS data.",
     )
@@ -494,7 +494,7 @@ class AnophelesG123Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot G123 GWSS calibration data for different window sizes.",
     )
@@ -596,7 +596,7 @@ class AnophelesG123Analysis(
             return fig
 
 
-def diplotype_frequencies(gt):
+def _diplotype_frequencies(gt):
     """Compute diplotype frequencies, returning a dictionary that maps
     diplotype hash values to frequencies."""
 
@@ -608,7 +608,7 @@ def diplotype_frequencies(gt):
     x = np.asarray(gt).view(np.int16).reshape((m, n))
 
     # Now call optimised hashing function.
-    hashes = hash_columns(x)
+    hashes = _hash_columns(x)
 
     # Now compute counts and frequencies of distinct haplotypes.
     counts = Counter(hashes)
@@ -617,11 +617,11 @@ def diplotype_frequencies(gt):
     return freqs
 
 
-def garud_g123(gt):
+def _garud_g123(gt):
     """Compute Garud's G123."""
 
     # compute diplotype frequencies
-    frq_counter = diplotype_frequencies(gt)
+    frq_counter = _diplotype_frequencies(gt)
 
     # convert to array of sorted frequencies
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]

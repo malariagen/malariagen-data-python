@@ -13,7 +13,7 @@ from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
-from malariagen_data.util import compare_series_like
+from malariagen_data.util import _compare_series_like
 from .test_frq import (
     check_plot_frequencies_heatmap,
     check_plot_frequencies_time_series,
@@ -1081,7 +1081,7 @@ def check_snp_allele_frequencies_advanced(
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
-            compare_series_like(actual, expect)
+            _compare_series_like(actual, expect)
 
         # Check frequencies are consistent.
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
@@ -1269,7 +1269,7 @@ def check_aa_allele_frequencies_advanced(
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
-            compare_series_like(actual, expect)
+            _compare_series_like(actual, expect)
 
         # Check frequencies are consistent.
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):

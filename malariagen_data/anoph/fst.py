@@ -11,7 +11,7 @@ import plotly.express as px
 
 from .snp_data import AnophelesSnpData
 from . import base_params, fst_params, gplt_params, plotly_params
-from ..util import CacheMiss, check_types
+from ..util import CacheMiss, _check_types
 
 
 class AnophelesFstAnalysis(
@@ -92,7 +92,7 @@ class AnophelesFstAnalysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a Fst genome-wide scan to investigate genetic differentiation
@@ -155,7 +155,7 @@ class AnophelesFstAnalysis(
 
         return x, fst
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run and plot a Fst genome-wide scan to investigate genetic
@@ -261,7 +261,7 @@ class AnophelesFstAnalysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run and plot a Fst genome-wide scan to investigate genetic
@@ -349,7 +349,7 @@ class AnophelesFstAnalysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute average Hudson's Fst between two specified cohorts.
@@ -421,7 +421,7 @@ class AnophelesFstAnalysis(
 
         return fst, se
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute pairwise average Hudson's Fst between a set of specified cohorts.
@@ -495,7 +495,7 @@ class AnophelesFstAnalysis(
 
         return fst_df
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot a heatmap of pairwise average Fst values.

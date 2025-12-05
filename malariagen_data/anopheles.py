@@ -42,16 +42,16 @@ from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
 from .anoph.phenotypes import AnophelesPhenotypeData
-from .mjn import median_joining_network, mjn_graph
+from .mjn import _median_joining_network, _mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
     CacheMiss,
     Region,
-    check_types,
-    jackknife_ci,
-    parse_single_region,
-    plotly_discrete_legend,
+    _check_types,
+    _jackknife_ci,
+    _parse_single_region,
+    _plotly_discrete_legend,
 )
 
 
@@ -130,7 +130,7 @@ class AnophelesDataResource(
         gff_gene_name_attribute: str,
         gff_default_attributes: Tuple[str, ...],
         tqdm_class,
-        storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
+        storage_options: Mapping,
         taxon_colors: Optional[Mapping[str, str]],
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],
@@ -341,7 +341,7 @@ class AnophelesDataResource(
 
         return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -366,7 +366,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         # Normalise parameters.
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -404,7 +404,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -565,7 +565,7 @@ class AnophelesDataResource(
     def _roh_hmm_cache_name(self):
         raise NotImplementedError("Must override _roh_hmm_cache_name")
 
-    @check_types
+    @_check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
     )
@@ -584,7 +584,7 @@ class AnophelesDataResource(
     ) -> het_params.df_roh:
         debug = self._log.debug
 
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
 
         name = self._roh_hmm_cache_name
 
@@ -660,7 +660,7 @@ class AnophelesDataResource(
 
         return df_roh
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot a runs of homozygosity track.",
     )
@@ -679,7 +679,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
         contig = resolved_region.contig
         start = resolved_region.start
@@ -749,7 +749,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot windowed heterozygosity and inferred runs of homozygosity for a
@@ -782,7 +782,7 @@ class AnophelesDataResource(
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -956,7 +956,7 @@ class AnophelesDataResource(
             theta_pi_ci_err,
             theta_pi_ci_low,
             theta_pi_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=theta_pi_data,
             jack_stat=jack_theta_pi,
             confidence_level=confidence_level,
@@ -968,7 +968,7 @@ class AnophelesDataResource(
             theta_w_ci_err,
             theta_w_ci_low,
             theta_w_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=theta_w_data,
             jack_stat=jack_theta_w,
             confidence_level=confidence_level,
@@ -980,7 +980,7 @@ class AnophelesDataResource(
             tajima_d_ci_err,
             tajima_d_ci_low,
             tajima_d_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=tajima_d_data,
             jack_stat=jack_tajima_d,
             confidence_level=confidence_level,
@@ -1011,7 +1011,7 @@ class AnophelesDataResource(
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for a cohort of
@@ -1123,7 +1123,7 @@ class AnophelesDataResource(
 
         return pd.Series(stats)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for multiple cohorts.
@@ -1187,7 +1187,7 @@ class AnophelesDataResource(
 
         return df_stats
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot diversity summary statistics for multiple cohorts.",
         parameters=dict(
@@ -1325,7 +1325,7 @@ class AnophelesDataResource(
         else:
             return (fig1, fig2, fig3, fig4)
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run iHS GWSS.",
         returns=dict(
@@ -1502,7 +1502,7 @@ class AnophelesDataResource(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
@@ -1648,7 +1648,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run and plot XP-EHH GWSS data.",
     )
@@ -1858,7 +1858,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run XP-EHH GWSS.",
         returns=dict(
@@ -2180,7 +2180,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Construct a median-joining haplotype network and display it using
@@ -2287,7 +2287,7 @@ class AnophelesDataResource(
             ht_counts = [len(s) for s in ht_distinct_sets]
 
             debug("construct median joining network")
-            ht_distinct_mjn, edges, alt_edges = median_joining_network(
+            ht_distinct_mjn, edges, alt_edges = _median_joining_network(
                 ht_distinct, max_dist=max_dist
             )
             edges = np.triu(edges)
@@ -2395,7 +2395,7 @@ class AnophelesDataResource(
 
         debug("construct graph")
         anon_width = np.sqrt(0.3 * node_size_factor)
-        graph_nodes, graph_edges = mjn_graph(
+        graph_nodes, graph_edges = _mjn_graph(
             ht_distinct=ht_distinct,
             ht_distinct_mjn=ht_distinct_mjn,
             ht_counts=ht_counts,
@@ -2451,7 +2451,7 @@ class AnophelesDataResource(
 
         debug("create figure legend")
         if color is not None:
-            legend_fig = plotly_discrete_legend(
+            legend_fig = _plotly_discrete_legend(
                 color="_partition",  # Changed from color=color
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,

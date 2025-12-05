@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss, haplotype_frequencies
+from ..util import _check_types, CacheMiss, _haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -58,12 +58,12 @@ class AnophelesH12Analysis(
 
         calibration_runs: Dict[str, np.ndarray] = dict()
         for window_size in self._progress(window_sizes, desc="Compute H12"):
-            h12 = allel.moving_statistic(ht, statistic=garud_h12, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
             calibration_runs[str(window_size)] = h12
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Generate h12 GWSS calibration data for different window sizes.",
         returns="""
@@ -121,7 +121,7 @@ class AnophelesH12Analysis(
 
         return calibration_runs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS calibration data for different window sizes.",
         parameters=dict(
@@ -260,7 +260,7 @@ class AnophelesH12Analysis(
 
         with self._spinner(desc="Compute H12"):
             # Compute H12.
-            h12 = allel.moving_statistic(ht, statistic=garud_h12, size=window_size)
+            h12 = allel.moving_statistic(ht, statistic=_garud_h12, size=window_size)
 
             # Compute window midpoints.
             pos = ds_haps["variant_position"].values
@@ -278,7 +278,7 @@ class AnophelesH12Analysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run h12 genome-wide selection scan.",
         returns=dict(
@@ -339,7 +339,7 @@ class AnophelesH12Analysis(
 
         return x, h12, contigs
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -442,7 +442,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data.",
     )
@@ -529,7 +529,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data track with multiple traces overlaid.",
     )
@@ -648,7 +648,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple traces overlaid.",
     )
@@ -735,7 +735,7 @@ class AnophelesH12Analysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot h12 GWSS data with multiple tracks.",
     )
@@ -839,11 +839,11 @@ class AnophelesH12Analysis(
             return fig
 
 
-def garud_h12(ht):
+def _garud_h12(ht):
     """Compute Garud's H12."""
 
     # Compute haplotype frequencies.
-    frq_counter, _, _ = haplotype_frequencies(ht)
+    frq_counter, _, _ = _haplotype_frequencies(ht)
 
     # Convert to array of sorted frequencies.
     f = np.sort(np.fromiter(frq_counter.values(), dtype=float))[::-1]

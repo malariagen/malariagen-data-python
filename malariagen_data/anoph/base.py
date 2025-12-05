@@ -33,12 +33,12 @@ import xarray as xr
 from ..util import (
     CacheMiss,
     LoggingHelper,
-    check_colab_location,
-    check_types,
-    distributed_client,
-    get_gcp_region,
-    hash_params,
-    init_filesystem,
+    _check_colab_location,
+    _check_types,
+    _distributed_client,
+    _get_gcp_region,
+    _hash_params,
+    _init_filesystem,
 )
 from . import base_params
 
@@ -104,10 +104,10 @@ class AnophelesBase:
                 pass
 
         # Determine cloud location details.
-        self._gcp_region = get_gcp_region(self._client_details)
+        self._gcp_region = _get_gcp_region(self._client_details)
 
         # Check colab location.
-        check_colab_location(self._gcp_region)
+        _check_colab_location(self._gcp_region)
 
         # Determine storage URL.
         if url:
@@ -133,7 +133,7 @@ class AnophelesBase:
         if storage_options is None:
             storage_options = dict()
         try:
-            self._fs, self._base_path = init_filesystem(self._url, **storage_options)
+            self._fs, self._base_path = _init_filesystem(self._url, **storage_options)
         except Exception as exc:  # pragma: no cover
             raise IOError(
                 "An error occurred establishing a connection to the storage system. Please see the nested exception for more details."
@@ -199,7 +199,7 @@ class AnophelesBase:
         # Progress doesn't mix well with debug logging.
         show_progress = self._show_progress and not self._debug
         if show_progress:
-            if distributed_client():
+            if _distributed_client():
                 # Cannot easily show progress, fall back to spinner.
                 return self._spinner(desc=desc)
             else:
@@ -222,12 +222,12 @@ class AnophelesBase:
         else:
             return nullcontext()
 
-    @check_types
+    @_check_types
     def open_file(self, path: str) -> IO:
         full_path = f"{self._base_path}/{path}"
         return self._fs.open(full_path)
 
-    @check_types
+    @_check_types
     def read_files(
         self,
         paths: Iterable[str],
@@ -608,7 +608,7 @@ class AnophelesBase:
 
         return df
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access a dataframe of sample sets",
         returns="""A dataframe of sample sets, one row per sample set. It contains five columns:
@@ -630,7 +630,7 @@ class AnophelesBase:
     ) -> pd.DataFrame:
         return self._relevant_sample_sets(release=release)
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access a dataframe of available sample sets",
         returns="""A dataframe of available sample sets, one row per sample set. It contains five columns:
@@ -685,7 +685,7 @@ class AnophelesBase:
         # Return copy to ensure cached dataframes aren't modified by user.
         return df.copy()
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access a dataframe of relevant sample sets",
         returns="""A dataframe of relevant sample sets, one row per sample set. It contains five columns:
@@ -767,7 +767,7 @@ class AnophelesBase:
         # Return copy to ensure cached dataframes aren't modified by user.
         return df.copy()
 
-    @check_types
+    @_check_types
     @doc(
         summary="Find which release a sample set was included in.",
         returns="The release the sample set is part of.",
@@ -784,7 +784,7 @@ class AnophelesBase:
                 f"No release found for sample set {sample_set!r}. This sample set might be unavailable or irrelevant with respect to settings."
             ) from e
 
-    @check_types
+    @_check_types
     @doc(
         summary="Find which study a sample set belongs to.",
         returns="The study the sample set belongs to.",
@@ -798,7 +798,7 @@ class AnophelesBase:
         except KeyError as e:
             raise ValueError(f"No study ID found for sample set {sample_set!r}") from e
 
-    @check_types
+    @_check_types
     @doc(
         summary="Find the study info for a sample set.",
         returns="The info for the study the sample set belongs to.",
@@ -816,7 +816,7 @@ class AnophelesBase:
                 f"No study info found for sample set {sample_set!r}"
             ) from e
 
-    @check_types
+    @_check_types
     @doc(
         summary="Find the terms-of-use info for a sample set.",
         returns="The terms-of-use info for the sample set.",
@@ -980,7 +980,7 @@ class AnophelesBase:
         # Expect sub-classes will override to add any analysis parameters.
         pass
 
-    @check_types
+    @_check_types
     def results_cache_get(
         self, *, name: str, params: Dict[str, Any]
     ) -> Mapping[str, np.ndarray]:
@@ -989,7 +989,7 @@ class AnophelesBase:
             raise CacheMiss
         params = params.copy()
         self._results_cache_add_analysis_params(params)
-        cache_key, _ = hash_params(params)
+        cache_key, _ = _hash_params(params)
         cache_path = self._results_cache / name / cache_key
 
         # Read zipped zarr format.
@@ -1004,7 +1004,7 @@ class AnophelesBase:
 
         raise CacheMiss
 
-    @check_types
+    @_check_types
     def results_cache_set(
         self, *, name: str, params: Dict[str, Any], results: Mapping[str, np.ndarray]
     ):
@@ -1015,7 +1015,7 @@ class AnophelesBase:
         # Set up parameters for the results to be saved.
         params = params.copy()
         self._results_cache_add_analysis_params(params)
-        cache_key, params_json = hash_params(params)
+        cache_key, params_json = _hash_params(params)
 
         # Determine storage path.
         cache_path = self._results_cache / name / cache_key

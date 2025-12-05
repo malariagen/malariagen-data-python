@@ -10,11 +10,11 @@ from numpydoc_decorator import doc  # type: ignore
 # Internal imports.
 from .snp_data import AnophelesSnpData
 from . import base_params, distance_params, plotly_params, pca_params, tree_params
-from ..util import square_to_condensed, check_types, CacheMiss
+from ..util import _square_to_condensed, _check_types, CacheMiss
 
 
 @numba.njit(parallel=True)
-def biallelic_diplotype_pdist(X, distfun):
+def _biallelic_diplotype_pdist(X, distfun):
     n_samples = X.shape[0]
     n_pairs = (n_samples * (n_samples - 1)) // 2
     out = np.zeros(n_pairs, dtype=np.float32)
@@ -31,14 +31,14 @@ def biallelic_diplotype_pdist(X, distfun):
             d = distfun(x, y)
 
             # Store result for the current pair.
-            k = square_to_condensed(i, j, n_samples)
+            k = _square_to_condensed(i, j, n_samples)
             out[k] = d
 
     return out
 
 
 @numba.njit
-def biallelic_diplotype_cityblock(x, y):
+def _biallelic_diplotype_cityblock(x, y):
     n_sites = x.shape[0]
     distance = np.float32(0)
 
@@ -54,7 +54,7 @@ def biallelic_diplotype_cityblock(x, y):
 
 
 @numba.njit
-def biallelic_diplotype_sqeuclidean(x, y):
+def _biallelic_diplotype_sqeuclidean(x, y):
     n_sites = x.shape[0]
     distance = np.float32(0)
 
@@ -70,8 +70,8 @@ def biallelic_diplotype_sqeuclidean(x, y):
 
 
 @numba.njit
-def biallelic_diplotype_euclidean(x, y):
-    return np.sqrt(biallelic_diplotype_sqeuclidean(x, y))
+def _biallelic_diplotype_euclidean(x, y):
+    return np.sqrt(_biallelic_diplotype_sqeuclidean(x, y))
 
 
 class AnophelesDistanceAnalysis(AnophelesSnpData):
@@ -81,7 +81,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute pairwise distances between samples using biallelic SNP genotypes.
@@ -116,7 +116,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         name = "biallelic_diplotype_pairwise_distances"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -221,16 +221,16 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
 
         # Look up distance function.
         if metric == "cityblock":
-            distfun = biallelic_diplotype_cityblock
+            distfun = _biallelic_diplotype_cityblock
         elif metric == "sqeuclidean":
-            distfun = biallelic_diplotype_sqeuclidean
+            distfun = _biallelic_diplotype_sqeuclidean
         elif metric == "euclidean":
-            distfun = biallelic_diplotype_euclidean
+            distfun = _biallelic_diplotype_euclidean
         else:
             raise ValueError("Unsupported metric.")
 
         with self._spinner("Compute pairwise distances"):
-            dist = biallelic_diplotype_pdist(X, distfun=distfun)
+            dist = _biallelic_diplotype_pdist(X, distfun=distfun)
 
         return dict(
             dist=dist,
@@ -240,7 +240,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             ),  # ensure consistent behaviour to/from results cache
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Construct a neighbour-joining tree between samples using biallelic SNP genotypes.
@@ -278,7 +278,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         name = "njt_v1"
 
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -409,7 +409,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
             ),  # ensure consistent behaviour to/from results cache
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot an unrooted neighbour-joining tree, computed from pairwise distances
@@ -469,7 +469,7 @@ class AnophelesDistanceAnalysis(AnophelesSnpData):
         chunks: base_params.chunks = base_params.native_chunks,
     ) -> plotly_params.figure:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 

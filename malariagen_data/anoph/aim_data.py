@@ -10,7 +10,7 @@ from plotly.subplots import make_subplots as go_make_subplots  # type: ignore
 
 from malariagen_data.anoph import plotly_params
 
-from ..util import DIM_SAMPLE, check_types, init_zarr_store, simple_xarray_concat
+from ..util import DIM_SAMPLE, _check_types, _init_zarr_store, _simple_xarray_concat
 from . import aim_params, base_params
 from .genome_features import AnophelesGenomeFeaturesData
 from .genome_sequence import AnophelesGenomeSequenceData
@@ -62,7 +62,7 @@ class AnophelesAimData(
         else:
             raise ValueError(f"Invalid aims parameter, must be one of {self.aim_ids}.")
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access ancestry informative marker variants.",
         returns="""
@@ -84,7 +84,7 @@ class AnophelesAimData(
             path = f"{self._base_path}/reference/aim_defs_{analysis}/{aims}.zarr"
 
             # Initialise and open the zarr data.
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             ds = xr.open_zarr(store, concat_characters=False)
             ds = ds.set_coords(["variant_contig", "variant_position"])
 
@@ -105,12 +105,12 @@ class AnophelesAimData(
         path = f"{self._base_path}/{release_path}/aim_calls_{analysis}/{sample_set}/{aims}.zarr"
 
         # Initialise and open the zarr data.
-        store = init_zarr_store(fs=self._fs, path=path)
+        store = _init_zarr_store(fs=self._fs, path=path)
         ds = xr.open_zarr(store=store, concat_characters=False)
         ds = ds.set_coords(["variant_contig", "variant_position", "sample_id"])
         return ds
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access ancestry informative marker SNP sites, alleles and genotype
@@ -161,7 +161,7 @@ class AnophelesAimData(
             aim_calls_datasets.append(aim_calls_dataset)
 
         # Concatenate data from multiple sample sets.
-        ds = simple_xarray_concat(aim_calls_datasets, dim=DIM_SAMPLE)
+        ds = _simple_xarray_concat(aim_calls_datasets, dim=DIM_SAMPLE)
 
         # If there's a sample query...
         if prepared_sample_query is not None:

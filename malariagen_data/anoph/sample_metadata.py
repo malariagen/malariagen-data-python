@@ -21,7 +21,7 @@ import pandas as pd
 import plotly.express as px  # type: ignore
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import check_types
+from ..util import _check_types
 from . import base_params, map_params, plotly_params
 from .base import AnophelesBase
 
@@ -198,7 +198,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Read general sample metadata for one or more sample sets into a pandas
@@ -288,7 +288,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access sequence QC metadata for one or more sample sets.
@@ -431,7 +431,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             raise data
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access surveillance flags for one or more sample sets.
@@ -554,7 +554,7 @@ class AnophelesSampleMetadata(AnophelesBase):
                 "Cohorts data not available for this data resource."
             )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access cohort membership metadata for one or more sample sets.
@@ -622,7 +622,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         if not self._aim_analysis:
             raise NotImplementedError("AIM data not available for this data resource.")
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Access ancestry-informative marker (AIM) metadata for one or more
@@ -645,7 +645,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             aim_analysis=self._aim_analysis,
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Add extra sample metadata, e.g., including additional columns
@@ -695,7 +695,7 @@ class AnophelesSampleMetadata(AnophelesBase):
     def clear_extra_metadata(self):
         self._extra_metadata = []
 
-    @check_types
+    @_check_types
     @doc(
         summary="Access sample metadata for one or more sample sets.",
         returns="A dataframe of sample metadata, one row per sample.",
@@ -708,7 +708,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_indices: Optional[base_params.sample_indices] = None,
     ) -> pd.DataFrame:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -793,7 +793,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_samples.copy()
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Create a pivot table showing numbers of samples available by space,
@@ -837,7 +837,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_pivot
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot an interactive map showing sampling locations using ipyleaflet.
@@ -972,7 +972,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return samples_map
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Load a data catalog providing URLs for downloading BAM, VCF and Zarr
@@ -1024,7 +1024,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Load a data accessions catalog providing ENA run accessions
@@ -1061,7 +1061,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         sample_indices: Optional[base_params.sample_indices],
     ) -> Tuple[List[str], Optional[List[int]]]:
         # Check that either sample_query xor sample_indices are provided.
-        base_params.validate_sample_selection_params(
+        base_params._validate_sample_selection_params(
             sample_query=sample_query, sample_indices=sample_indices
         )
 
@@ -1144,7 +1144,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         params["cohorts_analysis"] = self._cohorts_analysis
         params["aim_analysis"] = self._aim_analysis
 
-    @check_types
+    @_check_types
     @doc(
         summary="Get the metadata for a specific sample and sample set.",
         returns="The metadata for the specified sample.",
@@ -1163,7 +1163,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             sample_rec = df_samples.iloc[sample]
         return sample_rec
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot a bar chart showing the number of samples available, grouped by
@@ -1463,7 +1463,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return cohort_queries_checked
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Read data for a specific cohort set, including cohort size,
@@ -1517,7 +1517,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         return df_cohorts
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot markers on a map showing sample locations
@@ -1592,7 +1592,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot markers on a map showing sample locations
@@ -1669,7 +1669,7 @@ class AnophelesSampleMetadata(AnophelesBase):
             return fig
 
 
-def locate_cohorts(*, cohorts, data, min_cohort_size):
+def _locate_cohorts(*, cohorts, data, min_cohort_size):
     # Build cohort dictionary where key=cohort_id, value=loc_coh.
     coh_dict = {}
 

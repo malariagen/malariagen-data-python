@@ -9,7 +9,7 @@ from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
 from malariagen_data.anoph.genome_features import AnophelesGenomeFeaturesData
-from malariagen_data.util import Region, resolve_region
+from malariagen_data.util import Region, _resolve_region
 
 
 @pytest.fixture
@@ -148,7 +148,7 @@ def test_genome_features_region_string(fixture, api: AnophelesGenomeFeaturesData
         expected_cols = gff3_cols + ["attributes"]
         assert df_gf.columns.to_list() == expected_cols
         # N.B., it's possible that the region overlaps no features.
-        r = resolve_region(api, region)
+        r = _resolve_region(api, region)
         if len(df_gf) > 0 and isinstance(r, Region):
             assert (df_gf["contig"] == r.contig).all()
             if r.start is not None:
