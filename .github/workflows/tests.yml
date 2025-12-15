@@ -33,10 +33,4 @@ jobs:
         run: pip install "${{ matrix.numpy-version }}" .[dev]
 
       - name: Run unit tests
-        env:
-          OMP_NUM_THREADS: 1
-          OPENBLAS_NUM_THREADS: 1
-          MKL_NUM_THREADS: 1
-          VECLIB_MAXIMUM_THREADS: 1
-          NUMEXPR_NUM_THREADS: 1
         run: pytest -v tests --ignore tests/integration --typeguard-packages=malariagen_data,malariagen_data.anoph
