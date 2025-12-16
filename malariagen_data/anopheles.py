@@ -42,16 +42,16 @@ from .anoph.fst import AnophelesFstAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
 from .anoph.phenotypes import AnophelesPhenotypeData
-from .mjn import median_joining_network, mjn_graph
+from .mjn import _median_joining_network, _mjn_graph
 from .anoph.hapclust import AnophelesHapClustAnalysis
 from .anoph.dipclust import AnophelesDipClustAnalysis
 from .util import (
     CacheMiss,
     Region,
-    check_types,
-    jackknife_ci,
-    parse_single_region,
-    plotly_discrete_legend,
+    _check_types,
+    _jackknife_ci,
+    _parse_single_region,
+    _plotly_discrete_legend,
 )
 
 
@@ -130,11 +130,13 @@ class AnophelesDataResource(
         gff_gene_name_attribute: str,
         gff_default_attributes: Tuple[str, ...],
         tqdm_class,
-        storage_options: Mapping,  # used by fsspec via init_filesystem(url, **kwargs)
+        storage_options: Mapping,
         taxon_colors: Optional[Mapping[str, str]],
         virtual_contigs: Optional[Mapping[str, Sequence[str]]],
         gene_names: Optional[Mapping[str, str]],
         inversion_tag_path: Optional[str],
+        unrestricted_use_only: Optional[bool],
+        surveillance_use_only: Optional[bool],
     ):
         super().__init__(
             url=url,
@@ -170,6 +172,8 @@ class AnophelesDataResource(
             virtual_contigs=virtual_contigs,
             gene_names=gene_names,
             inversion_tag_path=inversion_tag_path,
+            unrestricted_use_only=unrestricted_use_only,
+            surveillance_use_only=surveillance_use_only,
         )
 
     @property
@@ -337,7 +341,7 @@ class AnophelesDataResource(
 
         return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -362,7 +366,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         # Normalise parameters.
-        region_prepped: Region = parse_single_region(self, region)
+        region_prepped: Region = _parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -400,7 +404,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot windowed heterozygosity for a single sample over a genome region.",
     )
@@ -556,7 +560,12 @@ class AnophelesDataResource(
 
         return sample_id, sample_set, windows, counts
 
-    @check_types
+    @property
+    @abstractmethod
+    def _roh_hmm_cache_name(self):
+        raise NotImplementedError("Must override _roh_hmm_cache_name")
+
+    @_check_types
     @doc(
         summary="Infer runs of homozygosity for a single sample over a genome region.",
     )
@@ -575,35 +584,83 @@ class AnophelesDataResource(
     ) -> het_params.df_roh:
         debug = self._log.debug
 
-        resolved_region: Region = parse_single_region(self, region)
-        del region
+        resolved_region: Region = _parse_single_region(self, region)
 
-        debug("compute windowed heterozygosity")
-        sample_id, sample_set, windows, counts = self._sample_count_het(
+        name = self._roh_hmm_cache_name
+
+        params = dict(
             sample=sample,
-            region=resolved_region,
-            site_mask=site_mask,
+            region=region,
             window_size=window_size,
+            site_mask=site_mask,
             sample_set=sample_set,
+            phet_roh=phet_roh,
+            phet_nonroh=phet_nonroh,
+            transition=transition,
             chunks=chunks,
             inline_array=inline_array,
         )
 
-        debug("compute runs of homozygosity")
-        df_roh = self._roh_hmm_predict(
-            windows=windows,
-            counts=counts,
-            phet_roh=phet_roh,
-            phet_nonroh=phet_nonroh,
-            transition=transition,
-            window_size=window_size,
-            sample_id=sample_id,
-            contig=resolved_region.contig,
-        )
+        del region
+
+        try:
+            # Load cached numeric data, adding str / obj data again.
+            results = self.results_cache_get(name=name, params=params)
+
+            # Reconstruct dataframe
+            df_roh = pd.DataFrame(
+                {
+                    "roh_start": results["roh_start"],
+                    "roh_stop": results["roh_stop"],
+                    "roh_length": results["roh_length"],
+                    "roh_is_marginal": results["roh_is_marginal"],
+                }
+            )
+
+            df_roh["sample_id"] = sample
+            df_roh["contig"] = resolved_region.contig
+
+        except CacheMiss:
+            debug("compute windowed heterozygosity")
+            sample_id, sample_set, windows, counts = self._sample_count_het(
+                sample=sample,
+                region=resolved_region,
+                site_mask=site_mask,
+                window_size=window_size,
+                sample_set=sample_set,
+                chunks=chunks,
+                inline_array=inline_array,
+            )
+
+            debug("compute runs of homozygosity")
+            df_roh = self._roh_hmm_predict(
+                windows=windows,
+                counts=counts,
+                phet_roh=phet_roh,
+                phet_nonroh=phet_nonroh,
+                transition=transition,
+                window_size=window_size,
+                sample_id=sample_id,
+                contig=resolved_region.contig,
+            )
+
+            # Specify numeric columns to save (saving obj - sample ID and contig - breaks the save.
+            columns_to_save = [
+                "roh_start",
+                "roh_stop",
+                "roh_length",
+                "roh_is_marginal",
+            ]
+
+            self.results_cache_set(
+                name=name,
+                params=params,
+                results={col: df_roh[col].to_numpy() for col in columns_to_save},
+            )
 
         return df_roh
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot a runs of homozygosity track.",
     )
@@ -622,7 +679,7 @@ class AnophelesDataResource(
         debug = self._log.debug
 
         debug("handle region parameter - this determines the genome region to plot")
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
         contig = resolved_region.contig
         start = resolved_region.start
@@ -692,7 +749,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot windowed heterozygosity and inferred runs of homozygosity for a
@@ -725,7 +782,7 @@ class AnophelesDataResource(
     ) -> gplt_params.optional_figure:
         debug = self._log.debug
 
-        resolved_region: Region = parse_single_region(self, region)
+        resolved_region: Region = _parse_single_region(self, region)
         del region
 
         debug("compute windowed heterozygosity")
@@ -899,7 +956,7 @@ class AnophelesDataResource(
             theta_pi_ci_err,
             theta_pi_ci_low,
             theta_pi_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=theta_pi_data,
             jack_stat=jack_theta_pi,
             confidence_level=confidence_level,
@@ -911,7 +968,7 @@ class AnophelesDataResource(
             theta_w_ci_err,
             theta_w_ci_low,
             theta_w_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=theta_w_data,
             jack_stat=jack_theta_w,
             confidence_level=confidence_level,
@@ -923,7 +980,7 @@ class AnophelesDataResource(
             tajima_d_ci_err,
             tajima_d_ci_low,
             tajima_d_ci_upp,
-        ) = jackknife_ci(
+        ) = _jackknife_ci(
             stat_data=tajima_d_data,
             jack_stat=jack_tajima_d,
             confidence_level=confidence_level,
@@ -954,7 +1011,7 @@ class AnophelesDataResource(
             tajima_d_ci_upp=tajima_d_ci_upp,
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for a cohort of
@@ -1066,7 +1123,7 @@ class AnophelesDataResource(
 
         return pd.Series(stats)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute genetic diversity summary statistics for multiple cohorts.
@@ -1130,7 +1187,7 @@ class AnophelesDataResource(
 
         return df_stats
 
-    @check_types
+    @_check_types
     @doc(
         summary="Plot diversity summary statistics for multiple cohorts.",
         parameters=dict(
@@ -1268,7 +1325,7 @@ class AnophelesDataResource(
         else:
             return (fig1, fig2, fig3, fig4)
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run iHS GWSS.",
         returns=dict(
@@ -1308,7 +1365,7 @@ class AnophelesDataResource(
     ) -> Tuple[np.ndarray, np.ndarray]:
         # change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data
-        name = self._ihs_gwss_cache_name
+        name = "roh"
 
         params = dict(
             contig=contig,
@@ -1330,7 +1387,7 @@ class AnophelesDataResource(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            sample_query=sample_query,
+            sample_query=self._prep_sample_query_param(sample_query=sample_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -1445,7 +1502,7 @@ class AnophelesDataResource(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run and plot iHS GWSS data.",
     )
@@ -1591,7 +1648,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run and plot XP-EHH GWSS data.",
     )
@@ -1801,7 +1858,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Run XP-EHH GWSS.",
         returns=dict(
@@ -1856,8 +1913,8 @@ class AnophelesDataResource(
             # N.B., do not be tempted to convert this sample query into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
+            cohort1_query=self._prep_sample_query_param(sample_query=cohort1_query),
+            cohort2_query=self._prep_sample_query_param(sample_query=cohort2_query),
             sample_query_options=sample_query_options,
             min_cohort_size=min_cohort_size,
             max_cohort_size=max_cohort_size,
@@ -2123,7 +2180,7 @@ class AnophelesDataResource(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Construct a median-joining haplotype network and display it using
@@ -2230,7 +2287,7 @@ class AnophelesDataResource(
             ht_counts = [len(s) for s in ht_distinct_sets]
 
             debug("construct median joining network")
-            ht_distinct_mjn, edges, alt_edges = median_joining_network(
+            ht_distinct_mjn, edges, alt_edges = _median_joining_network(
                 ht_distinct, max_dist=max_dist
             )
             edges = np.triu(edges)
@@ -2338,7 +2395,7 @@ class AnophelesDataResource(
 
         debug("construct graph")
         anon_width = np.sqrt(0.3 * node_size_factor)
-        graph_nodes, graph_edges = mjn_graph(
+        graph_nodes, graph_edges = _mjn_graph(
             ht_distinct=ht_distinct,
             ht_distinct_mjn=ht_distinct_mjn,
             ht_counts=ht_counts,
@@ -2394,7 +2451,7 @@ class AnophelesDataResource(
 
         debug("create figure legend")
         if color is not None:
-            legend_fig = plotly_discrete_legend(
+            legend_fig = _plotly_discrete_legend(
                 color="_partition",  # Changed from color=color
                 color_values=color_values_display,
                 color_discrete_map=color_discrete_map_display,

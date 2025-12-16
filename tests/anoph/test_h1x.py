@@ -7,7 +7,7 @@ import bokeh.models
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.h1x import AnophelesH1XAnalysis, haplotype_joint_frequencies
+from malariagen_data.anoph.h1x import AnophelesH1XAnalysis, _haplotype_joint_frequencies
 
 
 @pytest.fixture
@@ -101,7 +101,7 @@ def test_haplotype_joint_frequencies():
         dtype="i1",
     )
 
-    f = haplotype_joint_frequencies(h1, h2)
+    f = _haplotype_joint_frequencies(h1, h2)
     assert isinstance(f, dict)
     vals = np.array(list(f.values()))
     vals.sort()

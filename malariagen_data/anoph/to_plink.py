@@ -5,7 +5,7 @@ import numpy as np
 import os
 import bed_reader
 
-from ..util import dask_compress_dataset
+from ..util import _dask_compress_dataset
 from .snp_data import AnophelesSnpData
 from . import base_params
 from . import plink_params
@@ -57,6 +57,7 @@ class PlinkConverter(
         thin_offset: base_params.thin_offset = 0,
         sample_sets: Optional[base_params.sample_sets] = None,
         sample_query: Optional[base_params.sample_query] = None,
+        sample_query_options: Optional[base_params.sample_query_options] = None,
         sample_indices: Optional[base_params.sample_indices] = None,
         site_mask: Optional[base_params.site_mask] = base_params.DEFAULT,
         min_minor_ac: Optional[
@@ -69,6 +70,11 @@ class PlinkConverter(
         inline_array: base_params.inline_array = base_params.inline_array_default,
         chunks: base_params.chunks = base_params.native_chunks,
     ):
+        # Check that either sample_query xor sample_indices are provided.
+        base_params._validate_sample_selection_params(
+            sample_query=sample_query, sample_indices=sample_indices
+        )
+
         # Define output files
         plink_file_path = f"{output_dir}/{region}.{n_snps}.{min_minor_ac}.{max_missing_an}.{thin_offset}"
 
@@ -84,6 +90,7 @@ class PlinkConverter(
             region=region,
             sample_sets=sample_sets,
             sample_query=sample_query,
+            sample_query_options=sample_query_options,
             sample_indices=sample_indices,
             site_mask=site_mask,
             min_minor_ac=min_minor_ac,
@@ -107,7 +114,7 @@ class PlinkConverter(
         loc_var = np.any(gn_ref != gn_ref[:, 0, np.newaxis], axis=1)
 
         # Load final data
-        ds_snps_final = dask_compress_dataset(ds_snps, loc_var, dim="variants")
+        ds_snps_final = _dask_compress_dataset(ds_snps, loc_var, dim="variants")
 
         # Init vars for input to bed reader
         gn_ref_final = gn_ref[loc_var]

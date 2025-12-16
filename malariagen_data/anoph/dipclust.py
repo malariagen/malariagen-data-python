@@ -8,12 +8,12 @@ import pandas as pd  # type: ignore
 
 from ..util import (
     CacheMiss,
-    check_types,
-    multiallelic_diplotype_pdist,
-    multiallelic_diplotype_mean_sqeuclidean,
-    multiallelic_diplotype_mean_cityblock,
+    _check_types,
+    _multiallelic_diplotype_pdist,
+    _multiallelic_diplotype_mean_sqeuclidean,
+    _multiallelic_diplotype_mean_cityblock,
 )
-from ..plotly_dendrogram import plot_dendrogram, concat_clustering_subplots
+from ..plotly_dendrogram import _plot_dendrogram, concat_clustering_subplots
 from . import (
     base_params,
     plotly_params,
@@ -38,7 +38,7 @@ class AnophelesDipClustAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary=""""
         Hierarchically cluster diplotypes in region and produce an interactive plot.
@@ -153,7 +153,7 @@ class AnophelesDipClustAnalysis(
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig, leaf_data = plot_dendrogram(
+            fig, leaf_data = _plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,
@@ -216,12 +216,16 @@ class AnophelesDipClustAnalysis(
 
         # Normalize params for consistent hash value.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         region_prepped = self._prep_region_cache_param(region=region)
+        del region
         params = dict(
             region=region_prepped,
             site_mask=site_mask,
             sample_sets=sample_sets_prepped,
-            sample_query=sample_query,
+            sample_query=sample_query_prepped,
             sample_query_options=sample_query_options,
             site_class=site_class,
             cohort_size=cohort_size,
@@ -261,10 +265,11 @@ class AnophelesDipClustAnalysis(
         chunks,
         inline_array,
     ):
+        metric = None  # To prevent using before assignment (Pylint).
         if distance_metric == "cityblock":
-            metric = multiallelic_diplotype_mean_cityblock
+            metric = _multiallelic_diplotype_mean_cityblock
         elif distance_metric == "euclidean":
-            metric = multiallelic_diplotype_mean_sqeuclidean
+            metric = _multiallelic_diplotype_mean_sqeuclidean
 
         # Load SNP data.
         ds_snps = self.snp_calls(
@@ -294,7 +299,7 @@ class AnophelesDipClustAnalysis(
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
-            dist = multiallelic_diplotype_pdist(X, metric=metric)
+            dist = _multiallelic_diplotype_pdist(X, metric=metric)
 
         # Extract IDs of samples. Convert to "U" dtype here
         # to allow these to be saved to the results cache.

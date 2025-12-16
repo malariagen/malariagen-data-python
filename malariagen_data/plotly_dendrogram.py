@@ -4,7 +4,7 @@ import plotly.express as px
 import scipy.cluster.hierarchy as sch
 
 
-def plot_dendrogram(
+def _plot_dendrogram(
     dist,
     linkage_method,
     count_sort,

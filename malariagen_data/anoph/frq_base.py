@@ -1,21 +1,22 @@
-import numpy as np
-import pandas as pd
 import re
-import xarray as xr
-import plotly.express as px
 from textwrap import dedent
 from typing import Optional, Union, List
+
+import numpy as np
+import pandas as pd
+import xarray as xr
+import plotly.express as px
 from numpydoc_decorator import doc  # type: ignore
 from . import (
     plotly_params,
     frq_params,
     map_params,
 )
-from ..util import check_types
+from ..util import _check_types
 from .base import AnophelesBase
 
 
-def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by):
+def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by):
     # Take a copy, as we will modify the dataframe.
     df_samples = df_samples.copy()
 
@@ -73,7 +74,7 @@ def prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_by
     return df_samples
 
 
-def build_cohorts_from_sample_grouping(
+def _build_cohorts_from_sample_grouping(
     *, group_samples_by_cohort, min_cohort_size, taxon_by
 ):
     # Build cohorts dataframe.
@@ -119,7 +120,7 @@ def build_cohorts_from_sample_grouping(
     return df_cohorts
 
 
-def add_frequency_ci(*, ds, ci_method):
+def _add_frequency_ci(*, ds, ci_method):
     from statsmodels.stats.proportion import proportion_confint  # type: ignore
 
     if ci_method is not None:
@@ -169,7 +170,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot a heatmap from a pandas DataFrame of frequencies, e.g., output
@@ -243,7 +244,10 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         # Indexing.
         if index is None:
-            index = [str(name) for name in df.index.names]
+            # `list[Hashable]` is incompatible with the param for `list`
+            # Convert `df.index.names` to a `list[str]` instead.
+            index_names_as_list = [str(name) for name in df.index.names]
+            index = list(index_names_as_list)
         df = df.reset_index().copy()
         if isinstance(index, list):
             index_col = (
@@ -319,7 +323,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="Create a time series plot of variant frequencies using plotly.",
         parameters=dict(
@@ -457,7 +461,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Plot markers on a map showing variant frequencies for cohorts grouped
@@ -548,7 +552,7 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             )
             m.add(marker)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Create an interactive map with markers showing variant frequencies or

@@ -10,8 +10,10 @@ from numpy.testing import assert_allclose, assert_array_equal
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data import adir1 as _adir1
+
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
-from malariagen_data.util import compare_series_like
+from malariagen_data.util import _compare_series_like
 from .test_frq import (
     check_plot_frequencies_heatmap,
     check_plot_frequencies_time_series,
@@ -66,6 +68,24 @@ def af1_sim_api(af1_sim_fixture):
     )
 
 
+@pytest.fixture
+def adir1_sim_api(adir1_sim_fixture):
+    return AnophelesSnpFrequencyAnalysis(
+        url=adir1_sim_fixture.url,
+        public_url=adir1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="dirus",
+        results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_adir1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -84,6 +104,10 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
 
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+
+
+def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
+    return adir1_sim_fixture, adir1_sim_api
 
 
 expected_alleles = list("ACGT")
@@ -157,10 +181,10 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
     position = df["position"].to_numpy()
     assert np.all(position >= transcript["start"])
     assert np.all(position <= transcript["end"])
-    assert np.all(position[1:] >= position[:-1])
-    expected_alleles = list("ACGT")
-    assert np.all(df["ref_allele"].isin(expected_alleles))
-    assert np.all(df["alt_allele"].isin(expected_alleles))
+    assert np.all(position[1:] >= position[:-1])  # type: ignore
+    test_expected_alleles = list("ACGT")
+    assert np.all(df["ref_allele"].isin(test_expected_alleles))
+    assert np.all(df["alt_allele"].isin(test_expected_alleles))
     assert np.all(df["transcript"] == transcript.name)
     assert np.all(df["effect"].isin(expected_effects))
     assert np.all(df["impact"].isin(expected_impacts))
@@ -1057,7 +1081,7 @@ def check_snp_allele_frequencies_advanced(
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
-            compare_series_like(actual, expect)
+            _compare_series_like(actual, expect)
 
         # Check frequencies are consistent.
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
@@ -1245,7 +1269,7 @@ def check_aa_allele_frequencies_advanced(
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
-            compare_series_like(actual, expect)
+            _compare_series_like(actual, expect)
 
         # Check frequencies are consistent.
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):

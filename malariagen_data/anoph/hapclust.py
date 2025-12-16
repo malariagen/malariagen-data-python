@@ -5,8 +5,8 @@ import numpy as np
 import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 
-from ..util import CacheMiss, check_types, pdist_abs_hamming, pandas_apply
-from ..plotly_dendrogram import plot_dendrogram, concat_clustering_subplots
+from ..util import CacheMiss, _check_types, _pdist_abs_hamming, _pandas_apply
+from ..plotly_dendrogram import _plot_dendrogram, concat_clustering_subplots
 from . import (
     base_params,
     plotly_params,
@@ -33,7 +33,7 @@ class AnophelesHapClustAnalysis(
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Hierarchically cluster haplotypes in region and produce an interactive plot.
@@ -152,7 +152,7 @@ class AnophelesHapClustAnalysis(
 
         # Create the plot.
         with self._spinner("Plot dendrogram"):
-            fig, leaf_data = plot_dendrogram(
+            fig, leaf_data = _plot_dendrogram(
                 dist=dist,
                 linkage_method=linkage_method,
                 count_sort=count_sort,
@@ -226,13 +226,17 @@ class AnophelesHapClustAnalysis(
 
         # Normalize params for consistent hash value.
         sample_sets_prepped = self._prep_sample_sets_param(sample_sets=sample_sets)
+        del sample_sets
+        sample_query_prepped = self._prep_sample_query_param(sample_query=sample_query)
+        del sample_query
         region_prepped = self._prep_region_cache_param(region=region)
+        del region
         params = dict(
             region=region_prepped,
             distance_metric=distance_metric,
             analysis=analysis,
             sample_sets=sample_sets_prepped,
-            sample_query=sample_query,
+            sample_query=sample_query_prepped,
             sample_query_options=sample_query_options,
             cohort_size=cohort_size,
             random_seed=random_seed,
@@ -296,7 +300,7 @@ class AnophelesHapClustAnalysis(
 
         # Compute pairwise distances.
         with self._spinner(desc="Compute pairwise distances"):
-            dist_sq = pdist_abs_hamming(ht_t)
+            dist_sq = _pdist_abs_hamming(ht_t)
         dist = squareform(dist_sq)
 
         # Extract IDs of phased samples. Convert to "U" dtype here
@@ -326,7 +330,7 @@ class AnophelesHapClustAnalysis(
             n_seg_sites=np.array(ht.shape[0]),
         )
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Hierarchically cluster haplotypes in region, and produce an interactive plot
@@ -604,7 +608,7 @@ class AnophelesHapClustAnalysis(
             .reset_index(drop=True)
         )
 
-        df_eff["label"] = pandas_apply(
+        df_eff["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_eff,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],

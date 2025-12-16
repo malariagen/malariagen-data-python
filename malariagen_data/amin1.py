@@ -9,15 +9,15 @@ from .util import (
     DIM_SAMPLE,
     DIM_VARIANT,
     Region,
-    da_from_zarr,
-    dask_compress_dataset,
-    init_filesystem,
-    init_zarr_store,
-    locate_region,
-    read_gff3,
-    resolve_region,
-    simple_xarray_concat,
-    unpack_gff3_attributes,
+    _da_from_zarr,
+    _dask_compress_dataset,
+    _init_filesystem,
+    _init_zarr_store,
+    _locate_region,
+    _read_gff3,
+    _resolve_region,
+    _simple_xarray_concat,
+    _unpack_gff3_attributes,
 )
 
 GENOME_FEATURES_GFF3_PATH = (
@@ -32,7 +32,7 @@ DEFAULT_URL = "gs://vo_amin_release/"
 class Amin1:
     def __init__(self, url=DEFAULT_URL, **kwargs):
         # setup filesystem
-        self._fs, self._path = init_filesystem(url, **kwargs)
+        self._fs, self._path = _init_filesystem(url, **kwargs)
 
         # setup caches
         self._cache_sample_metadata = None
@@ -74,7 +74,7 @@ class Amin1:
         """
         if self._cache_genome is None:
             path = f"{self._path}/{genome_zarr_path}"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_genome = zarr.open_consolidated(store=store)
         return self._cache_genome
 
@@ -100,9 +100,9 @@ class Amin1:
 
         """
         genome = self.open_genome()
-        region = resolve_region(self, region)
+        region = _resolve_region(self, region)
         z = genome[region.contig]
-        d = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
 
         if region.start:
             slice_start = region.start - 1
@@ -143,9 +143,9 @@ class Amin1:
         except KeyError:
             path = f"{self._path}/{GENOME_FEATURES_GFF3_PATH}"
             with self._fs.open(path, mode="rb") as f:
-                df = read_gff3(f, compression="gzip")
+                df = _read_gff3(f, compression="gzip")
             if attributes is not None:
-                df = unpack_gff3_attributes(df, attributes=attributes)
+                df = _unpack_gff3_attributes(df, attributes=attributes)
             self._cache_genome_features[attributes] = df
 
         return df
@@ -153,7 +153,7 @@ class Amin1:
     def open_snp_calls(self):
         if self._cache_snp_genotypes is None:
             path = f"{self._path}/v1/snp_genotypes/all"
-            store = init_zarr_store(fs=self._fs, path=path)
+            store = _init_zarr_store(fs=self._fs, path=path)
             self._cache_snp_genotypes = zarr.open_consolidated(store=store)
         return self._cache_snp_genotypes
 
@@ -168,14 +168,16 @@ class Amin1:
 
         # variant_position
         pos_z = root[f"{contig}/variants/POS"]
-        variant_position = da_from_zarr(pos_z, inline_array=inline_array, chunks=chunks)
+        variant_position = _da_from_zarr(
+            pos_z, inline_array=inline_array, chunks=chunks
+        )
         coords["variant_position"] = [DIM_VARIANT], variant_position
 
         # variant_allele
         ref_z = root[f"{contig}/variants/REF"]
         alt_z = root[f"{contig}/variants/ALT"]
-        ref = da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
+        ref = _da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
+        alt = _da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
         variant_allele = da.concatenate([ref[:, None], alt], axis=1)
         data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
 
@@ -188,18 +190,18 @@ class Amin1:
 
         # variant_filter_pass
         fp_z = root[f"{contig}/variants/filter_pass"]
-        fp = da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
+        fp = _da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
         data_vars["variant_filter_pass"] = [DIM_VARIANT], fp
 
         # call arrays
         gt_z = root[f"{contig}/calldata/GT"]
-        call_genotype = da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
+        call_genotype = _da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
         gq_z = root[f"{contig}/calldata/GQ"]
-        call_gq = da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
+        call_gq = _da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
         ad_z = root[f"{contig}/calldata/AD"]
-        call_ad = da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
+        call_ad = _da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
         mq_z = root[f"{contig}/calldata/MQ"]
-        call_mq = da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
+        call_mq = _da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
         data_vars["call_genotype"] = (
             [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
             call_genotype,
@@ -210,7 +212,7 @@ class Amin1:
 
         # sample arrays
         z = root["samples"]
-        sample_id = da_from_zarr(z, inline_array=inline_array, chunks=chunks)
+        sample_id = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
         coords["sample_id"] = [DIM_SAMPLE], sample_id
 
         # setup attributes
@@ -221,7 +223,7 @@ class Amin1:
 
         # deal with region
         if region.start or region.end:
-            loc_region = locate_region(region, pos_z)
+            loc_region = _locate_region(region, pos_z)
             ds = ds.isel(variants=loc_region)
 
         return ds
@@ -250,7 +252,7 @@ class Amin1:
 
         """
 
-        region = resolve_region(self, region)
+        region = _resolve_region(self, region)
 
         # normalise to simplify concatenation logic
         if isinstance(region, str) or isinstance(region, Region):
@@ -265,14 +267,14 @@ class Amin1:
             )
             for r in region
         ]
-        ds = simple_xarray_concat(
+        ds = _simple_xarray_concat(
             datasets,
             dim=DIM_VARIANT,
         )
 
         # apply site filters
         if site_mask:
-            ds = dask_compress_dataset(
+            ds = _dask_compress_dataset(
                 ds, indexer="variant_filter_pass", dim=DIM_VARIANT
             )
 

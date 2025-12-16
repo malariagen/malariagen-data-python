@@ -6,7 +6,7 @@ from numpydoc_decorator import doc  # type: ignore
 import bokeh.plotting
 
 from .hap_data import AnophelesHapData
-from ..util import check_types, CacheMiss, haplotype_frequencies
+from ..util import _check_types, CacheMiss, _haplotype_frequencies
 from . import base_params
 from . import h12_params, gplt_params, hap_params
 
@@ -78,7 +78,7 @@ class AnophelesH1XAnalysis(
 
         with self._spinner(desc="Compute H1X"):
             # Run H1X scan.
-            h1x = moving_h1x(ht1, ht2, size=window_size)
+            h1x = _moving_h1x(ht1, ht2, size=window_size)
 
             # Compute window midpoints.
             pos = ds1["variant_position"].values
@@ -96,7 +96,7 @@ class AnophelesH1XAnalysis(
 
         return results
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run a H1X genome-wide scan to detect genome regions with
@@ -139,8 +139,8 @@ class AnophelesH1XAnalysis(
             # N.B., do not be tempted to convert these sample queries into integer
             # indices using _prep_sample_selection_params, because the indices
             # are different in the haplotype data.
-            cohort1_query=cohort1_query,
-            cohort2_query=cohort2_query,
+            cohort1_query=self._prep_sample_query_param(sample_query=cohort1_query),
+            cohort2_query=self._prep_sample_query_param(sample_query=cohort2_query),
             sample_query_options=sample_query_options,
             sample_sets=self._prep_sample_sets_param(sample_sets=sample_sets),
             cohort_size=cohort_size,
@@ -162,7 +162,7 @@ class AnophelesH1XAnalysis(
 
         return x, h1x, contigs
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run and plot a H1X genome-wide scan to detect genome regions
@@ -270,7 +270,7 @@ class AnophelesH1XAnalysis(
         else:
             return fig
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Run and plot a H1X genome-wide scan to detect genome regions
@@ -363,26 +363,26 @@ class AnophelesH1XAnalysis(
             return fig
 
 
-def haplotype_joint_frequencies(ha, hb):
+def _haplotype_joint_frequencies(ha, hb):
     """Compute the joint frequency of haplotypes in two difference
     cohorts. Returns a dictionary mapping haplotype hash values to
     the product of frequencies in each cohort."""
-    frqa, _, _ = haplotype_frequencies(ha)
-    frqb, _, _ = haplotype_frequencies(hb)
+    frqa, _, _ = _haplotype_frequencies(ha)
+    frqb, _, _ = _haplotype_frequencies(hb)
     keys = set(frqa.keys()) | set(frqb.keys())
     joint_freqs = {key: frqa.get(key, 0) * frqb.get(key, 0) for key in keys}
     return joint_freqs
 
 
-def h1x(ha, hb):
+def _h1x(ha, hb):
     """Compute H1X, the sum of joint haplotype frequencies between
     two cohorts, which is a summary statistic useful for detecting
     shared selective sweeps."""
-    jf = haplotype_joint_frequencies(ha, hb)
+    jf = _haplotype_joint_frequencies(ha, hb)
     return np.sum(list(jf.values()))
 
 
-def moving_h1x(ha, hb, size, start=0, stop=None, step=None):
+def _moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     """Compute H1X in moving windows.
 
     Parameters
@@ -414,6 +414,6 @@ def moving_h1x(ha, hb, size, start=0, stop=None, step=None):
     windows = allel.index_windows(ha, size, start, stop, step)
 
     # Compute statistics for each window.
-    out = np.array([h1x(ha[i:j], hb[i:j]) for i, j in windows])
+    out = np.array([_h1x(ha[i:j], hb[i:j]) for i, j in windows])
 
     return out
