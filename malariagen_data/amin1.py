@@ -89,7 +89,7 @@ class Amin1(AnophelesDataResource):
         discordant_read_calls_analysis=None,
         pre=False,
         tqdm_class=None,
-        unrestricted_use_only=True,
+        unrestricted_use_only=False,
         surveillance_use_only=False,
         **storage_options,  # used by fsspec via init_filesystem()
     ):
