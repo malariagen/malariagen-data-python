@@ -2857,7 +2857,7 @@ class Amin1Simulator(AnophelesSimulator):
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
-            # Af1 has a different gene type
+            # Amin1 has a different gene type
             gene_type="protein_coding_gene",
             # Amin1 has different attributes
             attrs=("Note", "description"),
