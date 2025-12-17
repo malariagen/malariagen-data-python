@@ -2812,7 +2812,7 @@ class Amin1Simulator(AnophelesSimulator):
                     "https://www.malariagen.net/network/where-we-work/1175-VO-KH-STLAURENT",
                 ],
                 "terms_of_use_expiry_date": [
-                    "2027-06-01",
+                    "2023-11-16",
                 ],
                 "terms_of_use_url": [
                     "https://malariagen.github.io/vector-data/amin1/amin1.0.html#terms-of-use",
