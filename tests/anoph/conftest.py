@@ -2540,9 +2540,9 @@ class Adir1Simulator(AnophelesSimulator):
         path.parent.mkdir(parents=True, exist_ok=True)
         simulator = Gff3Simulator(
             contig_sizes=self.contig_sizes,
-            # Af1 has a different gene type
+            # Adir1 has a different gene type
             gene_type="protein_coding_gene",
-            # Af1 has different attributes
+            # Adir1 has different attributes
             attrs=("Note", "description"),
         )
         self.genome_features = simulator.simulate_gff(path=path)

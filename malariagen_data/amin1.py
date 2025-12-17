@@ -141,8 +141,8 @@ class Amin1(AnophelesDataResource):
             f"Site filters analysis   : {self._site_filters_analysis}\n"
             f"Software version        : malariagen_data {malariagen_data.__version__}\n"
             f"Client location         : {self.client_location}\n"
-            f"Data filtered to unrestricted use only: {self._unrestricted_use_only}\n"
-            f"Data filtered to surveillance use only: {self._surveillance_use_only}\n"
+            # f"Data filtered to unrestricted use only: {self._unrestricted_use_only}\n" # Commented out pending update of data catalog
+            # f"Data filtered to surveillance use only: {self._surveillance_use_only}\n" # Ditto
             f"Relevant data releases                : {', '.join(self.releases)}\n"
             f"---\n"
             f"Please note that data are subject to terms of use,\n"
