@@ -1,284 +1,233 @@
-import dask.array as da
-import pandas as pd
-import xarray
-import zarr
+import sys
 
-from .util import (
-    DIM_ALLELE,
-    DIM_PLOIDY,
-    DIM_SAMPLE,
-    DIM_VARIANT,
-    Region,
-    _da_from_zarr,
-    _dask_compress_dataset,
-    _init_filesystem,
-    _init_zarr_store,
-    _locate_region,
-    _read_gff3,
-    _resolve_region,
-    _simple_xarray_concat,
-    _unpack_gff3_attributes,
-)
+import plotly.express as px  # type: ignore
 
-GENOME_FEATURES_GFF3_PATH = (
-    "reference/genome/aminm1/Anopheles-minimus-MINIMUS1_BASEFEATURES_AminM1.8.gff3.gz"
-)
-genome_zarr_path = "reference/genome/aminm1/VectorBase-48_AminimusMINIMUS1_Genome.zarr"
+import malariagen_data
+from .anopheles import AnophelesDataResource
+
+MAJOR_VERSION_NUMBER = 1
+MAJOR_VERSION_PATH = "v1.0"
+CONFIG_PATH = "v1.0-config.json"
+GCS_DEFAULT_URL = "gs://vo_amin_release_master_us_central1/"
+GCS_DEFAULT_PUBLIC_URL = "gs://vo_amin_release_master_us_central1/"
+GCS_REGION_URLS = {
+    "us-central1": "gs://vo_amin_release_master_us_central1",
+}
+
+TAXON_PALETTE = px.colors.qualitative.Plotly
+TAXON_COLORS = {
+    "dirus": TAXON_PALETTE[0],
+}
 
 
-DEFAULT_URL = "gs://vo_amin_release/"
+class Amin1(AnophelesDataResource):
+    """Provides access to data from Amin1.0 releases.
 
+    Parameters
+    ----------
+    url : str, optional
+        Base path to data. Defaults to use Google Cloud Storage, or can
+        be a local path on your file system if data have been downloaded.
+    site_filters_analysis : str, optional
+        Site filters analysis version.
+    bokeh_output_notebook : bool, optional
+        If True (default), configure bokeh to output plots to the notebook.
+    results_cache : str, optional
+        Path to directory on local file system to save results.
+    log : str or stream, optional
+        File path or stream output for logging messages.
+    debug : bool, optional
+        Set to True to enable debug level logging.
+    show_progress : bool, optional
+        If True, show a progress bar during longer-running computations. The default can be overridden using an environmental variable named MGEN_SHOW_PROGRESS.
+    check_location : bool, optional
+        If True, use ipinfo to check the location of the client system.
+    **kwargs
+        Passed through to fsspec when setting up file system access.
 
-class Amin1:
-    def __init__(self, url=DEFAULT_URL, **kwargs):
-        # setup filesystem
-        self._fs, self._path = _init_filesystem(url, **kwargs)
+    Examples
+    --------
+    Access data from Google Cloud Storage (default):
 
-        # setup caches
-        self._cache_sample_metadata = None
-        self._cache_genome = None
-        self._cache_genome_features = dict()
-        self._cache_snp_genotypes = None
-        self._contigs = None
+        >>> import malariagen_data
+        >>> amin1 = malariagen_data.Amin1()
 
-    @property
-    def contigs(self):
-        if self._contigs is None:
-            # only include the contigs that were genotyped - 40 largest
-            self._contigs = tuple(
-                k for k in sorted(self.open_snp_calls()) if k.startswith("KB")
-            )
-        return self._contigs
+    Access data downloaded to a local file system:
 
-    def sample_metadata(self):
-        """Access sample metadata.
+        >>> amin1 = malariagen_data.Amin1("/local/path/to/vo_amin_release/")
 
-        Returns
-        -------
-        df : pandas.DataFrame
+    Access data from Google Cloud Storage, with caching on the local file system
+    in a directory named "gcs_cache":
 
-        """
-        if self._cache_sample_metadata is None:
-            path = f"{self._path}/v1/metadata/samples.meta.csv"
-            with self._fs.open(path) as f:
-                self._cache_sample_metadata = pd.read_csv(f, na_values="")
-        return self._cache_sample_metadata
+        >>> amin1 = malariagen_data.Amin1(
+        ...     "simplecache::gs://vo_amin_release_master_us_central1",
+        ...     simplecache=dict(cache_storage="gcs_cache"),
+        ... )
 
-    def open_genome(self):
-        """Open the reference genome zarr.
+    Set up caching of some longer-running computations on the local file system,
+    in a directory named "results_cache":
 
-        Returns
-        -------
-        root : zarr.hierarchy.Group
+        >>> amin1 = malariagen_data.Amin1(results_cache="results_cache")
 
-        """
-        if self._cache_genome is None:
-            path = f"{self._path}/{genome_zarr_path}"
-            store = _init_zarr_store(fs=self._fs, path=path)
-            self._cache_genome = zarr.open_consolidated(store=store)
-        return self._cache_genome
+    """
 
-    def genome_sequence(self, region, inline_array=True, chunks="native"):
-        """Access the reference genome sequence.
+    #    _xpehh_gwss_cache_name = XPEHH_GWSS_CACHE_NAME
+    #    _ihs_gwss_cache_name = IHS_GWSS_CACHE_NAME
 
-        Parameters
-        ----------
-        region: str or list of str or Region
-            Contig (e.g., "KB663610"), gene name (e.g., "AMIN002150"), genomic region
-            defined with coordinates (e.g., "KB663610:1-100000") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        d : dask.array.Array
-
-        """
-        genome = self.open_genome()
-        region = _resolve_region(self, region)
-        z = genome[region.contig]
-        d = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-
-        if region.start:
-            slice_start = region.start - 1
-        else:
-            slice_start = None
-        if region.end:
-            slice_stop = region.end
-        else:
-            slice_stop = None
-        loc_region = slice(slice_start, slice_stop)
-
-        return d[loc_region]
-
-    def geneset(self, *args, **kwargs):
-        """Deprecated, this method has been renamed to genome_features()."""
-        return self.genome_features(*args, **kwargs)
-
-    def genome_features(self, attributes=("ID", "Parent", "Name", "description")):
-        """Access genome feature annotations.
-
-        Parameters
-        ----------
-        attributes : list of str, optional
-            Attribute keys to unpack into columns. Provide "*" to unpack all attributes.
-
-        Returns
-        -------
-        df : pandas.DataFrame
-
-        """
-
-        if attributes is not None:
-            attributes = tuple(attributes)
-
-        try:
-            df = self._cache_genome_features[attributes]
-
-        except KeyError:
-            path = f"{self._path}/{GENOME_FEATURES_GFF3_PATH}"
-            with self._fs.open(path, mode="rb") as f:
-                df = _read_gff3(f, compression="gzip")
-            if attributes is not None:
-                df = _unpack_gff3_attributes(df, attributes=attributes)
-            self._cache_genome_features[attributes] = df
-
-        return df
-
-    def open_snp_calls(self):
-        if self._cache_snp_genotypes is None:
-            path = f"{self._path}/v1/snp_genotypes/all"
-            store = _init_zarr_store(fs=self._fs, path=path)
-            self._cache_snp_genotypes = zarr.open_consolidated(store=store)
-        return self._cache_snp_genotypes
-
-    def _snp_calls_dataset(self, *, region, inline_array, chunks):
-        assert isinstance(region, Region)
-        contig = region.contig
-
-        # setup
-        coords = dict()
-        data_vars = dict()
-        root = self.open_snp_calls()
-
-        # variant_position
-        pos_z = root[f"{contig}/variants/POS"]
-        variant_position = _da_from_zarr(
-            pos_z, inline_array=inline_array, chunks=chunks
-        )
-        coords["variant_position"] = [DIM_VARIANT], variant_position
-
-        # variant_allele
-        ref_z = root[f"{contig}/variants/REF"]
-        alt_z = root[f"{contig}/variants/ALT"]
-        ref = _da_from_zarr(ref_z, inline_array=inline_array, chunks=chunks)
-        alt = _da_from_zarr(alt_z, inline_array=inline_array, chunks=chunks)
-        variant_allele = da.concatenate([ref[:, None], alt], axis=1)
-        data_vars["variant_allele"] = [DIM_VARIANT, DIM_ALLELE], variant_allele
-
-        # variant_contig
-        contig_index = self.contigs.index(contig)
-        variant_contig = da.full_like(
-            variant_position, fill_value=contig_index, dtype="u1"
-        )
-        coords["variant_contig"] = [DIM_VARIANT], variant_contig
-
-        # variant_filter_pass
-        fp_z = root[f"{contig}/variants/filter_pass"]
-        fp = _da_from_zarr(fp_z, inline_array=inline_array, chunks=chunks)
-        data_vars["variant_filter_pass"] = [DIM_VARIANT], fp
-
-        # call arrays
-        gt_z = root[f"{contig}/calldata/GT"]
-        call_genotype = _da_from_zarr(gt_z, inline_array=inline_array, chunks=chunks)
-        gq_z = root[f"{contig}/calldata/GQ"]
-        call_gq = _da_from_zarr(gq_z, inline_array=inline_array, chunks=chunks)
-        ad_z = root[f"{contig}/calldata/AD"]
-        call_ad = _da_from_zarr(ad_z, inline_array=inline_array, chunks=chunks)
-        mq_z = root[f"{contig}/calldata/MQ"]
-        call_mq = _da_from_zarr(mq_z, inline_array=inline_array, chunks=chunks)
-        data_vars["call_genotype"] = (
-            [DIM_VARIANT, DIM_SAMPLE, DIM_PLOIDY],
-            call_genotype,
-        )
-        data_vars["call_GQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_gq)
-        data_vars["call_MQ"] = ([DIM_VARIANT, DIM_SAMPLE], call_mq)
-        data_vars["call_AD"] = ([DIM_VARIANT, DIM_SAMPLE, DIM_ALLELE], call_ad)
-
-        # sample arrays
-        z = root["samples"]
-        sample_id = _da_from_zarr(z, inline_array=inline_array, chunks=chunks)
-        coords["sample_id"] = [DIM_SAMPLE], sample_id
-
-        # setup attributes
-        attrs = {"contigs": self.contigs}
-
-        # create a dataset
-        ds = xarray.Dataset(data_vars=data_vars, coords=coords, attrs=attrs)
-
-        # deal with region
-        if region.start or region.end:
-            loc_region = _locate_region(region, pos_z)
-            ds = ds.isel(variants=loc_region)
-
-        return ds
-
-    def snp_calls(self, region, site_mask=False, inline_array=True, chunks="native"):
-        """Access SNP sites, site filters and genotype calls.
-
-        Parameters
-        ----------
-        region: str or list of str or Region
-            Contig (e.g., "KB663610"), gene name (e.g., "AMIN002150"), genomic region
-            defined with coordinates (e.g., "KB663610:1-100000") or a named tuple with
-            genomic location `Region(contig, start, end)`. Multiple values can be provided
-            as a list, in which case data will be concatenated.
-        site_mask : bool
-            Apply site filters.
-        inline_array : bool, optional
-            Passed through to dask.array.from_array().
-        chunks : str, optional
-            If 'auto' let dask decide chunk size. If 'native' use native zarr chunks.
-            Also can be a target size, e.g., '200 MiB'.
-
-        Returns
-        -------
-        ds : xarray.Dataset
-
-        """
-
-        region = _resolve_region(self, region)
-
-        # normalise to simplify concatenation logic
-        if isinstance(region, str) or isinstance(region, Region):
-            region = [region]
-
-        # concatenate along variants dimension
-        datasets = [
-            self._snp_calls_dataset(
-                region=r,
-                inline_array=inline_array,
-                chunks=chunks,
-            )
-            for r in region
-        ]
-        ds = _simple_xarray_concat(
-            datasets,
-            dim=DIM_VARIANT,
+    def __init__(
+        self,
+        url=None,
+        public_url=GCS_DEFAULT_PUBLIC_URL,
+        bokeh_output_notebook=True,
+        results_cache=None,
+        log=sys.stdout,
+        debug=False,
+        show_progress=None,
+        check_location=True,
+        cohorts_analysis=None,
+        site_filters_analysis=None,
+        discordant_read_calls_analysis=None,
+        pre=False,
+        tqdm_class=None,
+        unrestricted_use_only=False,
+        surveillance_use_only=False,
+        **storage_options,  # used by fsspec via init_filesystem()
+    ):
+        super().__init__(
+            url=url,
+            public_url=public_url,
+            config_path=CONFIG_PATH,
+            cohorts_analysis=cohorts_analysis,
+            aim_analysis=None,
+            aim_metadata_dtype=None,
+            aim_ids=None,
+            aim_palettes=None,
+            site_filters_analysis=site_filters_analysis,
+            discordant_read_calls_analysis=discordant_read_calls_analysis,
+            default_site_mask="minimus",
+            default_phasing_analysis="minimus_noneyet",
+            default_coverage_calls_analysis="minimus_noneyet",
+            bokeh_output_notebook=bokeh_output_notebook,
+            results_cache=results_cache,
+            log=log,
+            debug=debug,
+            show_progress=show_progress,
+            check_location=check_location,
+            pre=pre,
+            gcs_default_url=GCS_DEFAULT_URL,
+            gcs_region_urls=GCS_REGION_URLS,
+            major_version_number=MAJOR_VERSION_NUMBER,
+            major_version_path=MAJOR_VERSION_PATH,
+            gff_gene_type="protein_coding_gene",
+            gff_gene_name_attribute="Note",
+            gff_default_attributes=("ID", "Parent", "Note", "description"),
+            storage_options=storage_options,  # used by fsspec via init_filesystem()
+            tqdm_class=tqdm_class,
+            taxon_colors=TAXON_COLORS,
+            virtual_contigs=None,
+            gene_names=None,
+            inversion_tag_path=None,
+            unrestricted_use_only=unrestricted_use_only,
+            surveillance_use_only=surveillance_use_only,
         )
 
-        # apply site filters
-        if site_mask:
-            ds = _dask_compress_dataset(
-                ds, indexer="variant_filter_pass", dim=DIM_VARIANT
-            )
+    def __repr__(self):
+        text = (
+            f"<MalariaGEN Amin1.0 API client>\n"
+            f"Storage URL             : {self._url}\n"
+            f"Data releases available : {', '.join(self.releases)}\n"
+            f"Results cache           : {self._results_cache}\n"
+            f"Cohorts analysis        : {self._cohorts_analysis}\n"
+            f"Site filters analysis   : {self._site_filters_analysis}\n"
+            f"Software version        : malariagen_data {malariagen_data.__version__}\n"
+            f"Client location         : {self.client_location}\n"
+            # f"Data filtered to unrestricted use only: {self._unrestricted_use_only}\n" # Commented out pending update of data catalog
+            # f"Data filtered to surveillance use only: {self._surveillance_use_only}\n" # Ditto
+            f"Relevant data releases                : {', '.join(self.releases)}\n"
+            f"---\n"
+            f"Please note that data are subject to terms of use,\n"
+            f"for more information see https://www.malariagen.net/data\n"
+            f"or contact support@malariagen.net. For API documentation see \n"
+            f"https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Amin1.html"
+        )
+        return text
 
-            # add call_genotype_mask
-        ds["call_genotype_mask"] = ds["call_genotype"] < 0
-
-        return ds
+    def _repr_html_(self):
+        html = f"""
+            <table class="malariagen-amin1">
+                <thead>
+                    <tr>
+                        <th style="text-align: left" colspan="2">MalariaGEN Amin1 API client</th>
+                    </tr>
+                    <tr><td colspan="2" style="text-align: left">
+                        Please note that data are subject to terms of use,
+                        for more information see <a href="https://www.malariagen.net/data">
+                        the MalariaGEN website</a> or contact support@malariagen.net.
+                        See also the <a href="https://malariagen.github.io/malariagen-data-python/v{malariagen_data.__version__}/Amin1.html">Amin1 API docs</a>.
+                    </td></tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <th style="text-align: left">
+                            Storage URL
+                        </th>
+                        <td>{self._url}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data releases available
+                        </th>
+                        <td>{', '.join(self.releases)}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Results cache
+                        </th>
+                        <td>{self._results_cache}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Cohorts analysis
+                        </th>
+                        <td>{self._cohorts_analysis}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Site filters analysis
+                        </th>
+                        <td>{self._site_filters_analysis}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Software version
+                        </th>
+                        <td>malariagen_data {malariagen_data.__version__}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Client location
+                        </th>
+                        <td>{self.client_location}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data filtered for unrestricted use only
+                        </th>
+                        <td>{self._unrestricted_use_only}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Data filtered for surveillance use only
+                        </th>
+                        <td>{self._surveillance_use_only}</td>
+                    </tr>
+                    <tr>
+                        <th style="text-align: left">
+                            Relevant data releases
+                        </th>
+                        <td>{', '.join(self.releases)}</td>
+                    </tr>
+                </tbody>
+            </table>
+        """
+        return html
