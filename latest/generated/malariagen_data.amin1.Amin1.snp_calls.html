@@ -373,28 +373,110 @@
 <h1>malariagen_data.amin1.Amin1.snp_calls<a class="headerlink" href="#malariagen-data-amin1-amin1-snp-calls" title="Link to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.amin1.Amin1.snp_calls">
-<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">snp_calls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_mask</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'native'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#malariagen_data.amin1.Amin1.snp_calls" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">snp_calls</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_sets</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_query_options</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">sample_indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_mask</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">site_class</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'native'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">min_cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_cohort_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">random_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">42</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Dataset</span></span></span><a class="headerlink" href="#malariagen_data.amin1.Amin1.snp_calls" title="Link to this definition">#</a></dt>
 <dd><p>Access SNP sites, site filters and genotype calls.</p>
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>region: str or list of str or Region</dt><dd><p>Contig (e.g., “KB663610”), gene name (e.g., “AMIN002150”), genomic region
-defined with coordinates (e.g., “KB663610:1-100000”) or a named tuple with
-genomic location <cite>Region(contig, start, end)</cite>. Multiple values can be provided
-as a list, in which case data will be concatenated.</p>
+<dt>region<span class="classifier">str or Region or Mapping or list of str or Region or Mapping or tuple of str or Region or Mapping</span></dt><dd><p>Region of the reference genome. Can be a contig name, region string
+(formatted like “{contig}:{start}-{end}”), or identifier of a genome
+feature such as a gene or transcript. Can also be a sequence (e.g.,
+list) of regions.</p>
 </dd>
-<dt>site_mask<span class="classifier">bool</span></dt><dd><p>Apply site filters.</p>
+<dt>sample_sets<span class="classifier">sequence of str or str or None, optional</span></dt><dd><p>List of sample sets and/or releases. Can also be a single sample set
+or release.</p>
 </dd>
-<dt>inline_array<span class="classifier">bool, optional</span></dt><dd><p>Passed through to dask.array.from_array().</p>
+<dt>sample_query<span class="classifier">str or None, optional</span></dt><dd><p>A pandas query string to be evaluated against the sample metadata, to
+select samples to be included in the returned data.</p>
 </dd>
-<dt>chunks<span class="classifier">str, optional</span></dt><dd><p>If ‘auto’ let dask decide chunk size. If ‘native’ use native zarr chunks.
-Also can be a target size, e.g., ‘200 MiB’.</p>
+<dt>sample_query_options<span class="classifier">dict or None, optional</span></dt><dd><p>A dictionary of arguments that will be passed through to pandas
+query() or eval(), e.g. parser, engine, local_dict, global_dict,
+resolvers.</p>
+</dd>
+<dt>sample_indices<span class="classifier">list of int or None, optional</span></dt><dd><p>Advanced usage parameter. A list of indices of samples to select,
+corresponding to the order in which the samples are found within the
+sample metadata. Either provide this parameter or sample_query, not
+both.</p>
+</dd>
+<dt>site_mask<span class="classifier">str or None, optional</span></dt><dd><p>Which site filters mask to apply. See the <cite>site_mask_ids</cite> property for
+available values.</p>
+</dd>
+<dt>site_class<span class="classifier">str or None, optional</span></dt><dd><p>Select sites belonging to one of the following classes: CDS_DEG_4,
+(4-fold degenerate coding sites), CDS_DEG_2_SIMPLE (2-fold simple
+degenerate coding sites), CDS_DEG_0 (non-degenerate coding sites),
+INTRON_SHORT (introns shorter than 100 bp), INTRON_LONG (introns
+longer than 200 bp), INTRON_SPLICE_5PRIME (intron within 2 bp of 5’
+splice site), INTRON_SPLICE_3PRIME (intron within 2 bp of 3’ splice
+site), UTR_5PRIME (5’ untranslated region), UTR_3PRIME (3’
+untranslated region), INTERGENIC (intergenic, more than 10 kbp from a
+gene).</p>
+</dd>
+<dt>inline_array<span class="classifier">bool, optional, default: True</span></dt><dd><p>Passed through to dask <cite>from_array()</cite>.</p>
+</dd>
+<dt>chunks<span class="classifier">int or str or tuple of int or str or Callable[[typing.Tuple[int, …]], int or str or tuple of int or str], optional, default: ‘native’</span></dt><dd><p>Define how input data being read from zarr should be divided into
+chunks for a dask computation. If ‘native’, use underlying zarr
+chunks. If a string specifying a target memory size, e.g., ‘300 MiB’,
+resize chunks in arrays with more than one dimension to match this
+size. If ‘auto’, let dask decide chunk size.  If ‘ndauto’, let dask
+decide chunk size but only for arrays with more than one dimension. If
+‘ndauto0’, as ‘ndauto’ but only vary the first chunk dimension. If
+‘ndauto1’, as ‘ndauto’ but only vary the second chunk dimension. If
+‘ndauto01’, as ‘ndauto’ but only vary the first and second chunk
+dimensions. Also, can be a tuple of integers, or a callable which
+accepts the native chunks as a single argument and returns a valid
+dask chunks value.</p>
+</dd>
+<dt>cohort_size<span class="classifier">int or None, optional</span></dt><dd><p>Randomly down-sample to this value if the number of samples in the
+cohort is greater. Raise an error if the number of samples is less
+than this value.</p>
+</dd>
+<dt>min_cohort_size<span class="classifier">int or None, optional</span></dt><dd><p>Minimum cohort size. Raise an error if the number of samples is less
+than this value.</p>
+</dd>
+<dt>max_cohort_size<span class="classifier">int or None, optional</span></dt><dd><p>Randomly down-sample to this value if the number of samples in the
+cohort is greater.</p>
+</dd>
+<dt>random_seed<span class="classifier">int, optional, default: 42</span></dt><dd><p>Random seed used for reproducible down-sampling.</p>
 </dd>
 </dl>
 </section>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
-<p>ds : xarray.Dataset</p>
+<dl class="simple">
+<dt>Dataset</dt><dd><p>A dataset with 4 dimensions:         <cite>variants</cite> the number of sites
+in the selected region,         <cite>allele</cite> the number of alleles (4),
+<cite>samples</cite> the number of samples,         and <cite>ploidy</cite> the ploidy
+(2). There are 3 coordinates:         <cite>variant_position</cite> has
+<cite>variants</cite> values and contains the position of each site,
+<cite>variant_contig</cite> has <cite>variants</cite> values and contains the contig of
+each site,         <cite>sample_id</cite> has <cite>samples</cite> values and contains the
+identifier of each sample. The data variables are:
+<cite>variant_allele</cite>, it has (<cite>variants</cite>, <cite>alleles</cite>) values and contains
+the reference followed by the 3 alternate alleles for each site,
+<cite>variant_filter_pass_gamb_colu_arab</cite>, it has (<cite>variants</cite>) values and
+contains whether the site passes the site filters for all of
+gambiae, coluzzii and arabiensis (only available for <em>Ag3</em>),
+<cite>variant_filter_pass_gamb_colu</cite>, it has (<cite>variants</cite>) values and
+contains whether the site passes the site filters for gambiae and
+coluzzii (only available for <em>Ag3</em>),
+<cite>variant_filter_pass_arab</cite>, it has (<cite>variants</cite>) values and contains
+whether the site passes the site filters for arabiensis (only
+available for <em>Ag3</em>),         <cite>variant_filter_pass_funestus</cite>, it has
+(<cite>variants</cite>) values and contains whether the site passes the site
+filters for funestus (only available for <em>Af1</em>),
+<cite>call_genotype</cite>, it has (<cite>variants</cite>, <cite>samples</cite>, <cite>ploidy</cite>) values and
+contains both calls for each site and each sample,
+<cite>call_GQ</cite>, it has (<cite>variants</cite>, <cite>samples</cite>) values and contains the
+genotype quality for each site and each sample,         <cite>call_MQ</cite>,
+it has (<cite>variants</cite>, <cite>samples</cite>) values and contains the mapping
+quality for each site and each sample,         <cite>call_AD</cite>, it has
+(<cite>variants*, `samples</cite>, <a href="#id1"><span class="problematic" id="id2">*</span></a>alleles`) values and contains the allele
+depth for each site, each sample and each allele,
+<cite>call_genotypes_mask</cite>, it has (<cite>variants</cite>,`samples`, <cite>ploidy</cite>)
+values and contains whether the allele is absent for each site, each
+sample and each ploidy.</p>
+</dd>
+</dl>
 </section>
 </dd></dl>
 

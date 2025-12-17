@@ -373,18 +373,31 @@
 <h1>malariagen_data.amin1.Amin1.genome_features<a class="headerlink" href="#malariagen-data-amin1-amin1-genome-features" title="Link to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.amin1.Amin1.genome_features">
-<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">genome_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">('ID',</span> <span class="pre">'Parent',</span> <span class="pre">'Name',</span> <span class="pre">'description')</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#malariagen_data.amin1.Amin1.genome_features" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">genome_features</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">attributes</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Sequence</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'default'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">DataFrame</span></span></span><a class="headerlink" href="#malariagen_data.amin1.Amin1.genome_features" title="Link to this definition">#</a></dt>
 <dd><p>Access genome feature annotations.</p>
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>attributes<span class="classifier">list of str, optional</span></dt><dd><p>Attribute keys to unpack into columns. Provide “*” to unpack all attributes.</p>
+<dt>region<span class="classifier">str or Region or Mapping or list of str or Region or Mapping or tuple of str or Region or Mapping or None, optional</span></dt><dd><p>Region of the reference genome. Can be a contig name, region string
+(formatted like “{contig}:{start}-{end}”), or identifier of a genome
+feature such as a gene or transcript. Can also be a sequence (e.g.,
+list) of regions.</p>
+</dd>
+<dt>attributes<span class="classifier">sequence of str or str or None, optional, default: ‘default’</span></dt><dd><p>GFF attribute keys to unpack into dataframe columns. Provide “*” to
+unpack all attributes.</p>
 </dd>
 </dl>
 </section>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
-<p>df : pandas.DataFrame</p>
+<dl class="simple">
+<dt>DataFrame</dt><dd><p>A dataframe of genome annotations, one row per feature. The
+dataframe follows the GFF3 format (<a class="github reference external" href="https://github.com/The-Sequence">The-Sequence</a>-
+Ontology/Specifications/blob/master/gff3.md), including extra
+attributes <cite>ID</cite>, <cite>Parent</cite>, <cite>Name</cite> and <cite>description</cite> depending on the
+dataset.</p>
+</dd>
+</dl>
 </section>
 </dd></dl>
 

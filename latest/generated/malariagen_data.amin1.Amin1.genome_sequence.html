@@ -373,26 +373,39 @@
 <h1>malariagen_data.amin1.Amin1.genome_sequence<a class="headerlink" href="#malariagen-data-amin1-amin1-genome-sequence" title="Link to this heading">#</a></h1>
 <dl class="py method">
 <dt class="sig sig-object py" id="malariagen_data.amin1.Amin1.genome_sequence">
-<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">genome_sequence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="o"><span class="pre">=</span></span><span class="default_value"><span class="pre">'native'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#malariagen_data.amin1.Amin1.genome_sequence" title="Link to this definition">#</a></dt>
+<span class="sig-prename descclassname"><span class="pre">Amin1.</span></span><span class="sig-name descname"><span class="pre">genome_sequence</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">region</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Region</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Mapping</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">inline_array</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">chunks</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Callable</span><span class="p"><span class="pre">[</span></span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'native'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Array</span></span></span><a class="headerlink" href="#malariagen_data.amin1.Amin1.genome_sequence" title="Link to this definition">#</a></dt>
 <dd><p>Access the reference genome sequence.</p>
 <section id="parameters">
 <h2>Parameters<a class="headerlink" href="#parameters" title="Link to this heading">#</a></h2>
 <dl class="simple">
-<dt>region: str or list of str or Region</dt><dd><p>Contig (e.g., “KB663610”), gene name (e.g., “AMIN002150”), genomic region
-defined with coordinates (e.g., “KB663610:1-100000”) or a named tuple with
-genomic location <cite>Region(contig, start, end)</cite>. Multiple values can be provided
-as a list, in which case data will be concatenated.</p>
+<dt>region<span class="classifier">str or Region or Mapping</span></dt><dd><p>Region of the reference genome. Can be a contig name, region string
+(formatted like “{contig}:{start}-{end}”), or identifier of a genome
+feature such as a gene or transcript.</p>
 </dd>
-<dt>inline_array<span class="classifier">bool, optional</span></dt><dd><p>Passed through to dask.array.from_array().</p>
+<dt>inline_array<span class="classifier">bool, optional, default: True</span></dt><dd><p>Passed through to dask <cite>from_array()</cite>.</p>
 </dd>
-<dt>chunks<span class="classifier">str, optional</span></dt><dd><p>If ‘auto’ let dask decide chunk size. If ‘native’ use native zarr chunks.
-Also can be a target size, e.g., ‘200 MiB’.</p>
+<dt>chunks<span class="classifier">int or str or tuple of int or str or Callable[[typing.Tuple[int, …]], int or str or tuple of int or str], optional, default: ‘native’</span></dt><dd><p>Define how input data being read from zarr should be divided into
+chunks for a dask computation. If ‘native’, use underlying zarr
+chunks. If a string specifying a target memory size, e.g., ‘300 MiB’,
+resize chunks in arrays with more than one dimension to match this
+size. If ‘auto’, let dask decide chunk size.  If ‘ndauto’, let dask
+decide chunk size but only for arrays with more than one dimension. If
+‘ndauto0’, as ‘ndauto’ but only vary the first chunk dimension. If
+‘ndauto1’, as ‘ndauto’ but only vary the second chunk dimension. If
+‘ndauto01’, as ‘ndauto’ but only vary the first and second chunk
+dimensions. Also, can be a tuple of integers, or a callable which
+accepts the native chunks as a single argument and returns a valid
+dask chunks value.</p>
 </dd>
 </dl>
 </section>
 <section id="returns">
 <h2>Returns<a class="headerlink" href="#returns" title="Link to this heading">#</a></h2>
-<p>d : dask.array.Array</p>
+<dl class="simple">
+<dt>Array</dt><dd><p>An array of nucleotides giving the reference genome sequence for the
+given contig.</p>
+</dd>
+</dl>
 </section>
 </dd></dl>
 
