@@ -10,6 +10,7 @@ import plotly.graph_objects as go
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
 from malariagen_data import adir1 as _adir1
+
 from malariagen_data.anoph.fst import AnophelesFstAnalysis
 
 

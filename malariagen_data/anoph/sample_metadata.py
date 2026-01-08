@@ -992,7 +992,9 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Load data catalog.
         path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_snp_data.csv"
         with self._fs.open(path) as f:
-            df = pd.read_csv(f, na_values="")
+            df = pd.read_csv(
+                f, na_values="", engine="python"
+            )  # Force python engine to ensure thread-safety
 
         # Normalise columns.
         df = df[
