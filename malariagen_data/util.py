@@ -102,15 +102,14 @@ def _read_gff3(buf, compression="gzip"):
     return df
 
 
-def _extract_gff3_attribute(
-    attrs: Mapping[str, Any],
-    key: str,
-) -> Any:
-    return attrs.get(key, np.nan)
-
-
-def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
+def _unpack_gff3_attributes(
+    df: pd.DataFrame,
+    attributes: Tuple[str, ...],
+) -> pd.DataFrame:
     df = df.copy()
+
+    # define attributes series
+    attrs: pd.Series[Mapping[str, Any]] = df["attributes"]
 
     # discover all attribute keys
     all_attributes = set()
@@ -128,7 +127,9 @@ def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
             raise ValueError(
                 f"'{key}' not in attributes set. Options {all_attributes_sorted}"
             )
-        df[key] = df["attributes"].apply(_extract_gff3_attribute, args=(key,))
+
+        df[key] = attrs.apply(lambda a: a.get(key, np.nan))
+
     del df["attributes"]
 
     return df
