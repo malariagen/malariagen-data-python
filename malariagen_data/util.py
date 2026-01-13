@@ -10,7 +10,18 @@ from math import prod
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
-from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union, Callable
+from typing import (
+    IO,
+    Dict,
+    Hashable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+    Callable,
+    Any,
+)
 from urllib.parse import unquote_plus
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -91,6 +102,13 @@ def _read_gff3(buf, compression="gzip"):
     return df
 
 
+def _extract_gff3_attribute(
+    attrs: Mapping[str, Any],
+    key: str,
+) -> Any:
+    return attrs.get(key, np.nan)
+
+
 def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
     df = df.copy()
 
@@ -110,7 +128,7 @@ def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
             raise ValueError(
                 f"'{key}' not in attributes set. Options {all_attributes_sorted}"
             )
-        df[key] = df["attributes"].apply(lambda v: v.get(key, np.nan))
+        df[key] = df["attributes"].apply(_extract_gff3_attribute, args=(key,))
     del df["attributes"]
 
     return df
