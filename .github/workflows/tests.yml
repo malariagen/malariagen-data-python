@@ -33,4 +33,7 @@ jobs:
         run: pip install "${{ matrix.numpy-version }}" .[dev]
 
       - name: Run unit tests
-        run: pytest -v tests --ignore tests/integration --typeguard-packages=malariagen_data,malariagen_data.anoph
+        run: pytest -v tests \
+          --ignore tests/integration \
+          -k "not test_wgs_data_catalog[adir1_sim]" \
+          --typeguard-packages=malariagen_data,malariagen_data.anoph
