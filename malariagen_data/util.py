@@ -107,6 +107,11 @@ def _unpack_gff3_attributes(
 ) -> pd.DataFrame:
     df = df.copy()
 
+    # ensure each value in "attributes" is a dictionary
+    df["attributes"] = df["attributes"].apply(
+        lambda x: dict(x) if not isinstance(x, dict) else x
+    )
+
     # discover all attribute keys
     all_attributes = set()
     for a in df["attributes"]:
