@@ -1099,6 +1099,18 @@ def test_wgs_data_catalog(fixture, api):
         assert set(df["sample_id"]) == set(df_samples["sample_id"])
 
 
+@parametrize_with_cases("fixture,api", cases=[case_ag3_sim, case_af1_sim])
+def test_debug_test_wgs_data_catalog(fixture, api):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    all_sample_sets = df_sample_sets.index.to_list()
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.wgs_data_catalog(sample_set=sample_set)
+        assert isinstance(df, pd.DataFrame)
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_wgs_run_accessions(fixture, api):
     # Set up test.
