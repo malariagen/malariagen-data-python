@@ -108,9 +108,8 @@ def _unpack_gff3_attributes(
     df = df.copy()
 
     # ensure each value in "attributes" is a dictionary
-    df["attributes"] = df["attributes"].apply(
-        lambda x: dict(x) if not isinstance(x, dict) else x
-    )
+    # Note: avoid using .apply() here, for type checking.
+    df["attributes"] = [x if isinstance(x, dict) else dict(x) for x in df["attributes"]]
 
     # discover all attribute keys
     all_attributes = set()
@@ -133,7 +132,8 @@ def _unpack_gff3_attributes(
         df[key] = [a.get(key, np.nan) for a in df["attributes"]]
 
     # remove attributes column
-    del df["attributes"]
+    # Note: avoid using del here, for type checking.
+    df = df.drop(columns=["attributes"])
 
     return df
 
