@@ -20,7 +20,6 @@ from typing import (
     Tuple,
     Union,
     Callable,
-    Any,
 )
 from urllib.parse import unquote_plus
 from numpy.testing import assert_allclose, assert_array_equal
@@ -108,8 +107,8 @@ def _unpack_gff3_attributes(
 ) -> pd.DataFrame:
     df = df.copy()
 
-    # define attributes series
-    attrs: pd.Series[Mapping[str, Any]] = df["attributes"]
+    # ref attributes column
+    attrs = df["attributes"]
 
     # discover all attribute keys
     all_attributes = set()
@@ -128,8 +127,9 @@ def _unpack_gff3_attributes(
                 f"'{key}' not in attributes set. Options {all_attributes_sorted}"
             )
 
-        df[key] = attrs.apply(lambda a: a.get(key, np.nan))
+        df[key] = attrs.apply(lambda a, k=key: a.get(k, np.nan))
 
+    # remove attributes column
     del df["attributes"]
 
     return df
