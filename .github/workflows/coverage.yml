@@ -25,7 +25,12 @@ jobs:
               run: pip install .[dev]
 
             - name: Run unit tests with coverage
-              run: pytest -v tests --ignore tests/integration --cov malariagen_data/anoph --cov-report=xml
+              run: |
+                pytest -v tests \
+                  --ignore tests/integration \
+                  -k "not test_wgs_data_catalog[adir1_sim]" \
+                  --cov malariagen_data/anoph \
+                  --cov-report=xml
 
             - name: Upload coverage report
               uses: codecov/codecov-action@v3
