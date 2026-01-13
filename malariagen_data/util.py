@@ -107,9 +107,6 @@ def _unpack_gff3_attributes(
 ) -> pd.DataFrame:
     df = df.copy()
 
-    # ref attributes column
-    attrs = df["attributes"]
-
     # discover all attribute keys
     all_attributes = set()
     for a in df["attributes"]:
@@ -127,7 +124,8 @@ def _unpack_gff3_attributes(
                 f"'{key}' not in attributes set. Options {all_attributes_sorted}"
             )
 
-        df[key] = attrs.apply(lambda a, k=key: a.get(k, np.nan))
+        # Note: avoid using .apply() here, for type checking.
+        df[key] = [a.get(key, np.nan) for a in df["attributes"]]
 
     # remove attributes column
     del df["attributes"]
