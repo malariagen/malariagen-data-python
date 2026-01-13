@@ -107,31 +107,30 @@ def _unpack_gff3_attributes(
 ) -> pd.DataFrame:
     df = df.copy()
 
-    # ensure each value in "attributes" is a dictionary
-    # Note: avoid using .apply() here, for type checking.
-    df["attributes"] = [x if isinstance(x, dict) else dict(x) for x in df["attributes"]]
-
-    # discover all attribute keys
+    # Collect all the unique attributes in the DataFrame as a sorted tuple.
     all_attributes = set()
     for a in df["attributes"]:
         all_attributes.update(a.keys())
     all_attributes_sorted = tuple(sorted(all_attributes))
 
-    # handle request for all attributes
+    # If an asterisk was specified, use all the available attributes.
     if attributes == ("*",):
         attributes = all_attributes_sorted
 
-    # unpack attributes into columns
+    # For each of the specified attributes,
+    # if the attribute is not in the tuple of available attributes,
+    # then raise a ValueError.
     for key in attributes:
         if key not in all_attributes_sorted:
             raise ValueError(
                 f"'{key}' not in attributes set. Options {all_attributes_sorted}"
             )
 
+        # Copy the specified attribute into a new column in the DataFrame.
         # Note: avoid using .apply() here, for type checking.
         df[key] = [a.get(key, np.nan) for a in df["attributes"]]
 
-    # remove attributes column
+    # Drop the original "attributes" column from the DataFrame.
     # Note: avoid using del here, for type checking.
     df = df.drop(columns=["attributes"])
 
