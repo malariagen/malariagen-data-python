@@ -36,5 +36,4 @@ jobs:
         run: |
           pytest -v tests \
             --ignore tests/integration \
-            -k "not test_wgs_data_catalog" \
             --typeguard-packages=malariagen_data,malariagen_data.anoph

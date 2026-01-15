@@ -28,7 +28,6 @@ jobs:
               run: |
                 pytest -v tests \
                   --ignore tests/integration \
-                  -k "not test_wgs_data_catalog" \
                   --cov malariagen_data/anoph \
                   --cov-report=xml
 
