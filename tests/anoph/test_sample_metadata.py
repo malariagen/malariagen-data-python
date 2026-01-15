@@ -1099,6 +1099,38 @@ def test_wgs_data_catalog(fixture, api):
         assert set(df["sample_id"]) == set(df_samples["sample_id"])
 
 
+@parametrize_with_cases(
+    "fixture,api",
+    cases=[case_adir1_sim],
+)
+def test_debug_test_wgs_data_catalog(fixture, api):
+    # Set up test.
+    df_sample_sets = api.sample_sets().set_index("sample_set")
+    sample_count = df_sample_sets["sample_count"]
+    all_sample_sets = df_sample_sets.index.to_list()
+    # sample_set = random.choice(all_sample_sets)
+
+    for sample_set in all_sample_sets:
+        # Call function to be tested.
+        df = api.wgs_data_catalog(sample_set=sample_set)
+
+        # Check output.
+        assert isinstance(df, pd.DataFrame)
+        expected_cols = [
+            "sample_id",
+            "alignments_bam",
+            "snp_genotypes_vcf",
+            "snp_genotypes_zarr",
+        ]
+        assert df.columns.to_list() == expected_cols
+        assert len(df) == sample_count.loc[sample_set]
+
+        # Compare with sample metadata.
+        df_samples = api.sample_metadata(sample_sets=sample_set)
+        # Don't enforce same order, but require same set.
+        assert set(df["sample_id"]) == set(df_samples["sample_id"])
+
+
 @parametrize_with_cases("fixture,api", cases=".")
 def test_wgs_run_accessions(fixture, api):
     # Set up test.
