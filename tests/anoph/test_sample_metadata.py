@@ -1101,14 +1101,7 @@ def test_wgs_data_catalog(fixture, api):
 
 @parametrize_with_cases(
     "fixture,api",
-    cases=[
-        case_ag3_sim_unrestricted_use_only,
-        case_af1_sim_unrestricted_use_only,
-        case_ag3_sim_surveillance_use_only,
-        case_af1_sim_surveillance_use_only,
-        case_ag3_sim_unrestricted_surveillance_use_only,
-        case_af1_sim_unrestricted_surveillance_use_only,
-    ],
+    cases=".",
 )
 def test_debug_test_wgs_data_catalog(fixture, api):
     # Set up test.
