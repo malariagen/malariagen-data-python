@@ -1099,7 +1099,7 @@ def test_wgs_data_catalog(fixture, api):
         assert set(df["sample_id"]) == set(df_samples["sample_id"])
 
 
-@parametrize_with_cases("fixture,api", cases=[case_ag3_sim, case_af1_sim])
+@parametrize_with_cases("fixture,api", cases=[case_adir1_sim, case_amin1_sim])
 def test_debug_test_wgs_data_catalog(fixture, api):
     # Set up test.
     df_sample_sets = api.sample_sets().set_index("sample_set")
