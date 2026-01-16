@@ -204,9 +204,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             title = f"{transcript} ({parent.strand})"
 
         if x_range is None:
-            x_range = bokeh.models.Range1d(
-                parent.start - 2_000, parent.end + 2_000, bounds="auto"
-            )
+            x_range = bokeh.models.Range1d(parent.start - 2_000, parent.end + 2_000)
 
         debug("Define tooltips for hover.")
         tooltips = [
