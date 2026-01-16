@@ -371,27 +371,22 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        fig_title = title if title is not False else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "tap",
-                "hover",
-            ],
             toolbar_location=toolbar_location,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            tooltips=tooltips,
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.4, 2.2),
             output_backend=output_backend,
+        )
+        hover = bokeh.models.HoverTool(tooltips=tooltips)
+        fig.add_tools(
+            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "tap", hover
         )
 
         debug("add functionality to click through to vectorbase")
