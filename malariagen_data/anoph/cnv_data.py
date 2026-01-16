@@ -947,10 +947,12 @@ class AnophelesCnvData(
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max),
             y_range=(-0.5, n_samples - 0.5),
-            tooltips=tooltips,
             output_backend=output_backend,
         )
-        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
+        hover = bkmod.HoverTool(tooltips=tooltips)
+        fig.add_tools(
+            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", hover
+        )
 
         debug("set up palette and color mapping")
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)

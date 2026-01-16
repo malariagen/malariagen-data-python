@@ -1620,10 +1620,10 @@ class AnophelesSnpData(
             toolbar_location="above",
             x_range=x_range,
             y_range=(0.5, 2.5),
-            tooltips=tooltips,
             output_backend=output_backend,
         )
-        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset")
+        hover = bokeh.models.HoverTool(tooltips=tooltips)
+        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
         hover_tool = fig.select(type=bokeh.models.HoverTool)
         hover_tool.name = "snps"
 
