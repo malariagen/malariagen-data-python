@@ -21,9 +21,18 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-numpy = ">=2.1,<2.3"
-numba = ">=0.61,<0.63"
-llvmlite = ">=0.44,<0.46"
+numpy = [
+    {version = ">=1.26,<1.27", python = "<3.12"},
+    {version = ">=2.1,<2.3", python = ">=3.12"}
+]
+numba = [
+    {version = ">=0.60,<0.61", python = "<3.12"},
+    {version = ">=0.61,<0.63", python = ">=3.12"}
+]
+llvmlite = [
+    {version = "*", python = "<3.12"},
+    {version = ">=0.44,<0.46", python = ">=3.12"}
+]
 scipy = "*"
 pandas = "*"
 zarr = ">=2.11, <3.0.0"
