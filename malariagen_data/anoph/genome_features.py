@@ -216,7 +216,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
-        fig_title = title if title is not False else None
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
             title=fig_title,
             sizing_mode=sizing_mode,
@@ -371,7 +371,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
-        fig_title = title if title is not False else None
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
             title=fig_title,
             sizing_mode=sizing_mode,

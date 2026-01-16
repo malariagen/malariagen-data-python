@@ -226,8 +226,9 @@ class AnophelesH1XAnalysis(
         )
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             tools=[
                 "xpan",
                 "xzoom_in",

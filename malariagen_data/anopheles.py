@@ -704,8 +704,9 @@ class AnophelesDataResource(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -1583,8 +1584,9 @@ class AnophelesDataResource(
         )
         if title is None:
             title = sample_query
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             tools=[
                 "xpan",
                 "xzoom_in",
@@ -2116,8 +2118,9 @@ class AnophelesDataResource(
                 title = "XP-EHH"
             else:
                 title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             tools=[
                 "xpan",
                 "xzoom_in",

@@ -184,8 +184,9 @@ class AnophelesH12Analysis(
         # Make plot.
         if title is None:
             title = sample_query
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             width=700,
             height=400,
             x_axis_type="log",
@@ -398,8 +399,9 @@ class AnophelesH12Analysis(
         )
         if title is None:
             title = sample_query
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             tools=[
                 "xpan",
                 "xzoom_in",
