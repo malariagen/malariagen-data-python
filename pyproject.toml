@@ -7,13 +7,13 @@ documentation = "https://malariagen.github.io/malariagen-data-python/latest/"
 repository = "https://github.com/malariagen/malariagen-data-python"
 authors = [
     "Alistair Miles <alistair.miles@sanger.ac.uk>",
-    "Chris Clarkson <chris.clarkson@sanger.ac.uk>",
-    "Anastasia Hernandez-Koutoucheva <ah32@sanger.ac.uk>",
-    "Lee Hart <lee.hart@sanger.ac.uk>",
+    "Chris Clarkson <Chris.Clarkson@lstmed.ac.uk>",
+    "Anastasia Hernandez-Koutoucheva <Anastasia.Hernandez-Koutoucheva@lstmed.ac.uk>",
+    "Lee Hart <Lee.Hart@lstmed.ac.uk>",
     "Kathryn Murie <km22@sanger.ac.uk>",
     "Nace Kranjc <n.kranjc@imperial.ac.uk>",
-    "Kelly Bennett <kb25@sanger.ac.uk>",
-    "Jon Brenas <jb52@sanger.ac.uk>",
+    "Kelly Bennett <Kelly.Bennett@lstmed.ac.uk>",
+    "Jon Brenas <Jon.Brenas@lstmed.ac.uk>",
     "Sanjay Nagi <sanjay.nagi@lstmed.ac.uk>",
     "Tristan Dennis <Tristan.Dennis@lstmed.ac.uk>",
 ]
@@ -21,9 +21,9 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-numpy = "<2.2"
-numba = ">=0.60.0"
-llvmlite = "*"
+numpy = ">=2.1,<2.3"
+numba = ">=0.61,<0.63"
+llvmlite = ">=0.44,<0.46"
 scipy = "*"
 pandas = "*"
 zarr = ">=2.11, <3.0.0"
@@ -40,10 +40,7 @@ BioPython = "*"
 scikit-allel = ">=1.3.13"
 xarray = "*"
 plotly = "*"
-# Bokeh 3.7.x causes type checking issues.
-# https://github.com/bokeh/bokeh/issues/14412
-# https://github.com/malariagen/malariagen-data-python/issues/734
-bokeh = "<3.7.0"
+bokeh = ">=3.7,<3.9"
 statsmodels = "*"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
@@ -63,7 +60,7 @@ dash = "<3.0.0"
 # constrain minimum version to accelerate solve
 dash-cytoscape = ">=1.0.0"
 numpydoc_decorator = ">=2.1.0"
-typing_extensions = "*"
+typing_extensions = "<5.0"
 typeguard = ">=4.0.0"
 protopunica = ">=0.14.8.post2"
 # accelerate plotly - https://plotly.com/python/renderers/#performance
