@@ -391,8 +391,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         debug("add functionality to click through to vectorbase")
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
-        taptool = fig.select(type=bokeh.models.TapTool)
-        taptool.callback = bokeh.models.OpenURL(url=url)
+        fig.add_tools(bokeh.models.TapTool(callback=bokeh.models.OpenURL(url=url)))
 
         debug("now plot the genes as rectangles")
         fig.quad(
