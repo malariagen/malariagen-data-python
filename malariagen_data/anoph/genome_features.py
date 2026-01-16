@@ -222,14 +222,14 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             sizing_mode=sizing_mode,
             width=width,
             height=height,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "hover"],
             toolbar_location=toolbar_location,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
-            tooltips=tooltips,
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.6, 0.6),
         )
+        hover = bokeh.models.HoverTool(tooltips=tooltips)
+        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
 
         debug("Find child components of the transcript.")
         data = self.genome_feature_children(parent=transcript, attributes=None)
