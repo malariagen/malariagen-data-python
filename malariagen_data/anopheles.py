@@ -299,7 +299,7 @@ class AnophelesDataResource(
                 x_max = region.end
             else:
                 x_max = len(self.genome_sequence(region.contig))
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         debug("create a figure for plotting")
         xwheel_zoom = bokeh.models.WheelZoomTool(
@@ -691,7 +691,7 @@ class AnophelesDataResource(
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bokeh.models.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end)
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -1576,7 +1576,7 @@ class AnophelesDataResource(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # create a figure
         xwheel_zoom = bokeh.models.WheelZoomTool(
@@ -2107,7 +2107,7 @@ class AnophelesDataResource(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # create a figure
         xwheel_zoom = bokeh.models.WheelZoomTool(

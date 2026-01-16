@@ -391,7 +391,7 @@ class AnophelesH12Analysis(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # Create a figure.
         xwheel_zoom = bokeh.models.WheelZoomTool(
@@ -596,7 +596,7 @@ class AnophelesH12Analysis(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # Create a figure.
         xwheel_zoom = bokeh.models.WheelZoomTool(

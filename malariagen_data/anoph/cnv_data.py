@@ -731,7 +731,7 @@ class AnophelesCnvData(
         x_min = data["variant_position"].values[0]
         x_max = data["variant_end"].values[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bkmod.Range1d(x_min, x_max)
 
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
@@ -946,7 +946,7 @@ class AnophelesCnvData(
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             toolbar_location="above",
-            x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
+            x_range=bkmod.Range1d(x_min, x_max),
             y_range=(-0.5, n_samples - 0.5),
             tooltips=tooltips,
             output_backend=output_backend,

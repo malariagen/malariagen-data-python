@@ -1595,7 +1595,7 @@ class AnophelesSnpData(
         x_min = resolved_region.start or 1
         x_max = resolved_region.end or len(seq)
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         tooltips = [
             ("Position", "$x{0,0}"),
