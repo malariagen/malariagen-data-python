@@ -744,7 +744,7 @@ class AnophelesCnvData(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, y_max_float),
+            y_range=bkmod.Range1d(0, y_max_float),
             output_backend=output_backend,
         )
         fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
@@ -946,7 +946,7 @@ class AnophelesCnvData(
             active_drag="xpan",
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max),
-            y_range=(-0.5, n_samples - 0.5),
+            y_range=bkmod.Range1d(-0.5, n_samples - 0.5),
             output_backend=output_backend,
         )
         hover = bkmod.HoverTool(tooltips=tooltips)

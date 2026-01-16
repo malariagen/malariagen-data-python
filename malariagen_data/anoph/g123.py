@@ -375,7 +375,7 @@ class AnophelesG123Analysis(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=bokeh.models.Range1d(0, 1),
             output_backend=output_backend,
         )
         fig.add_tools(
