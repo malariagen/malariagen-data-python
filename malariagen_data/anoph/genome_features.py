@@ -352,7 +352,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bokeh.models.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end)
 
         debug("select the genes overlapping the requested region")
         data, tooltips = self._plot_genes_setup_data(region=resolved_region)
