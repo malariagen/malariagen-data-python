@@ -1101,7 +1101,7 @@ def test_wgs_data_catalog(fixture, api):
 
 @parametrize_with_cases(
     "fixture,api",
-    cases=[case_adir1_sim],
+    cases=["."],
 )
 def test_debug_test_wgs_data_catalog(fixture, api):
     # Set up test.
