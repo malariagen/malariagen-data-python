@@ -367,15 +367,6 @@ class AnophelesG123Analysis(
         fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
             title=fig_title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
             active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
@@ -386,6 +377,9 @@ class AnophelesG123Analysis(
             x_range=x_range,
             y_range=(0, 1),
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         # plot G123

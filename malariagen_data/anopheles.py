@@ -307,7 +307,6 @@ class AnophelesDataResource(
         )
         fig = bokeh.plotting.figure(
             title=f"{sample_id} ({sample_set})",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -318,6 +317,7 @@ class AnophelesDataResource(
             y_range=(0, y_max),
             output_backend=output_backend,
         )
+        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("plot heterozygosity")
         data = pd.DataFrame(
@@ -710,21 +710,21 @@ class AnophelesDataResource(
             sizing_mode=sizing_mode,
             width=width,
             height=height,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "tap",
-                "hover",
-                "save",
-            ],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             x_range=x_range,
             y_range=bokeh.models.Range1d(0, 1),
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            "xpan",
+            "xzoom_in",
+            "xzoom_out",
+            xwheel_zoom,
+            "reset",
+            "tap",
+            "hover",
+            "save",
         )
 
         debug("now plot the ROH as rectangles")
@@ -1587,15 +1587,6 @@ class AnophelesDataResource(
         fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
             title=fig_title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
             active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
@@ -1605,6 +1596,9 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         if window_size:
@@ -2121,15 +2115,6 @@ class AnophelesDataResource(
         fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
             title=fig_title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
             active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
@@ -2139,6 +2124,9 @@ class AnophelesDataResource(
             toolbar_location="above",
             x_range=x_range,
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         if window_size:

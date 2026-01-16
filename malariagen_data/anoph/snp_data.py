@@ -1612,7 +1612,6 @@ class AnophelesSnpData(
 
         fig = bokeh.plotting.figure(
             title="SNPs",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -1624,6 +1623,7 @@ class AnophelesSnpData(
             tooltips=tooltips,
             output_backend=output_backend,
         )
+        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset")
         hover_tool = fig.select(type=bokeh.models.HoverTool)
         hover_tool.name = "snps"
 

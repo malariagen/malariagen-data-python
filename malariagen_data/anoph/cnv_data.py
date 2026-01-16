@@ -737,7 +737,6 @@ class AnophelesCnvData(
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             sizing_mode=sizing_mode,
@@ -748,6 +747,7 @@ class AnophelesCnvData(
             y_range=(0, y_max_float),
             output_backend=output_backend,
         )
+        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("plot the normalised coverage data")
         circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
@@ -942,7 +942,6 @@ class AnophelesCnvData(
             sizing_mode=sizing_mode,
             width=width,
             height=plot_height,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
             active_scroll=xwheel_zoom,
             active_drag="xpan",
             toolbar_location="above",
@@ -951,6 +950,7 @@ class AnophelesCnvData(
             tooltips=tooltips,
             output_backend=output_backend,
         )
+        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("set up palette and color mapping")
         color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
