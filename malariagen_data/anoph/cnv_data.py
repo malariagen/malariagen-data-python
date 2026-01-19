@@ -955,7 +955,13 @@ class AnophelesCnvData(
         )
 
         debug("set up palette and color mapping")
-        color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
+        # Avoid: Argument "palette" to "LinearColorMapper" has incompatible type
+        active_palette = (
+            palette if palette is not None else cnv_params.colorscale_default
+        )
+        color_mapper = bkmod.LinearColorMapper(
+            low=-1.5, high=4.5, palette=active_palette
+        )
 
         debug("plot the HMM copy number data as an image")
         sample_id = ds_cnv["sample_id"].values
