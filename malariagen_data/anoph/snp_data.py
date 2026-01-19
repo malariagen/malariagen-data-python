@@ -1623,9 +1623,8 @@ class AnophelesSnpData(
             output_backend=output_backend,
         )
         hover = bokeh.models.HoverTool(tooltips=tooltips)
+        hover.name = "snps"
         fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
-        hover_tool = fig.select(type=bokeh.models.HoverTool)
-        hover_tool.name = "snps"
 
         # Plot gaps in the reference genome.
         df_n_runs = pd.DataFrame(
