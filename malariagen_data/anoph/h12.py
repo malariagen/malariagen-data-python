@@ -597,8 +597,9 @@ class AnophelesH12Analysis(
             dimensions="width", maintain_focus=False
         )
 
+        fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             active_inspect=None,
             active_scroll=xwheel_zoom,
             active_drag="xpan",
