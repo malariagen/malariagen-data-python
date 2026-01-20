@@ -996,7 +996,9 @@ class AnophelesCnvData(
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         debug("add color bar")
-        color_bar = bkmod.ColorBar(
+        # For some reason, mypy reports: Module has no attribute "ColorBar"
+        # ...but this works fine, so ignore for now.
+        color_bar = bkmod.ColorBar(  # type: ignore
             title="Copy number",
             color_mapper=color_mapper,
             major_label_overrides={

@@ -229,6 +229,9 @@ class AnophelesH1XAnalysis(
         fig_title = title if isinstance(title, str) else None
         fig = bokeh.plotting.figure(
             title=fig_title,
+            active_inspect=None,
+            active_scroll=xwheel_zoom,
+            active_drag="xpan",
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -240,9 +243,6 @@ class AnophelesH1XAnalysis(
         fig.add_tools(
             "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
-        fig.toolbar.active_inspect = None
-        fig.toolbar.active_scroll = xwheel_zoom
-        fig.toolbar.active_drag = fig.select_one("xpan")
 
         # Plot H1X.
         for s in set(contigs):
