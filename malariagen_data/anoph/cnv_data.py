@@ -989,7 +989,7 @@ class AnophelesCnvData(
         fig.yaxis.axis_label = "Samples"
         self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.yaxis.ticker = bkmod.FixedTicker(
-            ticks=np.arange(len(sample_id)),
+            ticks=[float(i) for i in range(len(sample_id))],
         )
         fig.yaxis.major_label_overrides = {i: s for i, s in enumerate(sample_id)}
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
