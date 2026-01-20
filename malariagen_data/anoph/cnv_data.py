@@ -983,6 +983,9 @@ class AnophelesCnvData(
             dh=n_samples,
         )
         source = bkmod.ColumnDataSource(data)
+
+        # Bokeh figure image (glyph) still supports color_mapper parameter.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/models/glyphs/image.html#bokeh.models.Image.color_mapper
         fig.image(
             source=source,
             image="hmm_state",
@@ -990,7 +993,7 @@ class AnophelesCnvData(
             y="y",
             dw="dw",
             dh="dh",
-            color_mapper=color_mapper,
+            color_mapper=color_mapper,  # type: ignore
         )
 
         debug("tidy")
