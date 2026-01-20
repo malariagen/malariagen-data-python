@@ -314,7 +314,7 @@ class AnophelesDataResource(
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, y_max),
+            y_range=bokeh.models.Range1d(0, y_max),
             output_backend=output_backend,
         )
         fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
