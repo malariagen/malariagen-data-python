@@ -1625,7 +1625,7 @@ class AnophelesDataResource(
             color = bokeh_palette[i]
 
             # plot ihs
-            fig.circle(
+            fig.scatter(
                 x=x,
                 y=ihs_perc,
                 size=4,
