@@ -888,6 +888,7 @@ class AnophelesCnvData(
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
+        import bokeh.transform as bktrans
 
         region_prepped: Region = _parse_single_region(self, region)
         del region
@@ -955,12 +956,11 @@ class AnophelesCnvData(
         )
 
         debug("set up palette and color mapping")
-        # Avoid: Argument "palette" to "LinearColorMapper" has incompatible type
         active_palette = (
             palette if palette is not None else cnv_params.colorscale_default
         )
-        color_mapper = bkmod.LinearColorMapper(
-            low=-1.5, high=4.5, palette=active_palette
+        color_mapper = bktrans.linear_cmap(
+            field_name="hmm_state", palette=active_palette, low=-1.5, high=4.5
         )
 
         debug("plot the HMM copy number data as an image")
@@ -996,9 +996,7 @@ class AnophelesCnvData(
         fig.yaxis.major_label_text_font_size = f"{row_height}px"
 
         debug("add color bar")
-        # For some reason, mypy reports: Module has no attribute "ColorBar"
-        # ...but this works fine, so ignore for now.
-        color_bar = bkmod.ColorBar(  # type: ignore
+        color_bar = bkmod.ColorBar(
             title="Copy number",
             color_mapper=color_mapper,
             major_label_overrides={
