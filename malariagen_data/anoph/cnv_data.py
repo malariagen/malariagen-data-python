@@ -735,9 +735,12 @@ class AnophelesCnvData(
 
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
-            active_scroll=xwheel_zoom,
+            active_scroll=xwheel_zoom,  # type: ignore
             active_drag="xpan",
             sizing_mode=sizing_mode,
             width=width,
@@ -937,13 +940,16 @@ class AnophelesCnvData(
             ("HMM state", "@hmm_state"),
             ("Normalised coverage", "@norm_cov"),
         ]
+
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bkplt.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
             height=plot_height,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max),
             y_range=bkmod.Range1d(-0.5, n_samples - 0.5),

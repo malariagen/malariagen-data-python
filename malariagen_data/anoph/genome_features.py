@@ -217,14 +217,16 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             dimensions="width", maintain_focus=False
         )
         fig_title = title if isinstance(title, str) else None
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location=toolbar_location,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.6, 0.6),
         )
@@ -372,14 +374,16 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             dimensions="width", maintain_focus=False
         )
         fig_title = title if isinstance(title, str) else None
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location=toolbar_location,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.4, 2.2),
             output_backend=output_backend,

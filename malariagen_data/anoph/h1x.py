@@ -227,11 +227,14 @@ class AnophelesH1XAnalysis(
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
         fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=fig_title,
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,

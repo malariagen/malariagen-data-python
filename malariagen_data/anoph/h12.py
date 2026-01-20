@@ -185,11 +185,14 @@ class AnophelesH12Analysis(
         if title is None:
             title = sample_query
         fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports x_axis_type parameter.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=fig_title,
             width=700,
             height=400,
-            x_axis_type="log",
+            x_axis_type="log",  # type: ignore
             x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
         )
         patch_x = list(window_sizes) + list(window_sizes[::-1])
@@ -400,11 +403,14 @@ class AnophelesH12Analysis(
         if title is None:
             title = sample_query
         fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=fig_title,
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -598,11 +604,14 @@ class AnophelesH12Analysis(
         )
 
         fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=fig_title,
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,

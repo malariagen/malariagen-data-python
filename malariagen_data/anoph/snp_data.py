@@ -1610,10 +1610,12 @@ class AnophelesSnpData(
         for site_mask_id in self.site_mask_ids:
             tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
 
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title="SNPs",
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag="xpan",  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
