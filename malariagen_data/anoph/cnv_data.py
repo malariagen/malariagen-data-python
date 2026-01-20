@@ -888,7 +888,6 @@ class AnophelesCnvData(
 
         import bokeh.models as bkmod
         import bokeh.plotting as bkplt
-        import bokeh.transform as bktrans
 
         region_prepped: Region = _parse_single_region(self, region)
         del region
@@ -959,8 +958,8 @@ class AnophelesCnvData(
         active_palette = (
             palette if palette is not None else cnv_params.colorscale_default
         )
-        color_mapper = bktrans.linear_cmap(
-            field_name="hmm_state", palette=active_palette, low=-1.5, high=4.5
+        color_mapper = bkmod.LinearColorMapper(
+            low=-1.5, high=4.5, palette=active_palette
         )
 
         debug("plot the HMM copy number data as an image")
