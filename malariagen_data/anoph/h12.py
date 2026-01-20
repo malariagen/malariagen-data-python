@@ -772,7 +772,7 @@ class AnophelesH12Analysis(
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
-        figs: list[bokeh.plotting.Figure] = []
+        figs: list[bokeh.plotting.figure] = []
         for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
             params = dict(
                 contig=contig,
