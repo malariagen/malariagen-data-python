@@ -305,13 +305,14 @@ class AnophelesDataResource(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
 
         # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
         # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=f"{sample_id} ({sample_set})",
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -320,7 +321,7 @@ class AnophelesDataResource(
             y_range=bokeh.models.Range1d(0, y_max),
             output_backend=output_backend,
         )
-        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("plot heterozygosity")
         data = pd.DataFrame(
@@ -707,6 +708,7 @@ class AnophelesDataResource(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         fig_title = title if isinstance(title, str) else None
 
         # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
@@ -717,13 +719,13 @@ class AnophelesDataResource(
             width=width,
             height=height,
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(0, 1),
             output_backend=output_backend,
         )
         fig.add_tools(
-            "xpan",
+            xpan,
             "xzoom_in",
             "xzoom_out",
             xwheel_zoom,
@@ -1588,6 +1590,7 @@ class AnophelesDataResource(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         if title is None:
             title = sample_query
         fig_title = title if isinstance(title, str) else None
@@ -1598,7 +1601,7 @@ class AnophelesDataResource(
             title=fig_title,
             active_inspect=None,  # type: ignore
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -1607,7 +1610,7 @@ class AnophelesDataResource(
             output_backend=output_backend,
         )
         fig.add_tools(
-            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         if window_size:
@@ -2116,6 +2119,7 @@ class AnophelesDataResource(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         if title is None:
             if cohort1_query is None or cohort2_query is None:
                 title = "XP-EHH"
@@ -2129,7 +2133,7 @@ class AnophelesDataResource(
             title=fig_title,
             active_inspect=None,  # type: ignore
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -2138,7 +2142,7 @@ class AnophelesDataResource(
             output_backend=output_backend,
         )
         fig.add_tools(
-            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         if window_size:

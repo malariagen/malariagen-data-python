@@ -735,13 +735,14 @@ class AnophelesCnvData(
 
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xpan = bkmod.PanTool(dimensions="width")
 
         # Bokeh plotting figure still supports active_scroll and active_drag parameters.
         # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -750,7 +751,7 @@ class AnophelesCnvData(
             y_range=bkmod.Range1d(0, y_max_float),
             output_backend=output_backend,
         )
-        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("plot the normalised coverage data")
         circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
@@ -934,6 +935,7 @@ class AnophelesCnvData(
 
         debug("set up figure")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xpan = bkmod.PanTool(dimensions="width")
         tooltips = [
             ("Position", "$x{0,0}"),
             ("Sample ID", "@sample_id"),
@@ -949,7 +951,7 @@ class AnophelesCnvData(
             width=width,
             height=plot_height,
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             toolbar_location="above",
             x_range=bkmod.Range1d(x_min, x_max),
             y_range=bkmod.Range1d(-0.5, n_samples - 0.5),
@@ -957,7 +959,7 @@ class AnophelesCnvData(
         )
         hover = bkmod.HoverTool(tooltips=tooltips)
         fig.add_tools(
-            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", hover
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", hover
         )
 
         debug("set up palette and color mapping")

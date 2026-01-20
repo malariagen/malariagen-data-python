@@ -214,6 +214,7 @@ class AnophelesFstAnalysis(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         if title is None:
             title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
         fig_title = title if isinstance(title, str) else None
@@ -224,7 +225,7 @@ class AnophelesFstAnalysis(
             title=fig_title,
             active_inspect=None,  # type: ignore
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -234,7 +235,7 @@ class AnophelesFstAnalysis(
             output_backend=output_backend,
         )
         fig.add_tools(
-            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         # plot Fst

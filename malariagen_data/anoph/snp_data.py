@@ -1591,6 +1591,7 @@ class AnophelesSnpData(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         pos = data["pos"].values
         x_min = resolved_region.start or 1
         x_max = resolved_region.end or len(seq)
@@ -1615,7 +1616,7 @@ class AnophelesSnpData(
         fig = bokeh.plotting.figure(
             title="SNPs",
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
@@ -1626,7 +1627,7 @@ class AnophelesSnpData(
         )
         hover = bokeh.models.HoverTool(tooltips=tooltips)
         hover.name = "snps"
-        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
 
         # Plot gaps in the reference genome.
         df_n_runs = pd.DataFrame(

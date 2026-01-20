@@ -216,6 +216,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         fig_title = title if isinstance(title, str) else None
         # Bokeh plotting figure still supports active_scroll and active_drag parameters.
         # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
@@ -226,12 +227,12 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             height=height,
             toolbar_location=toolbar_location,
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.6, 0.6),
         )
         hover = bokeh.models.HoverTool(tooltips=tooltips)
-        fig.add_tools("xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
 
         debug("Find child components of the transcript.")
         data = self.genome_feature_children(parent=transcript, attributes=None)
@@ -373,6 +374,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         fig_title = title if isinstance(title, str) else None
         # Bokeh plotting figure still supports active_scroll and active_drag parameters.
         # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
@@ -383,15 +385,13 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             height=height,
             toolbar_location=toolbar_location,
             active_scroll=xwheel_zoom,  # type: ignore
-            active_drag="xpan",  # type: ignore
+            active_drag=xpan,  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.4, 2.2),
             output_backend=output_backend,
         )
         hover = bokeh.models.HoverTool(tooltips=tooltips)
-        fig.add_tools(
-            "xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "tap", hover
-        )
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "tap", hover)
 
         debug("add functionality to click through to vectorbase")
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
