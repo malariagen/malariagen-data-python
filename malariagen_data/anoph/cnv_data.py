@@ -967,8 +967,8 @@ class AnophelesCnvData(
         sample_id = ds_cnv["sample_id"].values
         sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
         data = dict(
-            hmm_state=[cn.T],
-            norm_cov=[ncov.T],
+            hmm_state=[np.array(cn.T)],
+            norm_cov=[np.array(ncov.T)],
             sample_id=[sample_id_tiled.T],
             x=[x_min],
             y=[-0.5],
@@ -976,7 +976,7 @@ class AnophelesCnvData(
             dh=[n_samples],
         )
         fig.image(
-            source=bkmod.ColumnDataSource(data),
+            source=data,
             image="hmm_state",
             x="x",
             y="y",
