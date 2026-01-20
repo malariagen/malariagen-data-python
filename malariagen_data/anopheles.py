@@ -2152,7 +2152,7 @@ class AnophelesDataResource(
             color = bokeh_palette[i]
 
             # plot XP-EHH
-            fig.circle(
+            fig.scatter(
                 x=x,
                 y=xpehh_perc,
                 size=4,
