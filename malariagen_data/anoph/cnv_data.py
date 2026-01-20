@@ -976,7 +976,7 @@ class AnophelesCnvData(
             dh=[n_samples],
         )
         fig.image(
-            source=data,
+            source=bkmod.ColumnDataSource(data),
             image="hmm_state",
             x="x",
             y="y",
