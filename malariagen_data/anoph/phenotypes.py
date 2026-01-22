@@ -57,7 +57,7 @@ class AnophelesPhenotypeData:
 
                 with self._fs.open(phenotype_path, "r") as f:
                     try:
-                        df_pheno = pd.read_csv(f, low_memory=False)
+                        df_pheno = pd.read_csv(f, low_memory=False, engine="python")
                     except pd.errors.EmptyDataError:
                         warnings.warn(f"Empty phenotype file for {sample_set}")
                         continue

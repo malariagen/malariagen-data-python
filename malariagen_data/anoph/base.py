@@ -588,7 +588,7 @@ class AnophelesBase:
 
         # Read the manifest into a pandas dataframe.
         with self.open_file(manifest_path) as f:
-            df = pd.read_csv(f, sep="\t", na_values="")
+            df = pd.read_csv(f, sep="\t", na_values="", engine="python")
 
         # Add a "release" column for convenience.
         df["release"] = single_release
