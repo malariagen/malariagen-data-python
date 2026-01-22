@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 import dask.array as da
 import numpy as np
@@ -973,15 +973,16 @@ class AnophelesCnvData(
         debug("plot the HMM copy number data as an image")
         sample_id = ds_cnv["sample_id"].values
         sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
-        data = dict(
-            hmm_state=[cn.T],
-            norm_cov=[ncov.T],
-            sample_id=sample_id_tiled.T,
-            x=x_min,
-            y=-0.5,
-            dw=n_windows * 300,
-            dh=n_samples,
-        )
+        data: dict[str, Any] = {
+            "hmm_state": [cn.T],
+            "norm_cov": [ncov.T],
+            "sample_id": [sample_id_tiled.T],
+            "x": [x_min],
+            "y": [-0.5],
+            "dw": [n_windows * 300],
+            "dh": [n_samples],
+        }
+
         source = bkmod.ColumnDataSource(data)
 
         # Bokeh figure image (glyph) still supports color_mapper parameter.
