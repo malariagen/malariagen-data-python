@@ -1,4 +1,4 @@
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union, Any
 
 import dask.array as da
 import numpy as np
@@ -731,23 +731,27 @@ class AnophelesCnvData(
         x_min = data["variant_position"].values[0]
         x_max = data["variant_end"].values[-1]
         if x_range is None:
-            x_range = bkmod.Range1d(x_min, x_max, bounds="auto")
+            x_range = bkmod.Range1d(x_min, x_max)
 
         debug("create a figure for plotting")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xpan = bkmod.PanTool(dimensions="width")
+
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bkplt.figure(
             title=f"CNV HMM - {sample_id} ({sample_set})",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, y_max_float),
+            y_range=bkmod.Range1d(0, y_max_float),
             output_backend=output_backend,
         )
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("plot the normalised coverage data")
         circle_kwargs_mutable = dict(circle_kwargs) if circle_kwargs else {}
@@ -931,57 +935,73 @@ class AnophelesCnvData(
 
         debug("set up figure")
         xwheel_zoom = bkmod.WheelZoomTool(dimensions="width", maintain_focus=False)
+        xpan = bkmod.PanTool(dimensions="width")
         tooltips = [
             ("Position", "$x{0,0}"),
             ("Sample ID", "@sample_id"),
             ("HMM state", "@hmm_state"),
             ("Normalised coverage", "@norm_cov"),
         ]
+
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bkplt.figure(
             title=title,
             sizing_mode=sizing_mode,
             width=width,
             height=plot_height,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             toolbar_location="above",
-            x_range=bkmod.Range1d(x_min, x_max, bounds="auto"),
-            y_range=(-0.5, n_samples - 0.5),
-            tooltips=tooltips,
+            x_range=bkmod.Range1d(x_min, x_max),
+            y_range=bkmod.Range1d(-0.5, n_samples - 0.5),
             output_backend=output_backend,
+        )
+        hover = bkmod.HoverTool(tooltips=tooltips)
+        fig.add_tools(
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", hover
         )
 
         debug("set up palette and color mapping")
-        color_mapper = bkmod.LinearColorMapper(low=-1.5, high=4.5, palette=palette)
+        active_palette = (
+            palette if palette is not None else cnv_params.colorscale_default
+        )
+        color_mapper = bkmod.LinearColorMapper(
+            low=-1.5, high=4.5, palette=active_palette
+        )
 
         debug("plot the HMM copy number data as an image")
         sample_id = ds_cnv["sample_id"].values
         sample_id_tiled = np.broadcast_to(sample_id[np.newaxis, :], cn.shape)
-        data = dict(
-            hmm_state=[cn.T],
-            norm_cov=[ncov.T],
-            sample_id=[sample_id_tiled.T],
-            x=[x_min],
-            y=[-0.5],
-            dw=[n_windows * 300],
-            dh=[n_samples],
-        )
+        data: dict[str, Any] = {
+            "hmm_state": [cn.T],
+            "norm_cov": [ncov.T],
+            "sample_id": [sample_id_tiled.T],
+            "x": [x_min],
+            "y": [-0.5],
+            "dw": [n_windows * 300],
+            "dh": [n_samples],
+        }
+
+        source = bkmod.ColumnDataSource(data)
+
+        # Bokeh figure image (glyph) still supports color_mapper parameter.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/models/glyphs/image.html#bokeh.models.Image.color_mapper
         fig.image(
-            source=data,
+            source=source,
             image="hmm_state",
             x="x",
             y="y",
             dw="dw",
             dh="dh",
-            color_mapper=color_mapper,
+            color_mapper=color_mapper,  # type: ignore
         )
 
         debug("tidy")
         fig.yaxis.axis_label = "Samples"
         self._bokeh_style_genome_xaxis(fig, region_prepped.contig)
         fig.yaxis.ticker = bkmod.FixedTicker(
-            ticks=np.arange(len(sample_id)),
+            ticks=[float(i) for i in range(len(sample_id))],
         )
         fig.yaxis.major_label_overrides = {i: s for i, s in enumerate(sample_id)}
         fig.yaxis.major_label_text_font_size = f"{row_height}px"

@@ -1591,11 +1591,12 @@ class AnophelesSnpData(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         pos = data["pos"].values
         x_min = resolved_region.start or 1
         x_max = resolved_region.end or len(seq)
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         tooltips = [
             ("Position", "$x{0,0}"),
@@ -1610,22 +1611,23 @@ class AnophelesSnpData(
         for site_mask_id in self.site_mask_ids:
             tooltips.append((f"Pass {site_mask_id}", f"@pass_{site_mask_id}"))
 
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title="SNPs",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0.5, 2.5),
-            tooltips=tooltips,
+            y_range=bokeh.models.Range1d(0.5, 2.5),
             output_backend=output_backend,
         )
-        hover_tool = fig.select(type=bokeh.models.HoverTool)
-        hover_tool.name = "snps"
+        hover = bokeh.models.HoverTool(tooltips=tooltips)
+        hover.name = "snps"
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
 
         # Plot gaps in the reference genome.
         df_n_runs = pd.DataFrame(

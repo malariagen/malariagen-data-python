@@ -204,9 +204,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
             title = f"{transcript} ({parent.strand})"
 
         if x_range is None:
-            x_range = bokeh.models.Range1d(
-                parent.start - 2_000, parent.end + 2_000, bounds="auto"
-            )
+            x_range = bokeh.models.Range1d(parent.start - 2_000, parent.end + 2_000)
 
         debug("Define tooltips for hover.")
         tooltips = [
@@ -218,19 +216,23 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
+        fig_title = title if isinstance(title, str) else None
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "hover"],
             toolbar_location=toolbar_location,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            tooltips=tooltips,
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.6, 0.6),
         )
+        hover = bokeh.models.HoverTool(tooltips=tooltips)
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", hover)
 
         debug("Find child components of the transcript.")
         data = self.genome_feature_children(parent=transcript, attributes=None)
@@ -353,7 +355,7 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bokeh.models.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end)
 
         debug("select the genes overlapping the requested region")
         data, tooltips = self._plot_genes_setup_data(region=resolved_region)
@@ -372,33 +374,28 @@ class AnophelesGenomeFeaturesData(AnophelesGenomeSequenceData):
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
+        fig_title = title if isinstance(title, str) else None
+        # Bokeh plotting figure still supports active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "tap",
-                "hover",
-            ],
             toolbar_location=toolbar_location,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
-            tooltips=tooltips,
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(-0.4, 2.2),
             output_backend=output_backend,
         )
+        hover = bokeh.models.HoverTool(tooltips=tooltips)
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "tap", hover)
 
         debug("add functionality to click through to vectorbase")
         url = "https://vectorbase.org/vectorbase/app/record/gene/@ID"
-        taptool = fig.select(type=bokeh.models.TapTool)
-        taptool.callback = bokeh.models.OpenURL(url=url)
+        fig.add_tools(bokeh.models.TapTool(callback=bokeh.models.OpenURL(url=url)))
 
         debug("now plot the genes as rectangles")
         fig.quad(

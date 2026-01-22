@@ -299,25 +299,29 @@ class AnophelesDataResource(
                 x_max = region.end
             else:
                 x_max = len(self.genome_sequence(region.contig))
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         debug("create a figure for plotting")
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
             title=f"{sample_id} ({sample_set})",
-            tools=["xpan", "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save"],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, y_max),
+            y_range=bokeh.models.Range1d(0, y_max),
             output_backend=output_backend,
         )
+        fig.add_tools(xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save")
 
         debug("plot heterozygosity")
         data = pd.DataFrame(
@@ -691,7 +695,7 @@ class AnophelesDataResource(
 
         debug("define x axis range")
         if x_range is None:
-            x_range = bokeh.models.Range1d(start, end, bounds="auto")
+            x_range = bokeh.models.Range1d(start, end)
 
         debug(
             "we're going to plot each gene as a rectangle, so add some additional columns"
@@ -704,26 +708,31 @@ class AnophelesDataResource(
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
+        fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             sizing_mode=sizing_mode,
             width=width,
             height=height,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "tap",
-                "hover",
-                "save",
-            ],
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             x_range=x_range,
             y_range=bokeh.models.Range1d(0, 1),
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            xpan,
+            "xzoom_in",
+            "xzoom_out",
+            xwheel_zoom,
+            "reset",
+            "tap",
+            "hover",
+            "save",
         )
 
         debug("now plot the ROH as rectangles")
@@ -1575,34 +1584,33 @@ class AnophelesDataResource(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # create a figure
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         if title is None:
             title = sample_query
+        fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            title=fig_title,
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         if window_size:
@@ -1629,7 +1637,7 @@ class AnophelesDataResource(
             color = bokeh_palette[i]
 
             # plot ihs
-            fig.circle(
+            fig.scatter(
                 x=x,
                 y=ihs_perc,
                 size=4,
@@ -2105,37 +2113,36 @@ class AnophelesDataResource(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # create a figure
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         if title is None:
             if cohort1_query is None or cohort2_query is None:
                 title = "XP-EHH"
             else:
                 title = f"Cohort 1: {cohort1_query}\nCohort 2: {cohort2_query}"
+        fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            title=fig_title,
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         if window_size:
@@ -2161,7 +2168,7 @@ class AnophelesDataResource(
             color = bokeh_palette[i]
 
             # plot XP-EHH
-            fig.circle(
+            fig.scatter(
                 x=x,
                 y=xpehh_perc,
                 size=4,

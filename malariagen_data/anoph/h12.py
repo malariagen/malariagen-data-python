@@ -184,11 +184,15 @@ class AnophelesH12Analysis(
         # Make plot.
         if title is None:
             title = sample_query
+        fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports x_axis_type parameter.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
+            title=fig_title,
             width=700,
             height=400,
-            x_axis_type="log",
+            x_axis_type="log",  # type: ignore
             x_range=bokeh.models.Range1d(window_sizes[0], window_sizes[-1]),
         )
         patch_x = list(window_sizes) + list(window_sizes[::-1])
@@ -390,35 +394,34 @@ class AnophelesH12Analysis(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # Create a figure.
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
         if title is None:
             title = sample_query
+        fig_title = title if isinstance(title, str) else None
+
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            title=fig_title,
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=bokeh.models.Range1d(0, 1),
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         # Plot H12.
@@ -594,34 +597,32 @@ class AnophelesH12Analysis(
         x_min = x[0]
         x_max = x[-1]
         if x_range is None:
-            x_range = bokeh.models.Range1d(x_min, x_max, bounds="auto")
+            x_range = bokeh.models.Range1d(x_min, x_max)
 
         # Create a figure.
         xwheel_zoom = bokeh.models.WheelZoomTool(
             dimensions="width", maintain_focus=False
         )
+        xpan = bokeh.models.PanTool(dimensions="width")
+        fig_title = title if isinstance(title, str) else None
 
+        # Bokeh plotting figure still supports active_inspect, active_scroll and active_drag parameters.
+        # See https://docs.bokeh.org/en/3.8.2/docs/reference/plotting/figure.html
         fig = bokeh.plotting.figure(
-            title=title,
-            tools=[
-                "xpan",
-                "xzoom_in",
-                "xzoom_out",
-                xwheel_zoom,
-                "reset",
-                "save",
-                "crosshair",
-            ],
-            active_inspect=None,
-            active_scroll=xwheel_zoom,
-            active_drag="xpan",
+            title=fig_title,
+            active_inspect=None,  # type: ignore
+            active_scroll=xwheel_zoom,  # type: ignore
+            active_drag=xpan,  # type: ignore
             sizing_mode=sizing_mode,
             width=width,
             height=height,
             toolbar_location="above",
             x_range=x_range,
-            y_range=(0, 1),
+            y_range=bokeh.models.Range1d(0, 1),
             output_backend=output_backend,
+        )
+        fig.add_tools(
+            xpan, "xzoom_in", "xzoom_out", xwheel_zoom, "reset", "save", "crosshair"
         )
 
         # Plot H12.
@@ -781,7 +782,7 @@ class AnophelesH12Analysis(
                 raise ValueError("Cohorts and window_sizes should have the same keys.")
 
         # Plot GWSS track.
-        figs: list[gplt_params.figure] = []
+        figs: list[bokeh.plotting.figure] = []
         for i, (cohort_label, cohort_query) in enumerate(cohort_queries.items()):
             params = dict(
                 contig=contig,
