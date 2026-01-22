@@ -19,8 +19,17 @@ from the following locations:
 -   [Ag3 API
     docs](https://malariagen.github.io/malariagen-data-python/latest/Ag3.html)
 
+-   [Af1 API
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Af1.html)
+
 -   [Amin1 API
     docs](https://malariagen.github.io/malariagen-data-python/latest/Amin1.html)
+
+-  [Adir1 API
+    docs](https://malariagen.github.io/malariagen-data-python/latest/Adir1.html)
+
+-   [Pf8 API
+    docs](https://malariagen.github.io/parasite-data/pf8/api.html)
 
 -   [Pf7 API
     docs](https://malariagen.github.io/parasite-data/pf7/api.html)
