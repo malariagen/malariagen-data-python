@@ -374,7 +374,7 @@ def simulate_snp_genotypes(
     root = zarr.open(zarr_path, mode="w")
 
     # Create samples array.
-    df_samples = pd.read_csv(metadata_path)
+    df_samples = pd.read_csv(metadata_path, engine="python")
     n_samples = len(df_samples)
     samples = df_samples["sample_id"].values.astype("S")
     root.create_dataset(name="samples", data=samples)
@@ -618,7 +618,7 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
     root = zarr.open(zarr_path, mode="w")
 
     # Create samples array.
-    df_samples = pd.read_csv(metadata_path)
+    df_samples = pd.read_csv(metadata_path, engine="python")
     samples = df_samples["sample_id"].values
     root.create_dataset(name="samples", data=samples, dtype=str)
 
@@ -717,7 +717,7 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
     root = zarr.open(zarr_path, mode="w")
 
     # Create samples array.
-    df_samples = pd.read_csv(metadata_path)
+    df_samples = pd.read_csv(metadata_path, engine="python")
     n_samples = len(df_samples)
     samples = df_samples["sample_id"].values
     root.create_dataset(name="samples", data=samples, dtype=str)
@@ -837,7 +837,7 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
     root = zarr.open(zarr_path, mode="w")
 
     # Create samples array.
-    df_samples = pd.read_csv(metadata_path)
+    df_samples = pd.read_csv(metadata_path, engine="python")
     samples = df_samples["sample_id"].values
     root.create_dataset(name="samples", data=samples, dtype=str)
 
@@ -1250,7 +1250,7 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
-        df_general = pd.read_csv(src_path)
+        df_general = pd.read_csv(src_path, engine="python")
         # Randomly downsample.
         df_general_ds = df_general.sample(n_samples_sim, replace=False)
         samples_ds = df_general_ds["sample_id"].tolist()
@@ -1275,7 +1275,7 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "surveillance.flags.csv"
         )
-        df_surveillance_flags = pd.read_csv(surv_flags_src_path)
+        df_surveillance_flags = pd.read_csv(surv_flags_src_path, engine="python")
         df_surveillance_flags_ds = (
             df_surveillance_flags.set_index("sample_id").loc[samples_ds].reset_index()
         )
@@ -1301,7 +1301,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "sequence_qc_stats.csv"
             )
-            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats = pd.read_csv(src_path, engine="python")
             df_sequence_qc_stats_ds = (
                 df_sequence_qc_stats.set_index("sample_id")
                 .loc[samples_ds]
@@ -1329,7 +1329,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "samples.species_aim.csv"
             )
-            df_aim = pd.read_csv(src_path)
+            df_aim = pd.read_csv(src_path, engine="python")
             df_aim_ds = df_aim.set_index("sample_id").loc[samples_ds].reset_index()
             dst_path = (
                 self.bucket_path
@@ -1353,7 +1353,7 @@ class Ag3Simulator(AnophelesSimulator):
                 / sample_set
                 / "samples.cohorts.csv"
             )
-            df_coh = pd.read_csv(src_path)
+            df_coh = pd.read_csv(src_path, engine="python")
             df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
             dst_path = (
                 self.bucket_path
@@ -1395,7 +1395,7 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -1418,7 +1418,7 @@ class Ag3Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_accession_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -1572,7 +1572,7 @@ class Ag3Simulator(AnophelesSimulator):
                     / sample_set
                     / "samples.species_aim.csv"
                 )
-                df_aim = pd.read_csv(metadata_path)
+                df_aim = pd.read_csv(metadata_path, engine="python")
 
                 # Simulate haplotypes for the gamb_colu_arab analysis.
                 analysis = "gamb_colu_arab"
@@ -1716,7 +1716,7 @@ class Ag3Simulator(AnophelesSimulator):
                         / sample_set
                         / "samples.meta.csv"
                     )
-                    df_samples = pd.read_csv(metadata_path)
+                    df_samples = pd.read_csv(metadata_path, engine="python")
                     ds["sample_id"] = ("samples",), df_samples["sample_id"]
 
                     # Add call_genotype variable.
@@ -2030,7 +2030,7 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
-        df_general = pd.read_csv(src_path)
+        df_general = pd.read_csv(src_path, engine="python")
         df_general_ds = df_general.sample(n_samples_sim, replace=False)
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
@@ -2054,7 +2054,7 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "surveillance.flags.csv"
         )
-        df_surveillance_flags = pd.read_csv(surv_flags_src_path)
+        df_surveillance_flags = pd.read_csv(surv_flags_src_path, engine="python")
         df_surveillance_flags_ds = (
             df_surveillance_flags.set_index("sample_id").loc[samples_ds].reset_index()
         )
@@ -2080,7 +2080,7 @@ class Af1Simulator(AnophelesSimulator):
                 / sample_set
                 / "sequence_qc_stats.csv"
             )
-            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats = pd.read_csv(src_path, engine="python")
             df_sequence_qc_stats_ds = (
                 df_sequence_qc_stats.set_index("sample_id")
                 .loc[samples_ds]
@@ -2107,7 +2107,7 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.cohorts.csv"
         )
-        df_coh = pd.read_csv(src_path)
+        df_coh = pd.read_csv(src_path, engine="python")
         df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2130,7 +2130,7 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2153,7 +2153,7 @@ class Af1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_accession_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2282,7 +2282,7 @@ class Af1Simulator(AnophelesSimulator):
                     / sample_set
                     / "samples.meta.csv"
                 )
-                df_samples = pd.read_csv(metadata_path)
+                df_samples = pd.read_csv(metadata_path, engine="python")
                 samples = df_samples["sample_id"].values
 
                 # Simulate haplotypes.
@@ -2570,7 +2570,7 @@ class Adir1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
-        df_general = pd.read_csv(src_path)
+        df_general = pd.read_csv(src_path, engine="python")
         df_general_ds = df_general.sample(n_samples_sim, replace=False)
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
@@ -2595,7 +2595,7 @@ class Adir1Simulator(AnophelesSimulator):
                 / sample_set
                 / "sequence_qc_stats.csv"
             )
-            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats = pd.read_csv(src_path, engine="python")
             df_sequence_qc_stats_ds = (
                 df_sequence_qc_stats.set_index("sample_id")
                 .loc[samples_ds]
@@ -2622,7 +2622,7 @@ class Adir1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.cohorts.csv"
         )
-        df_coh = pd.read_csv(src_path)
+        df_coh = pd.read_csv(src_path, engine="python")
         df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2645,7 +2645,7 @@ class Adir1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2668,7 +2668,7 @@ class Adir1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_accession_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2887,7 +2887,7 @@ class Amin1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.meta.csv"
         )
-        df_general = pd.read_csv(src_path)
+        df_general = pd.read_csv(src_path, engine="python")
         df_general_ds = df_general.sample(n_samples_sim, replace=False)
         samples_ds = df_general_ds["sample_id"].tolist()
         dst_path = (
@@ -2912,7 +2912,7 @@ class Amin1Simulator(AnophelesSimulator):
                 / sample_set
                 / "sequence_qc_stats.csv"
             )
-            df_sequence_qc_stats = pd.read_csv(src_path)
+            df_sequence_qc_stats = pd.read_csv(src_path, engine="python")
             df_sequence_qc_stats_ds = (
                 df_sequence_qc_stats.set_index("sample_id")
                 .loc[samples_ds]
@@ -2939,7 +2939,7 @@ class Amin1Simulator(AnophelesSimulator):
             / sample_set
             / "samples.cohorts.csv"
         )
-        df_coh = pd.read_csv(src_path)
+        df_coh = pd.read_csv(src_path, engine="python")
         df_coh_ds = df_coh.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2962,7 +2962,7 @@ class Amin1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_snp_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path
@@ -2985,7 +2985,7 @@ class Amin1Simulator(AnophelesSimulator):
             / sample_set
             / "wgs_accession_data.csv"
         )
-        df_cat = pd.read_csv(src_path)
+        df_cat = pd.read_csv(src_path, engine="python")
         df_cat_ds = df_cat.set_index("sample_id").loc[samples_ds].reset_index()
         dst_path = (
             self.bucket_path

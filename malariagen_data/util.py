@@ -10,7 +10,17 @@ from math import prod
 from functools import wraps
 from inspect import getcallargs
 from textwrap import dedent, fill
-from typing import IO, Dict, Hashable, List, Mapping, Optional, Tuple, Union, Callable
+from typing import (
+    IO,
+    Dict,
+    Hashable,
+    List,
+    Mapping,
+    Optional,
+    Tuple,
+    Union,
+    Callable,
+)
 from urllib.parse import unquote_plus
 from numpy.testing import assert_allclose, assert_array_equal
 
@@ -83,6 +93,7 @@ def _read_gff3(buf, compression="gzip"):
         names=gff3_cols,
         na_values=["", "."],
         compression=compression,
+        engine="python",
     )
 
     # parse attributes
@@ -91,27 +102,38 @@ def _read_gff3(buf, compression="gzip"):
     return df
 
 
-def _unpack_gff3_attributes(df: pd.DataFrame, attributes: Tuple[str, ...]):
+def _unpack_gff3_attributes(
+    df: pd.DataFrame,
+    attributes: Tuple[str, ...],
+) -> pd.DataFrame:
     df = df.copy()
 
-    # discover all attribute keys
+    # Collect all the unique attributes in the DataFrame as a sorted tuple.
     all_attributes = set()
     for a in df["attributes"]:
         all_attributes.update(a.keys())
     all_attributes_sorted = tuple(sorted(all_attributes))
 
-    # handle request for all attributes
+    # If an asterisk was specified, use all the available attributes.
     if attributes == ("*",):
         attributes = all_attributes_sorted
 
-    # unpack attributes into columns
+    # For each of the specified attributes,
+    # if the attribute is not in the tuple of available attributes,
+    # then raise a ValueError.
     for key in attributes:
         if key not in all_attributes_sorted:
             raise ValueError(
                 f"'{key}' not in attributes set. Options {all_attributes_sorted}"
             )
-        df[key] = df["attributes"].apply(lambda v: v.get(key, np.nan))
-    del df["attributes"]
+
+        # Copy the specified attribute into a new column in the DataFrame.
+        # Note: avoid using .apply() here, for type checking.
+        df[key] = [a.get(key, np.nan) for a in df["attributes"]]
+
+    # Drop the original "attributes" column from the DataFrame.
+    # Note: avoid using del here, for type checking.
+    df = df.drop(columns=["attributes"])
 
     return df
 

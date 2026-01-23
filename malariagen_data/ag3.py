@@ -354,6 +354,7 @@ class Ag3(AnophelesDataResource):
                     na_values=["", "0"],
                     names=fam_names,
                     dtype={"sex": str},
+                    engine="python",
                 )
 
             debug("convert 'sex' column for consistency with sample metadata")

@@ -167,7 +167,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             }
             # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
             dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            df = pd.read_csv(
+                io.BytesIO(data), dtype=dtype, na_values="", engine="python"
+            )
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -258,7 +260,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
 
             # Read the CSV using the dtype dict.
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            df = pd.read_csv(
+                io.BytesIO(data), dtype=dtype, na_values="", engine="python"
+            )
 
             return df
 
@@ -383,7 +387,9 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         if isinstance(data, bytes):
             # Read the CSV data.
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            df = pd.read_csv(
+                io.BytesIO(data), dtype=dtype, na_values="", engine="python"
+            )
 
             # If there are any nulls in these data, show a warning.
             if df.isnull().values.any():
@@ -518,7 +524,9 @@ class AnophelesSampleMetadata(AnophelesBase):
             # `dict[str, str]` is incompatible with the `dtype` of `pd.read_csv`
             dtype: DefaultDict[str, str] = defaultdict(lambda: "object", dtype_dict)
 
-            df = pd.read_csv(io.BytesIO(data), dtype=dtype, na_values="")
+            df = pd.read_csv(
+                io.BytesIO(data), dtype=dtype, na_values="", engine="python"
+            )
 
             # Ensure all column names are lower case.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -592,7 +600,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         assert self._aim_metadata_dtype is not None
         if isinstance(data, bytes):
             # Parse CSV data but don't apply the dtype yet.
-            df = pd.read_csv(io.BytesIO(data), na_values="")
+            df = pd.read_csv(io.BytesIO(data), na_values="", engine="python")
 
             # Convert all column names to lowercase.
             df.columns = [c.lower() for c in df.columns]  # type: ignore
@@ -1042,7 +1050,7 @@ class AnophelesSampleMetadata(AnophelesBase):
         # Load data catalog.
         path = f"{self._base_path}/{release_path}/metadata/general/{sample_set}/wgs_accession_data.csv"
         with self._fs.open(path) as f:
-            df = pd.read_csv(f, na_values="")
+            df = pd.read_csv(f, na_values="", engine="python")
 
         # Normalise columns.
         df = df[
@@ -1512,7 +1520,7 @@ class AnophelesSampleMetadata(AnophelesBase):
 
         # Read the manifest into a pandas dataframe.
         with self.open_file(path) as f:
-            df_cohorts = pd.read_csv(f, sep=",", na_values="")
+            df_cohorts = pd.read_csv(f, sep=",", na_values="", engine="python")
 
         # Ensure all column names are lower case.
         df_cohorts.columns = [c.lower() for c in df_cohorts.columns]  # type: ignore

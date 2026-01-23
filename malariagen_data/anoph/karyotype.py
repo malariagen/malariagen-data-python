@@ -61,7 +61,7 @@ class AnophelesKaryotypeAnalysis(AnophelesSnpData):
             )
         else:
             with importlib.resources.path(resources, self._inversion_tag_path) as path:
-                df_tag_snps = pd.read_csv(path, sep=",")
+                df_tag_snps = pd.read_csv(path, sep=",", engine="python")
             return df_tag_snps.query(f"inversion == '{inversion}'").reset_index()
 
     @_check_types
