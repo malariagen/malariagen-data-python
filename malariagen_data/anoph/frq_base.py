@@ -339,7 +339,11 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
             A plotly figure containing line graphs. The resulting figure will
             have one panel per cohort, grouped into columns by taxon, and
             grouped into rows by area. Markers and lines show frequencies of
-            variants.
+            variants. Error bars represent 95% confidence intervals for the
+            frequency estimates, calculated using the Wilson score method via
+            `statsmodels.stats.proportion.proportion_confint()`. The error bars
+            are asymmetric, with upper and lower bounds that may differ from
+            the point estimate by different amounts.
         """,
     )
     def plot_frequencies_time_series(
