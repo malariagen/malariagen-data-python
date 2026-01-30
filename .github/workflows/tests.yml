@@ -13,10 +13,8 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11", "3.12"]
         numpy-version:
-          - "numpy==1.26.4"  # current colab version
-          - "numpy~=2.0"  # 2.0 series
-          # numba (0.60.0) does not yet support numpy 2.1, disable this for now
-          # - "numpy~=2.1"  # 2.1 series
+          - "numpy==1.26.4" # current colab version
+          - "numpy==2.1.3" # matches poetry.lock, stable 2.x
     runs-on: ubuntu-latest
 
     steps:
