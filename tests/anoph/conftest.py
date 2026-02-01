@@ -620,7 +620,7 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
     # Create samples array.
     df_samples = pd.read_csv(metadata_path)
     samples = df_samples["sample_id"].values
-    root.create_dataset(name="samples", data=samples, dtype=str)
+    root.create_dataset(name="samples", data=samples, dtype='U')
 
     # Get the number of samples.
     n_samples = len(df_samples)
@@ -669,7 +669,7 @@ def simulate_cnv_hmm(zarr_path, metadata_path, contigs, contig_sizes):
         calldata_grp.create_dataset(name="RawCov", data=rawCov)
 
         # Create the samples dataset (again) for this contig.
-        contig_grp.create_dataset(name="samples", data=samples, dtype=str)
+        contig_grp.create_dataset(name="samples", data=samples, dtype='U')
 
         # Create variants group for this contig.
         variants_grp = contig_grp.require_group("variants")
@@ -720,7 +720,7 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
     df_samples = pd.read_csv(metadata_path)
     n_samples = len(df_samples)
     samples = df_samples["sample_id"].values
-    root.create_dataset(name="samples", data=samples, dtype=str)
+    root.create_dataset(name="samples", data=samples, dtype='U')
 
     for contig in contigs:
         # Create the contig group.
@@ -766,7 +766,7 @@ def simulate_cnv_coverage_calls(zarr_path, metadata_path, contigs, contig_sizes)
         calldata.create_dataset(name="GT", data=gt)
 
         # Create the samples dataset (again) for this contig.
-        contig_grp.create_dataset(name="samples", data=samples, dtype=str)
+        contig_grp.create_dataset(name="samples", data=samples, dtype='U')
 
         # Create the variants group for this contig.
         variants_grp = contig_grp.require_group("variants")
@@ -839,7 +839,7 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
     # Create samples array.
     df_samples = pd.read_csv(metadata_path)
     samples = df_samples["sample_id"].values
-    root.create_dataset(name="samples", data=samples, dtype=str)
+    root.create_dataset(name="samples", data=samples, dtype='U')
 
     # Get the number of samples.
     n_samples = len(df_samples)
@@ -909,7 +909,7 @@ def simulate_cnv_discordant_read_calls(zarr_path, metadata_path, contigs, contig
         calldata_grp.create_dataset(name="GT", data=gt)
 
         # Create the samples dataset (again) for this contig.
-        contig_grp.create_dataset(name="samples", data=samples, dtype=str)
+        contig_grp.create_dataset(name="samples", data=samples, dtype='U')
 
         # Create the variants group for this contig.
         variants_grp = contig_grp.require_group("variants")
@@ -1589,7 +1589,7 @@ class Ag3Simulator(AnophelesSimulator):
                     / "zarr"
                 )
                 root = zarr.open(zarr_path, mode="w")
-                root.create_dataset(name="samples", data=samples, dtype=str)
+                root.create_dataset(name="samples", data=samples, dtype='U')
                 for contig in self.contigs:
                     n_sites = self.n_hap_sites[analysis][contig]
                     gt = np.random.choice(
@@ -1620,7 +1620,7 @@ class Ag3Simulator(AnophelesSimulator):
                         / "zarr"
                     )
                     root = zarr.open(zarr_path, mode="w")
-                    root.create_dataset(name="samples", data=samples, dtype=str)
+                    root.create_dataset(name="samples", data=samples, dtype='U')
                     for contig in self.contigs:
                         n_sites = self.n_hap_sites[analysis][contig]
                         gt = np.random.choice(
@@ -1651,7 +1651,7 @@ class Ag3Simulator(AnophelesSimulator):
                         / "zarr"
                     )
                     root = zarr.open(zarr_path, mode="w")
-                    root.create_dataset(name="samples", data=samples, dtype=str)
+                    root.create_dataset(name="samples", data=samples, dtype='U')
                     for contig in self.contigs:
                         n_sites = self.n_hap_sites[analysis][contig]
                         gt = np.random.choice(
@@ -2300,7 +2300,7 @@ class Af1Simulator(AnophelesSimulator):
                     / "zarr"
                 )
                 root = zarr.open(zarr_path, mode="w")
-                root.create_dataset(name="samples", data=samples, dtype=str)
+                root.create_dataset(name="samples", data=samples, dtype='U')
                 for contig in self.contigs:
                     n_sites = self.n_hap_sites[analysis][contig]
                     gt = np.random.choice(
