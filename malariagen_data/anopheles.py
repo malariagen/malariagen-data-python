@@ -2369,7 +2369,7 @@ class AnophelesDataResource(
 
                 # count color values for each distinct haplotype (same for both string and mapping cases)
                 ht_color_counts = [
-                    df_haps.iloc[list(s)]["_partition"].value_counts().to_dict()
+                    df_haps.loc[list(s), "_partition"].value_counts().to_dict()
                     for s in ht_distinct_sets
                 ]
 
