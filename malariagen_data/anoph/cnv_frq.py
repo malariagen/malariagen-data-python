@@ -573,8 +573,8 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             cohort_is_called = np.take(is_called, sample_indices, axis=1)
 
             # compute cohort allele counts
-            np.sum(cohort_is_amp, axis=1, out=count[::2, cohort_index])
-            np.sum(cohort_is_del, axis=1, out=count[1::2, cohort_index])
+            count[::2, cohort_index] = np.sum(cohort_is_amp, axis=1)
+            count[1::2, cohort_index] = np.sum(cohort_is_del, axis=1)
 
             # compute cohort allele numbers
             cohort_n_called = np.sum(cohort_is_called, axis=1)
