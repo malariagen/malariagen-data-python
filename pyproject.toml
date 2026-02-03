@@ -44,7 +44,7 @@ plotly = "*"
 # https://github.com/bokeh/bokeh/issues/14412
 # https://github.com/malariagen/malariagen-data-python/issues/734
 bokeh = "<3.7.0"
-statsmodels = "*"
+statsmodels = ">=0.14.2"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
 # https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
