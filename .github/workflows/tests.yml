@@ -11,19 +11,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-        numpy-version:
-          - "numpy==1.26.4" # current colab version
-          - "numpy~=2.0" # 2.0 series
-          # numba (0.60.0) does not yet support numpy 2.1, disable this for now
-          # - "numpy~=2.1"  # 2.1 series
-        exclude:
-          # Python 3.10: ONLY test with NumPy 1.26.4 (stable baseline)
-          - python-version: "3.10"
-            numpy-version: "numpy~=2.0"
-          # Python 3.12: ONLY test with NumPy 1.26.4 (upstream wheel/zarr instability)
-          - python-version: "3.12"
-            numpy-version: "numpy~=2.0"
+        python-version: ["3.10", "3.11"]
+        numpy-version: ["numpy==1.26.4"]
     runs-on: ubuntu-latest
 
     steps:

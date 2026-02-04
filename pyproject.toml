@@ -21,13 +21,13 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-numpy = ">=1.26,<2.2"
+numpy = "==1.26.4"
 numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
 pandas = "*"
 zarr = ">=2.18.3, <3.0.0"
-numcodecs = ">=0.16, <0.17"
+numcodecs = ">=0.15, <0.16"
 dask = {version="*", extras=["array"]}
 distributed = "*"
 fsspec = "*"
