@@ -240,7 +240,9 @@ class AnophelesCnvData(
                     # noinspection PyArgumentList
                     other = pd.Interval(r.start, r.end, closed="both")
                     loc_region = index.overlaps(other)  # type: ignore
-                    x = x.isel(variants=loc_region)
+                    # Convert boolean mask to integer indices for NumPy 2.x compatibility
+                    variant_indices = np.where(loc_region)[0]
+                    x = x.isel(variants=variant_indices)
 
                 lx.append(x)
 
@@ -267,7 +269,9 @@ class AnophelesCnvData(
             if max_coverage_variance is not None:
                 cov_var = ds["sample_coverage_variance"].values
                 loc_pass_samples = cov_var <= max_coverage_variance
-                ds = ds.isel(samples=loc_pass_samples)
+                # Convert boolean mask to integer indices for NumPy 2.x compatibility
+                sample_indices = np.where(loc_pass_samples)[0]
+                ds = ds.isel(samples=sample_indices)
 
         return ds
 
@@ -445,7 +449,9 @@ class AnophelesCnvData(
                 # noinspection PyArgumentList
                 other = pd.Interval(r.start, r.end, closed="both")
                 loc_region = index.overlaps(other)  # type: ignore
-                x = x.isel(variants=loc_region)
+                # Convert boolean mask to integer indices for NumPy 2.x compatibility
+                variant_indices = np.where(loc_region)[0]
+                x = x.isel(variants=variant_indices)
 
             lx.append(x)
         ds = _simple_xarray_concat(lx, dim=DIM_VARIANT)
