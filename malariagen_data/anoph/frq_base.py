@@ -53,10 +53,10 @@ def _prep_samples_for_cohort_grouping(*, df_samples, area_by, period_by, taxon_b
             )
 
         # Raise a ValueError if the specified period_by column does not contain instances pd.Period.
-        if not all(
-            df_samples[period_by].apply(
-                lambda value: pd.isnull(value) or isinstance(value, pd.Period)
-            )
+        if (
+            not df_samples[period_by]
+            .apply(lambda value: pd.isnull(value) or isinstance(value, pd.Period))
+            .all()
         ):
             raise TypeError(
                 f"Invalid values in {period_by!r} column. Must be either pandas.Period or null."
