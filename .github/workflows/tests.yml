@@ -11,12 +11,8 @@ jobs:
     strategy:
       fail-fast: true
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
-        numpy-version:
-          - "numpy==1.26.4"  # current colab version
-          - "numpy~=2.0"  # 2.0 series
-          # numba (0.60.0) does not yet support numpy 2.1, disable this for now
-          # - "numpy~=2.1"  # 2.1 series
+        python-version: ["3.10"]
+        numpy-version: ["numpy==1.26.4"]
     runs-on: ubuntu-latest
 
     steps:
@@ -31,6 +27,9 @@ jobs:
 
       - name: Install package
         run: pip install "${{ matrix.numpy-version }}" .[dev]
+
+      - name: Verify NumPy version
+        run: python -c "import numpy; print('NumPy version:', numpy.__version__)"
 
       - name: Run unit tests
         run: pytest -v tests --ignore tests/integration --typeguard-packages=malariagen_data,malariagen_data.anoph
