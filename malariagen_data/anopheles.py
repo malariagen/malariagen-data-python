@@ -39,6 +39,7 @@ from .anoph.snp_data import AnophelesSnpData
 from .anoph.to_plink import PlinkConverter
 from .anoph.g123 import AnophelesG123Analysis
 from .anoph.fst import AnophelesFstAnalysis
+from .anoph.admixture_stats import AnophelesAdmixtureAnalysis
 from .anoph.h12 import AnophelesH12Analysis
 from .anoph.h1x import AnophelesH1XAnalysis
 from .anoph.phenotypes import AnophelesPhenotypeData
@@ -83,6 +84,7 @@ class AnophelesDataResource(
     AnophelesH12Analysis,
     AnophelesG123Analysis,
     AnophelesFstAnalysis,
+    AnophelesAdmixtureAnalysis,
     AnophelesHapFrequencyAnalysis,
     AnophelesDistanceAnalysis,
     AnophelesPca,
