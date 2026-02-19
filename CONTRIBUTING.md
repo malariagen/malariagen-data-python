@@ -4,7 +4,7 @@ Thanks for your interest in contributing to this project! This guide will help y
 
 ## About the project
 
-This package provides Python tools for accessing and analyzing genomic data from [MalariaGEN](https://www.malariagen.net/), a global research network studying the genomic epidemiology of malaria and its vectors. The package supports multiple data releases (Ag3, Af1, Amin1, Adir1, Pf7, Pf8, Pv4) and provides functionality for variant analysis, haplotype clustering, population genetics, and visualization.
+This package provides Python tools for accessing and analyzing genomic data from [MalariaGEN](https://www.malariagen.net/), a global research network studying the genomic epidemiology of malaria and its vectors. It provides access to data on _Anopheles_ mosquito species and _Plasmodium_ malaria parasites, with functionality for variant analysis, haplotype clustering, population genetics, and visualization.
 
 ## Setting up your development environment
 
@@ -39,11 +39,16 @@ You'll need:
    pipx install poetry
    ```
 
-4. **Create and activate the development environment**
+4. **Install the project and its dependencies**
 
    ```bash
    poetry install
-   poetry shell
+   ```
+
+   Use `poetry run <command>` to run commands inside the environment. Alternatively, activate the environment with:
+
+   ```bash
+   poetry env activate
    ```
 
 5. **Install pre-commit hooks**
@@ -68,14 +73,12 @@ You'll need:
 
 2. **Create a feature branch**
 
-   Use a descriptive name:
+   If an issue does not already exist for your change, [create one](https://github.com/malariagen/malariagen-data-python/issues/new) first. Then create a branch using the convention `GH{issue number}-{short description}`:
 
    ```bash
-   git checkout -b feature/your-feature-name
+   git checkout -b GH123-fix-broken-filter
    # or
-   git checkout -b fix/issue-description
-   # or
-   git checkout -b docs/update-contributing-guide
+   git checkout -b GH456-add-new-analysis
    ```
 
 3. **Make your changes**
