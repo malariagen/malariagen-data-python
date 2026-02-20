@@ -46,6 +46,8 @@ for release notes.
 
 To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A), and the instructions below.
 
+> **macOS users:** See the [macOS setup section](#developer-setup-macos) below.
+
 Fork and clone this repo:
 
 ```bash
@@ -128,6 +130,66 @@ poetry run pytest --ignore=tests/anoph -v tests
 Tests will run slowly the first time, as data required for testing
 will be read from GCS. Subsequent runs will be faster as data will be
 cached locally in the "gcs_cache" folder.
+
+## Developer setup (macOS)
+
+The instructions above are Linux-focused. If you are on macOS, follow these steps instead.
+
+### Install Miniconda
+
+Download and install Miniconda for macOS from https://docs.conda.io/en/latest/miniconda.html.
+Choose the Apple Silicon installer if you have an M1/M2/M3 chip, or the Intel installer otherwise. You can check with:
+```bash
+uname -m
+# arm64 = Apple Silicon, x86_64 = Intel
+```
+
+After installation, close and reopen your terminal for conda to be available.
+
+### Create a conda environment
+
+The package requires Python >=3.10 and <3.13. Python 3.13+ is not currently supported.
+```bash
+conda create -n malariagen python=3.11
+conda activate malariagen
+```
+
+### Fork, clone and install
+```bash
+git clone https://github.com/[username]/malariagen-data-python.git
+cd malariagen-data-python
+pip install -e ".[dev]"
+```
+
+### Install pre-commit hooks
+```bash
+pre-commit install
+```
+
+### Run fast unit tests
+```bash
+pytest -v tests/anoph
+```
+
+### Google Cloud authentication
+
+To run legacy tests or access data from GCS, install the Google Cloud CLI:
+```bash
+brew install google-cloud-sdk
+```
+
+Then authenticate:
+```bash
+gcloud auth application-default login
+```
+
+This opens a browser — log in with any Google account. You will also need to [request access to MalariaGEN data on GCS](https://malariagen.github.io/vector-data/vobs/vobs-data-access.html).
+
+### VS Code terminal integration
+
+To use the `code` command from the terminal:
+
+Open VS Code → `Cmd + Shift + P` → type `Shell Command: Install 'code' command in PATH` → press Enter.
 
 ## Release process
 
