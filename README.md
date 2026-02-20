@@ -10,6 +10,23 @@ package index (PyPI) and can be installed via `pip`, e.g.:
 ```bash
 pip install malariagen-data
 ```
+## Quick Start
+
+Once installed, you can begin accessing MalariaGEN datasets directly
+from Python.
+
+For example, to work with the Pf8 dataset:
+
+```python
+import malariagen_data
+
+# Instantiate dataset
+pf8 = malariagen_data.Pf8()
+
+# Load sample metadata
+df = pf8.sample_metadata()
+print(df.head())
+```
 
 ## Documentation
 
