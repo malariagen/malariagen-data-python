@@ -416,7 +416,9 @@ class AnophelesHapData(
                 raise ValueError(
                     f"No samples found for phasing analysis {analysis!r} and query {sample_query_prepped!r}"
                 )
-            ds = ds.isel(samples=loc_samples)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            sample_indices = np.where(loc_samples)[0]
+            ds = ds.isel(samples=sample_indices)
 
         if cohort_size is not None:
             # Handle cohort size - overrides min and max.
