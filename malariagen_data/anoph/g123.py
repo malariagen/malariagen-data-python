@@ -173,8 +173,17 @@ class AnophelesG123Analysis(
         name = "g123_gwss_v1"
 
         if sites == base_params.DEFAULT:
-            assert self._default_phasing_analysis is not None
-            sites = self._default_phasing_analysis
+            #changed this part to fix the defaulting
+            if self._default_phasing_analysis is not None:
+                sites = self._default_phasing_analysis
+            else:
+                # Fall back to segregating sites for datasets that have no
+                # phasing analysis (e.g., Adir1, Amin1). G123 operates on
+                # unphased diplotype data and does not require phased haplotypes;
+                # the phasing analysis is used only as a convenient set of
+                # ascertained sites. Where no such analysis exists, segregating
+                # sites within the analysed samples are an appropriate substitute.
+                sites = "segregating"
         valid_sites = self.phasing_analysis_ids + ("all", "segregating")
         if sites not in valid_sites:
             raise ValueError(
@@ -278,6 +287,18 @@ class AnophelesG123Analysis(
         # Change this name if you ever change the behaviour of this function, to
         # invalidate any previously cached data.
         name = "g123_calibration_v1"
+
+        # for calibration runs, if we want to use it on a dataset
+        if sites == base_params.DEFAULT:
+            if self._default_phasing_analysis is not None:
+                sites = self._default_phasing_analysis
+            else:
+                sites = "segregating"
+        valid_sites = self.phasing_analysis_ids + ("all", "segregating")
+        if sites not in valid_sites:
+            raise ValueError(
+                f"Invalid value for `sites` parameter, must be one of {valid_sites}."
+            )
 
         params = dict(
             contig=contig,
