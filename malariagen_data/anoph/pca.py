@@ -152,7 +152,7 @@ class AnophelesPca(
         # df_pca.index = df_pca.index.astype(str)
 
         # Name the DataFrame's columns as PC1, PC2, etc.
-        df_pca.columns = pd.Index([f"PC{i+1}" for i in range(coords.shape[1])])
+        df_pca.columns = pd.Index([f"PC{i + 1}" for i in range(coords.shape[1])])
 
         # Load the sample metadata.
         df_samples = self.sample_metadata(
