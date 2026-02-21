@@ -163,8 +163,9 @@ def test_g123_gwss_with_default_sites(fixture, api: AnophelesG123Analysis):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_g123_gwss_with_phased_sites(fixture, api: AnophelesG123Analysis):
+    # Skip if this dataset has no phasing analyses (e.g., Adir1, Amin1).
     if not api.phasing_analysis_ids:
-        pytest.skip("No phasing analysis available")
+        pytest.skip("No phasing analyses available for this dataset.")
 
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
@@ -233,8 +234,9 @@ def test_g123_gwss_with_bad_sites(fixture, api: AnophelesG123Analysis):
 
 @parametrize_with_cases("fixture,api", cases=".")
 def test_g123_calibration(fixture, api: AnophelesG123Analysis):
+    # Skip if this dataset has no phasing analyses (e.g., Adir1, Amin1).
     if not api.phasing_analysis_ids:
-        pytest.skip("No phasing analysis available")
+        pytest.skip("No phasing analyses available for this dataset.")
 
     # Set up test parameters.
     all_sample_sets = api.sample_sets()["sample_set"].to_list()
