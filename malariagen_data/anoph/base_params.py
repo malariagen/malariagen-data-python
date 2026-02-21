@@ -308,3 +308,7 @@ snp_query: TypeAlias = Annotated[
     to select SNPs to be included
     """,
 ]
+gene: TypeAlias = Annotated[
+    str,
+    "Gene identifier (e.g., gene ID, gene name).",
+]
