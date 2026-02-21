@@ -385,8 +385,8 @@ class AnophelesFrequencyAnalysis(AnophelesBase):
 
         # Build a long-form dataframe from the dataset.
         dfs = []
-        for cohort in df_cohorts.itertuples():
-            ds_cohort = ds.isel(cohorts=cohort.Index)
+        for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
+            ds_cohort = ds.isel(cohorts=cohort_index)
             df = pd.DataFrame(
                 {
                     "taxon": cohort.taxon,
