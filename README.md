@@ -10,6 +10,7 @@ package index (PyPI) and can be installed via `pip`, e.g.:
 ```bash
 pip install malariagen-data
 ```
+
 ## Documentation
 
 Documentation of classes and methods in the public API are available
