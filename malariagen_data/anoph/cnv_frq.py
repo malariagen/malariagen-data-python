@@ -11,21 +11,21 @@ from numpydoc_decorator import doc  # type: ignore
 
 from . import base_params, cnv_params, frq_params
 from .frq_base import (
-    prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
-    add_frequency_ci,
+    _prep_samples_for_cohort_grouping,
+    _build_cohorts_from_sample_grouping,
+    _add_frequency_ci,
 )
 from ..util import (
-    check_types,
-    pandas_apply,
+    _check_types,
+    _pandas_apply,
     Region,
-    parse_multi_region,
-    region_str,
-    simple_xarray_concat,
+    _parse_multi_region,
+    _region_str,
+    _simple_xarray_concat,
 )
 from .cnv_data import AnophelesCnvData
 from .frq_base import AnophelesFrequencyAnalysis
-from .sample_metadata import locate_cohorts
+from .sample_metadata import _locate_cohorts
 
 
 class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis):
@@ -38,7 +38,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
         Compute modal copy number by gene, from HMM data.
@@ -57,10 +57,10 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
     ) -> xr.Dataset:
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
-        ds = simple_xarray_concat(
+        ds = _simple_xarray_concat(
             [
                 self._gene_cnv(
                     region=r,
@@ -183,7 +183,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
 
         return ds_out
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
         Compute modal copy number by gene, then compute the frequency of
@@ -212,7 +212,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug = self._log.debug
 
         debug("check and normalise parameters")
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
         debug("access and concatenate data from regions")
@@ -237,7 +237,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         )
 
         debug("add metadata")
-        title = f"Gene CNV frequencies ({region_str(regions)})"
+        title = f"Gene CNV frequencies ({_region_str(regions)})"
         df.attrs["title"] = title
 
         return df
@@ -329,7 +329,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         is_called = cn >= 0
 
         debug("set up cohort dict")
-        coh_dict = locate_cohorts(
+        coh_dict = _locate_cohorts(
             cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
         )
 
@@ -399,7 +399,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         df.reset_index(drop=True, inplace=True)
 
         debug("add label")
-        df["label"] = pandas_apply(
+        df["label"] = _pandas_apply(
             _make_gene_cnv_label, df, columns=["gene_id", "gene_name", "cnv_type"]
         )
 
@@ -412,7 +412,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
 
         return df
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
         Group samples by taxon, area (space) and period (time), then compute
@@ -445,11 +445,12 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
-        regions: List[Region] = parse_multi_region(self, region)
+        regions: List[Region] = _parse_multi_region(self, region)
         del region
 
-        ds = simple_xarray_concat(
+        ds = _simple_xarray_concat(
             [
                 self._gene_cnv_frequencies_advanced(
                     region=r,
@@ -466,13 +467,14 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
                     ci_method=ci_method,
                     chunks=chunks,
                     inline_array=inline_array,
+                    taxon_by=taxon_by,
                 )
                 for r in regions
             ],
             dim="variants",
         )
 
-        title = f"Gene CNV frequencies ({region_str(regions)})"
+        title = f"Gene CNV frequencies ({_region_str(regions)})"
         ds.attrs["title"] = title
 
         return ds
@@ -494,6 +496,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         ci_method,
         chunks,
         inline_array,
+        taxon_by,
     ):
         debug = self._log.debug
 
@@ -519,19 +522,21 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         df_samples = df_samples.set_index("sample_id").loc[sample_id].reset_index()
 
         debug("prepare sample metadata for cohort grouping")
-        df_samples = prep_samples_for_cohort_grouping(
+        df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
+            taxon_by=taxon_by,
         )
 
         debug("group samples to make cohorts")
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
         debug("build cohorts dataframe")
-        df_cohorts = build_cohorts_from_sample_grouping(
+        df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
+            taxon_by=taxon_by,
         )
 
         debug("figure out expected copy number")
@@ -556,7 +561,8 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug("build event count and nobs for each cohort")
         for cohort_index, cohort in enumerate(df_cohorts.itertuples()):
             # construct grouping key
-            cohort_key = cohort.taxon, cohort.area, cohort.period
+            cohort_taxon = getattr(cohort, taxon_by)
+            cohort_key = cohort_taxon, cohort.area, cohort.period
 
             # obtain sample indices for cohort
             sample_indices = group_samples_by_cohort.indices[cohort_key]
@@ -567,8 +573,8 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
             cohort_is_called = np.take(is_called, sample_indices, axis=1)
 
             # compute cohort allele counts
-            np.sum(cohort_is_amp, axis=1, out=count[::2, cohort_index])
-            np.sum(cohort_is_del, axis=1, out=count[1::2, cohort_index])
+            count[::2, cohort_index] = np.sum(cohort_is_amp, axis=1)
+            count[1::2, cohort_index] = np.sum(cohort_is_del, axis=1)
 
             # compute cohort allele numbers
             cohort_n_called = np.sum(cohort_is_called, axis=1)
@@ -604,7 +610,7 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         )
 
         debug("add variant label")
-        df_variants["label"] = pandas_apply(
+        df_variants["label"] = _pandas_apply(
             _make_gene_cnv_label,
             df_variants,
             columns=["gene_id", "gene_name", "cnv_type"],
@@ -629,16 +635,20 @@ class AnophelesCnvFrequencyAnalysis(AnophelesCnvData, AnophelesFrequencyAnalysis
         debug("deal with invariants")
         if drop_invariant:
             loc_variant = df_variants["max_af"].values > 0
-            ds_out = ds_out.isel(variants=loc_variant)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variant)[0]
+            ds_out = ds_out.isel(variants=variant_indices)
             df_variants = df_variants.loc[loc_variant].reset_index(drop=True)
 
         debug("apply variant query")
         if variant_query is not None:
             loc_variants = df_variants.eval(variant_query).values
-            ds_out = ds_out.isel(variants=loc_variants)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variants)[0]
+            ds_out = ds_out.isel(variants=variant_indices)
 
         debug("add confidence intervals")
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         debug("tidy up display by sorting variables")
         ds_out = ds_out[sorted(ds_out)]

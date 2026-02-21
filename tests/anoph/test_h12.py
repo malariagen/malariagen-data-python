@@ -7,7 +7,7 @@ import bokeh.models
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
-from malariagen_data.anoph.h12 import AnophelesH12Analysis, haplotype_frequencies
+from malariagen_data.anoph.h12 import AnophelesH12Analysis, _haplotype_frequencies
 
 
 @pytest.fixture
@@ -89,7 +89,7 @@ def test_haplotype_frequencies():
         dtype="i1",
     )
 
-    f, c, o = haplotype_frequencies(h1)
+    f, c, o = _haplotype_frequencies(h1)
     assert isinstance(f, dict)
     assert isinstance(c, dict)
     assert isinstance(o, dict)

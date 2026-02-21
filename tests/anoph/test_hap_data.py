@@ -605,7 +605,7 @@ def test_haplotypes_virtual_contigs(
 
         # Test with region.
         seq = api.genome_sequence(region=chrom)
-        start, stop = sorted(np.random.randint(low=1, high=len(seq), size=2))
+        start, stop = sorted(map(int, np.random.randint(low=1, high=len(seq), size=2)))
         region = f"{chrom}:{start:,}-{stop:,}"
 
         # Standard checks.

@@ -21,15 +21,13 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.13"
-numpy = "<2.2"
+numpy = "==1.26.4"
 numba = ">=0.60.0"
 llvmlite = "*"
 scipy = "*"
 pandas = "*"
-zarr = ">=2.11, <3.0.0"
-# zarr<3.0.0 is not compatible with numcodecs 0.16.0
-# https://github.com/zarr-developers/zarr-python/issues/2963
-numcodecs = "<0.16"
+zarr = ">=2.18.3, <3.0.0"
+numcodecs = ">=0.13, <0.16"
 dask = {version="*", extras=["array"]}
 distributed = "*"
 fsspec = "*"
@@ -44,7 +42,7 @@ plotly = "*"
 # https://github.com/bokeh/bokeh/issues/14412
 # https://github.com/malariagen/malariagen-data-python/issues/734
 bokeh = "<3.7.0"
-statsmodels = "*"
+statsmodels = ">=0.14.2"
 ipyleaflet = ">=0.17.0"
 ipywidgets = "*"
 # https://stackoverflow.com/questions/73929564/entrypoints-object-has-no-attribute-get-digital-ocean
@@ -77,6 +75,7 @@ bed_reader = "*"
 
 # dev extras
 pytest = "*"
+pytest-mock = "*"
 pytest-xdist = "*"
 pytest-cases = "*"
 pytest-cov = "*"

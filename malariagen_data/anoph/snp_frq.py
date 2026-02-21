@@ -3,6 +3,7 @@ import warnings
 
 import allel  # type: ignore
 import numpy as np
+import numpy.typing as npt
 import pandas as pd
 from numpydoc_decorator import doc  # type: ignore
 import xarray as xr
@@ -10,16 +11,16 @@ import numba  # type: ignore
 
 from .. import veff
 from ..util import (
-    check_types,
-    pandas_apply,
+    _check_types,
+    _pandas_apply,
 )
 from .snp_data import AnophelesSnpData
 from .frq_base import (
-    prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
-    add_frequency_ci,
+    _prep_samples_for_cohort_grouping,
+    _build_cohorts_from_sample_grouping,
+    _add_frequency_ci,
 )
-from .sample_metadata import locate_cohorts
+from .sample_metadata import _locate_cohorts
 from .frq_base import AnophelesFrequencyAnalysis
 from . import base_params, frq_params
 
@@ -88,7 +89,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             )
         return self._cache_annotator
 
-    @check_types
+    @_check_types
     @doc(
         summary="Compute variant effects for a gene transcript.",
         returns="""
@@ -118,7 +119,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute SNP allele frequencies for a gene transcript.
@@ -166,7 +167,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
-        coh_dict = locate_cohorts(
+        coh_dict = _locate_cohorts(
             cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
         )
 
@@ -254,7 +255,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             )
 
             # Add label.
-            df_snps["label"] = pandas_apply(
+            df_snps["label"] = _pandas_apply(
                 _make_snp_label_effect,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
@@ -268,7 +269,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         else:
             # Add label.
-            df_snps["label"] = pandas_apply(
+            df_snps["label"] = _pandas_apply(
                 _make_snp_label,
                 df_snps,
                 columns=["contig", "position", "ref_allele", "alt_allele"],
@@ -290,7 +291,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_snps
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute amino acid substitution frequencies for a gene transcript.
@@ -396,7 +397,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_aaf["max_af"] = df_aaf[freq_cols].max(axis=1)
 
         # Add label.
-        df_aaf["label"] = pandas_apply(
+        df_aaf["label"] = _pandas_apply(
             _make_snp_label_aa,
             df_aaf,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
@@ -418,7 +419,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return df_aaf
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -451,6 +452,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -460,19 +462,21 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Prepare sample metadata for cohort grouping.
-        df_samples = prep_samples_for_cohort_grouping(
+        df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
+            taxon_by=taxon_by,
         )
 
         # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
         # Build cohorts dataframe.
-        df_cohorts = build_cohorts_from_sample_grouping(
+        df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
+            taxon_by=taxon_by,
         )
 
         # Early check for no cohorts.
@@ -518,8 +522,8 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Set up main event variables.
         n_variants, n_cohorts = len(variant_position), len(df_cohorts)
-        count = np.zeros((n_variants, n_cohorts), dtype=int)
-        nobs = np.zeros((n_variants, n_cohorts), dtype=int)
+        count: npt.NDArray[np.float64] = np.zeros((n_variants, n_cohorts), dtype=int)
+        nobs: npt.NDArray[np.float64] = np.zeros((n_variants, n_cohorts), dtype=int)
 
         # Build event count and nobs for each cohort.
         cohorts_iterator = self._progress(
@@ -528,7 +532,8 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             desc="Compute SNP allele frequencies",
         )
         for cohort_index, cohort in cohorts_iterator:
-            cohort_key = cohort.taxon, cohort.area, cohort.period
+            cohort_taxon = getattr(cohort, taxon_by)
+            cohort_key = cohort_taxon, cohort.area, cohort.period
             sample_indices = group_samples_by_cohort.indices[cohort_key]
 
             cohort_ac, cohort_an = _cohort_alt_allele_counts_melt(
@@ -589,7 +594,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Add variant labels.
-        df_variants["label"] = pandas_apply(
+        df_variants["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_variants,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],
@@ -600,7 +605,11 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         # Cohort variables.
         for coh_col in df_cohorts.columns:
-            ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
+            if coh_col == taxon_by:
+                # Other functions expect cohort_taxon, e.g. plot_frequencies_interactive_map()
+                ds_out["cohort_taxon"] = "cohorts", df_cohorts[coh_col]
+            else:
+                ds_out[f"cohort_{coh_col}"] = "cohorts", df_cohorts[coh_col]
 
         # Variant variables.
         for snp_col in df_variants.columns:
@@ -621,10 +630,12 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     f"No SNPs remaining after applying variant query {variant_query!r}."
                 )
 
-            ds_out = ds_out.isel(variants=loc_variants)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variants)[0]
+            ds_out = ds_out.isel(variants=variant_indices)
 
         # Add confidence intervals.
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         # Tidy up display by sorting variables.
         sorted_vars: List[str] = sorted([str(k) for k in ds_out.keys()])
@@ -640,7 +651,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
 
         return ds_out
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -672,6 +683,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = "wilson",
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         # Begin by computing SNP allele frequencies.
         ds_snp_frq = self.snp_allele_frequencies_advanced(
@@ -689,6 +701,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
             ci_method=None,  # we will recompute confidence intervals later
             chunks=chunks,
             inline_array=inline_array,
+            taxon_by=taxon_by,
         )
 
         # N.B., we need to worry about the possibility of the
@@ -740,7 +753,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         df_variants.columns = [c.split("variant_")[1] for c in df_variants.columns]
 
         # Assign new variant label.
-        label = pandas_apply(
+        label = _pandas_apply(
             _make_snp_label_aa,
             df_variants,
             columns=["aa_change", "contig", "position", "ref_allele", "alt_allele"],
@@ -757,10 +770,12 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
                     f"No SNPs remaining after applying variant query {variant_query!r}."
                 )
 
-            ds_aa_frq = ds_aa_frq.isel(variants=loc_variants)
+            # Convert boolean mask to integer indices for NumPy 2.x compatibility
+            variant_indices = np.where(loc_variants)[0]
+            ds_aa_frq = ds_aa_frq.isel(variants=variant_indices)
 
         # Compute new confidence intervals.
-        add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_aa_frq, ci_method=ci_method)
 
         # Tidy up display by sorting variables.
         ds_aa_frq = ds_aa_frq[sorted(ds_aa_frq)]
@@ -823,7 +838,7 @@ class AnophelesSnpFrequencyAnalysis(AnophelesSnpData, AnophelesFrequencyAnalysis
         )
 
         # Add label.
-        df_snps["label"] = pandas_apply(
+        df_snps["label"] = _pandas_apply(
             _make_snp_label_effect,
             df_snps,
             columns=["contig", "position", "ref_allele", "alt_allele", "aa_change"],

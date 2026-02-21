@@ -4,20 +4,26 @@ import numpy as np
 import pandas as pd
 from pandas.testing import assert_frame_equal
 import pytest
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize_with_cases, case
+from pytest_cases import filters as ft
 import xarray as xr
 from numpy.testing import assert_allclose, assert_array_equal
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data import adir1 as _adir1
+from malariagen_data import amin1 as _amin1
+
+
 from malariagen_data.anoph.snp_frq import AnophelesSnpFrequencyAnalysis
-from malariagen_data.util import compare_series_like
+from malariagen_data.util import _compare_series_like
 from .test_frq import (
     check_plot_frequencies_heatmap,
     check_plot_frequencies_time_series,
     check_plot_frequencies_time_series_with_taxa,
     check_plot_frequencies_time_series_with_areas,
     check_plot_frequencies_interactive_map,
+    add_random_year,
 )
 
 
@@ -65,6 +71,42 @@ def af1_sim_api(af1_sim_fixture):
     )
 
 
+@pytest.fixture
+def adir1_sim_api(adir1_sim_fixture):
+    return AnophelesSnpFrequencyAnalysis(
+        url=adir1_sim_fixture.url,
+        public_url=adir1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="dirus",
+        results_cache=adir1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_adir1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
+def amin1_sim_api(amin1_sim_fixture):
+    return AnophelesSnpFrequencyAnalysis(
+        url=amin1_sim_fixture.url,
+        public_url=amin1_sim_fixture.url,
+        config_path=_amin1.CONFIG_PATH,
+        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
+        major_version_path=_amin1.MAJOR_VERSION_PATH,
+        pre=False,
+        gff_gene_type="protein_coding_gene",
+        gff_gene_name_attribute="Note",
+        gff_default_attributes=("ID", "Parent", "Note", "description"),
+        default_site_mask="dirus",
+        results_cache=amin1_sim_fixture.results_cache_path.as_posix(),
+        taxon_colors=_amin1.TAXON_COLORS,
+    )
+
+
 # N.B., here we use pytest_cases to parametrize tests. Each
 # function whose name begins with "case_" defines a set of
 # inputs to the test functions. See the documentation for
@@ -83,6 +125,15 @@ def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
 
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+
+
+def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
+    return adir1_sim_fixture, adir1_sim_api
+
+
+@case(tags="single-sampleset")
+def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
+    return amin1_sim_fixture, amin1_sim_api
 
 
 expected_alleles = list("ACGT")
@@ -153,13 +204,13 @@ def test_snp_effects(fixture, api: AnophelesSnpFrequencyAnalysis):
 
     # Check some values.
     assert np.all(df["contig"] == transcript["contig"])
-    position = df["position"].values
+    position = df["position"].to_numpy()
     assert np.all(position >= transcript["start"])
     assert np.all(position <= transcript["end"])
-    assert np.all(position[1:] >= position[:-1])
-    expected_alleles = list("ACGT")
-    assert np.all(df["ref_allele"].isin(expected_alleles))
-    assert np.all(df["alt_allele"].isin(expected_alleles))
+    assert np.all(position[1:] >= position[:-1])  # type: ignore
+    test_expected_alleles = list("ACGT")
+    assert np.all(df["ref_allele"].isin(test_expected_alleles))
+    assert np.all(df["alt_allele"].isin(test_expected_alleles))
     assert np.all(df["transcript"] == transcript.name)
     assert np.all(df["effect"].isin(expected_effects))
     assert np.all(df["impact"].isin(expected_impacts))
@@ -483,7 +534,9 @@ def test_allele_frequencies_with_str_cohorts_and_sample_query(
     )
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_allele_frequencies_with_str_cohorts_and_sample_query_options(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
@@ -890,7 +943,7 @@ def check_snp_allele_frequencies_advanced(
     if area_by is None:
         area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month"])
+        period_by = random.choice(["year", "quarter", "month", "random_year"])
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
         sample_sets = random.choice(all_sample_sets)
@@ -898,6 +951,10 @@ def check_snp_allele_frequencies_advanced(
         min_cohort_size = random.randint(0, 2)
     if site_mask is None:
         site_mask = random.choice(api.site_mask_ids + (None,))
+
+    if period_by == "random_year":
+        # Add a random_year column to the sample metadata, if there isn't already.
+        api = add_random_year(api=api)
 
     # Run function under test.
     ds = api.snp_allele_frequencies_advanced(
@@ -1004,6 +1061,8 @@ def check_snp_allele_frequencies_advanced(
         expected_freqstr = "M"
     elif period_by == "quarter":
         expected_freqstr = "Q-DEC"
+    elif period_by == "random_year":
+        expected_freqstr = "Y-DEC"
     else:
         assert False, "not implemented"
     for p in period_values:
@@ -1050,7 +1109,7 @@ def check_snp_allele_frequencies_advanced(
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
-            compare_series_like(actual, expect)
+            _compare_series_like(actual, expect)
 
         # Check frequencies are consistent.
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
@@ -1084,12 +1143,16 @@ def check_aa_allele_frequencies_advanced(
     if area_by is None:
         area_by = random.choice(["country", "admin1_iso", "admin2_name"])
     if period_by is None:
-        period_by = random.choice(["year", "quarter", "month"])
+        period_by = random.choice(["year", "quarter", "month", "random_year"])
     if sample_sets is None:
         all_sample_sets = api.sample_sets()["sample_set"].to_list()
         sample_sets = random.choice(all_sample_sets)
     if min_cohort_size is None:
         min_cohort_size = random.randint(0, 2)
+
+    if period_by == "random_year":
+        # Add a random_year column to the sample metadata, if there isn't already.
+        api = add_random_year(api=api)
 
     # Run function under test.
     ds = api.aa_allele_frequencies_advanced(
@@ -1187,6 +1250,8 @@ def check_aa_allele_frequencies_advanced(
         expected_freqstr = "M"
     elif period_by == "quarter":
         expected_freqstr = "Q-DEC"
+    elif period_by == "random_year":
+        expected_freqstr = "Y-DEC"
     else:
         assert False, "not implemented"
     for p in period_values:
@@ -1232,7 +1297,7 @@ def check_aa_allele_frequencies_advanced(
             c = v.split("variant_")[1]
             actual = ds[v]
             expect = df_af[c]
-            compare_series_like(actual, expect)
+            _compare_series_like(actual, expect)
 
         # Check frequencies are consistent.
         for cohort_index, cohort_label in enumerate(ds["cohort_label"].values):
@@ -1268,7 +1333,7 @@ def test_allele_frequencies_advanced_with_area_by(
     )
 
 
-@pytest.mark.parametrize("period_by", ["year", "quarter", "month"])
+@pytest.mark.parametrize("period_by", ["year", "quarter", "month", "random_year"])
 @parametrize_with_cases("fixture,api", cases=".")
 def test_allele_frequencies_advanced_with_period_by(
     fixture,
@@ -1310,7 +1375,9 @@ def test_allele_frequencies_advanced_with_sample_query(
     )
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_allele_frequencies_advanced_with_sample_query_options(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,
@@ -1343,7 +1410,9 @@ def test_allele_frequencies_advanced_with_sample_query_options(
 
 
 @pytest.mark.parametrize("min_cohort_size", [0, 10, 100])
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("single-sampleset")
+)
 def test_allele_frequencies_advanced_with_min_cohort_size(
     fixture,
     api: AnophelesSnpFrequencyAnalysis,

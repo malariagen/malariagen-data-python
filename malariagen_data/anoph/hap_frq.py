@@ -7,16 +7,16 @@ import allel
 from numpydoc_decorator import doc  # type: ignore
 
 from ..util import (
-    check_types,
-    haplotype_frequencies,
+    _check_types,
+    _haplotype_frequencies,
 )
 from .hap_data import AnophelesHapData
 from .frq_base import (
-    prep_samples_for_cohort_grouping,
-    build_cohorts_from_sample_grouping,
-    add_frequency_ci,
+    _prep_samples_for_cohort_grouping,
+    _build_cohorts_from_sample_grouping,
+    _add_frequency_ci,
 )
-from .sample_metadata import locate_cohorts
+from .sample_metadata import _locate_cohorts
 from .frq_base import AnophelesFrequencyAnalysis
 from . import base_params, frq_params
 
@@ -31,7 +31,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         # to the superclass constructor.
         super().__init__(**kwargs)
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Compute haplotype frequencies for a region.
@@ -63,7 +63,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Build cohort dictionary, maps cohort labels to boolean indexers.
-        coh_dict = locate_cohorts(
+        coh_dict = _locate_cohorts(
             cohorts=cohorts, data=df_samples, min_cohort_size=min_cohort_size
         )
 
@@ -88,7 +88,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
 
         # List all haplotypes
         gt_hap = gt.to_haplotypes()
-        f_all, _, _ = haplotype_frequencies(gt_hap)
+        f_all, _, _ = _haplotype_frequencies(gt_hap)
 
         # Count haplotypes.
         freq_cols = dict()
@@ -103,7 +103,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             assert n_samples >= min_cohort_size
             gt_coh = gt.compress(loc_coh, axis=1)
             gt_hap = gt_coh.to_haplotypes()
-            f, _, _ = haplotype_frequencies(gt_hap)
+            f, _, _ = _haplotype_frequencies(gt_hap)
             # The frequencies of the observed haplotypes are then updated
             hap_dict.update(f)
             freq_cols["frq_" + coh] = list(hap_dict.values())
@@ -124,7 +124,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
 
         return df_haps_sorted
 
-    @check_types
+    @_check_types
     @doc(
         summary="""
             Group samples by taxon, area (space) and period (time), then compute
@@ -153,6 +153,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         ci_method: Optional[frq_params.ci_method] = frq_params.ci_method_default,
         chunks: base_params.chunks = base_params.native_chunks,
         inline_array: base_params.inline_array = base_params.inline_array_default,
+        taxon_by: frq_params.taxon_by = frq_params.taxon_by_default,
     ) -> xr.Dataset:
         # Load sample metadata.
         df_samples = self.sample_metadata(
@@ -162,19 +163,21 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Prepare sample metadata for cohort grouping.
-        df_samples = prep_samples_for_cohort_grouping(
+        df_samples = _prep_samples_for_cohort_grouping(
             df_samples=df_samples,
             area_by=area_by,
             period_by=period_by,
+            taxon_by=taxon_by,
         )
 
         # Group samples to make cohorts.
-        group_samples_by_cohort = df_samples.groupby(["taxon", "area", "period"])
+        group_samples_by_cohort = df_samples.groupby([taxon_by, "area", "period"])
 
         # Build cohorts dataframe.
-        df_cohorts = build_cohorts_from_sample_grouping(
+        df_cohorts = _build_cohorts_from_sample_grouping(
             group_samples_by_cohort=group_samples_by_cohort,
             min_cohort_size=min_cohort_size,
+            taxon_by=taxon_by,
         )
 
         # Access haplotypes.
@@ -198,7 +201,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
 
         # List all haplotypes
         gt_hap = gt.to_haplotypes()
-        f_all, _, _ = haplotype_frequencies(gt_hap)
+        f_all, _, _ = _haplotype_frequencies(gt_hap)
 
         # Count haplotypes.
         hap_freq: dict[np.int64, float] = dict()
@@ -211,8 +214,9 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             df_cohorts.itertuples(), desc="Compute allele frequencies"
         )
         for cohort in cohorts_iterator:
-            cohort_key = cohort.taxon, cohort.area, cohort.period
-            cohort_key_str = cohort.taxon + "_" + cohort.area + "_" + str(cohort.period)
+            cohort_taxon = getattr(cohort, taxon_by)
+            cohort_key = cohort_taxon, cohort.area, cohort.period
+            cohort_key_str = cohort_taxon + "_" + cohort.area + "_" + str(cohort.period)
             # We reset all frequencies, counts to 0 for each cohort, nobs is set to the number of haplotypes
             n_samples = cohort.size
             hap_freq = {k: 0 for k in f_all.keys()}
@@ -222,7 +226,7 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
             sample_indices = group_samples_by_cohort.indices[cohort_key]
             gt_coh = gt.take(sample_indices, axis=1)
             gt_hap = gt_coh.to_haplotypes()
-            f, c, o = haplotype_frequencies(gt_hap)
+            f, c, o = _haplotype_frequencies(gt_hap)
             # The frequencies and counts of the observed haplotypes are then updated, so are the nobs but the values should actually stay the same
             hap_freq.update(f)
             hap_count.update(c)
@@ -273,6 +277,6 @@ class AnophelesHapFrequencyAnalysis(AnophelesHapData, AnophelesFrequencyAnalysis
         )
 
         # Add confidence intervals.
-        add_frequency_ci(ds=ds_out, ci_method=ci_method)
+        _add_frequency_ci(ds=ds_out, ci_method=ci_method)
 
         return ds_out

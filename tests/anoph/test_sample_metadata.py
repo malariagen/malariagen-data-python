@@ -7,11 +7,16 @@ import plotly.express as px  # type: ignore
 import plotly.graph_objects as go  # type: ignore
 import pytest
 from pandas.testing import assert_frame_equal
-from pytest_cases import parametrize_with_cases
+from pytest_cases import parametrize_with_cases, case
+from pytest_cases import filters as ft
+
 from typeguard import suppress_type_checks
 
 from malariagen_data import af1 as _af1
 from malariagen_data import ag3 as _ag3
+from malariagen_data import adir1 as _adir1
+from malariagen_data import amin1 as _amin1
+
 from malariagen_data.anoph.sample_metadata import AnophelesSampleMetadata
 
 
@@ -38,6 +43,76 @@ def ag3_sim_api(ag3_sim_fixture):
 
 
 @pytest.fixture
+def ag3_sim_unrestricted_use_only_api(ag3_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        unrestricted_use_only=True,
+    )
+
+
+@pytest.fixture
+def ag3_sim_surveillance_use_only_api(ag3_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        surveillance_use_only=True,
+    )
+
+
+@pytest.fixture
+def ag3_sim_unrestricted_surveillance_use_only_api(ag3_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=ag3_sim_fixture.url,
+        public_url=ag3_sim_fixture.url,
+        config_path=_ag3.CONFIG_PATH,
+        major_version_number=_ag3.MAJOR_VERSION_NUMBER,
+        major_version_path=_ag3.MAJOR_VERSION_PATH,
+        pre=True,
+        aim_metadata_dtype={
+            "aim_species_fraction_arab": "float64",
+            "aim_species_fraction_colu": "float64",
+            "aim_species_fraction_colu_no2l": "float64",
+            "aim_species_gambcolu_arabiensis": object,
+            "aim_species_gambiae_coluzzii": object,
+            "aim_species": object,
+        },
+        taxon_colors=_ag3.TAXON_COLORS,
+        cohorts_analysis=ag3_sim_fixture.config["DEFAULT_COHORTS_ANALYSIS"],
+        unrestricted_use_only=True,
+        surveillance_use_only=True,
+    )
+
+
+@pytest.fixture
 def af1_sim_api(af1_sim_fixture):
     return AnophelesSampleMetadata(
         url=af1_sim_fixture.url,
@@ -47,6 +122,75 @@ def af1_sim_api(af1_sim_fixture):
         major_version_path=_af1.MAJOR_VERSION_PATH,
         pre=False,
         taxon_colors=_af1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
+def adir1_sim_api(adir1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=adir1_sim_fixture.url,
+        public_url=adir1_sim_fixture.url,
+        config_path=_adir1.CONFIG_PATH,
+        major_version_number=_adir1.MAJOR_VERSION_NUMBER,
+        major_version_path=_adir1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_adir1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
+def amin1_sim_api(amin1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=amin1_sim_fixture.url,
+        public_url=amin1_sim_fixture.url,
+        config_path=_amin1.CONFIG_PATH,
+        major_version_number=_amin1.MAJOR_VERSION_NUMBER,
+        major_version_path=_amin1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_amin1.TAXON_COLORS,
+    )
+
+
+@pytest.fixture
+def af1_sim_unrestricted_use_only_api(af1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
+        config_path=_af1.CONFIG_PATH,
+        major_version_number=_af1.MAJOR_VERSION_NUMBER,
+        major_version_path=_af1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_af1.TAXON_COLORS,
+        unrestricted_use_only=True,
+    )
+
+
+@pytest.fixture
+def af1_sim_surveillance_use_only_api(af1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
+        config_path=_af1.CONFIG_PATH,
+        major_version_number=_af1.MAJOR_VERSION_NUMBER,
+        major_version_path=_af1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_af1.TAXON_COLORS,
+        surveillance_use_only=True,
+    )
+
+
+@pytest.fixture
+def af1_sim_unrestricted_surveillance_use_only_api(af1_sim_fixture):
+    return AnophelesSampleMetadata(
+        url=af1_sim_fixture.url,
+        public_url=af1_sim_fixture.url,
+        config_path=_af1.CONFIG_PATH,
+        major_version_number=_af1.MAJOR_VERSION_NUMBER,
+        major_version_path=_af1.MAJOR_VERSION_PATH,
+        pre=False,
+        taxon_colors=_af1.TAXON_COLORS,
+        unrestricted_use_only=True,
+        surveillance_use_only=True,
     )
 
 
@@ -72,12 +216,66 @@ def missing_metadata_api(fixture_dir):
     )
 
 
+@case(tags="ag3")
 def case_ag3_sim(ag3_sim_fixture, ag3_sim_api):
     return ag3_sim_fixture, ag3_sim_api
 
 
+@case(tags="af1")
 def case_af1_sim(af1_sim_fixture, af1_sim_api):
     return af1_sim_fixture, af1_sim_api
+
+
+@case(tags="adir1")
+def case_adir1_sim(adir1_sim_fixture, adir1_sim_api):
+    return adir1_sim_fixture, adir1_sim_api
+
+
+@case(tags="amin1")
+def case_amin1_sim(amin1_sim_fixture, amin1_sim_api):
+    return amin1_sim_fixture, amin1_sim_api
+
+
+@case
+def case_ag3_sim_unrestricted_use_only(
+    ag3_sim_fixture, ag3_sim_unrestricted_use_only_api
+):
+    return ag3_sim_fixture, ag3_sim_unrestricted_use_only_api
+
+
+@case
+def case_af1_sim_unrestricted_use_only(
+    af1_sim_fixture, af1_sim_unrestricted_use_only_api
+):
+    return af1_sim_fixture, af1_sim_unrestricted_use_only_api
+
+
+@case
+def case_ag3_sim_surveillance_use_only(
+    ag3_sim_fixture, ag3_sim_surveillance_use_only_api
+):
+    return ag3_sim_fixture, ag3_sim_surveillance_use_only_api
+
+
+@case
+def case_af1_sim_surveillance_use_only(
+    af1_sim_fixture, af1_sim_surveillance_use_only_api
+):
+    return af1_sim_fixture, af1_sim_surveillance_use_only_api
+
+
+@case
+def case_ag3_sim_unrestricted_surveillance_use_only(
+    ag3_sim_fixture, ag3_sim_unrestricted_surveillance_use_only_api
+):
+    return ag3_sim_fixture, ag3_sim_unrestricted_surveillance_use_only_api
+
+
+@case
+def case_af1_sim_unrestricted_surveillance_use_only(
+    af1_sim_fixture, af1_sim_unrestricted_surveillance_use_only_api
+):
+    return af1_sim_fixture, af1_sim_unrestricted_surveillance_use_only_api
 
 
 def general_metadata_expected_columns():
@@ -111,7 +309,7 @@ def validate_metadata(df, expected_columns):
 
     # Check column types.
     for c in df.columns:
-        assert df[c].dtype.kind == expected_columns[c]
+        assert df[c].dtype.kind == expected_columns[c], c
 
 
 @parametrize_with_cases("fixture,api", cases=".")
@@ -120,6 +318,12 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     df_sample_sets = api.sample_sets().set_index("sample_set")
     sample_count = df_sample_sets["sample_count"]
     all_sample_sets = df_sample_sets.index.to_list()
+
+    # Skip this test if there are no relevant sample sets to test, e.g. due to unrestricted_use_only and surveillance_use_only.
+    # Note: there should be sufficient test fixtures to run this test, i.e. including unrestricted and surveillance sample sets.
+    if len(all_sample_sets) == 0:
+        pytest.skip("Skipping because there are no relevant sample sets to test.")
+
     sample_set = random.choice(all_sample_sets)
 
     # Call function to be tested.
@@ -131,7 +335,9 @@ def test_general_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_general_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -213,7 +419,9 @@ def test_sequence_qc_metadata_with_single_sample_set(
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_sequence_qc_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -434,7 +642,9 @@ def test_cohorts_metadata_with_single_sample_set(fixture, api: AnophelesSampleMe
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_cohorts_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -493,13 +703,19 @@ def sample_metadata_expected_columns(
     has_aims, has_cohorts_by_quarter, has_sequence_qc, ordered_contigs
 ):
     expected_columns = general_metadata_expected_columns()
+
     if has_sequence_qc:
         expected_columns.update(sequence_qc_metadata_expected_columns(ordered_contigs))
+
+    expected_columns.update({"is_surveillance": "b"})
+
     if has_aims:
         expected_columns.update(aim_metadata_expected_columns())
+
     expected_columns.update(
         cohorts_metadata_expected_columns(has_cohorts_by_quarter=has_cohorts_by_quarter)
     )
+
     return expected_columns
 
 
@@ -536,7 +752,9 @@ def test_sample_metadata_with_single_sample_set(fixture, api: AnophelesSampleMet
     assert len(df) == expected_len
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_sample_metadata_with_multiple_sample_sets(
     fixture, api: AnophelesSampleMetadata
 ):
@@ -675,8 +893,9 @@ def test_sample_metadata_quarter(fixture, api: AnophelesSampleMetadata):
 def test_sample_metadata_with_missing_file(
     missing_metadata_api: AnophelesSampleMetadata,
 ):
-    # In this test, one of the sample sets (AG1000G-BF-A) has a missing file.
+    # In this test, there is missing metadata.
     # We expect this to be filled with empty values.
+    # We also expect warnings for missing surveillance flags.
     api = missing_metadata_api
 
     # Set up test.
@@ -686,7 +905,15 @@ def test_sample_metadata_with_missing_file(
 
     for sample_set in all_sample_sets:
         # Call function to be tested.
-        df = api.sample_metadata(sample_sets=sample_set)
+        with pytest.warns(UserWarning) as captured_warnings:
+            df = api.sample_metadata(sample_sets=sample_set)
+
+        # Check expected warnings.
+        expected_message = f"WARNING: The surveillance flags data is missing for sample set {sample_set}"
+        assert all(
+            str(captured_warning.message) == expected_message
+            for captured_warning in captured_warnings
+        )
 
         # Check output.
         validate_metadata(
@@ -940,7 +1167,9 @@ def test_plot_samples_bar(fixture, api):
     assert isinstance(fig, go.Figure)
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.)
 def test_plot_sample_location_mapbox(fixture, api):
     # Get test sample_sets.
     df_sample_sets = api.sample_sets().set_index("sample_set")
@@ -955,7 +1184,9 @@ def test_plot_sample_location_mapbox(fixture, api):
     assert isinstance(fig, go.Figure)
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is currently only a single sample set. Do this for other tests that test for multiple sets.
 def test_plot_sample_location_geo(fixture, api):
     # Get test sample_sets.
     df_sample_sets = api.sample_sets().set_index("sample_set")
@@ -1019,7 +1250,9 @@ def test_lookup_sample(fixture, api):
     assert sorted(list(sample_rec_by_sample_loc_set.index)) == sorted_expected_fields
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is no sex call data.
 def test_setup_sample_symbol(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()
@@ -1052,7 +1285,9 @@ def test_setup_sample_symbol(fixture, api):
         api._setup_sample_symbol(data=data, symbol="foo")
 
 
-@parametrize_with_cases("fixture,api", cases=".")
+@parametrize_with_cases(
+    "fixture,api", cases=".", filter=~ft.has_tag("amin1")
+)  # N.B. exclude amin1 as there is no sex call data.
 def test_setup_sample_colors_plotly(fixture, api):
     # Set up test.
     df_samples = api.sample_metadata()

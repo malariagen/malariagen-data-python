@@ -1,34 +1,34 @@
 name: coverage
 on:
-    push:
-        branches:
-            - master
-    pull_request:
-        branches:
-            - master
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+      - master
 jobs:
-    coverage:
-        strategy:
-            fail-fast: true
-        runs-on: ubuntu-latest
-        steps:
-            - name: Checkout source
-              uses: actions/checkout@v4
+  coverage:
+    strategy:
+      fail-fast: true
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
 
-            - name: Setup python
-              uses: actions/setup-python@v5
-              with:
-                  python-version: '3.12'
-                  cache: 'pip'
+      - name: Setup python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+          cache: "pip"
 
-            - name: Install package
-              run: pip install .[dev]
+      - name: Install package
+        run: pip install .[dev]
 
-            - name: Run unit tests with coverage
-              run: pytest -v tests --ignore tests/integration --cov malariagen_data/anoph --cov-report=xml
+      - name: Run unit tests with coverage
+        run: pytest -v tests --ignore tests/integration --cov malariagen_data/anoph --cov-report=xml
 
-            - name: Upload coverage report
-              uses: codecov/codecov-action@v3
-              with:
-                  files: ./coverage.xml
-                  verbose: true
+      - name: Upload coverage report
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./coverage.xml
+          verbose: true
