@@ -44,7 +44,12 @@ for release notes.
 
 ## Developer setup
 
-To get setup for development, see [this video if you prefer VS Code](https://youtu.be/zddl3n1DCFM), or [this older video if you prefer PyCharm](https://youtu.be/QniQi-Hoo9A), and the instructions below.
+To get set up for development, see the video guides below:
+
+-   [VS Code setup](https://youtu.be/zddl3n1DCFM)
+-   [PyCharm setup](https://youtu.be/QniQi-Hoo9A)
+
+For detailed setup instructions and contributor workflow, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Detailed instructions can be found in the [Contributors guide](https://github.com/malariagen/malariagen-data-python/blob/master/CONTRIBUTING.md).
 
